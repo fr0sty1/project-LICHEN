@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ovwm.2",
   "title": "Analyze US customs clearance, duties, and required documentation for importing 500 electronics development boards (FCC/CE certified LoRa devices)",
   "description": "Research CBP import process for electronics from China. Check HS codes for dev boards/radio modules (likely 8517.62 or similar), typical duty rates (0-5%?), de minimis rules if applicable, required forms (FDA? no, FCC certs help), broker needs. Estimate duties, VAT if any, clearance fees. List docs: invoice, certs of conformity, country of origin. Acceptance: process summary, estimated addl costs, checklist in beads notes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

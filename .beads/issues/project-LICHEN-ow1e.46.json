@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.46",
   "title": "CoAP option iterator uses saturating_add for current_number, masking protocol violations",
   "description": "# Problem\nIn `rust/lichen-coap/src/codec.rs:359`:\n\n```rust\nself.current_number = self.current_number.saturating_add(delta);\n```\n\nIf a malformed CoAP message has option deltas that overflow u16, `saturating_add` silently clamps to 65535. This means:\n1. Multiple different malformed inputs produce identical parsed output\n2. A round-trip (parse → serialize → parse) will produce different results\n3. Security filters based on option numbers can be bypassed\n\n## What goes wrong\nA malicious CoAP message with crafted option deltas could:\n- Make option number 11 (Uri-Path) appear as option 65535 (or vice versa)\n- Bypass URI-based authorization by having options parse to different numbers than intended\n\n## Trigger\nCoAP message with options: delta=30000, delta=40000. \nAfter first: current_number=30000\nAfter second: current_number=65535 (clamped) instead of 70000 (error)\n\n## Fix\nReturn `Err(CoapError::OptionNumberOverflow)` when `delta + current_number \u003e u16::MAX`.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

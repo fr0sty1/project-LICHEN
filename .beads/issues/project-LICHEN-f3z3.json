@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f3z3",
   "title": "SLIP transport: stats access without synchronization",
   "description": "File: lichen/subsys/lichen/transport/slip_transport.c\nLines: 572-589\n\nUnlike kiss_transport which uses stats_mutex, slip_transport accesses stats without any synchronization:\n\n1. slip_transport_get_stats() (line 572-582) reads ctx-\u003estats\n2. slip_transport_reset_stats() (line 584-589) writes ctx-\u003estats  \n3. Various callbacks/threads modify stats (lines 244, 294-296, 299, 315, etc.)\n\nThe RX thread modifies stats from slip_dispatch_packet() while the main thread may call get_stats() or reset_stats(). This is a data race.\n\nThe issue is structural - there is a tx_mutex defined (line 60) but no stats_mutex.\n\nFix: Add a stats_mutex and protect all stats reads/writes, or document that stats are best-effort.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

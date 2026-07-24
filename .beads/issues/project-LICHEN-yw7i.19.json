@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.19",
   "title": "Good: Empty frame rejected before mutex acquisition",
   "description": "lichen_l2.c:498-500 rejects zero-length frames before taking rx_mutex. This fast-path rejection avoids mutex contention for malformed input. The project-LICHEN-1ojj.7 reference provides traceability.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

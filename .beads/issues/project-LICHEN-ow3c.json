@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c",
   "title": "[security] OSCORE SSN/nonce reuse risk on NVM failure",
   "description": "oscore_ctx_set_sender_seq and NVM persistence callbacks critical to prevent AES-CCM nonce reuse post-reboot. Recent oscore.c changes (b6f7e326d) do not address NVM callback robustness or error paths in oscore_protect_request. Test vectors do not cover reboot scenarios. See oscore.c:1574+ and edhoc export paths. Priority 0 bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0s8m",
   "title": "codereview-pass-3 post-edit: section renumbering after duplicate removal in draft-lichen-schc-lora-00.md now makes later headings (Security=8-\u003e7, IANA=9-\u003e8, References=10-\u003e9, Appendix A) inconsistent with updated TOC and cross-references; also update date from May 2026",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "UdpHeader::from_bytes does not validate length field",
   "description": "File: rust/lichen-ipv6/src/lib.rs:401-412\n\nUdpHeader::from_bytes() parses the UDP length field but does not validate it against the actual buffer size. A malformed packet could claim a length larger than the actual data, leading callers to read past the end of valid data.\n\n```rust\npub fn from_bytes(buf: \u0026[u8]) -\u003e Result\u003cSelf, Ipv6Error\u003e {\n    if buf.len() \u003c UDP_HEADER_LEN {\n        return Err(TooShort::new(UDP_HEADER_LEN, buf.len()).into());\n    }\n    // length field parsed but not validated\n    Ok(Self {\n        // ...\n        length: ((buf[4] as u16) \u003c\u003c 8) | (buf[5] as u16),\n        // ...\n    })\n}\n```\n\nCallers using `header.length` to slice payload without additional bounds checking could read garbage or cause panics.\n\nConsider adding validation or documenting that callers MUST validate the length field before using it.",
   "notes": "Commit: 5689fd88f. Validation for UDP length field added to from_bytes (reuses TooShort for cases where declared length is invalid relative to buffer).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

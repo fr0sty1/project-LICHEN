@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1xhn",
   "title": "Synchronize Rust lichen-schc crate with ACK-on-Error profile",
   "description": "Update rust/lichen-schc/ (fragment.rs, codec.rs etc.) to exactly match defined profile params, RuleIDs, WINDOW_SIZE=2^6?, tile sizes, ACK bitmap, MIC (CRC32?), padding rules, retry logic. Ensure no_std compatible. Add tests against new vectors. Use explore subagent for current code.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.6.1",
   "title": "Python impl: hash based channel selection algorithm",
   "description": "Python implementation for CCP-6 hash-based assignment inferred from da2q.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

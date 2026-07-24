@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.13",
   "title": "lichen_l2.c:536: lichen_l2_send() does not validate minimum IPv6 packet size",
   "description": "**Location:** lichen_l2.c:536-541\n\n**Issue:** The function checks that pkt_len does not exceed the buffer size, but does not validate that the packet is at least IPV6_BASE_HDR_LEN (40) bytes - the minimum size of a valid IPv6 packet.\n\n**Current code:**\n```c\nsize_t pkt_len = net_pkt_get_len(pkt);\n\nif (pkt_len \u003e sizeof(tx_ipv6_buf)) {\n    LOG_ERR(\"Packet too large: %zu \u003e %zu\", pkt_len, sizeof(tx_ipv6_buf));\n    return -EMSGSIZE;\n}\n```\n\n**Problem:** A packet shorter than 40 bytes:\n1. Cannot be a valid IPv6 packet (base header alone is 40 bytes)\n2. May cause lichen_link_tx() to process garbage data or underread\n3. SCHC compression expects valid IPv6 headers and may produce undefined output\n\n**Fix:** Add check: `if (pkt_len \u003c IPV6_BASE_HDR_LEN) return -EINVAL;`\n\n**Severity:** P2 - Malformed packets would likely fail in SCHC compression anyway, but explicit validation provides clearer error messages and defense-in-depth.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

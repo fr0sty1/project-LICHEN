@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iy2r",
   "title": "Add shared SCHC ACK-on-Error test vectors to test/vectors/",
   "description": "Create or extend test/vectors/schc_fragment.json or similar with strict vectors covering M=1 N=6 T=0, windowing, bitmap ACKs, MIC verification, padding, retries, All-1, error cases. Ensure vectors are independent oracles (not derived from any impl). Update generate.py and schema.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

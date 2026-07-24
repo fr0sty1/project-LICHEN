@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.65",
   "title": "Retire secure CoAP long-lived correlations",
   "description": "SecureDatagramChannel must retain OSCORE request IDs for Observe notifications and CON response retransmissions, but current DatagramChannel callbacks provide no local Observe-cancellation or ACK lifecycle signal. Integrate aiocoap exchange lifecycle notifications or a bounded safe policy so canceled Observe and acknowledged/expired CON correlations are retired without breaking retransmission.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

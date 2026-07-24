@@ -2,7 +2,7 @@
   "id": "project-LICHEN-j6gc",
   "title": "DTS e-ink review pass 1: compatible and resolution",
   "description": "Codereview pass 1: P2 - node name 'uc81xx@0' should mimic t_deck_display style; P3 - add rotation property?; confirmed resolution 152x152 per panel datasheet cross-check with Meshtastic variant. No P0/P1. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "chore",
   "assignee": "ec2-user",

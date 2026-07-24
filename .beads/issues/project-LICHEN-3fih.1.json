@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3fih.1",
   "title": "Fix CBOR overflow flag propagation and early abort in encode_*_cbor functions",
   "description": "Update all cbor_put_* callers to check ctx.overflow immediately after groups of operations. Return 0 on any overflow to prevent partial CBOR output. Make cbor_put functions return success bool for better propagation.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

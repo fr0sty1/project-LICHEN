@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a8r8",
   "title": "[CODEREVIEW3] route detection convergence",
   "description": "lichen/subsys/lichen/coap/coap_status.h:155 + coap_status.c:758 - API now uses explicit bool flag. No P0-P4 left after addressing previous codereview beads. Pass 3 robustness review complete. Convergence achieved. Tagged codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "ec2-user",

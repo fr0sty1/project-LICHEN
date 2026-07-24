@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-gjo8",
   "title": "codereview: announce.rs unused error variants NotSigned HopCountExceeded",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:31:22.673152768Z",

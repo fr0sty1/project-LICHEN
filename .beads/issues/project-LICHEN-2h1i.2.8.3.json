@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2.8.3",
   "title": "Integrate OSCORE E2E into lichen-coap for /deaddrop and /confessions resources",
   "description": "Update CoAP dispatch, client/server to select appropriate OSCORE context (peer-specific for dead drop, group for optional confessions encryption). Handle protection/unprotection transparently.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T14:39:10.078192869Z",

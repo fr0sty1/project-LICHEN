@@ -3,7 +3,7 @@
   "title": "lichen-sim: MAX_MSG_LEN too small for protocol max payload",
   "description": "file: rust/lichen-sim/src/client.rs:33\n\nMAX_MSG_LEN is set to 64KB (65536 bytes) but the protocol allows payloads up to 65535 bytes. An RX_OK message with maximum payload would be:\n- 1 byte (type) + 2 bytes (len) + 65535 bytes (payload) + 2 bytes (rssi) + 2 bytes (snr) = 65542 bytes\n\nThis exceeds MAX_MSG_LEN, so recv_msg() would reject a legitimate max-sized message with 'message too large' error.\n\nImpact: Low - LoRa payloads are typically \u003c255 bytes in practice. This only affects simulator testing with artificially large payloads.\n\nFix: Increase MAX_MSG_LEN to at least 65550 (to accommodate RX_OK with max payload plus some margin).",
   "notes": "Already fixed in current main (MAX_MSG_LEN=128KiB with updated comment covering 65.5KiB RX_OK). Commit: 9b4bb53e1",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

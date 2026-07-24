@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-mafh",
   "title": "coap_dtn.c: missing POST handlers for /deaddrop and /confessions",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:13:18.45302425Z",

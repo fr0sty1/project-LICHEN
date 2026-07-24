@@ -5,7 +5,7 @@
   "design": "CONVERGENCE FREEZE. Fixed inputs are origin/main plus the eight inventoried integration branch tips at cutoff ba388efc1367afaf491b5d95e83669824323aa24. Every applied change must trace to an inventoried commit hash. Conflict resolution may only preserve or reconcile behavior already present in selected commits; no frontier features, opportunistic refactors, cleanup, or unrelated bug fixes. Newly discovered work is filed as a Beads issue and deferred or used to block the affected slice. A validation correction is permitted only when necessary to preserve a selected commit's documented acceptance behavior and must be recorded against that hash before editing. Do not run or claim unrelated bd ready work until this epic closes. Maintain the commit-disposition ledger and checkpoint it after each integration slice.",
   "acceptance_criteria": "Every unique commit on the eight integration branches has a reviewed disposition and rationale; one clean convergence branch contains all non-superseded work with no machine-local artifacts; Rust/Python/Zephyr/vector/fleet gates and three final reviews pass; residual blockers are explicit; branch is pushed only when authorized.",
   "notes": "Commit: 8045d68c6",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "ec2-user",

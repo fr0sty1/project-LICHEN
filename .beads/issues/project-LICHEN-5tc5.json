@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5tc5",
   "title": "[merge-conflict] worktree-worker24: bridge.rs",
   "notes": "Commit: 3569195f4 (worker24 bridge.rs synced to canonical with resolution note)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

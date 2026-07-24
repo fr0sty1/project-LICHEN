@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.1.2",
   "title": "Implement wrap-aware is_fresher and bounds checks in Rust LOADng/gradient",
   "description": "Update hybrid.rs, gradient.rs, loadng.rs to use new SeqNum for freshness in RouteCache/GradientTable equivalents, RREQ/RREP processing. Align exactly with Python _is_seq_fresher and rank logic. Add bounds validation for seq, hop_limit, metric.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

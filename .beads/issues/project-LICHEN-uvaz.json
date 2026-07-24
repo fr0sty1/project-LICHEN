@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-uvaz",
   "title": "codereview-pass3: verify no remaining crc16/hash_32 refs in CCP-15.8.3 or related pseudocode/docs; confirm consistency with rf_health and link_ctx",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vokk",
   "title": "[merge-conflict] worktree-worker16: coap_config.c",
   "notes": "Commit: 285cdc5 (fixed coap_config.c merge in worker16 by using shared lichen_coap_respond and lichen_coap_server)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

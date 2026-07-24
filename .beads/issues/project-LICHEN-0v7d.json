@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] 06-security.md post-8.5 numbering",
   "description": "Numbering fixed sequentially. All internal xrefs updated. Other files reference old 8.9 for RPL now at 8.10 (P3 cross-file). Table in 8.5 benefits section appears misplaced from mutable fields discussion (P2 correctness but scoped to numbering task).",
   "notes": "Commit: 1b8d203d3",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

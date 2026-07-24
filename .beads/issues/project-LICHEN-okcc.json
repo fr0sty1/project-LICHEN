@@ -2,7 +2,7 @@
   "id": "project-LICHEN-okcc",
   "title": "Rust hetero_node packet_hash logging vs storage inconsistency",
   "description": "In lichen-apps/src/bin/hetero_node.rs, metrics use 16-byte hash_prefix for HashSet (lines 146,177: hash[..16] as [u8;16]), but JSON 'packet_hash' and tx_id use hex string slice [..16] (8 bytes equiv, line 114). Inconsistent with Python's 32-char hex and the standardization goal. New bug from codereview pass after Python edit.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

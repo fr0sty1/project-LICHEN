@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vjqj",
   "title": "codereview P3: wire format doc updated but _FIXED_LENGTH still 93 in messages.py",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:15:03.329434166Z",

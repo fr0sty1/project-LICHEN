@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cc77",
   "title": "codereview pass 1: metric sampling window and sampling rate lacks justification and exact match to test vectors",
   "description": "The 60s/128 events window and 20ms CCA sampling must be validated against ccp_load_balancing.json vectors and Python sim. Add explicit constants to Appendix A with rationale (e.g. to cover ~30 superframes). PER definition should clarify if it includes only data slots or all. This ensures normative reproducibility.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:38:38.047847332Z",

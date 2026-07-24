@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2j8r.2.3",
   "title": "coap_dtn.c: audit deaddrop_oscore_respond and piv capture for all protected paths",
   "description": "Verify that rate limit, store error, and success paths all correctly capture and use piv/ctx from main's unprotect logic and worker8's response protection helper. Fix any missing cases or buffer issues. --json",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

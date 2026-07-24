@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rmns.4.3",
   "title": "[codereview-3] forward_mesh_to_upstream: edge cases, DAO with hypothetical reply_len\u003e0, local-mesh interaction",
   "description": "Pass 3 edge-case review. If reply_len\u003e0 and DAO event, reply is sent and control_plane skipped due to early return on reply. DAO without reply correctly skips TUN forward. Local mesh return preserved. Matches spec for control plane. No findings. 3 passes complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:11:45.083482974Z",

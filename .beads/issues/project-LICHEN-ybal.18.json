@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.18",
   "title": "lichen_link_rx rx_ctx uses link_ctx.link_key pointer - needs cleanup serialization doc",
   "description": "File: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:375-385\n\nThe rx_ctx.link_key is set to link_ctx.link_key pointer (line 379):\n  .link_key = link_ctx.has_link_key ? link_ctx.link_key : NULL,\n\nCurrently safe: cleanup happens under both mutexes. But the pointer is captured into rx_ctx before lichen_link_rx() runs - if a maintainer moves cleanup outside mutex scope, the pointer could dangle.\n\nRisk: Future refactor breaks the implicit invariant that cleanup is serialized with RX.\n\nMitigation: Add SECURITY comment at cleanup site documenting the serialization requirement, or copy link_key bytes (not pointer) into rx_ctx.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

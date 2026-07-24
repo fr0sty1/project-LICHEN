@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-nl37",
   "title": "codereview-pass3: coap_status.c no dead code validation",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

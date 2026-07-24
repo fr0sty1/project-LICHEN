@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2p1l",
   "title": "Python: EDHOC signature verification may use wrong public key format",
   "description": "In python/src/lichen/crypto/edhoc.py:162-166, signature verification was added:\n\n    verify_key = VerifyKey(peer_pubkey)\n    try:\n        verify_key.verify(m_2, signature_2)\n    except Exception as e:\n        raise ValueError(f'Signature verification failed: {e}') from e\n\nThe VerifyKey from nacl expects an Ed25519 public key (32 bytes). However, peer_pubkey is passed in from the EDHOC exchange and its format depends on the CRED_R structure. The code assumes CRED_R = raw pubkey, but RFC 9528 allows various credential types.\n\nLocation: python/src/lichen/crypto/edhoc.py:162-166\nRisk: Signature verification may fail or accept incorrect signatures if peer_pubkey format doesn't match expectations.\nFix: Document the expected peer_pubkey format and validate it before creating VerifyKey.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

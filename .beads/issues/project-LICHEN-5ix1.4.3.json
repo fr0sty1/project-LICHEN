@@ -3,7 +3,7 @@
   "title": "Trace T-Echo bridge startup stall",
   "description": "Instrument the canonical T-Echo bridge from L2 RX-thread creation through main: ready. Capture thread states, locks/semaphores, initialization calls, UART, and simulator TX timeline at the stall.",
   "acceptance_criteria": "A deterministic trace identifies the blocked thread and wait object/function, or provides a minimal experiment distinguishing firmware deadlock from Renode timing/model behavior; commands, hashes, and logs retained.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

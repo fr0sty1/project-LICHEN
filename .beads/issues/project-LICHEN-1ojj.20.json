@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.20",
   "title": "Missing zeroization of SHA-256 hash buffer in ipv6_addr.c",
   "description": "In lichen_pubkey_to_iid() at ipv6_addr.c:58-62, the local hash[32] buffer holds SHA-256(pubkey). After memcpy(iid, hash, 8), the remaining 24 bytes of hash are never zeroized.\n\nImpact: The hash buffer persists on the stack until overwritten by later calls. While this is a hash of the public key (not the private key), it still reveals information about the pubkey. An attacker with stack read capability (debugger, memory corruption) could recover the full hash, which narrows the pubkey search space.\n\nFix: Add explicit_bzero(hash, sizeof(hash)) after the memcpy.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:62 (after memcpy)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

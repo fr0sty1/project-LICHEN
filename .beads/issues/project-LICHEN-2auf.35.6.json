@@ -6,7 +6,7 @@
   "acceptance_criteria": "1. Account query proves 210337117346 under profile personal in us-west-2 before writes; builder and volume are in us-west-2c and exact volume ID/Name/state checks pass. 2. Clean base commit plus link patch/commit provenance is recorded and artifact/log hashes match that source. 3. link_crypto native_sim/native/64 builds and runs; focused puck/L2 and kiss_transport tests build and run; declared bridge-esp32, bridge-rust, and bridge-stm32wl checks all pass without silently reducing features or targets. 4. Every command and exit status is retained in hashed UTC logs; no skipped or ignored failure is accepted. 5. Clean-worktree verification passes after every row. 6. Logs are collected before ownership-checked cleanup; EBS unmount, detach, and wait-available all succeed explicitly. Close .35.4/.35.5 only after every applicable link row and cleanup step passes.",
   "notes": "Link migration validation gates (link_crypto native_sim/native/64, puck/L2, kiss_transport, bridge-esp32/rust/stm32wl) require clean worktree from recorded base, specific patch application, full provenance/evidence per .59/.56 design (hashes, logs, unmount/detach/wait/terminate). Current session on wip/checkpoint-20260715 (103 ahead). No untagged AWS launches. HUMAN tagged for decision on exact base commit/patch or local-only test execution to close.",
   "labels": ["defer-external"],
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "announce.c: Observer callback errors may leave state inconsistent",
   "description": "File: lichen/subsys/lichen/routing/announce.c\nLines: 183-188, 305-308\n\nIn notify_observers():\n\n    for (size_t i = 0U; i \u003c count; i++) {\n        int ret = observers[i].cb(announce, meta, observers[i].user_data);\n        if (ret \u003c 0) {\n            return ret;  // \u003c-- Early return on error\n        }\n        ...\n    }\n\nIn lichen_announce_ingest_authenticated():\n\n    ret = notify_observers(\u0026announce, meta, seq_stale_for_pin);\n    if (ret \u003c 0) {\n        k_mutex_unlock(\u0026ingest_mutex);\n        return ret;  // \u003c-- Exit without updating peer state\n    }\n\nIf an observer callback returns an error:\n1. notify_observers returns early\n2. lichen_announce_ingest_authenticated returns early\n3. The peer's seq_num and location_seq_num are NOT updated\n\nOn the next announce from the same peer with the same sequence number:\n- The peer lookup finds the old seq_num\n- The announce appears 'new' again (seq_stale_for_pin may be false)\n- Observers are notified again for the same announce\n\nThis can cause duplicate processing of announces if any observer is temporarily failing.",
   "notes": "Commit: fc0d51951",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

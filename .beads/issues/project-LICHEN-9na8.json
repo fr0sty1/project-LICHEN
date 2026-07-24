@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9na8",
   "title": "[codereview-1] schema.json ccp_vector nesting fixed but additionalProperties:true may permit invalid fields in v2 vectors; consider exhaustive properties list and oneOf for vector subtypes per CCP-15",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

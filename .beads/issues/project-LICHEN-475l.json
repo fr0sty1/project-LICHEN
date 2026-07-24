@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-475l",
   "title": "[CODEREVIEW2] lichen/subsys/lichen/coap/coap_status.c capacity validation",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

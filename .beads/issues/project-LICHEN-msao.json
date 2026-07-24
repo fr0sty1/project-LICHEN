@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-msao",
   "title": "simulation.py: remove get_rx_result duplication and merge conflict artifacts",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

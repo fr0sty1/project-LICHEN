@@ -3,7 +3,7 @@
   "title": "DodagState _lowest_rank not reset on version change",
   "description": "File: python/src/lichen/rpl/dodag.py:155-163\n\nWhen _adopt_version() is called to adopt a new DODAG version, _lowest_rank is reset to INFINITE_RANK. This is correct. However, looking at the MaxRankIncrease logic in _admissible():\n\n```python\ndef _admissible(self, candidate: ParentCandidate) -\u003e bool:\n    cost = candidate.path_cost(self.min_hop_rank_increase)\n    if cost \u003e= INFINITE_RANK:\n        return False\n    if self._lowest_rank \u003e= INFINITE_RANK:\n        return True  # No bound yet\n    return cost \u003c= self._lowest_rank + self.max_rank_increase\n```\n\nThe _lowest_rank tracks the best rank achieved in the current DODAG version to implement the \"max rank increase\" bound (RFC 6550 Section 8.2.2.4).\n\nThe bug is subtle: if a node achieves rank 300, then _lowest_rank=300. If it loses all parents and becomes UNJOINED, _lowest_rank remains 300. When it rejoins (same version), it can only accept candidates with cost \u003c= 300 + max_rank_increase. But if it should have joined with rank 500 (the only available parent), it would reject this as inadmissible.\n\nThis is a \"stuck node\" scenario. RFC 6550 suggests that nodes should be able to increase rank to rejoin after isolation, up to the max_rank_increase bound from their LOWEST achieved rank, but the implementation might be too restrictive when the only available path is worse than _lowest_rank + max_rank_increase.\n\nThe fix may be to reset _lowest_rank when becoming UNJOINED, or to track lowest-this-session vs lowest-ever separately.",
   "notes": "Commit: b20a1b346",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

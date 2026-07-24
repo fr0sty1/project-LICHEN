@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2oe9",
   "title": "codereview: from_ipv6 assumes IID in bytes 8-15 without validation",
   "description": "No check if address is link-local/ULA or has valid IID structure. Could add is_ula() || is_link_local() guard or make infallible assumption explicit in docs. P2 robustness for codereview. discovered-from:project-LICHEN-yufp",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

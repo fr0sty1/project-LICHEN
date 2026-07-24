@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9qjs",
   "title": "codereview-P2: inconsistent crc16 vs new hash_32 in CCP-15.8.3 pseudocode",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

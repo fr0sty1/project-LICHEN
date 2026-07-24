@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nl9",
   "title": "[codereview-pass1] CMake: coap_dtn.c referenced before implementation exists; will break builds until file created and follows no-comment rule",
   "description": "lichen/subsys/lichen/coap/CMakeLists.txt:48 - Added source but coap_dtn.c not yet written. Also, comment in file violates 'DO NOT ADD ANY COMMENTS' rule from AGENTS.md. P0 build break.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

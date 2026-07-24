@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nvba",
   "title": "Integrate worker9 to worker15 branches from 20260722",
   "description": "Perform exact merge sequence for worker9-worker15 integration branches with full conflict resolution keeping both changes where possible in specs/testvectors/code. Run quality gates and push. Follow all AGENTS.md rules: file epic first, no dead code, no comments, run lints, close related beads. Use parallel resolution.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "owner": "agent@lichen-project.dev",

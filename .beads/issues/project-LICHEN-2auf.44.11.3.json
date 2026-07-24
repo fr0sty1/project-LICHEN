@@ -3,7 +3,7 @@
   "title": "Provide authenticated lichend Radio transports",
   "description": "Define and implement the Linux border-router transport ownership boundary. Add lichen_hal::Radio adapters for the simulator and serial/puck path that preserve raw signed frames or authenticated immediate-sender metadata, serialize SimClient request/response access, and choose one documented clock policy. Do not feed unauthenticated bare SCHC payloads into RplStack.",
   "acceptance_criteria": "Simulator and serial transport tests deliver authenticated frames and sender identity to RplStack, reject malformed or unauthenticated envelopes, serialize concurrent operations, document host versus virtual time policy, and pass three reviews.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zc65",
   "title": "coap_dtn.c deaddrop_get: returns CONTENT with zero-length payload instead of SenML list per 12-apps.md:1281 and test/vectors/deaddrop.json",
   "description": "Must integrate SenML provider/encoder for pending drops. Add error logging, check all return values. 3 codereview passes required.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:26:26.857998652Z",

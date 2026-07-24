@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8r3c",
   "title": "codereview: 06-security.md:117 02xx derivation must cite yggdrasil.json vectors",
   "description": "Pass2-security: derivation must explicitly require lower 64b == IID to prevent key/IID substitution attacks in no-ULA model. Add normative MUST. file:spec/06-security.md:117 tagged codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "AddressMapper::learn_mapping may leave stale IID if pubkey hashes collide",
   "description": "File: rust/lichen-meshtastic/src/address.rs:130-147\n\nThe learn_mapping function updates mappings when a node changes its public key, but has a subtle edge case:\n\n```rust\npub fn learn_mapping(\u0026mut self, node_id: MeshtasticNodeId, pubkey: \u0026PublicKey) {\n    let iid = iid_from_pubkey(pubkey);\n\n    if let Some(old) = self.by_node_id.get(\u0026node_id) {\n        if old.iid != iid {\n            self.by_iid.remove(\u0026old.iid);  // Remove old IID mapping\n        }\n    }\n\n    self.by_iid.insert(iid, node_id);  // Insert new IID mapping\n    self.by_node_id.insert(node_id, ...);\n}\n```\n\nIf two different node IDs happen to have pubkeys that hash to the same IID (collision), the by_iid map will only point to the most recently learned node. When the first node's mapping is looked up via ipv6_to_meshtastic, it will return the wrong node ID.\n\nWhile SHA256 collisions for the first 8 bytes are computationally expensive (~2^32 work), it could occur with a malicious actor or by chance in a large mesh.\n\nIMPACT: Wrong node ID returned for IPv6 address lookup, potentially routing packets to the wrong destination.\n\nFIX OPTIONS:\n1. Change by_iid to map to Vec\u003cMeshtasticNodeId\u003e to handle collisions\n2. Add a warning/error when collision is detected\n3. Document the collision risk and mitigation (e.g., reject nodes with colliding IIDs)",
   "notes": "Commit: 15b2846",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

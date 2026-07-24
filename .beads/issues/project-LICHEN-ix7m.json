@@ -3,7 +3,7 @@
   "title": "Entire log file loaded into memory risks exhaustion on large tests",
   "description": "## Location\nscripts/analyze-hetero-fleet.py:53\n\n## Description\nThe script uses `log_file.read_text()` which loads the entire file into memory. For long-running mesh tests with thousands of nodes and millions of packets, individual log files can be gigabytes. This will exhaust memory and crash the analysis before producing results.\n\n## Failure Scenario\nA 48-hour soak test produces py-1000.log at 2GB. When parse_python_logs() calls read_text(), Python allocates 2GB for the string, plus overhead for splitlines() creating another copy as a list. On a 4GB machine, the script crashes with MemoryError before generating any report.\n\n## Category\nsafety",
   "notes": "Commit: 1831967f6",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

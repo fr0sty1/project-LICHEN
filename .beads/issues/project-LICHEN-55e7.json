@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-55e7",
   "title": "codereview-pass1: lichen_coap_deaddrop_register added but missing SenML/DTN full setup and handler registration per spec 18.11",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

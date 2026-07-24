@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kwym",
   "title": "KissBridge::with_epoch uses debug_assert for security-critical epoch validation",
   "description": "File: rust/lichen-kiss/src/bridge.rs\nLines: 157-166\n\nThe `with_epoch` function uses `debug_assert!` to validate that epoch \u003e= 128 per spec section 4.4. This assertion is stripped in release builds, allowing callers to pass invalid epochs (0-127) that violate the protocol's replay protection requirements.\n\n```rust\npub fn with_epoch(epoch: u8) -\u003e Self {\n    debug_assert!(\n        epoch \u003e= 128,\n        \"SECURITY: epoch MUST be in [128, 255] per spec section 4.4\"\n    );\n```\n\nImpact: In release builds, an invalid epoch value could weaken replay protection. The spec requires epochs to start in [128, 255] so that half-space replay arithmetic treats new frames as ahead of stale receiver windows.\n\nFix: Replace `debug_assert!` with either:\n1. A regular `assert!` (panic on invalid input), or\n2. Return a `Result\u003cSelf, Error\u003e` and validate properly",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

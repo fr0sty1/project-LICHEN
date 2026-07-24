@@ -3,7 +3,7 @@
   "title": "Build STM32WL board rows",
   "description": "Scope under project-LICHEN-2auf.31: build/package declared Nucleo WL55JC STM32WL Puck, Gateway, and lora_ping/Renode-overlay rows from a fresh clean EBS worktree. Use AWS_PROFILE=personal in account 210337117346, AWS_REGION=us-west-2, an owned Project=LICHEN builder in us-west-2c, and only vol-0a95eee8d1d8461eb. Record source base/applied commit/binary-patch hashes, exact board/app/overlay/config selectors, west manifest, Zephyr/SDK/compiler/linker versions, pristine commands and exits, complete map/size logs, RAM/flash deltas, package and artifact SHA-256 values. Any RAM/flash region overflow, hidden linker warning, unsupported selector, dropped feature, ignored packaging error, stale output, nonzero exit, or dirty worktree fails closed; do not relax STM32WL configuration to manufacture a pass. Exclude .35.6 link bridge/runtime gates. Preserve logs before sync, unmount, ownership-checked detach, wait-volume-available, and owned-instance termination.",
   "acceptance_criteria": "Nucleo WL55JC Puck, Gateway, lora_ping and declared overlay/package rows all build with exact selectors and remain within linker memory regions without feature reduction. Full commands/exits, source/patch/tool provenance, map/size/RAM/flash evidence, and log/artifact hashes are retained; unsupported or overflowing rows remain failed. No .35.6 duplication; worktree verification, exact account/AZ/volume checks, explicit EBS unmount/detach/wait-available, and ownership-checked cleanup all pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

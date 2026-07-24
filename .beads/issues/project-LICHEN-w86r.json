@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w86r",
   "title": "[codereview-pass1] SFN section chunk2: delta ref improved but example still pending",
   "description": "spec/02a-coordinated-capacity.md:114-118 - Pass1 correctness: cross-ref added but concrete pseudocode example for 0xFFFFFFFF boundary (e.g. current=0x00000000 last=0xFFFFFFFFU =\u003e delta=1) not yet inserted. P2. Discovered-from:project-LICHEN-yne7",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

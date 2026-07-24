@@ -3,7 +3,7 @@
   "title": "Rename T1000-E bridge fragment canonically",
   "description": "seeed_t1000e does not auto-merge for canonical target t1000_e/nrf52840. Rename or replace the fragment with the correct HWMv2 target-qualified stem and verify actual merge behavior.",
   "acceptance_criteria": "Canonical t1000_e/nrf52840 bridge build demonstrably consumes the intended conf/overlay, static checks reject the stale alias, and runtime validation is linked.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

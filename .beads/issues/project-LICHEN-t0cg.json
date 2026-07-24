@@ -3,7 +3,7 @@
   "title": "SLIP decode() merges multiple frames when END appears mid-stream",
   "description": "File: python/src/lichen/slip/codec.py\nLines: 66-68\n\nThe decode() function's docstring says: 'frame may include leading/trailing END bytes; they are ignored.'\n\nHowever, the implementation treats ALL END bytes the same, including those in the middle:\n\n```python\nif b == END:\n    i += 1\n    continue\n```\n\nThis means if you pass two concatenated frames, they get merged:\n\nExample:\n```python\ndecode(b'\\xc0\\x41\\xc0\\x42\\xc0')\n# Returns: b'\\x41\\x42' (WRONG - merged two packets)\n# Expected: Either return b'\\x41' (first frame) or raise error\n```\n\nPer RFC 1055, END marks packet boundaries. A middle END should either:\n1. Stop decoding and return just the first frame\n2. Raise an error indicating multiple frames were passed\n\nCurrent behavior silently merges frames, causing data corruption when the caller passes concatenated frames.\n\nFix: Stop at first END after seeing any data, or raise ValueError on unexpected middle END.",
   "notes": "Commit: b36c853bd",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.73",
   "title": "[lichen_link_rx.c:256-262] replay_get called with potentially-zeroed src_eui64",
   "description": "Gap: lichen_replay_get is called with src_eui64 that may be all zeros if peer_pubkey was NULL.\n\nWhat: Line 257 calls lichen_replay_get(replay, src_eui64). But src_eui64 may have been zeroed at line 239 if peer_pubkey was NULL. This creates/accesses a replay window for the all-zeros EUI-64.\n\nWhy it matters: If multiple unsigned frames arrive, they all share the same all-zeros replay window. This is a form of the 'replay window poisoning' attack the code elsewhere tries to prevent. The first frame's sequence numbers consume the replay window, causing subsequent legitimate frames to be rejected. Additionally, the all-zeros entry consumes a slot in the replay table, potentially evicting a real peer's window.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

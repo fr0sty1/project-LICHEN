@@ -3,7 +3,7 @@
   "title": "Context Clone exposes cloned key material to multiple owners",
   "description": "File: rust/lichen-oscore/src/lib.rs\nLine: 165\n\nContext derives Clone:\n```rust\n#[derive(Clone, Zeroize)]\n#[zeroize(drop)]\npub struct Context { ... }\n```\n\nThe doc comment at lines 163-164 acknowledges this:\n\"Clone is intentionally supported for cases where multiple tasks need the context; both the original and clones will be zeroized when dropped.\"\n\nHowever, cloning cryptographic contexts has subtle issues:\n1. Both clones share the same sender_seq starting point, potentially causing nonce collision if both encrypt\n2. Replay windows are also cloned, so replayed packets might be accepted by one clone but not another\n\nImpact: Nonce reuse if cloned contexts are used concurrently for encryption.\n\nFix: Either remove Clone or document prominently that cloned contexts MUST NOT be used for concurrent encryption - only for concurrent decryption or for handing off to a single new owner.",
   "notes": "Commit: f1dc45239",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

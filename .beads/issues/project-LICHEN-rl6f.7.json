@@ -3,7 +3,7 @@
   "title": "CCP-1.5: Update LCI /status to include TDMA and channel state",
   "description": "Extend lichen_coap_node_status with TDMA slot map, current channel, agility params for /status endpoint. Update CBOR encoder accordingly. Link to project-LICHEN-6op5 for the map_count fix.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.15.2.1",
   "title": "codereview-pass1: rf_health.rs EMA change breaks rssi_avg_multiple_samples test expectation",
   "description": "The test expects avg move based on alpha=1/8 but now 1/4 changes computed avg. Update test or parametrize. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

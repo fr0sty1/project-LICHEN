@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k3i8",
   "title": "[codereview-pass2] Kconfig: missing select for SCHC or link features",
   "description": "lichen/subsys/lichen/link/Kconfig:122 - CCP16 should select additional modules for TDMA/multi-channel (e.g. future LICHEN_TDMA). Depends on RPL is good but may need explicit select for density tracking structures. P2. codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

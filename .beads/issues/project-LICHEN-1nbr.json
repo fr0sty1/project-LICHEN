@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1nbr",
   "title": "OscoreContextStore lock created before event loop",
   "description": "File: python/src/lichen/coap/secure.py:125\n\nThe asyncio.Lock is created in __init__:\n```python\nclass OscoreContextStore:\n    def __init__(self) -\u003e None:\n        self._contexts: dict[str, PeerContext] = {}\n        self._lock = asyncio.Lock()\n```\n\nOn Python \u003c 3.10, creating asyncio.Lock() outside a running event loop raises DeprecationWarning and will fail in future versions. If the store is created during module import or before asyncio.run(), this causes issues.\n\nFix: Create the lock lazily on first use, or document that OscoreContextStore must be created within an async context.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vtar",
   "title": "Define authoritative SCHC ACK-on-Error profile (M=1 N=6 T=0, RuleIDs, WINDOW_SIZE, tiles/ACKs/bitmap/MIC/padding/retries)",
   "description": "Update spec/drafts/draft-lichen-schc-lora-00.md and spec/appendix-schc.md with exact parameters per RFC 8724 ACK-on-Error. Make this the source of truth for all impls. Link test vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

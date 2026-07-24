@@ -3,7 +3,7 @@
   "title": "resolve_text_destination leaks memory state on error",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:940-975\n\n  static bool resolve_text_destination(\n      struct lichen_meshtastic_adapter *adapter,\n      struct lichen_meshtastic_adapter_packet_info *packet)\n  {\n      ...\n      nodedb_peer_snapshot(adapter, info.node_num, \u0026peers);\n      ...\n      for (size_t i = 0U; i \u003c peers.emit_count; i++) {\n          if (peers.node_nums[i] != packet-\u003eto) {\n              continue;\n          }\n          memcpy(packet-\u003eto_eui64, peers.peers[i].eui64,\n                 sizeof(packet-\u003eto_eui64));\n          peer_eui64_to_iid(packet-\u003eto_eui64, packet-\u003eto_iid);\n          packet-\u003ehas_to_peer = true;\n          return true;\n      }\n      return false;\n  }\n\nWhen the function returns false (destination not found), packet-\u003ehas_to_peer is not explicitly set to false. It relies on memset in parse_packet initializing it to 0.\n\nIf parse_packet ever changes to not zero-initialize, or if packet_info is reused, has_to_peer could have stale data.\n\nConsider explicitly setting packet-\u003ehas_to_peer = false; at function start or in false return paths.",
   "notes": "Commit: 79340319c",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

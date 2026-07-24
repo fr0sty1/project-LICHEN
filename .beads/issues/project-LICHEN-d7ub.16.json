@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.16",
   "title": "lora_l2.c:1141 get_eui64 returns NULL-aliased internal pointer",
   "description": "Contract violation: lichen_lora_l2_get_eui64() - Returns lora_data.eui64 directly, but the header documents at lines 196-205 that concurrent deinit() zeros the backing memory. The state check at line 1143 is done without mutex, creating TOCTOU: caller gets pointer, deinit() runs, backing memory zeroed. This is documented but the API is error-prone. HOW to fix: Either copy eui64 to caller-provided buffer (requires API change), or add a lichen_lora_l2_copy_eui64(uint8_t *out) variant that holds mutex during copy.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

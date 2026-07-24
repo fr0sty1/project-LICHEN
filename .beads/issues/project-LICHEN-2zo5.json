@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2zo5",
   "title": "Fix gateway forwarding RPL preference before TUN (codereview follow-up)",
   "description": "Update Gateway and forwarding in lichend.rs to use router.classify/route or lookup before TUN send. Ensure mesh destinations use RPL source routing, external go to TUN/Ygg. Break into issues for struct update, forwarding logic, tests, review passes. Linked to ydtk and zt3c.17",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

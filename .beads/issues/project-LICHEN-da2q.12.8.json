@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.12.8",
   "title": "Python sim: Implement synchronized hopping, channel selection, rendezvous",
   "description": "Implement CCP-12 synchronized hopping in lichen/sim/: update Medium, Node, protocol to support multi-channel with shared hop sequence based on SFN/time, rendezvous announcement in beacons/DIO, frequency selection in tx/rx. Per da2q context. Add tests. Use existing test vectors where possible. Parallel with schc/spec.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

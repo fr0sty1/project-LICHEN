@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2.8.4",
   "title": "Add test vectors and integration tests for OSCORE dead-drop and group confessions",
   "description": "Extend test/vectors/oscore.json and add new vectors for group OSCORE and E2E dead drop scenarios. Update Rust tests in lichen-oscore and lichen-node. Ensure C/Zephyr interop.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T14:39:11.70394218Z",

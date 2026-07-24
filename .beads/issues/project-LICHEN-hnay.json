@@ -3,7 +3,7 @@
   "title": "BLE transport: potential memory leak if bt_gatt_notify_cb fails mid-send",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 513-530\n\nIn lichen_ble_slip_send(), if bt_gatt_notify_cb() fails partway through sending a fragmented packet:\n\n    while (offset \u003c slip_len) {\n        ...\n        err = bt_gatt_notify_cb(transport_state.conn, \u0026params);\n        if (err) {\n            LOG_WRN(\"Notify failed (err %d), sent %zu/%zu\", err, offset, slip_len);\n            transport_state.stats.tx_errors++;\n            break;  // Exit loop, partial send\n        }\n        offset += send_len;\n    }\n\nThe function breaks out of the loop and returns the error, but:\n1. A partial SLIP frame has been sent to the client\n2. The client will receive an incomplete frame\n3. No indication to the caller that data was partially sent\n4. No mechanism to resume or rollback\n\nWhile this isn't a memory leak per se, it's a protocol-level data corruption - the remote end receives a truncated SLIP frame which it may try to process.\n\nFix: Consider buffering the entire frame server-side before sending any chunks, or add a return value that indicates partial send (bytes actually sent vs requested).",
   "notes": "Commit: 4f1c0d04f. Added terminating SLIP_END on partial send to mitigate frame corruption when bt_gatt_notify_cb fails mid-packet. Updated log message. This addresses the protocol-level data corruption described.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7su9",
   "title": "[merge-conflict] worktree-worker21: trickle.rs",
   "notes": "Commit: b35850a6e (resolved trickle merge conflicts matching Rust impl + saturating math, stopped-state reset, clean code)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

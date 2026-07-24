@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i2o4",
   "title": "[codereview-pass3-robustness-4] FSM table in 02a-coordinated-capacity.md needs explicit timers and cross-refs to lichen_node_init",
   "description": "New state machine table good but omits specific timer values (e.g. rejoin timeout=10*superframe_len per Kconfig), and interaction with lichen_link_load_key() and oscore_init() order from AGENTS.md init graph. P2 for full robustness. Also add to References section. This is review pass 1 of chunk 2.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ov12",
   "title": "[codereview-pass1 post-edit] coap_dtn.c: senml_encode_deaddrop undefined; needs implementation or use existing senml func",
   "description": "New compile error after adding GET handler. Also duplicate coap_respond still in location.c:41. No s_provider for DTN. P0 correctness. Fix immediately. File:lichen/subsys/lichen/coap/coap_dtn.c:78",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

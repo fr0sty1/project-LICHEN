@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vx3f",
   "title": "RPL low-load parent preference using txq/fwd",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

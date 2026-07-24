@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.87",
   "title": "[CMakeLists.txt] crash_info.c included at app level but not in subsys CMakeLists",
   "description": "Critic: Build configuration inconsistency. What: crash_info.c is listed in top-level CMakeLists.txt (line 12) but NOT in subsys/lichen/CMakeLists.txt, unlike other subsys sources (lora_l2.c, ipv6_addr.c, lichen_util.c). Why it matters: Subsys CMakeLists.txt is unused (top-level includes sources directly), creating maintenance confusion. Either move all source includes to subsys CMakeLists.txt or remove subsys CMakeLists.txt entirely. Currently subsys sources are compiled TWICE if both methods are active. Fix: Ensure crash_info.c follows same pattern as other subsys files, or document why it differs.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

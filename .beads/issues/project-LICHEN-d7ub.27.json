@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.27",
   "title": "lora_l2.c:734 stop uses lora_transition not lora_transition_from",
   "description": "Contract violation: lichen_lora_l2_stop() - Uses lora_transition(LORA_STOPPED) at line 734 instead of lora_transition_from(LORA_RUNNING, LORA_STOPPED). Same issue as start(): state could theoretically change between double-check and transition. WHY: Defensive programming suggests CAS-style transition. HOW to fix: Use lora_transition_from(LORA_RUNNING, LORA_STOPPED).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

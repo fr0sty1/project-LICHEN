@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5pjh",
   "title": "[codereview-pass3] coap_dtn.c: no S\u0026F retrieval path; missing GET handler and retrieve_for callback for pending messages per LCI spec 17.5.8",
   "description": "Edge cases: Integration incomplete without retrieval. No CoAP GET on /deaddrop or /confessions to trigger lichen_dtn_retrieve_for with callback that sends stored payloads. No periodic expiry timer. Buffer may fill without S\u0026F delivery. Matches the original issue title. discovered-from:project-LICHEN-qk8y",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

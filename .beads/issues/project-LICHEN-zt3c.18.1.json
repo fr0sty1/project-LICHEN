@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-zt3c.18.1",
   "title": "coap_dtn.c: /deaddrop + /confessions with OSCORE/SenML/encrypted S\u0026F/rate-limit per 12-apps.md",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

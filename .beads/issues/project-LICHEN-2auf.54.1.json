@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.54.1",
   "title": "Codereview and Zephyr validation for C codec contracts",
   "description": "Perform 3 independent codereview passes on SCHC, SenML, MeshCore, Meshtastic C implementations. Fix any nullability, bounds, ENOTSUP contracts. Run host tests and EC2 Zephyr matrix for MeshCore/Meshtastic. File all findings as beads. Close only after 3 clean passes and all tests pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T15:04:07.313307893Z",

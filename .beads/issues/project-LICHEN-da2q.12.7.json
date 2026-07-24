@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.12.7",
   "title": "Spec: CCP-12 Synchronized Hopping",
   "description": "Add CCP-12 section to coordinated capacity spec detailing synchronized channel hopping sequence, sync mechanism using SFN or GPS time, rendezvous protocol, per da2q.12 context. Include test vectors reference, MUST/SHOULD per RFC2119, update 02a-coordinated-capacity.md and 02-physical-link.md. Update vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

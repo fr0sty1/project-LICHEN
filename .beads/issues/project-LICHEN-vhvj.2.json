@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.2",
   "title": "Update SimNode, Simulation._handle_tx_start to populate/use hop_schedule from SFN/EUI for CCP-12 rendezvous",
   "description": "Integrate synchronized_hop_channel into node.hop_schedule and tx/rx channel selection in simulation.py and node.py. Ensure rendezvous in medium.py uses computed channel. No dead code.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

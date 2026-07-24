@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16.8",
   "title": "Python sim/schc: CCP-16",
   "description": "Update Python simulator and SCHC for load balancing features, TDMA model, adaptive SF, density, multi-channel. Update test/vectors/. After every chunk 3 codereview passes, file beads. Tests. Fix ALL.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

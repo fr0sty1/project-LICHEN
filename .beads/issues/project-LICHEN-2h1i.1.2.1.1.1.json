@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.1.2.1.1.1",
   "title": "DTS e-ink node compatible and properties review",
   "description": "P0: compatible='gooddisplay,gdew0154m10' has no matching Zephyr driver/binding (ultrachip,uc81xx or solomon,ssd16xx preferred). P1: Confirm exact panel resolution (152x152 vs 200x200 for GDEW0154M10). P2: 'enable-gpios' property name may not be recognized by driver; check for 'power-gpios' or driver-specific. Add to aliases or chosen in board? Update yaml supported: display. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

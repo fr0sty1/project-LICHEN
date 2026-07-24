@@ -2,7 +2,7 @@
   "id": "project-LICHEN-12eh",
   "title": "codereview-pass3: lichen_coap_deaddrop_register is stub, does not ensure oscore_init() or init order per AGENTS.md graph, no SenML/DTN setup",
   "description": "P1 correctness: Register function must call oscore_init if not done, integrate with lichen_coap_server_handlers or config, setup storage. Per subsystem init requirements. discovered-from:project-LICHEN-88rm",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

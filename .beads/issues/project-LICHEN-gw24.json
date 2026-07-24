@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-gw24",
   "title": "codereview-pass-1 post-edit: TOC in draft-lichen-schc-lora-00.md:39 still references old '6. Rule Versioning' and '7. Implementation Considerations'; must be updated after section removal",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fk0t",
   "title": "[codereview-pass1 post-string] string length limit too small for DTN messages",
   "description": "lichen/subsys/lichen/senml/senml.c:178 and senml.h:57 - Uses SENML_MAX_NAME_LEN=32 for vs strings but deaddrop messages per spec can be longer (e.g. 100+ chars). Add SENML_MAX_STRING_LEN=256. discovered-from:project-LICHEN-pp9k",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

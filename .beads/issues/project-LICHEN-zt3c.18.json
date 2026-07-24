@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.18",
   "title": "Implement /deaddrop and /confessions CoAP resources with OSCORE, SenML, encrypted S\u0026F in coap_dtn.c",
   "description": "Create or update coap_dtn.c with resources for deaddrop (POST encrypted msgs), confessions (anonymous). Use per-spec oscore_ctx, DTN integration from routing/dtn.c, rate limiting, Kconfig. Follow 12-apps.md and 11-lci.md. 3 codereview passes mandatory.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.4.1",
   "title": "Python impl: multi-channel frequency allocation plans",
   "description": "Python implementation for CCP-4 channel plans inferred from da2q.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

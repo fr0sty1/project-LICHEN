@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s3ry",
   "title": "[merge-conflict] worktree-worker24: coap_keys.c",
   "notes": "Commit: 1a6637f (resolved coap_keys.c merge conflict by adding missing zcbor_decode.h include and reconciling decode_key_put_cbor null check)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

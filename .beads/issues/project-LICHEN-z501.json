@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z501",
   "title": "[kimi-review] 16071f4: [SEVERITY: high] **The issue is closed based on a fix that d",
   "description": "Commit: 16071f4c3\nMessage: fix(senml): validate u64 in dec_int for negative CBOR\n\nFinding: [SEVERITY: high] **The issue is closed based on a fix that doesn't exist.** `close_reason` asserts \"Matches suggested fix exactly. Commit recorded,\" which falsely marks project-LICHEN-65td as resolved. This silently drops a real correctness/security bug from the tracker with no patch to verify, and makes the repo state look fixed when it isn't.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

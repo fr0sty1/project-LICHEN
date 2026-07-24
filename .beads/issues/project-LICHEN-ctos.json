@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ctos",
   "title": "[codereview] concurrency cancel-in-progress always true",
   "description": "The concurrency group now correctly includes matrix.app (and sanitized board). However, cancel-in-progress: true will cancel in-progress runs even on main branch pushes. Standard practice is to set cancel-in-progress only for PRs: cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}. This was found in codereview pass 2/3 after the matrix fix chunks. Discovered-from:project-LICHEN-qiad",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:59:33.536555444Z",

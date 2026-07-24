@@ -3,7 +3,7 @@
   "title": "Fix T-Echo bridge post-L2 startup stall",
   "description": "The canonical T-Echo bridge ELF boots, connects to lichen-sim, and emits one TX, then stalls after L2 RX-thread startup before main: ready. Instrument thread startup, locking, and initialization ordering to determine whether the defect is firmware scheduling or model interaction, then repair the firmware side without bypassing L2.",
   "acceptance_criteria": "Canonical t_echo/nrf52840 bridge reaches main: ready, initializes full L2, and produces an independently observed simulator TX; exact commands, hashes, and logs retained; no startup/L2 oracle weakened.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

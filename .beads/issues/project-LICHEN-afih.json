@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-afih",
   "title": "[codereview-pass1.2 robustness] spec/02a-coordinated-capacity.md: TDMA retry recursion may stack overflow on persistent collision; use loop instead",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-919y",
   "title": "Implement human-readable node address (Crockford Base32) in C lichen/link",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8pwh",
   "title": "codereview-pass3-sfn-kconfig",
   "description": "Final pass: All findings addressed, convergence achieved. SFN subsection complete with time-provider, delta example, IETF compliance. Kconfig help updated for DEFCON density. No open P0-P2 findings. Ready to close y139 yne7 h11w k3i8.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:26:22.96939118Z",

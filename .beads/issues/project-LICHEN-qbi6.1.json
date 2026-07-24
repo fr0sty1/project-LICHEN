@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qbi6.1",
   "title": "Implement forwarding buffer with backpressure (Python)",
   "description": "Add per-source forwarding buffer to python/src/lichen/routing/router.py or node.py:\n- Track packets per source IID (MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2)\n- Return backpressure signal when limit exceeded\n- Send NACK upstream when full (spec appendix-bufferbloat.md)",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

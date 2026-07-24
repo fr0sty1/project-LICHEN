@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5jov",
   "title": "task",
   "description": "python/src/lichen/interface/meshtastic/translate.py:103-139 and 174-213 - Position.from_bytes() and User.from_bytes() call _decode_varint() which raises TranslationError on truncated/malformed protobuf data. These exceptions propagate to callers like Translator.position_to_announce_payload() which don't catch them. Failure scenario: Receive corrupted or truncated Position protobuf from a Meshtastic device. _decode_varint raises TranslationError('truncated varint'). Exception propagates up and may crash the adapter or drop valid subsequent messages. Fix: Either wrap _decode_varint calls in try/except and return partial result, or document that callers must handle TranslationError.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

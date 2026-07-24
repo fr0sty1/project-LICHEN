@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.9.3.3",
   "title": "[codereview-P3] missing test for hash_32 wrap",
   "description": "No unit test for lichen_hash_32 with SFN wrap at 0xFFFFFFFF per spec 2a.4.1 modulo arithmetic. Vectors in test/vectors/tdma-timing.json must match exactly for rendezvous. Add test in lichen/tests/. P3 test integrity. After 3 passes only close da2q.9.3. bd ready --limit 5 after.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T17:12:19.402278518Z",

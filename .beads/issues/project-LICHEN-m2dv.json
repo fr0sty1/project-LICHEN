@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m2dv",
   "title": "Rust lichen-oscore: WINDOW_SIZE constant referenced but not defined in visible scope",
   "description": "In rust/lichen-oscore/src/lib.rs check_replay() method at line 770, the code references WINDOW_SIZE constant. However, looking at the diff, the constant appears to have been removed or refactored. Need to verify that WINDOW_SIZE is defined somewhere in scope. If it was previously a local const in the function and moved to module level, ensure the value (32) is preserved.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

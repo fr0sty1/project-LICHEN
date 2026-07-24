@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ei1y",
   "title": "handle_icmpv6 responds to multicast dst with invalid src address",
   "description": "File: python/src/lichen/ipv6/icmpv6.py:255-258\n\nWhen handling Echo Requests, the code uses the destination address of the request as the source address of the reply:\n\n```python\n# Reply from the pinged address back to the requester.\nreply_src = packet.header.dst_addr\nreply_dst = packet.header.src_addr\n```\n\nThis violates RFC 4443 section 4.2 for multicast destinations. If an Echo Request is sent to a multicast address (e.g., ff02::1 all-nodes), the reply would have a multicast source address, which is INVALID - packets cannot originate from multicast addresses.\n\nPer RFC 4443: 'An Echo Reply SHOULD be sent in response to an Echo Request message sent to an IPv6 multicast or anycast address. In this case, the source address of the reply MUST be a unicast address belonging to the interface on which the Echo Request message was received.'\n\nImpact: Responding to multicast Echo Requests produces malformed packets with invalid source addresses.\n\nFix: Check if dst_addr is multicast using `ipaddress.IPv6Address.is_multicast`. If so, either:\n1. Select a unicast address from the receiving interface (requires interface context), or\n2. Drop the packet (simpler but less RFC-compliant)\n\nTags: protocol, security, ipv6",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

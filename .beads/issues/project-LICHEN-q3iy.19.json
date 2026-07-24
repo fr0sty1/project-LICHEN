@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.19",
   "title": "Excellent defensive BUILD_ASSERT usage across codebase",
   "description": "Multiple files use BUILD_ASSERT to catch configuration drift at compile time rather than runtime:\n\n**lichen_l2.c:**\n- Lines 33-34: MTU constants match between layers\n- Lines 42-43: Address length constants match\n- Lines 93-96: LICHEN_LINK required for production\n- Lines 136-143: LICHEN_MIN_FRAME_LEN derivation validated\n- Lines 171-172: LICHEN_SIG_LEN assumption documented\n- Lines 179-180: Frame header size assumption documented\n\n**lora_l2.c:**\n- Lines 57-59: lora0 devicetree alias exists\n- Lines 196-198: rx_buf size matches constant\n\n**ipv6_addr.c:**\n- Lines 178-184: Buffer size sufficient for IPv6 string (with Zephyr/POSIX variants)\n\nThis pattern catches subtle bugs that would otherwise manifest as silent corruption or cryptic runtime failures. The assertions include clear error messages explaining what went wrong and how to fix it. Worth defending if someone suggests removing them as \"clutter\".",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

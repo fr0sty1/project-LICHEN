@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.31",
   "title": "lichen_l2.c:1751 lichen_l2_input mutex acquired after precondition checks",
   "description": "Contract violation: lichen_l2_input() - Precondition checks (lines 1757-1778) are done without mutex, which is correct for early rejection. However, the len checks use LICHEN_MIN_FRAME_LEN and MAX_LORA_FRAME which are compile-time constants - good. The issue is that link_ctx_initialized is checked at 1790 AFTER acquiring mutex. This is correct because link_ctx_initialized could change between early checks and mutex acquire. The function correctly re-checks under mutex. No bug here actually - defensive programming is correct.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

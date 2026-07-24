@@ -3,7 +3,7 @@
   "title": "Version DAO receive persistence as DRX2",
   "description": "Change scope-bound DAO receive high-water magic to provisional DRX2 and document DTX2/DRX2 as unshipped scope-bound formats, with no migration or fabricated scope.",
   "acceptance_criteria": "Old records fail closed explicitly; DRX2 round-trips scope and high-water; comments/docs identify provisional scope-bound format version.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

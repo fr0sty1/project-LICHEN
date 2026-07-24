@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2.3.1",
   "title": "CoAP /metrics SenML telemetry+battery profile + test vectors",
   "description": "Define shared SenML records for metrics (RSSI, nodecount, packets/sec, collision rate) and battery/status per RFC8428 CBOR 112. Include independent test oracle from external SenML examples. Basic CoAP resource in lichen-coap. No UI.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-n3ch",
   "title": "[CODEREVIEW-P1] README table addition for CCP-16",
   "description": "test/vectors/README.md:25 - New row references non-existent ccp_load_balancing.json; generator must produce it before validation passes. P1 correctness.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

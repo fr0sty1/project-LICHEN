@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-da2q.15.8.5",
   "title": "codereview: missing metrics collection spec (how density, PER, channel_busy measured); add normative sampling procedure",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

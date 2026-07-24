@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2ibu",
   "title": "[codereview-pass3-robustness-2] Multi-root beacon conflict and desync state machine still underspecified in 02a",
   "description": "spec/02a-coordinated-capacity.md after first chunk edit: The multi-root mention at line 158 is too brief. No state machine diagram or table for desync recovery transitions (e.g. DRIFTING-\u003eACQUIRING on RPL version change). No detail on how RPL DODAG version increment during join/drift interacts with TDMA SFN reset or time-provider stratum update. P1 for robustness pass. Must expand before next chunk. Per mandatory 3x codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

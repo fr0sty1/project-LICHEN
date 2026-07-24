@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hsul",
   "title": "task",
   "description": "secure.rs:237-242 - decrypt_response calls ctx.unprotect_request() to decrypt OSCORE responses. The unprotect_request function in lichen-oscore/lib.rs:362-364 requires opt.piv_len \u003e 0, but per RFC 8613 Section 5.4, OSCORE responses MAY omit the PIV (piv_len=0) when echoing the request's PIV. This causes responses that use echo mode to fail with DecryptFailed. Failure scenario: Server sends OSCORE response without PIV in option (echo mode), client fails to decrypt valid response.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

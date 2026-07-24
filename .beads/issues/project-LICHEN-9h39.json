@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9h39",
   "title": "codereview-pass-2 post-edit: remaining outdated rules in section 4 (e.g. Rule 1 mesh-local, Rule 2 global full addresses, missing MQTT-SN Rule 2, incomplete Rule 4) do not align with canonical appendix-schc.md and 03-adaptation.md:70-131",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

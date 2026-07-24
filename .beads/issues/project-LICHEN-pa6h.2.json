@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-pa6h.2",
   "title": "[codereview-pass-3 readability] rules.rs populated const arrays and reuse for OSCORE/MQTT_SN",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "chore",
   "created_at": "2026-07-22T14:57:23.395565615Z",

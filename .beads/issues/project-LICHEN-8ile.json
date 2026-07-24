@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8ile",
   "title": "Add detailed TX/RX logging in simulator, Renode peripherals, native",
   "description": "Add comprehensive structured logging for all TX and RX paths across: Python simulator (enhance existing _debug_log calls), Renode C# peripherals (LichenSubGHz.cs, SX1262.cs), native Zephyr drivers (lora_sim.c, lora_renode.c), and renode_server.py. Include node_id, state, timings, queue lengths, RSSI/SNR where applicable. Integrate and expand test_simulation_logging.py and Renode integration tests to verify the new logs. Ensure logs use consistent structured format (structlog in Python, LOG_DBG in C). Close when verified with pytest and Renode tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

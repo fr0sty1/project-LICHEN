@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fs50",
   "title": "codereview-P2 schema pass2",
   "description": "Pass2: test_vector_file_schema still passes for all listed files. generate.py compatible. No hardcoded in schema. Clean.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

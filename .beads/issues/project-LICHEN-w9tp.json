@@ -3,7 +3,7 @@
   "title": "coap_config.c: base64_encode needs space for NUL terminator",
   "description": "File: lichen/subsys/lichen/coap/coap_config.c\nLines: 461-486\n\nThe base64_encode function calculates needed size as:\n```c\nsize_t needed = ((src_len + 2) / 3) * 4 + 1;\n```\n\nThe +1 is for the NUL terminator. However, callers may not account for this:\n- Line 527: `base64_encode(identity-\u003epubkey, 32, pk_buf, sizeof(pk_buf))` where pk_buf is 48 bytes\n  - For 32 bytes input: ((32+2)/3)*4+1 = 45 bytes needed, 48 available - OK\n- Line 498: `base64_encode(pubkey, 12, buf + 7, buf_size - 7)` \n  - For 12 bytes input: ((12+2)/3)*4+1 = 17 bytes needed\n  - buf_size is at least 20 (checked at line 492-495), so buf_size-7 \u003e= 13 - NOT ENOUGH\n\nThis causes buffer overrun in compute_pubkey_fingerprint when buf_size is exactly 20.\n\nCategory: MEMORY - buffer overflow",
   "notes": "Commit: cca7558d4",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

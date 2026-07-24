@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.3",
   "title": "task",
   "description": "## Revenue Model\n\n### Conference Sales\n- Buy 500 T-Echo @ ~$50 = $25,000\n- Sell at $70-75/unit post-demo = $35,000-37,500 gross\n- Net: $5,000-7,500 surplus per event\n\n### Grant Strategy\nGrant covers hardware, sales cover travel, surplus funds next event.\n\n**Pitch:** Fund the first real-world stress test of open-source LoRa mesh at scale. 500 nodes, 3 major hacker conferences, all code/results public. Hardware resale recoups 80%+ of costs.\n\n### Long-term Options\n1. **Hardware sales** - Pre-flashed LICHEN nodes at markup\n2. **Gateway-as-a-service** - Hosted gateways with Yggdrasil backbone\n3. **Enterprise mesh** - Private deployments for events/campuses\n4. **Grants** - NLnet, Shuttleworth, Mozilla, EFF for privacy infra\n\n### Why T-Echo over cheaper options\n- nRF52840 is the cleanest platform (Zephyr native, UF2 flash)\n- GPS required for killer features (TDMA sync, maps, dead drop)\n- E-ink is demo-friendly (visible, survives battery)\n- Premium feel justifies $70+ resale price\n- Lower assembly burden = fewer volunteers needed",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

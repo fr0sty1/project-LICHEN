@@ -3,7 +3,7 @@
   "title": "hybrid.rs: start_discovery returns stale RREQ when discovery already active",
   "description": "File: rust/lichen-node/src/hybrid.rs:344-352\n\nWhen a route discovery is already active for a destination, start_discovery returns the original RREQ without checking if the discovery state has advanced:\n\n```rust\npub fn start_discovery(\u0026mut self, dst: [u8; 16], now_ms: u32) -\u003e Rreq {\n    // Check if discovery already active\n    if self.active_discoveries.iter().any(|d| d.destination == dst) {\n        // Return existing RREQ\n        let discovery = self.active_discoveries.iter()\n            .find(|d| d.destination == dst)\n            .unwrap();\n        return discovery.discovery.rreq();\n    }\n    // ... create new discovery\n}\n```\n\nThe RREQ returned may be from the initial ring (TTL=1), but the discovery may have already advanced to ring 2 or 3 (TTL=2, 4, 8). Broadcasting the stale RREQ wastes airtime without making progress.\n\nFix: Either return the current ring's RREQ, or return None to indicate discovery is already in progress.",
   "notes": "Fixed by changing start_discovery to return Option\u003cRreq\u003e = None when discovery already active to avoid stale/duplicate RREQ broadcasts. Updated doc comment. (hybrid.rs:363)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

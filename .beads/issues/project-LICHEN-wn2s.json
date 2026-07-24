@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-wn2s",
   "title": "[codereview] spec/02a-coordinated-capacity.md:1.1 pseudocode for frequency agility lacks channel hash fallback detail",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

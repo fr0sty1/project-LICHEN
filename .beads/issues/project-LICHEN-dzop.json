@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dzop",
   "title": "codereview-pass3-chunk4-security",
   "description": "Pass 2/3: cross-checked with open beads bo37/vfl0 on hash primitive pinning. FNV retained as per current impls.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

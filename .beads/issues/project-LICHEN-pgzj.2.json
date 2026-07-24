@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pgzj.2",
   "title": "[codereview-P1] Missing ccp16-desync.json despite schema reference to v2 array root support",
   "description": "Schema and ccp_document explicitly reference ccp16-desync.json as v2 array-root example, but file does not exist in test/vectors/. This breaks completeness of v2 migration. Add the file with array of vectors or update schema to remove reference. Independent oracle: compare to similar v2 enveloped files. Parent: project-LICHEN-pgzj.1",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.14",
   "title": "CCP-14: Gateway Multi-RX",
   "description": "Coordinated Capacity Profile section detailing Gateway Multi-RX from da2q multi-channel coordination context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

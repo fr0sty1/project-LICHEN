@@ -3,7 +3,7 @@
   "title": "Zephyr fuel_gauge.h header triggers sign-compare with LICHEN_HARDENING_FLAGS",
   "description": "The power_providers test variant fails to build because Zephyr's fuel_gauge.h header (lines 299, 352) has sign comparison warnings that become errors with LICHEN's -Werror flag.\n\nError: comparison of integer expressions of different signedness in z_impl_fuel_gauge_get_props and z_impl_fuel_gauge_set_props.\n\nOptions:\n1. Add -Wno-error=sign-compare to LICHEN_HARDENING_FLAGS\n2. Wrap fuel_gauge.h include with pragma to suppress warning\n3. Upstream a fix to Zephyr\n\nRelated to hal/lichen.hal.power_providers test.",
   "notes": "Added explicit #include \u003czephyr/drivers/fuel_gauge.h\u003e inside the pragma block in lichen/tests/hal/src/main.c to ensure z_impl_fuel_gauge_* sign-compare warnings are suppressed for power_providers test variant. Commit hash: 9bb4ec235. Test variant now builds cleanly. Related to prior scoped pragma work in hal.c and project-LICHEN-4chk.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

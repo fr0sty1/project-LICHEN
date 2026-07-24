@@ -3,7 +3,7 @@
   "title": "coap_keys.c: uninitialized day variable in encode_iso8601_timestamp",
   "description": "File: lichen/subsys/lichen/coap/coap_keys.c\nLine: 589\n\nThe encode_iso8601_timestamp function declares 'day' without initialization:\n```c\nuint8_t day;\n```\n\nIf the inner for loop (lines 606-617) completes without breaking (which shouldn't happen with valid timestamps, but could with edge cases), 'day' remains uninitialized and is used in snprintf at line 624.\n\nImpact: Undefined behavior leading to garbage timestamps in edge cases.\n\nCategory: CORRECTNESS - uninitialized variable",
   "notes": "Commit: a548234c6",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

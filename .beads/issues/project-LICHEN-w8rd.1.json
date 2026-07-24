@@ -3,7 +3,7 @@
   "title": "Remove unsupported T-Beam Supreme commands",
   "description": "Until a canonical T-Beam Supreme Zephyr board is added, remove active west build commands and documentation that present tbeam_supreme as a valid target. This does not decide whether future support will be added.",
   "acceptance_criteria": "No active command presents tbeam_supreme as a valid west board; references clearly state unsupported/pending status; adding future support remains tracked by parent w8rd.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

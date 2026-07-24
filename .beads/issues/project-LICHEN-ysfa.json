@@ -3,7 +3,7 @@
   "title": "Race condition in connect() error handling releases lock before cleanup",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 135-152\n\n**Issue:** In connect(), the exception handler runs after the `_lock` is released:\n```python\nasync with self._lock:       # Lock held here\n    await self._send(msg)\n    response = await self._recv()\nmsg_type = get_message_type(response)   # Lock released here\n...\nexcept BaseException:\n    if self._stream is not None:\n        await self._stream.aclose()\n        self._stream = None\n    raise\n```\n\n**Race scenario:**\n1. Task A: In connect(), holding `_lock`, `_recv()` raises exception\n2. Task A: `_lock` is released (async with exits)\n3. Task B: Was waiting on `_lock` in transmit(), now acquires it\n4. Task B: Calls `_send()` which uses self._stream\n5. Task A: Exception handler runs, closes self._stream mid-use by Task B\n\n**Impact:** Another task could use the stream after it's been marked for cleanup but before it's closed, or operations could interleave with the cleanup causing undefined behavior.\n\n**Fix:** Move the cleanup inside the lock, or use a separate cleanup lock that both connect() and other operations respect.",
   "notes": "Commit: df0206870\nconnect() except now acquires _lock for stream aclose() + nulling. Prevents race where transmit() acquires lock and uses stream while cleanup runs. Matches transmit() locking. P2 fixed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

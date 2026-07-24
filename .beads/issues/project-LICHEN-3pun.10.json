@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.10",
   "title": "secure_zero(): no NULL check on ptr parameter",
   "description": "**Location:** firmware/bridge-zephyr/subsys/lichen/lichen_util.h:48\n\n**Contract issue:** The secure_zero() function does not check if ptr is NULL before dereferencing.\n\n**Code:**\n```c\nstatic inline void secure_zero(void *ptr, size_t len)\n{\n    volatile uint8_t *p = ptr;\n    // ... dereferences p immediately in the alignment loop\n}\n```\n\n**Impact (P2):** Calling secure_zero(NULL, len) with len \u003e 0 causes undefined behavior (NULL dereference). All current callers pass valid pointers, so this is defensive.\n\n**Current callers (all safe):**\n- ipv6_addr.c:119 - secure_zero(hash, ...) where hash is stack array\n- lora_l2.c:175,176 - secure_zero(hwid, ...) and secure_zero(hash, ...) - stack arrays\n- lichen_l2.c:665,429-431,1044,1054 - local variables or struct fields\n- lichen_util.c:28 - secure_zero(\u0026state, ...) where state is stack variable\n\n**Recommendation:**\n1. Add early return for NULL: `if (ptr == NULL) return;`\n2. Or document that ptr must be non-NULL (caveat emptor)\n\nThis is a P2 because all callers are correct, but adding a check prevents future bugs.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

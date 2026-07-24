@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3",
   "title": "Refactor cleanup_protect_request label and error paths for persistence errors",
   "description": "Update the cleanup_protect_request goto label in oscore_protect_request to distinguish NVM errors from other failures. Ensure sensitive data wipe happens but SSN state is correctly managed on persistence failure. Reference oscore.c:1524+ and recent security hardening.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

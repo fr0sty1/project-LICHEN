@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nru4",
   "title": "[codereview-p2 pass2] now() TDMA cross-ref incomplete in vector",
   "description": "File: test/vectors/generate.py:1633 and spec/02a-coordinated-capacity.md:251. now_ts examples are arbitrary (1234567890, 100000). Vectors must include now() validation against epoch_floor from beacon ts (per spec/09-packets-timing.md), u32 wrap behavior, and link to lichen_link_load_key + lichen_tdma_init order per AGENTS.md. Add dedicated now() test vectors with monotonic sequence and TDMA slot calc cross-check. discovered-from:project-LICHEN-stvs",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

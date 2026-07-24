@@ -2,7 +2,7 @@
   "id": "project-LICHEN-c28o",
   "title": "codereview-P1 rendezvous frequency default",
   "description": "python/src/lichen/sim/medium.py:139 - Default None for rx_frequency_hz maintains compat but spec for CCP-9 requires explicit control vs data channel distinction in all sim calls (see da2q context in spec/02a-coordinated-capacity.md:73). Update simulation.py node RX scheduling to compute rendezvous freq using hash(SFN, EUI). P1 scalability.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Bind relay signer identity in link frames",
   "description": "Per-hop forwarding re-signs DST||payload, but the current link frame omits a signer/source identifier and verification derives a key from the preserved IPv6 source. Define an authenticated relay identity/key-selection field or equivalent deterministic lookup that supports preserved DAO origins and RFC6554 destination mutation.",
   "acceptance_criteria": "Each hop can identify and verify the immediate signer independently of preserved IPv6 origin; C/Python/Rust/spec/vectors agree; spoofing, key substitution, and multi-hop forwarding tests fail closed.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

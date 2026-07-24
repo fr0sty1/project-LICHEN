@@ -2,7 +2,7 @@
   "id": "project-LICHEN-illv",
   "title": "[codereview P3] Duplication risk: draft-lichen-schc-lora-00.md now copies full tables from appendix-schc.md:A.1-A.3. This contradicts earlier codereview-pass-2 (project-LICHEN-6sn6) on avoiding content duplication. Maintain one source of truth in appendix-schc.md; make draft reference only. Also update references section numbering (10.1 after 9.).",
   "description": "Content duplication between I-D and appendix will lead to divergence on rule changes. Related to project-LICHEN-6sn6 and project-LICHEN-agcg. File: spec/drafts/draft-lichen-schc-lora-00.md:288 and spec/appendix-schc.md:8. Also fix section numbers around line 275.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

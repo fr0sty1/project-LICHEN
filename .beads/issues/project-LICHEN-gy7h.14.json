@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.14",
   "title": "LICHEN_MIN_FRAME_LEN comment could be clearer about what it protects",
   "description": "lichen_l2.c:81-92 documents the minimum frame size but doesn't explain what goes wrong if a shorter frame is processed. The comment says 'matches lichen_frame_parse() in frame.c which rejects frames \u003c 9 bytes' but doesn't say why that matters here.\n\nWhat goes wrong: A reader might think this is redundant validation and remove it, not realizing it prevents out-of-bounds reads during frame parsing before the MIC check.\n\nSuggested addition:\n```c\n/*\n * SECURITY: Early rejection of runt frames prevents out-of-bounds reads\n * in lichen_frame_parse() before MIC validation can occur.\n */\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

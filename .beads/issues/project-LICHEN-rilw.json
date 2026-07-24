@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rilw",
   "title": "[CODEREVIEW-P2] ccp16.json not referenced in schema.json or spec appendix fully",
   "description": "test/vectors/schema.json and spec/02a-coordinated-capacity.md - New vector file requires schema update for fields like expected_channel. Also update Implementation Status. Pass 2 after code chunk. tagged codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

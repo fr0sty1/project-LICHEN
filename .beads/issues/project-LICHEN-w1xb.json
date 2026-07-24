@@ -3,7 +3,7 @@
   "title": "codereview pass 1: duplicate coap_respond fixed + s_provider + senml",
   "description": "Post-fix review of coap_dtn.c, coap_location.c, coap_deaddrop.c, senml.*, coap_server.h. Duplicate removed by single definition in deaddrop + header decl. s_provider added and senml_encode_deaddrop used. P1 fixed. No remaining P0/P1.",
   "notes": "Commit: 14a5baf36",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

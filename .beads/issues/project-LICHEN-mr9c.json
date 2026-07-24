@@ -3,7 +3,7 @@
   "title": "No reconnection capability after connection loss",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 109-152, 340-342, 381-383\n\n**Issue:** When an operation fails due to connection loss, `_stream` is set to None:\n```python\nexcept (anyio.BrokenResourceError, anyio.ClosedResourceError) as e:\n    self._stream = None\n    raise SimRadioError(f\"Connection lost during send: {e}\") from e\n```\n\n**Problem:** After connection loss:\n1. `_stream` is None\n2. All subsequent operations fail with \"Not connected to simulator\"\n3. The only way to recover is to explicitly call `connect()` again\n4. If using the context manager, there's no way to reconnect - must exit and re-enter\n\n**Impact:** Long-running simulations that experience transient network issues cannot recover automatically. The caller must implement retry logic.\n\n**Note:** This may be intentional design (explicit over implicit), but it's worth documenting or providing a reconnect() method for convenience.\n\n**Possible improvements:**\n1. Add a `reconnect()` method that can be called after connection loss\n2. Or auto-reconnect on next operation (with backoff)\n3. Or at minimum, document the reconnection pattern in the class docstring",
   "notes": "Commit: b876fff5c",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

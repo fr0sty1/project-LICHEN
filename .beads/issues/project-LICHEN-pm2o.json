@@ -5,7 +5,7 @@
   "acceptance_criteria": "Both supported native variants boot and produce an independently checked late puck effect such as structured TX telemetry from a real loopback/simulator driver, with exact commands, hashes, and logs.",
   "notes": "Partial completion: native_sim/native/64 now builds and boots with new puck loopback fragments, full L2 initialization, L2/CoAP mode, and CoAP GET /status sent at 10.610 s and 25.760 s. Artifact SHA-256 5fd9827276d6219ac3f6b29c61c1987d954ac1bed77dd9f640755ee2fc2c5057. Unqualified native_sim 32-bit remains blocked on strict x86 builder access project-LICHEN-o4yi, so this Bead remains open.\nFinal native64 hashes after removing ineffective CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC: config files each 8237a3fc401c88d251df5bbc549a4c6dcaa53cb563121a31ef4910c694c8c615; overlays unchanged at 27f97e653d54c26d6247f4ab5488520b6d6769b6d72597e71afdc38eaa3c0bc0; artifact af432bc4764079a511b22185a3e124911fc677e92a9da438e51ec81c51344771; build log a8f6d0bbea3fb55f123f7f93f6108f88176a05e7ad6d085127cc2ad2981cfb2a; runtime log 0f26dfb504dea3fc36a8e253d23cc08a527ee80b9dd49d322c964ec465392040. Late CoAP sends remain at 10.610 s and 25.760 s.",
   "labels": ["defer-external"],
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

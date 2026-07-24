@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.13.7",
   "title": "Fix qsr0/vpu8/q0yt: adaptive_duty_permille() and MAX_TX_MS computation",
   "description": "Implement adaptive_duty_permille() in lichen/subsys/lichen/l2/lora_l2.c or tdma matching density\u003e8=5permille, density\u003c3=20permille per-region standards. Compute MAX_TX_MS dynamically from current duty_permille (remove hardcoded DEFAULT). Update spec/02a-coordinated-capacity.md with CCP-13 pseudocode, tables, RFC2119 MUST/SHOULD. Use independent Python+crc32 oracle for test vectors (update if needed). Run 3 codereview passes. Zephyr build/test MUST PASS. No test weakening. Close bead after validation. Parent under da2q.13.5 / CCP-13.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

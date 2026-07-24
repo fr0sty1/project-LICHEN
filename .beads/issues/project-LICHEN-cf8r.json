@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cf8r",
   "title": "codec.rs: MQTT-SN decompression does not verify rule_id consistency",
   "description": "File: rust/lichen-schc/src/codec.rs\nLines: 754-806 (decompress_mqtt_sn)\n\nCategory: CORRECTNESS\n\nThe decompress_mqtt_sn function receives data that was identified by rule_id in decompress(), but it does not verify that the address mode bit (addr_mode at line 758) is consistent with what the original packet would have encoded.\n\nWhen compressing (line 502-514):\n```rust\nif is_link_local(src) \u0026\u0026 is_link_local(dst) {\n    w.write(0, 1)?; // Address mode: 0 = link-local\n    ...\n} else {\n    w.write(1, 1)?; // Address mode: 1 = full\n    ...\n}\n```\n\nWhen decompressing (line 760-773):\n```rust\nlet (src, dst) = if addr_mode == 0 {\n    // Link-local reconstruction\n    ...\n} else {\n    // Full address read\n    ...\n}\n```\n\nIf malformed compressed data has addr_mode=0 but the full addresses, the reconstructed packet would have link-local addresses (fe80::/64 prefix) appended to the IIDs, producing incorrect addresses.\n\nImpact: Corrupted/malformed compressed data produces incorrect packets rather than errors.\n\nNote: This is more of a robustness issue than a strict bug, since SCHC assumes well-formed compressed data from trusted sources.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

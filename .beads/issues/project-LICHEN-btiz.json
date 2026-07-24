@@ -2,7 +2,7 @@
   "id": "project-LICHEN-btiz",
   "title": "[codereview-pass3] P2: populate_routes assumes IPv6 IID in bytes 8-15; valid for link-local but not all prefixes",
   "description": "Edge case for GUA/ULA without standard IID. Low impact. discovered-from:project-LICHEN-fy9q",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

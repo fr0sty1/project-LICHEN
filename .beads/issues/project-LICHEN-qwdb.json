@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qwdb",
   "title": "codereview pass 3: missing integration of SenML for DTN in deaddrop, build may fail without updating CMakeLists and adding resource",
   "description": "codereview finding P1: the stub uses oscore_init but no SenML encode/decode replacing any memcpy (no memcpy in deaddrop yet). Update coap_server.c to include /deaddrop resource using senml_encode for DTN payloads. Also update CMakeLists.txt and call the register from init. All findings must be fixed before closing ykvk.1",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "chore",
   "created_at": "2026-07-22T15:42:31.722360263Z",

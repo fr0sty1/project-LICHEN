@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vrqa",
   "title": "[merge-conflict] worktree-worker24: sales-playbook.md",
   "notes": "Resolved merge conflict in docs/sales-playbook.md by combining PRFAQ content from both branches, removing markers, ensuring comprehensive coverage of CCP/coordinated-capacity, GPL notes, and PRFAQ footer. File cleaned and consistent.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

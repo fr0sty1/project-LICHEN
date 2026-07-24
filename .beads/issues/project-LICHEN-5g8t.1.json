@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5g8t.1",
   "title": "Implement duty cycle state tracking",
   "description": "Track own TX airtime in rolling 1-hour window per sub-band. Ring buffer of (timestamp, duration) records. API: remaining_ms(), next_tx_available_ms(), usage_percent(). Enforce congestion levels per spec 10.2.3. Software-only: pure accounting.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

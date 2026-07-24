@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2bjl",
   "title": "codereview finding: pseudocode in spec/02a-coordinated-capacity.md still mixes Rust type annotations (u8, Option\u003ci16\u003e, RfHealthMetrics) with pseudocode",
   "description": "Pure pseudocode should avoid language-specific syntax like Rust's Option and u8. Use generic terms like 'neighbor_count: int', 'rssi: int or null'. Tagged codereview per instructions. Discovered during fix of or-syntax.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-s1oe",
   "title": "codereview: identity.py __repr__ line too long (E501)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:38:24.628852944Z",

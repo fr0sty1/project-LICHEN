@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lrek",
   "title": "codereview-pass-2: T-Echo pipeline",
   "description": "Independent pass 2 review of flash-t_echo.sh + smp-flash.py changes. Findings: 1. provision_and_test and pnl_report use python -c with multiline that could be extracted but per 'use existing files' ok. 2. P\u0026L assumes volunteer labor offset; add explicit GPL compliance check for resale (source delivery). 3. recover.sh header update misses batch logging implementation (echo to inventory.log stub needed). All P3-P4 as non-blocking for initial pipeline. No unsafe code added.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T14:49:58.193475349Z",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-trmo",
   "title": "[codereview-pass1-chunk1] lichen-node::RplNode::lookup_route added without corresponding test coverage in node.rs tests",
   "description": "New delegation method should have unit test similar to is_joined/is_root in the mod tests. P2 readability/maintainability. discovered-from:project-LICHEN-3k6w.3",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

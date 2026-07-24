@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iacr",
   "title": "[codereview-pass3] coap_deaddrop: missing use of s_provider in handlers",
   "description": "The registered provider's callbacks are never invoked. No integration with deaddrop_get in coap_dtn.c. P1. Also add to handlers struct in coap_server.h for consistency with other LCI resources. discovered-from:project-LICHEN-r044",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

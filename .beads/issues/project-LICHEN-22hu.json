@@ -2,7 +2,7 @@
   "id": "project-LICHEN-22hu",
   "title": "codereview pass 3: coap_status.c final review for project-LICHEN-2u8v",
   "description": "Pass 3: full review, matches coding guidelines (no added comments), Zephyr compatible, tests pass, no P0 or P1. Ready for close.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:14:02.22964191Z",

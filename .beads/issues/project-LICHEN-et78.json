@@ -2,7 +2,7 @@
   "id": "project-LICHEN-et78",
   "title": "[spec-compliance] RPL incomplete MUST checks for Non-Storing Mode",
   "description": "rust/lichen-rpl/src/* and zephyr lichen/subsys/lichen/rpl/* miss full RFC2119 checks for Non-Storing Mode, Trickle params, MRHOF, DAO per draft-lichen-rpl-lora-00.md and spec/05-routing.md. Replay and S=1 incomplete. See project-LICHEN-s3t5",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

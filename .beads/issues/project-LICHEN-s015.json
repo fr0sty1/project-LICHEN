@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s015",
   "title": "[cross-impl] EDHOC sig format divergence (48B Schnorr vs 64B Ed25519)",
   "description": "Rust/python/src/lichen/crypto/edhoc.py:53 and rust/lichen-oscore/src/edhoc.rs:44 use 64B sig + 5-elem COSE Sig_structure; Zephyr lichen/subsys/lichen/edhoc/edhoc.c:348 uses 48B Schnorr48 per draft-lichen-schnorr-00.md + 4-elem. Breaks test vectors and interop. See edhoc.rs:523, edhoc.c:375, python edhoc.py:409. Same algo different behavior. Priority 1 bug.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

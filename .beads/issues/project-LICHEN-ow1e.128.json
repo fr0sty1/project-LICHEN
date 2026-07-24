@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.128",
   "title": "Announce signature covers app_data but size not limited, potential amplification",
   "description": "In rust/lichen-core/src/announce.rs, the Announce message includes variable-length app_data that is signed and relayed. The signed_data_len method (line 121-123) includes app_data.len() but there's no maximum. A malicious node could create an Announce with large app_data, getting the network to sign and relay arbitrary amounts of data per hop. This is amplified by MAX_ANNOUNCE_HOPS (15). Consider: enforce max app_data length in from_bytes, or refuse to relay if app_data \u003e threshold.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

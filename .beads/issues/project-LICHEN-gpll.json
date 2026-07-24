@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gpll",
   "title": "[codereview-pass2] coap_dtn.c: duplicate coap_respond still present; location.c version is simpler and lacks OSCORE support - extract to coap_common.h",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:20 and coap_location.c:41 - exact duplicate logic for non-OSCORE path. Remove per task. discovered-from:project-LICHEN-fnj7",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T15:19:41.118498229Z",

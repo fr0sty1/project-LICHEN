@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7msq",
   "title": "codereview: coap_dtn.c s_last_confession/s_provider protection incomplete",
   "description": "Current coap_dtn.c has mutexes for dtn_buffer and senml_pack but no s_last_confession array or s_provider. The rate limiting uses dtn_has_messages_for under lock. coap_config.c has unprotected s_provider pointer accessed in all handlers (P1 race). File as codereview tag. Need to add mutex for s_provider and ensure all globals protected. Mimic coap_msg.c pattern.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

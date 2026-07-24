@@ -3,7 +3,7 @@
   "title": "Authorize prefix DAO advertisements",
   "description": "Bind end-to-end authenticated DAO origins to prefixes they may advertise. Reject unauthorized /0, foreign host routes, and undelegated broad prefixes before any route/replay mutation. Depends on provenance work and prefix semantics.",
   "acceptance_criteria": "Root validates authenticated origin and delegated prefix policy before mutation; self /128, delegated prefixes, foreign prefixes, and /0 have literal allow/deny tests across implementations.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-co2q",
   "title": "[codereview-pass2] coap_server.h: deaddrop_provider struct should be in dedicated header",
   "description": "Pattern for LICHEN_COAP_* modules is dedicated include/lichen/coap_*.h with full docs. Adding struct to coap_server.h is inconsistent. P2 modularity. discovered-from:project-LICHEN-r044",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:10:34.307645863Z",

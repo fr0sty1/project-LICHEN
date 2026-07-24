@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3tu8",
   "title": "TDMA struct not integrated with lichen_link_init and lichen_node_init per AGENTS.md",
   "description": "Kconfig and AGENTS.md dependency graph require TDMA init after lichen_link_init and lichen_link_load_key, before oscore_init. Add lichen_tdma_init or similar call. Update example in AGENTS.md if needed. Also update lichen_rpl_dodag_init if related.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

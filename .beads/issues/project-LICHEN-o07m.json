@@ -2,7 +2,7 @@
   "id": "project-LICHEN-o07m",
   "title": "codereview-pass2-chunk2: no tests for is_local_mesh, process_dao, or downward SRH path",
   "description": "Existing tests only cover SCHC echo. New rpl integration untested. Add test using sample DAO to verify lookup and SRH stub. discovered-from:project-LICHEN-f05s",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:49:38.701136278Z",

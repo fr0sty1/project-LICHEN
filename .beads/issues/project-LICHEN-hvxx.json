@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hvxx",
   "title": "Persist Rust link tuples across restart",
   "description": "Rust Stack::new_default_epoch always starts at (128,0), and public SecureStack construction uses it. Restarting under the same identity can reuse signed link tuples. Require caller-provided persisted next tuple/exhaustion state or key rotation when state is unavailable; remove unsafe production default and add restart tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-kb8d",
   "title": "codereview-P1: ccp13_vectors undefined after edit to generate.py (chunk 1)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

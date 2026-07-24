@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4f9x",
   "title": "task",
   "description": "python/src/lichen/interface/serial.py:81-90. _serial becomes None.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

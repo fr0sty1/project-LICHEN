@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ebhw.4",
   "title": "Remove references to non-existent functions in codereview notes and comments",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -3,7 +3,7 @@
   "title": "Construct clean convergence branch",
   "description": "Create a separate clean worktree and convergence branch from origin/main. Apply all integrate-classified logical slices in dependency order, resolve overlaps deliberately, preserve test integrity, and record any changed dispositions discovered during conflict resolution.",
   "acceptance_criteria": "The branch contains every integrate-classified commit or an equivalent reviewed resolution, excludes superseded/dropped commits and generated machine artifacts, has no unresolved conflicts, and passes focused gates after each conflict-bearing subsystem.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

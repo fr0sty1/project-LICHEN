@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.29",
   "title": "[ipv6_addr.c:32-34] Host-side LOG_INF/LOG_DBG are silently swallowed",
   "description": "At lines 32-34, the host-side fallback macros for LOG_INF and LOG_DBG expand to ((void)0), silently swallowing all arguments. This is fine for production but during development/debugging, important information is lost. Consider: at minimum, LOG_WRN/LOG_ERR go to stderr which is good, but LOG_INF includes 'Link-local: %s' at line 307 which would be useful during host testing. This is arguably by design (suppress info in tests per comment) but could surprise developers.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

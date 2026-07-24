@@ -3,7 +3,7 @@
   "title": "TUI action_quit may leave simulator state inconsistent",
   "description": "File: python/src/lichen/tui/app.py\nLines: 280-285\n\nThe action_quit method doesn't properly notify the simulator of disconnection:\n\n    async def action_quit(self) -\u003e None:\n        if self._receive_task is not None:\n            self._receive_task.cancel()\n        self._disconnect_sync()  # Just sets _radio = None\n        self.exit()\n\nWhen a node disconnects from the simulator without sending a proper disconnect message, the simulator may:\n1. Continue routing packets to the disconnected node\n2. Keep the node in its neighbor tables\n3. Waste resources on the phantom node until timeout\n\nThe async _disconnect method (line 360-380) properly calls await self._radio.close(), but _disconnect_sync doesn't.\n\nImpact: Simulator state inconsistency, potential for stale routing entries.\n\nFix: Either await the proper disconnect in action_quit, or ensure SimRadio.close() sends a disconnect notification in its __del__ method.",
   "notes": "Commit: 9bbe26743. Updated action_quit to properly cancel and await receive_task before closing radio connection and exiting. This ensures simulator cleanup via TCP close detection in node_server._cleanup_node.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

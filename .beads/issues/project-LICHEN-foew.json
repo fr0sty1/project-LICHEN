@@ -2,7 +2,7 @@
   "id": "project-LICHEN-foew",
   "title": "codereview: module docstring still references rx_channel after rename",
   "description": "Line 5 in messages.py still says 'includes rx_channel for CCP-9' but field is now current_channel for consistency with Rust/C. P2 consistency. Update comment to match chosen name. Tagged codereview, discovered-from project-LICHEN-3i18.1",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

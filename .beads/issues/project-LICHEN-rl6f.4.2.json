@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rl6f.4.2",
   "title": "Zephyr: TDMA slot structure and guard times",
   "description": "Add struct LICHEN_TDMA_Slot and constants GUARD_TIME_MS=50, SLOT_DURATION_MS in lichen/subsys/lichen without comments. Integrate with link and rpl init per dependency graph. Update Kconfig.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

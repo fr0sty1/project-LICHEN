@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.206",
   "title": "Codereview pass 2: Document single-threaded assumption in Context",
   "description": "Context struct in lichen-oscore is not thread-safe. This is fine for embedded targets but should be documented.\n\nIf Context is ever shared across threads, is_replay_candidate() and update_replay_window() would race. Two threads could both pass the candidate check and both update the window, potentially losing state.\n\nOptions if threading becomes needed:\n1. Add doc comment warning Context is !Sync\n2. Wrap mutable fields in Mutex for std builds\n3. Use AtomicU32 for replay_window (would need careful ordering)\n\nFor now: add a doc comment to Context noting it's designed for single-threaded use.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

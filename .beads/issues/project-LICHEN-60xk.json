@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-60xk",
   "title": "[codereview-P2] spec update misses definition of slot_adjust_ticks=8 in §6 Constants; pseudocode for CCA/TDMA not added to Appendix",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:31:48.35439056Z",

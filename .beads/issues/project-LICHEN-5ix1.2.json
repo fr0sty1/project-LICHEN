@@ -3,7 +3,7 @@
   "title": "Fix RAK4631 puck CoAP startup stall",
   "description": "The canonical RAK4631 puck ELF boots, connects to lichen-sim, and transmits four frames, but stalls after LICHEN puck starting before the expected CoAP GET /status marker. Trace initialization and service scheduling after puck main to identify and fix the blocking path.",
   "acceptance_criteria": "Canonical rak4631/nrf52840 puck reaches the late CoAP status marker and independently observed TX under the faithful Renode backend; exact commands, hashes, and logs retained; no production service disabled to pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Harden DAO route mutation",
   "description": "Resolve review findings in Rust DAO processing: treat Path Lifetime zero as withdrawal while advancing replay state; remove stale routes when newer topology is incomplete or cyclic; fail closed on malformed or duplicate Target/Transit options and unsupported non-/128 targets; generate RFC-correct circular DAO sequence rollover.",
   "acceptance_criteria": "Independent literal DAO tests prove withdrawal, stale-route invalidation after loops/incomplete chains, immediate malformed-option rejection, duplicate rejection, non-/128 rejection, and 127-\u003e0 generation/replay handling; no route mutation occurs before scope and parse validation; tests, Clippy, and three reviews pass.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

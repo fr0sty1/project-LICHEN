@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.6",
   "title": "CCP-6: Hash-Based Channel Assignment",
   "description": "Coordinated Capacity Profile section on hash functions and assignment algorithms for channels.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

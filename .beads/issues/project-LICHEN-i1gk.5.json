@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.5",
   "title": "[lora_l2.c:409] callback invocation with ret instead of size_t cast",
   "description": "At line 409, lora_rx_callback is invoked with ret (int) as the len parameter. The callback signature expects size_t. While ret is guaranteed positive at this point (checked at lines 351, 374, 393), passing an int where size_t is expected is a type mismatch. On 32-bit systems int and size_t may be different widths. Fix: cast ret to size_t: cb(rx_buf, (size_t)ret, rssi, snr, cb_user_data).",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

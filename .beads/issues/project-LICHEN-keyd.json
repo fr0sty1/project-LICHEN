@@ -2,7 +2,7 @@
   "id": "project-LICHEN-keyd",
   "title": "[codereview-pass3-robustness-3.2] IETF nits: missing reference to full RFC 2119 in FSM intro; draft-lichen-tdma Appendix C does not yet exist",
   "description": "spec/02a-coordinated-capacity.md:133 - MUST add 'per RFC 2119' fully and file follow-up for draft if needed. Time-provider interaction now detailed but verify epoch_floor cross-refs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:25:09.617261126Z",

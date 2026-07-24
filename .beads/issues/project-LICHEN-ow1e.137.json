@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.137",
   "title": "_addr helper duplicated across 8 files",
   "description": "The pattern:\n    def _addr(value: IPv6Address | str) -\u003e IPv6Address:\n        return value if isinstance(value, IPv6Address) else IPv6Address(value)\n\nAppears identically in: router.py, routing.py, dao.py, discovery.py, cache.py, error.py, gradient.py, processor.py.\n\nFix: Single _addr in a shared module (e.g., lichen.util or lichen.ipv6).",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

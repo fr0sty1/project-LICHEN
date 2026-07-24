@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2fi9",
   "title": "[codereview-pass3] new code in add_route lacks use of full DAO path and may cause duplicate route entries or incorrect nexthop for multi-hop",
   "description": "The delegation in gateway.rs uses single nexthop but DAO path can have multiple hops; also no dedup or check for existing. P2. discovered-from:project-LICHEN-fy9q",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

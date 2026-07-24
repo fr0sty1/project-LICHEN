@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6mij.2",
   "title": "Implement OSCORE ctx lookup, unprotect, and CONFIG_LICHEN_COAP_SERVER_OSCORE enforcement for LCI mutating ops",
   "description": "Add OSCORE authorization (context lookup + unprotect) for /msg/inbox POST, keys, deaddrop. Update enforcement in relevant handlers.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

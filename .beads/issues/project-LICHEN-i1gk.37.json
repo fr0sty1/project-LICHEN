@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.37",
   "title": "[lora_l2.c:319-322] rx_buf BUILD_ASSERT message is confusing",
   "description": "Round 2 gap analysis: Missed because focus was on runtime bugs, not documentation quality.\n\nThe BUILD_ASSERT at lines 320-322 has a confusing message. The message says rx_buf must *equal* LICHEN_LORA_MAX_PHY_PAYLOAD, which it does (255 == 255). But the *intent* is to document that callbacks can receive up to 255 bytes. The assertion itself is correct but the message could be clearer that this is about establishing a contract for callback implementers.\n\nMinor documentation/clarity issue - not a bug.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

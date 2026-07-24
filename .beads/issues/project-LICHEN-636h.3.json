@@ -2,7 +2,7 @@
   "id": "project-LICHEN-636h.3",
   "title": "Integrate non-blocking readerThread and locks from LICHEN SX1262.cs into extracted version",
   "description": "Port readerThread, stateLock, connectionLock, writeLock, rxOneShot, latchedIrqFlags, async handling from lichen/boards/renode/peripherals/SX1262.cs into .extraction/.../SX1262.cs. Preserve loopbackMode. Protect ALL state changes (irqFlags, rxMode, buffers, IRQ/Busy) with locks. Update EnterRxModeBridge to be non-blocking (reader handles async). Update Reset/FinishTransmission/Transmit/OnGPIO/GetStatus etc for locks. Ensure loopback works with one-shot RX logic. No dead code.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

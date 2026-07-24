@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8d8l",
   "title": "codereview pass 1: pseudocode metrics comment and variable names must reference new §2a.7.1 and use consistent naming (PER vs per)",
   "description": "Update the comment in select_mitigation_params to point to the normative sampling section. Ensure 'per' in code matches defined PER. High priority as it affects normative algorithm compliance.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T16:38:41.642936721Z",

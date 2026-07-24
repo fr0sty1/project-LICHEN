@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hwx9.8",
   "title": "Create independent SCHC fragmentation test vectors (schc_fragment.json)",
   "description": "Add test/vectors/schc_fragment.json with vectors for single-fragment, multi-fragment, window boundary, ACK-on-error, MIC fail, out-of-order, retransmit cases. Use RFC 8724 examples or external oracle (not derived from any LICHEN impl). Update generate.py, schema, and test harnesses. Ensure interop tests pass for all 3 impls.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8m8p.1",
   "title": "Update Rust SCHC fragmentation to bound by full SCHC packet size (1281)",
   "description": "Add MAX_SCHC_PACKET=1281 constant and enforce in FragmentSender::new(). Update tests to use vectors. Reference project-LICHEN-8m8p",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

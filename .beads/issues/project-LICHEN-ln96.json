@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ln96",
   "title": "codereview-pass1-chunk1: coap_status.c format_ipv6 cleaned",
   "notes": "Commit: c09fa85a3",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

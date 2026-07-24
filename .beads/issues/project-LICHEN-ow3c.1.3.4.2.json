@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.4.2",
   "title": "Implement dedicated NVM error path in oscore_protect_request",
   "description": "Add label for NVM failure path that sets OSCORE_ERR_NVM_FAILED and ensures wipe before return. Integrate with existing cleanup_protect_request.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

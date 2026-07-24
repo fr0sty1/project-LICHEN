@@ -3,7 +3,7 @@
   "title": "Role pointer in app_status_snapshot may dangle after callback returns",
   "description": "File: lichen/subsys/lichen/app_interface/include/lichen/app_interface/app_interface.h:178-186\n\n  struct lichen_app_status_snapshot {\n      uint16_t rank;\n      uint32_t uptime_seconds;\n      const char *role;  // \u003c-- pointer, not array\n      bool rpl_capable;\n      ...\n  };\n\nThe role field is a raw pointer, not a fixed-size buffer like source_name[24] in other structs.\n\nIn lichen_app_interface_get_status() (app_interface.c:372-401):\n  memset(status, 0, sizeof(*status));\n  ret = snapshot[i].get_status(status, snapshot[i].user_data);\n  if (ret == 0) {\n      return 0;  // returns with status-\u003erole pointing to sink's memory\n  }\n\nIf the sink's get_status callback sets role to point to its own internal memory (stack or heap):\n1. Caller receives status with role pointer\n2. If sink is unregistered or its memory freed, role becomes a dangling pointer\n3. Caller dereferencing role triggers undefined behavior\n\nUnlike source_name[24] which copies data, role just stores a pointer with no lifetime guarantee.\n\nFix: Either:\n1. Change role to char role[N] array with strncpy\n2. Document that role must point to static/long-lived memory\n3. Add a role_len field for bounded access",
   "notes": "Commit: d9b6c19cb",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

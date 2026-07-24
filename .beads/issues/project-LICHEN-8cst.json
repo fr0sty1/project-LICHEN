@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8cst",
   "title": "codereview-pass3: AGENTS.md graph and lichen_node_init example updated",
   "description": "Dependency graph and example now reflect TDMA after load_key before oscore. Builds and tests pass for link_crypto with CONFIG_LICHEN_TDMA=y. No findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:24:59.032680693Z",

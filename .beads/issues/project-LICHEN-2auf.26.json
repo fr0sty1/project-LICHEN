@@ -3,7 +3,7 @@
   "title": "Puck app missing CoAP resource linker section",
   "description": "The Zephyr puck application links coap_server.c but does not add the coap_resource_lichen_coap_server iterable linker section, causing undefined _coap_resource_lichen_coap_server_list_start/end symbols on T-Echo firmware builds. Mirror the gateway sections-ram.ld integration and verify the puck firmware links.",
   "notes": "Source recovery committed as 255ae15c2. Restored checkpoint linker fragment and added required Zephyr CMake linker-generator declaration. Static symbol/pattern checks and three final reviews clean. Final T-Echo/puck firmware link remains blocked: no local West workspace; AWS personal session expired and requires aws login. Keep open until .59/.31 validation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0xvm",
   "title": "codereview-pass3-chunk2-hash-call",
   "description": "Pass 3/3: checked test vector implications (ccp15.json may need update for new hash order). No P0 findings; all 3 passes complete for this chunk. Do not close main until full.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

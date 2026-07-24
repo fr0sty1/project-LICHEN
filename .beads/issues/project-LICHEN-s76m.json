@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s76m",
   "title": "codereview-P2: SenML examples use inconsistent field names (drop_type vs type); standardize on SenML conventions from position-sharing section",
   "description": "In 12-apps.md:18.9 use 'n':'type' to match 18.2 position SenML examples. Update LCI example too (though now shortened). Ensures cross-implementation consistency with test vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

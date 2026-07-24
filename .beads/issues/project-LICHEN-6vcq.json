@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6vcq",
   "title": "[codereview-pass1] coap_dtn.c OSCORE integration",
   "description": "Verified oscore_ctx usage for /deaddrop per parent. Uses coap_oscore_is_protected and oscore_ctx_get. SenML integrated. P2.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:08:17.030017167Z",

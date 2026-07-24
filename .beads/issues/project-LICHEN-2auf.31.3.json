@@ -3,7 +3,7 @@
   "title": "Build ESP32 board rows",
   "description": "Scope under project-LICHEN-2auf.31: build/package every declared T-Deck and supported Heltec ESP32-S3 Puck/application variant from a fresh clean EBS worktree. Use profile personal, AWS account 210337117346, region us-west-2, an owned Project=LICHEN builder in us-west-2c, and exact approved volume vol-0a95eee8d1d8461eb. Record clean base/applied commit and binary-patch hashes, exact board/SoC/app/overlay/config selectors, west manifest, Zephyr SDK/ESP toolchain versions, pristine commands/exits, packaging/flashing-image outputs, logs, artifact SHA-256 values, and RAM/flash deltas. An alias not declared by the board manifest, fallback target, omitted variant, partition/packaging failure, stale output, ignored warning/nonzero exit, or dirty worktree fails closed. Do not repeat .35.6 link bridge/runtime gates. Collect/hash evidence before sync, unmount, ownership-checked detach, wait-available, and owned-instance cleanup.",
   "acceptance_criteria": "Every declared T-Deck and Heltec ESP32-S3 build/package variant passes with its exact supported selector and generated flashing artifacts; unsupported aliases remain blockers rather than substitutions. Source/patch/tool/command/exit/log/artifact and RAM/flash evidence is complete and hashed; no row is skipped and no .35.6 test is duplicated; clean-worktree checks and exact account/AZ/volume checks pass; EBS unmount, detach, wait-volume-available and ownership-checked termination succeed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

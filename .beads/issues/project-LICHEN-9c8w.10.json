@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.10",
   "title": "main.c: normalize logging to style guide",
   "description": "Normalize main.c logging.\n\nCurrent:\n  LOG_INF(\"LICHEN bridge (Zephyr) starting...\");\n  LOG_ERR(\"Standalone LoRa init failed: %d\", ret);\n  LOG_INF(\"tick\");\n\nTarget:\n  LOG_INF(\"main: starting\");\n  LOG_ERR(\"main: LoRa init failed (%d)\", ret);\n  // Remove 'tick' or make LOG_DBG\n\nAlso consolidate the two-line RX log into one:\n  LOG_INF(\"main: RX %zu bytes (RSSI %d dBm, SNR %d dB)\", len, rssi, snr);",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rl6f.4",
   "title": "CCP-1.2: TDMA time slot structure and allocation",
   "description": "Define time slot format, guard times, slot assignment via RPL or CoAP, master/slave roles or distributed scheduling. Reference relevant IETF drafts if any.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

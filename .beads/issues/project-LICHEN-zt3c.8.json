@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.8",
   "title": "Yggdrasil integration for mesh-gateway",
   "description": "Add support for running Yggdrasil in the Rust mesh-gateway. Use yggdrasil-go or the Rust port if available. Derive IPv6 from Ed25519 key to match node identity. Implement peering config, route advertisement for mesh prefix. Update forwarding to send non-local mesh packets to Yggdrasil TUN interface. Follow no_std where possible but std for gateway. Include config in Kconfig or toml. Tests for inter-mesh simulation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

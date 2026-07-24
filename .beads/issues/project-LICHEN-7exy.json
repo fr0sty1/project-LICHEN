@@ -3,7 +3,7 @@
   "title": "routing.rs: DtnMessage::size uses hardcoded overhead estimate",
   "description": "File: rust/lichen-node/src/routing.rs:466-469\n\nDtnMessage::size uses a hardcoded 100-byte overhead estimate for buffer accounting:\n\n```rust\nimpl DtnMessage {\n    pub fn size(\u0026self) -\u003e usize {\n        self.packet.len() + 100 // header overhead estimate\n    }\n}\n```\n\nThe actual overhead is much smaller - the struct has:\n- packet: Vec\u003cu8\u003e (size already counted)\n- destination_iid: [u8; 8] = 8 bytes\n- expiry_unix: u32 = 4 bytes\n- buffered_at_ms: u32 = 4 bytes\nTotal overhead: ~16 bytes + Vec heap overhead (~24 bytes) = ~40 bytes\n\nImpact: Buffer accounting is ~2.5x too conservative. A 64KB DTN buffer configured to hold 1000 messages would only hold ~640 instead.\n\nFix: Use actual struct size: `self.packet.len() + core::mem::size_of::\u003cDtnMessage\u003e() - core::mem::size_of::\u003cVec\u003cu8\u003e\u003e() + 24` or simplify to a more accurate constant like 50.",
   "notes": "Commit: bc765209 (size_of fix already applied, test updated to 350 for accuracy)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

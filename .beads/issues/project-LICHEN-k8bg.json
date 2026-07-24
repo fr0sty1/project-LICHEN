@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k8bg",
   "title": "[codereview-1] hal.c pragma guard",
   "description": "Review pass 1 (correctness): Verified the if-elif for __clang__ and __GNUC__ correctly suppresses -Wsign-compare only for supported compilers without introducing new warnings or parse errors. Matches tx_queue pattern. No issues found. Linked to project-LICHEN-3wmt",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:21:36.898387188Z",

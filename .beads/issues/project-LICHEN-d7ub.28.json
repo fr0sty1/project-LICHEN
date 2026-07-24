@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.28",
   "title": "lora_l2.c:585 init transition not inside mutex critical section",
   "description": "Contract violation: lichen_lora_l2_init() - State transition at line 585 (lora_transition(LORA_STOPPED)) is inside mutex but uses lora_transition() which calls atomic_set(). The mutex is acquired at 560 but there's no protection against concurrent init() that passes the UNINIT check at 564 before we acquire mutex. However, mutex acquisition at 560 blocks concurrent attempts. Wait - the issue is that lora_transition() could fail, setting ABORTED, but we already logged success at... No, log is after transition check at 588. This is actually correct. No issue here.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

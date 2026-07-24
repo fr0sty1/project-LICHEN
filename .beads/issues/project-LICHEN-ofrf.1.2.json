@@ -3,7 +3,7 @@
   "title": "codereview-pass2: 02a-coordinated-capacity.md RFC2119 overuse and arbitrary constants",
   "description": "Multiple MUST statements lack sufficient justification or cross-references to test vectors/rationale (e.g. '3x beacon interval', '10 intervals', 'mod 65536'). Arbitrary numbers should be parameterized or justified in appendix-design-rationale.md. Also, file should include full header with table of contents placeholder for future sections on desync FSM per the chunk task. P2 spec precision issue.",
   "notes": "Starting small chunk updates per task. Parallel subagents for review. Will create children for codereview passes if needed. First chunk: header+TOC.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

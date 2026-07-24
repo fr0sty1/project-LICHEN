@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.4.1",
   "title": "Add test for NVM write failure in oscore_ctx_persist_ssn and error propagation",
   "description": "Extend test_nvm_persistence_write to mock write callback returning error. Verify OSCORE_ERR_NVM_FAILED is returned and sender_seq state is preserved to prevent nonce reuse. Update lichen/tests/oscore/src/main.c",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

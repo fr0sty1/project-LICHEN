@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dx5z",
   "title": "codereview: Need header coap_dtn.h with resource handlers declaration and init function following subsystem init order in AGENTS.md",
   "description": "Follow implicit init dependencies: link_init -\u003e oscore_init before coap resources. Add LICHEN_COAP_DEADDROP to coap_server.h or separate. Confessions resource likely /confessions for anonymous SenML drops without from field. File all P0-P4. Do not close main bead until 3 clean passes with no new findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

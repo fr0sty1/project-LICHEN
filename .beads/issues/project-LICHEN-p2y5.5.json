@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p2y5.5",
   "title": "Gateway: Backhaul abstraction layer",
   "description": "## Overview\n\nAbstract the backhaul interface so core forwarding logic works across WiFi, Ethernet, cellular, and tunnels.\n\n## Interface\n\n```c\nstruct lichen_backhaul {\n    int (*init)(void);\n    int (*send)(const uint8_t *pkt, size_t len);\n    int (*recv)(uint8_t *buf, size_t buflen, k_timeout_t timeout);\n    int (*get_status)(struct backhaul_status *status);\n    int (*get_prefix)(struct in6_addr *prefix, uint8_t *prefix_len);\n};\n```\n\n## Implementations\n\n### WiFi (ESP32, RPi)\n- Zephyr WiFi API or Linux wpa_supplicant\n- Station mode, connect to AP\n- Get IPv6 via SLAAC or DHCPv6\n\n### Ethernet (RPi, PoE gateways)\n- Zephyr Ethernet API or Linux\n- Direct connection or via switch\n- Get IPv6 via SLAAC or DHCPv6\n\n### Cellular (future)\n- Zephyr modem API\n- PPP or native IP mode\n- APN configuration\n\n### Tunnel (WireGuard, future)\n- Encapsulate in WireGuard\n- Useful when direct IPv6 unavailable\n- Adds latency but works anywhere\n\n## Config\n\n```\nCONFIG_LICHEN_BACKHAUL_WIFI=y\nCONFIG_LICHEN_WIFI_SSID=\"meshnet\"\nCONFIG_LICHEN_WIFI_PSK=\"password\"\n\n# Or Ethernet\nCONFIG_LICHEN_BACKHAUL_ETHERNET=y\n```\n\n## Why abstraction\n\n- Core forwarding code doesn't care about backhaul type\n- Easy to add new backhaul types\n- Test with loopback/mock backhaul",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "ec2-user",

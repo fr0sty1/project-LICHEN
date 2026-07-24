@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p2y5.3",
   "title": "Gateway: IPv6 prefix delegation from upstream",
   "description": "## Overview\n\nObtain IPv6 prefix from upstream network to assign to mesh nodes.\n\n## Methods (in priority order)\n\n### 1. Static configuration\n- Operator configures prefix manually\n- Simplest, works everywhere\n- Example: ULA fd00:lichen:1::/48\n\n### 2. DHCPv6 Prefix Delegation (DHCPv6-PD)\n- Request /64 (or larger) from upstream router\n- Standard mechanism for home/enterprise networks\n- Zephyr has DHCPv6 client support\n\n### 3. SLAAC + split\n- Get /64 from upstream RA\n- Use /128s from that /64 for mesh nodes\n- Hacky but works when PD unavailable\n\n## Implementation\n\n### Prefix lifecycle\n1. On boot: request prefix via DHCPv6-PD (or use static)\n2. On success: store prefix, start advertising in DIO\n3. On renewal: update prefix if changed\n4. On loss: withdraw prefix, stop accepting new DAOs\n\n### Prefix advertisement\n- Include in RPL DIO (Prefix Information Option)\n- Mesh nodes derive addresses from prefix + IID\n\n### Multiple prefixes\n- Support advertising multiple prefixes (ULA + GUA)\n- ULA for mesh-internal, GUA for internet-reachable\n\n## Zephyr integration\n- Use Zephyr DHCPv6 client if available\n- Or: minimal DHCPv6-PD implementation\n- Config via Kconfig: CONFIG_LICHEN_GATEWAY_PREFIX_MODE\n\n## Config options\n```\nCONFIG_LICHEN_GATEWAY_PREFIX_MODE_STATIC=y\nCONFIG_LICHEN_GATEWAY_STATIC_PREFIX=\"fd00:lichen:1::\"\n\n# Or DHCPv6-PD\nCONFIG_LICHEN_GATEWAY_PREFIX_MODE_DHCPV6_PD=y\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "ec2-user",

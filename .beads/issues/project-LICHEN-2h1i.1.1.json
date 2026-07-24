@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.1.1",
   "title": "Procure 500x LilyGO T-Echo units",
   "description": "Contact LilyGO business/sales for 500-unit quote on T-Echo (nRF52840 + SX1262 + GPS + e-ink). Confirm includes 1200mAh battery, protective case, antennas. Negotiate price to target $45-48/unit. Get lead time, MOQ, payment terms. Document quote received, negotiate if possible, then decide on order or escalate to parent epic. Acceptance criteria: written quote + specs confirmation + lead time documented in beads.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

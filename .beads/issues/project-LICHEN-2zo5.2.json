@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2zo5.2",
   "title": "Implement RPL preference check in forward_mesh_to_upstream before TUN",
   "description": "Parse dst from IPv6 in mesh_to_upstream result. Use router.route or lookup_route to decide RPL vs TUN. If mesh route exists, forward internally with source routing; else TUN. Update hybrid classify if needed. Follow NO DEAD CODE, no comments.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.1.4",
   "title": "Update tests, transcript helpers, and verify interop with Python EDHOC vectors for uk36.1 changes",
   "description": "Fix transcript_2/3/4, build_context_*, build_signature_structure in edhoc.rs. Update test vectors and test functions at bottom of file (lines ~1559+). Ensure all paths produce output matching python/src/lichen/crypto/edhoc.py. Add missing test vectors if needed per test integrity rules.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

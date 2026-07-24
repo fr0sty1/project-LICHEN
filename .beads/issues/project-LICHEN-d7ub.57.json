@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.57",
   "title": "lora_l2.c + lichen_l2.c: callback cleared but link_ctx_initialized still true",
   "description": "Cross-file interaction bug: lora_l2.c stop() clears RX callback (line 730-731) but does not notify lichen_l2.c to clear link_ctx_initialized.\n\nSCENARIO:\n1. System running normally, link_ctx_initialized=1\n2. lichen_l2_enable(false) called\n3. stop() clears callback to NULL at line 730\n4. Thread is joined, stop() returns\n5. lichen_l2_enable(false) path at line 1267 sets link_ctx_initialized=0\n\nRACE: Between step 3 and step 5, if another RX packet arrives and the RX thread hasn't exited yet:\n- RX thread sees state==RUNNING is false (line 418), exits loop\n- But callback was already snapshotted BEFORE stop() cleared it (line 516-517)\n- Callback executes with link_ctx_initialized=1\n- lichen_l2_input() proceeds normally\n\nActually this is handled correctly: the callback is snapshotted BEFORE stop() changes state, so any in-flight callback completes. The stop() joins the thread before returning, so lichen_l2_enable can safely clear link_ctx_initialized.\n\nWITHDRAW: Not a bug. The mutex acquisition in stop() after clearing callback, combined with thread join, ensures proper ordering.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Validate fragmentation interoperability",
   "description": "Run cross-language Python/Rust/C fragmentation vectors and end-to-end loss/retransmission scenarios after all migrations; reconcile documentation and public API consistency.",
   "acceptance_criteria": "All implementations produce byte-identical fragments/ACKs and recover identical packets across missing-tile and MIC-failure scenarios.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

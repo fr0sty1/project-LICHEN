@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rmns.4.1",
   "title": "[codereview-1] forward_mesh_to_upstream: verify reply_buf always queued before control_plane check",
   "description": "Pass 1 correctness review of restructure. reply_len \u003e0 path independent of event. control_plane flag prevents DAO forwarding to TUN while allowing reply. No buffer drop on event. cargo check passed. No findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:11:40.536152213Z",

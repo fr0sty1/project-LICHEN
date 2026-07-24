@@ -3,7 +3,7 @@
   "title": "Install deterministic ESP image tooling",
   "description": "The ARM validation host linked ESP32-S3 ELFs but final image packaging failed because Python intelhex was unavailable. Add the packaging dependency to the locked/bootstrap builder environment and validate reproducible image generation.",
   "acceptance_criteria": "Fresh documented builder bootstrap provides the pinned intelhex dependency; canonical Heltec V3 and T-Deck west builds finish packaging; dependency lock and bootstrap checks prevent recurrence.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "chore",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mcb6",
   "title": "codereview: interference score formula mismatch between spec, pseudocode and test vector",
   "description": "spec/02a-coordinated-capacity.md:23,45,310 and test/vectors/ccp15.json:25 - vector uses busy_pct + (PER*100) =47 for inputs 35/0.12; pseudocode suggests weighted 0.6/0.4. Normative section added weighted version. Must reconcile to one formula with test vector update if needed. P1 correctness.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T16:38:25.277758293Z",

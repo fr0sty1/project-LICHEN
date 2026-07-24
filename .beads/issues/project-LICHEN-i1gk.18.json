@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.18",
   "title": "[lora_l2.c:634-800] lichen_lora_l2_deinit: DEINITING state not checked before lichen_l2_reinit_after_abort",
   "description": "Contract violation: precondition enforcement\n\n**Issue:** lichen_l2_reinit_after_abort() has a precondition that the module must be in DEINITING state, but this is not enforced in lora_l2.c. The check in lichen_l2_reinit_after_abort() (line 1453) only verifies is_running() is false, not that we're specifically in DEINITING.\n\n**lichen_l2_reinit_after_abort doc (lines 1425-1427):**\n```\n * PRECONDITIONS (caller MUST ensure):\n * 1. The lora_l2 module is in DEINITING state\n```\n\n**lichen_l2_reinit_after_abort check (line 1453):**\n```c\nif (lichen_lora_l2_is_running()) {  // Only checks RUNNING, not DEINITING\n    k_panic();\n}\n```\n\n**Risk:** If called from STOPPED or ABORTED state (both have is_running()=false), the precondition check passes but the documented precondition is violated.\n\n**Fix:** Export a lichen_lora_l2_is_deiniting() function or use an internal check that the state is specifically DEINITING, not just 'not running'. Or accept that the current check is sufficient since only lichen_lora_l2_deinit() can reach the DEINITING state and it calls this function.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

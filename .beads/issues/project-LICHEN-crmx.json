@@ -2,7 +2,7 @@
   "id": "project-LICHEN-crmx",
   "title": "[codereview-pass1] CCP-16 intro: missing reference to SCHC compression impact on beacon size for multi-root",
   "description": "The new CCP-16 intro should reference how SCHC Rule for beacon (0x20) affects multi-root signature verification latency. P2. Link to draft-lichen-schnorr. Discovered-from current edit.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

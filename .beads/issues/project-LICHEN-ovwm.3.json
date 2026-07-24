@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ovwm.3",
   "title": "Build landed cost model for 500x T-Echo including procurement, shipping, duties, insurance, brokerage, and delivery to Seattle lab",
   "description": "Using data from sibling tasks, compile full cost breakdown. Assume base unit ~5-45 after negotiation (from prior bead). Add shipping estimate, 0-6% duties, insurance (1-2% of value), clearance fees (~00-500), inland transport. Provide low/mid/high scenarios and total estimate. Document assumptions. Acceptance: clear table or structured cost summary in notes, recommended budget.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "coap_client.c: timeout_ms overflow check uses UINT32_MAX/2",
   "description": "File: lichen/subsys/lichen/coap/coap_client.c\nLines: 53 and 377-379\n\nThe timeout limit is set to prevent overflow when doubling:\n```c\n#define COAP_MAX_REQUEST_TIMEOUT_MS (UINT32_MAX / 2U)\n...\nif (timeout_ms \u003e COAP_MAX_REQUEST_TIMEOUT_MS) {\n    return LICHEN_COAP_ERR_INVALID_PARAM;\n}\n```\n\nAt line 538: `K_MSEC(timeout_ms * 2)`\n\nThis is correct for preventing overflow, but:\n1. K_MSEC converts ms to ticks, which may further multiply the value\n2. If timeout_ms is close to UINT32_MAX/2, timeout_ms*2 is close to UINT32_MAX\n3. K_MSEC(UINT32_MAX) may overflow depending on tick rate\n\nShould use k_timeout_t arithmetic or K_FOREVER for very large timeouts.\n\nCategory: CORRECTNESS - potential overflow",
   "notes": "Commit: 124fb33d1",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

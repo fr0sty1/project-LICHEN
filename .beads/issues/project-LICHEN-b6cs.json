@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b6cs",
   "title": "[codereview] coap/Kconfig: LICHEN_COAP_DEADDROP help references non-existent LICHEN_COAP_DEADDROP_MAX_* configs",
   "description": "lichen/subsys/lichen/coap/Kconfig:280 - Help text mentions rate limit configs that were not added. This is incomplete and will confuse config users. P1 because correctness of Kconfig. discovered-from:project-LICHEN-p3dm",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

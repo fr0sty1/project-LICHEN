@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.1",
   "title": "ruff: 2 E402 import-not-at-top violations in handler.py",
   "description": "src/lichen/interface/handler.py has two E402 violations: module-level imports at lines 21 and 37 are not at top of file due to environment variable check at line 19. Fix: move the os.environ check into a lazy accessor or conditional within the functions that need it.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

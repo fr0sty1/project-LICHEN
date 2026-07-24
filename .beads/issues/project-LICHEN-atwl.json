@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] coap_dtn.c: missing lichen_dtn_init call in register; s_dtn_buf not initialized before use",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:18 - init must follow subsystem init graph from AGENTS.md. P0 crash risk. discovered-from:project-LICHEN-fnj7",
   "notes": "Starting init chunk parallel review pass",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

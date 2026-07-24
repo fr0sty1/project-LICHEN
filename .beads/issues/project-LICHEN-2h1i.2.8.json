@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2h1i.2.8",
   "title": "OSCORE E2E for dead drop messages and optional group encryption for confessions; key management via TOFU/DANE",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

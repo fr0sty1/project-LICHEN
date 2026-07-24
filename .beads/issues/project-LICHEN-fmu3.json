@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fmu3",
   "title": "Rust impl: Yggdrasil address as primary",
   "description": "## Overview\n\nUpdate Rust implementation to use Yggdrasil-derived 02xx addresses as primary.\n\n## Changes\n\n### Address derivation (lichen-core or lichen-crypto)\n```rust\npub fn yggdrasil_address(pubkey: \u0026[u8; 32]) -\u003e Ipv6Addr {\n    let hash = sha512(pubkey);\n    // Truncate and prefix with 02xx per Yggdrasil spec\n    ...\n}\n```\n\n### Identity (lichen-core)\n- Add yggdrasil_addr field or method\n- Derive from same Ed25519 keypair\n\n### Routing (lichen-routing or similar)\n- Update address classification\n- 02xx handling: local mesh vs Yggdrasil\n\n## Tests\n- Derive Yggdrasil address, compare to reference implementation\n- Routing decision tests",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "ec2-user",

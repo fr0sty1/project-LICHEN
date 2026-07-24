@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2g58",
   "title": "[codereview-pass3] coap_status.c validation and comments",
   "description": "Validation chunk pending. File has many non-SPDX comments and section separators violating no-comment rule and Zephyr style. Update vectors for full capacity (ENOBUFS case). No dead code. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

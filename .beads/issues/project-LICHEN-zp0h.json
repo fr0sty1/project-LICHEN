@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zp0h",
   "title": "Python impl: Yggdrasil address as primary",
   "description": "## Overview\n\nUpdate Python implementation to use Yggdrasil-derived 02xx addresses as primary.\n\n## Changes\n\n### Address derivation (lichen/crypto/identity.py or similar)\n- Add: derive_yggdrasil_address(pubkey) → 02xx address\n- Use same Ed25519 key as existing identity\n\n### Node addressing (lichen/node.py or similar)\n- Remove: ULA address assignment\n- Add: Yggdrasil address from identity\n- Keep: link-local for control plane\n\n### Routing (lichen/routing/ or similar)\n- Update destination checks:\n  - link-local → neighbor\n  - 02xx + in local mesh → mesh routing\n  - 02xx + not local → Yggdrasil (gateway)\n  - other → backhaul\n\n### Simulator\n- Update simulated nodes to use 02xx addresses\n- Remove ULA prefix configuration\n\n## Tests\n- Test Yggdrasil address derivation matches reference\n- Test local routing with 02xx addresses\n- Test routing decision: local vs remote 02xx",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "ec2-user",

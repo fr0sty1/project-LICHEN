@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.22",
   "title": "lichen_pubkey_to_iid sets U/L bit but EUI-64 derivation flips it - inconsistent IID semantics",
   "description": "Files: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:29-39,42-55\n\nTwo IID derivation functions use opposite U/L bit semantics:\n\nlichen_eui64_to_iid (line 38): XORs U/L bit (flips it)\n  iid[0] ^= UL_BIT;\n\nlichen_pubkey_to_iid (line 53): ORs U/L bit (sets it)  \n  iid[0] = (iid[0] | UL_BIT) \u0026 0xFE;\n\nIf a pubkey's first byte already has U/L bit set, lichen_pubkey_to_iid is a no-op on that bit, but lichen_eui64_to_iid would flip it.\n\nRisk: Contributors will assume both functions produce IIDs via the same transformation. Mixing pubkey-derived and EUI-derived IIDs in the same network could cause address conflicts if the bit patterns happen to collide after their different transformations.\n\nDocument the semantic difference in the header, or unify to a single transformation.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

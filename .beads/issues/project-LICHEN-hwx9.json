@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hwx9",
   "title": "Standardize RFC 8724 fragmentation",
   "description": "Synchronize the LICHEN SCHC ACK-on-Error profile and implementations. Define authoritative M=1/N=6/T=0 parameters, directional RuleIDs, WINDOW_SIZE, tile/All-1 strategy, ACK timing/encoding, bitmap compression/order, MIC placement, padding, retries, and capacity; add independent shared vectors; migrate Python, Rust, and Zephyr/C together; validate cross-language interoperability.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

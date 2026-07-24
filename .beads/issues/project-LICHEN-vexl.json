@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vexl",
   "title": "Exercise SCHC vectors through implementations",
   "description": "Added Python/Rust/C vector tests check fixture shape and hashes but do not invoke fragmentation implementations. Existing Rust/C wire formats contradict the normative fixture, while malformed/capacity/retry cases are nominal only. After correcting the oracle, require exact valid/error behavior in every implementation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

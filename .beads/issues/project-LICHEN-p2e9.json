@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p2e9",
   "title": "Unbounded growth of latency tracking list",
   "description": "## Location\npython/src/lichen/sim/metrics.py:115\n\n## Description\nThe _latencies_us list in Metrics class grows without bound as receptions are recorded. Each call to record_reception() appends to this list (line 148). For long-running simulations with many successful deliveries, this list can consume significant memory. Unlike _delivered and _collision_keys which use deduplication, _latencies_us stores every latency value for statistical calculation.\n\n## Failure Scenario\nLong-running chaos test simulates 1 million successful packet deliveries over 24 hours. Each reception appends an int (28 bytes on 64-bit Python) to _latencies_us. List grows to ~28MB just for latency data. Combined with _tx_start_times dict growth (no cleanup of completed transmissions), memory usage grows monotonically. Process eventually OOMs or degrades.\n\n## Category\nsafety",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

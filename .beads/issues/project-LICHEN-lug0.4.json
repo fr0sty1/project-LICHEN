@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lug0.4",
   "title": "Update TX queuing to SLIP/sim for mesh-to-mesh, refactor lichend.rs forward, add tests",
   "description": "For local_mesh packets, queue to sim/SLIP TX channel instead of TUN. Update Gateway.run_* and lichend.rs forward fn to branch on is_local_mesh. Add unit/integration tests verifying SRH, recompress, and routing. Complete the mesh_to_mesh path per spec/05-routing.md. Part of project-LICHEN-lug0.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

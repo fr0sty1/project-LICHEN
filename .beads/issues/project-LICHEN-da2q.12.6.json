@@ -3,7 +3,7 @@
   "title": "CCP-12 synchronized hopping definition needed",
   "description": "Context unclear on exact requirements for synchronized hopping in CCP-12 (bead project-LICHEN-da2q.12). Current impl in spec/02a and ccp16.json uses select_channel with fnv1a32 on (eui64 ^ t ^ epoch). Is this it, or separate time-synced hop sequence, rendezvous channel in announce, or priority selection? Also, ccp13_vectors undefined in generate.py from prior chunk on CCP-13.4. HUMAN review required before implementing in Zephyr/Rust per scope. Will address existing codereview-P1 kb8d after clarification.",
   "notes": "Synchronized hopping options for CCP-12: (1) fnv1a32(eui64^t^epoch) used in current ccp16 and spec/02-physical-link.md:199 + spec/09-packets-timing.md:188; (2) deterministic hop sequence from shared seed; (3) rendezvous via announce with explicit channel in beacon. Human decision required on which to standardize before Rust impl in da2q.12.2 and Zephyr. See spec/drafts for Schnorr too. This is P0 human.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

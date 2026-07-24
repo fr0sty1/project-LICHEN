@@ -3,7 +3,7 @@
   "title": "[codereview-P2] 04-network.md short address section update should reference exact line in 02-physical-link.md and mention hash_32(EUI-64,0) more explicitly in list item 1",
   "description": "The summary in 04-network.md:12.3 is improved but list item 1 is vague. Make consistent with new pseudocode. Also verify no other spec files reference old CRC16 short addr computation. discovered-from:b6zw",
   "notes": "Reopened for codereview loop per task instructions. Updated 04-network.md short address section (12.3 and 6.2) with exact line refs to 02-physical-link.md:215 and explicit hash_32(EUI-64,0). Created codereview beads project-LICHEN-3ywg (P3 fixed), project-LICHEN-jlgr (P4 fixed). Now performing 3 codereview passes. Do not close until 3 clean passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

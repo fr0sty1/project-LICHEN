@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uylz",
   "title": "[codereview-pass1-correctness] SFN delta example in 02a-coordinated-capacity.md:114",
   "description": "spec/02a-coordinated-capacity.md:114 - The added cross-ref to boundary example is good but example not yet present in this chunk. P2 correctness. Discovered-from:project-LICHEN-yne7",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

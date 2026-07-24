@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] Kconfig: LICHEN_LINK_CCP16_LOAD_BALANCING help text could reference DEFCON density notes",
   "description": "lichen/subsys/lichen/link/Kconfig:130 - Help text mentions density-aware but does not link to specific DEFCON notes or adaptive SF thresholds from zrh2 bead. P2 correctness. File as codereview for da2q.16.6",
   "notes": "Codereview pass 1: Added config with DEFCON reference; filed project-LICHEN-wgor as codereview finding (missing impl ref), fixed in pass 2. Pass 2: Style matches other Kconfigs, DEFCON refs added to help (2nnd,zrh2,test vectors). Pass 3: No findings after verification with grep and Kconfig parse. 3 clean passes achieved. Do not close until confirmed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

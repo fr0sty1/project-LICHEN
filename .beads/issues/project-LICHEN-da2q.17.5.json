@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.17.5",
   "title": "Zephyr CCP-17: Add bounds-checked CBOR encoders with capacity validation",
   "description": "Implement proper buffer capacity validation in lichen_coap_encode_*_cbor functions per CCP-17 and fix the buffer overflow risk noted in a2t4. Add BUILD_ASSERT and runtime checks. Update tests. Must pass 3 clean /codereview passes before closing parent.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

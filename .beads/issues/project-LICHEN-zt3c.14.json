@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.14",
   "title": "codereview-pass2: update routing and security specs for new model",
   "description": "Pass 2 (consistency): 05-routing.md still has ULA/GUA in decision table. 06-security.md needs full unified derivation section. 01-architecture.md needs update. Parallel Rust/C subagents needed for impl consistency. Discovered-from:zt3c.12",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

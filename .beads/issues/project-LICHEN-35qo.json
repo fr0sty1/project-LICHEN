@@ -4,7 +4,7 @@
   "description": "Runtime blocker discovered by project-LICHEN-m5m1.5. ping_l2 trips Zephyr compiler_stack_protect.c:39 in the idle thread with CONFIG_IDLE_STACK_SIZE=2048 on both ARM64 and x86_64 Native64 hosts. Increasing the test idle stack did not fix it. Logs also show two lichen_l2 RX authentication failures (-200) immediately before the canary fatal. Instrument the canary/write path and determine whether malformed/auth-failed RX handling corrupts memory.",
   "acceptance_criteria": "1. Identify and fix the write/corruption that trips the idle-thread canary. 2. Explain or correct the two pre-fatal authentication failures. 3. ping_l2 boots and all ztests pass on Native64 with stack protection enabled. 4. No arbitrary stack-size masking or weakened authentication/test oracle. 5. Three independent review passes complete.",
   "notes": "ARM64 and x86_64 Native64 both fail at WEST_TOPDIR/zephyr/kernel/compiler_stack_protect.c:39 with Zephyr FATAL ERROR 2 after CONFIG_IDLE_STACK_SIZE=2048; ping_l2 logs two authentication failed (-200) warnings first. Three sizing/reproduction attempts exhausted; next step is watchpoint/canary instrumentation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

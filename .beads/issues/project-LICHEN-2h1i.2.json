@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2",
   "title": "task",
   "description": "## Killer Apps (run all simultaneously on big screen)\n\n### 1. Find My Hacker - Live crowd map\n- Big screen shows GPS dots of all 500 nodes in real-time\n- Search by node name -\u003e highlight on map\n- Privacy mode: opt-out hides your dot\n- Heatmap overlay: where is the crowd?\n\n### 2. DEF CON Confessions - Anonymous mesh board\n- E-ink displays scrolling anonymous messages\n- Type on phone (BLE to node) -\u003e mesh -\u003e gateway -\u003e big screen\n- Upvote from your node\n- Messages expire after 10 minutes\n- No accounts, no tracking, no logs\n\n### 3. Mesh Telemetry - Proof it works\n- Packets/sec (live graph)\n- Node count (watch it grow as people arrive)\n- Collision rate (proving TDMA works)\n- RSSI heatmap (RF coverage)\n\n### 4. Dead Drop - Encrypted store-and-forward\n- Leave message for specific node ID\n- Stored on gateways until recipient in range\n- E2E encrypted (OSCORE)\n- DTN demo: delivered hours later when they walked by",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

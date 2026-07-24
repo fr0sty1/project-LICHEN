@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] incorrect time_fields map count in lichen_coap_encode_status_cbor",
   "description": "lichen/subsys/lichen/coap/coap_status.c:274: time_fields = 4U + ... but actual keys put are wall_clock_valid(always), optional unix_time, optional source_class, optional source_name, age_s(always) so base should be 2 not 4. Leads to wrong CBOR map length. Discovered during codereview of map_count fix. Related to project-LICHEN-6op5. Tagged codereview.",
   "notes": "Commit: 193377be4",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hckj",
   "title": "task",
   "description": "python/src/lichen/coap/resources.py:398. Invalid hex crashes.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.17",
   "title": "CCP-17: Capacity Validation",
   "description": "Coordinated Capacity Profile section detailing Capacity Validation from da2q multi-channel coordination context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

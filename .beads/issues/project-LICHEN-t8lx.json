@@ -3,7 +3,7 @@
   "title": "codec.rs: compress_rpl_dao does not validate D flag before compression",
   "description": "File: rust/lichen-schc/src/codec.rs\nLines: 870-878 (in compress function), 415-456 (compress_rpl_dao)\n\nCategory: PROTOCOL\n\nThe compress function checks the D flag (DODAGID present) before calling compress_rpl_dao:\n```rust\n} else if icmp_code == 2 \u0026\u0026 packet.len() \u003e= 40 + 4 + 20 {\n    // DAO — only rule 4 if D flag set\n    let kd_flags = packet[45];\n    if kd_flags \u0026 0x40 != 0 {\n        if let Ok(n) = compress_rpl_dao(packet, out) {\n            return Ok(n);\n        }\n    }\n}\n```\n\nHowever, compress_rpl_dao itself does not verify the D flag. If called directly (bypassing compress()), it will compress DAO packets without DODAGID, but the compressed format still includes a 128-bit DODAGID field, reading garbage from rpl[4..20].\n\nThe decompressor (decompress_rpl_dao) also has no way to know if the D flag was set - it always reconstructs with D=1 based on kd_flags from the wire.\n\nImpact: Direct calls to compress_rpl_dao() with D=0 packets produce corrupt compressed data. The public API is compress() which has the check, but compress_rpl_dao is fn (private but could be made pub).\n\nFix: Add D flag validation inside compress_rpl_dao:\n```rust\nlet kd_flags = rpl[1];\nif kd_flags \u0026 0x40 == 0 {\n    return Err(SchcError::NoMatchingRule);\n}\n```",
   "notes": "Commit: 5f93b92c1",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

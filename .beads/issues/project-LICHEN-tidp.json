@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tidp",
   "title": "codereview-P4: missing link to exact hash_32 impl and DAD retry pseudocode detail in spec/02-physical-link.md:210",
   "description": "Note added but lacks precise reference like  and  (for crc32_ieee) or Rust equivalent. DAD retry pseudocode is vague ('increment candidate (or rehash...)'); provide full updated pseudocode snippet for retry strategy. Low priority polish but per instruction run 3 codereview passes. Tag: codereview. Do not close b6zw until 3 clean passes with no P0-P2.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:45:11.026546187Z",

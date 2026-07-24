@@ -3,7 +3,7 @@
   "title": "CoapOption::as_uint silently truncates options longer than 4 bytes",
   "description": "File: rust/lichen-coap/src/codec.rs\nLine: 282-288\n\nCategory: CORRECTNESS\n\nThe as_uint() method interprets CoAP option values as u32 integers by shifting each byte into the accumulator. However, for options longer than 4 bytes, the upper bytes silently get shifted out:\n\n```rust\npub fn as_uint(\u0026self) -\u003e u32 {\n    let mut val = 0u32;\n    for \u0026b in self.value {\n        val = (val \u003c\u003c 8) | b as u32;\n    }\n    val\n}\n```\n\nExample: for value [0x01, 0x02, 0x03, 0x04, 0x05], the result is 0x02030405 (0x01 silently discarded).\n\nWhile RFC 7252 integer options are at most 4 bytes in valid messages, a malformed or malicious message could include longer option values. The function silently returns a wrong value instead of detecting the error.\n\nImpact: Incorrect interpretation of malformed CoAP options could cause:\n- Wrong Max-Age caching behavior\n- Incorrect port numbers in Uri-Port\n- Misinterpretation of Content-Format\n\nFix: Either validate that self.value.len() \u003c= 4 and return Result/Option, or document that only the last 4 bytes are used.",
   "notes": "Fixed by changing as_uint to return Result\u003cu32, CoapError\u003e with validation for len \u003c=4; updated callers and error handling. Commit: 8a582a91e",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

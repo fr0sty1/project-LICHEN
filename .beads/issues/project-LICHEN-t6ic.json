@@ -2,7 +2,7 @@
   "id": "project-LICHEN-t6ic",
   "title": "codereview-pass1: select_channel/now pseudocode chunk",
   "description": "P2: missing integration with adaptive SF full function and SNR EMA formula. P3: TOC not updated for new 2a.7 subsection. Pure pseudocode good but add per-SF SNR table reference. File as codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

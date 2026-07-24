@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.9",
   "title": "[lichen_util.h:56] secure_zero alignment cast may cause SIGBUS on strict-align architectures",
   "description": "In secure_zero(), the code casts a potentially misaligned pointer to unsigned long*:\n\n```c\nwhile (len \u003e 0 \u0026\u0026 ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) != 0) {\n    *p++ = 0;\n    len--;\n}\n/* Word-sized writes for the bulk (p is now word-aligned) */\nwhile (len \u003e= sizeof(unsigned long)) {\n    *(volatile unsigned long *)p = 0;  // This cast\n    p += sizeof(unsigned long);\n    len -= sizeof(unsigned long);\n}\n```\n\nThe alignment loop above DOES align p to word boundary before the cast. The comment at line 61 is correct.\n\nHowever, the cast discards the volatile qualifier temporarily. The pointer p is volatile uint8_t*, but we cast it to volatile unsigned long*. This is actually correct - we're preserving volatile.\n\nActually, looking more carefully - the alignment loop works correctly. After the first while loop, p IS aligned. The cast to (volatile unsigned long *)p is safe.\n\nThis is NOT a bug - the alignment handling is correct.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

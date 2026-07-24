@@ -2,7 +2,7 @@
   "id": "project-LICHEN-aezq",
   "title": "Resolve unsigned RPL frame specification",
   "description": "Security spec requires every RPL control frame signed, while draft-lichen-link permits routing-affecting unsigned frames in permissive mode and gives unsigned DIO as canonical example. Reconcile normative receiver behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

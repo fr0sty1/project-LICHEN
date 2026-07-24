@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.2",
   "title": "Implement SSN state management on NVM failure in oscore_protect_request",
   "description": "For OSCORE_ERR_NVM_FAILED from persist_ssn(), lock mutex again and either rollback sender_seq (decrement) or advance it to a safe value (e.g. current + 256 or next power-of-two boundary) to prevent nonce reuse on subsequent reboot. Choose approach based on security analysis. Update error return path. See oscore.c:1442 and oscore_ctx_persist_ssn.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.33",
   "title": "Misleading variable name l2_payload_len is actually a slice, not length",
   "description": "# Problem\nIn `rust/lichen-node/src/stack.rs:290-297`:\n\n```rust\nlet l2_payload_len = wrap_schc_payload(\u0026schc[..schc_len], \u0026mut l2_payload)?;\n\nlet wire_len = self\n    .link\n    .build_frame(self.epoch, seqnum, \u0026[], l2_payload_len, \u0026mut wire)\n```\n\nThe variable `l2_payload_len` is a `\u0026[u8]` slice (return type of `wrap_schc_payload`), but the name strongly suggests it's a `usize` length. The actual behavior is correct, but a contributor reading this code will assume it's a length.\n\n## What goes wrong\n1. A contributor copying this pattern might write `build_frame(..., payload.len(), ...)` instead of `build_frame(..., payload, ...)`\n2. Such a bug would type-check (usize coerces in some contexts) and cause silent data corruption\n3. Code reviewers familiar with the codebase will skip over this because they know the pattern, missing bugs from contributors\n\n## Fix\nRename to `l2_payload` or `l2_payload_slice` to match its actual type.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

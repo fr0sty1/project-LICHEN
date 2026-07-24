@@ -3,7 +3,7 @@
   "title": "link_ctx.h: lichen_identity_ygg_addr_from_ed25519 declaration added but no implementation or tests",
   "description": "Codereview pass 1/3: New function declared in link_ctx.h but link_ctx.c has no definition. Also, no update to Identity struct or test vectors yet. Per task, must match Rust exactly and add to test/vectors. Tagged codereview. Depends on project-LICHEN-zt3c.16",
   "notes": "3 clean codereview passes completed after fixes to link_ctx.c:597 and test/vectors/yggdrasil.json. All review beads closed. Function now matches Rust exactly including IID derivation and test vectors. Do not close until confirmed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

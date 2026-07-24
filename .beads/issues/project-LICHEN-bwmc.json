@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-bwmc",
   "title": "[codereview-P3] ccp15.json not created; link layer CCA call site in lichen_link_tx.c:142 missing; Rust lora-phy CCA not updated",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

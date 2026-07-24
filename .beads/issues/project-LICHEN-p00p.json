@@ -3,7 +3,7 @@
   "title": "TrickleTimer allows imin=0 causing infinite busy loop",
   "description": "File: rust/lichen-rpl/src/trickle.rs\nLines: 64-82\n\nTrickleTimer::new() does not validate that imin_ms \u003e 0:\n```rust\npub fn new(imin_ms: u32, imax_doublings: u32, k: u32) -\u003e Self {\n    // No validation of imin_ms \u003e 0\n    let max_interval = 1u32\n        .checked_shl(imax_doublings)\n        .and_then(|mult| imin_ms.checked_mul(mult))\n        .unwrap_or(u32::MAX);\n    Self {\n        imin: imin_ms,\n        max_interval,  // Also 0 if imin_ms is 0\n        // ...\n    }\n}\n```\n\nImpact: If imin_ms=0 is passed:\n1. interval=0, so transmit_time=now, interval_end=now\n2. Timer immediately triggers transmit\n3. Timer immediately expires\n4. On expire, interval=0*2=0 (stays 0)\n5. This repeats infinitely, causing a busy loop\n\nThis could:\n- Exhaust CPU on embedded systems\n- Flood the network with DIOs\n- Cause denial of service\n\nFix: Add validation in new():\n```rust\npub fn new(imin_ms: u32, imax_doublings: u32, k: u32) -\u003e Self {\n    assert!(imin_ms \u003e 0, \"Trickle Imin must be non-zero\");\n    // or return Result/Option\n```",
   "notes": "Commit: 168bdb4 - fixed TrickleTimer imin=0 validation in Rust (test), C (defensive init + test + docs)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

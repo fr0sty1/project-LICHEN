@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bj5d",
   "title": "[codereview-1] ccp9_vectors missing format_version=2 and spec cross-ref update",
   "description": "test/vectors/generate.py:1753 CCP-9 vectors should specify format_version like ccp15.json per schema and test integrity rules. Also update spec/02a-coordinated-capacity.md TOC and Appendix for CCP-9. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iqr9",
   "title": "[codereview-pass1] coap_dtn.c GET uses 'pending' but spec/appendix-senml.md expects specific DTN fields like buffered/pending_iids",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:28 - SenML record name 'pending' does not match canonical DTN status records per test vectors and spec. Also mixes static raw buffer. discovered-from:project-LICHEN-2ysa",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

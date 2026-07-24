@@ -3,7 +3,7 @@
   "title": "Allowlist RPL multicast before replay",
   "description": "Accept RPL control only for local unicast or ff02::1a; reject unrelated multicast before link replay consumption when destination is inspectable.",
   "acceptance_criteria": "ff02::1a RPL control is accepted; unrelated multicast is ignored/rejected without consuming sender replay; application multicast membership remains outside RplStack.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

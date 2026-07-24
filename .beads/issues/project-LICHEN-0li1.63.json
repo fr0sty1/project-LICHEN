@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.63",
   "title": "[lora_l2.c:1047-1050] lichen_lora_l2_is_running and needs_reinit have no memory barrier",
   "description": "Gap: The public state query functions read atomic_t without memory barriers.\n\nWhat: Lines 1047-1055 define is_running() and needs_reinit() which read current_state via atomic_get(). On multi-core systems (which LICHEN rejects via BUILD_ASSERT), this could return stale values.\n\nWhy it matters: While the BUILD_ASSERT at lichen_l2.c:375-376 prevents multi-core builds, the is_running() function is part of the public API and could be called from interrupt context or by code that doesn't know about the single-core constraint. The atomic_get() provides no ordering guarantees beyond atomicity. For robustness, the API docs should clarify these functions are only valid when called from thread context on single-core.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

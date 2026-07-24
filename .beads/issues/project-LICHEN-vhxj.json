@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vhxj",
   "title": "codereview-P2: update test_vectors.py schema list for ccp13.json (chunk 1)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

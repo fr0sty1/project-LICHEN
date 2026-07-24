@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bhev",
   "title": "codereview pass 1: frequency agility pseudocode",
   "description": "Findings: 1. select_channel() referenced but not defined in this file (P1 correctness). 2. No explicit hysteresis threshold or blacklist duration constants (P2). 3. Metrics.per is singular in original but per-channel needed. File as child of project-LICHEN-da2q.15.8.3. Label codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:38:20.184394291Z",

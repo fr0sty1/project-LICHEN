@@ -2,7 +2,7 @@
   "id": "project-LICHEN-636h",
   "title": "Critical fixes and non-blocking integration for extracted Renode SX1262.cs",
   "description": "Implement 3 critical fixes for the standalone/extracted SX1262.cs peripheral used with Renode: 1. SimHost property and mutable simHost. 2. Fix 0x17-\u003e0x12 opcode comment in header/README. 3. Integrate non-blocking background readerThread, locks (stateLock,connectionLock,writeLock), rxOneShot, latchedIrqFlags from LICHEN version (lichen/boards/renode/peripherals/SX1262.cs) into extraction version, preserving loopbackMode. Protect all state changes with locks. Update EnterRxModeBridge, Reset, FinishTransmission, Transmit, OnGPIO, GetStatus to use locks. Integrate loopback with one-shot RX. Test with test.resc + Renode. Update extraction README. Verify compilation. Prepare for commit. No dead code, follow C# style. File as epic with child tasks. See project-LICHEN-ddcu for extraction context.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

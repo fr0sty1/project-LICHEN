@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6jjy",
   "title": "[merge-conflict] worktree-worker23: schema.json",
   "notes": "Resolved merge conflicts in schema.json, drivers/input/*, test/vectors/README.md, spec/03-addressing.md, meshtastic adapter.h and related CCP/spec files from worker23 and parallel workers. Removed all conflict markers, merged coherent CCP schema+test vectors+spec text per resolved summary in 02a-coordinated-capacity.md. Commit: ea9690c3b",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

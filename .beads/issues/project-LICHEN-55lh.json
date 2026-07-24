@@ -2,7 +2,7 @@
   "id": "project-LICHEN-55lh",
   "title": "codereview-P3: incomplete update to DAD collision section and missing test vector ref in 02-physical-link.md",
   "description": "After updating short_addr computation at :199, the Collision Detection and Resolution sections (lines 222-240) still assume old increment-candidate logic; should reference new retry-with-seed strategy. Add cross-ref to test/vectors/ for DAD collision cases (similar to ccp15.json). Also update appendix-design-rationale.md if needed. Tagged codereview. Part of 3-pass requirement for project-LICHEN-b6zw. Discovered-from:project-LICHEN-b6zw",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T16:45:07.396297431Z",

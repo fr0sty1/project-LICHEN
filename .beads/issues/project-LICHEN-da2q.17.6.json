@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.17.6",
   "title": "Zephyr: CCP-17 requirements from da2q context",
   "description": "Zephyr implementation for CCP-17 Capacity Validation requirements from da2q context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:06:30.409519106Z",

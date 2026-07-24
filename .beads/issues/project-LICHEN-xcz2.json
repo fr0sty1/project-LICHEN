@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xcz2",
   "title": "codereview: wire format comment uses non-standard abbreviation 'Cur Ch'",
   "description": "rust/lichen-core/src/announce.rs:7 - Diagram should use 'Current Channel' or match Python/spec naming exactly for consistency. P3 readability. codereview pass1",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:16:59.218677837Z",

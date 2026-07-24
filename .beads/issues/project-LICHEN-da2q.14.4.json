@@ -3,7 +3,7 @@
   "title": "Vectors: CCP-14 requirements from da2q context",
   "description": "Vectors implementation for CCP-14 Gateway Multi-RX requirements from da2q context.",
   "notes": "Added gateway multi-RX vectors to test/vectors/ccp_load_balancing.json per da2q multi-channel context. Ran 3 codereview passes after each chunk (findings filed as codereview-tagged beads and fixed). 3 clean passes achieved. Vectors cover concurrent SF RX, channel demux, load reporting.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

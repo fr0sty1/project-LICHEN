@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rubz",
   "title": "Potential race condition in lichen_link_cleanup",
   "description": "File: lichen/subsys/lichen/link/link_ctx.c\nLines: 319-350\n\nlichen_link_cleanup() wipes keys even when lock acquisition fails:\n\n```c\nvoid lichen_link_cleanup(struct lichen_link_ctx *ctx)\n{\n    if (ctx == NULL) {\n        return;\n    }\n\n    int locked = (seq_lock(ctx) == 0);\n\n    /* SECURITY: Always wipe keys, even if lock fails */\n    secure_wipe(ctx-\u003eed25519_sk, LICHEN_SK_LEN);\n    secure_wipe(ctx-\u003elink_key, LICHEN_LINK_KEY_LEN);\n    // ...\n}\n```\n\nThe comment acknowledges this is intentional for security, but it creates a race condition: if another thread holds the lock and is using the keys (e.g., in lichen_link_tx or signature generation), wiping the keys mid-operation could cause:\n1. Corrupted cryptographic output\n2. Information leakage if partial key material is mixed with zeros\n3. Undefined behavior in crypto libraries\n\nThe security intent (ensure keys are wiped) conflicts with correctness (don't corrupt concurrent operations).\n\nImpact: Race condition between cleanup and concurrent TX/signature operations.\n\nRecommendation: Document that cleanup must only be called when no other operations are in flight, or block indefinitely on lock acquisition (changing the cleanup semantics).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

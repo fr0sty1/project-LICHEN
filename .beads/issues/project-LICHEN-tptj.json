@@ -3,7 +3,7 @@
   "title": "Race condition in SimRadio.close() allows AttributeError on concurrent close",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 292-296\n\n**Issue:** The close() method uses a check-then-act pattern that is not atomic:\n```python\nasync def close(self) -\u003e None:\n    if self._stream is not None:\n        await self._stream.aclose()\n        self._stream = None\n```\n\n**Race scenario:**\n1. Task A: checks `self._stream is not None` - True\n2. Task B: calls close(), completes, sets `self._stream = None`\n3. Task A: attempts `await self._stream.aclose()` but _stream is now None\n4. Task A: crashes with AttributeError: 'NoneType' object has no attribute 'aclose'\n\n**Impact:** Concurrent calls to close() can cause an unhandled exception.\n\n**Fix:** Atomically capture the stream reference:\n```python\nasync def close(self) -\u003e None:\n    stream = self._stream\n    if stream is not None:\n        self._stream = None\n        await stream.aclose()\n```",
   "notes": "Commit: a281ae4ca",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -3,7 +3,7 @@
   "title": "Follow-up from worker13 merge of 0fce3b724",
   "description": "Any new issues discovered during 3 codereview passes on merged changes from worker13",
   "notes": "No new issues discovered during 3 codereview passes; all P0-P4 fixed previously. Quality gates passed (cargo fmt/clippy/test, ruff, pytest, Zephyr native_sim).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

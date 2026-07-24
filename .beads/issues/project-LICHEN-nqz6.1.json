@@ -3,7 +3,7 @@
   "title": "Update addressing model in spec/04-network.md and 01-architecture.md: drop ULA, promote 02xx Yggdrasil as primary global",
   "description": "Revise IPv6 addressing sections to use only link-local fe80::/10 and Yggdrasil-derived 02xx::/7 addresses. Remove all ULA references, update tables, examples, root election, IID derivation per new content in parent epic. Include address derivation diagram and scope table.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

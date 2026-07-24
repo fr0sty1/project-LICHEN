@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1",
   "title": "Validate MeshCore non-link rows on native_sim, native, 64",
   "description": "Build and runtime-validate MeshCore integration scenarios from clean EBS worktree using west native_sim and native targets. Record all provenance, hashes, commands, exits, logs. Exclude .35.6 scopes. Use only approved AWS resources.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

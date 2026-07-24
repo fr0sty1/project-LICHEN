@@ -2,7 +2,7 @@
   "id": "project-LICHEN-et78.2",
   "title": "Add full Non-Storing Mode MUST compliance checks to zephyr lichen/subsys/lichen/rpl",
   "description": "Implement RFC2119 MUST validations for Non-Storing RPL mode, including DAO-ACK, S=1 flag handling in zephyr/lichen/subsys/lichen/rpl/",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

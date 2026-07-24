@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wu53.1",
   "title": "Fix deprecated MeshPacket::delayed field in lichen-meshtastic test",
   "description": "Clippy fails due to use of deprecated MeshPacket::delayed field (line 257 in lichen-meshtastic/src/lib.rs). The protobuf definition has changed; remove the field or use #[allow(deprecated)] temporarily but prefer updating to current API for Rust consistency. This is a P0 for build. Part of codereview pass 2 under epic project-LICHEN-wu53.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

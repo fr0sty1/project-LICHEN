@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k3ci",
   "title": "codereview pass2: No validation for current_channel range in Rust (0-15 per Python)",
   "description": "rust/lichen-core/src/announce.rs:83 - Announce and Builder should validate current_channel \u003c=15 like Python __post_init__. P2 robustness for wire format. codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

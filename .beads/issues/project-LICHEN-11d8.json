@@ -2,7 +2,7 @@
   "id": "project-LICHEN-11d8",
   "title": "codereview2 after lora_l2 CCA",
   "description": "Pass 2: CCA placed after tx_pending inc but before modem lock - good for arbitration. However, on busy return, the tx_buf_mutex is not unlocked in one path (bug). Fix mutex handling. Also, link layer integration missing. (project-LICHEN-da2q.15.7)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

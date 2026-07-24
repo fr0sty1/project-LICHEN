@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.6.2",
   "title": "Rust impl: hash based channel selection algorithm",
   "description": "Rust implementation for CCP-6 hash-based assignment inferred from da2q.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

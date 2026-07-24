@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w60o",
   "title": "codereview: 06-security.md:115 derivation step 1 imprecise on clamp",
   "description": "Pass1-correctness: derive_keypair clamps after SHA-512(seed)[:32] per schnorr48.py:108 and Rust. Update ref to match exact impl. file:spec/06-security.md:115. tagged codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

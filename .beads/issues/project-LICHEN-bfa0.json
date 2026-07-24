@@ -3,7 +3,7 @@
   "title": "edhoc: No EDHOC error message handling (ERR_CODE)",
   "description": "File: python/src/lichen/crypto/edhoc.py\n\nRFC 9528 Section 6 defines EDHOC error messages with ERR_CODE and SUITES_R. Neither EdhocInitiator nor EdhocResponder:\n\n1. Generate error messages on failure (e.g., ERR_UNKNOWN_PEER when signature verification fails)\n2. Parse incoming error messages (would crash trying to decode as regular message)\n\nCurrent behavior:\n- On any error, raises ValueError with a description\n- No structured ERR_CODE that peers can parse\n- Receiving an error message from peer causes cryptic decode failures\n\nExample: If responder sends error message instead of Message 2:\n```python\n# message_2 = (ERR_CODE, ?SUITES_R) instead of (G_Y || CIPHERTEXT_2, C_R)\ninitiator.process_message_2(error_msg, peer_pubkey)  # Crashes\n```\n\nImpact: No graceful error handling, protocol non-compliance with RFC 9528 Section 6. Production implementations need error message support for debugging and proper failure handling.",
   "notes": "Claimed and analyzing edhoc.py and tests. Adding EdhocError support per RFC 9528 §6.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

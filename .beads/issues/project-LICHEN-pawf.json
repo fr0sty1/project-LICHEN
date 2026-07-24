@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pawf",
   "title": "[codereview-pass1-security] spec/09-packets-timing.md SFN modulo pseudocode should use neutral syntax and explicit RFC2119 MUST for unsigned arithmetic; add test vector requirement for 0xFFFFFFFF boundary",
   "description": "P2 finding on the SFN paragraph edit for project-LICHEN-2oas. Pseudocode looks C-specific; spec style uses c. MUST compute delta using unsigned 32-bit wrap. Link to test/vectors/ccp_tdma.json (new in workspace). Discovered-from:project-LICHEN-2oas",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:29:07.090484523Z",

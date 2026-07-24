@@ -2,7 +2,7 @@
   "id": "project-LICHEN-07nv",
   "title": "[codereview-pass2] coap_dtn.c POST still uses global rate limit and hardcoded times/IID/0s; no per-IID enforcement",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:42 - lichen_dtn_buffer_message call uses iid={0}, expiry=0,now=0,0 violating no-hardcoded and per-IID rate limit requirement (spec 12-apps.md rate limits per context/IID). discovered-from:project-LICHEN-2ysa",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

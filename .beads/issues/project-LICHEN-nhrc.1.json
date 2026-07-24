@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-nhrc.1",
   "title": "codereview-pass1: draft-lichen-schc-lora-00.md wording in rule specificity paragraph could reference exact RFC 8724 section 7.1 on matching procedure",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:00:35.781547624Z",

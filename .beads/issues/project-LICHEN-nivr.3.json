@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nivr.3",
   "title": "[codereview-pass3] Full review: DAO processing ensures RoutingTable updated for is_local_mesh/SRH. Mimic complete. All quality gates passed. No P0/P1 findings.",
   "description": "3 passes complete with only P3/P4. Ready to close parent.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:58:48.578788664Z",

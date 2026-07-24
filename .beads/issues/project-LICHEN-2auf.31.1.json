@@ -3,7 +3,7 @@
   "title": "Build nRF52840 board rows",
   "description": "Scope under project-LICHEN-2auf.31: from a fresh clean EBS worktree, build/package every declared nRF52840 Puck row for T-Echo, RAK4631, T1000-E, and R1 Neo where the board manifest supports it, plus T-Echo/RAK4631 lora_ping and declared Renode-overlay artifacts. Use profile personal, account 210337117346, region us-west-2, an owned builder in us-west-2c, and exact EBS vol-0a95eee8d1d8461eb. Record base/applied commit and patch hashes, exact board qualifiers/overlays/configs, west manifest, Zephyr/SDK/compiler/tool versions, pristine commands, exits, logs, ELF/BIN/HEX/package hashes, and RAM/flash deltas. A guessed alias, substituted board, omitted package, stale artifact, warning/error, nonzero exit, or dirty-worktree verification fails closed. This is board-build coverage, not .35.6 link runtime coverage. Hash evidence before sync, unmount, ownership-checked detach, wait-available, and tagged-instance cleanup.",
   "acceptance_criteria": "All manifest-declared nRF52840 rows build with exact selectors and required packages/overlays; unsupported R1 Neo or other selectors are recorded as blockers, never silently skipped or aliased. Commands, exits, source/patch/tool provenance, RAM/flash outputs, and artifact/log SHA-256 values are complete; no .35.6 tests are duplicated; worktree checks pass; account/AZ/volume identity and explicit unmount/detach/wait-available plus ownership-checked cleanup succeed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

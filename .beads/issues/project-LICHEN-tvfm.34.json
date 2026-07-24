@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.34",
   "title": "[ipv6_addr.c:243] lichen_log_link_local_from_eui64 ll_addr_out not zeroed on failure",
   "description": "Function: lichen_log_link_local_from_eui64. Postcondition: If lichen_eui64_to_iid fails (line 255-259), the function returns error but ll_addr_out is not written to. A caller with uninitialized ll_addr_out would have garbage on error. The function should either document that ll_addr_out is only written on success, or zero it on all exit paths. Current behavior matches typical error-then-return patterns but could surprise callers. Priority 3 - documentation issue.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

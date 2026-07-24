@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.1.2",
   "title": "Firmware readiness for T-Echo production run",
   "description": "Ensure full firmware support for T-Echo before 500-unit procurement: complete e-ink display driver/integration, GPS (L76K) full validation with TDMA sync, battery monitoring, production flashing/OTA pipeline (MCUboot + SMP), Renode/HW test coverage, power optimization. Update docs/bench-operations.md and capability matrix. Verify against test vectors. Create sub-tasks if needed for specific gaps (e-ink, GNSS, etc). Acceptance: all core features green on T-Echo, CI/build scripts updated, interop tested with other boards.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

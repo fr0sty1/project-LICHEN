@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj",
   "title": "Python sim: hop sequence based on SFN/time",
   "description": "Implement deterministic hop sequence generator using SFN/epoch and EUI for rendezvous. Use independent oracle from external hash reference (not code under test). Update protocol.py or simulation. Tag codereview. Child of da2q.12.8",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

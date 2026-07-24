@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fzlk",
   "title": "[codereview] python sim medium.py lacks multi-channel load balancing per CCP-16",
   "description": "medium.py:140 get_rx_candidates assumes single channel. da2q context requires per-channel load stats and balancing for CCP-16. P2 bug",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

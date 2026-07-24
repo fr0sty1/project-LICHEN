@@ -3,7 +3,7 @@
   "title": "Vectors: CCP-16 requirements from da2q context",
   "description": "Vectors implementation for CCP-16 Load Balancing requirements from da2q context.",
   "notes": "3 clean codereview passes completed after vector addition. All findings fixed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

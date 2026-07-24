@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.37",
   "title": "lora_l2.c:261 generate_eui64 lacks validation that eui64 is 8 bytes",
   "description": "Contract documentation: generate_eui64() - Function assumes eui64 buffer is 8 bytes but has no compile-time or runtime check. The single caller passes lora_data.eui64 which is statically sized. Adding BUILD_ASSERT for sizeof(lora_data.eui64)==8 would catch future size changes. WHY: If eui64 size changes, memcpy at line 327 would underrun or overrun. HOW to fix: Add BUILD_ASSERT(sizeof(lora_data.eui64) == 8) near definition, or pass size parameter.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

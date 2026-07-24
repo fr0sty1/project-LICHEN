@@ -3,7 +3,7 @@
   "title": "CBOR map keys not in canonical order per RFC 8428",
   "description": "File: lichen/subsys/lichen/senml/senml.c\nLines: 193-206\n\nCATEGORY: PROTOCOL\n\nRFC 8428 Section 6 states: 'implementations SHOULD sort keys in numeric order by the key value.'\n\nThe CBOR label values are:\n  SENML_LABEL_BT = -3  (Base Time)\n  SENML_LABEL_BN = -2  (Base Name)\n\nCanonical CBOR ordering requires smaller integers first, so -3 should come before -2.\n\nBut encode_record() encodes in this order:\n  Line 194: SENML_LABEL_BN (-2) first\n  Line 202: SENML_LABEL_BT (-3) second\n\nThis violates the SHOULD (not MUST) for canonical CBOR ordering.\n\nIMPACT:\n- Interoperability: some strict receivers may reject or misparse\n- Determinism: non-canonical encoding means identical data may produce different bytes\n- Signing: if CBOR payload is signed, non-canonical form complicates verification\n\nFIX: Reorder encoding to emit keys in numeric order:\n  SENML_LABEL_BT (-3) before SENML_LABEL_BN (-2)\n  Then SENML_LABEL_N (0), SENML_LABEL_U (1), SENML_LABEL_V/VB (2/4), SENML_LABEL_T (6)",
   "notes": "Fixed CBOR key ordering in encode_record() to ensure SENML_LABEL_BT before SENML_LABEL_BN per RFC 8428. Count and encoding now both follow numeric key order. Tests pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

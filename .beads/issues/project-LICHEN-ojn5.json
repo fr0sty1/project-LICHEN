@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ojn5",
   "title": "[codereview1] coap_dtn.c after buffer addition: missing rate limit using CONFIG_LICHEN_COAP_DEADDROP_MAX_MESSAGES",
   "description": "Rate limit not implemented with atomics/timer per Kconfig comment. s_dtn_buffer added but not used in handlers or init. P2.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

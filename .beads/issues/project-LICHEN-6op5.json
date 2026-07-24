@@ -3,7 +3,7 @@
   "title": "P1: map_count in encode_status_cbor can theoretically overflow uint16_t",
   "description": "Although 4 base + 4 optionals is small, the calculation map_count += ... for time and dodag fields uses uint16_t but if status struct had many more optional fields it could overflow before the bounds check. The check is after calculation. Better to use saturating add or check incrementally. Discovered in codereview pass1 of coap_status.c comment removal. Related to project-LICHEN-2bix.",
   "notes": "codereview pass 2: security review - no overflow paths remain, all cbor calls check overflow flag, no secrets, bounds checked snprintf in format_ipv6. Clean.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

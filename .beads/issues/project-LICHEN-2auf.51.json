@@ -3,7 +3,7 @@
   "title": "Integrate checkpoint C EDHOC hardening",
   "description": "Recover credential binding, negative connection-ID encoding, secret wiping, uniform signature failures, single export, and checked CBOR encoding while reconciling open EDHOC findings.",
   "acceptance_criteria": "Independent ID encodings pass; mismatched credentials reject; second export fails; all secret paths wipe; RFC/Zephyr tests and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

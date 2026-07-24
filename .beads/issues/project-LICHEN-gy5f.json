@@ -3,7 +3,7 @@
   "title": "Include stdio in CoAP server",
   "description": "Boot failure discovered by project-LICHEN-m5m1.5. coap_client firmware pulls in coap_server.c, which calls snprintf without including \u003cstdio.h\u003e; strict Zephyr compilation stops before runtime. Add the required standard header rather than disabling the server or warnings.",
   "acceptance_criteria": "1. coap_server.c declares snprintf through \u003cstdio.h\u003e. 2. No warning suppression or feature disabling is added. 3. Native64 coap_client firmware boots and all ztests pass. 4. Three independent review passes complete.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

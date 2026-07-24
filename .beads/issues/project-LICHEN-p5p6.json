@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p5p6",
   "title": "Loopback frames bypass replay protection on first occurrence",
   "description": "File: python/src/lichen/link/link_layer.py:551-554, 485-494\n\nWhen receiving our own frame (loopback), _find_sender returns a PeerIdentity from our pubkey:\n\n    if verify(self.identity.pubkey, signable, signature):\n        return PeerIdentity.from_pubkey(self.identity.pubkey)\n\nThen replay_protector uses this pubkey:\n\n    if not self.replay_protector.check_and_update(\n        sender.pubkey, frame.epoch, frame.seqnum\n    ):\n\nThis creates a ReplayWindow for our own pubkey. The first loopback frame is accepted. This is likely intentional (to process the first occurrence), but has implications:\n\n1. Our TX sequence and the loopback RX window can diverge\n2. If we send seq 100, receive it as loopback, then send seq 99 (due to a bug), our own frame at seq 99 would be rejected as replay\n\nThis may be correct behavior, but the interaction is subtle and undocumented.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

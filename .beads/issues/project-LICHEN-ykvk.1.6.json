@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ykvk.1.6",
   "title": "codereview: P3 coap_deaddrop_register does not mimic full coap_location.c resource pattern or handle provider for DTN",
   "description": "Current impl is stub only. Needs full handler like location.c with SenML, coap_respond helper, resource define for /deaddrop, integrate s_provider for store/retrieve. No comments. discovered-from project-LICHEN-ykvk.1",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:13:39.927678087Z",

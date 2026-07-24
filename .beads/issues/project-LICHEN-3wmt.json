@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3wmt",
   "title": "kimi-review: compiler portability for #pragma GCC diagnostic",
   "description": "Fix all instances of unguarded #pragma GCC diagnostic by wrapping with __GNUC__ / __clang__ checks (matching existing patterns in tx_queue/main.c and senml.h etc). Must follow strict process: after EVERY code chunk/edit, run 3 independent /codereview passes, file ALL findings as codereview beads (P0-P4), do not close any until 3 clean passes with no new findings. Then bd ready --limit 5. This is for project-LICHEN-xxgh.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

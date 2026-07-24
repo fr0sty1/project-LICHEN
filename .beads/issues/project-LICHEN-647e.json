@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-647e",
   "title": "codereview-pass3: estimate_density cap at 20 arbitrary; needs justification or link to DEFCON scale target from 2nnd epic. Also missing update to test/vectors/ccp15.json for new vectors",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

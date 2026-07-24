@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ri61",
   "title": "P0: cbor_put_map_header truncates count \u003e 255 without overflow flag",
   "description": "cbor_put_map_header accepts uint8_t but when count\u003e255 from caller like (uint8_t)size_t in encode_neighbors_cbor, it silently truncates the header byte without setting ctx.overflow=true. Violates the 'ensure no truncation' SECURITY comment that was removed. This can produce invalid CBOR for \u003e255 neighbors. Discovered during comment removal in coap_status.c. Related to project-LICHEN-2bix.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ze5p",
   "title": "[codereview-pass2] coap_dtn.c: coap_respond lacks LOG_ERR on all error paths and OSCORE failure cases",
   "description": "Current coap_respond returns errors without logging (unlike coap_config.c:646+ and coap_keys.c:369). Add LOG_ERR for each r \u003c 0 case and oscore failures per robustness requirement. discovered-from:project-LICHEN-9wd9",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

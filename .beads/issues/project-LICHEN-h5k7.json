@@ -2,7 +2,7 @@
   "id": "project-LICHEN-h5k7",
   "title": "Compliance: crypto/oscore.py OSCORE",
   "description": "Policy: 06-security.md §8.7. File: python/src/lichen/crypto/oscore.py. Status: COMPLIANT. MemorySecurityContext bridges EDHOC to aiocoap OSCORE. Derives sender/recipient keys via derive_keys(), implements replay window, and exports from EDHOC context.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

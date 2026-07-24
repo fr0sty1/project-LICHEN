@@ -3,7 +3,7 @@
   "title": "Run native_sim-only ICMPv6 firmware",
   "description": "Coverage blocker discovered by project-LICHEN-m5m1.5. lichen/tests/icmpv6 permits only 32-bit native_sim, so it is not selected by ARM64 native_sim/native/64 or qemu_x86 integration runs. Provide an x86_64/multilib native_sim runner or expand the scenario to an independently valid backend, then capture runtime ztest proof.",
   "acceptance_criteria": "1. ICMPv6 firmware executes on a declared valid runtime platform. 2. All ztests pass with provenance and logs. 3. Platform metadata accurately reflects supported backends. 4. No build-only result is counted as boot proof.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

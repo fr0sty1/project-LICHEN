@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0rqi",
   "title": "codereview-P0 medium.get_rx_candidates signature break",
   "description": "python/src/lichen/sim/medium.py:134 - Added rx_frequency_hz param but simulation.py:808,907 and node_server.py calls do not pass it. Will raise TypeError on next RX. Also detect_activity needs parallel update for CAD in rendezvous. P0 correctness.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

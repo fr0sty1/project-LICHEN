@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8gac",
   "title": "codereview pass 1: SF selection pseudocode",
   "description": "Pass 1 review of chunk 1 edit to 2a.7: The pointer to adaptive_sf_select is good but the full function in §2a.7.2 is missing. Add detailed per-SF SNR thresholds table, exact EMA formula for SNR, integration with load_factor override from gateway. P2 correctness (must match vectors). discovered-from:project-LICHEN-da2q.15.8.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

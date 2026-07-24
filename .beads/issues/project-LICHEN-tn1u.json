@@ -3,7 +3,7 @@
   "title": "SenML unpack allows duplicate CBOR map keys violating RFC 8428",
   "description": "File: python/src/lichen/senml/codec.py\nLines: 143-144\n\nRFC 8428 Section 4.5 states: 'There MUST be at most one of each field in a SenML Record.'\n\nHowever, `unpack()` calls `cbor2.loads(data)` without setting `allow_duplicate_keys=False`. The cbor2 library defaults to accepting duplicate keys (last value wins).\n\nThis allows malformed CBOR like:\n  {0: 'temperature', 0: 'humidity'}  # key 0 appears twice\n\nto be silently accepted, with only 'humidity' being used.\n\nImpact:\n1. RFC 8428 compliance violation\n2. Different CBOR implementations may handle duplicates differently (first vs last value wins), causing interoperability issues\n3. Attacker could craft ambiguous payloads that are interpreted differently by different nodes\n\nFix: Change line 144 from:\n  raw = cbor2.loads(data)\nto:\n  raw = cbor2.loads(data, allow_duplicate_keys=False)\n\nThis will cause cbor2 to raise CBORDecodeError for duplicate keys, which will be caught and re-raised as ValueError.",
   "notes": "Commit: 7ab73a53b\nunpack() now passes allow_duplicate_keys=False to cbor2.loads(). Rejects duplicate map keys per RFC 8428 §4.5 (raises via caught CBORDecodeError). Consistent with pack(). P2 fixed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lug0.2.2",
   "title": "Refactor mesh_to_mesh in lichen-gateway/src/gateway.rs to use lichen_rpl::routing::SourceRoutingHeader::write_to instead of add_rpl_source_route",
   "description": "Switch from manual stack::add_rpl_source_route to the structured SourceRoutingHeader from lichen-rpl for consistency with C impl and spec. Update buffer handling and SCHC recompression after insertion.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

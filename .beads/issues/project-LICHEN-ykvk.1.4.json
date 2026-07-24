@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ykvk.1.4",
   "title": "codereview: P1 unchecked oscore_init() return value in deaddrop_register",
   "description": "oscore_init can fail; must check return and propagate error per init graph in AGENTS.md. discovered-from project-LICHEN-ykvk.1",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T15:13:34.382624546Z",

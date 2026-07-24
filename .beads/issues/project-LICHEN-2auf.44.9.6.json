@@ -3,7 +3,7 @@
   "title": "Align Transit E-flag semantics",
   "description": "Resolve C/Python/Rust Transit Information E-flag and Parent Address inconsistency, correct contradictory DAO vectors, and assert decoded fields rather than only option types.",
   "acceptance_criteria": "All implementations encode and parse the same E/Parent contract; corrected independent vectors and field-level tests pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

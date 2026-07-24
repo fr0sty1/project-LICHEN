@@ -3,7 +3,7 @@
   "title": "Integrate RAK2287 LoRa HAT driver in mesh-gateway",
   "description": "Add support for RAK2287 (SX1302 based) SPI interface in rust/mesh-gateway for Linux border router. Include packet forwarder or direct LoRa PHY integration with the existing lora-phy abstraction. Test with real HAT on RPi.",
   "notes": "Commit: 55c464d46",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

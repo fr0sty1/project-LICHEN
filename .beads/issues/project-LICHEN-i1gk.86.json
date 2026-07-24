@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.86",
   "title": "[lichen_l2.c:276-284] SECURITY: Replay table accepts windows before peer authentication",
   "description": "Security finding: The comment at lines 276-284 explicitly documents this vulnerability:\n\n'Currently, signature verification is not yet implemented (peer_pubkey=NULL), so this table will accept windows for any source.'\n\nAttack scenario (from replay.h:100-120):\n1. Attacker sends N+1 frames with spoofed EUI-64 addresses\n2. Each spoofed frame evicts the LRU entry from replay_table\n3. All legitimate peer windows are evicted\n4. Attacker can now replay previously-captured legitimate frames\n\nCurrent state: This attack is NOT currently exploitable because peer_table is empty - all frames fail signature verification before replay windows are allocated.\n\nHowever, when peers ARE provisioned, replay_get() is called in lichen_link_rx() BEFORE signature verification completes in peer_try_all_pubkeys(). The replay window is allocated for src_eui64 derived from frame parsing, not from authenticated sender.\n\nImpact: P2 - requires specific conditions but enables replay attacks against authenticated peers.\n\nMitigation:\n1. Move replay_get() call AFTER signature verification succeeds\n2. Or: only allocate replay windows for peers in peer_table (known EUI-64s)\n3. Add rate limiting for replay table modifications from unknown sources",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

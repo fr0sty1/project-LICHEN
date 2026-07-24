@@ -1,7 +1,7 @@
 //! LICHEN link layer: signed frame TX/RX with TOFU peer management.
 
 use core::marker::PhantomData;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::vec::Vec;
 
 #[cfg(feature = "log")]
@@ -326,6 +326,8 @@ pub struct LinkLayer {
     pinned: HashMap<[u8; 8], PinnedKey>,
     access_counter: u64,
     max_peers: usize,
+    verify_cache: VecDeque<(PublicKey, [u8; 8])>,
+    max_cache: usize,
 }
 
 impl std::fmt::Debug for LinkLayer {
@@ -348,6 +350,8 @@ impl LinkLayer {
             pinned: HashMap::new(),
             access_counter: 0,
             max_peers: 32,
+            verify_cache: VecDeque::new(),
+            max_cache: 16,
         }
     }
 
@@ -385,6 +389,7 @@ impl LinkLayer {
     pub fn remove_peer(&mut self, iid: &[u8; 8]) {
         if let Some(tracked) = self.peers.remove(iid) {
             self.replay.reset_peer(&tracked.identity.pubkey);
+            self.evict_cache_by_iid(iid);
         }
         self.pinned.remove(iid);
     }
@@ -395,24 +400,12 @@ impl LinkLayer {
         let pinned_key = self.pinned.remove(iid);
         if let Some(key) = peer_key {
             self.replay.reset_peer(&key);
+            self.evict_cache_by_pubkey(&key);
         }
         if let Some(key) = pinned_key {
             if Some(key) != peer_key {
                 self.replay.reset_peer(&key);
-            }
-        }
-    }
-
-    /// Atomically remove a peer's configured key, pin, and replay window.
-    pub fn forget_peer(&mut self, iid: &[u8; 8]) {
-        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
-        let pinned_key = self.pinned.remove(iid);
-        if let Some(key) = peer_key {
-            self.replay.reset_peer(&key);
-        }
-        if let Some(key) = pinned_key {
-            if Some(key) != peer_key {
-                self.replay.reset_peer(&key);
+                self.evict_cache_by_pubkey(&key);
             }
         }
     }
@@ -432,11 +425,20 @@ impl LinkLayer {
                 if let Some(tracked) = self.peers.remove(&iid) {
                     self.replay.reset_peer(&tracked.identity.pubkey);
                     self.pinned.remove(&iid);
+                    self.evict_cache_by_pubkey(&tracked.identity.pubkey);
                 }
             } else {
                 break;
             }
         }
+    }
+
+    fn evict_cache_by_iid(&mut self, iid: &[u8; 8]) {
+        self.verify_cache.retain(|(_, cached_iid)| cached_iid != iid);
+    }
+
+    fn evict_cache_by_pubkey(&mut self, pubkey: &PublicKey) {
+        self.verify_cache.retain(|(pk, _)| pk != pubkey);
     }
 
     /// Serialise a signed frame into `out`. Returns bytes written.
@@ -528,11 +530,15 @@ impl LinkLayer {
         let inner_payload = frame.payload;
         let frame_length = 4 + frame.dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
 
-        // O(n) scan — try every known peer
-        let Some(sender) = self
-            .peers
-            .values()
-            .find(|p| {
+        // Try the LRU verify cache first (O(cache_size), typical hit for bursty traffic).
+        let sender = self
+            .verify_cache
+            .iter()
+            .find_map(|(pubkey, iid)| {
+                let tracked = self.peers.get(iid)?;
+                if tracked.identity.pubkey != *pubkey {
+                    return None;
+                }
                 schnorr::verify_frame(
                     frame_length as u8,
                     frame.llsec_byte(),
@@ -541,11 +547,28 @@ impl LinkLayer {
                     frame.dst_addr,
                     frame.payload,
                     frame.mic,
-                    &p.identity.pubkey,
+                    pubkey,
                 )
+                .then(|| tracked.identity.clone())
             })
-            .map(|p| p.identity.clone())
-        else {
+            .or_else(|| {
+                // Cache miss — O(n) scan over all known peers
+                self.peers.values().find_map(|p| {
+                    schnorr::verify_frame(
+                        frame_length as u8,
+                        frame.llsec_byte(),
+                        frame.epoch,
+                        frame.seqnum,
+                        frame.dst_addr,
+                        frame.payload,
+                        frame.mic,
+                        &p.identity.pubkey,
+                    )
+                    .then(|| p.identity.clone())
+                })
+            });
+
+        let Some(sender) = sender else {
             #[cfg(feature = "log")]
             debug!("link_layer: frame from unknown sender");
             return Err(LinkRxError::UnknownSender);
@@ -599,10 +622,25 @@ impl LinkLayer {
             return Err(LinkRxError::KeyChange);
         }
 
+        // Promote sender to front of verify LRU cache.
+        self.cache_verify_hit(sender.pubkey, sender.iid);
+
         Ok(AuthenticatedFrame {
             payload: inner_payload.to_vec(),
             sender,
         })
+    }
+
+    /// Record a successful verification in the LRU cache.
+    fn cache_verify_hit(&mut self, pubkey: PublicKey, iid: [u8; 8]) {
+        // Remove stale entry for this pubkey, if present.
+        if let Some(pos) = self.verify_cache.iter().position(|(pk, _)| *pk == pubkey) {
+            self.verify_cache.remove(pos);
+        }
+        self.verify_cache.push_front((pubkey, iid));
+        while self.verify_cache.len() > self.max_cache {
+            self.verify_cache.pop_back();
+        }
     }
 }
 

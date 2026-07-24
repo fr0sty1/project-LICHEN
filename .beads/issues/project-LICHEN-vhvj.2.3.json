@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.2.3",
   "title": "Update node.py and rx/tx channel selection to integrate synchronized_hop_channel",
   "description": "In lichen/sim/node.py and simulation.py, update tx/rx methods, SimNode state, and channel selection logic to use hop_schedule derived synchronized_hop_channel for CCP-12 rendezvous. Remove or update current_channel usage where it conflicts. Follow no-dead-code rule.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

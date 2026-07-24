@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jqdq",
   "title": "[codereview-pass1] coap_server.h: lichen_coap_respond declaration missing #include \u003clichen/oscore.h\u003e for struct oscore_ctx; forward declare or include",
   "notes": "3 complete codereview passes performed (findings g52i P1, 8tjp P2, 24fp P3). All addressed with includes for coap/socket + forward for oscore_ctx. No P0/P1 remain. Convergence achieved.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

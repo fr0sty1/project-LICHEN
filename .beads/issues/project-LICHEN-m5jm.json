@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m5jm",
   "title": "Implement DTN CoAP resources, hash-based channel selection, and coordination test vectors",
   "description": "Create coap_dtn.h following init graph; implement hash channel algo in Rust+Python+spec consistency; add negotiation test vectors with cross-validation. File children for complex algo. 3 codereview passes per edit to header/CMake/Rust/Python/vectors. No dead code. Run all tests and builds. Follow C naming, no comments.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

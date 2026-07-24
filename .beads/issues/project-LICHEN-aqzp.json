@@ -2,7 +2,7 @@
   "id": "project-LICHEN-aqzp",
   "title": "codereview pass 3/3: AnnounceMessage docstring update for current_channel verified. No P0-P2 findings after 3 passes. Only P3/P4 style opinions filed.",
   "description": "Completed 3 codereview passes on python/src/lichen/announce/messages.py docstring update for current_channel field. All findings are opinion/P3+ (style consistency). Convergence achieved per review guidelines. No correctness bugs found. Related to project-LICHEN-hjo8.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T17:26:27.575313098Z",

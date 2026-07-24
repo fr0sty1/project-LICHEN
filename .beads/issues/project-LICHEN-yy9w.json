@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yy9w",
   "title": "SimRadio operations accept negative timeout_ms without early validation",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 184, 246\n\n**Issue:** The receive() and cad() methods accept `timeout_ms: int` but do not validate that it is non-negative:\n\n```python\nasync def receive(self, timeout_ms: int) -\u003e tuple[bytes, int, int] | None:\n    ...\n    timeout_us = timeout_ms * 1000  # Negative becomes more negative\n    msg = encode_rx_enter(timeout_us)  # Fails in protocol encoder\n\nasync def cad(self, timeout_ms: int) -\u003e bool:\n    ...\n    msg = encode_cad(timeout_ms)  # Fails in protocol encoder\n```\n\n**Impact:**\n1. For receive(): A negative `timeout_ms` multiplied by 1000 produces a large negative number, which then fails in `encode_rx_enter()` with a confusing error message about uint32 range\n2. For cad(): A negative value fails in `encode_cad()` with an error that doesn't clearly indicate the caller passed an invalid timeout\n3. The user-facing error message is \"ProtocolError: timeout_us must be in range 0..4294967295\" instead of \"timeout_ms must be non-negative\"\n\n**Fix:** Add early validation in receive() and cad():\n```python\nif timeout_ms \u003c 0:\n    raise ValueError(\"timeout_ms must be non-negative\")\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

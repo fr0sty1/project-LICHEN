@@ -3,7 +3,7 @@
   "title": "try_reset from Stopped state can panic in begin_interval",
   "description": "File: rust/lichen-rpl/src/trickle.rs\nLines: 175-185\n\nThe try_reset() method can be called from Stopped state, but begin_interval() expects to transition TO WaitingTransmit:\n```rust\npub fn try_reset(\u0026mut self, now: u32, rand_offset: u32) -\u003e Result\u003c(), InvalidTrickleTransition\u003e {\n    if self.interval != self.imin {\n        self.interval = self.imin;\n        self.begin_interval(now, rand_offset)?;  // May fail\n    }\n    Ok(())\n}\n```\n\nLooking at the state machine:\n- Stopped -\u003e WaitingTransmit is allowed (line 30)\n\nSo this actually works. However, the issue is that reset() (non-try version at line 171-172) silently ignores the error:\n```rust\npub fn reset(\u0026mut self, now: u32, rand_offset: u32) {\n    let _ = self.try_reset(now, rand_offset);\n}\n```\n\nIf try_reset is called when the timer is in an unexpected state (e.g., due to a bug or race condition in the caller), the error would be silently swallowed.\n\nSeverity: P3 - The state machine actually allows the transition, but the silent error suppression pattern is risky.\n\nFix: Consider logging or asserting in non-try versions, or removing them entirely and requiring callers to handle errors.",
   "notes": "Commit: 2b512958e - explicit Stopped handling + test in trickle.rs",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

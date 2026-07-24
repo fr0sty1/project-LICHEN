@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.34",
   "title": "[lichen_l2.c:432-444] peer_find_oldest_locked returns -1 on empty table but caller checks slot \u003c 0",
   "description": "peer_find_oldest_locked() returns -1 if no active peer is found. The caller at line 621 checks 'if (slot \u003c 0)' which catches this. However, if peer_table has all entries with active=false, oldest_idx stays -1 and the function returns -1. But the caller then logs 'Peer table inconsistent: full but no eviction candidate'. This message is misleading - it's not inconsistent, the table is simply empty. The code path to line 620 only happens when slot \u003c 0 after the empty-slot search (lines 605-610) fails, meaning all entries are active. But then peer_find_oldest_locked should find one. The error message is correct but confusing.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

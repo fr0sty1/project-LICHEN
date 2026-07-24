@@ -3,7 +3,7 @@
   "title": "Run RPL security regression gates",
   "description": "Preserve external canonical vectors, prior production fixes, and full-path tests; run all requested formatting, focused suites, strict scoped Clippy, and diff checks after child fixes.",
   "acceptance_criteria": "cargo fmt runs; lichen-link, lichen-ipv6, lichen-rpl, and lichen-node focused/full tests pass as applicable; strict scoped Clippy and git diff --check pass; no unrelated edits or commit.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

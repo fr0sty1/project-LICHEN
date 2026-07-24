@@ -3,7 +3,7 @@
   "title": "Capture nRF USBD register trace",
   "description": "Capture all nRF52840 USBD MMIO reads/writes, tasks, events, interrupts, and Zephyr driver call context leading to repeated EVENTCAUSE polling in the RAK4631 bridge. Compare against Nordic register semantics and the firmware configuration.",
   "acceptance_criteria": "Retained ordered register trace and driver call context identify the minimum missing USBD behavior needed for forward progress; include exact ELF/source hashes and a model implementation checklist.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

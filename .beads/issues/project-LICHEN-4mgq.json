@@ -3,7 +3,7 @@
   "title": "coap_config.c: double/float conversion may lose precision",
   "description": "File: lichen/subsys/lichen/coap/coap_config.c\nLines: 306, 371-375\n\nFrequency is converted via floating point:\n```c\n// Encoding\ndouble freq_mhz = (double)config-\u003efreq_khz / 1000.0;\n\n// Decoding\nif (!zcbor_float64_decode(state, \u0026val) || val \u003c= 0) {\n    ...\n}\nconfig-\u003efreq_khz = (uint32_t)(val * 1000.0 + 0.5);\n```\n\nPotential issues:\n1. IEEE 754 double precision can represent all 32-bit integers exactly, so freq_khz-\u003edouble is lossless\n2. However, val * 1000.0 may introduce floating-point error\n3. The +0.5 is for rounding, but for very large frequencies near UINT32_MAX, this could cause overflow\n\nFor freq_khz near 4,294,967 kHz (4.294 GHz), val would be ~4294.967 MHz. val * 1000.0 = 4294967.0 + rounding error. Adding 0.5 and casting to uint32_t should be fine, but edge cases near UINT32_MAX could overflow.\n\nShould clamp the result before casting.\n\nCategory: CORRECTNESS - floating point precision",
   "notes": "Fixed by adding upper bound check on decoded freq_mhz to prevent uint32_t overflow in kHz conversion. Only touched coap_config.c per scope.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

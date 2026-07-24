@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0j81",
   "title": "CoAP client does not validate response token",
   "description": "File: rust/lichen-coap/src/client.rs:134-161\n\nThe decode() function extracts the token from responses (line 141: tkl) but never compares it to the request token. RFC 7252 Section 5.3.1 states clients MUST match responses by token.\n\nCurrent code:\n    let tkl = (data[0] \u0026 0x0f) as usize;\n    // ... tkl used only for parsing, never validated against request token\n\nImpact (SECURITY): An attacker on the local network could inject spoofed CoAP responses with arbitrary tokens, and the client would accept them as valid responses. This enables:\n- Data injection attacks (fake sensor readings, configuration changes)\n- Denial of service (causing client to process fake responses)\n- Protocol confusion\n\nCombined with the fixed 'LICH' token (see related issue), the attacker knows exactly what token to use.\n\nFix: Store the request token and verify the response token matches before processing.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

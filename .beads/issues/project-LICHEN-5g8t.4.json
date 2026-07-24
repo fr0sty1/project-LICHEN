@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5g8t.4",
   "title": "Local RF health metrics",
   "description": "Track per-neighbor: RSSI, SNR, packet success rate, last heard timestamp. Track local: noise floor, channel busy %, RX errors by type. Expose via API for routing hints and TUI. Software-only: stats accumulation.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

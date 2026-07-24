@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.34",
   "title": "lichen_make_ula only checks first byte of prefix",
   "description": "ipv6_addr.c:116: lichen_make_ula() checks 'prefix[0] != 0xfd'.\n\nULA range is fd00::/8, meaning the first byte must be exactly 0xfd. This check is correct.\n\nHowever, the function name and doc say it 'Combines a fd00::/8 prefix with the IID'. The check only validates the first byte. A malformed prefix like fd00:ffff:ffff:ffff with the wrong bits in bytes 1-7 would pass.\n\nActually, bytes 1-7 are the L+Global ID per RFC 4193 - they can be any value. The check is correct.\n\nCancel - not a bug.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

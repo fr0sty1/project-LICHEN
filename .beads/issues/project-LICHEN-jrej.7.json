@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jrej.7",
   "title": "Gateway: APRS-IS translation",
   "description": "Translate APRS-IS ASCII to/from mesh format. Incoming: parse position/status sentences to internal format. Outgoing: format for APRS-IS TCP or AX.25 RF bridge. Software-only gateway logic.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

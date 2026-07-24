@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-blmv",
   "title": "codereview-pass1: coap_dtn.c POST does not call coap_oscore_unprotect_request or parse payload with SenML",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T15:14:41.113437336Z",

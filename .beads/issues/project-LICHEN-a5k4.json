@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-a5k4",
   "title": "Codereview pass 2: ensure C lichen_eui_from_ed25519 produces identical 8-byte IID",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:20:12.234416497Z",

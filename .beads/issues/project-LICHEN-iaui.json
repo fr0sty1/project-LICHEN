@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iaui",
   "title": "[security] Key material exposure in oscore_ctx, link_ctx, EDHOC structs (P0)",
   "description": "oscore.h:206-234 exposes master_secret/sender_key/recipient_key in public struct (not opaque). link_ctx.c holds ed25519_sk/live keys with incomplete wipe on all error paths. EDHOC contexts hold ed_seed long-term. Many memcpy without guaranteed secure zero on all paths; relies on caller calling wipe(). No mlock/secure mem. Stack buffers wiped on some but not all early returns. Dev stubs log insecure keys. Matches \"key handling\" and \"incomplete zeroing\". discovered-from:project-LICHEN-lw4f",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

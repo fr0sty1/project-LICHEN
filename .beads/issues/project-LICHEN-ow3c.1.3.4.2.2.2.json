@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.4.2.2.2",
   "title": "Update success path after oscore_option_build to handle oscore_ctx_persist_ssn() with NVM failure goto",
   "description": "After *oscore_opt_len set at ~1520, replace or adjust the persist_ssn call to: ret = oscore_ctx_persist_ssn(ctx); if (ret == OSCORE_ERR_NVM_FAILED) goto nvm_failed; else ret = OSCORE_OK;. Ensure only on full success path. Update per bead project-LICHEN-ow3c.1.3.4.2.2 and oscore.c:1515-1523.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

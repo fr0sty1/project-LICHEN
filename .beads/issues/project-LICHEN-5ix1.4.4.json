@@ -3,7 +3,7 @@
   "title": "Trace RAK4631 puck startup stall",
   "description": "Instrument canonical RAK4631 puck execution after LICHEN puck starting through the missing CoAP GET /status. Capture service initialization, work queues/timers, thread states, USB/BLE dependencies, and simulator transmissions.",
   "acceptance_criteria": "Trace identifies the first missing/blocked initialization step and owning function or a discriminating model-versus-firmware experiment; retain commands, hashes, UART/Renode logs, and transmission timeline.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

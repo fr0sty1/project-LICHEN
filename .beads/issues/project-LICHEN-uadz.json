@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uadz",
   "title": "[codereview-pass3-security] gateway.rs is_local_mesh: routes check is coarse; no RPL DAO integration for full DODAG knowledge. P3 robustness. Convergence after addressing. Tagged codereview",
   "notes": "Commit: c9aae4fa3",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

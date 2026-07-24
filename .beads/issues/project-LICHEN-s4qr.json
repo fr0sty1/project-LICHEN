@@ -3,7 +3,7 @@
   "title": "advance_source_route mutates SRH before validation",
   "description": "File: python/src/lichen/rpl/routing.py:166-174\n\nThe advance_source_route() function creates an SRH from the packet, validates segments_left, but then mutates segments_left before creating the new extension header. This is fine, but the validation check at lines 171-172 could be bypassed if from_extension_header throws during parsing.\n\nMore importantly, the function mutates the srh object:\n```python\nsrh = SourceRoutingHeader.from_extension_header(packet.extension_headers[idx])\nif srh.segments_left == 0:\n    return packet, None\n\ni = len(srh.addresses) - srh.segments_left\nif not 0 \u003c= i \u003c len(srh.addresses):\n    raise RoutingError(\"segments_left inconsistent with address list\")\nnext_hop = srh.addresses[i]\nsrh.segments_left -= 1  # Mutation here\n```\n\nWhile this doesn't affect the original packet (srh is a new object), it's not immediately obvious. The code would be clearer if it explicitly created a new SRH:\n\n```python\nnew_srh = SourceRoutingHeader(\n    segments_left=srh.segments_left - 1,\n    addresses=srh.addresses\n)\n```\n\nThis is more of a code clarity issue than a bug, but the mutation pattern could cause issues if the code is modified later.",
   "notes": "Commit: bb98979",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

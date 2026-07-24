@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i745",
   "title": "codereview-pass1: missing DAO processing in lichend RX path",
   "description": "forward_mesh_to_upstream and run_serial do not detect RPL DAO (ICMP type 155) or call gw.process_dao(). DAOs from mesh never update RoutingTable. discovered-from:project-LICHEN-f05s",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:48:28.751613773Z",

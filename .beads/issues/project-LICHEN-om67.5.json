@@ -2,7 +2,7 @@
   "id": "project-LICHEN-om67.5",
   "title": "Rust/Zephyr: Missing DTN store-and-forward (spec 9.8)",
   "description": "Python Router has DTN buffer management (dtn_buffer_message, dtn_retrieve_for, dtn_expire_old) with byte-level accounting. Neither Rust nor Zephyr implement DTN. Reference: python/src/lichen/routing/router.py DtnMessage class",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

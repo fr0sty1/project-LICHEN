@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9e1f",
   "title": "[codereview-pass1-correctness] coap_dtn.c missing coap_respond helper and full CBOR parse for recipient IID in deaddrop_post; s_last_confession unused in rate limit",
   "description": "Logical chunk 1 edit introduced compile issues and incomplete semantic fix for destination_iid parse per spec 18.9. Uses placeholder. Zephyr build will fail. Also add confessions_post with rate limit using s_last_confession under mutex. discovered-from:project-LICHEN-95a1",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

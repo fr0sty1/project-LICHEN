@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cvuq",
   "title": "[codereview-P1] TOC cross-ref to CCP-14 but no matching section in 02a-coordinated-capacity.md",
   "description": "spec/README.md:39 now references CCP-14 vectors and draft-lichen-ccp but 02a TOC and content starts at CCP-15 with no CCP-14 section or Implementation Status update. Scope update from parent bead not fully propagated to TOC. Must add dedicated CCP-14 section referencing new vectors in test/vectors/ccp15.json (or ccp14 if exists), update Appendix A, add Implementation Status section before Appendix. Reference  if created. Tag codereview. Discovered-from:project-LICHEN-nnsr",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T16:38:27.794313165Z",

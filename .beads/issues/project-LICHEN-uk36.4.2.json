@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.4.2",
   "title": "Fix OSCORE context export and transcript binding in lichen-oscore to match Python reference",
   "description": "Ensure exported OSCORE context (master secret, salt, etc.) and transcript hash binding match python edhoc.py exactly. Fix any derivation order or CBOR encoding differences.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

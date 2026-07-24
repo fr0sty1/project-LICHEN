@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5ku5",
   "title": "Make C TX queue reads thread-safe",
   "description": "tx_queue_count, tx_queue_empty, and tx_queue_stats_get read shared queue state without locking despite the thread-safe API contract; POSIX mutations can race and cause undefined behavior. Also audit and propagate pthread_mutex_init/destroy failures. Redesign const/read API locking without unsafe casts, add concurrent host tests and sanitizer/thread-sanitizer validation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

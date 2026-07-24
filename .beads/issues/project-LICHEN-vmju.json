@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vmju",
   "title": "[codereview-pass3-2] coap_status.c map_count calculation and CBOR validation",
   "description": "lichen/subsys/lichen/coap/coap_status.c:240-260 - Fixed map_count to account for 9 base fields (including 4 capacity per CCP-17) + batteries. Added early txq/fwd capacity validation before any CBOR writes to prevent partial buffers. Updated bounds to use function's new UINT8_MAX guard. Pass 2/3 complete. No comments added.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:10:31.71683653Z",

@@ -3,7 +3,7 @@
   "title": "to_dict() exposes mutable internal errors list by reference",
   "description": "## Location\npython/src/lichen/sim/metrics.py:85\n\n## Description\nThe to_dict() method returns self.errors directly without copying, while sets are safely converted via sorted(). If a caller modifies the returned dictionary's 'errors' entry (e.g., d['errors'].append('x') or d['errors'].clear()), it mutates the NodeMetrics' internal state, violating encapsulation.\n\n## Failure Scenario\nCaller does `d = node.metrics.to_dict(); d['errors'].clear()` to sanitize output before logging. This silently clears all errors from the live NodeMetrics instance, corrupting future diagnostics.\n\n## Category\ncorrectness",
   "notes": "to_dict now uses list(self.errors) copy instead of direct reference. Mutation issue fixed. Ruff, mypy, and relevant pytest pass. Commit: 9cb7a70ba",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

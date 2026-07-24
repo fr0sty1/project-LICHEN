@@ -3,7 +3,7 @@
   "title": "websocket.py: no validation of subscription event names",
   "description": "File: python/src/lichen/sim/websocket.py\nLines: 409-415\n\nhandle_websocket 'subscribe' command does not validate that event names are strings:\n\n    events = data.get('events', [])\n    if isinstance(events, list):\n        client.subscriptions.update(events)\n\nA client could send {\"cmd\": \"subscribe\", \"events\": [1, null, {}]} and add non-string items to the subscription set. Since is_subscribed() checks 'event_type in self.subscriptions' where event_type is always a string, the subscription would silently fail to match anything.\n\nFix: Validate that all items in events list are strings before adding.\n\nImpact: Minor - malicious clients can break their own subscriptions; no security impact.",
   "notes": "Fixed in commit f76a1e1 (validate subscription events are strings). No further changes needed.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

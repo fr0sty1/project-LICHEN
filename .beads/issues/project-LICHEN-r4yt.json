@@ -3,7 +3,7 @@
   "title": "[merge-conflict] worker8: gradient.rs",
   "description": "Resolve merge conflict in rust/lichen-node/src/gradient.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Commit: d3198a62b",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

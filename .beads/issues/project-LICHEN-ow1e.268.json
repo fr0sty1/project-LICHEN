@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.268",
   "title": "[CR] link_layer.rs: doc comment warns about O(n) signature verification but no mitigation",
   "description": "File: rust/lichen-link/src/link_layer.rs:232-237\n\nThe doc comment correctly warns:\n    /// Since frames do not include the sender IID, RX must scan peers to find\n    /// whose public key verifies the signature. Worst-case is O(n) Schnorr\n    /// verifications where n = peer count. Keep peer count low (e.g., \u003c20 direct\n    /// neighbors) or implement sender IID hints in upper layers for larger networks.\n\nThis is good documentation but the code doesn't enforce the \u003c20 limit or provide any runtime warning when peer count gets high.\n\nSuggestion: Add a compile-time or runtime check that warns when peer count exceeds a threshold (e.g., 20).",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

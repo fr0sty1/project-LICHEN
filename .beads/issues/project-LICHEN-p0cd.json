@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p0cd",
   "title": "[codereview1] header update misses encode_status_cbor capacity encoding and map_count update",
   "description": "After struct update in coap_status.h, the encode_status_cbor in coap_status.c still uses old map_count=4+optionals and does not encode txq/fwd fields or perform capacity check. Must fix to use fixed 8 or updated count and add encoding for new fields. Zephyr style requires no non-SPDX comments which was done in header but c file still has many.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

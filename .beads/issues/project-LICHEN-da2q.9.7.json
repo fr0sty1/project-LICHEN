@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.9.7",
   "title": "CCP-9: Rendezvous support in Zephyr lichen/subsys/lichen",
   "description": "Extend lichen_link_ctx with peer_rx_channel map or array. Update lora_l2.c announce handler and TX path to use announced channel when available (fallback to select_channel(now())). Update Kconfig. Ensure init order per subsystem graph. 3 codereview passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T17:10:59.802113514Z",

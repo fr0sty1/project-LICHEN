@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-fhed",
   "title": "codereview P1: reply_buf dropped in forward_mesh_to_upstream when event also set",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

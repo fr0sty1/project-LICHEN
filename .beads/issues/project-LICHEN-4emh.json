@@ -3,7 +3,7 @@
   "title": "[codereview-pass2] Security: CCP16 Kconfig select for SCHC",
   "description": "lichen/subsys/lichen/link/Kconfig:117 - Good addition of select LICHEN_SCHC ensures compressed control messages for density metrics can't be disabled independently. No crypto bypass possible. Pass 2/3 correctness verified, no missing selects found in TDMA block. No fabrication.",
   "notes": "Completed 3 full /codereview passes (Correctness, Security, Robustness). Findings filed as project-LICHEN-m3a0 (P4 style), project-LICHEN-jbrr (P3 security note). No P0 or P1 issues found in Kconfig select for SCHC under CCP16 - the select correctly prevents independent disabling of compression for control traffic. TDMA block has no missing selects. Subagents used for parallel grep/read on link/schc/rpl Kconfigs and security sections. All per mandatory instructions. Ready to close after verification.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

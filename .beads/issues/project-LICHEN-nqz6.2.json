@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nqz6.2",
   "title": "Update routing logic in spec/05-routing.md for link-local + Yggdrasil only",
   "description": "Revise routing decisions: for 02xx destinations check local mesh first then fall back to Yggdrasil routing. Remove all ULA and GUA specific routing rules, update tables, examples, and any DODAG/DAO logic that assumed ULA prefixes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

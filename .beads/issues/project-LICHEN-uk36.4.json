@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.4",
   "title": "Align lichen-oscore EDHOC with Python reference and test vectors; update tests",
   "description": "Ensure Rust EDHOC produces identical outputs to python/src/lichen/crypto/edhoc.py for all test vectors in test/vectors/. Fix OSCORE context export, PRK derivation, transcript binding. Add interop test if missing.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

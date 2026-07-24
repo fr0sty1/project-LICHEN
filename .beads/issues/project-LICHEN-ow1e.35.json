@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.35",
   "title": "oscore: compute_nonce() layout comment is correct but hard to verify",
   "description": "In lib.rs:555-593, compute_nonce() has a detailed ASCII-art comment showing the 13-byte nonce layout. However, the code uses magic indices (0, 8-sender_id.len(), NONCE_LEN-piv.len()) that require mental math to verify against the diagram. Consider using named constants like SENDER_ID_END=8, PIV_START=8.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

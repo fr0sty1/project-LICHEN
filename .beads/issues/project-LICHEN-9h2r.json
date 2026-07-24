@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9h2r",
   "title": "[policy] Replay protection compliance",
   "description": "Policy: spec/02-physical-link.md §4.4. MUST: (1) Epoch advances on reboot, (2) Epoch init random [128,255] without persistence, (3) Receivers reject epoch \u003c LastEpoch, (4) SeqNum window for out-of-order. When executing: grep for epoch/seqnum handling in all implementations, create compliance bead per code section.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

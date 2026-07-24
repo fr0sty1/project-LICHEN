@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] Kconfig addition for LICHEN_CCP_TIME_SYNC",
   "description": "Chunk 1 Kconfig: dependency on LICHEN_GNSS only for T1000_E may not cover other boards with GNSS. Consider select LICHEN_GNSS if any GNSS driver enabled. file:lichen/subsys/lichen/link/Kconfig:108",
   "notes": "Commit: b6f00224e",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

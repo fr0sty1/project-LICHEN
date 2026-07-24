@@ -4,7 +4,7 @@
   "description": "Add integration tests, Renode simulation if possible, interop with node-side LICHEN, packet capture validation. Update CI for gateway board.",
   "notes": "Commit: d45ef884a",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

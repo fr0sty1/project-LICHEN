@@ -3,7 +3,7 @@
   "title": "ForwardingBuffer: evicted packets not counted in statistics",
   "description": "File: python/src/lichen/routing/router.py:211-219\n\nWhen a source is evicted to make room for a new one, the evicted packets are not counted:\n\n```python\nif len(self._buffer) \u003e= self.max_sources:\n    # Evict oldest source (LRU)\n    oldest_iid = self._source_order.pop(0)\n    evicted_count = len(self._buffer.pop(oldest_iid))\n    logger.debug(\"...evicting source %s (%d packets)\", ...)\n    result = ForwardingResult.EVICTED\n    # NOTE: evicted_count is calculated but never added to any statistic!\n```\n\nThe class tracks packets_accepted, packets_backpressure, and packets_expired, but NOT packets_evicted.\n\nWHY IT'S A BUG:\n1. Incomplete statistics - operators cannot see how many packets were lost to eviction\n2. get_stats() returns an incomplete picture of buffer behavior\n3. evicted_count is computed but discarded - wasted computation\n\nIMPACT: Operators cannot diagnose buffer pressure issues; silent packet loss goes untracked.\n\nFIX: Add packets_evicted counter:\n```python\npackets_evicted: int = 0\n...\n# In try_buffer:\nself.packets_evicted += evicted_count\n```",
   "notes": "Commit: 53a2720 (ForwardingBuffer packets_evicted stat implemented and tested in get_stats)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

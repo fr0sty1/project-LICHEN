@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6rm1",
   "title": "codereview: human-readable addresses spec update in 04-network.md and README.md",
   "notes": "Pass 1 of 3: checked consistency with LICHEN addressing principles (pubkey-derived, stable, low collision, integrated with IID/TOFU/RPL). No major issues. Pass 2: verified Crockford Base32 definition matches standard, example format correct, collision math accurate. Pass 3: cross-refs updated, integration points with LCI/security correct. All findings addressed in edits. No new beads needed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T14:47:30.697902386Z",

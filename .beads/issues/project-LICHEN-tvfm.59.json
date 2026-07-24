@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.59",
   "title": "[lora_l2] state machine: stop() sets aborted but returns 0 (success)",
   "description": "State machine bug: lichen_lora_l2_stop() can set lora_state.aborted=1 (line 470) when the RX thread times out and is forcibly aborted, but the function still returns 0 (line 476).\n\nHow it manifests:\n1. Caller calls lichen_lora_l2_stop()\n2. RX thread doesn't exit in time, is forcibly aborted\n3. aborted flag set to 1\n4. stop() returns 0 (success)\n5. Caller thinks stop succeeded cleanly\n6. Caller tries to call start() again\n7. start() returns -ECANCELED because aborted==1\n\nThe caller has no way to know from stop()'s return value that a forced abort occurred. They must separately call lichen_lora_l2_needs_reinit() to check.\n\nLocation: lora_l2.c:418-477\n\nRecommendation: Return a distinct error code (e.g., -ECANCELED or -ETIMEDOUT) when forced abort occurs, so callers know immediately that reinit is required.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.20",
   "title": "lichen_l2_iface_init: RX callback not cleared on late init failure",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 452-470\n\nIf `lichen_l2_iface_init()` fails after registering the RX callback (line 452) but before completing initialization (failures at lines 462 or 468), the callback remains registered via `lichen_lora_l2_set_rx_callback()`.\n\nCurrent state after partial init failure:\n- `iface_init_failed` = 1\n- `link_ctx_initialized` = 1 (set at line 445)\n- `lichen_iface` = iface (set at line 449)\n- RX callback = lora_rx_callback (set at line 452)\n\nWhat breaks: While packets are correctly rejected by the check at line 380 (`atomic_get(\u0026iface_init_failed)`), the registered callback continues to run on every received packet, consuming CPU cycles to log the warning and return. More importantly, cleanup is incomplete - if a future re-initialization path is added, the stale callback state could cause subtle issues.\n\nFix: On init failure after line 452, call `lichen_lora_l2_set_rx_callback(NULL, NULL)` before returning. Consider also clearing `lichen_iface` and `link_ctx_initialized` for consistency.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

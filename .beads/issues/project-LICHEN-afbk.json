@@ -3,7 +3,7 @@
   "title": "[epic] Raspberry Pi + LoRa HAT border router",
   "description": "RPi 4/5 + RAK2287 or similar LoRa HAT as production border router. Full Linux, Ethernet, easy remote management. Power hungry (~3W) but serious deployment option. Supports: WireGuard tunnels, Prometheus metrics, SSH. $80+. Need: HAT driver integration, systemd services, deployment docs.",
   "notes": "Created sub-tasks afbk.1 (HAT driver), afbk.2 (systemd), afbk.3 (docs). Work can proceed on these.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "AI Agent",

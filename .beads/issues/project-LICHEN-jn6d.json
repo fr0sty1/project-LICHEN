@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jn6d",
   "title": "codereview pass 1 post coap_dtn edit",
   "description": "Reviewed coap_dtn.c changes for s_provider add, senml_encode_deaddrop usage in both GETs, include added. P2: s_provider not yet used in logic. P3: duplicate coap_respond still present. No P0/P1 after senml fix.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",
