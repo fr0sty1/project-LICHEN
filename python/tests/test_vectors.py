@@ -55,6 +55,7 @@ from generate import (  # noqa: E402
     ccp9_vectors,
     edhoc_vectors,
     frame_vectors,
+    hash_32,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
@@ -512,6 +513,32 @@ def test_edhoc_vectors_match_generator() -> None:
 def test_ccp9_vectors_match_generator() -> None:
     doc = _load("ccp9.json")
     assert doc["vectors"] == ccp9_vectors()
+
+
+def test_ccp_tdma_vectors_independent_oracle() -> None:
+    doc = _load("ccp_tdma.json")
+    for v in doc["vectors"]:
+        if "eui64_hex" in v:
+            eui = bytes.fromhex(v["eui64_hex"])
+            n_slots = v.get("n_slots", 8)
+            epoch = v.get("epoch", 0)
+            data = eui + epoch.to_bytes(4, "little")
+            h = hash_32(data)
+            computed = h % n_slots
+            assert computed == v["expected_slot"], f"{v['name']}: slot {computed} != {v['expected_slot']}"
+        elif "local_beacon_rx_ms" in v:
+            correction_ms = abs(v["local_beacon_rx_ms"] - v["expected_beacon_ms"])
+            assert correction_ms == v["expected_correction_ms"], f"{v['name']}: correction {correction_ms} != {v['expected_correction_ms']}"
+        elif "slot_start_ms" in v:
+                t = v["current_ms"]
+                start = v["slot_start_ms"]
+                dur = v.get("slot_duration_ms", 250)
+                g = v.get("guard_ms", 50)
+                in_guard = t < start or t > (start + dur)
+                expected_in_guard = v.get("expected_in_guard", False)
+                assert in_guard == expected_in_guard, f"{v['name']}: guard mismatch (in_guard={in_guard} != expected={expected_in_guard})"
+        else:
+            raise AssertionError(f"Unknown vector type: {v.get('name', '?')}")
 
 
 def _ccp16_cases():
