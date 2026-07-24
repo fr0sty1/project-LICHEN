@@ -40,15 +40,6 @@ use lichen_coap::option::content_format::CBOR;
 /// Maximum URI path depth.
 pub const MAX_PATH_DEPTH: usize = 4;
 
-/// Content formats.
-pub mod content_format {
-    pub const TEXT_PLAIN: u16 = 0;
-    pub const APPLICATION_LINK_FORMAT: u16 = 40;
-    pub const APPLICATION_JSON: u16 = 50;
-    pub const APPLICATION_SENML_JSON: u16 = 110;
-    pub const APPLICATION_SENML_CBOR: u16 = 112;
-}
-
 /// Handler result.
 #[derive(Debug)]
 pub struct Response {
