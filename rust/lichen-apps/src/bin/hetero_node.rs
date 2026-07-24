@@ -247,8 +247,8 @@ fn main() {
         "rx_bytes": metrics.rx_bytes,
         "unique_peers": metrics.unique_peers.len(),
         "errors": metrics.errors.len(),
-        "hashes_sent": metrics.packet_hashes_sent.len(),
-        "hashes_received": metrics.packet_hashes_received.len(),
+        "packet_hashes_sent": metrics.packet_hashes_sent.iter().map(|h| hex::encode(h)).collect::<Vec<_>>(),
+        "packet_hashes_received": metrics.packet_hashes_received.iter().map(|h| hex::encode(h)).collect::<Vec<_>>(),
     });
     println!("METRICS:{}", serde_json::to_string(&metrics_json).unwrap());
 }
