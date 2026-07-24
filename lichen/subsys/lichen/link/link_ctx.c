@@ -638,4 +638,17 @@ uint32_t lichen_hash_32(const uint8_t *data, size_t len)
 	return hash;
 }
 
+#ifdef CONFIG_LICHEN_LINK_COORDINATION
+int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
+{
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+	if (!ctx->has_key) {
+		return -ENOKEY;
+	}
+	return LICHEN_COORD_HASH_BASED;
+}
+#endif /* CONFIG_LICHEN_LINK_COORDINATION */
+
 
