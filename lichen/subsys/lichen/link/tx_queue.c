@@ -48,15 +48,6 @@ static int tx_queue_clock_gettime(clockid_t clock_id, struct timespec *ts)
 static int tx_queue_platform_now_ms(uint32_t *now_ms)
 {
 	struct timespec ts;
-	/* SECURITY: On failure, return 0 to avoid using uninitialized data.
-	 * This is safe: deadlines will appear not-yet-expired (signed wrap
-	 * math in deadline_expired()), preventing premature packet drops.
-	 * clock_gettime(CLOCK_MONOTONIC) should essentially never fail. */
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-		return 0;
-	}
-	return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
-}
 
 	if (tx_queue_clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
 		return -EIO;
