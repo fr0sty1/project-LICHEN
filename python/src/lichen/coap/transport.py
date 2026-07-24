@@ -605,7 +605,7 @@ class LichenTransport(interfaces.MessageInterface):
 
     def _on_datagram(self, data: bytes, source: str) -> None:
         try:
-            message = Message.decode(data, LichenRemote(source))
+            message = Message.decode(data, LichenRemote(source, self._local.host, owner=self))
         except (error.UnparsableMessage, IndexError, struct.error, TypeError, ValueError):
             return
         self._mm.dispatch_message(message)
