@@ -875,7 +875,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	}
 	/* volatile forces constant-time path even on error (resolves i0bj timing side-channel) */
 
-	ret = compute_th(ctx->th_3, ctx->th_2, 32, ciphertext_2, ct2_len,
+	ret = compute_th(ctx->th_3, ctx->th_2, 32, plaintext_2, ct2_len,
 			 id_cred_r.value, id_cred_r.len);
 	if (ret != 0) {
 		goto err_wipe;
@@ -1268,6 +1268,13 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	}
 	size_t pt2_len = zse_pt2->payload - plaintext_2;
 
+	/* TH_3 = H(TH_2, PLAINTEXT_2, CRED_R) per RFC 9528 Section 5.4.2 */
+	ret = compute_th(ctx->th_3, ctx->th_2, 32, plaintext_2, pt2_len,
+			 ctx->ed_pubkey, 32);
+	if (ret != 0) {
+		goto err_wipe;
+	}
+
 	/*
 	 * KEYSTREAM_2 for XOR encryption.
 	 * RFC 9528 Section 4.3: message_2 uses XOR-only encryption without MAC.
@@ -1281,12 +1288,6 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 
 	for (size_t i = 0; i < pt2_len; i++) {
 		ciphertext_2[i] = plaintext_2[i] ^ keystream_2[i];
-	}
-
-	ret = compute_th(ctx->th_3, ctx->th_2, 32, ciphertext_2, pt2_len,
-			 ctx->ed_pubkey, 32);
-	if (ret != 0) {
-		goto err_wipe;
 	}
 
 	/* Build message_2 = (G_Y || CIPHERTEXT_2, C_R) */
