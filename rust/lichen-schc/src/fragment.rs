@@ -34,7 +34,6 @@ pub enum FragmentError {
     MalformedAck,
     NonCanonicalAck,
     UnassignedBitmapBit,
-    EmptyPacket,
     InvalidReceiverLimit,
     PacketTooLarge,
     InvalidState,
@@ -54,7 +53,6 @@ impl core::fmt::Display for FragmentError {
             Self::MalformedAck => write!(f, "malformed ACK or control"),
             Self::NonCanonicalAck => write!(f, "non-canonical compressed ACK"),
             Self::UnassignedBitmapBit => write!(f, "unassigned bitmap bit is set"),
-            Self::EmptyPacket => write!(f, "empty packets cannot be fragmented"),
             Self::InvalidReceiverLimit => write!(f, "receiver limit out of range"),
             Self::PacketTooLarge => write!(f, "packet exceeds receiver reassembly limit"),
             Self::InvalidState => write!(f, "invalid fragmentation state"),
@@ -136,7 +134,7 @@ impl<'a> Fragment<'a> {
             return Err(FragmentError::InvalidFcn);
         }
         if self.is_all_1() {
-            if !(1..=TILE_SIZE).contains(&self.payload.len()) {
+            if !(0..=TILE_SIZE).contains(&self.payload.len()) {
                 return Err(FragmentError::InvalidTileLength);
             }
         } else if self.payload.len() != TILE_SIZE || self.mic != [0; MIC_LENGTH] {
@@ -412,9 +410,6 @@ impl<'a> FragmentSender<'a> {
         check_rule(rule_id)?;
         if !(1..=MAX_PACKET_SIZE).contains(&receiver_limit) {
             return Err(FragmentError::InvalidReceiverLimit);
-        }
-        if payload.is_empty() {
-            return Err(FragmentError::EmptyPacket);
         }
         if payload.len() > receiver_limit {
             return Err(FragmentError::PacketTooLarge);
