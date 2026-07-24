@@ -1598,7 +1598,7 @@ impl DaoManager {
 
     fn has_exact_origin_target(dao: &Dao, dao_bytes: &[u8], origin: Ipv6Addr) -> bool {
         let mut target = None;
-        for option in OptionIter::new(dao.options_tail(dao_bytes)) {
+        for option in OptionIter::new(Dao::options_tail(dao_bytes)) {
             let Ok(option) = option else {
                 return false;
             };
@@ -2198,6 +2198,100 @@ impl DaoManager {
         candidate.is_some_and(|key| map.remove(&key).is_some())
     }
 
+    /// Returns `true` if any target's parent chain leads back to that target.
+    fn contains_cycle(parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>) -> bool {
+        let mut visited = HashSet::new();
+        let mut in_stack = HashSet::new();
+        for &target in parent_map.keys() {
+            if !visited.contains(&target) && Self::dfs_cycle(target, parent_map, &mut visited, &mut in_stack) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn dfs_cycle(
+        node: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        visited: &mut HashSet<[u8; 16]>,
+        in_stack: &mut HashSet<[u8; 16]>,
+    ) -> bool {
+        if in_stack.contains(&node) {
+            return true;
+        }
+        if visited.contains(&node) {
+            return false;
+        }
+        visited.insert(node);
+        in_stack.insert(node);
+        if let Some(parents) = parent_map.get(&node) {
+            for &parent in parents {
+                if Self::dfs_cycle(parent, parent_map, visited, in_stack) {
+                    return true;
+                }
+            }
+        }
+        in_stack.remove(&node);
+        false
+    }
+
+    /// Rebuild the routing table from `parent_map`. Host routes are assembled from
+    /// parent → root chains. Managed prefix routes are carried forward: if the egress
+    /// (last hop of the old route path) is a node in `parent_map`, the prefix is
+    /// treated as managed — if reachable it is Fresh on the current path, otherwise
+    /// Expired. Static (non-managed) prefix routes are preserved unchanged. Returns
+    /// `None` if capacity would be exceeded.
+    fn rebuilt_routes(
+        root: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+        old_routing_table: &RoutingTable,
+        _changed_targets: &HashSet<[u8; 16]>,
+    ) -> Option<RoutingTable> {
+        let mut table = RoutingTable::new();
+        for (&target, _parents) in parent_map {
+            let path = Self::assemble_path_checked(root, parent_map, candidate_map, target)
+                .ok()??;
+            if !table.add_route(target, &path) {
+                return None;
+            }
+        }
+        for (prefix_target, entry) in &old_routing_table.routes {
+            if prefix_target.prefix_len == 128 {
+                continue;
+            }
+            if table.routes.contains_key(prefix_target) {
+                continue;
+            }
+            if table.routes.len() == MAX_ROUTES {
+                return None;
+            }
+            let egress = entry.path.last().copied();
+            let egress_in_parents = egress.is_some_and(|e| parent_map.contains_key(&e));
+            if egress_in_parents {
+                let egress = egress.unwrap();
+                let path = Self::assemble_path_checked(root, parent_map, candidate_map, egress)
+                    .ok()
+                    .flatten();
+                table.prefix_route_count += 1;
+                if let Some(p) = path {
+                    table.routes.insert(*prefix_target, RouteEntry::fresh(&p));
+                    table.rpl_managed_prefixes.insert(*prefix_target, egress);
+                } else {
+                    table.routes.insert(*prefix_target, RouteEntry::fresh(&entry.path));
+                    table.mark_prefix_expired(*prefix_target).unwrap();
+                    table.unavailable_managed_prefixes.insert(*prefix_target);
+                }
+            } else {
+                table.routes.insert(*prefix_target, entry.clone());
+                if prefix_target.prefix_len < 128 {
+                    table.prefix_route_count += 1;
+                }
+            }
+        }
+        Some(table)
+    }
+
     fn extract_updates(
         &self,
         dao: &Dao,
@@ -2206,7 +2300,7 @@ impl DaoManager {
         if dao.flags != 0 || dao_bytes.get(2).copied()? != 0 {
             return None;
         }
-        let options = dao.options_tail(dao_bytes);
+        let options = Dao::options_tail(dao_bytes);
         let mut updates = [None; MAX_DAO_UPDATES];
         let mut update_count = 0;
         let mut targets = [None; MAX_DAO_UPDATES];
@@ -3088,7 +3182,7 @@ mod tests {
         assert_eq!(dao.dodag_id, Some(dodag_id()));
 
         // Parse options
-        let options_data = dao.options_tail(&dao_bytes);
+        let options_data = Dao::options_tail(&dao_bytes);
         let mut found_target = false;
         let mut found_transit = false;
         for opt in OptionIter::new(options_data) {
@@ -3454,7 +3548,7 @@ mod tests {
         let mut mgr = DaoManager::new(ll(2), 0, dodag_id());
         let path_sequence = |wire: &[u8]| {
             let dao = Dao::from_bytes(wire).unwrap();
-            OptionIter::new(dao.options_tail(wire))
+            OptionIter::new(Dao::options_tail(wire))
                 .find_map(|option| {
                     let option = option.ok()?;
                     (option.opt_type == OPT_TRANSIT_INFO)
@@ -3485,7 +3579,7 @@ mod tests {
         let update = mgr.build_dao_with_lifetime(ll(1), 10);
         let (update_dao_sequence, update_path_sequence) = {
             let dao = Dao::from_bytes(&update).unwrap();
-            let transit = OptionIter::new(dao.options_tail(&update))
+            let transit = OptionIter::new(Dao::options_tail(&update))
                 .map(Result::unwrap)
                 .find(|option| option.opt_type == OPT_TRANSIT_INFO)
                 .map(|option| TransitInfo::from_bytes(option.data).unwrap())
@@ -3501,7 +3595,7 @@ mod tests {
 
         let exact = mgr.build_dao_copy_with_lifetime(ll(1), 10).unwrap();
         let exact_dao = Dao::from_bytes(&exact).unwrap();
-        let exact_transit = OptionIter::new(exact_dao.options_tail(&exact))
+        let exact_transit = OptionIter::new(Dao::options_tail(&exact))
             .map(Result::unwrap)
             .find(|option| option.opt_type == OPT_TRANSIT_INFO)
             .map(|option| TransitInfo::from_bytes(option.data).unwrap())
@@ -5130,7 +5224,7 @@ mod tests {
         let mut wrong_context = wire.clone();
         wrong_context[0] = 1;
         let dao = Dao::from_bytes(&wrong_context).unwrap();
-        let option_offset = wrong_context.len() - dao.options_tail(&wrong_context).len();
+        let option_offset = wrong_context.len() - Dao::options_tail(&wrong_context).len();
         wrong_context[option_offset + 1] = u8::MAX;
         assert!(matches!(
             SignatureVerifiedDao::verify_signature(
@@ -5173,7 +5267,7 @@ mod tests {
         let envelope = SignedDaoEnvelope::from_bytes(&wire).unwrap();
         let mut non_128 = envelope.unsigned_bytes.to_vec();
         let dao = Dao::from_bytes(&non_128).unwrap();
-        let target_offset = non_128.len() - dao.options_tail(&non_128).len();
+        let target_offset = non_128.len() - Dao::options_tail(&non_128).len();
         non_128[target_offset + 3] = 64;
         let digest = dao_origin_digest(origin, dodag_id(), 1, &non_128);
         let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
