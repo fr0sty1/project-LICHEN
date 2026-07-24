@@ -147,6 +147,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 							   auth_payload,
 							   auth_payload_len,
 							   parsed.mic,
+							   SCHNORR48_SIG_LEN,
 							   ctx->peer_pubkey);
 		if (verify_result == 0) {
 			LOG_WRN("Schnorr signature verification failed\n");

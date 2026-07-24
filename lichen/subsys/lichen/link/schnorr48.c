@@ -135,7 +135,7 @@ int schnorr48_sign(const uint8_t *privkey,
 
 bool schnorr48_verify(const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len,
-		      const uint8_t *sig)
+		      const uint8_t *sig, size_t sig_len)
 {
 	const uint8_t *e_received = sig;
 	const uint8_t *s = sig + 16;
@@ -143,6 +143,15 @@ bool schnorr48_verify(const uint8_t *pubkey,
 	uint8_t R_prime[32];
 	uint8_t e_hash[64];
 	crypto_sha512_ctx ctx;
+
+	/*
+	 * Validate: sig_len must be exactly SCHNORR48_SIG_LEN.
+	 * This is a defensive bounds check to prevent OOB reads even if a
+	 * caller passes an undersized buffer (e.g. from a corrupted frame).
+	 */
+	if (sig_len != SCHNORR48_SIG_LEN) {
+		return false;
+	}
 
 	/*
 	 * Validate: if msg_len > 0, msg must not be NULL.
@@ -251,12 +260,13 @@ int schnorr48_sign(const uint8_t *privkey,
 
 bool schnorr48_verify(const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len,
-		      const uint8_t *sig)
+		      const uint8_t *sig, size_t sig_len)
 {
 	(void)pubkey;
 	(void)msg;
 	(void)msg_len;
 	(void)sig;
+	(void)sig_len;
 	schnorr48_stub_abort("schnorr48_verify");
 	return false; /* unreachable, but satisfies compiler */
 }
@@ -374,9 +384,14 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
-			   const uint8_t *sig,
+			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
 {
+	/* Validate sig_len before pointer arithmetic */
+	if (sig_len != SCHNORR48_SIG_LEN) {
+		return -EINVAL;
+	}
+
 	/* Validate dst_addr_len before use */
 	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
 		return -EINVAL;
@@ -489,7 +504,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
-			   const uint8_t *sig,
+			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
 {
 	(void)length;
@@ -501,6 +516,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	(void)payload;
 	(void)payload_len;
 	(void)sig;
+	(void)sig_len;
 	(void)pubkey;
 	schnorr48_stub_abort("schnorr48_verify_frame");
 	return -EINVAL; /* unreachable, but satisfies compiler */
