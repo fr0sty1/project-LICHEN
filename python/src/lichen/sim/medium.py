@@ -21,6 +21,19 @@ from lichen.sim.propagation import (
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
 
 
+_LINEAR_EPSILON = 1e-15
+
+
+def _db_to_linear(dbm: float) -> float:
+    return 10.0 ** (dbm / 10.0)
+
+
+def _linear_to_db(linear: float) -> float:
+    if linear <= _LINEAR_EPSILON:
+        return -float("inf")
+    return 10.0 * math.log10(linear)
+
+
 @dataclass
 class RxCandidate:
     """A candidate transmission that a receiver might decode.
@@ -30,6 +43,8 @@ class RxCandidate:
         rssi: Received signal strength indicator in dBm.
         snr: Signal-to-noise ratio in dB.
         added_latency_us: Extra delivery delay in microseconds (set by LatencyRule).
+        sinr_db: Signal-to-interference-plus-noise ratio in dB. Set during
+            resolve_reception when multiple candidates present.
     """
 
     transmission: Transmission
@@ -37,6 +52,7 @@ class RxCandidate:
     snr: float
     added_latency_us: int = 0
     is_lr_fhss: bool = False
+    sinr_db: float | None = None
 
 
 class Medium:
@@ -203,14 +219,19 @@ class Medium:
     def resolve_reception(self, candidates: list[RxCandidate]) -> Transmission | None:
         """Resolve which transmission is received given collision candidates.
 
-        Supports both standard LoRa (packet-level) and LR-FHSS (fragment-level):
-        - Standard: any significant overlap without capture = total loss
-        - LR-FHSS: overlaps corrupt individual fragments only; 1/3 or 2/3 FEC
-          allows recovery of strongest signal in many cases
+        Supports both standard LoRa (packet-level) and LR-FHSS (fragment-level).
+
+        Resolution logic:
         - 0 candidates: None
         - 1 candidate: success
-        - Multiple: sort by RSSI; if strongest.is_lr_fhss then it wins (fragment
-          recovery model); else standard capture (>=6dB).
+        - Multiple: sort by RSSI descending, compute SINR for each.
+          - If strongest.is_lr_fhss: strongest wins when <= 4 contenders
+            (fragment FEC recovery model); else total loss.
+          - Standard capture: strongest wins if RSSI delta >= 6 dB
+            (capture effect). Otherwise total collision loss (both lost).
+
+        The SINR of each candidate is computed from interference contributed
+        by all other candidates and stored in candidate.sinr_db.
 
         Args:
             candidates: List of RxCandidate objects to resolve.
@@ -223,10 +244,34 @@ class Medium:
             return None
 
         if len(candidates) == 1:
+            candidates[0].sinr_db = candidates[0].snr
             return candidates[0].transmission
 
         # Sort by RSSI descending (strongest first)
         sorted_candidates = sorted(candidates, key=lambda c: c.rssi, reverse=True)
+
+        # Compute SINR for each candidate
+        for c in sorted_candidates:
+            interferers = [
+                _db_to_linear(o.rssi) for o in sorted_candidates if o is not c
+            ]
+            c.sinr_db = self.propagation.sinr(
+                # Reconstruct tx power from RSSI + path loss for SINR calc.
+                # For the SINR we use the candidate's RSSI directly as the
+                # received signal power (linear), and sum interferers.
+                tx_power_dbm=0.0,  # unused in sinr (we pass rssi via below)
+                distance_m=1.0,  # unused in sinr
+                interfering_powers_linear=interferers,
+            )
+            # Override sinr with true SINR using signal RSSI
+            signal_linear = _db_to_linear(c.rssi)
+            noise_linear = _db_to_linear(self.noise_floor_dbm)
+            total_interference = sum(interferers)
+            total_noise = noise_linear + total_interference
+            if total_noise > 0:
+                c.sinr_db = _linear_to_db(signal_linear / total_noise)
+            else:
+                c.sinr_db = float("inf")
 
         strongest = sorted_candidates[0]
         if strongest.transmission.phy_mode == "lr_fhss":

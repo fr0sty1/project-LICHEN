@@ -32,6 +32,88 @@ use crate::addr::NodeId;
 use crate::duty_cycle::WINDOW_MS;
 use heapless::Vec;
 
+/// A fixed-capacity ring buffer for u64 timestamps.
+///
+/// Provides O(1) amortized push and O(1) amortized evict-stale-by-window
+/// by tracking a logical head pointer into a pre-allocated array.  Unlike
+/// `heapless::Vec::retain()` which shifts remaining elements on every call,
+/// this ring buffer simply advances `head` past stale entries.
+///
+/// Insertion order is assumed to be chronological (callers always record
+/// timestamps in increasing order), so the ring buffer is always sorted by
+/// timestamp.  This invariant must be preserved by callers.
+struct RingBuf<const L: usize> {
+    buf: [u64; L],
+    head: usize,
+    len: usize,
+}
+
+impl<const L: usize> RingBuf<L> {
+    const fn new() -> Self {
+        Self {
+            buf: [0u64; L],
+            head: 0,
+            len: 0,
+        }
+    }
+
+    fn push(&mut self, val: u64) -> Result<(), ()> {
+        if self.len == L {
+            return Err(());
+        }
+        let idx = (self.head + self.len) % L;
+        self.buf[idx] = val;
+        self.len += 1;
+        Ok(())
+    }
+
+    /// Drop all entries with timestamp < `cutoff`.
+    ///
+    /// Because entries are inserted in chronological order, only the
+    /// leading entries (at `head`) can be stale.  We advance `head` past
+    /// them in O(stale_count) time — O(1) amortized per call when `stale_count`
+    /// is bounded by the number of expirations between calls.
+    fn drain_before(&mut self, cutoff: u64) {
+        while self.len > 0 && self.buf[self.head] < cutoff {
+            self.head = (self.head + 1) % L;
+            self.len -= 1;
+        }
+    }
+
+    /// Count entries with timestamp >= `cutoff`.
+    fn count_since(&self, cutoff: u64) -> usize {
+        let mut cnt = 0;
+        let mut pos = self.head;
+        for _ in 0..self.len {
+            if self.buf[pos] >= cutoff {
+                cnt += 1;
+            }
+            pos = (pos + 1) % L;
+        }
+        cnt
+    }
+
+}
+
+impl<const L: usize> Clone for RingBuf<L> {
+    fn clone(&self) -> Self {
+        Self {
+            buf: self.buf,
+            head: self.head,
+            len: self.len,
+        }
+    }
+}
+
+impl<const L: usize> core::fmt::Debug for RingBuf<L> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("RingBuf")
+            .field("head", &self.head)
+            .field("len", &self.len)
+            .finish()
+    }
+}
+
 /// Default packet threshold: 36 packets per hour (1% duty at ~1s airtime each).
 pub const DEFAULT_PACKET_THRESHOLD: u32 = 36;
 
@@ -41,7 +123,7 @@ pub struct NeighborTxLog<const L: usize> {
     /// The neighbor's address.
     pub addr: NodeId,
     /// Timestamps (ms) of observed packets within the rolling window.
-    timestamps: Vec<u64, L>,
+    timestamps: RingBuf<L>,
     /// Whether this neighbor has been flagged as a cheater.
     flagged: bool,
 }
@@ -51,7 +133,7 @@ impl<const L: usize> NeighborTxLog<L> {
     pub fn new(addr: NodeId) -> Self {
         Self {
             addr,
-            timestamps: Vec::new(),
+            timestamps: RingBuf::new(),
             flagged: false,
         }
     }
@@ -68,18 +150,17 @@ impl<const L: usize> NeighborTxLog<L> {
     }
 
     /// Evict timestamps outside the rolling window.
+    ///
+    /// O(1) amortized — only advances the head pointer past stale entries.
     pub fn evict_stale(&mut self, now_ms: u64) {
         let window_start = Self::window_start(now_ms);
-        self.timestamps.retain(|&ts| ts >= window_start);
+        self.timestamps.drain_before(window_start);
     }
 
     /// Count packets within the current window.
     pub fn packet_count(&self, now_ms: u64) -> usize {
         let window_start = Self::window_start(now_ms);
-        self.timestamps
-            .iter()
-            .filter(|&&ts| ts >= window_start)
-            .count()
+        self.timestamps.count_since(window_start)
     }
 
     /// Check if flagged as a cheater.

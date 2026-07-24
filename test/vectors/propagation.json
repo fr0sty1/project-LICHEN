@@ -1,0 +1,158 @@
+{
+  "format_version": 2,
+  "description": "Test vectors for LICHEN LoRa propagation model (path loss, received power, SNR, max range, link budget, and SINR). Computed from log-distance path loss formula PL(d) = PLâ + 10*n*logââ(d/dâ) at 915 MHz with PLâ=32.44 dB, dâ=1m. Independent oracle: values verified against hand calculation and Semtech SX1262 sensitivity figures per AN1200.64. Shadowing and fading are stochastic and cannot have deterministic vectors; their variance and distribution properties are verified by unit tests.",
+  "vectors": [
+    {
+      "name": "path_loss_1m_free_space",
+      "description": "Path loss at 1m reference distance (free space n=2.0). PL = 32.44 + 0 = 32.44 dB",
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.0,
+      "distance_m": 1.0,
+      "expected_path_loss_db": 32.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "path_loss_10m_free_space",
+      "description": "Path loss at 10m (free space n=2.0). PL = 32.44 + 20*log10(10) = 32.44 + 20 = 52.44 dB",
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.0,
+      "distance_m": 10.0,
+      "expected_path_loss_db": 52.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "path_loss_100m_urban",
+      "description": "Path loss at 100m (urban n=2.7). PL = 32.44 + 27*log10(100) = 32.44 + 54 = 86.44 dB",
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "distance_m": 100.0,
+      "expected_path_loss_db": 86.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "path_loss_1km_indoor",
+      "description": "Path loss at 1000m (indoor n=3.5). PL = 32.44 + 35*log10(1000) = 32.44 + 105 = 137.44 dB",
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 3.5,
+      "distance_m": 1000.0,
+      "expected_path_loss_db": 137.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "path_loss_10km_urban",
+      "description": "Path loss at 10000m (urban n=2.7). PL = 32.44 + 27*log10(10000) = 32.44 + 108 = 140.44 dB",
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "distance_m": 10000.0,
+      "expected_path_loss_db": 140.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "received_power_1m_14dbm",
+      "description": "Received power at 1m with +14 dBm TX. RX = 14 - 32.44 = -18.44 dBm",
+      "tx_power_dbm": 14.0,
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "distance_m": 1.0,
+      "expected_rx_power_dbm": -18.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "received_power_100m_14dbm",
+      "description": "Received power at 100m with +14 dBm TX (urban). RX = 14 - 86.44 = -72.44 dBm",
+      "tx_power_dbm": 14.0,
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "distance_m": 100.0,
+      "expected_rx_power_dbm": -72.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "snr_100m_noise_minus120",
+      "description": "SNR at 100m with noise floor -120 dBm. SNR = -72.44 - (-120) = 47.56 dB",
+      "tx_power_dbm": 14.0,
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "noise_floor_dbm": -120.0,
+      "distance_m": 100.0,
+      "expected_snr_db": 47.56,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "snr_10km_noise_minus120",
+      "description": "SNR at 10km (urban). RX = 14 - 140.44 = -126.44. SNR = -126.44 + 120 = -6.44 dB (below noise)",
+      "tx_power_dbm": 14.0,
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "noise_floor_dbm": -120.0,
+      "distance_m": 10000.0,
+      "expected_snr_db": -6.44,
+      "tolerance_db": 0.001
+    },
+    {
+      "name": "max_range_sf10_14dbm_urban",
+      "description": "Max range for SF10 sensitivity (-132 dBm) with 14 dBm TX, urban n=2.7. Range = 10^((14 + 132 - 32.44)/27) * 1 = 10^4.205... ~ 16032 m",
+      "tx_power_dbm": 14.0,
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "sensitivity_dbm": -132.0,
+      "expected_max_range_m": 16032.0,
+      "tolerance_relative": 0.01
+    },
+    {
+      "name": "max_range_sf12_14dbm_urban",
+      "description": "Max range for SF12 sensitivity (-137 dBm). Range = 10^((14 + 137 - 32.44)/27) * 1 = 10^4.391... ~ 24598 m",
+      "tx_power_dbm": 14.0,
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "sensitivity_dbm": -137.0,
+      "expected_max_range_m": 24598.0,
+      "tolerance_relative": 0.01
+    },
+    {
+      "name": "link_budget_1km_urban",
+      "description": "Full link budget at 1km: TX=14 dBm, ant gain 2 dBi each, cable loss 1 dB. Path loss at 1km urban = 32.44 + 27*log10(1000) = 113.44 dB. RX = 14 + 2 - 1 - 113.44 + 2 = -96.44 dBm. Margin = -96.44 - (-132) = 35.56 dB. SNR = -96.44 - (-120) = 23.56 dB",
+      "tx_power_dbm": 14.0,
+      "tx_antenna_gain_dbi": 2.0,
+      "rx_antenna_gain_dbi": 2.0,
+      "cable_loss_db": 1.0,
+      "pl0_dbm": 32.44,
+      "d0_m": 1.0,
+      "n": 2.7,
+      "distance_m": 1000.0,
+      "expected_rx_power_dbm": -96.44,
+      "expected_link_margin_db": 35.56,
+      "expected_snr_db": 23.56,
+      "tolerance_db": 0.01
+    },
+    {
+      "name": "sinr_two_equal_signals",
+      "description": "SINR with two equal-strength signals at -72.44 dBm each, noise floor -120 dBm. S_lin = 10^(-7.244) = 5.70e-8 mW. I_lin = 5.70e-8 mW. N_lin = 10^(-12) = 1e-12 mW. SINR = 10*log10(5.70e-8 / (1e-12 + 5.70e-8)) = 10*log10(0.9828) ~ -0.076 dB",
+      "signal_rssi_dbm": -72.44,
+      "interferer_rssi_dbm": -72.44,
+      "noise_floor_dbm": -120.0,
+      "expected_sinr_db": -0.076,
+      "tolerance_db": 0.1
+    },
+    {
+      "name": "sinr_strong_dominant",
+      "description": "SINR with strong signal -60 dBm and weak interferer -90 dBm, noise -120 dBm. S_lin = 1e-6, I_lin = 1e-9, N_lin = 1e-12. SINR = 10*log10(1e-6 / (1e-12 + 1e-9)) = 10*log10(999.0) ~ 29.996 dB",
+      "signal_rssi_dbm": -60.0,
+      "interferer_rssi_dbm": -90.0,
+      "noise_floor_dbm": -120.0,
+      "expected_sinr_db": 30.0,
+      "tolerance_db": 0.1
+    }
+  ]
+}

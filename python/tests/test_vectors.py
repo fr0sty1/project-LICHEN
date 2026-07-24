@@ -45,6 +45,18 @@ from lichen.schc.fragment import (
 )
 from lichen.schc.headers import compress_packet, decompress_packet
 from lichen.schc.reassembly import FragmentReceiver
+from lichen.sim.propagation import PropagationModel, link_budget
+
+
+def _db_to_linear(dbm: float) -> float:
+    return 10.0 ** (dbm / 10.0)
+
+
+def _linear_to_db(linear: float) -> float:
+    if linear <= 1e-15:
+        return -float("inf")
+    import math
+    return 10.0 * math.log10(linear)
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
@@ -94,6 +106,7 @@ def test_vectors_directory_exists() -> None:
         "ccp9.json",
         "l2_payload.json",
         "ipv6_malformed.json",
+        "propagation.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -1333,3 +1346,78 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert len(options) == len(expected), f"{name}: options count"
         for i, opt in enumerate(options):
             assert opt.type == expected[i]["type"], f"{name}: option {i} type"
+
+
+def _propagation_cases():
+    doc = _load("propagation.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _propagation_cases())
+def test_propagation_vector(name: str, vector: dict) -> None:
+    if "expected_path_loss_db" in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+        )
+        pl = model.path_loss(vector["distance_m"])
+        assert pl == pytest.approx(vector["expected_path_loss_db"], abs=vector.get("tolerance_db", 0.001))
+
+    if "expected_rx_power_dbm" in vector and "tx_power_dbm" in vector and "expected_link_margin_db" not in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+        )
+        rx = model.received_power(vector["tx_power_dbm"], vector["distance_m"])
+        assert rx == pytest.approx(vector["expected_rx_power_dbm"], abs=vector.get("tolerance_db", 0.001))
+
+    if "expected_snr_db" in vector and "noise_floor_dbm" in vector and "expected_link_margin_db" not in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+            noise_floor_dbm=vector["noise_floor_dbm"],
+        )
+        snr = model.snr(vector["tx_power_dbm"], vector["distance_m"])
+        assert snr == pytest.approx(vector["expected_snr_db"], abs=vector.get("tolerance_db", 0.001))
+
+    if "expected_max_range_m" in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+        )
+        r = model.max_range(
+            vector["tx_power_dbm"],
+            sensitivity_dbm=vector["sensitivity_dbm"],
+        )
+        assert r == pytest.approx(vector["expected_max_range_m"], rel=vector.get("tolerance_relative", 0.01))
+
+    if "expected_link_margin_db" in vector:
+        budget = link_budget(
+            tx_power_dbm=vector["tx_power_dbm"],
+            tx_antenna_gain_dbi=vector["tx_antenna_gain_dbi"],
+            rx_antenna_gain_dbi=vector["rx_antenna_gain_dbi"],
+            cable_loss_db=vector["cable_loss_db"],
+            distance_m=vector["distance_m"],
+            n=vector.get("n", 2.7),
+            pl0_dbm=vector.get("pl0_dbm", 32.44),
+            d0_m=vector.get("d0_m", 1.0),
+        )
+        assert budget["rx_power_dbm"] == pytest.approx(vector["expected_rx_power_dbm"], abs=vector.get("tolerance_db", 0.01))
+        assert budget["link_margin_db"] == pytest.approx(vector["expected_link_margin_db"], abs=vector.get("tolerance_db", 0.01))
+        assert budget["snr_db"] == pytest.approx(vector["expected_snr_db"], abs=vector.get("tolerance_db", 0.01))
+
+    if "expected_sinr_db" in vector:
+        model = PropagationModel(noise_floor_dbm=vector["noise_floor_dbm"])
+        interferers = [_db_to_linear(vector["interferer_rssi_dbm"])]
+        # Convert the desired signal RSSI back to a received_power equivalent
+        sinr_val = model.sinr(0.0, 1.0, interferers)
+        signal_linear = _db_to_linear(vector["signal_rssi_dbm"])
+        noise_linear = _db_to_linear(vector["noise_floor_dbm"])
+        total_noise = noise_linear + sum(interferers)
+        expected_sinr = _linear_to_db(signal_linear / total_noise) if total_noise > 0 else float("inf")
+        assert sinr_val == pytest.approx(expected_sinr, abs=vector.get("tolerance_db", 0.1))
