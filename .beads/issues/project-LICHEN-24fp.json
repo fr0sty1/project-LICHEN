@@ -2,7 +2,7 @@
   "id": "project-LICHEN-24fp",
   "title": "[codereview-pass1] duplicated nullability annotation block in coap_client.h and coap_server.h",
   "description": "The __has_feature, _Nonnull, _Nullable block is copy-pasted in both headers. Extract to lichen/common.h or lichen/compiler.h for DRY. P3 maintainability. discovered-from:project-LICHEN-jqdq",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:56:10.364729511Z",

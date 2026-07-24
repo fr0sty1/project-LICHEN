@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s32d",
   "title": "codereview-pass2-t6ic-pseudocode: minor syntax in updated select_channel chunk",
   "description": "Pseudocode uses 'array[N_CHANNELS]' (Rust-like) but earlier used 'array of size N_CHANNELS'. hash_fallback call simplified. SNR table good. No correctness issues (P4 opinion only). discovered-from:project-LICHEN-t6ic",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:52:33.634445631Z",

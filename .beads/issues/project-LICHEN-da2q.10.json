@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.10",
   "title": "CCP-10: Static Channel Split",
   "description": "Coordinated Capacity Profile section detailing Static Channel Split from da2q multi-channel coordination context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

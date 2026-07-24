@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wlgu.2.3.1",
   "title": "Add ccp_hop_vectors() to generate.py computing exact FNV hash_32 for ccp16-hop.json vectors",
   "description": "Implement function returning list of dicts with real computed hash_output values (no placeholders), matching synchronized_hop_channel logic from spec/02a-coordinated-capacity.md and current lichen_hash_32 (little-endian epoch concat). Use existing _h helper. Reference test/vectors/ccp16-hop.json:6 and hash_32.json.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

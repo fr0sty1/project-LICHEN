@@ -3,7 +3,7 @@
   "title": "[merge-conflict] worker8: t_deck_esp32s3_procpu.conf",
   "description": "Resolve merge conflict in lichen/apps/puck/boards/t_deck_esp32s3_procpu.conf between main and integration/worker8-20260722. Keep BOTH sets of changes - do not discard work.",
   "notes": "Commit: 78765e107",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
