@@ -112,11 +112,11 @@ static inline void secure_zero(void *ptr, size_t len)
 /**
  * @brief Compute SHA-256 hash with secure cleanup
  *
- * @param input Input data (may be NULL if inlen is 0)
+ * @param input Input data (must not be NULL; use inlen=0 for empty input)
  * @param inlen Input length in bytes
  * @param output Output buffer
  * @param outlen Size of output buffer (must be >= TC_SHA256_DIGEST_SIZE)
- * @return 0 on success, -EINVAL if output is NULL or input is NULL with inlen > 0,
+ * @return 0 on success, -EINVAL if input or output is NULL,
  *         -ENOMEM if outlen < TC_SHA256_DIGEST_SIZE
  */
 int lichen_sha256(const uint8_t *input, size_t inlen,

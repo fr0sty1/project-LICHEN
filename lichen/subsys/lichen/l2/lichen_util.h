@@ -117,10 +117,10 @@ static inline void secure_zero(void *ptr, size_t len)
  * to a pointer. Passing a smaller buffer causes undefined behavior (buffer overflow).
  * Callers should declare: uint8_t hash[TC_SHA256_DIGEST_SIZE];
  *
- * @param input Input data (may be NULL if inlen is 0)
+ * @param input Input data (must not be NULL; use inlen=0 for empty input)
  * @param inlen Input length in bytes
  * @param output Output buffer, must be >= 32 bytes (not bounds-checked at runtime)
- * @return 0 on success, -EINVAL if output is NULL or input is NULL with inlen > 0
+ * @return 0 on success, -EINVAL if input or output is NULL
  */
 int lichen_sha256(const uint8_t *input, size_t inlen,
                   uint8_t output[TC_SHA256_DIGEST_SIZE]);

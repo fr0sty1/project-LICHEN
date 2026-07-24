@@ -18,15 +18,16 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
     struct tc_sha256_state_struct state;
     int ret = 0;
 
-    if ((input == NULL && inlen > 0) || output == NULL) {
+    if (input == NULL || output == NULL) {
         return -EINVAL;
     }
 
-    /* Conflated error handling is intentional: callers only need pass/fail,
-     * and TinyCrypt's SHA-256 functions only fail on NULL (checked above). */
+    if (inlen == 0) {
+        input = (const uint8_t *)"";
+    }
+
     if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS ||
-        (inlen > 0 &&
-         tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) ||
+        tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS ||
         tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
         ret = -EIO;
     }
