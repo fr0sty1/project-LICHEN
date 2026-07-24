@@ -240,6 +240,24 @@ impl<const N: usize> Drop for SecretVec<N> {
     }
 }
 
+/// Pending Message 2 for deferred credential selection.
+pub struct PendingMessage2 {
+    pub id_cred: IdCred,
+    pub plaintext: heapless::Vec<u8, 128>,
+    pub c_r: ConnectionId,
+    pub signature_offset: usize,
+    pub transcript_binding: [u8; 32],
+}
+
+/// Pending Message 3 for deferred credential selection.
+pub struct PendingMessage3 {
+    pub id_cred: IdCred,
+    pub plaintext: heapless::Vec<u8, 128>,
+    pub ciphertext: heapless::Vec<u8, 128>,
+    pub signature_offset: usize,
+    pub transcript_binding: [u8; 32],
+}
+
 /// HKDF-Extract with SHA-256 (matches python/src/lichen/crypto/edhoc.py:_hkdf_extract exactly).
 fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     let salt_opt = if salt.is_empty() { None } else { Some(salt) };
@@ -1242,10 +1260,13 @@ impl EdhocResponder {
 
             let mut plaintext = heapless::Vec::new();
             plaintext.extend_err(&plaintext_3)?;
+            let mut ciphertext = heapless::Vec::new();
+            ciphertext.extend_err(ciphertext_3)?;
             self.state.lifecycle = Lifecycle::PendingMessage3;
             Ok(PendingMessage3 {
                 id_cred: id_cred_i,
                 plaintext,
+                ciphertext,
                 signature_offset: id_len,
                 transcript_binding: self.state.th_3,
             })
@@ -1307,7 +1328,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
