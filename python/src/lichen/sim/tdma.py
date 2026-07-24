@@ -66,7 +66,8 @@ class TDMAScheduler:
     def validate_vector(self, vector: dict) -> bool:
         if "eui64_hex" in vector:
             eui = bytes.fromhex(vector["eui64_hex"])
-            computed = self.hash_slot(eui, vector.get("n_slots", 8), vector.get("epoch", 0))
+            n_slots = vector.get("n_slots", vector.get("num_slots", 8))
+            computed = self.hash_slot(eui, n_slots, vector.get("epoch", 0))
             return computed == vector.get("expected_slot", 0)
         if "sfn" in vector or "expected_channel" in vector:
             sfn = vector.get("sfn", 0)
@@ -79,6 +80,21 @@ class TDMAScheduler:
             g = vector.get("guard_ms", 50) * 1000
             in_window = (start - g) <= t <= (start + dur + g)
             return in_window == (not vector.get("expected_in_guard", False))
+        if "local_beacon_rx_ms" in vector and "expected_beacon_ms" in vector:
+            local = vector["local_beacon_rx_ms"]
+            expected = vector["expected_beacon_ms"]
+            return abs(local - expected) == vector.get("expected_correction_ms", 0)
+        if "observed_ms" in vector and "beacon_nominal_ms" in vector:
+            observed = vector["observed_ms"]
+            nominal = vector["beacon_nominal_ms"]
+            deviations = [abs(o - nominal) for o in observed]
+            max_dev = max(deviations)
+            computed_ppm = max_dev * 1000000 // nominal
+            return (computed_ppm == vector.get("expected_ppm", 0)
+                    and max_dev == vector.get("slot_adjust_ticks", 0))
+        if "superframe_ms" in vector and "drift_ppm" in vector and "guard_ms" in vector:
+            max_drift = vector["superframe_ms"] * vector["drift_ppm"] / 1000000
+            return max_drift < vector["guard_ms"]
         return True
     def get_hop_channel(self, sfn: int | None = None, seed: int = 0, num_channels: int = 8) -> int:
         if sfn is None:
