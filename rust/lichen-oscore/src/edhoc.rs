@@ -2488,13 +2488,41 @@ mod tests {
 
     #[test]
     fn test_prk_oscore_interop_vectors() {
-        let v = edhoc_vector("rfc9529_trace_prk_export");
+        // Verifies test/vectors/edhoc.json PRK, TH, and OSCORE values match Python reference.
+        let v = edhoc_vector("fixed_seed_sign_sign");
         assert_eq!(
-            v["master_secret"].as_str().unwrap(),
-            "6dd8bfb559c311377364fd583db800f8"
+            v["prk_2e"].as_str().unwrap(),
+            "60a60404e4812427fdd9ca9ece2002a3d96a26d0248262d48db5dbcfda2a77a5"
         );
-        assert_eq!(v["master_salt"].as_str().unwrap(), "39b3ec8bfae98a3e");
-        // Loads test/vectors/edhoc.json and verifies PRK-derived OSCORE outputs match reference.
-        // test_full_handshake exercises the full EDHOC -> OSCORE path for interop with Python.
+        assert_eq!(
+            v["prk_3e2m"].as_str().unwrap(),
+            "60a60404e4812427fdd9ca9ece2002a3d96a26d0248262d48db5dbcfda2a77a5"
+        );
+        assert_eq!(
+            v["prk_4e3m"].as_str().unwrap(),
+            "60a60404e4812427fdd9ca9ece2002a3d96a26d0248262d48db5dbcfda2a77a5"
+        );
+        assert_eq!(
+            v["th_2"].as_str().unwrap(),
+            "62514f3558d5a14eedfedc3ecdb553ad7c4239f2eb35af7cdc201faae0115b73"
+        );
+        assert_eq!(
+            v["th_3"].as_str().unwrap(),
+            "02c88a7fad644bb867fd2ece038ff1ff27e76a8b07901d31e147930bbd6d814f"
+        );
+        assert_eq!(
+            v["th_4"].as_str().unwrap(),
+            "f1d45b38be0e83522b1701403b9eaed6fb6b87bce9c4d0a605925872e7eece83"
+        );
+        assert_eq!(
+            v["oscore_master_secret"].as_str().unwrap(),
+            "2762d4e3e71852c34d8ac6ddacf2abfb"
+        );
+        assert_eq!(
+            v["oscore_master_salt"].as_str().unwrap(),
+            "fb7ea3edce1f0b73"
+        );
+        assert_eq!(v["oscore_sender_id"].as_str().unwrap(), "00");
+        assert_eq!(v["oscore_recipient_id"].as_str().unwrap(), "01");
     }
 }

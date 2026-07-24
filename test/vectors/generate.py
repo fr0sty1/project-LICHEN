@@ -2183,7 +2183,18 @@ def edhoc_vectors() -> list[dict]:
         m2 = resp.process_message_1(m1, i.pubkey)
         m3 = init.process_message_2(m2, r.pubkey)
         resp.process_message_3(m3, i.pubkey)
-        ctx = init.export_oscore()
+        # Capture state BEFORE export_oscore clears it
+        prk_2e = init._prk_2e.hex()
+        prk_3e2m = init._prk_3e2m.hex()
+        prk_4e3m = init._prk_4e3m.hex()
+        th_2 = init._th_2.hex()
+        th_3 = init._th_3.hex()
+        th_4 = init._th_4.hex()
+        r_th_2 = resp._th_2.hex()
+        r_th_3 = resp._th_3.hex()
+        r_th_4 = resp._th_4.hex()
+        ctx_i = init.export_oscore()
+        ctx_r = resp.export_oscore()
         return [{
             "name": "fixed_seed_sign_sign",
             "seed_i": bytes(range(32)).hex(),
@@ -2191,11 +2202,19 @@ def edhoc_vectors() -> list[dict]:
             "msg1": m1.hex(),
             "msg2": m2.hex(),
             "msg3": m3.hex(),
-            "prk_2e": "42" * 64,  # recorded from state
-            "th_2": "42" * 64,
-            "oscore_master_secret": ctx.master_secret.hex(),
-            "oscore_master_salt": ctx.master_salt.hex(),
-            "oscore_sender_id": ctx.sender_id.hex(),
+            "prk_2e": prk_2e,
+            "prk_3e2m": prk_3e2m,
+            "prk_4e3m": prk_4e3m,
+            "th_2": th_2,
+            "th_3": th_3,
+            "th_4": th_4,
+            "responder_th_2": r_th_2,
+            "responder_th_3": r_th_3,
+            "responder_th_4": r_th_4,
+            "oscore_master_secret": ctx_i.master_secret.hex(),
+            "oscore_master_salt": ctx_i.master_salt.hex(),
+            "oscore_sender_id": ctx_i.sender_id.hex(),
+            "oscore_recipient_id": ctx_r.sender_id.hex(),
         }]
     finally:
         os.urandom = old
