@@ -116,7 +116,9 @@ static int lora_transition(enum lora_state new_state)
         return -EINVAL;
     }
 
-    atomic_set(&current_state, new_state);
+    if (!atomic_cas(&current_state, old_state, new_state)) {
+        return -EAGAIN;
+    }
     LOG_DBG("lora_l2: state %s -> %s", state_names[old_state], state_names[new_state]);
     return 0;
 }

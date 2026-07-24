@@ -23,69 +23,75 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 6. 2a.5. Desync Recovery State Machine
 7. 2a.6. Regional Channel Plans and CH0 Rules
 8. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
-9. Implementation Status
-10. References
+9. CCP-12. Synchronized Channel Hopping (SelectChannel, hash_32, test vectors)
+10. Implementation Status
+11. References
 
 ## Overview
 
-LICHEN networks operate under severe bandwidth and duty-cycle constraints. CCP coordinates access to the shared medium using hash-derived TDMA slots synchronized to a network epoch, density-aware adaptive SF selection, multi-channel operation (CH0 dedicated to control per SCHC-compressed beacons and RPL DIOs), deterministic channel agility, time synchronization, signed rx_channel announcements for rendezvous, per-neighbor EMA for RF metrics, and load/density signaling. The root advertises epoch and num_slots. Nodes suppress transmission outside assigned slots. All algorithms are deterministic.
+The LICHEN mesh coordinates capacity across multiple nodes sharing a finite set of radio channels and time slots. Without coordination, concurrent transmissions on the same channel cause repeated collisions, wasting energy and airtime. CCP integrates with the TDMA frame structure from [LICHEN Link Layer](02-physical-link.md) and the RPL DODAG from [spec/05-routing](05-routing.md).
 
-## TDMA Frame Structure, Slot Assignment, now(), and Desync Recovery
+CCP provides:
+- **CCP-4:** Regional channel plans and CH0 fallback
+- **CCP-9:** Rendezvous announcements for directed traffic
+- **CCP-12:** Synchronized channel hopping via `SelectChannel`/`hash_32`
+- **CCP-14:** TDMA slot assignment with SFN epoch scheduling
+- **CCP-15:** Load-aware spreading factor selection
+- **CCP-16:** Integrated capacity decisions (slot + SF + channel)
 
-## 2a.2. TDMA Slots and Hash Selection
+Signature verification (Ed25519/48-byte Schnorr) applies to link-layer frames per [spec/07-security](07-security.md). All CCP references in this document follow CCP-16, using Schnorr signatures (spec draft-lichen-schnorr-00, 48-byte). SCHC compression rules for CCP control payloads are defined in [spec/appendix-schc](appendix-schc.md).
 
-The root advertises `epoch` (u32) and `num_slots` (default 8) via SCHC Rule ID 0x08 (TDMA_BEACON) on CH0 (see draft-lichen-schc-lora-00 and appendix-schc.md). 
+The CCP operational state machine (IDLE, LISTENING, JOINING, JOINED, DENSE, DESYNC) is defined in [spec/02-physical-link.md §2.6](02-physical-link.md#26-link-layer-state-machine).
 
-**TDMA Beacon Format (exact, normative for interop):**
+## 2a.1. TDMA Beacon Format, Slots, Hash Selection, and Channel Dwelling
 
-Multi-byte integers unsigned big-endian (network order). Full byte layout:
-
-| Offset | Bytes | Field          | Description |
-|--------|-------|----------------|-------------|
-| 0      | 4     | epoch          | u32 BE for slot hash and SFN base |
-| 4      | 1     | num_slots      | u8 (default 8); hash modulus |
-| 5      | 4     | sfn            | u32 BE superframe number |
-| 9      | 4     | timestamp      | u32 BE for epoch_floor validation |
-| 13     | 1     | flags          | bits 0=scheduled, 1=CSMA, 2=CH0-RX, 3=GNSS-PPS, 4-7=0 |
-| 14     | 1     | rx_chains      | u8 (1 for single-radio) |
-| 15     | 2     | setup_window   | u16 ms (retune/CAD) |
-| 17     | 2     | occupied_time  | u16 ms (data+ACK) |
-| 19     | 1     | guard          | u8 ms (default 100) |
-| 20     | 4     | channel_mask   | u32 (bit 0=CH0); local intersection computed |
-| 24+    | var   | cbor_options   | density, slot_map, etc. |
-
-**CDDL (RFC 8610) for CBOR options tail:**
+A node selects a slot in the TDMA epoch using `hash_32(EUI64 || Epoch) mod num_slots`. The beacon format (SCHC Rule 0x08) carries: EUI64, SFN, epoch, num_slots, CH0, next_beacon_time, rx_channel for CCP-9 rendezvous, SF10 capability, and a 32-byte Schnorr signature truncated to 48 bytes (Ed25519 base, spec draft-lichen-schnorr-00). The CDDL for the beacon is:
 
 ```cddl
 tdma-beacon = {
-    epoch: uint .size 4,
-    num_slots: uint .size 1,
-    sfn: uint .size 4,
-    timestamp: uint .size 4,
-    flags: uint .size 1,
-    rx_chains: uint .size 1,
-    setup_window: uint .size 2,
-    occupied_time: uint .size 2,
-    guard: uint .size 1,
-    channel_mask: uint .size 4,
-    ? density: uint .size 1,
-    * any
+  eui64: bytes .size 8,
+  sfn: uint32,
+  epoch: uint32,
+  num-slots: uint8,
+  ch0: uint8,
+  next-beacon-time: uint32,
+  rx-channel: uint8,         ; CCP-9 rendezvous channel (0 = CH0)
+  sf10-capable: bool,
+  signature: bytes .size 48  ; Schnorr48
 }
 ```
 
-Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
+SFN (Slot Frame Number) is a free-running 32-bit counter that advances with each TDMA slot. The TDMA frame uses a fixed timebase: `slot_duration = max_airtime(current_SF) + 100 ms guard`. All nodes synchronize to a reference SFN as follows:
 
-For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
+- **Absolute SFN** is obtained via GPS timestamp (PPS-based, RTC drift compensated).
+- **Relative SFN** is obtained via beacon reception from a DODAG root: the beacon includes the root's current SFN; the receiving node computes its own SFN as `beacon_sfn + (elapsed_slots_since_beacon)`.
+- **Beacon loss** triggers desync recovery state machine (see 2a.5).
+- **Test vectors** in `ccp16.json` and `ccp_tdma.json` MUST cover SFN wrap around boundary (`0xFFFFFFFF → 0`) with correct unsigned modular arithmetic.
 
-Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
+Beacons are transmitted on CH0 at a rate proportional to `RPL_DIO_INTERVAL` (Trickle-minimum). In DENSE state (≥20 nodes), beacon rate doubles to maintain synchronization stability.
 
-Edge case example (0xFFFFFFFF boundary):
+A node MUST validate received beacons: verify the 48-byte Schnorr signature against the root's Ed25519 public key (TOFU on first contact, per spec/07-security §7.5), check SFN monotonic increase (with wrap-around handling), and drop beacons with stale epochs.
+
+### Slot Assignment and Hash Selection (CCP-14)
+
+Each node selects one transmission slot per epoch:
 
 ```
-last_sfn = 0xFFFFFFFFu;
-current_sfn = 0x00000002u;
-delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
+slot = hash_32(EUI64 || EPOCH_LE) mod num_slots
 ```
+
+Where `EPOCH_LE` is the epoch counter as a 4-byte little-endian u32 and `hash_32` is FNV-1a32 (basis `0x811c9dc5`; see [hash_32 definition](#ccp-12-synchronized-channel-hopping-selectchannel-hash_32-test-vectors) and canonical vectors in `test/vectors/hash_32.json`).
+
+**SF change across an epoch boundary:**
+When a node's SF changes due to adaptive SF selection, the slot assignment remains tied to the epoch, not the SF. Slot duration always uses `max_airtime(SF=7)` for the guard calculation to prevent adjacent-slot overlap when higher SFs appear later.
+
+### Channel Dwelling (CCP-12)
+
+Between beacon receptions, a node dwells on one channel for the full inter-beacon interval. The channel is selected by `SelectChannel(EUI64, SFN, Density, NChannels)` (see [CCP-12 pseudocode](#ccp-12-synchronized-channel-hopping-selectchannel-hash_32-test-vectors)). Nodes with no pending TX and no directed RX expectation MAY enter low-power receive mode on CH0 only.
+
+### SFN Wrap
+
+When SFN wraps from `0xFFFFFFFF` to `0x00000000`, all hash-based selections (slot, channel) reset deterministically. The beacon carries the post-wrap SFN. Comparison operators for "elapsed since last beacon" MUST use unsigned modular arithmetic as defined in `Now()` (see [CCP-12 pseudocode](#ccp-12-synchronized-channel-hopping-selectchannel-hash_32-test-vectors)).
 
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json and ccp_tdma.json MUST cover this and similar boundaries.
 
@@ -103,13 +109,13 @@ Each versioned plan contains:
 - applicable duty-cycle, dwell-time, occupancy, and listen-before-talk rules;
 - hardware-specific permitted channel mask.
 
-CCP PHY profile ID `0x01` is fixed as LoRa bandwidth 125 kHz, SF10, coding rate 4/5, eight-symbol preamble, explicit header, payload CRC enabled, and low-data-rate optimization disabled. ADR MUST NOT change these parameters inside a schedule generation. See 2a.3 for normative adaptive SF outside schedules. Future profile IDs require canonical airtime vectors and a new specification revision before use.
+CCP PHY profile ID `0x01` is fixed as LoRa bandwidth 125 kHz, SF10, coding rate 4/5, eight-symbol preamble, explicit header, payload CRC enabled, and low-data-rate optimization disabled. ADR MUST NOT change these parameters inside a schedule generation. See [CCP-12 pseudocode](#ccp-12-synchronized-channel-hopping-selectchannel-hash_32-test-vectors) for normative adaptive SF outside schedules. Future profile IDs require canonical airtime vectors and a new specification revision before use.
 
 Remote capability and schedule messages MAY reduce the locally permitted intersection. Unknown plan identifiers or versions MUST cause CH0 fallback.
 
 ## 2a.3. Channel Agility and Adaptive SF
 
-CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous. Data channels selected via select_channel() or hash. All implementations MUST produce identical results to test vectors in ccp16.json, ccp9*.json, ccp_load_balancing.json.
+CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous. Data channels selected via `SelectChannel()` or hash. All implementations MUST produce identical results to test vectors in `ccp16.json`, `ccp9*.json`, `ccp_load_balancing.json`.
 
 ### 2a.3.1. Pure Pseudocode Definitions (IETF-style, language agnostic)
 
@@ -152,6 +158,46 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 
 (The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
+## CCP-12. Synchronized Channel Hopping (SelectChannel, hash_32, test vectors)
+
+CCP-12 defines the synchronized channel hopping mechanism that enables deterministic channel selection across all nodes in a LICHEN mesh. All nodes independently compute the same channel for a given (EUI64, Epoch, Density, NChannels) tuple, enabling rendezvous without explicit signaling.
+
+### Algorithm
+
+Channel selection uses the `SelectChannel` procedure defined in [2a.3.1](#231-pure-pseudocode-definitions-ietf-style-language-agnostic):
+
+```
+Channel = SelectChannel(EUI64, Epoch, Density, NChannels)
+```
+
+The core hash primitive is `lichen_hash_32` (FNV-1a32, basis `0x811c9dc5`, multiplier `0x01000193`, modulo `2^32`), defined in:
+
+| Implementation | Location |
+|----------------|----------|
+| Canonical test vectors | `test/vectors/hash_32.json` |
+| Rust | `rust/lichen-core/src/lib.rs` — `pub fn lichen_hash_32(data: &[u8]) -> u32` |
+| Python | `python/src/lichen/sim/tdma.py` — `def hash_32(data: bytes) -> int` |
+| Vector generator | `test/vectors/generate.py` — `def hash_32(data: bytes) -> int` |
+| C (Zephyr) | `lichen/subsys/lichen/link/link_ctx.c` — `uint32_t lichen_hash_32(...)` |
+| C declaration | `lichen/subsys/lichen/link/include/lichen/link.h` (line 332) |
+
+### Cross-References
+
+- **hash_32 test vectors**: `test/vectors/hash_32.json` — canonical FNV-1a32 outputs (empty input, "test", 32 zero bytes)
+- **CCP-12 hop vectors**: `test/vectors/ccp16-hop.json` — synchronized hop vectors matching `SelectChannel` pseudocode (SFN=0, SFN=1, SFN wrap, density fallback, rendezvous)
+- **CCP-16 integration**: `test/vectors/ccp16.json` — full integrated capacity decision vectors that exercise CCP-12 channel selection
+- **TDMA slot selection**: `test/vectors/ccp_tdma.json` — TDMA slot vectors using `hash_32`
+- **CCP-9 rendezvous**: `test/vectors/ccp9.json`, `test/vectors/ccp9_rendezvous.json` — rendezvous announcements referencing `synchronized_hop_channel(CCP-12)`
+- **Load balancing**: `test/vectors/ccp_load_balancing.json` — load factor vectors using `hash_32`
+
+### Implementation Requirements
+
+1. All implementations MUST produce identical `SelectChannel` outputs for the test vectors in `test/vectors/ccp16-hop.json`.
+2. All implementations MUST use the identical `lich_hash_32` (FNV-1a32) as defined in `test/vectors/hash_32.json`.
+3. Density > 8 MUST return CH0 (channel index 0).
+4. SFN wraparound MUST use unsigned modular arithmetic as defined in `Now()`.
+5. Rendezvous announcements in beacons and DIOs MAY override the hash-selected channel with the announced `rx_channel` (CCP-9).
+
 ## Regional Channel Plans and CH0 Rules
 
 - Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
@@ -171,7 +217,7 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 - `spec/drafts/draft-lichen-schc-lora-00.md`
 - `spec/appendix-design-rationale.md`
 - `spec/appendix-schc.md` (Rule 0x08=TDMA_BEACON)
-- `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
+- `lichen/subsys/ichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
 - `docs/firmware-time-provider.md`
 - `spec/drafts/draft-lichen-link-01.md` (L2 0x15 join frame)
 

@@ -21,7 +21,7 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 | Coding Rate | CR | 4/5 | Minimal FEC overhead |
 | Preamble | - | 8 symbols | Standard LoRa |
 | Sync Word | SYNC | 0x34 | Distinct from Meshtastic (0x2B) |
-| Hop Sequence | - | SFN-seeded PRNG | CCP-12 synchronized hopping (see 02a-coordinated-capacity.md §2a.8); GPS optional |
+| Hop Sequence | - | SFN-seeded PRNG | CCP-12 synchronized hopping (see 02a-coordinated-capacity.md #ccp-12-synchronized-channel-hopping-selectchannel-hash_32-test-vectors); GPS optional |
 | CRC | - | Enabled | Hardware CRC |
 
 ### 3.3. Frequency Bands and Multi-Channel Coordination
