@@ -22,8 +22,11 @@ add_executable(schnorr48_test
 )
 
 # Define CONFIG_LICHEN_CRYPTO_MONOCYPHER to enable real implementation
+# and provide frame constants (normally from Zephyr Kconfig / autoconf.h)
 target_compile_definitions(schnorr48_test PRIVATE
   CONFIG_LICHEN_CRYPTO_MONOCYPHER=1
+  LICHEN_MAX_FRAME_LEN=254
+  LICHEN_MAX_FRAME_BODY_LEN=250
 )
 
 # Enable warnings

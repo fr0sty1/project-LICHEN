@@ -1464,19 +1464,18 @@ class EdhocResource(resource.Resource):
         self._expire_sessions()
         active = self._peer_session(peer_host)
 
-        active_session = None
-        for (host, _), session in reversed(list(self._sessions.items())):
-            if host == peer_host:
-                active_session = session
-                break
-
         try:
-            if active_session is None:
+            if active is None:
                 # This is Message 1 - start new session
                 return await self._handle_message_1(peer_host, payload)
             else:
-                # This is Message 3 - complete handshake
-                return await self._handle_message_3(peer_host, payload, active_session)
+                # This is Message 3 - complete handshake.
+                # Use the session from the exact (peer_host, c_i) key lookup,
+                # not a host-only scan — a host-only scan could match the wrong
+                # session when multiple concurrent handshakes exist from the
+                # same peer (SECURITY).
+                key, session = active
+                return await self._handle_message_3(peer_host, payload, key, session)
         except _EdhocTransientError:
             return Message(code=SERVICE_UNAVAILABLE)
         except ValueError:
@@ -1553,7 +1552,11 @@ class EdhocResource(resource.Resource):
         return self._edhoc_response(msg2)
 
     async def _handle_message_3(
-        self, peer_host: str, msg3: bytes, session: dict[str, Any]
+        self,
+        peer_host: str,
+        msg3: bytes,
+        session_key: tuple[str, bytes],
+        session: dict[str, Any],
     ) -> Message:
         """Process EDHOC Message 3 and establish OSCORE context."""
         from lichen.crypto.oscore import MemorySecurityContext
@@ -1561,7 +1564,6 @@ class EdhocResource(resource.Resource):
         responder = session["responder"]
         peer_pubkey = session["peer_pubkey"]
         expected_generation = session["expected_generation"]
-        session_key = session["key"]
 
         self._expire_sessions()
         if self._sessions.get(session_key) is not session:

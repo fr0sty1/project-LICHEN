@@ -5,7 +5,7 @@
   "vectors": [
     {
       "name": "synchronized_hop_channel_consistency",
-      "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and independent hash_32(FNV-1a32 basis 0x811c9dc5) oracle per spec/02a-coordinated-capacity.md:123. Receiver prediction matches sender.",
+      "description": "synchronized_hop_channel yields expected per CCP-12 pseudocode and independent hash_32 oracle. sf=9: density<5 AND snr>8.",
       "type": "slot_selection",
       "input": {
         "eui64": "0011223344556677",
@@ -25,7 +25,7 @@
     },
     {
       "name": "epoch_wrap_hop_change",
-      "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
+      "description": "Epoch increment changes hop sequence. Tests desync recovery. sf=10: default branch (no thresholds triggered).",
       "type": "slot_selection",
       "input": {
         "eui64": "0011223344556677",
@@ -45,7 +45,7 @@
     },
     {
       "name": "select_channel_timing_test",
-      "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per spec/02a-coordinated-capacity.md:123 and 09-packets-timing.md. Independent oracle.",
+      "description": "density>8 triggers CH0 fallback with sf=11 (density>8) and now near u32 wrap.",
       "type": "slot_selection",
       "input": {
         "eui64": "0011223344556677",
@@ -61,6 +61,167 @@
         "sf": 11,
         "select_channel": 0,
         "now": 4294967280
+      }
+    },
+    {
+      "name": "select_channel_sf12_high_density",
+      "description": "density>20 triggers sf=12 (max SF). Channel forced to 0 by density>8.",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 0,
+        "density": 25,
+        "snr_db": 5,
+        "now": 0
+      },
+      "output": {
+        "hash_32": 2271500941,
+        "channel": 0,
+        "expected_channel": 0,
+        "sf": 12,
+        "select_channel": 0,
+        "now": 0
+      }
+    },
+    {
+      "name": "select_channel_sf12_low_snr",
+      "description": "snr<-5 triggers sf=12. Channel computed via hash (density<=8 so non-zero).",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 2,
+        "density": 4,
+        "snr_db": -10,
+        "now": 500
+      },
+      "output": {
+        "hash_32": 666687663,
+        "channel": 1,
+        "expected_channel": 1,
+        "sf": 12,
+        "select_channel": 1,
+        "now": 500
+      }
+    },
+    {
+      "name": "select_channel_sf11_snr_threshold",
+      "description": "snr<0 triggers sf=11. Channel via hash.",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 3,
+        "density": 6,
+        "snr_db": -3,
+        "now": 1000
+      },
+      "output": {
+        "hash_32": 3616577950,
+        "channel": 2,
+        "expected_channel": 2,
+        "sf": 11,
+        "select_channel": 2,
+        "now": 1000
+      }
+    },
+    {
+      "name": "select_channel_sf11_load_threshold",
+      "description": "load>0.8 triggers sf=11. density<=8 so channel via hash.",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 4,
+        "density": 5,
+        "snr_db": 5,
+        "now": 1500,
+        "load_factor": 0.9
+      },
+      "output": {
+        "hash_32": 1186160201,
+        "channel": 3,
+        "expected_channel": 3,
+        "sf": 11,
+        "select_channel": 3,
+        "now": 1500
+      }
+    },
+    {
+      "name": "select_channel_sf9_low_density_high_snr",
+      "description": "density<5 and snr>8 triggers sf=9 upgrade. Channel via hash.",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 5,
+        "density": 2,
+        "snr_db": 15,
+        "now": 2000
+      },
+      "output": {
+        "hash_32": 4136050488,
+        "channel": 1,
+        "expected_channel": 1,
+        "sf": 9,
+        "select_channel": 1,
+        "now": 2000
+      }
+    },
+    {
+      "name": "select_channel_default_sf10",
+      "description": "sf=10 default: no thresholds triggered. Channel via hash.",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 6,
+        "density": 7,
+        "snr_db": 3,
+        "now": 2500
+      },
+      "output": {
+        "hash_32": 3876314219,
+        "channel": 3,
+        "expected_channel": 3,
+        "sf": 10,
+        "select_channel": 3,
+        "now": 2500
+      }
+    },
+    {
+      "name": "select_channel_density_high_ch0",
+      "description": "density=10 forces channel 0, sf=11 (density>8).",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 7,
+        "density": 10,
+        "snr_db": 5,
+        "now": 3000
+      },
+      "output": {
+        "hash_32": 2531237210,
+        "channel": 0,
+        "expected_channel": 0,
+        "sf": 11,
+        "select_channel": 0,
+        "now": 3000
+      }
+    },
+    {
+      "name": "select_channel_sfn_wrap_now",
+      "description": "now=0 (SFN base) with moderate density/snr. Tests edge of u32 domain.",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "epoch": 8,
+        "density": 5,
+        "snr_db": 7,
+        "now": 0
+      },
+      "output": {
+        "hash_32": 100819461,
+        "channel": 1,
+        "expected_channel": 1,
+        "sf": 10,
+        "select_channel": 1,
+        "now": 0
       }
     }
   ]
