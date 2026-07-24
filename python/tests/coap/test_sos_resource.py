@@ -105,7 +105,7 @@ class TestSosPutDelete:
             resp = await client.request(
                 Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
-            assert resp.code == aiocoap.CHANGED
+            assert resp.code == aiocoap.CREATED
             assert sos._active is True
             assert sos._from == _EUI.hex()
         finally:
