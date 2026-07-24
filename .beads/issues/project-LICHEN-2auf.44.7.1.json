@@ -9,12 +9,12 @@
   "assignee": "AI Agent",
   "created_at": "2026-07-20T06:06:23.494923479Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-24T16:09:31.161993803Z",
+  "updated_at": "2026-07-24T16:09:48.986725834Z",
   "started_at": "2026-07-24T16:09:31.161993803Z",
   "closed_at": "2026-07-20T06:29:39.277715322Z",
   "close_reason": "Completed all eight requested Rust RPL security findings: explicit bounded DAO admission, multicast L2 broadcast, DTX2 exact scope, local Announce isolation, transactional relay retry, direct-only link-local DAO origins, automatic DAO send/retry lifecycle with 64-bit freshness, and full regression gates. No commit.",
-  "lease_expires_at": "2026-07-24T16:14:31.161993803Z",
-  "heartbeat_at": "2026-07-24T16:09:31.161993803Z",
+  "lease_expires_at": "2026-07-24T16:14:48.986725834Z",
+  "heartbeat_at": "2026-07-24T16:09:48.986725834Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.7.1",
