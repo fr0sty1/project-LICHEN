@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.36.2",
   "title": "Remove continue-on-error from Zephyr vector-compatibility job and make tests authoritative",
   "description": "Update vector-compatibility job in .github/workflows/interop.yml to run Zephyr twister without continue-on-error. Wire lichen/tests/link_crypto and schc tests to use the shared JSON vectors so they can fail the build properly. Update test commands if needed for native_sim.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
