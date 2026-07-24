@@ -318,9 +318,9 @@ class EdhocInitiator:
         # Compute shared secret
         g_xy = _x25519_shared_secret(self._eph_sk, self._g_y)
 
-        # TH_2 = H(G_Y, H(message_1))
+        # TH_2 = H(encode_bstr(G_Y) || encode_bstr(H(message_1))) per RFC 9528 Section 3.2
         h_msg1 = _compute_th(self._msg1)
-        th_2_input = self._g_y + h_msg1
+        th_2_input = cbor2.dumps(self._g_y) + cbor2.dumps(h_msg1)
         self._th_2 = _compute_th(th_2_input)
 
         # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
@@ -563,9 +563,9 @@ class EdhocResponder:
         # Compute shared secret
         g_xy = _x25519_shared_secret(self._eph_sk, self._g_x)
 
-        # TH_2 = H(G_Y, H(message_1))
+        # TH_2 = H(encode_bstr(G_Y) || encode_bstr(H(message_1))) per RFC 9528 Section 3.2
         h_msg1 = _compute_th(msg1)
-        th_2_input = self._eph_pk + h_msg1
+        th_2_input = cbor2.dumps(self._eph_pk) + cbor2.dumps(h_msg1)
         self._th_2 = _compute_th(th_2_input)
 
         # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)

@@ -431,10 +431,14 @@ impl EdhocInitiator {
         // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
         // prevent cryptographic weakness from ephemeral key reuse (RFC 9528 freshness).
 
-        // TH_2 = H(G_Y || H(message_1))
+        // TH_2 = H(encode_bstr(G_Y) || encode_bstr(H(message_1))) per RFC 9528 Section 3.2
         let h_msg1 = compute_th(&self.state.msg1);
-        let mut th_2_input = heapless::Vec::<u8, 64>::new();
+        let mut th_2_input = heapless::Vec::<u8, 128>::new();
+        th_2_input.push_err(0x58)?;
+        th_2_input.push_err(32)?;
         th_2_input.extend_err(&self.state.g_y)?;
+        th_2_input.push_err(0x58)?;
+        th_2_input.push_err(32)?;
         th_2_input.extend_err(&h_msg1)?;
         self.state.th_2 = compute_th(&th_2_input);
 
@@ -838,10 +842,14 @@ impl EdhocResponder {
         // prevent cryptographic weakness from ephemeral key reuse if this function
         // is called multiple times (e.g., due to retransmission handling bugs).
 
-        // TH_2 = H(G_Y || H(message_1))
+        // TH_2 = H(encode_bstr(G_Y) || encode_bstr(H(message_1))) per RFC 9528 Section 3.2
         let h_msg1 = compute_th(msg1);
-        let mut th_2_input = heapless::Vec::<u8, 64>::new();
+        let mut th_2_input = heapless::Vec::<u8, 128>::new();
+        th_2_input.push_err(0x58)?;
+        th_2_input.push_err(32)?;
         th_2_input.extend_err(self.eph_public.as_bytes())?;
+        th_2_input.push_err(0x58)?;
+        th_2_input.push_err(32)?;
         th_2_input.extend_err(&h_msg1)?;
         self.state.th_2 = compute_th(&th_2_input);
 
