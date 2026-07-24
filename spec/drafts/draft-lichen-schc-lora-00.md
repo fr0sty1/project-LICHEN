@@ -36,10 +36,11 @@ of IPv6 packets over LoRa links with typical payloads of 50-200 bytes.
 3. SCHC Architecture for LoRa Mesh
 4. Compression Rules
 5. Fragmentation Profile
-6. Implementation Considerations
-7. Security Considerations
-8. IANA Considerations
-9. References
+6. Rule Versioning and DIO Advertisement
+7. Implementation Considerations
+8. Security Considerations
+9. IANA Considerations
+10. References
 A. Complete Rule Set
 B. Compression Examples
 
@@ -405,6 +406,14 @@ Rule Set Version (8-bit) is advertised by DODAG roots in RPL DIOs per `spec/03-a
 
 Full details, rule tables (0-7, 255), Field Descriptors, mappings, constants, and bit-exact test vectors are in `spec/appendix-schc.md`, `rust/lichen-schc/src/rules.rs` (and `lib.rs`), `test/vectors/schc*.json`. All implementations (Rust, C, Python) MUST match the independent test vector oracles exactly for interoperability. (All merge conflicts from worker5, worker8, worker18, worker24 resolved; content deduplicated and consolidated.)
 
+With 63 tiles per window, two windows, and 187-byte tiles:
+- Encoding ceiling: 23,562 bytes
+- Mandatory receiver support: 1281 bytes
+- Larger receiver limits: implementation-specific up to the encoding ceiling
+
+Packets exceeding the known receiver limit MUST be chunked at the application
+layer or rejected before fragmentation.
+
 ```
 +--------+---+---+-------------------+---------+
 | RuleID | W | C | Compressed Bitmap | Padding |
@@ -449,25 +458,9 @@ Sender-Abort.
 
 CoAP per RFC 8824 OPTIONAL. RPL options use MATCH_MAPPING with prioritized mapping for Pad1/PadN/PIO/DAG Metric (full set in rust/lichen-schc/src/rules.rs, appendix-schc.md, test/vectors/schc_compression.json).
 
-#### 5.3. Operation
+## 7. Implementation Considerations
 
-Sender uses FCN countdown per window from constants, sends All-1 with RCS. Receiver tracks via bitmap, sends NACK on missing fragments, verifies RCS. Max practical size ~12 KB/datagram; larger payloads MUST chunk at application layer.
-
-## 6. Rule Versioning
-
-Rule Set Version (8-bit) advertised in DIOs per spec/03-adaptation.md §5.7 (authoritative; this draft provides LoRa context only, no duplication). Version 1 for initial release.
-
-With 63 tiles per window, two windows, and 187-byte tiles:
-- Encoding ceiling: 23,562 bytes
-- Mandatory receiver support: 1281 bytes
-- Larger receiver limits: implementation-specific up to the encoding ceiling
-
-Packets exceeding the known receiver limit MUST be chunked at the application
-layer or rejected before fragmentation.
-
-## 6. Implementation Considerations
-
-### 6.1. Memory Requirements
+### 7.1. Memory Requirements
 
 | Component | RAM | Flash |
 |-----------|-----|-------|
@@ -486,27 +479,27 @@ Allocation-free implementations MAY use statically configured context and
 packet-buffer pools. A transfer that exceeds available state receives
 Receiver-Abort.
 
-### 6.2. Processing Requirements
+### 7.2. Processing Requirements
 
 - Compression: O(n) where n = number of rules (typically <10)
 - Decompression: O(1) after rule lookup
 - Fragmentation: O(1) per fragment
 - Reassembly: O(fragments) for bitmap management
 
-### 6.3. Existing Implementations
+### 7.3. Existing Implementations
 
 - **libschc:** C library, MIT license (recommended)
 - **openschc:** Python reference, BSD license
 - **Custom:** May be needed for constrained targets
 
-## 7. Security Considerations
+## 8. Security Considerations
 
-### 7.1. Compression Oracle Attacks
+### 8.1. Compression Oracle Attacks
 
 SCHC compression does not introduce compression oracle vulnerabilities
 because rule selection is based on header fields, not encrypted content.
 
-### 7.2. Fragmentation Attacks
+### 8.2. Fragmentation Attacks
 
 **Resource exhaustion:** Attackers may send partial fragment sequences
 to exhaust reassembly buffers. Mitigations:
@@ -519,13 +512,13 @@ reassembly. Mitigations:
 - RCS (CRC-32) validates complete packet
 - Link-layer signatures authenticate sender
 
-### 7.3. Rule Mismatch
+### 8.3. Rule Mismatch
 
 Rule mismatch between sender and receiver causes packet loss or
 corruption. Version advertisement in DIO prevents this for nodes
 in the same DODAG.
 
-## 8. IANA Considerations
+## 9. IANA Considerations
 
 This document has no IANA actions.
 
@@ -536,16 +529,16 @@ Future versions of this document may request:
 - An IANA registry for standardized LoRa SCHC rules
 - A CoAP Option or RPL Option Type for rule version advertisement
 
-## 9. References
+## 10. References
 
-### 9.1. Normative References
+### 10.1. Normative References
 
 - [RFC 2119] Key words for use in RFCs
 - [RFC 8724] SCHC: Generic Framework for Static Context Header
   Compression and Fragmentation
 - [RFC 8824] SCHC for CoAP
 
-### 9.2. Informative References
+### 10.2. Informative References
 
 - [RFC 6550] RPL: IPv6 Routing Protocol for Low-Power and Lossy Networks
 - [RFC 7252] The Constrained Application Protocol (CoAP)
