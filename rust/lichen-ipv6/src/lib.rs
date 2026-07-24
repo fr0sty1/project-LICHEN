@@ -139,11 +139,6 @@ impl core::error::Error for Ipv6Error {
 /// IPv6 header length (fixed, no extension headers for LICHEN).
 pub const IPV6_HEADER_LEN: usize = 40;
 
-pub mod field {
-    pub const SRC_OFFSET: usize = 8;
-    pub const DST_OFFSET: usize = 24;
-}
-
 /// UDP header length.
 pub const UDP_HEADER_LEN: usize = 8;
 
@@ -354,8 +349,8 @@ impl Ipv6Header {
         out[7] = self.hop_limit;
 
         // Addresses
-        out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&self.src.0);
-        out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&self.dst.0);
+        out[8..24].copy_from_slice(&self.src.0);
+        out[24..40].copy_from_slice(&self.dst.0);
 
         Ok(IPV6_HEADER_LEN)
     }
@@ -380,8 +375,8 @@ impl Ipv6Header {
 
         let mut src = [0u8; 16];
         let mut dst = [0u8; 16];
-        src.copy_from_slice(&buf[field::SRC_OFFSET..field::DST_OFFSET]);
-        dst.copy_from_slice(&buf[field::DST_OFFSET..IPV6_HEADER_LEN]);
+        src.copy_from_slice(&buf[8..24]);
+        dst.copy_from_slice(&buf[24..40]);
 
         Ok(Self {
             traffic_class,
@@ -663,12 +658,18 @@ pub struct NeighborAdvertisement {
     pub router: bool,
     pub solicited: bool,
     pub override_flag: bool,
+    /// Optional Target Link-Layer Address (EUI-64, 8 bytes).
+    ///
+    /// Per RFC 4861 Section 7.2.4, NA packets sent in response to a unicast NS
+    /// SHOULD include this option so the recipient can populate its neighbor cache.
+    pub link_layer_addr: Option<[u8; 8]>,
 }
 
 impl NeighborAdvertisement {
     /// Build NA packet.
     ///
-    /// NA is fixed-size (24 bytes), so this cannot fail with the 64-byte buffer.
+    /// With TLLA option (8-byte EUI-64), the NA payload grows to 40 bytes — well
+    /// within the 64-byte buffer.
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
@@ -698,8 +699,20 @@ impl NeighborAdvertisement {
         pkt.extend_from_slice(&self.target.0)
             .expect("capacity pre-checked");
 
+        // Target Link-Layer Address option (RFC 4861 Section 4.6.1)
+        if let Some(ll_addr) = &self.link_layer_addr {
+            // Type = 2 (Target Link-Layer Address)
+            pkt.push(2).expect("capacity pre-checked");
+            // Length in units of 8 bytes: type(1) + len(1) + 8 = 10 → round up to 16 → len=2
+            pkt.push(2).expect("capacity pre-checked");
+            pkt.extend_from_slice(ll_addr).expect("capacity pre-checked");
+            // Pad to 16 bytes (6 zero bytes)
+            pkt.extend_from_slice(&[0u8; 6])
+                .expect("capacity pre-checked");
+        }
+
         // Compute checksum
-        let checksum = icmpv6_checksum(src, dst, &pkt).expect("fixed-size advertisement");
+        let checksum = icmpv6_checksum(src, dst, &pkt).expect("bounded advertisement");
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
 
@@ -760,7 +773,6 @@ fn verify_icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> bool {
     icmpv6_checksum(src, dst, icmpv6_msg).is_ok_and(|computed| received == computed)
 }
 
-#[cfg(test)]
 fn verify_udp_checksum(src: &Addr, dst: &Addr, udp_datagram: &[u8]) -> bool {
     if udp_datagram.len() < UDP_HEADER_LEN {
         return false;
@@ -853,6 +865,7 @@ pub fn handle_icmpv6(
     local_addr: &Addr,
     ip_header: &Ipv6Header,
     icmpv6_payload: &[u8],
+    link_layer_addr: Option<[u8; 8]>,
 ) -> Result<Option<Vec<u8, 256>>, Ipv6Error> {
     if icmpv6_payload.len() < ICMPV6_HEADER_LEN {
         return Ok(None);
@@ -947,6 +960,7 @@ pub fn handle_icmpv6(
                 router: false,
                 solicited,
                 override_flag: true,
+                link_layer_addr,
             };
 
             let reply_icmp = na.build(local_addr, &reply_dst);
@@ -1048,7 +1062,7 @@ mod tests {
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, remote, local);
 
         // Handle it
-        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req).unwrap();
+        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req, None).unwrap();
         assert!(response.is_some());
 
         let pkt = response.unwrap();
@@ -1063,12 +1077,49 @@ mod tests {
     }
 
     #[test]
+    fn test_handle_neighbor_solicitation_with_tlla() {
+        let local_mac = hex!("001122334455");
+        let remote_mac = hex!("665544332211");
+        let local = Addr::link_local_from_mac(&local_mac);
+        let remote = Addr::link_local_from_mac(&remote_mac);
+
+        // Build a unicast NS from remote to local
+        let ns = NeighborSolicitation { target: local };
+        let icmp_req = ns.build(&remote, &local);
+
+        let ip_hdr = Ipv6Header::new(next_header::ICMPV6, remote, local);
+
+        let ll_addr = hex!("0011223344556677");
+        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req, Some(ll_addr)).unwrap();
+        assert!(response.is_some());
+
+        let pkt = response.unwrap();
+        let (resp_ip, resp_payload) = parse_packet(&pkt).unwrap();
+        assert_eq!(resp_ip.src, local);
+        assert_eq!(resp_ip.dst, remote);
+        assert_eq!(resp_ip.hop_limit, 255);
+        // ICMPv6 type = NA
+        assert_eq!(resp_payload[0], icmpv6_type::NEIGHBOR_ADVERTISEMENT);
+        // Flags byte
+        let flags = resp_payload[4];
+        assert_eq!(flags, 0x60); // solicited + override
+        // Target = local
+        let target_start = 8;
+        assert_eq!(&resp_payload[target_start..target_start + 16], &local.0);
+        // TLLA option: type=2, len=2, address + padding
+        let tlla_start = target_start + 16;
+        assert_eq!(resp_payload[tlla_start], 2); // type
+        assert_eq!(resp_payload[tlla_start + 1], 2); // length (16 bytes)
+        assert_eq!(&resp_payload[tlla_start + 2..tlla_start + 10], &ll_addr);
+    }
+
+    #[test]
     fn test_reject_bad_checksum() {
         let local = Addr::link_local_from_mac(&hex!("001122334455"));
         let remote = Addr::link_local_from_mac(&hex!("665544332211"));
         let icmp_req = hex!("8000070eabcd000770696e67");
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, remote, local);
-        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req).unwrap();
+        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req, None).unwrap();
         assert!(response.is_none());
     }
 
@@ -1077,20 +1128,16 @@ mod tests {
         let w1 = hex!("60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000070eabcd000770696e67");
         let h1 = Ipv6Header::from_bytes(&w1).unwrap();
         let p1 = &w1[40..];
-        assert!(handle_icmpv6(&h1.dst, &h1, p1).unwrap().is_none());
-        let w2 = hex!(
-            "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000"
-        );
+        assert!(handle_icmpv6(&h1.dst, &h1, p1, None).unwrap().is_none());
+        let w2 = hex!("60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000");
         let h2 = Ipv6Header::from_bytes(&w2).unwrap();
         let p2 = &w2[40..];
-        assert!(handle_icmpv6(&h2.dst, &h2, p2).unwrap().is_none());
+        assert!(handle_icmpv6(&h2.dst, &h2, p2, None).unwrap().is_none());
         let w3 = hex!("6000000000131140fe800000000000000000000000000001fe800000000000000000000000000002163316330013000040011234ff737461747573");
         let h3 = Ipv6Header::from_bytes(&w3).unwrap();
         let u3 = &w3[40..];
         assert!(!verify_udp_checksum(&h3.src, &h3.dst, u3));
-        let w4 = hex!(
-            "6000000000081140fe800000000000000000000000000001fe8000000000000000000000000000021633"
-        );
+        let w4 = hex!("6000000000081140fe800000000000000000000000000001fe8000000000000000000000000000021633");
         assert!(UdpHeader::from_bytes(&w4[40..]).is_err());
     }
     #[test]

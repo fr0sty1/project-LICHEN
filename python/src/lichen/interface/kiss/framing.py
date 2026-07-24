@@ -187,7 +187,7 @@ class KissReader:
                 if self.buffer[i] == FEND and self.buffer[i + 1] != FEND:
                     cut_point = i
                     break
-            if cut_point > 0:
+            if cut_point >= 0:
                 del self.buffer[:cut_point]
             elif cut_point == -1:
                 self.buffer.clear()

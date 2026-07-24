@@ -8,8 +8,10 @@
 
 #include <lichen/link_ctx.h>
 #include <lichen/link.h>
+#include <lichen_util.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
+#include <lichen/tx_queue.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -24,10 +26,6 @@
 #include "monocypher.h"
 #include "monocypher-ed25519.h"
 #endif
-
-/* SHA-256 for IID derivation in Yggdrasil address computation */
-#include <tinycrypt/sha256.h>
-#include <tinycrypt/constants.h>
 
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
@@ -115,6 +113,7 @@ static int save_tuple(const struct lichen_link_ctx *ctx)
 	t.replay_counter = 0; /* TODO: integrate replay table snapshot if needed */
 	t.crc = tuple_crc(&t);
 	rc = nvs_write(&link_nvs_fs, LINK_TUPLE_NVS_ID, &t, sizeof(t));
+	secure_wipe(&t, sizeof(t));
 	return (rc == sizeof(t)) ? 0 : rc;
 }
 
@@ -126,9 +125,11 @@ static int restore_tuple(struct lichen_link_ctx *ctx)
 	struct link_persisted_tuple t;
 	rc = nvs_read(&link_nvs_fs, LINK_TUPLE_NVS_ID, &t, sizeof(t));
 	if (rc != sizeof(t)) {
+		secure_wipe(&t, sizeof(t));
 		return -ENOENT;
 	}
 	if (t.crc != tuple_crc(&t)) {
+		secure_wipe(&t, sizeof(t));
 		return -EBADMSG;
 	}
 	memcpy(ctx->eui64, t.eui64, sizeof(ctx->eui64));
@@ -139,6 +140,7 @@ static int restore_tuple(struct lichen_link_ctx *ctx)
 	ctx->has_key = true;
 	ctx->nonce_exhausted = t.nonce_exhausted;
 	/* replay counters restored via placeholder; full table in replay.c out of scope */
+	secure_wipe(&t, sizeof(t));
 	return 0;
 }
 #endif
@@ -185,6 +187,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 		return -EIO;
 	}
 #endif
+
+	tx_queue_init(&ctx->tx_queue);
 
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
@@ -281,6 +285,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 #ifdef CONFIG_NVS
 	(void)save_tuple(ctx); /* persist new key + reset tuple; ignore errors to not block boot */
 #endif
+	(void)seq_unlock(ctx);
 	return 0;
 }
 
@@ -568,7 +573,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 		return;
 	}
 
-	int locked = seq_lock(ctx);
+	seq_lock(ctx);
 
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
@@ -581,14 +586,25 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 
-	if (locked == 0) {
-		(void)seq_unlock(ctx);
+	(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-		pthread_mutex_destroy(&ctx->seq_lock);
+	pthread_mutex_destroy(&ctx->seq_lock);
 #endif
-	}
 }
 
+int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
+{
+	if (num_slots == 0) num_slots = 8;
+	uint8_t data[8];
+	memcpy(data, eui64, 8);
+	uint32_t e = epoch;
+	for (size_t i = 0; i < 4; i++) {
+		data[i] ^= (uint8_t)(e & 0xff);
+		e >>= 8;
+	}
+	uint32_t h = lichen_hash_32(data, 8);
+	return (uint8_t)(h % num_slots);
+}
 int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)
 {
 	if (tdma == NULL || ctx == NULL) return -EINVAL;
@@ -622,74 +638,4 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
 }
 
-uint32_t lichen_hash_32(const uint8_t *data, size_t len)
-{
-	uint32_t hash = 0x811c9dc5u;
-	for (size_t i = 0; i < len; i++) {
-		hash ^= (uint32_t)data[i];
-		hash = hash * 0x01000193u;
-	}
-	return hash;
-}
 
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
-{
-	if (num_slots == 0) num_slots = 8;
-	uint8_t buf[8];
-	memcpy(buf, eui64, 8);
-	uint32_t e = epoch;
-	for (size_t i = 0; i < 8; i++) {
-		buf[i] ^= (uint8_t)e;
-		e >>= 8;
-	}
-	uint32_t h = lichen_hash_32(buf, 8);
-	return (uint8_t)(h % num_slots);
-}
-
-#ifdef CONFIG_LICHEN_LINK_COORDINATION
-int lichen_coordination_negotiate(struct lichen_link_ctx *_Nonnull ctx)
-{
-	if (ctx == NULL) return -EINVAL;
-	if (!ctx->has_key) return -ENOKEY;
-	return LICHEN_COORD_HASH_BASED;
-}
-#endif /* CONFIG_LICHEN_LINK_COORDINATION */
-
-int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
-					  uint8_t ygg_addr[16])
-{
-	if (pubkey == NULL || ygg_addr == NULL) {
-		return -EINVAL;
-	}
-
-	uint8_t hash512[64];
-	uint8_t iid_hash[TC_SHA256_DIGEST_SIZE];
-	struct tc_sha256_state_struct sha_state;
-
-#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
-	crypto_sha512(hash512, pubkey, 32);
-#else
-	memset(hash512, 0, sizeof(hash512));
-	uint8_t stub_hash[32];
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_final(stub_hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	memcpy(hash512, stub_hash, 7);
-	memset(stub_hash, 0, sizeof(stub_hash));
-#endif
-
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_final(iid_hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-
-	ygg_addr[0] = 0x02;
-	memcpy(ygg_addr + 1, hash512, 7);
-	memcpy(ygg_addr + 8, iid_hash, 8);
-	ygg_addr[8] &= ~0x02U;
-
-	return 0;
-}

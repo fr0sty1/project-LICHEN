@@ -60,6 +60,12 @@ class ModeOfOperation(IntEnum):
     STORING_MULTICAST = 3
 
 
+# Bit mask for the gateway-centric flag in DIO.flags (LICHEN extension).
+# Bit 0 of the flags byte: 1 = gateway centric (suppress announces when joined),
+# 0 = normal (standard announce interval).
+DIO_FLAG_GATEWAY_CENTRIC = 0x01
+
+
 class RplError(Exception):
     """Raised when an RPL message is malformed."""
 
@@ -155,6 +161,11 @@ class DIO:
             if isinstance(self.dodag_id, IPv6Address)
             else IPv6Address(self.dodag_id)
         )
+
+    @property
+    def gateway_centric(self) -> bool:
+        """LICHEN gateway-centric flag (bit 0 of flags byte)."""
+        return bool(self.flags & DIO_FLAG_GATEWAY_CENTRIC)
 
     def to_bytes(self) -> bytes:
         if not 0 <= self.rpl_instance_id <= 0xFF:

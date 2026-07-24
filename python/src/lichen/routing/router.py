@@ -536,6 +536,11 @@ class Router:
 
         Why RPL parent: External traffic goes "up" the DODAG tree to the
         border router, which has connectivity to the wider network.
+
+        LOADng fallback: If the DODAG is stale (unjoined, no parent) but we
+        have a LOADng router, try reactive discovery for the external address
+        rather than dropping immediately. This handles the transition period
+        after DODAG loss before the gateway-centric grace period expires.
         """
         if self.dodag is None:
             logger.warning("no DODAG state, cannot route external")
@@ -543,11 +548,17 @@ class Router:
 
         if not self.dodag.is_joined():
             logger.warning("not joined to DODAG, cannot route external")
+            if self.loadng is not None:
+                logger.debug("LOADng fallback for external route (DODAG stale)")
+                return RouteDecision.QUEUE, None
             return RouteDecision.DROP, None
 
         parent = self.dodag.preferred_parent
         if parent is None:
             logger.warning("no preferred parent, cannot route external")
+            if self.loadng is not None:
+                logger.debug("LOADng fallback for external route (no parent)")
+                return RouteDecision.QUEUE, None
             return RouteDecision.DROP, None
 
         return RouteDecision.FORWARD, parent

@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <lichen/tx_queue.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
@@ -76,6 +77,7 @@ struct lichen_link_ctx {
 #else
 	pthread_mutex_t seq_lock; /**< Protects TX epoch/sequence allocation */
 #endif
+	struct tx_queue tx_queue; /**< TX queue with priority and deadline support */
 };
 
 /** Atomic signing identity snapshot. Clear immediately after use. */

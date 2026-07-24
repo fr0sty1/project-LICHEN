@@ -84,7 +84,7 @@ pub struct DutyCycleTracker<const N: usize> {
     records: Deque<TxRecord, N>,
     /// Duty cycle limit in permille (1% = 10, 0.1% = 1).
     duty_permille: u16,
-    /// Last `now_ms` value passed to a public method (for clock-monotonicity guard).
+    /// Last timestamp passed to any public method, for monotonicity checks.
     last_now: u64,
 }
 
@@ -140,18 +140,7 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// Returns `true` if the record was added, `false` if the buffer is full
     /// (after evicting stale records). A full buffer indicates the node is
     /// transmitting faster than expected for duty cycle compliance.
-    fn check_monotonic(&mut self, now_ms: u64) {
-        debug_assert!(
-            now_ms >= self.last_now,
-            "time went backwards: last_now={}, now_ms={}",
-            self.last_now,
-            now_ms
-        );
-        self.last_now = now_ms;
-    }
-
     pub fn record_tx(&mut self, timestamp_ms: u64, duration_ms: u32) -> bool {
-        self.check_monotonic(timestamp_ms);
         // Evict records outside the window
         self.evict_stale(timestamp_ms);
 
@@ -197,7 +186,6 @@ impl<const N: usize> DutyCycleTracker<N> {
     ///
     /// - `now_ms`: Current timestamp in milliseconds.
     pub fn remaining_ms(&mut self, now_ms: u64) -> u32 {
-        self.check_monotonic(now_ms);
         self.evict_stale(now_ms);
         let max_tx = self.max_tx_ms();
         let used = self.total_tx_in_window(now_ms);
@@ -213,7 +201,6 @@ impl<const N: usize> DutyCycleTracker<N> {
     ///
     /// - `now_ms`: Current timestamp in milliseconds.
     pub fn usage_permille(&mut self, now_ms: u64) -> u16 {
-        self.check_monotonic(now_ms);
         self.evict_stale(now_ms);
         let used = self.total_tx_in_window(now_ms);
         // used_permille = (used * 1000) / WINDOW_MS
@@ -231,7 +218,6 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// - `now_ms`: Current timestamp in milliseconds.
     /// - `duration_ms`: Desired transmission duration.
     pub fn next_tx_available_ms(&mut self, now_ms: u64, duration_ms: u32) -> u64 {
-        self.check_monotonic(now_ms);
         self.evict_stale(now_ms);
 
         let max_tx = self.max_tx_ms();
@@ -252,11 +238,8 @@ impl<const N: usize> DutyCycleTracker<N> {
             freed = freed.saturating_add(record.duration_ms);
             if freed >= needed {
                 // This record aging out frees enough budget.
-                // It ages out when: record.timestamp_ms + record.duration_ms + WINDOW_MS
-                return record
-                    .timestamp_ms
-                    .saturating_add(record.duration_ms as u64)
-                    .saturating_add(WINDOW_MS);
+                // It ages out when: record.timestamp_ms + WINDOW_MS
+                return record.timestamp_ms.saturating_add(WINDOW_MS);
             }
         }
 
@@ -278,6 +261,13 @@ impl<const N: usize> DutyCycleTracker<N> {
 
     /// Remove records that are entirely outside the rolling window.
     fn evict_stale(&mut self, now_ms: u64) {
+        debug_assert!(
+            now_ms >= self.last_now,
+            "time went backwards: last_now={}, now_ms={}",
+            self.last_now,
+            now_ms
+        );
+        self.last_now = now_ms;
         let window_start = now_ms.saturating_sub(WINDOW_MS);
 
         // Pop records from the front while they're completely outside the window
@@ -299,7 +289,6 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// Clear all records.
     pub fn clear(&mut self) {
         self.records.clear();
-        self.last_now = 0;
     }
 }
 
@@ -382,10 +371,9 @@ mod tests {
         // Can't transmit now
         assert!(!tracker.can_transmit(1000, 200));
 
-        // Should have to wait until the first record ages out.
-        // Record at 0 with duration=max_tx ages out at max_tx + WINDOW_MS
+        // Should have to wait until the first record ages out
         let next = tracker.next_tx_available_ms(1000, 200);
-        assert_eq!(next, WINDOW_MS + max_tx as u64);
+        assert_eq!(next, WINDOW_MS); // Original TX at 0 ages out at WINDOW_MS
     }
 
     #[test]

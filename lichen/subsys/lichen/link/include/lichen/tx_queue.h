@@ -187,7 +187,7 @@ int tx_queue_pop(struct tx_queue *_Nonnull queue,
  * @param[in,out] queue TX queue (non-const due to internal locking)
  * @return Number of packets (>=0), or -EINVAL if queue is NULL
  */
-int tx_queue_count(struct tx_queue *_Nonnull queue);
+int tx_queue_count(const struct tx_queue *_Nonnull queue);
 
 /**
  * @brief Check if the queue is empty.
@@ -197,7 +197,7 @@ int tx_queue_count(struct tx_queue *_Nonnull queue);
  * @param[in,out] queue TX queue (non-const due to internal locking)
  * @return true if empty, false otherwise (NULL returns true)
  */
-bool tx_queue_empty(struct tx_queue *_Nonnull queue);
+bool tx_queue_empty(const struct tx_queue *_Nonnull queue);
 
 /**
  * @brief Get a copy of queue statistics.
@@ -208,7 +208,7 @@ bool tx_queue_empty(struct tx_queue *_Nonnull queue);
  * @param[out] stats Statistics output
  * @return 0 on success, -EINVAL if args are NULL
  */
-int tx_queue_stats_get(struct tx_queue *_Nonnull queue,
+int tx_queue_stats_get(const struct tx_queue *_Nonnull queue,
 		       struct tx_queue_stats *_Nonnull stats);
 
 /**

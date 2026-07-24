@@ -1,3 +1,0 @@
-/mnt/lichen-zephyr/work/project-LICHEN-worker7/lichen/tests/tx_queue/build-tsan/CMakeFiles/tx_queue_test.dir
-/mnt/lichen-zephyr/work/project-LICHEN-worker7/lichen/tests/tx_queue/build-tsan/CMakeFiles/edit_cache.dir
-/mnt/lichen-zephyr/work/project-LICHEN-worker7/lichen/tests/tx_queue/build-tsan/CMakeFiles/rebuild_cache.dir

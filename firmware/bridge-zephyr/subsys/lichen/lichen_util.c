@@ -6,10 +6,7 @@
  * @brief LICHEN shared utility function implementations
  */
 
-#include <zephyr/logging/log.h>
 #include "lichen_util.h"
-
-LOG_MODULE_REGISTER(lichen_util, CONFIG_LICHEN_UTIL_LOG_LEVEL);
 
 /* Compile-time sanity check: SHA-256 always produces 32 bytes */
 BUILD_ASSERT(TC_SHA256_DIGEST_SIZE == 32,
@@ -26,22 +23,21 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
     }
 
     if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("SHA-256 init failed");
+        printk("lichen_sha256: tc_sha256_init failed\n");
         ret = -EIO;
-        goto cleanup;
+        goto out;
     }
     if (inlen > 0 &&
         tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("SHA-256 update failed");
+        printk("lichen_sha256: tc_sha256_update failed\n");
         ret = -EIO;
-        goto cleanup;
+        goto out;
     }
     if (tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("SHA-256 final failed");
-        ret = -EINVAL;
-        goto cleanup;
+        printk("lichen_sha256: tc_sha256_final failed\n");
+        ret = -EIO;
     }
-cleanup:
+out:
     secure_zero(&state, sizeof(state));
     return ret;
 }

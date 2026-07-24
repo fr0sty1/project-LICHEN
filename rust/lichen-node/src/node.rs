@@ -20,7 +20,7 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome};
+use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome, TrickleSafeLivenessPolicy};
 #[cfg(feature = "std")]
 use crate::{
     announce::AnnounceProcessor,
@@ -144,24 +144,6 @@ impl Node {
     pub fn handle_ipv6(&self, ipv6: &[u8], reply: &mut [u8]) -> usize {
         let n = ipv6.len();
         if n < IPV6_HEADER_LEN || ipv6[0] >> 4 != IPV6_VERSION {
-            return 0;
-        }
-
-        // RFC 4291 §2.7: Source MUST NOT be multicast.
-        // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
-        let src_first = ipv6[field::SRC_OFFSET];
-        if src_first == 0xff {
-            return 0;
-        }
-        // Check for unspecified source (::) — all 16 bytes must be zero.
-        let mut all_zero = true;
-        for &b in &ipv6[field::SRC_OFFSET..field::DST_OFFSET] {
-            if b != 0 {
-                all_zero = false;
-                break;
-            }
-        }
-        if all_zero {
             return 0;
         }
 
@@ -296,22 +278,6 @@ impl RplNode {
         }
     }
 
-    /// Create a new root RPL node (test only).
-    #[cfg(test)]
-    pub fn new_root(node_id: NodeId) -> Self {
-        let node_addr = node_id.link_local_addr().0;
-        Self {
-            node: Node::new(node_id),
-            router: Router::new_root(node_addr),
-        }
-    }
-
-    /// Seed a route for testing purposes.
-    #[cfg(test)]
-    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
-        self.router.add_test_route(target, path)
-    }
-
     /// Provision component-level root routing state.
     ///
     /// This advanced API does not serialize access to `RplNode`, `DaoRxState`, or
@@ -416,9 +382,9 @@ impl RplNode {
     /// `sender_iid` is the identity established by link-layer signature verification.
     ///
     /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
-    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the
-    /// caller may inspect `route_updated` to decide whether to update its
-    /// routing table; otherwise a nonzero output is a reply.
+    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the root
+    /// processed a DAO; for [`RplEvent::DisReceived`], send a DIO; otherwise a
+    /// nonzero output is a reply.
     pub fn handle_frame_rpl(
         &mut self,
         l2_payload: &[u8],
@@ -431,6 +397,9 @@ impl RplNode {
 
     /// Process an authenticated SCHC payload with measured link quality.
     /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
+    ///
+    /// Returns `(output_len, rpl_event)`. See [`handle_frame_rpl`] for variant
+    /// descriptions.
     pub fn handle_frame_rpl_with_link(
         &mut self,
         l2_payload: &[u8],
@@ -553,7 +522,7 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         if self.router.is_root() {
-                            return (0, RplEvent::DaoReceived { route_updated: false });
+                            return (0, RplEvent::DaoReceived);
                         }
                         let Some(advertised_parents) =
                             crate::routing::dao_parents_for_source(dao_bytes, &sender_addr)
@@ -645,9 +614,13 @@ impl RplNode {
     }
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
-    /// Uses [`TrickleAwareNeighborLiveness`] to respect Trickle suppression.
-    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
-        self.router.maintain(now_ms, neighbor_timeout_ms)
+    pub fn maintain<P: TrickleSafeLivenessPolicy>(
+        &mut self,
+        now_ms: u64,
+        neighbor_timeout_ms: u64,
+        policy: &P,
+    ) -> RplMaintenanceOutcome {
+        self.router.maintain(now_ms, neighbor_timeout_ms, policy)
     }
 
     /// Return the current Trickle deadline without advancing it.
@@ -714,17 +687,7 @@ pub(crate) fn valid_ipv6_envelope(ipv6: &[u8]) -> bool {
         return false;
     }
     let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
-    if IPV6_HEADER_LEN.checked_add(payload_len) != Some(ipv6.len()) {
-        return false;
-    }
-    // RFC 4291 §2.7: Source address MUST NOT be multicast.
-    // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
-    let src = Addr(
-        ipv6[field::SRC_OFFSET..field::DST_OFFSET]
-            .try_into()
-            .unwrap(),
-    );
-    !src.is_multicast() && src != Addr::UNSPECIFIED
+    IPV6_HEADER_LEN.checked_add(payload_len) == Some(ipv6.len())
 }
 
 #[cfg(feature = "std")]
@@ -1041,7 +1004,7 @@ mod tests {
         let mut output = [0u8; 260];
         assert_eq!(
             root.handle_frame_rpl(&parent_packet, parent_identity.iid, &mut output, 0),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert_eq!(
             root.handle_dao(
@@ -1110,7 +1073,7 @@ mod tests {
                 &mut [0u8; 260],
                 0,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route(&leaf_addr).is_none());
 
@@ -1266,7 +1229,7 @@ mod tests {
                 &mut [0u8; 260],
                 1_999,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route_at(&first_addr, 2_999).is_none());
         assert_eq!(
@@ -1276,7 +1239,7 @@ mod tests {
                 &mut [0u8; 260],
                 2_999,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route(&first_addr).is_none());
         assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());

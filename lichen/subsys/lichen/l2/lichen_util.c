@@ -25,14 +25,22 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
         return -ENOMEM;
     }
 
-    /* Conflated error handling is intentional: callers only need pass/fail,
-     * and TinyCrypt's SHA-256 functions only fail on NULL (checked above). */
-    if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS ||
-        (inlen > 0 &&
-         tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) ||
-        tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
+    if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS) {
+        printk("lichen_sha256: tc_sha256_init failed\n");
+        ret = -EIO;
+        goto out;
+    }
+    if (inlen > 0 &&
+        tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) {
+        printk("lichen_sha256: tc_sha256_update failed\n");
+        ret = -EIO;
+        goto out;
+    }
+    if (tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
+        printk("lichen_sha256: tc_sha256_final failed\n");
         ret = -EIO;
     }
+out:
     secure_zero(&state, sizeof(state));
     return ret;
 }
@@ -85,4 +93,14 @@ int lichen_iid_to_human_address(const uint8_t *iid, char *buf, size_t buflen)
 	buf[14] = temp[12];
 	buf[15] = '\0';
 	return 0;
+}
+
+uint32_t lichen_hash_32(const uint8_t *data, size_t len)
+{
+	uint32_t hash = 0x811c9dc5u;
+	for (size_t i = 0; i < len; i++) {
+		hash ^= (uint32_t)data[i];
+		hash = hash * 0x01000193u;
+	}
+	return hash;
 }

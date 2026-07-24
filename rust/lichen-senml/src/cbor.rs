@@ -136,19 +136,14 @@ fn enc_bool(out: &mut [u8], pos: usize, b: bool) -> Result<usize, CborError> {
 }
 
 fn field_count(r: &Record<'_>) -> u64 {
-    [
-        r.base_name.is_some(),
-        r.base_time.is_some(),
-        r.name.is_some(),
-        r.unit.is_some(),
-        r.value.is_some(),
-        r.string_value.is_some(),
-        r.bool_value.is_some(),
-        r.time.is_some(),
-    ]
-    .iter()
-    .filter(|&&x| x)
-    .count() as u64
+    r.base_name.is_some() as u64
+        + r.base_time.is_some() as u64
+        + r.name.is_some() as u64
+        + r.unit.is_some() as u64
+        + r.value.is_some() as u64
+        + r.string_value.is_some() as u64
+        + r.bool_value.is_some() as u64
+        + r.time.is_some() as u64
 }
 
 /// Count how many value fields are set in a record.

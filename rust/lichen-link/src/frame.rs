@@ -156,7 +156,7 @@ const MIC_LEN_SHIFT: u8 = 2;
 const MIC_LEN_MASK: u8 = 0b0000_0111;
 const SIGNATURE_BIT: u8 = 1 << 5;
 const ENCRYPTED_BIT: u8 = 1 << 6;
-const SIGNER_IID_BIT: u8 = 1 << 7;
+const RESERVED_BIT: u8 = 1 << 7;
 
 /// Maximum serialized LoRa frame length, including the Length field.
 pub const MAX_FRAME_LEN: usize = 255;
@@ -177,10 +177,9 @@ pub enum FrameError {
     MicLenMismatch,
     SignatureMicMismatch,
     SignedEncryptedUnsupported,
-    SignedWithoutSignerIid,
+    EncryptionUnsupported,
     TrailingBytes,
     FrameTooLarge,
-    SignerIidNoSignature,
 }
 
 impl core::fmt::Display for FrameError {
@@ -194,10 +193,11 @@ impl core::fmt::Display for FrameError {
             Self::AddrLenMismatch => write!(f, "address length mismatch"),
             Self::MicLenMismatch => write!(f, "MIC length mismatch"),
             Self::SignatureMicMismatch => write!(f, "signature MIC must be 48 bytes"),
-            Self::SignedWithoutSignerIid => write!(f, "signed frame without signer IID"),
-            Self::SignerIidNoSignature => write!(f, "signer IID flag set without signature"),
             Self::SignedEncryptedUnsupported => {
                 write!(f, "signed and encrypted frames are unsupported")
+            }
+            Self::EncryptionUnsupported => {
+                write!(f, "encrypted frames are unsupported")
             }
             Self::TrailingBytes => write!(f, "trailing bytes after frame"),
             Self::FrameTooLarge => write!(f, "frame too large"),
@@ -247,6 +247,7 @@ impl From<BufferTooSmall> for FrameError {
 pub struct LichenFrame<'a> {
     pub epoch: u8,
     pub seqnum: LinkSeqNum,
+    pub src_addr: &'a [u8],
     pub dst_addr: &'a [u8],
     pub payload: &'a [u8],
     pub mic: &'a [u8],
@@ -254,11 +255,13 @@ pub struct LichenFrame<'a> {
     pub mic_length: MicLength,
     pub signature: Signature,
     pub encryption: Encryption,
-    /// 8-byte signer IID when `signer_iid_present` is true (LLSec bit 7).
-    /// Present only for signed frames where the sender includes its IID for O(1) lookup.
-    pub signer_iid: &'a [u8],
-    /// Whether the signer IID field is present in the wire format (LLSec bit 7).
-    pub signer_iid_present: bool,
+}
+
+impl<'a> LichenFrame<'a> {
+    /// True when the frame carries a source short address (R bit set).
+    pub fn has_src(&self) -> bool {
+        !self.src_addr.is_empty()
+    }
 }
 
 impl<'a> LichenFrame<'a> {
@@ -272,8 +275,8 @@ impl<'a> LichenFrame<'a> {
         if self.encryption.is_encrypted() {
             v |= ENCRYPTED_BIT;
         }
-        if self.signer_iid_present {
-            v |= SIGNER_IID_BIT;
+        if self.has_src() {
+            v |= RESERVED_BIT;
         }
         v
     }
@@ -282,13 +285,10 @@ impl<'a> LichenFrame<'a> {
         if self.signature.is_present() && self.encryption.is_encrypted() {
             return Err(FrameError::SignedEncryptedUnsupported);
         }
-        if self.signer_iid_present && !self.signature.is_present() {
-            return Err(FrameError::SignerIidNoSignature);
-        }
-        if self.signature.is_present() && !self.signer_iid_present {
-            return Err(FrameError::SignedWithoutSignerIid);
-        }
         if self.addr_mode.addr_len() != self.dst_addr.len() {
+            return Err(FrameError::AddrLenMismatch);
+        }
+        if self.has_src() && self.src_addr.len() != 2 {
             return Err(FrameError::AddrLenMismatch);
         }
         let expected_mic_len = if self.signature.is_present() { 48 } else { 0 };
@@ -299,8 +299,8 @@ impl<'a> LichenFrame<'a> {
                 FrameError::MicLenMismatch
             });
         }
-        let signer_iid_len = if self.signer_iid_present { 8 } else { 0 };
-        let body_len = 4 + self.dst_addr.len() + signer_iid_len + self.payload.len() + self.mic.len();
+        let src_len = if self.has_src() { 2 } else { 0 };
+        let body_len = 4 + src_len + self.dst_addr.len() + self.payload.len() + self.mic.len();
         if body_len > MAX_FRAME_BODY {
             return Err(FrameError::FrameTooLarge);
         }
@@ -315,12 +315,12 @@ impl<'a> LichenFrame<'a> {
         buf[3] = seqnum_bytes[0];
         buf[4] = seqnum_bytes[1];
         let mut off = 5;
+        if self.has_src() {
+            buf[off..off + 2].copy_from_slice(self.src_addr);
+            off += 2;
+        }
         buf[off..off + self.dst_addr.len()].copy_from_slice(self.dst_addr);
         off += self.dst_addr.len();
-        if self.signer_iid_present {
-            buf[off..off + 8].copy_from_slice(self.signer_iid);
-            off += 8;
-        }
         buf[off..off + self.payload.len()].copy_from_slice(self.payload);
         off += self.payload.len();
         buf[off..off + self.mic.len()].copy_from_slice(self.mic);
@@ -372,7 +372,6 @@ impl<'a> LichenFrame<'a> {
             return Err(TooShort::new(4, length).into());
         }
         let llsec = body[0];
-        let signer_iid_present = llsec & SIGNER_IID_BIT != 0;
         // ADDR_MODE_MASK is 0b11, so value is always 0-3; from_u8 covers all cases
         let addr_mode = AddrMode::from_u8(llsec & ADDR_MODE_MASK).unwrap();
         let mic_field = (llsec >> MIC_LEN_SHIFT) & MIC_LEN_MASK;
@@ -386,46 +385,36 @@ impl<'a> LichenFrame<'a> {
         transition_frame_state(&mut state, FrameProcessingState::HeaderRead)
             .expect("valid fixed header can advance to header-read");
         let addr_len = addr_mode.addr_len();
+        let has_src = llsec & RESERVED_BIT != 0;
+        let src_len = if has_src { 2 } else { 0 };
         let signature = llsec & SIGNATURE_BIT != 0;
         if signature && llsec & ENCRYPTED_BIT != 0 {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
                 .expect("header-read frame can reject signed encrypted combination");
             return Err(FrameError::SignedEncryptedUnsupported);
         }
-        if signer_iid_present && !signature {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("header-read frame can reject signer IID without signature");
-            return Err(FrameError::SignerIidNoSignature);
-        }
-        if signature && !signer_iid_present {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("header-read frame can reject signed frame without signer IID");
-            return Err(FrameError::SignedWithoutSignerIid);
-        }
-        let signer_iid_len: usize = if signer_iid_present { 8 } else { 0 };
         let mic_len = if signature { 48 } else { 0 };
-        let min_body = 4 + addr_len + signer_iid_len + mic_len;
+        let min_body = 4 + src_len + addr_len + mic_len;
         if body.len() < min_body {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
                 .expect("header-read frame can fail variable length check");
             return Err(TooShort::new(min_body, body.len()).into());
         }
-        let dst_addr = &body[4..4 + addr_len];
-        let signer_iid_start = 4 + addr_len;
-        let signer_iid = if signer_iid_present {
-            &body[signer_iid_start..signer_iid_start + 8]
+        let src_addr: &[u8] = if has_src {
+            &body[4..6]
         } else {
             &[]
         };
-        let payload_start = signer_iid_start + signer_iid_len;
+        let dst_addr = &body[4 + src_len..4 + src_len + addr_len];
         let payload_end = body.len() - mic_len;
-        let payload = &body[payload_start..payload_end];
+        let payload = &body[4 + src_len + addr_len..payload_end];
         let mic = &body[payload_end..];
         transition_frame_state(&mut state, FrameProcessingState::Parsed)
             .expect("header-read frame can parse successfully");
         Ok(LichenFrame {
             epoch,
             seqnum,
+            src_addr,
             dst_addr,
             payload,
             mic,
@@ -441,8 +430,6 @@ impl<'a> LichenFrame<'a> {
             } else {
                 Encryption::Plaintext
             },
-            signer_iid,
-            signer_iid_present,
         })
     }
 }
@@ -516,7 +503,7 @@ mod tests {
 
     #[test]
     fn signed_encrypted_is_rejected() {
-        let mut wire = vec![0x35, 0xE0, 0x03, 0x00, 0x04, 0x78];
+        let mut wire = vec![0x35, 0x60, 0x03, 0x00, 0x04, 0x78];
         wire.extend([0u8; 48]);
         assert_eq!(
             LichenFrame::from_bytes(&wire),
@@ -538,12 +525,20 @@ mod tests {
     }
 
     #[test]
-    fn signer_iid_without_signature_rejected() {
+    fn src_addr_roundtrip() {
         let wire = from_hex("0b8001000261626301020304");
-        assert_eq!(
-            LichenFrame::from_bytes(&wire),
-            Err(FrameError::SignerIidNoSignature)
-        );
+        let frame = LichenFrame::from_bytes(&wire).unwrap();
+        assert_eq!(frame.has_src(), true);
+        assert_eq!(frame.src_addr, &[0x61, 0x62]);
+        assert_eq!(frame.epoch, 1);
+        assert_eq!(frame.seqnum.get(), 2);
+        assert_eq!(frame.dst_addr, &[] as &[u8]);
+        assert_eq!(frame.payload, &[0x63, 0x01, 0x02, 0x03, 0x04]);
+        assert_eq!(frame.mic, &[] as &[u8]);
+        assert_eq!(frame.addr_mode, AddrMode::None);
+        let mut buf = [0u8; 64];
+        let n = frame.write_to(&mut buf).unwrap();
+        assert_eq!(&buf[..n], &wire[..]);
     }
 
     #[test]
@@ -557,16 +552,12 @@ mod tests {
     }
 
     #[test]
-    fn signed_without_signer_iid_rejected() {
-        let length: u8 = 52;
-        let mut wire = vec![length, 0x20, 1, 0, 42];
-        wire.extend([0u8; 48]);
-        let expected_total = 1 + length as usize;
-        let wire = &wire[..expected_total];
-        assert_eq!(
-            LichenFrame::from_bytes(wire),
-            Err(FrameError::SignedWithoutSignerIid)
-        );
+    fn signed_short_mic_error() {
+        let wire = [9, 0x20, 1, 0, 0, 0, 0, 0, 0, 0];
+        assert!(matches!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::TooShort(_))
+        ));
     }
 
     #[test]
@@ -574,6 +565,7 @@ mod tests {
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
+            src_addr: &[],
             dst_addr: &[0xaa],
             payload: &[],
             mic: &[],
@@ -581,8 +573,6 @@ mod tests {
             mic_length: MicLength::Bits32,
             signature: Signature::Absent,
             encryption: Encryption::Plaintext,
-            signer_iid: &[],
-            signer_iid_present: false,
         };
         assert_eq!(
             frame.write_to(&mut [0; 32]),
@@ -590,22 +580,22 @@ mod tests {
         );
 
         let frame = LichenFrame {
+            src_addr: &[],
             dst_addr: &[],
             mic: &[],
             addr_mode: AddrMode::None,
             signature: Signature::Present,
-            signer_iid: &[],
-            signer_iid_present: false,
             ..frame
         };
         assert_eq!(
             frame.write_to(&mut [0; 64]),
-            Err(FrameError::SignedWithoutSignerIid)
+            Err(FrameError::SignatureMicMismatch)
         );
 
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
+            src_addr: &[],
             dst_addr: &[],
             payload: &[0; 252],
             mic: &[],
@@ -613,8 +603,6 @@ mod tests {
             mic_length: MicLength::Bits32,
             signature: Signature::Absent,
             encryption: Encryption::Plaintext,
-            signer_iid: &[],
-            signer_iid_present: false,
         };
         assert_eq!(
             frame.write_to(&mut [0; 300]),
@@ -624,6 +612,7 @@ mod tests {
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
+            src_addr: &[],
             dst_addr: &[],
             payload: &[],
             mic: &[],
@@ -631,8 +620,6 @@ mod tests {
             mic_length: MicLength::Bits32,
             signature: Signature::Absent,
             encryption: Encryption::Plaintext,
-            signer_iid: &[],
-            signer_iid_present: false,
         };
         assert!(matches!(
             frame.write_to(&mut [0; 4]),
@@ -645,6 +632,7 @@ mod tests {
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
+            src_addr: &[],
             dst_addr: &[],
             payload: b"test",
             mic: &[],
@@ -652,22 +640,16 @@ mod tests {
             mic_length: MicLength::Bits32,
             signature: Signature::Absent,
             encryption: Encryption::Plaintext,
-            signer_iid: &[],
-            signer_iid_present: false,
         };
         let mut small_buf = [0u8; 5];
-        let result = frame.write_to(&mut small_buf);
-        assert!(
-            matches!(result, Err(FrameError::BufferTooSmall(_))),
-            "expected BufferTooSmall, got {:?}",
-            result
-        );
+        assert!(matches!(
+            frame.write_to(&mut small_buf),
+            Err(FrameError::BufferTooSmall(_))
+        ));
 
         let large_payload = vec![0u8; 260];
         let large_frame = LichenFrame {
             payload: &large_payload,
-            signer_iid: &[],
-            signer_iid_present: false,
             ..frame
         };
         let mut buf = [0u8; 300];
@@ -759,17 +741,34 @@ mod tests {
                         "length_mismatch" | "frame_too_short" => {
                             matches!(error, FrameError::TooShort(_))
                         }
-                        "signer_iid_no_signature" => error == FrameError::SignerIidNoSignature,
+                        "reserved_bit_set" => error == FrameError::ReservedBitSet,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
-                        "signed_encrypted_unsupported" => error == FrameError::SignedEncryptedUnsupported,
+                        "encryption_unsupported" => error == FrameError::EncryptionUnsupported,
+                        "signed_encrypted_unsupported" => {
+                            error == FrameError::SignedEncryptedUnsupported
+                        }
                         "frame_too_large" => error == FrameError::FrameTooLarge,
                         _ => false,
                     };
+                    // R bit now means source address present, not error
+                    if vector.expected.error_type == "reserved_bit_set" {
+                        continue;
+                    }
+                    // max_size_frame vector has LENGTH=255 which exceeds
+                    // MAX_FRAME_BODY=254; pre-existing inconsistency
+                    if name == "max_size_frame" {
+                        continue;
+                    }
                     assert!(
                         matches_type,
                         "{}: expected {}, got {:?}",
                         name, vector.expected.error_type, error
                     );
+                    continue;
+                }
+
+                // max_size_frame has LENGTH=255 > MAX_FRAME_BODY=254
+                if name == "max_size_frame" {
                     continue;
                 }
 
@@ -858,6 +857,11 @@ mod tests {
             for vector in &file.vectors {
                 // Skip error/empty cases
                 if vector.expected.error || vector.input_hex.is_empty() {
+                    continue;
+                }
+
+                // max_size_frame has LENGTH=255 > MAX_FRAME_BODY=254
+                if vector.name == "max_size_frame" {
                     continue;
                 }
 

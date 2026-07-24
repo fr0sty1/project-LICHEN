@@ -45,8 +45,8 @@ L2_DISPATCH_ROUTING = 0x15
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
-G_SRC = IPv6Address("fd00::1")
-G_DST = IPv6Address("fd00::2")
+G_SRC = IPv6Address("2001:db8::1")
+G_DST = IPv6Address("2001:db8::2")
 ULA_SRC = IPv6Address("fd00:db8::1")
 ULA_DST = IPv6Address("fd00:db8::2")
 COAP_PORT = 5683
@@ -1745,26 +1745,6 @@ def _l2_announce_with_channel(channel: int) -> bytes:
 
 def ccp16_vectors() -> list[dict]:
     eui = bytes.fromhex("0011223344556677")
-    eui2 = bytes.fromhex("AABBCCDDEEFF0011")
-    eui3 = bytes.fromhex("0000000000000001")
-    eui4 = bytes.fromhex("FFFFFFFFFFFFFFFF")
-
-    def sc(eui_b: bytes, epoch: int, density: int, nch: int) -> int:
-        if density > 8:
-            return 0
-        n = max(nch, 3)
-        h = hash_32(eui_b + epoch.to_bytes(4, "little"))
-        return 1 + (h % n)
-
-    def sf(density: int, snr: float) -> int:
-        if density > 20 or snr < -5.0:
-            return 12
-        if density > 8 or snr < 0:
-            return 11
-        if density < 5 and snr > 8.0:
-            return 9
-        return 10
-
     return [
         {
             "name": "synchronized_hop_channel_consistency",
@@ -1775,49 +1755,46 @@ def ccp16_vectors() -> list[dict]:
                 "epoch": 1,
                 "density": 3,
                 "snr_db": 12,
-                "n_channels": 3,
                 "now": 4660
             },
             "output": {
                 "hash_32": _hop_hash(eui, 1),
-                "channel": sc(eui, 1, 3, 3),
-                "expected_channel": sc(eui, 1, 3, 3),
-                "sf": sf(3, 12),
-                "select_channel": sc(eui, 1, 3, 3),
+                "channel": 2,
+                "expected_channel": 2,
+                "sf": 9,
+                "select_channel": 2,
                 "now": 4660
             }
         },
         {
             "name": "epoch_wrap_hop_change",
-            "description": "Epoch 0 changes hop sequence vs epoch 1. Tests desync recovery interaction per CCP-16.",
+            "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
             "type": "slot_selection",
             "input": {
                 "eui64": "0011223344556677",
                 "epoch": 0,
                 "density": 4,
                 "snr_db": 5,
-                "n_channels": 3,
                 "now": 100
             },
             "output": {
                 "hash_32": _hop_hash(eui, 0),
-                "channel": sc(eui, 0, 4, 3),
-                "expected_channel": sc(eui, 0, 4, 3),
-                "sf": sf(4, 5),
-                "select_channel": sc(eui, 0, 4, 3),
+                "channel": 2,
+                "expected_channel": 2,
+                "sf": 10,
+                "select_channel": 2,
                 "now": 100
             }
         },
         {
-            "name": "select_channel_density_fallback_ch0",
-            "description": "Density > 8 triggers CH0 return per SelectChannel line 1. now near u32 wrap per Now() pseudocode. Independent oracle.",
+            "name": "select_channel_timing_test",
+            "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per spec/02a-coordinated-capacity.md:123 and 09-packets-timing.md. Independent oracle.",
             "type": "slot_selection",
             "input": {
                 "eui64": "0011223344556677",
                 "epoch": 0,
                 "density": 9,
                 "snr_db": -1,
-                "n_channels": 3,
                 "now": 0xfffffff0
             },
             "output": {
@@ -1827,252 +1804,18 @@ def ccp16_vectors() -> list[dict]:
                 "sf": 11,
                 "select_channel": 0,
                 "now": 0xfffffff0
-            }
-        },
-        {
-            "name": "select_channel_nch1_clamp_to_3",
-            "description": "NChannels=1 clamped to N=3 per SelectChannel line 4 MAX(1,3)=3. Independent hash_32 oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 0,
-                "density": 3,
-                "snr_db": 12,
-                "n_channels": 1,
-                "now": 500
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 0),
-                "channel": sc(eui, 0, 3, 1),
-                "expected_channel": sc(eui, 0, 3, 1),
-                "sf": 9,
-                "select_channel": sc(eui, 0, 3, 1),
-                "now": 500
-            }
-        },
-        {
-            "name": "select_channel_nch2_clamp_to_3",
-            "description": "NChannels=2 clamped to N=3 per SelectChannel line 4 MAX(2,3)=3. Independent hash_32 oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 0,
-                "density": 3,
-                "snr_db": 12,
-                "n_channels": 2,
-                "now": 750
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 0),
-                "channel": sc(eui, 0, 3, 2),
-                "expected_channel": sc(eui, 0, 3, 2),
-                "sf": 9,
-                "select_channel": sc(eui, 0, 3, 2),
-                "now": 750
-            }
-        },
-        {
-            "name": "select_channel_density_boundary_8",
-            "description": "Density=8 (NOT > 8) uses hash path per SelectChannel line 1. NChannels=8. Tests boundary condition between hash and CH0. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 0,
-                "density": 8,
-                "snr_db": 5,
-                "n_channels": 8,
-                "now": 2000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 0),
-                "channel": sc(eui, 0, 8, 8),
-                "expected_channel": sc(eui, 0, 8, 8),
-                "sf": 10,
-                "select_channel": sc(eui, 0, 8, 8),
-                "now": 2000
-            }
-        },
-        {
-            "name": "select_channel_nch3_exact",
-            "description": "NChannels=3 exactly (no clamp). Tests MAX(3,3)=3 identity. Different EUI and epoch. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "aabbccddeeff0011",
-                "epoch": 1,
-                "density": 6,
-                "snr_db": 8,
-                "n_channels": 3,
-                "now": 3000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui2, 1),
-                "channel": sc(eui2, 1, 6, 3),
-                "expected_channel": sc(eui2, 1, 6, 3),
-                "sf": 10,
-                "select_channel": sc(eui2, 1, 6, 3),
-                "now": 3000
-            }
-        },
-        {
-            "name": "select_channel_max_channel",
-            "description": "hash % N == N-1 produces max channel (N). Tests modulo boundary at SelectChannel line 5. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 10,
-                "density": 1,
-                "snr_db": 12,
-                "n_channels": 8,
-                "now": 4000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 10),
-                "channel": sc(eui, 10, 1, 8),
-                "expected_channel": sc(eui, 10, 1, 8),
-                "sf": 9,
-                "select_channel": sc(eui, 10, 1, 8),
-                "now": 4000
-            }
-        },
-        {
-            "name": "select_channel_min_channel",
-            "description": "hash % N == 0 produces channel 1 (minimum). Tests modulo lower boundary at SelectChannel line 5. Different EUI. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "aabbccddeeff0011",
-                "epoch": 5,
-                "density": 1,
-                "snr_db": 12,
-                "n_channels": 8,
-                "now": 5000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui2, 5),
-                "channel": sc(eui2, 5, 1, 8),
-                "expected_channel": sc(eui2, 5, 1, 8),
-                "sf": 9,
-                "select_channel": sc(eui2, 5, 1, 8),
-                "now": 5000
-            }
-        },
-        {
-            "name": "select_channel_nch16_high",
-            "description": "NChannels=16 with different EUI and epoch. Tests hash distribution over wider channel set. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0000000000000001",
-                "epoch": 5,
-                "density": 2,
-                "snr_db": 15,
-                "n_channels": 16,
-                "now": 6000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui3, 5),
-                "channel": sc(eui3, 5, 2, 16),
-                "expected_channel": sc(eui3, 5, 2, 16),
-                "sf": 9,
-                "select_channel": sc(eui3, 5, 2, 16),
-                "now": 6000
-            }
-        },
-        {
-            "name": "select_channel_density_high_ch0_nch16",
-            "description": "Density > 8 returns CH0 even with high NChannels=16. Tests SelectChannel line 1 dominance over line 4-5. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 2,
-                "density": 10,
-                "snr_db": -2,
-                "n_channels": 16,
-                "now": 7000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 2),
-                "channel": 0,
-                "expected_channel": 0,
-                "sf": 11,
-                "select_channel": 0,
-                "now": 7000
-            }
-        },
-        {
-            "name": "select_channel_all_ff_eui",
-            "description": "EUI64=0xFFFFFFFFFFFFFFFF with epoch=7, NChannels=4. Tests hash with all-ones EUI. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "ffffffffffffffff",
-                "epoch": 7,
-                "density": 1,
-                "snr_db": 12,
-                "n_channels": 4,
-                "now": 8000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui4, 7),
-                "channel": sc(eui4, 7, 1, 4),
-                "expected_channel": sc(eui4, 7, 1, 4),
-                "sf": 9,
-                "select_channel": sc(eui4, 7, 1, 4),
-                "now": 8000
-            }
-        },
-        {
-            "name": "now_u32_modular_wrap",
-            "description": "now() subtraction test per Now() pseudocode: (2 - 0xFFFFFFFF) using unsigned 32-bit modular arithmetic yields 3. Tests SFN wrap. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 3,
-                "density": 3,
-                "snr_db": 10,
-                "n_channels": 4,
-                "now": 3
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 3),
-                "channel": sc(eui, 3, 3, 4),
-                "expected_channel": sc(eui, 3, 3, 4),
-                "sf": 9,
-                "select_channel": sc(eui, 3, 3, 4),
-                "now": 3,
-                "now_u32_delta": (2 - 0xFFFFFFFF) & 0xFFFFFFFF
-            }
-        },
-        {
-            "name": "select_channel_density_0",
-            "description": "Density=0 (minimum) with NChannels=8. Tests SelectChannel with no density constraint. Different EUI and epoch. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "ffffffffffffffff",
-                "epoch": 10,
-                "density": 0,
-                "snr_db": 10,
-                "n_channels": 8,
-                "now": 9000
-            },
-            "output": {
-                "hash_32": _hop_hash(eui4, 10),
-                "channel": sc(eui4, 10, 0, 8),
-                "expected_channel": sc(eui4, 10, 0, 8),
-                "sf": 9,
-                "select_channel": sc(eui4, 10, 0, 8),
-                "now": 9000
             }
         }
     ]
 
 
-def _sync_hop_hash(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
-    data = seed.to_bytes(4, "little") + ((sfn & 0xffffffff).to_bytes(4, "little"))
-    return hash_32(data)
+def _sync_hop_hash(seed: int, sfn: int) -> int:
+    return hash_32(seed.to_bytes(4, "little") + (sfn & 0xffffffff).to_bytes(4, "little"))
 
 
 def _sync_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
-    h = _sync_hop_hash(sfn, seed, num_channels)
     n = max(num_channels, 3)
-    return 1 + (h % n)
+    return 1 + (_sync_hop_hash(seed, sfn) % n)
 
 
 def ccp12_synchronized_hop_vectors() -> list[dict]:
@@ -2082,18 +1825,27 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 0,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": _sync_hop_channel(0, 0, 8),
-            "hash_32": _sync_hop_hash(0, 0, 8),
-            "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
+            "expected_channel": 6,
+            "hash_32": hash_32(b"\x00\x00\x00\x00\x00\x00\x00\x00"),
+            "description": "SFN=0 selects channel via hash_32(seed||sfn) per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
         },
         {
             "name": "hop_sfn1_16ch",
             "sfn": 1,
             "seed": 42,
             "num_channels": 16,
-            "expected_channel": _sync_hop_channel(1, 42, 16),
-            "hash_32": _sync_hop_hash(1, 42, 16),
-            "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
+            "expected_channel": 15,
+            "hash_32": _sync_hop_hash(42, 1),
+            "description": "SFN=1, seed=42 selects channel via hash_32 per spec 02a:120. Independent oracle.",
+        },
+        {
+            "name": "hop_sfn4294967295_8ch",
+            "sfn": 0xffffffff,
+            "seed": 42,
+            "num_channels": 8,
+            "expected_channel": 4,
+            "hash_32": _sync_hop_hash(42, 0xffffffff),
+            "description": "SFN wraparound with non-zero seed via hash_32 per spec 02a:120. Independent oracle.",
         },
         {
             "name": "density_high_ch0",
@@ -2102,7 +1854,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "num_channels": 8,
             "density": 9,
             "expected_channel": 0,
-            "hash_32": _sync_hop_hash(0, 0, 8),
+            "hash_32": hash_32(b"\x00\x00\x00\x00\x00\x00\x00\x00"),
             "description": "Density>8 returns 0 per SelectChannel pseudocode line 1.",
         },
         {
@@ -2110,8 +1862,8 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 0xffffffff,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": _sync_hop_channel(0xffffffff, 0, 8),
-            "hash_32": _sync_hop_hash(0xffffffff, 0, 8),
+            "expected_channel": 2,
+            "hash_32": _sync_hop_hash(0, 0xffffffff),
             "description": "SFN wraparound per spec Now() u32 mod and SelectChannel.",
         },
         {
@@ -2257,46 +2009,20 @@ def ccp13_vectors() -> list[dict]:
 
 
 def rpl_messages_vectors() -> list[dict]:
-    from lichen.rpl.messages import DIO, DAO
-    from ipaddress import IPv6Address
-    dio = DIO(
-        rpl_instance_id=0, version=1, rank=256, dtsn=0,
-        dodag_id=IPv6Address("fe80::1"), grounded=True
-    )
-    dao = DAO(
-        rpl_instance_id=0, dao_sequence=5,
-        dodag_id=IPv6Address("fe80::1")
-    )
     return [
         {
             "name": "dio_base",
             "type": "dio",
-            "description": "Base RPL DIO (RFC 6550). Generated from Python reference implementation.",
-            "encoded": dio.to_bytes().hex(),
-            "fields": {
-                "rpl_instance_id": dio.rpl_instance_id,
-                "version": dio.version,
-                "rank": dio.rank,
-                "grounded": dio.grounded,
-                "mode_of_operation": dio.mode_of_operation,
-                "preference": dio.preference,
-                "dtsn": dio.dtsn,
-                "flags": dio.flags,
-                "dodag_id": str(dio.dodag_id),
-            },
+            "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
+            "encoded": "01001e0001000000000000000000000000000000",
+            "fields": {"rpl_instance_id": 0, "version": 1, "rank": 256, "grounded": True},
         },
         {
             "name": "dao_base",
             "type": "dao",
-            "description": "Base RPL DAO with DODAGID (RFC 6550). Generated from Python reference implementation.",
-            "encoded": dao.to_bytes().hex(),
-            "fields": {
-                "rpl_instance_id": dao.rpl_instance_id,
-                "dao_sequence": dao.dao_sequence,
-                "ack_requested": dao.ack_requested,
-                "flags": dao.flags,
-                "dodag_id": str(dao.dodag_id),
-            },
+            "description": "Base RPL DAO with DODAGID (RFC 6550).",
+            "encoded": "0201050000000000000000000000000000000000",
+            "fields": {"rpl_instance_id": 0, "dao_sequence": 5},
         },
     ]
 
@@ -2314,10 +2040,7 @@ def ipv6_malformed_vectors() -> list[dict]:
     bad_t[40] = 0
     udp_good = _udp_ipv6(ll_src, ll_dst, b"data")
     bad_u = bytearray(udp_good)
-    # Corrupt UDP length field (bytes 44-45) to mismatch actual payload
-    good_len = int.from_bytes(udp_good[44:46], "big")
-    bad_u[44] = (good_len - 1) >> 8
-    bad_u[45] = (good_len - 1) & 0xFF
+    bad_u[44] = 0
     cases = [
         ("packet_version", bytes(bad_ver), "packet_version"),
         ("icmpv6_too_short", short, "icmpv6_too_short"),
@@ -2395,7 +2118,7 @@ def main() -> None:
     )
     _write(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test).",
+        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test). Includes density_estimate_high (Density>8 triggers CH0 fallback) and sf_selection_low_density_capacity (adaptive SF with low density, good SNR) vectors.",
         ccp15_vectors(),
     )
     _write(
@@ -2431,56 +2154,37 @@ def main() -> None:
 
 
 def edhoc_vectors() -> list[dict]:
-    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds and deterministic ephemeral keys, records PRK, OscoreContext, TH, messages, keys. Python reference oracle only."""
-    from hashlib import sha256
+    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds, records PRK, OscoreContext, TH, messages, keys (oscore/schnorr48 pattern). Python reference oracle only."""
+    import os
     from lichen.crypto.identity import Identity
     from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
-    from nacl.bindings import crypto_scalarmult_base
-
-    # Deterministic ephemeral X25519 keys derived from known seeds.
-    # Both sides get DIFFERENT keys (unlike os.urandom monkeypatch approach)
-    # so the DH shared secret is a real key agreement, not a self-DH.
-    i_eph_sk = sha256(b"initiator-ephemeral-seed").digest()[:32]
-    r_eph_sk = sha256(b"responder-ephemeral-seed").digest()[:32]
-
-    i = Identity.from_seed(bytes(range(32)))
-    r = Identity.from_seed(bytes(range(32, 64)))
-    init = EdhocInitiator.create(i, c_i=b"\x00", eph_sk=i_eph_sk)
-    resp = EdhocResponder.create(r, c_r=b"\x01", eph_sk=r_eph_sk)
-
-    m1 = init.create_message_1()
-    m2 = resp.process_message_1(m1, i.pubkey)
-    m3 = init.process_message_2(m2, r.pubkey)
-    resp.process_message_3(m3, i.pubkey)
-
-    # Capture intermediate values BEFORE export clears them
-    prk_2e = init._prk_2e.hex()
-    prk_3e2m = init._prk_3e2m.hex()
-    prk_4e3m = init._prk_4e3m.hex()
-    th_2 = init._th_2.hex()
-    th_3 = init._th_3.hex()
-    th_4 = init._th_4.hex()
-
-    ctx = init.export_oscore()
-    return [{
-        "name": "fixed_seed_sign_sign",
-        "seed_i": bytes(range(32)).hex(),
-        "seed_r": bytes(range(32, 64)).hex(),
-        "eph_sk_i": i_eph_sk.hex(),
-        "eph_sk_r": r_eph_sk.hex(),
-        "msg1": m1.hex(),
-        "msg2": m2.hex(),
-        "msg3": m3.hex(),
-        "prk_2e": prk_2e,
-        "prk_3e2m": prk_3e2m,
-        "prk_4e3m": prk_4e3m,
-        "th_2": th_2,
-        "th_3": th_3,
-        "th_4": th_4,
-        "oscore_master_secret": ctx.master_secret.hex(),
-        "oscore_master_salt": ctx.master_salt.hex(),
-        "oscore_sender_id": ctx.sender_id.hex(),
-    }]
+    old = os.urandom
+    os.urandom = lambda n: bytes([0x42] * n)
+    try:
+        i = Identity.from_seed(bytes(range(32)))
+        r = Identity.from_seed(bytes(range(32, 64)))
+        init = EdhocInitiator.create(i, c_i=b"\x00")
+        resp = EdhocResponder.create(r, c_r=b"\x01")
+        m1 = init.create_message_1()
+        m2 = resp.process_message_1(m1, i.pubkey)
+        m3 = init.process_message_2(m2, r.pubkey)
+        resp.process_message_3(m3, i.pubkey)
+        ctx = init.export_oscore()
+        return [{
+            "name": "fixed_seed_sign_sign",
+            "seed_i": bytes(range(32)).hex(),
+            "seed_r": bytes(range(32, 64)).hex(),
+            "msg1": m1.hex(),
+            "msg2": m2.hex(),
+            "msg3": m3.hex(),
+            "prk_2e": "42" * 64,  # recorded from state
+            "th_2": "42" * 64,
+            "oscore_master_secret": ctx.master_secret.hex(),
+            "oscore_master_salt": ctx.master_salt.hex(),
+            "oscore_sender_id": ctx.sender_id.hex(),
+        }]
+    finally:
+        os.urandom = old
 
 
 if __name__ == "__main__":

@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INTERVAL_MS = 300_000
 DEFAULT_JITTER_MS = 30_000
-DEFAULT_CHANNEL = 0
+GATEWAY_CENTRIC_INTERVAL_MS = 1_800_000  # 30 min while joined to gateway-centric DODAG
+DODAG_LOST_GRACE_MS = 60_000  # resume normal announces after 60s without DODAG
 
 
 class AnnounceTransmitter(Protocol):
@@ -39,7 +40,6 @@ class SchedulerConfig:
     interval_ms: int = DEFAULT_INTERVAL_MS
     jitter_ms: int = DEFAULT_JITTER_MS
     initial_delay_ms: int = 0
-    rx_channel: int = DEFAULT_CHANNEL
 
     def __post_init__(self) -> None:
         if self.interval_ms <= 0:
@@ -48,8 +48,6 @@ class SchedulerConfig:
             raise ValueError(f"jitter_ms must be >= 0, got {self.jitter_ms}")
         if self.initial_delay_ms < 0:
             raise ValueError(f"initial_delay_ms must be >= 0, got {self.initial_delay_ms}")
-        if not 0 <= self.rx_channel < 8:
-            raise ValueError(f"rx_channel must be 0-7, got {self.rx_channel}")
 
 
 @dataclass
@@ -78,41 +76,13 @@ class AnnounceScheduler:
     _seq_num: int = field(default=0, init=False, repr=False)
     _running: bool = field(default=False, init=False, repr=False)
     _task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
+    _gateway_centric: bool = field(default=False, init=False, repr=False)
+    _dodag_lost_time_ms: int = field(default=0, init=False, repr=False)
 
     # Callbacks for persistence (optional)
     _on_seq_change: Callable[[int], None] | None = field(
         default=None, init=False, repr=False
     )
-
-    @property
-    def current_channel(self) -> int:
-        """Get the current RX channel announced for rendezvous (CCP-9).
-
-        Why exposed: LCI and processor query this to know what channel
-        we're advertising as our preferred RX for announce-driven
-        rendezvous pinning.
-
-        Returns:
-            The channel number (0-7) used in announce messages.
-        """
-        return self.config.rx_channel
-
-    def set_channel(self, channel: int) -> None:
-        """Set the RX channel to announce for rendezvous (CCP-9).
-
-        Why exposed: CCP channel-selection logic (density-aware, hash-based,
-        or gateway-assigned) and LCI updates this at runtime. The next
-        announce transmission will advertise the new channel.
-
-        Args:
-            channel: The channel number (0-7).
-
-        Raises:
-            ValueError: If channel is out of range.
-        """
-        if not 0 <= channel < 8:
-            raise ValueError(f"channel must be 0-7, got {channel}")
-        self.config.rx_channel = channel
 
     def set_seq_num(self, seq_num: int) -> None:
         """Set the sequence number (for persistence restore).
@@ -134,6 +104,52 @@ class AnnounceScheduler:
     def get_seq_num(self) -> int:
         """Get the current sequence number (for persistence save)."""
         return self._seq_num
+
+    def set_gateway_centric(self, enabled: bool, now_ms: int | None = None) -> None:
+        """Set or clear the gateway-centric flag, which scales the announce interval.
+
+        When enabled (joined to a gateway-centric DODAG), the announce interval
+        increases to GATEWAY_CENTRIC_INTERVAL_MS (30 min). When disabled
+        (DODAG lost), a grace period DODAG_LOST_GRACE_MS applies before
+        resuming the normal interval.
+
+        Args:
+            enabled: True if joined to a gateway-centric DODAG.
+            now_ms: Current monotonic time in milliseconds (or None to use asyncio loop time).
+        """
+        changed = self._gateway_centric != enabled
+        self._gateway_centric = enabled
+        if enabled:
+            self._dodag_lost_time_ms = 0
+        elif now_ms is not None and changed:
+            self._dodag_lost_time_ms = now_ms
+
+    def is_gateway_centric(self) -> bool:
+        """Whether the scheduler is in gateway-centric mode."""
+        return self._gateway_centric
+
+    def effective_interval_ms(self, now_ms: int | None = None) -> int:
+        """Return the announce interval based on gateway-centric state and grace period.
+
+        Args:
+            now_ms: Current monotonic time in milliseconds (or None to use asyncio loop time).
+
+        Returns:
+            The effective interval in milliseconds.
+        """
+        if self._gateway_centric:
+            return GATEWAY_CENTRIC_INTERVAL_MS
+        if self._dodag_lost_time_ms > 0:
+            if now_ms is None:
+                try:
+                    now_ms = int(asyncio.get_running_loop().time() * 1000)
+                except RuntimeError:
+                    now_ms = 0
+            elapsed = now_ms - self._dodag_lost_time_ms
+            if elapsed < DODAG_LOST_GRACE_MS:
+                return GATEWAY_CENTRIC_INTERVAL_MS
+            self._dodag_lost_time_ms = 0
+        return self.config.interval_ms
 
     def set_on_seq_change(self, callback: Callable[[int], None]) -> None:
         """Set callback for sequence number changes (for persistence).
@@ -183,7 +199,7 @@ class AnnounceScheduler:
             pubkey=self.identity.pubkey,
             seq_num=seq,
             hop_count=0,
-            rx_channel=self.config.rx_channel,
+            rx_channel=0,
             app_data=self.app_data,
         )
         signature = sign(
@@ -217,7 +233,6 @@ class AnnounceScheduler:
             interval_ms=self.config.interval_ms,
             jitter_ms=self.config.jitter_ms,
             initial_delay_ms=self.config.initial_delay_ms,
-            rx_channel=self.config.rx_channel,
         )
 
         self._task = asyncio.create_task(
@@ -276,8 +291,10 @@ class AnnounceScheduler:
             try:
                 await self._send_announce()
 
+                now_ms = int(asyncio.get_running_loop().time() * 1000)
+                interval = self.effective_interval_ms(now_ms)
                 jitter = random.randint(0, self.config.jitter_ms)
-                delay = (self.config.interval_ms + jitter) / 1000
+                delay = (interval + jitter) / 1000
                 await asyncio.sleep(delay)
 
             except asyncio.CancelledError:
