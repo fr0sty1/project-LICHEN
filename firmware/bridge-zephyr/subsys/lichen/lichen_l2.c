@@ -132,9 +132,9 @@ static int lichen_l2_to_zephyr_errno(int ret)
  * (project-LICHEN-tvfm.7)
  */
 BUILD_ASSERT(LICHEN_EUI64_LEN == 8,
-	     "lichen_peer_add() eui64[8] size mismatch: update API if LICHEN_EUI64_LEN changed");
+	     "lichen_peer_add() eui64 size mismatch: update API if LICHEN_EUI64_LEN changed");
 BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
-	     "lichen_peer_add() pubkey[32] size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
+	     "lichen_peer_add() pubkey size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
 
 /* Maximum frame size for LoRa */
 #define MAX_LORA_FRAME 255

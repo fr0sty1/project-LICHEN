@@ -68,7 +68,7 @@ extern "C" {
  *         -ENOSPC if peer table is internally inconsistent (should not happen;
  *                 LRU eviction normally prevents table-full condition)
  */
-int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);
+int lichen_peer_add(const uint8_t *eui64, const uint8_t *pubkey) __attribute__((nonnull(1, 2)));
 
 /**
  * @brief Remove a peer from the peer table.
