@@ -484,7 +484,7 @@ ssize_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 {
 	struct cbor_ctx ctx;
 	char ipv6_buf[LICHEN_CONFIG_ADDR_MAX_LEN];
-	char prefix_buf[48];
+	char prefix_buf[LICHEN_CONFIG_ADDR_MAX_LEN + 6U];
 
 	if (buf == NULL || buf_size == 0) {
 		return -ENOBUFS;
