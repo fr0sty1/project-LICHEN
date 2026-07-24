@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-edrt",
+  "title": "[review] project-LICHEN-worker6-p6n9: EDHOC C_R missing from TH_2 transcript hash",
+  "description": "Per RFC 9528 Section 4.1.2, TH_2 MUST be computed as H(G_Y, C_R, H(message_1)). Both the initiator and responder paths in edhoc.py omit C_R from the TH_2 input:\n\n- Initiator (edhoc.py:396): th_2_input = cbor2.dumps(g_y) + cbor2.dumps(h_msg1) — missing cbor2.dumps(c_r)\n- Responder (edhoc.py:614): th_2_input = cbor2.dumps(self._eph_pk) + cbor2.dumps(h_msg1) — missing cbor2.dumps(self._c_r)\n\nThe initiator has self._c_r available at line 393 (parsed from message_2). The responder has self._c_r available at line 609 (chosen connection identifier). Both compute TH_2 after C_R is available but fail to include it. This causes interop failures with conformant EDHOC implementations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:27:32.133563719Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:27:32.133563719Z"
+}
