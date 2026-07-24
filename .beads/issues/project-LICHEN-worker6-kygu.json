@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-kygu",
+  "title": "[review] project-LICHEN-worker6-kd8m: non-standard COSE_Key/CWT Claims Set credential encoding (kty=6, crv=bstr) affects EDHOC interop",
+  "description": "## Summary\n\nBoth `raw_key_credential` and `encode_credential` in `rust/lichen-oscore/src/edhoc.rs` produce a credential (CWT Claims Set) with a non-standard COSE_Key-like map:\n\n```\n{1: 6, -1: h'pubkey'}\n```\n\nProblems:\n- **kty = 6**: COSE defines OKP (Octet Key Pair) as kty=1, not 6. Value 6 is the Ed25519 curve identifier, used for the `crv` field, not `kty`.\n- **crv = bstr(pubkey)**: The `-1` (crv) field should be integer 6 (Ed25519), not a byte string containing the public key.\n- **Missing x (label -2)**: The actual public key coordinate should be under label -2 (x), not -1 (crv).\n\n## Correct COSE_Key for Ed25519\n\n```\n{1: 1, -1: 6, -2: h'32-byte-pubkey'}\n```\n\nCBOR: `a3 01 01 20 06 21 58 20 \u003cpubkey bytes\u003e`\n\n## Impact\n\n1. **Interop**: Any standards-compliant EDHOC implementation that parses the CCS to extract kty/crv/x will fail to recognize the key\n2. **Self-consistency**: Since both sides use the same (bad) encoding, the protocol works internally, but the credential is not a valid COSE_Key per RFC 9052/9053\n3. **Python reference divergence**: The Python reference impl in `python/src/lichen/crypto/edhoc.py` uses raw pubkey bytes as the credential (not even a COSE_Key map), suggesting the credential format is not yet fully specified/cross-implementation aligned\n\n## Recommendation\n\nDefine the correct credential format for this implementation, align both Rust and Python to it, and regenerate test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:35:50.680236155Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:35:50.680236155Z"
+}
