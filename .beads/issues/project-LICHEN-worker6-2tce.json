@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-2tce",
+  "title": "[review] project-LICHEN-n8c6: OSCORE spec-compliance test vectors removed",
+  "description": "In rust/lichen-oscore/tests/vectors.rs, the test_request_protection_vectors and test_response_protection_vectors functions were deleted instead of being fixed. These tests validated OSCORE protect_request and protect_response operations against canonical RFC 8613 test vectors from test/vectors/oscore.json. Deleting them removes critical spec-compliance coverage. The compilation issues could have been resolved by removing the duplicate context_at() function and adding None for the id_context parameter in test_response_protection_vectors. Instead the tests were removed entirely.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:47:12.134648579Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:47:12.134648579Z"
+}
