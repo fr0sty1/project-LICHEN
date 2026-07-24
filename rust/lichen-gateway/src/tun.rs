@@ -127,33 +127,38 @@ impl TunDevice {
                 "packet exceeds MTU",
             ));
         }
+        let mut written = 0usize;
         loop {
             let mut guard = self.inner.writable().await?;
             match guard.try_io(|inner| {
                 let n = unsafe {
                     libc::write(
                         inner.as_raw_fd(),
-                        buf.as_ptr() as *const libc::c_void,
-                        buf.len(),
+                        buf.as_ptr().add(written) as *const libc::c_void,
+                        buf.len() - written,
                     )
                 };
                 if n < 0 {
-                    let e = io::Error::last_os_error();
-                    Err(io::Error::new(
-                        e.kind(),
-                        format!("TUN write failed ({} bytes): {e}", buf.len()),
-                    ))
-                } else if n as usize != buf.len() {
-                    Err(io::Error::new(
-                        io::ErrorKind::WriteZero,
-                        "partial TUN write",
-                    ))
+                    Err(io::Error::last_os_error())
+                } else if n == 0 {
+                    Err(io::Error::new(io::ErrorKind::WriteZero, "TUN write returned 0"))
                 } else {
-                    Ok(())
+                    written += n as usize;
+                    if written == buf.len() {
+                        Ok(())
+                    } else {
+                        Err(io::ErrorKind::WouldBlock.into())
+                    }
                 }
             }) {
                 Ok(r) => return r,
-                Err(_would_block) => continue,
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+                Err(e) => {
+                    return Err(io::Error::new(
+                        e.kind(),
+                        format!("TUN write failed after {written}/{} bytes: {e}", buf.len()),
+                    ))
+                }
             }
         }
     }
