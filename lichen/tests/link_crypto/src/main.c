@@ -430,12 +430,18 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp16.json,
 	 * ccp_tdma.json (independent oracles for hash, 100ms guard, SFN wrap).
 	 */
-	/* Slot static hash (per vector hash_method) */
-	zassert_equal(1, 1 % 8, "slot_static_hash_eui1: expected_slot=1");
-	uint64_t eui2 = 0xaabbccddeeff0011ULL;
-	zassert_equal(1, (uint32_t)(eui2 % 16ULL), "slot_static_hash_eui2: expected_slot=1");
+	/* Slot static hash (per spec/02a:78 fnv1a32(EUI64 XOR epoch) % num_slots) */
+	static const uint8_t eui1_be[8] = {0, 0, 0, 0, 0, 0, 0, 1};
+	static const uint8_t eui2_be[8] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11};
+	int slot1 = lichen_tdma_compute_slot(eui1_be, 0, 8);
+	zassert_equal(2, slot1, "slot_static_hash_eui1: expected_slot=2 got %d", slot1);
+	int slot2 = lichen_tdma_compute_slot(eui2_be, 0, 16);
+	zassert_equal(13, slot2, "slot_static_hash_eui2: expected_slot=13 got %d", slot2);
 
 	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
+	struct lichen_link_ctx lctx;
+	memset(&lctx, 0, sizeof(lctx));
+	memcpy(lctx.eui64, eui1_be, 8);
 	struct lichen_tdma_ctx tdma = {0};
 	zassert_equal(0, lichen_tdma_init(&tdma, &lctx));
 	zassert_equal(2, tdma.slot);
