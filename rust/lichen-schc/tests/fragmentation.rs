@@ -117,9 +117,10 @@ fn retry_limits_emit_aborts() {
 
 #[test]
 fn malformed_codec_inputs_are_rejected() {
-    assert!(Fragment::from_bytes(&[]).is_err());
-    assert!(Fragment::from_bytes(&[0x78]).is_err());
-    let short_frag = Fragment::from_bytes(&[0x78, 0x7c, 0]).unwrap();
+    let mut tile = [0u8; TILE_SIZE];
+    assert!(Fragment::from_bytes(&[], &mut tile).is_err());
+    assert!(Fragment::from_bytes(&[0x78], &mut tile).is_err());
+    let short_frag = Fragment::from_bytes(&[0x78, 0x7c, 0], &mut tile).unwrap();
     assert!(short_frag.write_to(&mut [0u8; 4]).is_err());
     assert!(Ack::from_bytes(&[0x78]).is_err());
     assert!(Ack::from_bytes_for(
@@ -231,7 +232,8 @@ fn missing_all0_still_requests_final_window_ack() {
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
     assert_eq!(length, TILE_SIZE + 3);
     assert_eq!(&wire[..2], &[0x78, 0x00]);
-    let fragment = Fragment::from_bytes(&wire[..length]).unwrap();
+    let mut tile = [0u8; TILE_SIZE];
+    let fragment = Fragment::from_bytes(&wire[..length], &mut tile).unwrap();
     assert_eq!((fragment.window, fragment.fcn), (0, 0));
 
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();

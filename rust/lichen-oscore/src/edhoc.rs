@@ -1044,26 +1044,9 @@ impl EdhocResponder {
     ///
     /// # Arguments
     /// * `seed` - Ed25519 seed (32 bytes)
-    /// * `c_r` - Connection identifier (1 byte)
+    /// * `c_r` - Connection identifier
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
-    pub fn new<R: RngCore + CryptoRng, C: Into<ConnectionId>>(seed: [u8; 32], c_r: C, rng: &mut R) -> Self {
-        let signing_key = SigningKey::from_bytes(&seed);
-        let pubkey = signing_key.verifying_key();
-
-        let eph_secret = StaticSecret::random_from_rng(rng);
-        let eph_public = PublicKey::from(&eph_secret);
-
-        Self {
-            signing_key,
-            pubkey,
-            c_r: c_r.into(),
-            eph_secret: Some(eph_secret),
-            eph_public,
-            state: ResponderState::default(),
-        }
-    }
-
-    pub fn new_with_rng<R: RngCore + CryptoRng, C: Into<ConnectionId>>(
+    pub fn new<R: RngCore + CryptoRng, C: Into<ConnectionId>>(
         seed: [u8; 32],
         c_r: C,
         rng: &mut R,
@@ -1757,14 +1740,14 @@ mod tests {
     }
 
     fn responder(seed: [u8; 32], c_r: u8) -> EdhocResponder {
-        EdhocResponder::new_with_rng(seed, c_r, &mut TestRng(2)).unwrap()
+        EdhocResponder::new(seed, c_r, &mut TestRng(2)).unwrap()
     }
 
     #[test]
     fn embedded_constructors_accept_injected_rng() {
         fn construct<R: RngCore + CryptoRng>(rng: &mut R) {
             let _ = EdhocInitiator::new_with_rng([1; 32], 0, rng).unwrap();
-            let _ = EdhocResponder::new_with_rng([2; 32], 1, rng).unwrap();
+            let _ = EdhocResponder::new([2; 32], 1, rng).unwrap();
         }
 
         construct(&mut TestRng(3));
@@ -1773,8 +1756,8 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn std_convenience_constructors_remain_available() {
-        let _ = EdhocInitiator::new([1; 32], 0).unwrap();
-        let _ = EdhocResponder::new([2; 32], 1).unwrap();
+        let _ = EdhocInitiator::new([1; 32], 0, &mut TestRng(41));
+        let _ = EdhocResponder::new([2; 32], 1, &mut TestRng(42)).unwrap();
     }
 
     #[test]
@@ -1784,7 +1767,7 @@ mod tests {
             Err(OscoreError::KeyDerivation)
         ));
         assert!(matches!(
-            EdhocResponder::new_with_rng([2; 32], 1, &mut FailingRng),
+            EdhocResponder::new([2; 32], 1, &mut FailingRng),
             Err(OscoreError::KeyDerivation)
         ));
     }
@@ -1801,7 +1784,7 @@ mod tests {
     fn test_responder_creation() {
         let seed = [0x01u8; 32];
         let mut rng = rand_core::OsRng;
-        let responder = EdhocResponder::new(seed, 0x01, &mut rng);
+        let responder = EdhocResponder::new(seed, 0x01, &mut rng).unwrap();
         assert_eq!(responder.c_r, 0x01);
     }
 
@@ -2496,7 +2479,7 @@ mod tests {
         let responder_seed = [0x22u8; 32];
         let mut rng = rand_core::OsRng;
         let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng).unwrap();
 
         // Get public keys for verification
         let initiator_pubkey = initiator.pubkey.to_bytes();
@@ -2645,7 +2628,7 @@ mod tests {
     fn test_responder_accepts_suites_i_array() {
         let responder_seed = [0x22u8; 32];
         let mut rng = rand_core::OsRng;
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng).unwrap();
 
         // Build a Message 1 with SUITES_I as array [0, 2]
         // Format: METHOD_CORR (1) | SUITES_I (array) | G_X (bstr 32) | C_I
@@ -2675,7 +2658,7 @@ mod tests {
     fn test_responder_rejects_unsupported_suite_in_array() {
         let responder_seed = [0x22u8; 32];
         let mut rng = rand_core::OsRng;
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng).unwrap();
 
         // Build a Message 1 with SUITES_I as array [2, 0] - Suite 2 selected
         let mut msg1 = heapless::Vec::<u8, 64>::new();
@@ -2712,7 +2695,7 @@ mod tests {
         // Responder: export_oscore before process_message_3
         let responder_seed = [0x22u8; 32];
         let mut rng = rand_core::OsRng;
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng).unwrap();
         // Even after process_message_1, handshake is incomplete
         let _msg2 = responder.process_message_1(&_msg1).unwrap();
         assert!(
