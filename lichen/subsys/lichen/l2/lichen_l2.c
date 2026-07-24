@@ -1430,6 +1430,22 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 
 	LOG_DBG("lichen_l2: TX frame %zu bytes", frame_len);
 
+	/*
+	 * Pop the oldest frame from the TX queue to free the slot that was
+	 * just enqueued by lichen_link_tx(). The pop result is intentionally
+	 * discarded — the actual transmission uses tx_frame_buf directly.
+	 * This keeps the queue from filling up and ensures the next call to
+	 * lichen_link_tx() has a slot available.
+	 */
+	{
+		uint8_t pop_buf[256];
+		uint16_t pop_len = sizeof(pop_buf);
+		int q_ret = tx_queue_pop(&link_ctx.tx_queue, pop_buf, &pop_len, NULL);
+		if (q_ret < 0 && q_ret != -EAGAIN) {
+			LOG_WRN("lichen_l2: TX queue pop failed (%d)", q_ret);
+		}
+	}
+
 	/* Send via LoRa */
 	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len, 0U); /* CH0 control/fallback per CCP-9 */
 #else

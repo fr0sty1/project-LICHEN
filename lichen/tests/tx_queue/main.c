@@ -429,6 +429,37 @@ static void *tx_queue_reader(void *arg)
 	return NULL;
 }
 
+static int test_clock_failure_preserves_queue(void)
+{
+	struct tx_queue queue;
+	uint8_t data[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len = sizeof(out_data);
+
+	tx_queue_test_set_time(1000);
+	tx_queue_init(&queue);
+
+	/* Push a packet */
+	ASSERT_EQ(tx_queue_push(&queue, data, sizeof(data),
+				TX_PRIORITY_BULK, 60000),
+		  0, "push succeeds");
+	ASSERT_EQ(tx_queue_count(&queue), 1, "queue has one packet");
+
+	/* Simulate clock failure: push/pop should return -EIO */
+	tx_queue_test_fail_time(true);
+	ASSERT_EQ(tx_queue_push(&queue, data, sizeof(data),
+				TX_PRIORITY_BULK, 60000),
+		  -EIO, "push returns EIO on clock failure");
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL),
+		  -EIO, "pop returns EIO on clock failure");
+	tx_queue_test_fail_time(false);
+
+	/* Original packet should still be intact */
+	ASSERT_EQ(tx_queue_count(&queue), 1, "original packet preserved");
+
+	return 1;
+}
+
 static int test_concurrent_thread_safety(void)
 {
 	struct tx_queue queue;

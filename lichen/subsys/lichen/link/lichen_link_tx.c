@@ -14,6 +14,7 @@
 #include <lichen/l2_payload.h>
 #include <lichen/schc.h>
 #include <lichen/schnorr48.h>
+#include <lichen/tx_queue.h>
 #include <string.h>
 
 /* Error codes */
@@ -157,6 +158,30 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	off += SCHNORR48_SIG_LEN;
 
 	*out_len = off;
+
+	/*
+	 * Push the completed frame to the TX queue for ordered, priority-aware
+	 * transmission. If the queue is full and cannot preempt, return ENOBUFS
+	 * to signal backpressure (per spec/appendix-bufferbloat.md §4).
+	 *
+	 * Priority assignment:
+	 * - Frames with an explicit destination (non-NULL dst_eui64) are treated
+	 *   as unicast and default to TX_PRIORITY_URGENT.
+	 * - Broadcast frames default to TX_PRIORITY_BULK.
+	 * Callers that need routing or ACK priority should use
+	 * tx_queue_push() directly or add a priority parameter.
+	 */
+	{
+		uint8_t q_priority = (dst_eui64 != NULL)
+				     ? TX_PRIORITY_URGENT : TX_PRIORITY_BULK;
+		int q_ret = tx_queue_push_default_deadline(&ctx->tx_queue,
+							   out_frame, off,
+							   q_priority);
+		if (q_ret < 0) {
+			ret = q_ret;
+			goto cleanup;
+		}
+	}
 	ret = 0;
 
 cleanup:
