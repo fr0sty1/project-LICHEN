@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-w7is",
   "title": "[review] project-LICHEN-worker6-6lxk: 7 clippy warnings in lichen-schc std_ext module dead code",
   "description": "The std_ext module in rust/lichen-schc/src/fragment.rs has dead code that fails clippy with -D warnings: unused import `std_ext::*`, struct FragmentReceiver never constructed, struct ReceiverResult never constructed, multiple associated items never used. Additionally: implicit_saturating_sub in abs_window() and map_entry pattern in receive(). These should be cleaned up or the module should be properly integrated.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:07:02.434758278Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:09:22.237392182Z",
-  "started_at": "2026-07-24T20:09:22.237392182Z",
-  "lease_expires_at": "2026-07-24T20:14:22.237392182Z",
-  "heartbeat_at": "2026-07-24T20:09:22.237392182Z"
+  "updated_at": "2026-07-24T20:21:45.125560447Z",
+  "started_at": "2026-07-24T20:09:22.237392182Z"
 }
