@@ -206,7 +206,7 @@ pub trait NonVolatile {
     ///
     /// Callers can detect truncation or size mismatch by comparing the returned
     /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
-    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
+    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
 
     /// Atomically and durably replace one value.
     ///
@@ -259,11 +259,16 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn irq_status(&mut self) -> Result<u32, Self::Error> {
-        Ok(1)  // simulate pending packet for RX
+        Ok(1) // simulate pending packet for RX
     }
 
     fn pps_timestamp(&self) -> Option<u64> {
-        Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as u64)
+        Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as u64,
+        )
     }
 
     async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {

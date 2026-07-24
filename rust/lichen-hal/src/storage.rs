@@ -93,12 +93,17 @@ fn read_parsed_update<S: NonVolatile>(
     key: &str,
     buf: &mut [u8],
     magic: [u8; 4],
-) -> Result<Option<(u64, usize)>, RedundantUpdateError<S::Error>> {
+) -> Result<(Option<(u64, usize)>, bool), RedundantUpdateError<S::Error>> {
     let raw = read_raw(storage, key, buf).map_err(|error| match error {
         RedundantOpenError::Storage(error) => RedundantUpdateError::Storage(error),
         _ => RedundantUpdateError::Corrupt,
     })?;
-    Ok(raw.and_then(|raw| parse_slot(raw, &magic)).map(|(generation, payload)| (generation, payload.len())))
+    let present = raw.is_some();
+    Ok((
+        raw.and_then(|raw| parse_slot(raw, &magic))
+            .map(|(generation, payload)| (generation, payload.len())),
+        present,
+    ))
 }
 
 /// Open the newest valid value from two alternating slots.
@@ -419,12 +424,18 @@ pub mod mem {
     impl NonVolatile for MemStorage {
         type Error = MemStorageError;
 
-        fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
-            let data = self.data.get(key)?;
+        fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+            if self.fail_next_read.replace(false) {
+                return Err(MemStorageError);
+            }
+            let data = match self.data.get(key) {
+                Some(d) => d,
+                None => return Ok(None),
+            };
             let stored = data.len();
             let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Some(stored)
+            Ok(Some(stored))
         }
 
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
@@ -474,16 +485,17 @@ pub mod fs {
 
     impl NonVolatile for FileStorage {
         type Error = io::Error;
-        fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
+        fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
             let p = self.key_path(key);
             let data = match fs::read(&p) {
                 Ok(d) => d,
-                Err(_) => return None,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+                Err(e) => return Err(e),
             };
             let stored = data.len();
             let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Some(stored)
+            Ok(Some(stored))
         }
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
             let t = self.tmp_path(key);
@@ -509,6 +521,7 @@ pub mod fs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "std")]
     use fs::FileStorage;
     use mem::MemStorage;
 
@@ -699,6 +712,7 @@ mod tests {
         assert_eq!(storage.raw(keys[1]), Some(before_b.as_slice()));
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn file_storage_durable_and_preserves_on_failure() {
         let d = std::path::Path::new("/tmp/lichen-nv-test");
@@ -707,11 +721,11 @@ mod tests {
         let mut s = FileStorage::new(d).unwrap();
         let seed = Seed::new([0x22u8; 32]);
         save_seed(&mut s, &seed).unwrap();
-        assert_eq!(load_seed(&s), Some(seed.clone()));
+        assert_eq!(load_seed(&s).unwrap(), Some(seed.clone()));
         let s2 = FileStorage::new(d).unwrap();
-        assert_eq!(load_seed(&s2), Some(seed));
+        assert_eq!(load_seed(&s2).unwrap(), Some(seed));
         save_epoch(&mut s, 42).unwrap();
-        assert_eq!(load_epoch(&s), Some(42));
+        assert_eq!(load_epoch(&s).unwrap(), Some(42));
         let _ = std::fs::remove_dir_all(d);
     }
 }
