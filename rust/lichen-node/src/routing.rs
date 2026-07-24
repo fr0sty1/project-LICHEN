@@ -48,9 +48,7 @@ pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
 
 #[cfg(feature = "std")]
 fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
-    let imin_ms = 1u32
-        .checked_shl(u32::from(config.dio_int_min))
-        .unwrap_or(0);
+    let imin_ms = 1u32.checked_shl(u32::from(config.dio_int_min)).unwrap_or(0);
     if imin_ms == 0 || config.dio_redundancy_const == 0 {
         return None;
     }
@@ -378,12 +376,7 @@ impl NeighborTable {
         now_ms: u64,
         max_age_ms: u64,
     ) -> bool {
-        let Some(neighbor) = self
-            .entries
-            .iter()
-            .flatten()
-            .find(|n| n.addr == *addr)
-        else {
+        let Some(neighbor) = self.entries.iter().flatten().find(|n| n.addr == *addr) else {
             return false;
         };
         let age = now_ms.saturating_sub(neighbor.last_seen_ms);

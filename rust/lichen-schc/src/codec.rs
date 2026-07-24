@@ -343,7 +343,10 @@ fn write_compressed_addrs_with_mode(
 /// Read SCHC-compressed address fields, returning `(src, dst)` as 16-byte arrays.
 ///
 /// `rule_id` determines whether addresses are link-local (IID only) or full 128-bit.
-fn read_compressed_addrs(r: &mut BitReader, rule_id: u8) -> Result<([u8; 16], [u8; 16]), SchcError> {
+fn read_compressed_addrs(
+    r: &mut BitReader,
+    rule_id: u8,
+) -> Result<([u8; 16], [u8; 16]), SchcError> {
     if rule_id == RULE_LINK_LOCAL_COAP {
         let src_iid = r.read(64)?;
         let dst_iid = r.read(64)?;

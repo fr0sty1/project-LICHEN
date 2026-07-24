@@ -474,7 +474,13 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -527,7 +533,13 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -738,7 +750,13 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -936,7 +954,13 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Determine PIV for nonce: own sequence if including, else request's PIV
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
@@ -2806,9 +2830,8 @@ mod tests {
 
         let (attacker_ciphertext, attacker_option) =
             attacker.protect_request(0x02, &[], b"fake").unwrap();
-        let (legitimate_ciphertext, legitimate_option) = legitimate
-            .protect_request(0x02, &[], b"real")
-            .unwrap();
+        let (legitimate_ciphertext, legitimate_option) =
+            legitimate.protect_request(0x02, &[], b"real").unwrap();
 
         assert!(matches!(
             recipient.unprotect_request(&attacker_option, &attacker_ciphertext),

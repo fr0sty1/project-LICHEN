@@ -235,7 +235,9 @@ impl<const N: usize> DutyCycleTracker<N> {
             if freed >= needed {
                 // This record aging out frees enough budget.
                 // It ages out when: record.timestamp_ms + record.duration_ms + WINDOW_MS
-                let tx_end = record.timestamp_ms.saturating_add(record.duration_ms as u64);
+                let tx_end = record
+                    .timestamp_ms
+                    .saturating_add(record.duration_ms as u64);
                 return tx_end.saturating_add(WINDOW_MS);
             }
         }
