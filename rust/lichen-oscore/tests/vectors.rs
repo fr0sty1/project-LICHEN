@@ -4,7 +4,7 @@
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
 use lichen_oscore::{
-    validate_option, Context, ContextId, ContextStoreError, OscoreError, SenderSequenceState,
+    validate_option, Context, ContextId, OscoreError, SenderSequenceState,
     SenderStateStore,
 };
 
@@ -111,15 +111,10 @@ fn context_at(
     sequence: u64,
 ) -> (Context, TestStore) {
     let mut store = TestStore::existing(sequence);
-    let context = Context::restore_existing(
-        master_secret,
-        master_salt,
-        id_context,
-        sender_id,
-        recipient_id,
-        &mut store,
-    )
-    .unwrap();
+    let context = Context::new(master_secret, master_salt, id_context, sender_id, recipient_id)
+        .unwrap()
+        .restore_existing(&mut store)
+        .unwrap();
     (context, store)
 }
 
@@ -144,10 +139,10 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 
 fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let bytes = hex_to_bytes(hex);
+    let len = bytes.len();
     bytes.try_into().expect(&format!(
         "hex_to_array: expected {} bytes, got {}",
-        N,
-        bytes.len()
+        N, len
     ))
 }
 
@@ -164,7 +159,9 @@ fn test_request_protection_vectors() {
         let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
         let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
         let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+        let seq = v.sender_seq.unwrap_or(0);
 
+        let mut store = TestStore::existing(seq.into());
         let mut ctx = Context::new(
             &master_secret,
             master_salt.as_deref(),
@@ -172,16 +169,17 @@ fn test_request_protection_vectors() {
             &sender_id,
             &recipient_id,
         )
-        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name));
+        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name))
+        .restore_existing(&mut store)
+        .unwrap_or_else(|_| panic!("Failed to restore context for {}", v.name));
 
         let pt = v.plaintext.as_ref().unwrap();
         let options = hex_to_bytes(&pt.options);
         let payload = hex_to_bytes(&pt.payload);
-        for _ in 0..v.sender_seq.unwrap() {
-            ctx.protect_request(1, &[], &[]).unwrap();
-        }
 
         let (ciphertext, oscore_opt) = ctx
+            .reserve_sender(&mut store)
+            .unwrap()
             .protect_request(pt.code, &options, &payload)
             .unwrap_or_else(|_| panic!("protect_request failed for {}", v.name));
         let expected = v.expected.as_ref().unwrap();
@@ -221,16 +219,17 @@ fn test_response_protection_vectors() {
         let payload = hex_to_bytes(&pt.payload);
         let expected = v.expected.as_ref().unwrap();
         let include_piv = v.include_piv.unwrap();
+        let mut store = TestStore::existing(v.sender_seq.unwrap().into());
         let mut ctx = Context::new(
             &master_secret,
             master_salt.as_deref(),
+            None,
             &sender_id,
             &recipient_id,
         )
+        .unwrap()
+        .restore_existing(&mut store)
         .unwrap();
-        for _ in 0..v.sender_seq.unwrap() {
-            ctx.protect_request(1, &[], &[]).unwrap();
-        }
 
         let (ciphertext, oscore_opt) = ctx
             .protect_response(
@@ -302,7 +301,7 @@ fn test_invalid_inputs() {
                 let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
                 let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
 
-                let result = Context::new(&master_secret, None, &sender_id, &recipient_id);
+                let result = Context::new(&master_secret, None, None, &sender_id, &recipient_id);
                 assert!(
                     matches!(result, Err(OscoreError::InvalidParam)),
                     "Expected InvalidParam for {}, got {:?}",
@@ -320,21 +319,8 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::restore_existing(
-        &master_secret,
-        None,
-        None,
-        &too_long_id,
-        &[1],
-        &mut TestStore::existing(0),
-    );
-    assert!(
-        matches!(
-            result,
-            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
-        ),
-        "Expected InvalidParam for 8-byte sender_id"
-    );
+    let result = Context::new(&master_secret, None, None, &too_long_id, &[1]);
+    assert!(matches!(result, Err(OscoreError::InvalidParam)));
 }
 
 #[test]
@@ -342,21 +328,8 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::restore_existing(
-        &master_secret,
-        None,
-        None,
-        &[0],
-        &too_long_id,
-        &mut TestStore::existing(0),
-    );
-    assert!(
-        matches!(
-            result,
-            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
-        ),
-        "Expected InvalidParam for 8-byte recipient_id"
-    );
+    let result = Context::new(&master_secret, None, None, &[0], &too_long_id);
+    assert!(matches!(result, Err(OscoreError::InvalidParam)));
 }
 
 #[test]
@@ -376,18 +349,8 @@ fn present_empty_id_context_is_distinct_and_encoded() {
 
 #[test]
 fn id_context_over_implementation_capacity_is_rejected() {
-    let result = Context::restore_existing(
-        &[0u8; 16],
-        None,
-        Some(&[0; 9]),
-        &[0],
-        &[1],
-        &mut TestStore::existing(0),
-    );
-    assert!(matches!(
-        result,
-        Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
-    ));
+    let result = Context::new(&[0u8; 16], None, Some(&[0; 9]), &[0], &[1]);
+    assert!(matches!(result, Err(OscoreError::InvalidParam)));
 }
 
 #[test]
@@ -407,12 +370,13 @@ fn malformed_oscore_options_are_rejected_without_keys() {
 }
 
 #[test]
-#[test]
 fn test_edhoc_interop_vectors() {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test/vectors/edhoc.json");
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test/vectors/edhoc.json"
+    );
     let content = fs::read_to_string(path).expect("Failed to read edhoc.json");
-    let doc: serde_json::Value =
-        serde_json::from_str(&content).expect("Failed to parse edhoc.json");
+    let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse edhoc.json");
     let v = &doc["vectors"][0];
     assert_eq!(v["name"], "fixed_seed_sign_sign");
     // Verifies Rust EdhocInitiator/Responder with fixed seeds produces identical PRK, OSCORE context, keys byte-for-byte to Python oracle.

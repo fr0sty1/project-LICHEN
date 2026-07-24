@@ -2035,21 +2035,26 @@ mod tests {
                 std::vec::Vec::new()
             };
             let salt = salt.as_deref().unwrap_or(&[]);
+            let id_context_opt: Option<&[u8]> = if id_context.is_empty() {
+                None
+            } else {
+                Some(id_context.as_slice())
+            };
 
             assert_eq!(
-                derive_key(&secret, salt, &sender_id, &id_context)
+                derive_key(&secret, salt, &sender_id, id_context_opt)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["sender_key"])
             );
             assert_eq!(
-                derive_key(&secret, salt, &recipient_id, &id_context)
+                derive_key(&secret, salt, &recipient_id, id_context_opt)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["recipient_key"])
             );
             assert_eq!(
-                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
+                derive_iv(&secret, salt, id_context_opt).unwrap().as_slice(),
                 json_hex(&v["expected"]["common_iv"])
             );
         }
@@ -2069,11 +2074,11 @@ mod tests {
                 json_hex(&v["sender_id"])
             };
             let piv = if v["type"] == "request_protection" {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap())
             } else if v["include_piv"] == false {
                 OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
             } else {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap())
             };
             let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
             let salt = v["master_salt"]
@@ -2084,10 +2089,15 @@ mod tests {
             } else {
                 std::vec::Vec::new()
             };
+            let id_context2_opt: Option<&[u8]> = if id_context.is_empty() {
+                None
+            } else {
+                Some(id_context.as_slice())
+            };
             let derived_iv =
-                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), &id_context).unwrap();
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context2_opt).unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
-            let piv_len = piv.encode_piv(&mut piv_bytes);
+            let piv_len = piv.unwrap().encode_piv(&mut piv_bytes);
 
             assert_eq!(
                 compute_nonce(&sender_id, &piv_bytes[..piv_len], &derived_iv),
@@ -2467,7 +2477,7 @@ mod tests {
             },
         };
         let mut context =
-            Context::restore_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
+            Context::new(&secret, None, None, &[1], &[0]).unwrap().restore_existing(&mut store).unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
@@ -2503,7 +2513,7 @@ mod tests {
         }
 
         assert!(matches!(
-            Context::restore_existing(&[0x44; KEY_LEN], None, None, &[1], &[0], &mut EmptyStore),
+            Context::new(&[0x44; KEY_LEN], None, None, &[1], &[0]).unwrap().restore_existing(&mut EmptyStore),
             Err(ContextStoreError::Missing)
         ));
     }
@@ -2560,9 +2570,9 @@ mod tests {
         };
         let mut second_store = first_store.clone();
         let mut first =
-            Context::restore_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
+            Context::new(&secret, None, None, &[0], &[1]).unwrap().restore_existing(&mut first_store).unwrap();
         let mut second =
-            Context::restore_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
+            Context::new(&secret, None, None, &[0], &[1]).unwrap().restore_existing(&mut second_store).unwrap();
 
         let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
         let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());
