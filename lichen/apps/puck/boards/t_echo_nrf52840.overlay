@@ -19,7 +19,7 @@
 		zephyr,shell-uart  = &cdc_acm_uart1;
 		lichen,native-uart = &cdc_acm_uart0;
 		zephyr,uart-mcumgr = &cdc_acm_uart2;
-		zephyr,display     = &eink0;
+		zephyr,display     = &t_echo_display;
 	};
 };
 
@@ -31,7 +31,7 @@
 	status = "okay";
 };
 
-&eink0 {
+&t_echo_display {
 	status = "okay";
 };
 
