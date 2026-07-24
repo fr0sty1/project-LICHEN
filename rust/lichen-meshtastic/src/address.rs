@@ -8,10 +8,10 @@
 use alloc::vec::Vec;
 use core::fmt;
 use hashbrown::HashMap;
-use lichen_link::{iid_from_pubkey, PublicKey};
+use lichen_link::PublicKey;
 
 // Re-export Ipv6Addr from lichen-core
-pub use lichen_core::addr::Ipv6Addr;
+pub use lichen_core::addr::{Ipv6Addr, ygg_addr_from_pubkey};
 
 /// Link-local prefix (fe80::/64).
 const LINK_LOCAL_PREFIX: [u8; 8] = [0xfe, 0x80, 0, 0, 0, 0, 0, 0];
@@ -138,7 +138,7 @@ impl AddressMapper {
     /// Returns `true` if the mapping was accepted/updated, `false` if
     /// rejected due to TOFU violation (collision on IID with different key).
     pub fn learn_mapping(&mut self, node_id: MeshtasticNodeId, pubkey: &PublicKey) -> bool {
-        let iid = iid_from_pubkey(pubkey);
+        let iid = ygg_addr_from_pubkey(pubkey.as_bytes())[8..16].try_into().unwrap();
 
         // TOFU/collision check: reject if IID already pinned to a different pubkey.
         // This prevents the by_iid map from pointing to the wrong node_id and
@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn test_iid_from_pubkey_clears_ul_bit() {
         let pubkey = PublicKey::new([0u8; 32]);
-        let iid = iid_from_pubkey(&pubkey);
+        let iid: [u8; 8] = ygg_addr_from_pubkey(pubkey.as_bytes())[8..16].try_into().unwrap();
         assert_eq!(iid[0] & 0x02, 0, "U/L bit must be cleared");
     }
 
@@ -304,7 +304,7 @@ mod tests {
         let node1 = MeshtasticNodeId::new(0x11111111);
         let node2 = MeshtasticNodeId::new(0x22222222);
         let pubkey1 = PublicKey::new([0x11; 32]);
-        let pubkey2 = PublicKey::new([0x22; 32]);
+        let _pubkey2 = PublicKey::new([0x22; 32]);
         let pubkey3 = PublicKey::new([0x33; 32]);
 
         // First learn succeeds

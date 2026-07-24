@@ -32,6 +32,8 @@
 use defmt::warn;
 #[cfg(all(feature = "log", not(feature = "defmt")))]
 use log::warn;
+#[cfg(all(feature = "defmt", feature = "log"))]
+use log::warn;
 
 use lichen_coap::codec::{CoapBuilder, CoapPacket};
 use lichen_coap::message::{MessageCode, MessageType};

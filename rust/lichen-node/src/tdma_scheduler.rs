@@ -1,4 +1,7 @@
-use lichen_core::{constants::{TDMA_GUARD_MS, TDMA_SLOT_MS}, lichen_hash_32};
+use lichen_core::{
+    constants::{TDMA_GUARD_MS, TDMA_SLOT_MS},
+    lichen_hash_32,
+};
 
 pub const HOP_SCHEDULE_LEN: usize = 8;
 

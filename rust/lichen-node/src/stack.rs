@@ -12,7 +12,6 @@ use std::vec::Vec;
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::{L2_DISPATCH_SCHC, PORT_COAP};
-use lichen_core::error::BufferTooSmall;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -46,7 +45,7 @@ pub enum TxError {
     /// Radio transmission failed.
     RadioTx,
     /// Buffer too small for message.
-    BufferTooSmall(BufferTooSmall),
+    BufferTooSmall,
     /// Forwarding queue full for source — send NACK upstream.
     QueueFull,
     /// Every link-layer epoch/sequence tuple has been consumed.
@@ -66,7 +65,7 @@ impl core::fmt::Display for TxError {
             Self::SchcCompress => write!(f, "SCHC compression failed"),
             Self::FrameEncode => write!(f, "frame encoding failed"),
             Self::RadioTx => write!(f, "radio TX failed"),
-            Self::BufferTooSmall(e) => write!(f, "{}", e),
+            Self::BufferTooSmall => write!(f, "buffer too small"),
             Self::QueueFull => write!(f, "forwarding queue full"),
             Self::SequenceExhausted => write!(f, "link-layer sequence exhausted"),
             Self::NoRoute => write!(f, "no route to destination"),
@@ -80,19 +79,12 @@ impl From<ForwardError> for TxError {
     fn from(e: ForwardError) -> Self {
         match e {
             ForwardError::QueueFull => TxError::QueueFull,
-            ForwardError::NotFound => TxError::BufferTooSmall(BufferTooSmall::new(0, 0)), // Shouldn't happen in TX path
+            ForwardError::NotFound => TxError::BufferTooSmall, // Shouldn't happen in TX path
         }
     }
 }
 
-impl core::error::Error for TxError {
-    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-        match self {
-            Self::BufferTooSmall(e) => Some(e),
-            _ => None,
-        }
-    }
-}
+impl core::error::Error for TxError {}
 
 /// RX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -155,8 +147,8 @@ impl From<LinkRxError> for RxError {
 pub struct ReceivedIpv6 {
     /// Decompressed IPv6 packet.
     pub ipv6: Vec<u8>,
-    /// Sender IID (from authenticated link-layer identity), as a `NodeId`.
-    pub sender_iid: NodeId,
+    /// Sender IID (from authenticated link-layer identity).
+    pub sender_iid: [u8; 8],
     /// RSSI in dBm (if radio provides it).
     pub rssi: Option<i16>,
     /// SNR in dB (if radio provides it).
@@ -278,7 +270,7 @@ impl<R: Radio> Stack<R> {
         let ip_hdr = Ipv6Header::new(next_header::UDP, src, *dst);
         ip_hdr
             .write_to(udp_total as u16, &mut ipv6[..IPV6_HEADER_LEN])
-            .map_err(|_| TxError::BufferTooSmall(BufferTooSmall::new(IPV6_HEADER_LEN, ipv6.len())))?;
+            .map_err(|_| TxError::BufferTooSmall)?;
 
         // UDP datagram (preferred write_packet_to ensures payload placed before checksum use)
         let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
@@ -289,7 +281,7 @@ impl<R: Radio> Stack<R> {
                 coap,
                 &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + udp_total],
             )
-            .map_err(|_| TxError::BufferTooSmall(BufferTooSmall::new(udp_total, IPV6_HEADER_LEN + udp_total)))?;
+            .map_err(|_| TxError::BufferTooSmall)?;
 
         let ipv6_len = IPV6_HEADER_LEN + udp_total;
 
@@ -315,13 +307,13 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall(inner) => TxError::BufferTooSmall(inner),
+                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 
         // Radio TX
         self.radio
-            .transmit(&wire[..wire_len])
+            .transmit(0, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 
@@ -381,12 +373,12 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_payload, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall(inner) => TxError::BufferTooSmall(inner),
+                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 
         self.radio
-            .transmit(&wire[..wire_len])
+            .transmit(0, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 
@@ -425,7 +417,7 @@ impl<R: Radio> Stack<R> {
 
         Ok(Some(ReceivedIpv6 {
             ipv6,
-            sender_iid: NodeId(l2.sender.iid),
+            sender_iid: l2.sender.iid,
             rssi: pkt.rssi,
             snr: pkt.snr,
         }))
@@ -566,20 +558,20 @@ pub fn add_rpl_source_route(
         return Err(TxError::NoRoute);
     }
     let routing_len = 8usize
-        .checked_add(remaining.checked_mul(16).ok_or(TxError::BufferTooSmall(BufferTooSmall::new(0, 0)))?)
-        .ok_or(TxError::BufferTooSmall(BufferTooSmall::new(0, 0)))?;
+        .checked_add(remaining.checked_mul(16).ok_or(TxError::BufferTooSmall)?)
+        .ok_or(TxError::BufferTooSmall)?;
     let total_len = ipv6
         .len()
         .checked_add(routing_len)
-        .ok_or(TxError::BufferTooSmall(BufferTooSmall::new(0, 0)))?;
+        .ok_or(TxError::BufferTooSmall)?;
     if ipv6.len() < IPV6_HEADER_LEN || total_len > out.len() {
-        return Err(TxError::BufferTooSmall(BufferTooSmall::new(total_len, out.len())));
+        return Err(TxError::BufferTooSmall);
     }
     let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
     let routed_payload_len = payload_len
         .checked_add(routing_len)
         .and_then(|len| u16::try_from(len).ok())
-        .ok_or(TxError::BufferTooSmall(BufferTooSmall::new(0, 0)))?;
+        .ok_or(TxError::BufferTooSmall)?;
 
     out[..IPV6_HEADER_LEN].copy_from_slice(&ipv6[..IPV6_HEADER_LEN]);
     out[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
@@ -591,7 +583,9 @@ pub fn add_rpl_source_route(
     #[cfg(feature = "std")]
     {
         let srh = SourceRoutingHeader::from_route(route).map_err(|_| TxError::NoRoute)?;
-        let _ = srh.write_to(&mut out[42..]).map_err(|_| TxError::BufferTooSmall(BufferTooSmall::new(0, 0)))?;
+        let _ = srh
+            .write_to(&mut out[42..])
+            .map_err(|_| TxError::BufferTooSmall)?;
     }
     #[cfg(not(feature = "std"))]
     {
@@ -609,7 +603,7 @@ pub fn add_rpl_source_route(
 
 fn wrap_schc_payload<'a>(schc: &[u8], out: &'a mut [u8]) -> Result<&'a [u8], TxError> {
     if out.len() < schc.len() + 1 {
-        return Err(TxError::BufferTooSmall(BufferTooSmall::new(schc.len() + 1, out.len())));
+        return Err(TxError::BufferTooSmall);
     }
     out[0] = L2_DISPATCH_SCHC;
     out[1..1 + schc.len()].copy_from_slice(schc);
@@ -714,18 +708,14 @@ mod tests {
         let dst = stack.local_addr();
         let coap = [0u8; 209];
 
-        assert!(
-            !matches!(
-                stack.send_coap_raw(&dst, &coap[..208]).await,
-                Err(TxError::BufferTooSmall(_))
-            )
+        assert_ne!(
+            stack.send_coap_raw(&dst, &coap[..208]).await,
+            Err(TxError::BufferTooSmall)
         );
         let tuple_state = (stack.epoch, stack.seqnum, stack.sequence_exhausted);
-        assert!(
-            matches!(
-                stack.send_coap_raw(&dst, &coap).await,
-                Err(TxError::BufferTooSmall(_))
-            )
+        assert_eq!(
+            stack.send_coap_raw(&dst, &coap).await,
+            Err(TxError::BufferTooSmall)
         );
         assert_eq!(
             (stack.epoch, stack.seqnum, stack.sequence_exhausted),

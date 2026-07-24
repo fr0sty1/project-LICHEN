@@ -528,7 +528,7 @@ mod tests {
     fn select_channel_min_channels_is_3() {
         let eui = [0u8; 8];
         let ch = select_channel(&eui, 0, 0, 1);
-        assert!(ch >= 1 && ch <= 3);
+        assert!((1..=3).contains(&ch));
     }
 
     #[test]

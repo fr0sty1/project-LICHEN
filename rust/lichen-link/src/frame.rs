@@ -704,7 +704,9 @@ mod tests {
                         }
                         "reserved_bit_set" => error == FrameError::ReservedBitSet,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
-                        "signed_encrypted_unsupported" => error == FrameError::SignedEncryptedUnsupported,
+                        "signed_encrypted_unsupported" => {
+                            error == FrameError::SignedEncryptedUnsupported
+                        }
                         "frame_too_large" => error == FrameError::FrameTooLarge,
                         _ => false,
                     };

@@ -39,12 +39,7 @@ fn test_deaddrop_vector_wire_format() {
         let name = v["name"].as_str().unwrap();
         let encoded = hex_to_bytes(v["encoded"].as_str().unwrap());
         assert!(encoded.len() >= 4, "{}: CoAP frame too short", name);
-        assert_eq!(
-            encoded[0] & 0xC0,
-            0x40,
-            "{}: not CoAP version 1",
-            name
-        );
+        assert_eq!(encoded[0] & 0xC0, 0x40, "{}: not CoAP version 1", name);
         let code = encoded[1];
         let vector_type = v["type"].as_str().unwrap();
         match vector_type {
@@ -88,12 +83,7 @@ fn test_confessions_vector_wire_format() {
         let name = v["name"].as_str().unwrap();
         let encoded = hex_to_bytes(v["encoded"].as_str().unwrap());
         assert!(encoded.len() >= 4, "{}: CoAP frame too short", name);
-        assert_eq!(
-            encoded[0] & 0xC0,
-            0x40,
-            "{}: not CoAP version 1",
-            name
-        );
+        assert_eq!(encoded[0] & 0xC0, 0x40, "{}: not CoAP version 1", name);
         let code = encoded[1];
         let vector_type = v["type"].as_str().unwrap();
         match vector_type {
@@ -117,7 +107,7 @@ fn test_confessions_vector_wire_format() {
         if let Some(payload) = v["payload"].as_str() {
             if !payload.is_empty() {
                 let payload_bytes = hex_to_bytes(payload);
-                assert!(payload_bytes.len() >= 1, "{}: payload too short", name);
+                assert!(!payload_bytes.is_empty(), "{}: payload too short", name);
             }
         }
         if let Some(expected) = v["expected"].as_object() {

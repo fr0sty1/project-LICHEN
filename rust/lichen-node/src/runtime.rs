@@ -6,7 +6,8 @@
 use lichen_rpl::trickle::TrickleEvent;
 
 use crate::routing::TrickleSafeLivenessPolicy;
-use crate::{RplMaintenanceOutcome, RplNode};
+use crate::routing::RplMaintenanceOutcome;
+use crate::RplNode;
 
 pub const DEFAULT_MAINTENANCE_INTERVAL_MS: u64 = 1_000;
 pub const DEFAULT_NEIGHBOR_TIMEOUT_MS: u64 = 10_000;

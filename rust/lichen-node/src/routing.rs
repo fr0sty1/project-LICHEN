@@ -165,13 +165,35 @@ pub type LinkEtx = f32;
 /// Geographic coordinates (latitude, longitude) in decimal degrees.
 pub type GeoCoords = (f64, f64);
 
+/// Liveness policy aware of Trickle timer consistency (RFC 6206).
+///
+/// Extends basic timeout-based liveness with the requirement that a neighbor
+/// has been heard from at least once during a Trickle interval. When
+/// `heard_consistent == 0`, falls back to the base timeout check.
+#[derive(Default)]
+pub struct TrickleAwareNeighborLiveness;
+
+impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, heard_consistent: u32) -> bool {
+        if heard_consistent == 0 {
+            now.saturating_sub(last_seen) <= timeout
+        } else {
+            true
+        }
+    }
+}
+
 pub trait TrickleSafeLivenessPolicy {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
         now.saturating_sub(last_seen) <= timeout
     }
 }
 
-impl TrickleSafeLivenessPolicy for () {}
+impl TrickleSafeLivenessPolicy for () {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
+        now.saturating_sub(last_seen) <= timeout
+    }
+}
 
 /// Trickle-aware liveness policy per RFC 6206.
 ///

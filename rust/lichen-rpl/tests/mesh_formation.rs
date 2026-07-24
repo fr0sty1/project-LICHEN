@@ -131,7 +131,7 @@ fn upward_routing_via_preferred_parents() {
 fn downward_routes_assembled_from_daos() {
     let root_addr = ll(1);
     let mut storage = MemStorage::new();
-    let (mut root, mut state) =
+    let (mut root, mut _state) =
         DaoManager::provision_root(&mut storage, root_addr, 0, dodag_id()).unwrap();
     let id2 = identity(2);
     let id3 = identity(3);
@@ -208,7 +208,7 @@ fn parent_switch_on_link_failure() {
 fn route_updates_when_node_reparents() {
     let root_addr = ll(1);
     let mut storage = MemStorage::new();
-    let (mut root, mut state) =
+    let (mut root, mut _state) =
         DaoManager::provision_root(&mut storage, root_addr, 0, dodag_id()).unwrap();
     let id2 = identity(2);
     let id3 = identity(3);
