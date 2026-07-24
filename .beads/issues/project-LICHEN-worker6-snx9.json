@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-snx9",
   "title": "[review] project-LICHEN-worker6-p19p: non-All-1 fragment length check bug",
   "description": "## Bug: Non-All-1 fragment decoder rejects valid fragments\n\n**File:** `rust/lichen-schc/src/fragment.rs:200`\n\n**Severity:** P0 — all non-All-1 SCHC fragments are incorrectly rejected.\n\n### Root Cause\n\nIn `Fragment::from_bytes`, the non-All-1 branch length check uses `TILE_SIZE + 1`:\n\n```rust\n} else if content_len != TILE_SIZE + 1 {\n    return Err(FragmentError::InvalidTileLength);\n```\n\nBut the encoder (`write_to`) produces exactly `TILE_SIZE` content bytes for non-All-1 fragments:\n\n```rust\nlet content_len = self.payload.len() + if self.is_all_1() { MIC_LENGTH } else { 0 };\nlet needed = content_len + 2;   // = TILE_SIZE + 2 = 189\n```\n\nSo `content_len = data.len() - 2 = 187`, and the check `187 != 188` is always true, returning `InvalidTileLength`.\n\n### Fix\nChange `TILE_SIZE + 1` to `TILE_SIZE` on line 200.\n\n### Additional issue: dead code in `Ack::write_to`\nLine 285: `let body_bytes = n.div_ceil(8);` is computed but never used. Remove it.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:33:49.033374912Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:21:09.054525771Z",
-  "started_at": "2026-07-24T19:37:31.551141523Z"
+  "updated_at": "2026-07-24T20:28:00.52523797Z",
+  "started_at": "2026-07-24T19:37:31.551141523Z",
+  "lease_expires_at": "2026-07-24T20:33:00.52523797Z",
+  "heartbeat_at": "2026-07-24T20:28:00.52523797Z"
 }
