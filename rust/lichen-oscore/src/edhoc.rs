@@ -1490,7 +1490,7 @@ fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 40>, heapl
     id_cred.extend_err(pubkey)?;
 
     let mut ccs = heapless::Vec::<u8, 96>::new();
-    ccs.push_err(0xa2)?;
+    ccs.push_err(0xa3)?;
     ccs.push_err(0x01)?;
     ccs.push_err(0x06)?;
     ccs.push_err(0x20)?;
@@ -1501,7 +1501,7 @@ fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 40>, heapl
 }
 
 fn encode_credential<const N: usize>(buf: &mut heapless::Vec<u8, N>, pubkey: &[u8]) -> Result<(), EdhocError> {
-    buf.push_err(0xa2)?;
+    buf.push_err(0xa3)?;
     buf.push_err(0x01)?;
     buf.push_err(0x06)?;
     buf.push_err(0x20)?;
