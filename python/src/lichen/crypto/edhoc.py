@@ -440,7 +440,8 @@ class EdhocInitiator:
             iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
             a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
             ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
+            cred_i = self.identity.pubkey
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()
@@ -674,7 +675,8 @@ class EdhocResponder:
                 mac_3,
             ])
             Ed25519PublicKey.from_public_bytes(peer_pubkey).verify(signature_3, m_3)
-            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
+            cred_i = peer_pubkey
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()
