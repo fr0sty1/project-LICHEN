@@ -443,3 +443,17 @@ void tx_queue_clear(struct tx_queue *queue)
 
 	unlock_queue(queue);
 }
+
+int tx_queue_destroy(struct tx_queue *queue)
+{
+	if (queue == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef __ZEPHYR__
+	(void)queue;
+	return 0;
+#else
+	return -pthread_mutex_destroy(&queue->lock);
+#endif
+}

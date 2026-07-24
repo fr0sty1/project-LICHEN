@@ -10,6 +10,7 @@
 #include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
+#include <lichen/tx_queue.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -181,6 +182,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 		return -EIO;
 	}
 #endif
+
+	tx_queue_init(&ctx->tx_queue);
 
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
