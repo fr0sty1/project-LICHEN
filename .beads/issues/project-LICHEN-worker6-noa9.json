@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-noa9",
+  "title": "[rereview] project-LICHEN-i1gk.102: misleading AES-CCM-64/CRC32 comments in caller files",
+  "description": "The comment blocks in both caller files describe features that do not exist in the actual implementation:\n\n1. firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:~991-994:\n   '- AES-CCM-64 MIC if has_link_key, else CRC32 fallback'\n\n2. lichen/subsys/lichen/l2/lichen_l2.c:~1389-1392:\n   '- No MIC for unsigned frames'\n\nThe actual lichen_link_tx() at lichen/subsys/lichen/link/lichen_link_tx.c:78-81 returns -EPROTONOSUPPORT if ctx-\u003ehas_link_key is set. There is no AES-CCM-64 MIC, no CRC32 fallback, and the 'No MIC for unsigned frames' comment is misleading since there's no unsigned-frame MIC at all.\n\nFix: Update comments in both files to accurately describe what lichen_link_tx() actually does.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:38:00.047206558Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:38:00.047206558Z"
+}
