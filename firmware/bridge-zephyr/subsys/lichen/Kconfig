@@ -149,6 +149,15 @@ config LICHEN_L2_LOG_LEVEL
 	  Log level for LICHEN Zephyr L2 interface.
 	  0 = Off, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug
 
+config LICHEN_UTIL_LOG_LEVEL
+	int "LICHEN util log level"
+	depends on LICHEN
+	default 1
+	range 0 4
+	help
+	  Log level for LICHEN utility functions (SHA-256, etc.).
+	  0 = Off, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug
+
 config LICHEN_L2_RX_ALLOC_TIMEOUT_MS
 	int "RX packet allocation timeout (ms)"
 	depends on LICHEN_L2

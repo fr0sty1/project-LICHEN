@@ -7,6 +7,9 @@
  */
 
 #include "lichen_util.h"
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(lichen_util, CONFIG_LICHEN_UTIL_LOG_LEVEL);
 
 /* Compile-time sanity check: SHA-256 always produces 32 bytes */
 BUILD_ASSERT(TC_SHA256_DIGEST_SIZE == 32,
@@ -22,14 +25,24 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
         return -EINVAL;
     }
 
-    /* Conflated error handling is intentional: callers only need pass/fail,
-     * and TinyCrypt's SHA-256 functions only fail on NULL (checked above). */
-    if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS ||
-        (inlen > 0 &&
-         tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) ||
-        tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
+    if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS) {
+        LOG_ERR("SHA-256 init failed");
         ret = -EIO;
+        goto out;
     }
+    if (inlen > 0 &&
+        tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) {
+        LOG_ERR("SHA-256 update failed");
+        ret = -EIO;
+        goto out;
+    }
+    if (tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
+        LOG_ERR("SHA-256 final failed");
+        ret = -EIO;
+        goto out;
+    }
+
+out:
     secure_zero(&state, sizeof(state));
     return ret;
 }
