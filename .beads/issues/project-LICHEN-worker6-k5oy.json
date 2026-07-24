@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-k5oy",
+  "title": "[review] project-LICHEN-worker6-cjbc: ACK window bit deserialization at wrong position (FRAGMENT_N instead of 7)",
+  "description": "In ,  extracts the window field as  where , meaning it reads from bit 6. However,  (lines 252, 264) encodes the window at bit 7 using . This mismatch was pre-existing but masked by the bitmap validation bug (now fixed in commit 36f1d9c) which caused tests to fail earlier with  before reaching . Now the  control roundtrip test fails with:  for complete ACK with window=0 (serialized as , deserialized incorrectly as window=1 because bit 6 (C flag) is read as the window). Fix: change  to  at line 287, or introduce a separate constant.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:41:53.858168403Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:41:53.858168403Z"
+}
