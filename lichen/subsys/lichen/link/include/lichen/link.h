@@ -102,7 +102,14 @@ enum lichen_mic_len {
  * @brief Coordination mechanisms per CCP-5 (da2q context)
  *
  * Priority order for negotiation: scheduled > hash_based > announce_driven > fallback
- * Matches ccp9-rendezvous.json test vectors.
+ *
+ * Exact mapping to ccp9-rendezvous.json test vector "mechanism" strings:
+ *   LICHEN_COORD_HASH_BASED      = 0  ↔  "hash_based"
+ *   LICHEN_COORD_SCHEDULED       = 1  ↔  "scheduled"
+ *   LICHEN_COORD_ANNOUNCE_DRIVEN = 2  ↔  "announce_driven"
+ *   LICHEN_COORD_FALLBACK        = 3  ↔  "fallback"
+ *
+ * Implementations MUST serialize/deserialize using these exact strings.
  */
 enum lichen_coordination_mechanism {
 	LICHEN_COORD_HASH_BASED = 0,

@@ -47,6 +47,7 @@ class AnnounceRejectReason(Enum):
     STALE_SEQNUM = auto()
     HOP_LIMIT_EXCEEDED = auto()
     MALFORMED = auto()
+    PIN_TABLE_FULL = auto()
 
 
 @dataclass
@@ -139,10 +140,19 @@ class AnnounceProcessor:
         )
         self.gradient_table.update(entry, now=now_ms)
 
+        if iid not in self._pinned_keys and len(self._pinned_keys) >= MAX_ENTRIES:
+            logger.warning(
+                "announce pin table full: originator=%s max=%d",
+                iid.hex(),
+                MAX_ENTRIES,
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.PIN_TABLE_FULL,
+            )
         self._pinned_keys[iid] = announce.pubkey
         self._pinned_keys.move_to_end(iid)
-        while len(self._pinned_keys) > MAX_ENTRIES:
-            self._pinned_keys.popitem(last=False)
 
         self._seen[iid] = announce.seq_num
         self._seen.move_to_end(iid)

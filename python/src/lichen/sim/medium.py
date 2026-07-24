@@ -380,6 +380,7 @@ class Medium:
         time_us: int,
         channel: int = 0,
         phy_mode: str = "lora",
+        frequency_hz: int | None = None,
     ) -> Transmission:
         """Create a transmission and add it to the active set.
 
@@ -389,6 +390,8 @@ class Medium:
             duration_us = lr_fhss_airtime_us(len(payload))
         else:
             duration_us = airtime_us(len(payload))
+        if frequency_hz is None:
+            frequency_hz = 915_000_000 + channel * 200_000
         tx = Transmission(
             source_node_id=node_id,
             payload=payload,
@@ -397,6 +400,7 @@ class Medium:
             end_time_us=time_us + duration_us,
             channel=channel,
             phy_mode=phy_mode,
+            frequency_hz=frequency_hz,
         )
         self._active_transmissions.append(tx)
         self._tx_positions[tx.id] = position

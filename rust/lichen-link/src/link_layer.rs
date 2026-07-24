@@ -33,6 +33,8 @@ pub enum LinkRxError {
     TooShort(TooShort),
     /// A previously-pinned IID appeared with a different public key.
     KeyChange,
+    /// Pinned peer table is full (TOFU pins are non-evictable).
+    PinTableFull,
 }
 
 impl std::fmt::Display for LinkRxError {
@@ -44,6 +46,7 @@ impl std::fmt::Display for LinkRxError {
             Self::Replay => write!(f, "replay detected"),
             Self::TooShort(e) => write!(f, "payload {}", e),
             Self::KeyChange => write!(f, "key change detected"),
+            Self::PinTableFull => write!(f, "pinned peer table full"),
         }
     }
 }
@@ -417,11 +420,18 @@ impl LinkLayer {
             if let Some(iid) = oldest_iid {
                 if let Some(tracked) = self.peers.remove(&iid) {
                     self.replay.reset_peer(&tracked.identity.pubkey);
-                    self.pinned.remove(&iid);
                 }
             } else {
                 break;
             }
+        }
+    }
+
+    fn ensure_pin_capacity(&self) -> Result<(), &'static str> {
+        if self.pinned.len() >= self.max_peers {
+            Err("pinned peer table full (TOFU pins are non-evictable)")
+        } else {
+            Ok(())
         }
     }
 
@@ -567,6 +577,13 @@ impl LinkLayer {
         let access = self.access_counter;
         if let Some(tracked) = self.peers.get_mut(&sender.iid) {
             tracked.last_access = access;
+        }
+        if !self.pinned.contains_key(&sender.iid) {
+            if let Err(msg) = self.ensure_pin_capacity() {
+                #[cfg(feature = "log")]
+                warn!("link_layer: {msg}");
+                return Err(LinkRxError::PinTableFull);
+            }
         }
         self.pinned.insert(
             sender.iid,

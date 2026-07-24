@@ -1257,16 +1257,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 false
             };
             self.announces = staged_announces;
-            if let Some(evicted) = result.evicted_iid {
-                if let Some(position) = self
-                    .bootstrap_peers
-                    .iter()
-                    .position(|tracked| *tracked == evicted)
-                {
-                    self.bootstrap_peers.remove(position);
-                    self.stack.link().forget_peer(&evicted);
-                }
-            }
             if peer.iid == frame.sender.iid {
                 let announce_peer_is_new = matches!(
                     self.stack.link().peer_auth_state(&peer.iid),

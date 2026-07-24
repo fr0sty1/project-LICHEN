@@ -133,6 +133,38 @@ Procedure SelectChannel(EUI64, Epoch, Density, NChannels):
    4. N = MAX(NChannels, 3)
    5. RETURN 1 + (Hash MOD N)
 
+## 2a.4. Time Synchronization
+
+LICHEN nodes maintain a shared sense of time through a firmware time provider (see `docs/firmware-time-provider.md`). Time synchronization is essential for TDMA slot alignment, SFN consistency, and desync detection.
+
+**epoch_floor:** Each node computes an effective epoch floor as the maximum of its firmware build timestamp and any board-provisioned epoch (if valid). Nodes MUST reject SFN updates that reference a timestamp below their effective epoch floor, preventing stale GNSS/RTC/network time from corrupting slot alignment after reboots or stratum changes.
+
+**Stratum:** The root advertises a stratum value in its beacon (lower is better). Nodes adopt the root's stratum and MUST NOT increase their own stratum independently. On DRIFTING→ACQUIRING transitions, a node accepts the new root's stratum even if worse; better stratum allows guard time reduction (minimum 50 ms). See the state transition table in Section 2a.5.
+
+**wall_clock_valid:** The time provider reports a `wall_clock_valid` boolean. When false, `unix_time` is absent or unreliable, and nodes MUST:
+- Reject SFN updates requiring wall-clock validation
+- Report `wall_clock_valid=false` via LCI status (see `spec/11-lci.md`)
+- Fall back to SFN-only relative timing
+
+When true, nodes may use UNIX timestamps for SenML `bt` fields, DTLS certificate validation, and epoch_floor cross-checks.
+
+**Time synchronization during join:**
+1. UNJOINED / ACQUIRING: Node listens for beacons on CH0.
+2. Valid beacon requires `stratum >= current` and `ts >= epoch_floor`.
+3. On acceptance, node syncs SFN, adopts stratum, and enters SYNCED.
+4. The beacon's `sfn` field provides the current superframe number for slot calculation.
+
+**Time provider integration with RPL:**
+- DIO messages carry the root's stratum and timestamp.
+- Nodes receiving DIO with higher stratum MAY adopt that time but MUST NOT accept timestamps below their effective epoch floor.
+- GNSS-PPS capable roots advertise flag bit 3, enabling stratum-1 quality for all downstream nodes.
+- Multiple roots with conflicting strata resolve per the multi-root conflict rules in Section 2a.5.
+
+**SFN wrap handling:**
+SFN is a u32 counter. All arithmetic uses unsigned 32-bit modulo (`0x100000000`). Delta computation uses unsigned subtraction per Section 2a.2. On SFN wrap combined with invalid time provider state, the node enters DESYNCED and suppresses TDMA TX, falling back to contention-only (see `spec/09-packets-timing.md`).
+
+All implementations MUST produce identical behavior to `test/vectors/ccp16.json`, `ccp_tdma.json`, and `ccp16-desync.json` for time sync scenarios, including epoch_floor validation, stratum adoption, and wall_clock_valid transitions.
+
 ### 2a.7. Adaptive Spreading Factor Selection (per 8gac)
 
 SF10 is the REQUIRED baseline for moderate density (5-20 nodes). Density-aware adaptation and per-neighbor EMA (alpha = 1/4) override only on explicit thresholds. Load_factor from gateway DIOs takes precedence. All paths MUST match ccp16.json and ccp_load_balancing.json exactly (independent oracle).
