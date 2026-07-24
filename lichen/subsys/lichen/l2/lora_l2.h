@@ -36,6 +36,7 @@
 #include <stdbool.h>
 
 #include <lichen/tx_queue.h>
+#include <lichen/schnorr48.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,20 +57,20 @@ extern "C" {
  *     Subtotal:                            5 bytes
  *
  *   Unsigned MIC:                           0 bytes
- *   Schnorr-48 signature MIC:              48 bytes (SCHNORR48_SIG_LEN)
+ *   Schnorr-48 signature MIC:              SCHNORR48_SIG_LEN
  *   ----------------------------------------
- *   Total signed overhead:                53 bytes
+ *   Total signed overhead:            5 + SCHNORR48_SIG_LEN
  *
- *   We reserve 55 bytes rather than 53:
+ *   We reserve 2 bytes additional headroom beyond the signed overhead:
  *   The MTU computation is: 255 - FRAME_OVERHEAD = MTU.
- *   Using 55 yields MTU=200 and leaves two bytes of additional headroom.
+ *   Using 5 + SCHNORR48_SIG_LEN + 2 = 55 yields MTU=200.
  *
  *   Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
  *
- * If frame format or signature size changes, update this constant.
+ * If frame format or signature size changes, update these constants.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 53-byte signed overhead plus 2 bytes headroom */
+#define LICHEN_LORA_FRAME_OVERHEAD   (5 + SCHNORR48_SIG_LEN + 2)  /* header + sig + headroom */
 #define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
 
 /**
