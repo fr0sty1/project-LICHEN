@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ykvk.1",
   "title": "Fix lichen_coap_deaddrop_register stub and init order",
   "description": "Implement lichen_coap_deaddrop_register per init graph: call oscore_init(). Replace raw memcpy in coap_dtn.c with senml_encode/decode for SenML/DTN setup. Update coap_dtn.c, coap_server.h if needed, Kconfig. Ensure no comments. Run tests after.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

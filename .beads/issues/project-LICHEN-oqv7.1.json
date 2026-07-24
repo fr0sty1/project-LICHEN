@@ -3,7 +3,7 @@
   "title": "Implement nRF52840 Renode USBD path",
   "description": "Implement the nRF52840 USBD registers, tasks, events, interrupts, and EVENTCAUSE behavior exercised by Zephyr full applications. RAK4631 bridge currently loops on unimplemented USBD EVENTCAUSE and emits no UART. Reuse the model for T1000-E and R1 Neo USB profiles where applicable.",
   "acceptance_criteria": "RAK4631 bridge reaches UART main ready and simulator TX through canonical firmware; required USBD-next operations have regression checks; T1000-E/R1 reuse boundaries are documented; firmware-only USB bypasses are not accepted.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

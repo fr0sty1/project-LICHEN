@@ -3,7 +3,7 @@
   "title": "Implement gateway multi-RX support for CCP-14",
   "description": "Add support for gateway to receive on multiple LoRa channels simultaneously to support coordinated capacity planning. Update lichen-gateway Rust code and/or Zephyr gateway app to handle multiple RX paths or concurrent radio configs. Include test vectors and update spec if needed. Follow test integrity rules with independent oracles.",
   "notes": "Commit: 10660c792",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

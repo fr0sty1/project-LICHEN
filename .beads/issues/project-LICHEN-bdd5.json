@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bdd5",
   "title": "Persist link tuple state across reboot",
   "description": "Python Node constructs LinkLayer with a random epoch from only 128 values and seqnum zero without restoring persistent state. Rebooting under the same identity can reuse a previously signed (epoch, seqnum) tuple. Persist the next tuple plus exhaustion state atomically, or rotate the identity key before transmitting when state is unavailable; add reboot/recovery tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",
