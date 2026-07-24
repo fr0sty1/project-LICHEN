@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-77ln",
+  "title": "[review] project-LICHEN-worker6-kkj5: CBOR map header 0xa2 should be 0xa3 for 3-pair encode_credential",
+  "description": "In `encode_credential` at `rust/lichen-oscore/src/edhoc.rs:441`, the CBOR map header is `0xa2` (map with 2 elements), but the function encodes **three** key-value pairs:\n1. kty = 1 (OKP)\n2. crv = 6 (Ed25519)\n3. x = pubkey bstr\n\nThis produces a malformed CBOR structure. Should be `0xa3` (map with 3 elements).\n\n**Severity**: P1 — cryptographic encoding error, TH_4 computation on the responder side uses this function and would produce wrong results if the credential format is COSE_Key.\n\n**Mitigating factor**: The test vector at lines 1708-1711 does NOT exercise `encode_credential` (it passes an X.509 certification directly as `credential_r`), so this bug is not caught by existing tests.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:05:43.155440059Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:05:43.155440059Z"
+}
