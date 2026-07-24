@@ -727,7 +727,7 @@ mod tests {
         assert_eq!(opts[0].value, b"sensors");
         assert_eq!(opts[1].value, b"temp");
         assert_eq!(opts[2].number, OptionNumber::ContentFormat as u16);
-        assert_eq!(opts[2].as_uint().unwrap(), content_format::CBOR);
+        assert_eq!(opts[2].as_uint().unwrap(), content_format::CBOR as u32);
     }
 
     #[test]
