@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.15.2.4",
   "title": "codereview-pass1-round2: rf_health.rs update doc for RfHealthMetrics to mention CCP-15 interference metrics",
   "description": "The struct doc should reference how tx_failures and updated EMA support interference mitigation per da2q CCP-15. Minor doc improvement. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T16:30:00.754574126Z",

@@ -3,7 +3,7 @@
   "title": "dtn_retrieve_for: no lock, could yield inconsistent results under concurrent access",
   "description": "File: python/src/lichen/routing/router.py:694-710\n\n```python\ndef dtn_retrieve_for(self, destination_iid: bytes) -\u003e list[DtnMessage]:\n    matching: list[DtnMessage] = []\n    remaining: deque[DtnMessage] = deque()\n    for msg in self.dtn_buffer:\n        if msg.destination_iid == destination_iid:\n            matching.append(msg)\n            self._dtn_buffer_bytes -= msg.size()\n        else:\n            remaining.append(msg)\n    self.dtn_buffer = remaining  # Non-atomic replacement\n    return matching\n```\n\nWHY IT'S A BUG:\n1. If dtn_buffer_message() is called while this iterates, the new message is either lost (if added to old buffer) or duplicated (if added to remaining)\n2. The `self.dtn_buffer = remaining` replacement is not atomic\n3. _dtn_buffer_bytes could become inconsistent if concurrent modifications occur\n\nThis is related to the general thread-safety issue (project-LICHEN-ccjp), but this specific pattern is particularly dangerous because it replaces the entire buffer.\n\nIMPACT: Message loss or duplication under concurrent access; buffer accounting corruption.\n\nFIX: Either use a lock around the entire method, or use an atomic swap pattern with compare-and-exchange (though Python lacks native CAS).",
   "notes": "Commit: 864ac83a6",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

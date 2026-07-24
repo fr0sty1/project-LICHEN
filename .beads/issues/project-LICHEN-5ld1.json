@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-5ld1",
   "title": "codereview-pass-3-clean1: appendix-*.md and drafts now synchronized with current constants.rs, schc.h, constants.toml, rules.rs; no P0-P2 findings",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T14:46:51.306064094Z",

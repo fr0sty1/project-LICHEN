@@ -3,7 +3,7 @@
   "title": "Jitter multicast DIS and suppress DIO",
   "description": "Use bounded node-differentiated Trickle jitter for multicast DIS and distinguish accepted-consistent, accepted-inconsistent, and rejected DIOs so only valid consistent DIOs increment redundancy.",
   "acceptance_criteria": "Multiple nodes schedule different bounded multicast-DIS transmit times; accepted consistent DIO suppresses by k; rejected DIO does not increment redundancy.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

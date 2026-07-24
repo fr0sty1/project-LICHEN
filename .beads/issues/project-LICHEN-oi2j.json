@@ -2,7 +2,7 @@
   "id": "project-LICHEN-oi2j",
   "title": "codereview pass 2: density metric sampling",
   "description": "Pass 2: Metric sampling in 2a.7.1 looks solid but SF section update (chunk 1) references undefined adaptive_sf_select and §2a.7.2. Needs full implementation of rules with table of SNR thresholds per SF (SF7:-7.5dB, SF12:-20dB typical), clamping, and load_factor precedence (gateway override if load\u003e70 prefer SF10). No P0 but P2 for missing section. discovered-from:project-LICHEN-da2q.15.8.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:39:04.806320811Z",
