@@ -178,18 +178,33 @@ impl<'a> Fragment<'a> {
         if out.len() < content_len {
             return Err(BufferTooSmall::new(content_len, out.len()).into());
         }
+        if (data.last().copied().unwrap() & 1) != 0 {
+            return Err(FragmentError::NonZeroPadding);
+        }
         let rule_id = data[0];
         let window = data[1] >> 7;
         let fcn = (data[1] >> 1) & 0x3f;
+        if window > 1 {
+            return Err(FragmentError::InvalidWindow);
+        }
+        if fcn == ALL_1_FCN {
+            if content_len <= MIC_LENGTH {
+                return Err(FragmentError::InvalidTileLength);
+            }
+        } else {
+            if content_len != TILE_SIZE {
+                return Err(FragmentError::InvalidTileLength);
+            }
+            if window == 1 && fcn == 0 {
+                return Err(FragmentError::InvalidFcn);
+            }
+        }
         for i in 0..content_len {
             let low = data[2 + i] >> 1;
             let high = (data[1 + i] & 1) << 7;
             out[i] = low | high;
         }
         if fcn == ALL_1_FCN {
-            if content_len < MIC_LENGTH {
-                return Err(TooShort::new(2 + MIC_LENGTH, data.len()).into());
-            }
             let mut mic = [0u8; MIC_LENGTH];
             mic.copy_from_slice(&out[..MIC_LENGTH]);
             Ok(Fragment {
