@@ -2337,6 +2337,21 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	}
 
 	/*
+	 * Guard against processing on a module that has been aborted
+	 * (project-LICHEN-d7ub.68). If the lora_l2 state transitions to
+	 * ABORTED between the callback snapshot and this point, we must
+	 * not continue processing on corrupt state.
+	 *
+	 * Recovery requires: lichen_lora_l2_deinit() + lichen_lora_l2_init()
+	 * which reinitializes all mutexes and state.
+	 */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_WRN("lichen_l2: RX dropped (reinit required after abort)");
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+
+	/*
 	 * Use lichen_link_rx() to process the complete frame. This handles:
 	 * - Frame parsing
 	 * - Replay protection (if replay table provided)

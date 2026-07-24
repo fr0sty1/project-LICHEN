@@ -330,12 +330,9 @@ static struct lichen_link_ctx link_ctx;
  * Replay protection table for received frames.
  *
  * SECURITY (replay.h:100-120): Replay windows are only allocated AFTER peer
- * authentication succeeds. This prevents a poisoning attack where an attacker
- * floods spoofed source addresses to evict legitimate peers' replay windows
- * via LRU eviction. Currently, signature verification is not yet implemented
- * (peer_pubkey=NULL), so this table will accept windows for any source. Once
- * peer authentication is wired up (project-LICHEN-j70n), replay_get() should
- * only be called for authenticated peers.
+ * authentication succeeds (commit_replay in lichen_link_rx.c rejects
+ * public_key == NULL at line 90-91). Fixed unauthenticated LRU eviction
+ * and EUI flooding attack (project-LICHEN-bbti).
  */
 static struct lichen_replay_table replay_table;
 
@@ -1853,6 +1850,21 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 */
 	if (!atomic_get(&link_ctx_initialized)) {
 		LOG_WRN("lichen_l2: RX before link_ctx initialized, dropping");
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+
+	/*
+	 * Guard against processing on a module that has been aborted
+	 * (project-LICHEN-d7ub.68). If the lora_l2 state transitions to
+	 * ABORTED between the callback snapshot and this point, we must
+	 * not continue processing on corrupt state.
+	 *
+	 * Recovery requires: lichen_lora_l2_deinit() + lichen_lora_l2_init()
+	 * which reinitializes all mutexes and state.
+	 */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_WRN("lichen_l2: RX dropped (reinit required after abort)");
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
