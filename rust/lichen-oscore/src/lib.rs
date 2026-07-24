@@ -234,6 +234,7 @@ pub struct ReservedSender<'a> {
 pub struct PendingResponse<'a> {
     context: &'a mut Context,
     request_seq: OscoreSeqNum,
+    response_seq: Option<OscoreSeqNum>,
     code: u8,
     options: heapless::Vec<u8, 128>,
     payload: heapless::Vec<u8, 128>,
@@ -246,6 +247,9 @@ impl PendingResponse<'_> {
     ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
         if !matches!(self.code >> 5, 2..=5) {
             return Err(OscoreError::InvalidParam);
+        }
+        if let Some(seq) = self.response_seq {
+            self.context.update_replay_window(seq);
         }
         self.context.mark_received_response(self.request_seq);
         Ok((self.code, self.options, self.payload))
@@ -887,7 +891,7 @@ impl Context {
         // Find payload marker using proper CoAP option parsing.
         // SECURITY: Cannot just search for 0xFF - it may appear in option values.
         // Must parse options with delta-length encoding to find the true marker.
-        let (options_slice, payload_slice) = match find_payload_marker(rest) {
+        let (options_slice, payload_slice) = match find_payload_marker(rest)? {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
@@ -1207,10 +1211,6 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
-        if let Some(seq) = response_seq {
-            self.update_replay_window(seq);
-        }
-
         if plaintext.is_empty() {
             return Err(OscoreError::InvalidParam);
         }
@@ -1224,7 +1224,7 @@ impl Context {
         // Find payload marker using proper CoAP option parsing.
         // SECURITY: Cannot just search for 0xFF - it may appear in option values.
         // Must parse options with delta-length encoding to find the true marker.
-        let (options_slice, payload_slice) = match find_payload_marker(rest) {
+        let (options_slice, payload_slice) = match find_payload_marker(rest)? {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
@@ -1243,6 +1243,7 @@ impl Context {
         Ok(PendingResponse {
             context: self,
             request_seq,
+            response_seq,
             code,
             options,
             payload,
@@ -1877,42 +1878,65 @@ fn build_aad_cbor(
 ///
 /// Returns the byte index of the payload marker (0xFF) if present, or None if no payload.
 /// This correctly handles 0xFF appearing inside option VALUES (not as a delta-length byte).
-fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
+fn find_payload_marker(options_and_payload: &[u8]) -> Result<Option<usize>, OscoreError> {
     let mut pos = 0;
+    let mut cumulative_number: u16 = 0;
 
     while pos < options_and_payload.len() {
         let first = options_and_payload[pos];
 
         // 0xFF as a delta-length byte means payload marker
         if first == 0xFF {
-            return Some(pos);
+            return Ok(Some(pos));
         }
 
         let delta_nibble = (first >> 4) & 0x0F;
         let len_nibble = first & 0x0F;
 
+        if delta_nibble == 15 {
+            return Err(OscoreError::InvalidParam);
+        }
+        if len_nibble == 15 {
+            return Err(OscoreError::InvalidParam);
+        }
+
         // Skip past first byte
         pos += 1;
 
-        // Skip extended delta bytes
-        match delta_nibble {
-            0..=12 => {}
-            13 => pos += 1, // 1 extended byte
-            14 => pos += 2, // 2 extended bytes
-            15 => {
-                // delta=15 with length!=15 is invalid in normal options
-                // (only 0xFF = delta=15,length=15 is valid, handled above)
-                return None;
+        // Parse extended delta bytes
+        let delta: u16 = match delta_nibble {
+            0..=12 => delta_nibble as u16,
+            13 => {
+                if pos >= options_and_payload.len() {
+                    return Err(OscoreError::InvalidParam);
+                }
+                let d = options_and_payload[pos] as u16 + 13;
+                pos += 1;
+                d
             }
-            _ => unreachable!(), // nibble masked to 0..=15
-        }
+            14 => {
+                if pos + 1 >= options_and_payload.len() {
+                    return Err(OscoreError::InvalidParam);
+                }
+                let d = ((options_and_payload[pos] as u16) << 8
+                    | options_and_payload[pos + 1] as u16)
+                    + 269;
+                pos += 2;
+                d
+            }
+            _ => unreachable!(),
+        };
+
+        cumulative_number = cumulative_number
+            .checked_add(delta)
+            .ok_or(OscoreError::InvalidParam)?;
 
         // Determine option length
         let opt_len = match len_nibble {
             0..=12 => len_nibble as usize,
             13 => {
                 if pos >= options_and_payload.len() {
-                    return None;
+                    return Err(OscoreError::InvalidParam);
                 }
                 let ext = options_and_payload[pos] as usize + 13;
                 pos += 1;
@@ -1920,26 +1944,25 @@ fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
             }
             14 => {
                 if pos + 1 >= options_and_payload.len() {
-                    return None;
+                    return Err(OscoreError::InvalidParam);
                 }
                 let ext = ((options_and_payload[pos] as usize) << 8)
                     | (options_and_payload[pos + 1] as usize);
                 pos += 2;
                 ext + 269
             }
-            15 => {
-                // length=15 without delta=15 is invalid
-                return None;
-            }
             _ => unreachable!(),
         };
 
-        // Skip option value
+        // Validate option value is fully present
+        if pos.checked_add(opt_len).ok_or(OscoreError::InvalidParam)? > options_and_payload.len() {
+            return Err(OscoreError::InvalidParam);
+        }
         pos += opt_len;
     }
 
     // No payload marker found
-    None
+    Ok(None)
 }
 
 /// Compute nonce from Partial IV and Common IV per RFC 8613 Section 5.2.
@@ -3421,7 +3444,7 @@ mod tests {
         let data = [0x11, 0xFF, 0xFF, b'h', b'i'];
 
         // The payload marker should be at index 2, NOT index 1
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = find_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, Some(2));
 
         // Verify the slices would be correct
@@ -3435,7 +3458,7 @@ mod tests {
     fn test_find_payload_marker_no_marker() {
         // Options only, no payload marker
         let data = [0x11, 0x42]; // delta=1, length=1, value=0x42
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = find_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, None);
     }
 
@@ -3443,7 +3466,7 @@ mod tests {
     fn test_find_payload_marker_immediate_marker() {
         // Payload marker at start (no options)
         let data = [0xFF, b'p', b'a', b'y'];
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = find_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, Some(0));
     }
 
@@ -3460,7 +3483,7 @@ mod tests {
             b'p', b'a', b'y', b'l', b'o', b'a', b'd', // "payload"
         ];
 
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = find_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, Some(15)); // 2 header bytes + 13 value bytes
     }
 
@@ -3468,8 +3491,10 @@ mod tests {
     fn test_roundtrip_with_0xff_in_class_e_options() {
         // End-to-end test: protect a request with 0xFF in options, verify decryption
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender_ctx = Context::new(&master_secret, None, None, &[0x00], &[0x01]).unwrap();
-        let mut recipient_ctx = Context::new(&master_secret, None, None, &[0x01], &[0x00]).unwrap();
+        let mut sender_ctx =
+            Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut recipient_ctx =
+            Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         let code = 0x01; // GET
                          // Class E options with 0xFF embedded in a value:
