@@ -578,7 +578,38 @@ impl Zeroize for InitiatorState {
     }
 }
 
+impl core::fmt::Debug for InitiatorState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("InitiatorState")
+            .field("msg1", &self.msg1)
+            .field("g_y", &"[REDACTED]")
+            .field("c_r", &self.c_r)
+            .field("prk_2e", &"[REDACTED]")
+            .field("prk_3e2m", &"[REDACTED]")
+            .field("prk_4e3m", &"[REDACTED]")
+            .field("th_2", &"[REDACTED]")
+            .field("th_3", &"[REDACTED]")
+            .field("th_4", &"[REDACTED]")
+            .field("completed", &self.completed)
+            .field("lifecycle", &self.lifecycle)
+            .finish()
+    }
+}
+
 impl ZeroizeOnDrop for InitiatorState {}
+
+impl core::fmt::Debug for EdhocInitiator {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("EdhocInitiator")
+            .field("signing_key", &"[REDACTED]")
+            .field("pubkey", &self.pubkey)
+            .field("c_i", &self.c_i)
+            .field("eph_secret", &"[REDACTED]")
+            .field("eph_public", &self.eph_public)
+            .field("state", &self.state)
+            .finish()
+    }
+}
 
 impl ZeroizeOnDrop for EdhocInitiator {}
 
@@ -988,9 +1019,40 @@ impl Zeroize for ResponderState {
     }
 }
 
+impl core::fmt::Debug for ResponderState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ResponderState")
+            .field("msg1", &self.msg1)
+            .field("g_x", &"[REDACTED]")
+            .field("c_i", &self.c_i)
+            .field("prk_2e", &"[REDACTED]")
+            .field("prk_3e2m", &"[REDACTED]")
+            .field("prk_4e3m", &"[REDACTED]")
+            .field("th_2", &"[REDACTED]")
+            .field("th_3", &"[REDACTED]")
+            .field("th_4", &"[REDACTED]")
+            .field("completed", &self.completed)
+            .field("lifecycle", &self.lifecycle)
+            .finish()
+    }
+}
+
 impl ZeroizeOnDrop for ResponderState {}
 
-impl ZeroizeOnDrop for EdhocResponder {}
+impl core::fmt::Debug for EdhocResponder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("EdhocResponder")
+            .field("signing_key", &"[REDACTED]")
+            .field("pubkey", &self.pubkey)
+            .field("c_r", &self.c_r)
+            .field("eph_secret", &"[REDACTED]")
+            .field("eph_public", &self.eph_public)
+            .field("state", &self.state)
+            .finish()
+    }
+}
+
+impl ZeroizeOnDrop for ResponderState {}
 
 impl Zeroize for EdhocResponder {
     fn zeroize(&mut self) {
