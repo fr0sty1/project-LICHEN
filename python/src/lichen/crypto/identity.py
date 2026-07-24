@@ -85,8 +85,10 @@ class Identity:
         return cls.from_seed(os.urandom(32))
 
     def __repr__(self) -> str:
+        pk = self.pubkey.hex()[:16]
+        iid = self.iid.hex()
         ygg = self.ygg_addr.hex()[:16]
-        return f"Identity(pubkey={self.pubkey.hex()[:16]}..., iid={self.iid.hex()}, ygg={ygg})"
+        return f"Identity(pubkey={pk}..., iid={iid}, ygg={ygg})"
 
     @property
     def x25519_private(self) -> bytes:
