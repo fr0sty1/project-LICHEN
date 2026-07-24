@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include <lichen/rf_health.h>
+#include <limits.h>
 
 #define FP_SCALE (1 << 16)
 #define FP_ROUND (1 << 15)
@@ -21,12 +22,16 @@ void lichen_rf_health_init(struct lichen_rf_health *h)
 
 void lichen_rf_health_record_tx(struct lichen_rf_health *h)
 {
-	h->packets_tx++;
+	if (h->packets_tx < UINT32_MAX) {
+		h->packets_tx++;
+	}
 }
 
 void lichen_rf_health_record_rx(struct lichen_rf_health *h, int8_t snr)
 {
-	h->packets_rx++;
+	if (h->packets_rx < UINT32_MAX) {
+		h->packets_rx++;
+	}
 	if (snr < h->snr.min) h->snr.min = snr;
 	if (snr > h->snr.max) h->snr.max = snr;
 
@@ -34,15 +39,25 @@ void lichen_rf_health_record_rx(struct lichen_rf_health *h, int8_t snr)
 	if (h->snr.count == 0) {
 		h->snr.avg_fp = snr_fp;
 	} else {
-		int32_t diff = snr_fp - h->snr.avg_fp;
-		h->snr.avg_fp += diff >> LICHEN_RF_EMA_ALPHA_SHIFT;
+		int32_t diff;
+		if (__builtin_ssub_overflow(snr_fp, h->snr.avg_fp, &diff)) {
+			diff = (snr_fp >= 0) ? INT32_MAX : INT32_MIN;
+		}
+		int32_t delta = diff >> LICHEN_RF_EMA_ALPHA_SHIFT;
+		if (__builtin_sadd_overflow(h->snr.avg_fp, delta, &h->snr.avg_fp)) {
+			h->snr.avg_fp = (delta > 0) ? INT32_MAX : INT32_MIN;
+		}
 	}
-	h->snr.count++;
+	if (h->snr.count < UINT32_MAX) {
+		h->snr.count++;
+	}
 }
 
 void lichen_rf_health_record_tx_fail(struct lichen_rf_health *h)
 {
-	h->tx_failures++;
+	if (h->tx_failures < UINT32_MAX) {
+		h->tx_failures++;
+	}
 }
 
 void lichen_rf_health_record_density(struct lichen_rf_health *h, uint8_t density)
