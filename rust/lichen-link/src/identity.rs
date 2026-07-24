@@ -3,29 +3,20 @@
 extern crate alloc;
 
 use crate::keys::{PrivateKey, PublicKey, Seed};
-use crate::schnorr::derive_keypair;
-use lichen_core::addr::ygg_addr_from_pubkey;
-use sha2::{Digest, Sha256};
+use crate::schnorr::{clamp, derive_keypair};
+use curve25519_dalek::MontgomeryPoint;
+use lichen_core::{
+    addr::{iid_from_pubkey_bytes, ygg_addr_from_pubkey},
+    lichen_hash_32,
+};
+use sha2::{Digest, Sha512};
 
-/// Derive a link-local IID from an Ed25519 public key.
-///
-/// Canonical SHA-256(pubkey)[0..8] with U/L bit cleared (IID[0] &= 0b11111101)
-/// per RFC 4291 §2.5.1 and spec/04-network.md §6.2. Matches Python/C exactly
-/// for cross-impl consistency (project-LICHEN-iqxx).
 pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
     iid_from_pubkey_bytes(pubkey.as_bytes())
 }
 
-/// Derive a link-local IID from raw public key bytes (SHA-256 truncation).
-fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
-    let digest = Sha256::digest(pubkey);
-    let mut iid = [0u8; 8];
-    iid.copy_from_slice(&digest[0..8]);
-    iid[0] &= 0b1111_1101; // clear U/L bit (bit 1)
-    iid
-}
-
 /// Human-readable Crockford Base32 node address from pubkey (spec 03-addressing).
+
 pub fn human_address_from_pubkey(pubkey: &PublicKey) -> [u8; 15] {
     let iid = iid_from_pubkey(pubkey);
     human_address_from_iid(&iid)
@@ -87,6 +78,23 @@ impl Identity {
             ygg_addr,
         }
     }
+
+    /// Derive X25519 private key from the Ed25519 seed per spec 8.8.
+    ///
+    /// `x25519_private = clamp(SHA-512(seed)[0:32])` per RFC 7748 §5.
+    /// This is byte-identical to the Ed25519 private scalar (same
+    /// derivation), but interpreted on the Montgomery curve for ECDH.
+    pub fn x25519_private(&self) -> [u8; 32] {
+        let hash = Sha512::digest(self.seed.as_bytes());
+        clamp(hash[..32].try_into().unwrap())
+    }
+
+    /// Derive X25519 public key from the Ed25519 seed per spec 8.8.
+    ///
+    /// `x25519_public = X25519(x25519_private, basepoint)`
+    pub fn x25519_public(&self) -> [u8; 32] {
+        MontgomeryPoint::mul_base_clamped(self.x25519_private()).to_bytes()
+    }
 }
 
 /// A remote peer known by pubkey.
@@ -107,7 +115,6 @@ impl PeerIdentity {
 mod tests {
     use super::*;
     use crate::test_utils::from_hex;
-    use lichen_core::lichen_hash_32;
 
     fn arr32(v: &[u8]) -> [u8; 32] {
         v.try_into().unwrap()
@@ -124,8 +131,7 @@ mod tests {
     fn iid_u_l_bit_cleared() {
         let pubkey = PublicKey::new([0u8; 32]);
         let iid = iid_from_pubkey(&pubkey);
-        // Matches node-addresses.json all-zero-pubkey IID (SHA256[:8] + U/L cleared).
-        let expected = [0x64, 0x68, 0x7a, 0xad, 0xf8, 0x62, 0xbd, 0x77];
+        let expected = [0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0x86];
         assert_eq!(iid, expected);
         assert_eq!(iid[0] & 0x02, 0, "U/L bit must be cleared");
     }
@@ -181,12 +187,56 @@ mod tests {
     }
 
     #[test]
+    fn x25519_private_matches_python_zero_seed() {
+        let seed = Seed::new([0u8; 32]);
+        let id = Identity::from_seed(seed);
+        let expected = arr32(&from_hex(
+            "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        ));
+        assert_eq!(id.x25519_private(), expected);
+    }
+
+    #[test]
+    fn x25519_private_equals_ed25519_privkey() {
+        // Both derive via clamp(SHA-512(seed)[0:32])
+        let seed = Seed::new([0xabu8; 32]);
+        let id = Identity::from_seed(seed);
+        assert_eq!(id.x25519_private(), *id.privkey.as_bytes());
+    }
+
+    #[test]
+    fn x25519_public_matches_python_zero_seed() {
+        let seed = Seed::new([0u8; 32]);
+        let id = Identity::from_seed(seed);
+        let expected = arr32(&from_hex(
+            "5bf55c73b82ebe22be80f3430667af570fae2556a6415e6b30d4065300aa947d",
+        ));
+        assert_eq!(id.x25519_public(), expected);
+    }
+
+    #[test]
+    fn x25519_public_is_deterministic() {
+        let seed = Seed::new([0x42u8; 32]);
+        let id = Identity::from_seed(seed);
+        assert_eq!(id.x25519_public(), id.x25519_public());
+    }
+
+    #[test]
+    fn x25519_public_differs_from_ed25519_pubkey() {
+        // Same seed → same private scalar, but different curve interpretation
+        // produces different public keys.
+        let seed = Seed::new([0x01u8; 32]);
+        let id = Identity::from_seed(seed);
+        assert_ne!(id.x25519_public(), *id.pubkey.as_bytes());
+    }
+
+    #[test]
     fn human_address_from_pubkey_matches_test_vectors() {
         let pk0 = PublicKey::new([0u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk0), *b"68T3-TNQW-65FBQ");
+        assert_eq!(human_address_from_pubkey(&pk0), *b"50HN-DR7D-TGE46");
         let pk1 = PublicKey::new([1u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk1), *b"71KB-EGGH-C81ZV");
+        assert_eq!(human_address_from_pubkey(&pk1), *b"5ST3-EZDT-ZMKHC");
         let pk4 = PublicKey::new([4u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk4), *b"9TKX-PHWZ-1VB42");
+        assert_eq!(human_address_from_pubkey(&pk4), *b"4JFH-W2HE-QWT0A");
     }
 }
