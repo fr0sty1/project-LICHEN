@@ -39,7 +39,7 @@ from ..constants import (
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from ..gradient import MAX_ENTRIES
-from .frame import AddrMode, FrameError, LichenFrame, MicLength
+from .frame import AddrMode, FrameError, LichenFrame, MAX_FRAME_BODY, MicLength
 from .replay import ReplayProtector
 from .tx_queue import Priority, TxQueue
 
@@ -171,7 +171,7 @@ class LinkLayer:
         if self._exhausted:
             logger.error("tuple space exhausted; key rotation required before further TX")
             # Fail closed per e220
-            raise RuntimeError("link tuple exhaustion")
+            raise OverflowError("link tuple exhaustion")
 
         epoch, seqnum = self._epoch, self._seqnum
         self._sequence_started = True
@@ -188,6 +188,8 @@ class LinkLayer:
             if self._epoch == 0:
                 self._exhausted = True
                 logger.warning("24-bit tuple space exhausted; will trigger rotation on next load")
+        else:
+            self._seqnum += 1
 
         self._save_persisted_state()
         return epoch, seqnum
@@ -272,13 +274,19 @@ class LinkLayer:
                 f"requires {expected_len} bytes"
             )
 
+        # Validate frame fits on-air size constraint BEFORE signing
+        frame_length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
+        if frame_length > MAX_FRAME_BODY:
+            raise FrameError(
+                f"frame body is {frame_length} bytes, exceeds {MAX_FRAME_BODY}"
+            )
+
         # Peek at current sequence numbers without consuming
         # Why peek first: If push() raises QueueFullError, we don't want to
         # waste a sequence number. Only consume after successful push.
         epoch, seqnum = self._epoch, self._seqnum
 
         llsec = int(addr_mode) | (1 << 5)
-        frame_length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
         signable = self._build_signable_data(
             epoch, seqnum, dst_addr, payload, frame_length, llsec
         )
