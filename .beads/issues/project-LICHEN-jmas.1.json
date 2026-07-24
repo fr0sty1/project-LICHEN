@@ -5,14 +5,11 @@
   "status": "open",
   "priority": 0,
   "issue_type": "task",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:20:06.751127207Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:21:40.804884837Z",
+  "updated_at": "2026-07-24T16:04:16.816195407Z",
   "started_at": "2026-07-23T05:21:40.804884837Z",
-  "lease_expires_at": "2026-07-23T05:26:40.804884837Z",
-  "heartbeat_at": "2026-07-23T05:21:40.804884837Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-jmas.1",
