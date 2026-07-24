@@ -442,6 +442,26 @@ BUILD_ASSERT(CONFIG_LICHEN_LINK_MAX_NEIGHBORS <= 64,
 static struct lichen_peer_entry peer_table[CONFIG_LICHEN_LINK_MAX_NEIGHBORS];
 
 /*
+ * Atomic flag marking peer_table as fully valid.
+ *
+ * SECURITY (project-LICHEN-tvfm.6): Set to 0 BEFORE the clearing loop
+ * in lichen_l2_enable() disable path, and set to 1 AFTER the loop
+ * completes. This ensures that a crash / power failure / watchdog reset
+ * mid-loop leaves the flag at 0, so on restart all peer accessors see
+ * the table as invalid and return "not found" rather than operating on
+ * partially-cleared (inconsistent) entries.
+ *
+ * On boot, lichen_l2_iface_init() sets this to 1 after secure_zero()
+ * completes the full peer_table wipe.
+ *
+ * THREAD SAFETY: atomic_t prevents torn reads on single-core Cortex-M
+ * (verified by SMP BUILD_ASSERT below). All accessors hold rx_mutex,
+ * so this flag is advisory for the crash-at-power-loss scenario, not
+ * for mutual exclusion.
+ */
+static atomic_t peer_table_valid;
+
+/*
  * Guards access to link_ctx before initialization completes.
  * SECURITY: atomic_t prevents torn reads under aggressive optimization.
  *
@@ -536,6 +556,15 @@ static uint8_t iface_link_addr[LICHEN_L2_ADDR_LEN];
  */
 static struct lichen_peer_entry *peer_find_locked(const uint8_t eui64[8])
 {
+	/*
+	 * CRASH SAFETY (project-LICHEN-tvfm.6): If peer_table_valid is 0,
+	 * the table may be in an inconsistent state (partially cleared by a
+	 * crash-mid-loop or by lichen_l2_enable disable path before the
+	 * clearing loop started). Treat as empty.
+	 */
+	if (!atomic_get(&peer_table_valid)) {
+		return NULL;
+	}
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 		if (peer_table[i].active &&
 		    memcmp(peer_table[i].eui64, eui64, LICHEN_EUI64_LEN) == 0) {
@@ -555,6 +584,13 @@ static struct lichen_peer_entry *peer_find_locked(const uint8_t eui64[8])
  */
 static int peer_find_oldest_locked(void)
 {
+	/*
+	 * CRASH SAFETY (project-LICHEN-tvfm.6): If peer_table_valid is 0,
+	 * the table may be partially cleared. Treat as empty.
+	 */
+	if (!atomic_get(&peer_table_valid)) {
+		return -1;
+	}
 	int oldest_idx = -1;
 	int64_t oldest_time = INT64_MAX;
 
@@ -614,6 +650,18 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	const uint8_t *saved_peer_pubkey = ctx->peer_pubkey;
 	const uint8_t *saved_peer_eui64 = ctx->peer_eui64;
 	struct lichen_frame parsed;
+
+	/*
+	 * CRASH SAFETY (project-LICHEN-tvfm.6): If peer_table_valid is 0,
+	 * the table may be partially cleared. Return auth failure rather
+	 * than attempting verification against inconsistent state.
+	 */
+	if (!atomic_get(&peer_table_valid)) {
+		ctx->peer_pubkey = saved_peer_pubkey;
+		ctx->peer_eui64 = saved_peer_eui64;
+		*out_len = saved_out_len;
+		return -LICHEN_EAUTH;
+	}
 
 	ret = lichen_frame_parse(&parsed, frame, frame_len);
 	if (ret < 0) {
@@ -761,6 +809,17 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
+	/*
+	 * CRASH SAFETY (project-LICHEN-tvfm.6): Reject peer_add if the peer
+	 * table is in an inconsistent state (e.g., crash during disable-path
+	 * clearing mid-loop). We cannot safely add a peer to a partially-
+	 * cleared table.
+	 */
+	if (!atomic_get(&peer_table_valid)) {
+		k_mutex_unlock(&rx_mutex);
+		return -EBUSY;
+	}
+
 	/* Check if peer already exists - update pubkey if so */
 	struct lichen_peer_entry *existing = peer_find_locked(eui64);
 	if (existing != NULL) {
@@ -881,6 +940,15 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	}
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
+
+	/*
+	 * CRASH SAFETY (project-LICHEN-tvfm.6): Reject peer_remove if the peer
+	 * table is in an inconsistent state.
+	 */
+	if (!atomic_get(&peer_table_valid)) {
+		k_mutex_unlock(&rx_mutex);
+		return -EBUSY;
+	}
 
 	struct lichen_peer_entry *entry = peer_find_locked(eui64);
 	if (entry == NULL) {
@@ -1758,6 +1826,13 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * Clear peer table to prevent stale peer keys from persisting across
 		 * enable/disable cycles. SECURITY: Use secure_zero on pubkeys.
 		 *
+		 * CRASH SAFETY (project-LICHEN-tvfm.6): We atomically set
+		 * peer_table_valid = 0 BEFORE the clearing loop. If the system
+		 * crashes (power failure, watchdog) mid-loop, on restart every
+		 * peer_table accessor checks peer_table_valid and treats the
+		 * table as empty/invalid, preventing reads of partially-cleared
+		 * or zeroed-key-with-active=true entries.
+		 *
 		 * THREAD SAFETY: This loop is safe without additional IRQ masking:
 		 * - Called from net_if_down() which holds iface->lock (a k_mutex)
 		 * - We hold both tx_mutex and rx_mutex (acquired above)
@@ -1766,13 +1841,15 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * - No ISRs access peer_table directly
 		 * Preemption by higher-priority threads is harmless since they will
 		 * block on the mutex; the loop will resume and complete atomically
-		 * from peer_table's perspective. (project-LICHEN-tvfm.6)
+		 * from peer_table's perspective.
 		 */
+		atomic_set(&peer_table_valid, 0);
 		for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 			secure_zero(peer_table[i].pubkey, sizeof(peer_table[i].pubkey));
 			secure_zero(peer_table[i].eui64, sizeof(peer_table[i].eui64));
 			peer_table[i].active = false;
 		}
+		atomic_set(&peer_table_valid, 1);
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
 #endif
@@ -2084,6 +2161,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * optimization from eliding the clear on re-init after failed init.
 	 */
 	secure_zero(peer_table, sizeof(peer_table));
+	atomic_set(&peer_table_valid, 1);
 #endif
 
 	/*
