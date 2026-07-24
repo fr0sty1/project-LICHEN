@@ -228,6 +228,24 @@ impl<const N: usize> Drop for SecretVec<N> {
     }
 }
 
+/// Pending Message 2 after decryption, awaiting credential selection.
+pub struct PendingMessage2 {
+    pub id_cred: IdCred,
+    pub plaintext: heapless::Vec<u8, 128>,
+    pub c_r: ConnectionId,
+    pub signature_offset: usize,
+    pub transcript_binding: [u8; 32],
+}
+
+/// Pending Message 3 after decryption, awaiting credential selection.
+pub struct PendingMessage3 {
+    pub id_cred: IdCred,
+    pub plaintext: heapless::Vec<u8, 128>,
+    pub ciphertext: heapless::Vec<u8, 128>,
+    pub signature_offset: usize,
+    pub transcript_binding: [u8; 32],
+}
+
 /// HKDF-Extract with SHA-256.
 fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     // ponytail: Use hkdf crate which we already depend on
@@ -1146,10 +1164,13 @@ impl EdhocResponder {
 
             let mut plaintext = heapless::Vec::new();
             plaintext.extend_err(&plaintext_3)?;
+            let mut ciphertext = heapless::Vec::<u8, 128>::new();
+            ciphertext.extend_err(ciphertext_3)?;
             self.state.lifecycle = Lifecycle::PendingMessage3;
             Ok(PendingMessage3 {
                 id_cred: id_cred_i,
                 plaintext,
+                ciphertext,
                 signature_offset: id_len,
                 transcript_binding: self.state.th_3,
             })
@@ -1204,7 +1225,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1214,40 +1235,7 @@ impl EdhocResponder {
             self.poison();
         }
 
-        let sig_start = 2 + 32 + 2;
-        let sig_bytes = &plaintext_3[sig_start..sig_start + 64];
-        let signature = Signature::from_bytes(
-            sig_bytes
-                .try_into()
-                .map_err(|_| EdhocError::InvalidMessage)?,
-        );
-
-        // Build M_3 for verification
-        let mut m_3 = heapless::Vec::<u8, 128>::new();
-        m_3.push_err(0x83)?;
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(peer_pubkey)?;
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(&self.state.th_3)?;
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(peer_pubkey)?;
-
-        peer_verifying_key
-            .verify(&m_3, &signature)
-            .map_err(|_| EdhocError::SignatureVerification)?;
-
-        // PRK_4e3m = PRK_3e2m for SIGN_SIGN
-        self.state.prk_4e3m = self.state.prk_3e2m;
-
-        self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
-
-        // Mark handshake as completed - export_oscore now safe to call
-        self.state.completed = true;
-
-        Ok(())
+        result
     }
 
     /// Export OSCORE security context.
@@ -1739,7 +1727,7 @@ mod tests {
         let message_1 = initiator.create_message_1().unwrap();
         let message_2 = responder.process_message_1(&message_1).unwrap();
         let pending_2 = initiator.begin_process_message_2(&message_2).unwrap();
-        assert_eq!(pending_2.id_cred().as_bytes(), responder_id.as_slice());
+        assert_eq!(pending_2.id_cred.as_bytes(), responder_id.as_slice());
         assert_eq!(
             initiator.finish_process_message_2(
                 &pending_2,
@@ -1756,7 +1744,7 @@ mod tests {
             .unwrap();
 
         let pending_3 = responder.begin_process_message_3(&message_3).unwrap();
-        assert_eq!(pending_3.id_cred().as_bytes(), initiator_id.as_slice());
+        assert_eq!(pending_3.id_cred.as_bytes(), initiator_id.as_slice());
         assert_eq!(
             responder.finish_process_message_3(
                 &pending_3,
@@ -1865,7 +1853,7 @@ mod tests {
         assert_eq!(
             responder.finish_process_message_3(
                 &pending,
-                PeerCredential::new(&weak_key, pending.id_cred().as_bytes(), &weak_credential),
+                PeerCredential::new(&weak_key, pending.id_cred.as_bytes(), &weak_credential),
             ),
             Err(EdhocError::SignatureVerification)
         );
