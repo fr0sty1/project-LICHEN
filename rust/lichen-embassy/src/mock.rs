@@ -189,7 +189,7 @@ impl Default for MockNonVolatile {
 impl NonVolatile for MockNonVolatile {
     type Error = core::convert::Infallible;
 
-    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
         let data = self.data.lock().unwrap();
         data.get(key).map(|v| {
             let stored = v.len();
