@@ -10,7 +10,7 @@ The Coordinated Capacity Protocol (CCP) defines mechanisms for coordinated capac
 All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`, `ccp_load_balancing.json`, and `ccp_interference.json` (see Appendix A):
 - TDMA beacon byte layout, CDDL, SCHC rule 0x08, slot/hash, SFN wrap, join flows, epoch/num_slots per 2a.2
 - vectors for CCP-16/14 slot, SF, channel, tx_allowed, Multi-RX, capacity metrics (independent oracle: FNV-1a + SX126x airtime + multi-channel sim).
-- CCP-15.2 CCA integration: Clear Channel Assessment (CCA) MUST be performed prior to transmission in the assigned slot via `cca_check()` with `slot_adjust_ticks=8` for the CAD retune window (see `test/vectors/ccp_load_balancing.json`). Nodes that detect channel busy MUST defer and retry on the next slot per the backoff procedure in §2a.5.
+- CCP-15.2 CCA integration: Clear Channel Assessment (CCA) MUST be performed prior to transmission in the assigned slot via `cca_check()` with `slot_adjust_ticks=8` for the CAD retune window (see `test/vectors/ccp_load_balancing.json`). CCA metrics (RSSI threshold, CAD duration) are defined at the link layer per `spec/drafts/draft-lichen-link-01.md` §3.1 (frame timing) and the `LICHEN_LORA_CCA_*` Kconfig options in `lichen/subsys/lichen/l2/Kconfig`. Nodes that detect channel busy MUST defer and retry on the next slot per the backoff procedure in §2a.5.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 

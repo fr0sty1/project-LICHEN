@@ -1150,7 +1150,11 @@
         "queue_peak": {"type": "integer", "minimum": 0},
         "etx": {"type": "number", "minimum": 0},
         "score": {"type": "number"},
-        "action": {"type": "string"}
+        "action": {"type": "string"},
+        "epoch": {"type": "integer", "minimum": 0},
+        "density": {"type": "integer", "minimum": 0},
+        "nchannels": {"type": "integer", "minimum": 1},
+        "expected_channel": {"type": "integer", "minimum": 0}
       }
     },
     "schnorr48_vector": {
