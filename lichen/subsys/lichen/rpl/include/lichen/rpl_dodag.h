@@ -83,6 +83,14 @@ struct lichen_rpl_parent {
 };
 
 /**
+ * @brief Callback for DODAG state changes.
+ *
+ * @param joined true if node joined or re-joined a DODAG, false if it left
+ * @param user_data User context pointer set in dodag struct
+ */
+typedef void (*lichen_rpl_dodag_state_cb)(bool joined, void *_Nullable user_data);
+
+/**
  * @brief RPL DODAG membership state for a single node
  *
  * All parent candidates are stored in a fixed-size array to avoid allocation.
@@ -107,6 +115,10 @@ struct lichen_rpl_dodag {
 
 	/* Lowest rank ever achieved (for MaxRankIncrease check) */
 	uint16_t lowest_rank;
+
+	/* DODAG state change notification */
+	lichen_rpl_dodag_state_cb _Nullable state_cb;
+	void *_Nullable state_cb_user_data;
 };
 
 /* ── Functions ─────────────────────────────────────────────────────────────── */
@@ -181,6 +193,20 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *_Nonnull d);
  * @brief Force parent re-selection (e.g., after link quality change).
  */
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *_Nonnull d);
+
+/**
+ * @brief Register a DODAG state change callback.
+ *
+ * Called whenever the node joins or leaves a DODAG (role transitions
+ * between UNJOINED and JOINED/ROOT).
+ *
+ * @param d          DODAG state
+ * @param cb         Callback, or NULL to unregister
+ * @param user_data  Opaque context passed to callback
+ */
+void lichen_rpl_dodag_set_state_cb(struct lichen_rpl_dodag *_Nonnull d,
+				   lichen_rpl_dodag_state_cb _Nullable cb,
+				   void *_Nullable user_data);
 
 /**
  * @brief Expire stale parent candidates.

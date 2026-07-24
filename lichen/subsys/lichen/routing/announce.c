@@ -457,8 +457,10 @@ LOG_MODULE_REGISTER(announce_sched, LOG_LEVEL_INF);
 
 struct announce_scheduler {
 	bool running;
+	bool dodag_joined;
 	uint16_t seq_num;
 	struct k_work_delayable work;
+	struct k_work_delayable dodag_loss_work;
 	struct k_mutex mutex;
 
 	/* Configuration (copied at start) */
@@ -654,15 +656,71 @@ static int send_announce(void)
 	return ret;
 }
 
+static void dodag_loss_resume_handler(struct k_work *work);
+
 static void schedule_next(void)
 {
+	k_mutex_lock(&sched.mutex, K_FOREVER);
 	uint32_t interval_ms = CONFIG_LICHEN_ANNOUNCE_INTERVAL_MS;
 	uint32_t jitter_ms = random_range(0, CONFIG_LICHEN_ANNOUNCE_JITTER_MS);
 	uint32_t delay_ms = interval_ms + jitter_ms;
 
+	/* SECURITY: Read dodag_joined under lock to make a single atomic decision
+	 * about the announce interval. If dodag_joined is set, the announce interval
+	 * is suppressed (longer delay) because the DODAG provides routing info.
+	 * The dodag_loss_resume_handler will clear dodag_joined and trigger a
+	 * schedule_next() with the normal interval when the loss timer expires. */
+	if (sched.dodag_joined) {
+		delay_ms += CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT_MS;
+	}
+	k_mutex_unlock(&sched.mutex);
+
 	k_work_schedule(&sched.work, K_MSEC(delay_ms));
 	LOG_DBG("next announce in %u ms (interval=%u, jitter=%u)",
 		delay_ms, interval_ms, jitter_ms);
+}
+
+static void dodag_loss_resume_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool was_joined = sched.dodag_joined;
+	sched.dodag_joined = false;
+	k_mutex_unlock(&sched.mutex);
+
+	if (was_joined) {
+		LOG_INF("DODAG loss timer expired, reverting to normal announce interval");
+	}
+	schedule_next();
+}
+
+void lichen_announce_sched_set_dodag_state(bool joined)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool prev = sched.dodag_joined;
+	sched.dodag_joined = joined;
+	if (joined && !prev) {
+		/* Just joined: cancel any pending loss-resume timer */
+		(void)k_work_cancel_delayable(&sched.dodag_loss_work);
+	}
+	k_mutex_unlock(&sched.mutex);
+
+	if (joined && !prev) {
+		LOG_DBG("DODAG joined, announce interval suppressed");
+	} else if (!joined && prev) {
+		/* Just left: schedule loss-resume timer */
+		uint32_t timeout_ms = CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT_MS;
+
+		if (timeout_ms > 0) {
+			k_work_schedule(&sched.dodag_loss_work, K_MSEC(timeout_ms));
+			LOG_INF("DODAG left, loss-resume timer for %u ms", timeout_ms);
+		} else {
+			LOG_INF("DODAG left, immediate reversion (timeout=0)");
+			(void)k_work_cancel_delayable(&sched.dodag_loss_work);
+			dodag_loss_resume_handler(&sched.dodag_loss_work);
+		}
+	}
 }
 
 static void sched_work_handler(struct k_work *work)
@@ -808,6 +866,7 @@ static int announce_sched_init(void)
 {
 	k_mutex_init(&sched.mutex);
 	k_work_init_delayable(&sched.work, sched_work_handler);
+	k_work_init_delayable(&sched.dodag_loss_work, dodag_loss_resume_handler);
 	return 0;
 }
 

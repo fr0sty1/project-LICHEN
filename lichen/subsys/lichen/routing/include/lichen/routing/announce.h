@@ -221,6 +221,17 @@ int lichen_announce_sched_send_now(void);
 int lichen_announce_sched_set_app_data(const uint8_t *_Nullable app_data,
 				       size_t app_data_len);
 
+/**
+ * @brief Notify the announce scheduler of DODAG join/leave state.
+ *
+ * When joined to a DODAG, the announce interval is suppressed
+ * (gateway-centric mode). On DODAG loss, a timer is started;
+ * if it expires without rejoining, the normal interval resumes.
+ *
+ * @param joined true if joined to a DODAG, false if left
+ */
+void lichen_announce_sched_set_dodag_state(bool joined);
+
 #endif /* CONFIG_LICHEN_ANNOUNCE_SCHEDULER */
 
 #ifdef __cplusplus

@@ -227,6 +227,17 @@ config LICHEN_ANNOUNCE_INITIAL_DELAY_MS
 	  mass power-on. Setting explicitly allows the node to receive announces
 	  from others first, building gradients before advertising itself.
 
+config LICHEN_DODAG_LOSS_RESUME_TIMEOUT_MS
+	int "DODAG loss resume timeout in milliseconds"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 60000
+	help
+	  When the node leaves a DODAG (all parents lost), the announce scheduler
+	  suppresses announces at the DODAG-loss interval for this long. If the
+	  node rejoins within the timeout, announces stay suppressed. If the
+	  timeout expires without rejoining, the normal announce interval resumes.
+	  Set to 0 to revert immediately on DODAG loss. Default 60 seconds.
+
 config LICHEN_LOADNG
 	bool "LICHEN LOADng reactive route discovery"
 	depends on LICHEN_ROUTING

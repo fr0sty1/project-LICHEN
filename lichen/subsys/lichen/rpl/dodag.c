@@ -206,6 +206,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 		return;
 	}
 
+	enum lichen_rpl_role prev_role = d->role;
 	uint16_t mhri = d->min_hop_rank_increase;
 	uint16_t threshold = d->parent_switch_threshold;
 
@@ -232,7 +233,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 			d->has_preferred_parent = false;
 			d->rank = LICHEN_RPL_INFINITE_RANK;
 		}
-		return;
+		goto notify;
 	}
 
 	uint8_t *best_addr = best->addr;
@@ -269,6 +270,13 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 
 	if (chosen_cost < d->lowest_rank) {
 		d->lowest_rank = chosen_cost;
+	}
+
+notify:
+	/* Fire state change callback on role transition */
+	if (d->state_cb != NULL && prev_role != d->role) {
+		bool joined = (d->role == LICHEN_RPL_JOINED || d->role == LICHEN_RPL_ROOT);
+		d->state_cb(joined, d->state_cb_user_data);
 	}
 }
 
@@ -394,6 +402,17 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d)
 		}
 	}
 	return count;
+}
+
+void lichen_rpl_dodag_set_state_cb(struct lichen_rpl_dodag *d,
+				   lichen_rpl_dodag_state_cb cb,
+				   void *user_data)
+{
+	if (d == NULL) {
+		return;
+	}
+	d->state_cb = cb;
+	d->state_cb_user_data = user_data;
 }
 
 int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
