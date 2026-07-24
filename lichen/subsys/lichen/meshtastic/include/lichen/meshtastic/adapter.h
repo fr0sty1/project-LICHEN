@@ -115,6 +115,7 @@ struct lichen_meshtastic_adapter_packet_info {
 struct lichen_meshtastic_adapter_stats {
 	uint32_t heartbeat_count;
 	uint32_t want_config_count;
+	uint32_t want_config_rate_limited_count;
 	uint32_t disconnect_count;
 	uint32_t packet_count;
 	uint32_t text_packet_count;
@@ -273,6 +274,8 @@ struct lichen_meshtastic_adapter_ops {
  * read-only use. Stats increments are not atomic.
  */
 
+#define LICHEN_MESHTASTIC_WANT_CONFIG_RATE_LIMIT_MS 1000U
+
 struct lichen_meshtastic_adapter {
 	struct lichen_meshtastic_adapter_ops ops;
 	struct lichen_meshtastic_adapter_stats stats;
@@ -282,6 +285,7 @@ struct lichen_meshtastic_adapter {
 	uint8_t stream_header[LICHEN_MESHTASTIC_STREAM_HEADER_LEN];
 	size_t stream_header_len;
 	uint32_t from_radio_id;
+	uint32_t want_config_last_ms;
 	bool stream_in_frame;
 	bool disconnected;
 	struct k_mutex lock;
