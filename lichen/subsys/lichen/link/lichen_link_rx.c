@@ -182,12 +182,10 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-	if (!parsed.encrypted) {
-		ret = verify_mic(ctx, &parsed, frame, frame_len);
-		if (ret < 0) {
-			ret = -LICHEN_EAUTH;
-			goto cleanup;
-		}
+	ret = verify_mic(ctx, &parsed, frame, frame_len);
+	if (ret < 0) {
+		ret = -LICHEN_EAUTH;
+		goto cleanup;
 	}
 
 	if (parsed.inner_payload_len > LICHEN_MAX_PAYLOAD) {
