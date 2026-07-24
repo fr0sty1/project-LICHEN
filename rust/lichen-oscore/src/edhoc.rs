@@ -916,7 +916,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, peer.credential)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1344,7 +1344,9 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            let mut credential_r = heapless::Vec::<u8, 80>::new();
+            encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, &credential_r)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1634,7 +1636,7 @@ mod tests {
         );
         let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
         assert_eq!(
-            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
+            transcript_4(&th_3, &plaintext_3, &credential_r).unwrap(),
             th_4
         );
 
