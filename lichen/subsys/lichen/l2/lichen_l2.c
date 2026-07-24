@@ -2311,7 +2311,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * address added when identity available. */
 	uint8_t pubkey[32];
 	bool has_key = false;
-	ret = lichen_link_copy_identity(&link_ctx, NULL, pubkey, &has_key);
+	ret = lichen_link_copy_identity(&link_ctx, NULL, pubkey, NULL, &has_key);
 	if (ret == 0 && has_key) {
 		struct in6_addr ygg;
 		ret = lichen_yggdrasil_addr(pubkey, &ygg);
