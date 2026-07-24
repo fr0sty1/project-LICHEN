@@ -30,7 +30,7 @@ from ipaddress import IPv6Address
 
 from lichen.ipv6.icmpv6 import icmpv6_checksum
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader, PacketError
-from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram, udp_checksum
+from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram, UdpError, udp_checksum
 from lichen.schc.codec import SchcError, compress, decompress, residue_byte_length
 from lichen.schc.rules import (
     GLOBAL_COAP_RULE,
@@ -240,7 +240,6 @@ class _CoapUdpProfile(PacketProfile):
     def _addr_ok(self, addr: int) -> bool: ...
 
     def matches(self, raw: bytes) -> bool:
-        # Minimum length: IPv6 header + UDP header + CoAP fixed header
         if len(raw) < HEADER_LENGTH + UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
             return False
         try:
@@ -252,18 +251,6 @@ class _CoapUdpProfile(PacketProfile):
         if len(raw) != HEADER_LENGTH + header.payload_length:
             return False
         if header.payload_length < UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
-            return False
-        try:
-            udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH:])
-        except UdpError:
-            return False
-        if udp.checksum == 0 or udp_checksum(header.src_addr, header.dst_addr, raw[HEADER_LENGTH:]):
-            return False
-        coap = udp.payload
-        tkl = coap[0] & 0x0F
-        if coap[0] >> 6 != 1 or tkl > 8 or _COAP_FIXED_HEADER + tkl > len(coap):
-            return False
-        if _coap_oscore_status(coap) is None:
             return False
         return self._addr_ok(int(header.src_addr)) and self._addr_ok(int(header.dst_addr))
 
@@ -333,13 +320,21 @@ class _OscoreUdpProfile(_CoapUdpProfile):
     """
 
     def matches(self, raw: bytes) -> bool:
-        # First check standard CoAP/UDP/IPv6 constraints
         if not super().matches(raw):
             return False
-        # Then check for OSCORE option presence
-        header = IPv6Header.from_bytes(raw)
-        udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length])
-        return _coap_oscore_status(udp.payload) is True
+        try:
+            header = IPv6Header.from_bytes(raw)
+        except PacketError:
+            return False
+        udp_segment = raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]
+        if udp_checksum(header.src_addr, header.dst_addr, udp_segment) != 0:
+            return False
+        udp = UdpDatagram.from_bytes(udp_segment)
+        coap = udp.payload
+        tkl = coap[0] & 0x0F
+        if coap[0] >> 6 != 1 or tkl > 8 or _COAP_FIXED_HEADER + tkl > len(coap):
+            return False
+        return _coap_oscore_status(coap) is True
 
 
 class OscoreUdpLinkLocalProfile(_OscoreUdpProfile):

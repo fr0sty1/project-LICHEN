@@ -189,7 +189,10 @@ def test_oscore_preferred_over_plain_coap() -> None:
 
 def test_oscore_option_with_empty_payload_marker_is_not_recognized() -> None:
     raw = _udp_ipv6(LL_SRC, LL_DST, _coap_with_oscore()[:-4])
-    assert compress_packet(raw)[0] == 255
+    compressed = compress_packet(raw)
+    # Without encrypted payload, OSCORE rule does not match.
+    # Falls through to plain CoAP rule 0, not rule 255.
+    assert compressed[0] == 0
 
 
 def test_plain_coap_still_uses_rule0() -> None:
