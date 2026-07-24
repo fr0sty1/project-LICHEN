@@ -946,7 +946,7 @@ impl Context {
         if !self.active {
             return Err(OscoreError::InvalidParam);
         }
-        if !self.allow_no_piv_response {
+        if !include_piv && !self.allow_no_piv_response {
             return Err(OscoreError::InvalidParam);
         }
 
@@ -972,9 +972,6 @@ impl Context {
                 return Err(OscoreError::Replay);
             }
             // Reuse the request nonce (no new sequence generated).
-            if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                return Err(OscoreError::InvalidParam);
-            }
             let mut piv = [0u8; PIV_MAX_LEN];
             piv[..request_piv.len()].copy_from_slice(request_piv);
             (piv, request_piv.len(), None, Some(seq))
@@ -2481,9 +2478,12 @@ mod tests {
             Context::new(&secret, None, None, &[1], &[0]).unwrap().restore_existing(&mut store).unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
+        assert!(context
+            .protect_response(0x45, &[], b"response", &[0], &[3], true)
+            .is_ok());
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3], true)
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2757,8 +2757,11 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
+        assert!(ctx
+            .protect_response(0x45, &[], b"response", &[0], &[3], true)
+            .is_ok());
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3], true)
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
