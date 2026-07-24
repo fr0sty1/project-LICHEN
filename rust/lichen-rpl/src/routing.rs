@@ -61,6 +61,8 @@ fn increment_lollipop(sequence: u8) -> u8 {
 }
 
 #[cfg(feature = "std")]
+use lichen_core::addr::Ipv6Addr;
+#[cfg(feature = "std")]
 use lichen_core::error::{BufferTooSmall, TooShort};
 
 #[cfg(feature = "std")]
@@ -162,7 +164,7 @@ pub enum DaoVerifyError {
 /// semantics. Application code should use its node-level root handler.
 pub struct SignatureVerifiedDao<'a> {
     envelope: SignedDaoEnvelope<'a>,
-    origin: [u8; 16],
+    origin: Ipv6Addr,
     public_key: [u8; 32],
     signed_dao_sha256: [u8; 32],
 }
@@ -173,9 +175,9 @@ impl<'a> SignatureVerifiedDao<'a> {
     /// Packet input must never choose `pinned_key` directly.
     pub fn verify_signature(
         wire: &'a [u8],
-        origin: [u8; 16],
+        origin: Ipv6Addr,
         rpl_instance_id: u8,
-        active_dodag_id: [u8; 16],
+        active_dodag_id: Ipv6Addr,
         pinned_key: Option<PublicKey>,
     ) -> Result<Self, DaoVerifyError> {
         let dao = Dao::from_bytes(wire)
@@ -186,17 +188,17 @@ impl<'a> SignatureVerifiedDao<'a> {
         if dao.rpl_instance_id != rpl_instance_id {
             return Err(DaoVerifyError::WrongInstance);
         }
-        if dao.dodag_id.is_some_and(|dodag| dodag != active_dodag_id) {
+        if dao.dodag_id.is_some_and(|dodag| dodag != active_dodag_id.0) {
             return Err(DaoVerifyError::WrongDodag);
         }
         let envelope = SignedDaoEnvelope::from_bytes(wire).map_err(map_envelope_error)?;
         let pinned_key = pinned_key.ok_or(DaoVerifyError::UnknownKey)?;
-        if origin[8..] != iid_from_pubkey(&pinned_key) {
+        if origin.0[8..] != iid_from_pubkey(&pinned_key) {
             return Err(DaoVerifyError::IidMismatch);
         }
         let digest = dao_origin_digest(
             origin,
-            envelope.dao.dodag_id.unwrap_or(active_dodag_id),
+            active_dodag_id,
             envelope.origin.origin_sequence,
             envelope.unsigned_bytes,
         );
@@ -216,7 +218,7 @@ impl<'a> SignatureVerifiedDao<'a> {
     }
 
     pub fn origin_iid(&self) -> [u8; 8] {
-        self.origin[8..].try_into().unwrap()
+        self.origin.0[8..].try_into().unwrap()
     }
 }
 
@@ -235,15 +237,15 @@ fn map_envelope_error(error: DaoEnvelopeError) -> DaoVerifyError {
 
 #[cfg(feature = "std")]
 pub fn dao_origin_digest(
-    origin: [u8; 16],
-    dodag_id: [u8; 16],
+    origin: Ipv6Addr,
+    dodag_id: Ipv6Addr,
     origin_sequence: u64,
     unsigned_dao: &[u8],
 ) -> [u8; 64] {
     Sha512::new()
         .chain_update(DAO_ORIGIN_DOMAIN)
-        .chain_update(origin)
-        .chain_update(dodag_id)
+        .chain_update(origin.0)
+        .chain_update(dodag_id.0)
         .chain_update(origin_sequence.to_be_bytes())
         .chain_update(unsigned_dao)
         .finalize()
@@ -275,9 +277,9 @@ pub enum DaoProvisionError<E> {
 pub struct DaoTxState {
     current: RedundantValue,
     public_key: [u8; 32],
-    local_origin: [u8; 16],
+    local_origin: Ipv6Addr,
     rpl_instance_id: u8,
-    dodag_id: [u8; 16],
+    dodag_id: Ipv6Addr,
     last_reserved: u64,
     last_signed_dao: Vec<u8>,
 }
@@ -287,9 +289,9 @@ impl DaoTxState {
     pub fn provision<S: NonVolatile>(
         storage: &mut S,
         expected_key: PublicKey,
-        local_origin: [u8; 16],
+        local_origin: Ipv6Addr,
         rpl_instance_id: u8,
-        dodag_id: [u8; 16],
+        dodag_id: Ipv6Addr,
     ) -> Result<Self, DaoProvisionError<S::Error>> {
         match Self::open(
             storage,
@@ -340,9 +342,9 @@ impl DaoTxState {
     pub fn open<S: NonVolatile>(
         storage: &S,
         expected_key: PublicKey,
-        local_origin: [u8; 16],
+        local_origin: Ipv6Addr,
         rpl_instance_id: u8,
-        dodag_id: [u8; 16],
+        dodag_id: Ipv6Addr,
     ) -> Result<Self, DaoPersistentOpenError<S::Error>> {
         let mut a = vec![0u8; DAO_TX_PAYLOAD_LEN + SLOT_OVERHEAD];
         let mut b = vec![0u8; DAO_TX_PAYLOAD_LEN + SLOT_OVERHEAD];
@@ -363,9 +365,9 @@ impl DaoTxState {
         if public_key != *expected_key.as_bytes() {
             return Err(DaoPersistentOpenError::KeyMismatch);
         }
-        if payload[32..48] != local_origin
+        if payload[32..48] != local_origin.0
             || payload[48] != rpl_instance_id
-            || payload[49..65] != dodag_id
+            || payload[49..65] != dodag_id.0
         {
             return Err(DaoPersistentOpenError::ScopeMismatch);
         }
@@ -387,9 +389,9 @@ impl DaoTxState {
     pub fn is_for_scope(
         &self,
         public_key: &PublicKey,
-        local_origin: [u8; 16],
+        local_origin: Ipv6Addr,
         rpl_instance_id: u8,
-        dodag_id: [u8; 16],
+        dodag_id: Ipv6Addr,
     ) -> bool {
         self.public_key == *public_key.as_bytes()
             && self.local_origin == local_origin
@@ -516,9 +518,9 @@ impl DaoTxState {
 #[cfg(feature = "std")]
 fn encode_tx_state(
     public_key: &[u8; 32],
-    local_origin: [u8; 16],
+    local_origin: Ipv6Addr,
     rpl_instance_id: u8,
-    dodag_id: [u8; 16],
+    dodag_id: Ipv6Addr,
     sequence: u64,
     signed_dao: &[u8],
 ) -> Option<Vec<u8>> {
@@ -527,9 +529,9 @@ fn encode_tx_state(
     }
     let mut payload = vec![0u8; DAO_TX_HEADER_LEN + signed_dao.len()];
     payload[..32].copy_from_slice(public_key);
-    payload[32..48].copy_from_slice(&local_origin);
+    payload[32..48].copy_from_slice(&local_origin.0);
     payload[48] = rpl_instance_id;
-    payload[49..65].copy_from_slice(&dodag_id);
+    payload[49..65].copy_from_slice(&dodag_id.0);
     payload[65..73].copy_from_slice(&sequence.to_be_bytes());
     payload[73..75].copy_from_slice(&(signed_dao.len() as u16).to_be_bytes());
     payload[DAO_TX_HEADER_LEN..].copy_from_slice(signed_dao);
@@ -593,9 +595,9 @@ pub struct DaoRxState {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DaoAdmissionState {
     current: RedundantValue,
-    node_address: [u8; 16],
+    node_address: Ipv6Addr,
     rpl_instance_id: u8,
-    dodag_id: [u8; 16],
+    dodag_id: Ipv6Addr,
     admitted: HashSet<[u8; 32]>,
 }
 
@@ -614,9 +616,9 @@ pub enum DaoAdmissionUpdateError<E> {
 impl DaoAdmissionState {
     pub fn provision<S: NonVolatile>(
         storage: &mut S,
-        node_address: [u8; 16],
+        node_address: Ipv6Addr,
         rpl_instance_id: u8,
-        dodag_id: [u8; 16],
+        dodag_id: Ipv6Addr,
     ) -> Result<Self, DaoProvisionError<S::Error>> {
         match Self::open(storage, node_address, rpl_instance_id, dodag_id) {
             Ok(_) => {
@@ -652,9 +654,9 @@ impl DaoAdmissionState {
 
     pub fn open<S: NonVolatile>(
         storage: &S,
-        node_address: [u8; 16],
+        node_address: Ipv6Addr,
         rpl_instance_id: u8,
-        dodag_id: [u8; 16],
+        dodag_id: Ipv6Addr,
     ) -> Result<Self, DaoPersistentOpenError<S::Error>> {
         let mut a = vec![0u8; DAO_ADMISSION_PAYLOAD_LEN + SLOT_OVERHEAD];
         let mut b = vec![0u8; DAO_ADMISSION_PAYLOAD_LEN + SLOT_OVERHEAD];
@@ -742,9 +744,9 @@ impl DaoAdmissionState {
 
 #[cfg(feature = "std")]
 fn encode_admissions(
-    node_address: [u8; 16],
+    node_address: Ipv6Addr,
     rpl_instance_id: u8,
-    dodag_id: [u8; 16],
+    dodag_id: Ipv6Addr,
     admitted: &HashSet<[u8; 32]>,
 ) -> Option<Vec<u8>> {
     if admitted.len() > MAX_DAO_ORIGINS {
@@ -753,9 +755,9 @@ fn encode_admissions(
     let mut keys: Vec<_> = admitted.iter().copied().collect();
     keys.sort_unstable();
     let mut payload = vec![0u8; DAO_ADMISSION_HEADER_LEN + keys.len() * 32];
-    payload[..16].copy_from_slice(&node_address);
+    payload[..16].copy_from_slice(&node_address.0);
     payload[16] = rpl_instance_id;
-    payload[17..33].copy_from_slice(&dodag_id);
+    payload[17..33].copy_from_slice(&dodag_id.0);
     payload[33..35].copy_from_slice(&(keys.len() as u16).to_be_bytes());
     for (index, key) in keys.iter().enumerate() {
         let start = DAO_ADMISSION_HEADER_LEN + index * 32;
@@ -774,16 +776,16 @@ enum AdmissionDecodeError {
 #[cfg(feature = "std")]
 fn decode_admissions(
     payload: &[u8],
-    node_address: [u8; 16],
+    node_address: Ipv6Addr,
     rpl_instance_id: u8,
-    dodag_id: [u8; 16],
+    dodag_id: Ipv6Addr,
 ) -> Result<HashSet<[u8; 32]>, AdmissionDecodeError> {
     if payload.len() < DAO_ADMISSION_HEADER_LEN {
         return Err(AdmissionDecodeError::Corrupt);
     }
-    if payload[..16] != node_address
+    if payload[..16] != node_address.0
         || payload[16] != rpl_instance_id
-        || payload[17..33] != dodag_id
+        || payload[17..33] != dodag_id.0
     {
         return Err(AdmissionDecodeError::ScopeMismatch);
     }
@@ -861,11 +863,55 @@ pub enum DaoDiagnosticDisposition {
     Expired,
 }
 
+#[cfg(feature = "std")]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct DaoCandidate {
+    parent: Ipv6Addr,
+    path_control: u8,
+    path_lifetime: u8,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct DaoUpdate {
+    target: Ipv6Addr,
+    parent: Ipv6Addr,
+    path_control: u8,
+    path_sequence: u8,
+    path_lifetime: u8,
+    descriptor: Option<u32>,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Freshness {
+    sequence: u8,
+    active_until: Option<u64>,
+    retain_until: u64,
+    updated_at: u64,
+}
+
+#[cfg(feature = "std")]
+impl Freshness {
+    fn new(sequence: u8, active_until: Option<u64>, now_seconds: u64) -> Self {
+        Self {
+            sequence,
+            active_until,
+            retain_until: now_seconds.saturating_add(FRESHNESS_TOMBSTONE_RETENTION_SECONDS),
+            updated_at: now_seconds,
+        }
+    }
+
+    fn is_reclaimable(&self, now_seconds: u64) -> bool {
+        self.retain_until <= now_seconds
+    }
+}
+
 #[doc(hidden)]
 #[cfg(feature = "std")]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DaoDiagnosticCandidate {
-    pub parent: [u8; 16],
+    pub parent: Ipv6Addr,
     pub external: bool,
     pub path_control: u8,
     pub path_lifetime: u8,
@@ -877,9 +923,9 @@ pub struct DaoDiagnosticCandidate {
 #[cfg(feature = "std")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DaoDiagnosticSelectedCandidate {
-    pub parent: [u8; 16],
+    pub parent: Ipv6Addr,
     pub preference_subfield: u8,
-    pub path: Vec<[u8; 16]>,
+    pub path: Vec<Ipv6Addr>,
 }
 
 #[doc(hidden)]
@@ -887,9 +933,9 @@ pub struct DaoDiagnosticSelectedCandidate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DaoDiagnosticTarget {
     pub prefix_length: u8,
-    pub prefix: [u8; 16],
+    pub prefix: Ipv6Addr,
     pub descriptor: Option<u32>,
-    pub sequence_authority: [u8; 16],
+    pub sequence_authority: Ipv6Addr,
     pub path_sequence: u8,
     pub disposition: DaoDiagnosticDisposition,
     pub candidates: Vec<DaoDiagnosticCandidate>,
@@ -938,7 +984,7 @@ const FRESHNESS_TOMBSTONE_RETENTION_SECONDS: u64 = 60 * 60;
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceRoutingHeader {
     pub segments_left: u8,
-    pub addresses: Vec<[u8; 16]>,
+    pub addresses: Vec<Ipv6Addr>,
 }
 
 #[cfg(feature = "std")]
@@ -961,7 +1007,7 @@ impl SourceRoutingHeader {
         out[4] = 0; // reserved
         out[5] = 0;
         for (i, addr) in self.addresses.iter().enumerate() {
-            out[6 + i * 16..6 + (i + 1) * 16].copy_from_slice(addr);
+            out[6 + i * 16..6 + (i + 1) * 16].copy_from_slice(&addr.0);
         }
         Ok(needed)
     }
@@ -984,9 +1030,9 @@ impl SourceRoutingHeader {
         if !addr_bytes.len().is_multiple_of(16) {
             return Err(RplError::InvalidOption);
         }
-        let addresses: Vec<[u8; 16]> = addr_bytes
+        let addresses: Vec<Ipv6Addr> = addr_bytes
             .chunks_exact(16)
-            .map(|chunk| chunk.try_into().unwrap())
+            .map(|chunk| Ipv6Addr(chunk.try_into().unwrap()))
             .collect();
         let segments_left = data[1];
         if (segments_left as usize) > addresses.len() {
@@ -998,7 +1044,7 @@ impl SourceRoutingHeader {
         })
     }
 
-    pub fn from_route(route: &[[u8; 16]]) -> Result<Self, RplError> {
+    pub fn from_route(route: &[Ipv6Addr]) -> Result<Self, RplError> {
         let remaining = route.len().checked_sub(1).ok_or(RplError::InvalidOption)?;
         if remaining == 0 || remaining > u8::MAX as usize {
             return Err(RplError::InvalidOption);
@@ -1047,7 +1093,7 @@ pub struct InvalidRouteEntryTransition {
 #[cfg(feature = "std")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RouteEntry {
-    pub path: Vec<[u8; 16]>,
+    pub path: Vec<Ipv6Addr>,
     pub state: RouteEntryState,
 }
 

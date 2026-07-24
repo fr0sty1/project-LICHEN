@@ -1512,23 +1512,11 @@ void lichen_l2_iface_init(struct net_if *iface)
 	LOG_INF("lichen_l2: initializing interface");
 
 	/*
-	 * Do NOT clear iface_init_failed here (project-LICHEN-i1gk.63).
-	 *
-	 * Clearing optimistically at the start creates confusing control flow:
-	 * if a previous init partially succeeded (e.g., lora_l2_init passed but
-	 * get_eui64 failed), clearing the flag here and then having lichen_lora_l2_init()
-	 * return 0 (idempotent success) would temporarily show success before a later
-	 * check re-sets the flag.
-	 *
-	 * The iface_init_failed flag is:
-	 * - Set on any failure path (via atomic_set(&iface_init_failed, 1))
-	 * - Never explicitly cleared here; first boot starts at 0 (static init)
-	 * - Checked by send/recv/enable to reject operations on half-initialized state
-	 *
-	 * After a failed init, the lichen_iface != NULL check (see below) catches
-	 * retry attempts, ensuring failure is permanent until system restart.
-	 * This is fail-safe by design.
+	 * Clear init-failed flag at the start of every init attempt so that a
+	 * re-init (e.g., after a partial or transient failure) starts fresh.
+	 * (project-LICHEN-tvfm.84)
 	 */
+	atomic_set(&iface_init_failed, 0);
 
 	/* Initialize LoRa driver */
 	ret = lichen_lora_l2_init();
