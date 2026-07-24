@@ -28,15 +28,19 @@ impl NodeId {
         self.addr_with_prefix(prefix)
     }
 
-    /// Reconstruct a NodeId from the interface identifier in an IPv6 address.
+    /// Reconstruct a `NodeId` from the interface identifier in an IPv6 address.
     ///
-    /// Reverses the U/L bit flip (XOR 0x02 on first IID byte) performed by
-    /// `link_local_addr` and `ula_addr`. Works for both link-local and ULA/GUA
-    /// addresses per spec §6.1. Independent roundtrip oracle used in tests.
-    pub fn from_ipv6(addr: Ipv6Addr) -> Self {
+    /// Returns `None` if the address is not a unicast address with a valid IID
+    /// (link-local, ULA, or GUA). Reverses the U/L bit flip (XOR 0x02 on first
+    /// IID byte) performed by `link_local_addr` and `ula_addr`.
+    /// Independent roundtrip oracle used in tests.
+    pub fn from_ipv6(addr: Ipv6Addr) -> Option<Self> {
+        if addr.is_multicast() || addr.is_loopback() {
+            return None;
+        }
         let mut iid = addr.iid();
         iid[0] ^= 0x02;
-        NodeId(iid)
+        Some(NodeId(iid))
     }
 
     fn addr_with_prefix(&self, prefix: [u8; 8]) -> Ipv6Addr {
@@ -177,11 +181,11 @@ mod tests {
     fn from_ipv6_roundtrip_link_local_and_ula() {
         let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let ll = node.link_local_addr();
-        assert_eq!(NodeId::from_ipv6(ll), node);
+        assert_eq!(NodeId::from_ipv6(ll), Some(node));
 
         let prefix = [0xfd, 0x00, 0, 0, 0, 0, 0, 0];
         let ula = node.ula_addr(prefix);
-        assert_eq!(NodeId::from_ipv6(ula), node);
+        assert_eq!(NodeId::from_ipv6(ula), Some(node));
     }
 
     #[test]
@@ -189,7 +193,7 @@ mod tests {
         let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let prefix = [0xfd, 0x00, 0x12, 0x34, 0, 0, 0, 0];
         let ula = node.ula_addr(prefix);
-        assert_eq!(NodeId::from_ipv6(ula), node);
+        assert_eq!(NodeId::from_ipv6(ula), Some(node));
     }
 
     #[test]
@@ -201,7 +205,19 @@ mod tests {
             0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
             0x77, // U/L bit flipped in IID
         ]);
-        assert_eq!(NodeId::from_ipv6(addr), node);
+        assert_eq!(NodeId::from_ipv6(addr), Some(node));
         assert_eq!(node.link_local_addr(), addr); // full roundtrip
+    }
+
+    #[test]
+    fn from_ipv6_rejects_multicast() {
+        let mc = Ipv6Addr([0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        assert_eq!(NodeId::from_ipv6(mc), None);
+    }
+
+    #[test]
+    fn from_ipv6_rejects_loopback() {
+        let lb = Ipv6Addr([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        assert_eq!(NodeId::from_ipv6(lb), None);
     }
 }
