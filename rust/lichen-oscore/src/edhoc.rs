@@ -386,11 +386,12 @@ fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     Ok(compute_th(&buf))
 }
 
-/// TH_3 = H(CBOR(TH_2) || CBOR(input) || CBOR(cred)).
+/// TH_3 = H(CBOR(TH_2) || input || CBOR(cred)).
 fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_2)?;
-    encode_bstr(&mut buf, input)?;
+    buf.extend_from_slice(input)
+        .map_err(|_| EdhocError::BufferTooSmall)?;
     encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
@@ -398,7 +399,8 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 fn transcript_4(th_3: &[u8; 32], plaintext_3: &[u8], cred: &[u8]) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, plaintext_3)?;
+    buf.extend_from_slice(plaintext_3)
+        .map_err(|_| EdhocError::BufferTooSmall)?;
     encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
