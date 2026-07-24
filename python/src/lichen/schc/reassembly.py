@@ -12,7 +12,6 @@ from lichen.schc.fragment import (
     ALL_1,
     DEFAULT_RECEIVER_LIMIT,
     MAX_ACK_REQUESTS,
-    MAX_PACKET_SIZE,
     RULE_IDS,
     TILE_SIZE,
     WINDOW_SIZE,
@@ -56,8 +55,8 @@ class FragmentReceiver:
     ) -> None:
         if not 1 <= window_size <= ALL_1:
             raise FragmentError(f"window_size must be integer 1..{ALL_1}")
-        if not 1 <= max_size <= MAX_PACKET_SIZE:
-            raise ValueError("max_size out of range")
+        if max_size <= 0:
+            raise ValueError("max_size must be positive")
         self.window_size = window_size
         self.max_size = max_size
         self._tiles: dict[tuple[int, int], bytes] = {}
@@ -286,8 +285,8 @@ class ReassemblyManager:
     ) -> None:
         if max_contexts <= 0:
             raise ValueError("max_contexts must be positive")
-        if not 1 <= max_size <= MAX_PACKET_SIZE:
-            raise ValueError("max_size out of range")
+        if max_size <= 0:
+            raise ValueError("max_size must be positive")
         self.max_contexts = max_contexts
         self.max_size = max_size
         self._contexts: OrderedDict[tuple[Hashable, int], FragmentReceiver] = OrderedDict()

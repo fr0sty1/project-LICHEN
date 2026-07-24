@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1
-MAX_WINDOW_SIZE = ALL_1 - 1
+MAX_WINDOW_SIZE = ALL_1
 DEFAULT_WINDOW_SIZE = 7
 MIC_LENGTH = 4
 RULE_IDS = (0x2a, 0x78, 0x79)
@@ -198,7 +198,7 @@ class FragmentSender:
     rule_id: int = 0x78
     receiver_limit: int = DEFAULT_RECEIVER_LIMIT
     tile_size: int = TILE_SIZE
-    window_size: int = DEFAULT_WINDOW_SIZE
+    window_size: int = WINDOW_SIZE
     _fragments: list[Fragment] = field(init=False, repr=False)
     attempts: int = field(default=0, init=False)
     status: str = field(default="ready", init=False)
@@ -256,3 +256,44 @@ class FragmentSender:
             if pos >= len(bitmap) or not bitmap[pos]:
                 missing.append(frag)
         return missing
+
+    def start(self) -> list[bytes]:
+        if self.status != "ready":
+            raise FragmentError("sender not in ready state")
+        self.status = "active"
+        self.attempts = 1
+        return [self._fragments[0].to_bytes()]
+
+    def final_window(self) -> int:
+        return self._fragments[-1].window
+
+    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        if self.status != "active" or not data or data[0] != self.rule_id:
+            return []
+        ack = Ack.from_bytes(data)
+        if ack.complete:
+            self.status = "succeeded"
+            return []
+        window = ack.window
+        window_frags = self.fragments_in_window(window)
+        missing = []
+        for frag in window_frags:
+            bitmap_pos = 62 if frag.is_all_1 else (62 - frag.fcn)
+            bitmap_bit = bitmap_pos < len(ack.bitmap) and ack.bitmap[bitmap_pos]
+            if not bitmap_bit:
+                missing.append(frag)
+        if self.attempts >= MAX_ACK_REQUESTS:
+            return [sender_abort(self.rule_id)]
+        self.attempts += 1
+        result = [frag.to_bytes() for frag in missing]
+        result.append(ack_request(self.rule_id, self.final_window()))
+        return result
+
+    def timeout(self) -> bytes:
+        if self.status != "active":
+            return b""
+        if self.attempts >= MAX_ACK_REQUESTS:
+            self.status = "aborted"
+            return sender_abort(self.rule_id)
+        self.attempts += 1
+        return ack_request(self.rule_id, self.final_window())
