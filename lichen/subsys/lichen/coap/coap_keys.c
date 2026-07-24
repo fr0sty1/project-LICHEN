@@ -28,15 +28,6 @@
 #include <lichen/coap_keys.h>
 #include <lichen/coap_server.h>
 #include <lichen/transport/slip_transport.h>
-#include <lichen/oscore.h>
-#include <lichen/coap_oscore.h>
-#include <lichen/l2/ipv6_addr.h>
-
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-#include <lichen/oscore.h>
-#include <lichen/coap_oscore.h>
-#include <lichen/l2/ipv6_addr.h>
-#endif
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 #include <lichen/oscore.h>

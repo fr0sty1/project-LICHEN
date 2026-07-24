@@ -48,7 +48,7 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_DEADDROP
   coap_dtn.c
 )
 
-if(CONFIG_LICHEN_COAP_LOCATION)
+if(CONFIG_LICHEN_COAP_LOCATION OR CONFIG_LICHEN_COAP_KEYS)
   zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
 endif()
 
