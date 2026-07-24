@@ -19,13 +19,11 @@
 #include <string.h>
 #include <stdint.h>
 
-	/* SHA-256 for EUI-64 derivation from pubkey */
-	#include <tinycrypt/sha256.h>
-	#include <tinycrypt/constants.h>
+#include <lichen_util.h>
 
-	/* Replay table functions are in replay.c */
+/* Replay table functions are in replay.c */
 
-	#define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
+#define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
 
 
 /* Maximum decompressed IPv6 packet size: frame payload + base header. */
@@ -101,6 +99,16 @@ static int commit_replay(struct lichen_replay_table *replay,
 	return 0;
 }
 
+/*
+ * SECURITY: Domain separation prefix for EUI-64 derivation from Ed25519 pubkey.
+ * This ensures SHA-256(prefix || pubkey) produces different output than other
+ * uses of SHA-256 on the same pubkey (e.g., key derivation).
+ * The prefix is a fixed ASCII string with no trailing NUL in the hash input.
+ * Must match the prefix used in lora_l2.c:generate_eui64() for consistency.
+ */
+#define EUI64_DOMAIN_PREFIX "LICHEN-EUI64-v1"
+#define EUI64_DOMAIN_PREFIX_LEN (sizeof(EUI64_DOMAIN_PREFIX) - 1)
+
 static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 				      const uint8_t *frame, size_t frame_len,
 				      uint8_t *work_payload, size_t work_len,
@@ -166,17 +174,25 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 	if (ctx->peer_eui64 != NULL) {
 		memcpy(src_eui64, ctx->peer_eui64, LICHEN_EUI64_LEN);
 	} else if (ctx->peer_pubkey != NULL) {
-		struct tc_sha256_state_struct sha_state;
-		uint8_t hash[TC_SHA256_DIGEST_SIZE];
+		/*
+		 * Derive EUI-64 from pubkey using domain-separated SHA-256,
+		 * matching the method in lora_l2.c:generate_eui64().
+		 * This ensures: SHA-256("LICHEN-EUI64-v1" || pubkey)[0:8],
+		 * with IEEE EUI-64 U/L=1, I/G=0 bit manipulation applied.
+		 */
+		uint8_t hash_input[EUI64_DOMAIN_PREFIX_LEN + SCHNORR48_PUBKEY_LEN];
+		uint8_t hash[32];
 
-		if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-		    tc_sha256_update(&sha_state, ctx->peer_pubkey,
-				     SCHNORR48_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
-		    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-			ret = -EIO;
+		memcpy(hash_input, EUI64_DOMAIN_PREFIX, EUI64_DOMAIN_PREFIX_LEN);
+		memcpy(hash_input + EUI64_DOMAIN_PREFIX_LEN, ctx->peer_pubkey,
+		       SCHNORR48_PUBKEY_LEN);
+		ret = lichen_sha256(hash_input, sizeof(hash_input), hash);
+		if (ret != 0) {
 			goto cleanup;
 		}
 		memcpy(src_eui64, hash, LICHEN_EUI64_LEN);
+		/* IEEE 802 EUI-64: U/L=1 (locally administered), I/G=0 (unicast) */
+		src_eui64[0] = (src_eui64[0] | 0x02) & 0xFE;
 	} else {
 		ret = -LICHEN_EAUTH;
 		goto cleanup;

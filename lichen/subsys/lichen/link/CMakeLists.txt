@@ -24,6 +24,9 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_EPOCH_PERSIST
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+# Include L2 headers for EUI-64 derivation and shared utilities
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
+
 # Include SCHC headers for compression/decompression
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../schc/include)
 
