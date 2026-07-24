@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-8ll1",
+  "title": "[review] project-LICHEN-worker6-wa51: SCHC WINDOW_SIZE=63 exceeds MAX_WINDOW_SIZE=62; TILE_SIZE=187 breaks real LoRa links",
+  "description": "## Summary\n\nTwo SCHC fragmentation constant changes are problematic:\n\n### WINDOW_SIZE = 63 exceeds MAX_WINDOW_SIZE = 62\n\n-  line 14: \n-  line 20:  (changed from previous value)\n- WINDOW_SIZE=63 \u003e MAX_WINDOW_SIZE=62 — direct contradiction within the same file\n- Per SCHC RFC 8724, max window is 2^6-1 = 63 (6-bit field), but the local  says 62\n- Either increase MAX_WINDOW_SIZE to 63 or reduce WINDOW_SIZE to ≤62\n\n### TILE_SIZE = 187 incompatible with LoRa PHY\n\n-  line 19:  (changed from 32)\n- Each wire fragment = TILE_SIZE + 1 byte header = 188 bytes\n- LoRa max payload per data rate:\n  - SF7/125kHz: ≈222 bytes (barely fits)\n  - SF9/125kHz: ≈115 bytes (rejected — packet \u003e MTU)\n  - SF12/125kHz: ≈51 bytes (rejected)\n- This TILE_SIZE only works at SF7, breaks at all higher spreading factors\n- For compatible LoRa SCHC profiles, TILE_SIZE should be ≤50 bytes to cover SF7-SF12\n\n### Response buffer change\n\n-  line 138: changed from  to \n- Need verification: with WINDOW_SIZE=63, the ACK response needs room for RuleID(1) + DTag(1) + W(6 bits) + bitmap(63 bits=8 bytes) + padding(1) + FCS(4) = ~15 bytes\n- 16 bytes buffer is correct for WINDOW_SIZE=63, but the buffer was 10 before\n\n### Notes\n\nThese changes cascade from the WINDOW_SIZE and TILE_SIZE adjustments. The spec (LICHEN-plan.md or draft) should define canonical SCHC tile/window sizes for LoRa profile.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:38:57.727498675Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:38:57.727498675Z"
+}
