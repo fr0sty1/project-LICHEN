@@ -111,6 +111,16 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	  spec/appendix-design-rationale.md. Explicitly selects SCHC and
 	  link epoch features required for TDMA/multi-channel operation.
 
+config LICHEN_LINK_COORDINATION
+	bool "Link-layer coordination (CCP-5 negotiation, rendezvous)"
+	depends on LICHEN_LINK
+	default y
+	help
+	  Enable coordination mechanism negotiation for channel/slot rendezvous
+	  per CCP-5 (spec/02a-coordinated-capacity.md). Provides
+	  lichen_coordination_negotiate() which selects among hash-based,
+	  scheduled, announce-driven, and fallback mechanisms.
+
 config LICHEN_TDMA
 	bool "TDMA slot scheduling / gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
