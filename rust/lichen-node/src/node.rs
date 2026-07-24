@@ -609,6 +609,12 @@ impl RplNode {
         &self.router
     }
 
+    /// Mutable router access (test only).
+    #[cfg(test)]
+    pub fn router_mut(&mut self) -> &mut Router {
+        &mut self.router
+    }
+
     /// Check if this node is the DODAG root.
     pub fn is_root(&self) -> bool {
         self.router.is_root()

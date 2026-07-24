@@ -1173,6 +1173,16 @@ impl Router {
 
         best_neighbor
     }
+
+    /// Inject a DAO-derived route directly into the routing table (test only).
+    ///
+    /// `dst` is the target address (host route, /128). `path` is the address
+    /// sequence from the root outward (root first, dst last). Must have at least
+    /// 2 entries (root → dst).
+    #[cfg(test)]
+    pub fn inject_route(&mut self, dst: [u8; 16], path: &[[u8; 16]]) {
+        let _ = self.dao_manager.routing_table.add_route(dst, path);
+    }
 }
 
 #[cfg(feature = "std")]
