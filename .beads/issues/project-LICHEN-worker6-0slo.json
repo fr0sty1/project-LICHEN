@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-0slo",
   "title": "[review] lora_ipv6_mesh-mkk4: All-1 fragment payload extracted from unshifted wire data",
   "description": "In `Fragment::from_bytes` (fragment.rs:256), the All-1 case returns `payload: \u0026data[2 + MIC_LENGTH..data.len() - 1]` which slices the raw wire bytes. The wire bytes were left-shifted by 1 bit during encoding, but `from_bytes` correctly shifts them back into the `body` buffer. The MIC extraction uses `body[2..2+MIC_LENGTH]` (correctly shifted), but the payload extraction skips the shift and pulls raw bytes from `data`.\n\nThis produces incorrect payload content for All-1 fragments. The payload should be extracted from `body[2+MIC_LENGTH..2+content_len]` (like the non-All-1 case), not from `data`.\n\nAdditionally, the range `data.len() - 1` omits the last byte which contains partial payload data (only the padding bit should be excluded, not the entire last byte).",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:01:38.048623038Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:53:30.216072436Z",
-  "started_at": "2026-07-24T19:19:29.8685402Z",
-  "lease_expires_at": "2026-07-24T20:58:30.216072436Z",
-  "heartbeat_at": "2026-07-24T20:53:30.216072436Z"
+  "updated_at": "2026-07-24T20:53:57.931834791Z",
+  "started_at": "2026-07-24T19:19:29.8685402Z"
 }
