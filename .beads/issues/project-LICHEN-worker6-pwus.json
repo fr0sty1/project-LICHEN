@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-pwus",
+  "title": "[rereview] project-LICHEN-a4n2.3: pop_buf not securely wiped in L2 TX path",
+  "description": "Both L2 implementations (firmware/bridge-zephyr/lichen_l2.c:1078 and lichen/subsys/lichen/l2/lichen_l2.c:1576) allocate a stack buffer pop_buf[256] to receive the frame popped from the TX queue. The data (which may contain frame payload) is never securely wiped — it just goes out of scope. On a cooperative RTOS with shallow stack, subsequent function calls may observe the residual frame data.\n\nThis is a minor data-leak concern (P3) since the TX path already transmitted this frame over LoRa, so the information is already observable over the air. However, on multi-tenant systems or when sensitive data is being pushed then popped immediately, this could expose frame content to co-located code.\n\nFix: add secure_wipe(pop_buf, sizeof(pop_buf)) or memset() after the pop call.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:18:52.389477178Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:18:52.389477178Z"
+}

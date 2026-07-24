@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qgqw",
+  "title": "[rereview] project-LICHEN-da2q.16.3: Duplicate lichen_tdma_compute_slot in link_ctx.c and tdma.c with CONCAT vs XOR (linker symbol conflict)",
+  "description": "**Severity: P1 (build break / correctness bug)**\n\nThe commit claims to have removed the duplicate , but it is still defined in TWO files with TWO different algorithms:\n\n1. **link_ctx.c:666** — CONCAT approach: hashes 12-byte buffer (eui64[0..8] ++ epoch[0..4] LE). This matches the test vectors () and the  function in Python.\n\n2. **tdma.c:20** (guarded by ) — XOR approach: XORs each byte of eui64 with one byte of epoch (repeating due to shift), then hashes only 8 bytes. This does NOT match the test vectors.\n\nBoth files also define duplicate , , and  with the same signatures — guaranteeing a linker error when CONFIG_LICHEN_TDMA is enabled.\n\nWhen epoch=0, both implementations produce identical results (XOR with zero is identity, concat with LE-zero bytes doesn't change hash). For any epoch\u003e0, they diverge. No existing test catches this because all test vectors use epoch=0.\n\n**Fix:** The functions in  (the CONCAT version) match the spec and test vectors. The duplicate in  must be removed (or guarded so it's not compiled when link_ctx.c provides them). The  versions use  but the TDMA functions lack that guard.\n\n**Related:** Python  uses XOR-into-first-4-bytes (different from tdma.c XOR-all-8), while  uses CONCAT. Python has an internal inconsistency too.\n\n**Files:** link_ctx.c, tdma.c, python/src/lichen/sim/tdma.py, CMakeLists.txt",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:20:16.218570535Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:20:16.218570535Z"
+}
