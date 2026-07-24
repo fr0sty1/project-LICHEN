@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-kd8m",
+  "title": "[review] project-LICHEN-worker6-kkj5: encode_credential uses map(2) for 3-entry COSE_Key",
+  "description": "In edhoc.rs:439-448, encode_credential() encodes a COSE_Key with 3 entries (kty=1 at label 1, crv=6 at label -1, pubkey bstr at label -2), but the CBOR map header is `0xa2` (map of 2) instead of `0xa3` (map of 3). This produces a malformed COSE_Key — CBOR parsers would expect only 2 entries but find 3, causing interop failures. Fix: change `0xa2` to `0xa3` on line 441.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:06:51.372293516Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:06:51.372293516Z"
+}
