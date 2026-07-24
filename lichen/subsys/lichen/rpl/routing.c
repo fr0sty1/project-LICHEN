@@ -22,6 +22,9 @@ _Static_assert(LICHEN_RPL_MAX_HOPS <= 255,
 _Static_assert(CONFIG_LICHEN_RPL_MAX_ROUTES <= INT16_MAX,
 	       "DAO stage slot cannot represent all route slots");
 
+#define LOLLIPOP_CIRCULAR_BIT     128
+#define LOLLIPOP_SEQUENCE_WINDOW  16
+
 /* ── Source Routing Header ─────────────────────────────────────────────────── */
 
 int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
@@ -604,6 +607,37 @@ int lichen_rpl_dao_manager_route_count(struct lichen_rpl_dao_manager *dm)
 static uint8_t increment_lollipop(uint8_t sequence)
 {
 	return sequence == 127 || sequence == 255 ? 0 : sequence + 1;
+}
+
+enum lichen_rpl_sequence_relation lichen_rpl_sequence_compare(
+	uint8_t incoming, uint8_t current)
+{
+	if (incoming == current) {
+		return LICHEN_RPL_SEQUENCE_EQUAL;
+	}
+
+	if (incoming < LOLLIPOP_CIRCULAR_BIT && current < LOLLIPOP_CIRCULAR_BIT) {
+		return incoming > current
+			? LICHEN_RPL_SEQUENCE_NEWER
+			: LICHEN_RPL_SEQUENCE_STALE;
+	}
+
+	if (incoming >= LOLLIPOP_CIRCULAR_BIT && current >= LOLLIPOP_CIRCULAR_BIT) {
+		uint8_t diff = (uint8_t)((incoming - current) & 0x7F);
+		if (diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW) {
+			return LICHEN_RPL_SEQUENCE_NEWER;
+		}
+		diff = (uint8_t)((current - incoming) & 0x7F);
+		if (diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW) {
+			return LICHEN_RPL_SEQUENCE_STALE;
+		}
+		return LICHEN_RPL_SEQUENCE_INCOMPARABLE;
+	}
+
+	if (incoming < LOLLIPOP_CIRCULAR_BIT) {
+		return LICHEN_RPL_SEQUENCE_NEWER;
+	}
+	return LICHEN_RPL_SEQUENCE_STALE;
 }
 
 static int build_dao(struct lichen_rpl_dao_manager *dm,
