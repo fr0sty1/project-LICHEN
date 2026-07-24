@@ -2,51 +2,34 @@
 
 #![forbid(unsafe_code)]
 
-use lichen_core::{
-    addr::{Ipv6Addr, NodeId},
-    constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED},
-    ipv6::{field, next_header, IPV6_HEADER_LEN},
-    l2_payload::{
-        body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
-    },
+use lichen_core::addr::{Ipv6Addr, NodeId};
+use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
+use lichen_core::ipv6::field;
+use lichen_core::l2_payload::{
+    body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_hal::storage::mem::MemStorage;
 use lichen_node::{
-    announce::AnnounceProcessor,
-    gradient::GradientTable,
-    node::rpl_code,
     runtime::{RplRuntime, RplRuntimeConfig},
     RplEvent, RplNode,
 };
-use lichen_rpl::routing::{DaoRxState, SourceRoutingHeader};
+use lichen_rpl::routing::SourceRoutingHeader;
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
 #[derive(Debug)]
 pub struct Gateway {
     rpl_node: RplNode,
-    rx_state: DaoRxState,
-    announces: AnnounceProcessor,
-    storage: MemStorage,
     runtime: RplRuntime,
+    stack_generation: u64,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
-        let mut storage = MemStorage::new();
-        let (rpl_node, rx_state) = RplNode::provision_root(node_id, &mut storage)
-            .expect("root provisioning");
-        let announces = AnnounceProcessor::new(
-            GradientTable::new(4),
-            [0u8; 8],
-        );
         Self {
-            rpl_node,
-            rx_state,
-            announces,
-            storage,
+            rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
+            stack_generation: 1,
         }
     }
 
@@ -131,10 +114,7 @@ impl Gateway {
         if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
             return false;
         }
-        if (dst[0] & 0xfe) == 0x02 {
-            return self.rpl_node.router().lookup_route(dst).is_some();
-        }
-        (dst[0] == 0xfe && dst[1] == 0x80)
+        (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80)
             || dst[0] == 0xfd
             || self.rpl_node.router().lookup_route(dst).is_some()
     }
@@ -151,20 +131,6 @@ impl Gateway {
         } else {
             None
         };
-        if matches!(event, RplEvent::DaoReceived { .. }) {
-            if let Some(dao_bytes) = extract_dao_from_frame(frame) {
-                let origin = extract_dao_origin(frame);
-                let _ = self.rpl_node.handle_dao(
-                    &dao_bytes,
-                    origin,
-                    [0u8; 8],
-                    &self.announces,
-                    &mut self.rx_state,
-                    &mut self.storage,
-                    now_ms,
-                );
-            }
-        }
         (reply_opt, event)
     }
 
@@ -172,7 +138,7 @@ impl Gateway {
     /// monotonic time from Instant::elapsed(). Respects defer-external;
     /// does not auto-admit by TOFU (admission requires explicit pin).
     pub fn maintain(&mut self, now_ms: u64) {
-        let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
+        let _ = self.runtime.poll(&mut self.rpl_node, now_ms, self.stack_generation);
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
@@ -182,7 +148,8 @@ impl Gateway {
         }
         let mut dst = [0u8; 16];
         dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
-        let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
+        let is_mesh_local_addr = (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80) || dst[0] == 0xfd;
+        let to_compress = if is_mesh_local_addr {
             ipv6.to_vec()
         } else {
             let route = match self.rpl_node.router().lookup_route(&dst) {
@@ -233,50 +200,6 @@ impl Gateway {
             }
         }
     }
-}
-
-/// Extract the DAO body bytes from an SCHC-compressed frame.
-///
-/// Returns `None` if the frame is not an SCHC-compressed RPL DAO message.
-/// The returned slice has the ICMPv6 header stripped (starts at the RPL body).
-fn extract_dao_from_frame(frame: &[u8]) -> Option<Vec<u8>> {
-    use lichen_core::icmpv6::hdr_field;
-    if classify_l2_payload(frame) != L2PayloadKind::Schc {
-        return None;
-    }
-    let mut ipv6 = vec![0u8; SCHC_MAX_DECOMPRESSED];
-    let n = decompress(l2_payload_body(frame), &mut ipv6).ok()?;
-    ipv6.truncate(n);
-    if ipv6.len() < IPV6_HEADER_LEN + hdr_field::BODY_OFFSET || ipv6[0] >> 4 != 6 {
-        return None;
-    }
-    if ipv6[6] != next_header::ICMPV6 {
-        return None;
-    }
-    if ipv6[IPV6_HEADER_LEN] != lichen_core::constants::RPL_ICMPV6_TYPE
-        || ipv6[IPV6_HEADER_LEN + 1] != rpl_code::DAO
-    {
-        return None;
-    }
-    Some(ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].to_vec())
-}
-
-/// Extract the origin (IPv6 source address) from the outer IPv6 header of an
-/// SCHC-compressed frame. Returns `[0u8; 16]` on error.
-fn extract_dao_origin(frame: &[u8]) -> [u8; 16] {
-    let mut ipv6 = vec![0u8; SCHC_MAX_DECOMPRESSED];
-    if classify_l2_payload(frame) != L2PayloadKind::Schc {
-        return [0u8; 16];
-    }
-    if let Ok(n) = decompress(l2_payload_body(frame), &mut ipv6) {
-        ipv6.truncate(n);
-        if ipv6.len() >= IPV6_HEADER_LEN && ipv6[0] >> 4 == 6 {
-            let mut origin = [0u8; 16];
-            origin.copy_from_slice(&ipv6[field::SRC_OFFSET..field::DST_OFFSET]);
-            return origin;
-        }
-    }
-    [0u8; 16]
 }
 
 #[cfg(test)]
