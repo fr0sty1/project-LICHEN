@@ -74,7 +74,10 @@ BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
 
 #define LICHEN_TDMA_GUARD_MS 100 /* spec/02a-coordinated-capacity.md §2a.2 (ccp16.json, ccp_tdma.json) */
 #define LICHEN_TDMA_SLOT_MS 250 /* spec/02a-coordinated-capacity.md §2a.2 hash(EUI64^epoch)%num_slots via lichen_hash_32 */
+
+#ifdef CONFIG_LICHEN_TDMA
 struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
+#endif
 
 
 /** Maximum destination address length (EUI-64) */
@@ -159,6 +162,7 @@ struct lichen_frame {
 	bool encrypted;          /**< Encrypted frame flag; currently unsupported */
 };
 
+#ifdef CONFIG_LICHEN_TDMA
 struct lichen_tdma_ctx {
 	uint32_t superframe;
 	uint8_t slot;
@@ -166,6 +170,7 @@ struct lichen_tdma_ctx {
 	uint16_t slot_duration;
 	bool synced;
 };
+#endif
 
 	/**
  * @brief Parse a LICHEN frame from wire bytes.
@@ -332,11 +337,14 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 		   uint8_t *_Nonnull out_ipv6, size_t *_Nonnull out_len,
 		   uint8_t *_Nonnull src_eui64);
 
+#ifdef CONFIG_LICHEN_TDMA
 int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, struct lichen_link_ctx *_Nonnull ctx);
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn);
 bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
-uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
+#endif
+
+uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 
 #ifdef __cplusplus
 }
