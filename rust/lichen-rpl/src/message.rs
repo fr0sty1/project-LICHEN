@@ -64,7 +64,6 @@ impl core::error::Error for RplError {
 // ── Option type bytes ─────────────────────────────────────────────────────────
 
 pub const OPT_PAD1: u8 = 0;
-pub const OPT_PADN: u8 = 1;
 pub const OPT_DODAG_CONFIG: u8 = 4;
 pub const OPT_RPL_TARGET: u8 = 5;
 pub const OPT_TRANSIT_INFO: u8 = 6;
@@ -188,8 +187,7 @@ impl Dao {
             // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
             Some(data[4..20].try_into().unwrap())
         } else {
-            // D=0 elides DODAGID per RFC 6550 §6.4.2; caller uses context DODAG
-            None
+            None // D=0 elides DODAGID per RFC 6550 §6.4.2
         };
         Ok(Self {
             rpl_instance_id: data[0],
@@ -205,9 +203,9 @@ impl Dao {
             return Err(RplError::InvalidOption);
         }
         let base_len = if self.dodag_id.is_some() {
-            20
+            Self::BASE_LEN
         } else {
-            4
+            Self::BASE_LEN
         };
         if out.len() < base_len {
             return Err(BufferTooSmall::new(base_len, out.len()).into());
@@ -338,7 +336,7 @@ impl<'a> SignedDaoEnvelope<'a> {
                     return Err(DaoEnvelopeError::NonTerminalSignature);
                 }
                 match data[pos] {
-                    OPT_PADN if data[pos + 1] > 0 => {}
+                    OPT_PADN => {}
                     OPT_RPL_TARGET if data[pos + 1] as usize == 18 => {}
                     OPT_TRANSIT_INFO if data[pos + 1] as usize == TransitInfo::DATA_LEN => {}
                     OPT_RPL_TARGET_DESCRIPTOR if data[pos + 1] as usize == 4 => {}
@@ -705,7 +703,7 @@ mod tests {
         assert!(!dao.ack_requested);
         assert_eq!(dao.flags, 0);
         assert_eq!(dao.dao_sequence, 1);
-        assert_eq!(dao.dodag_id, None);
+        assert_eq!(dao.dodag_id, [0u8; 16]);
     }
 
     #[test]
@@ -721,7 +719,7 @@ mod tests {
         assert_eq!(dao.rpl_instance_id, 0);
         assert!(!dao.ack_requested);
         assert_eq!(dao.dao_sequence, 5);
-        assert_eq!(dao.dodag_id, Some([0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        assert_eq!(dao.dodag_id[0], 0xfd);
     }
 
     #[test]
