@@ -4,7 +4,13 @@
 
 import pytest
 
-from lichen.sim.medium import Medium, RxCandidate
+from lichen.sim.medium import (
+    Medium,
+    RxCandidate,
+    SNR_THRESHOLD_SF10,
+    SNR_THRESHOLD_SF7,
+    SNR_THRESHOLD_SF12,
+)
 from lichen.sim.propagation import CAPTURE_THRESHOLD_DB, SENSITIVITY_SF10, PropagationModel
 from lichen.sim.transmission import Transmission, airtime_us
 
@@ -602,3 +608,159 @@ class TestThreeDimensionalDistance:
         expected_distance = math.sqrt(30**2 + 40**2 + 50**2)
         expected_rssi = medium.propagation.received_power(14, expected_distance)
         assert candidates[0].rssi == pytest.approx(expected_rssi, rel=1e-6)
+
+
+class TestSNRThresholds:
+    """Test SNR threshold constants."""
+
+    def test_snr_threshold_sf7(self) -> None:
+        """SF7 SNR threshold is approximately -3.0 dB."""
+        assert SNR_THRESHOLD_SF7 == pytest.approx(-3.0, abs=0.1)
+
+    def test_snr_threshold_sf10(self) -> None:
+        """SF10 SNR threshold is approximately -12.0 dB."""
+        assert SNR_THRESHOLD_SF10 == pytest.approx(-12.0, abs=0.1)
+
+    def test_snr_threshold_sf12(self) -> None:
+        """SF12 SNR threshold is approximately -17.0 dB."""
+        assert SNR_THRESHOLD_SF12 == pytest.approx(-17.0, abs=0.1)
+
+    def test_snr_threshold_decreasing_with_sf(self) -> None:
+        """Higher SF has lower (more negative) SNR threshold."""
+        assert SNR_THRESHOLD_SF7 > SNR_THRESHOLD_SF10 > SNR_THRESHOLD_SF12
+
+
+class TestSinrResolution:
+    """Test SINR-based collision resolution."""
+
+    def test_single_candidate_always_wins_sinr(self) -> None:
+        """Single candidate always succeeds even with SINR mode."""
+        medium = Medium()
+        tx = medium.start_tx(
+            node_id="tx_node", payload=b"hello",
+            tx_power_dbm=14, position=(0.0, 0.0, 0.0), time_us=1000,
+        )
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node", rx_position=(100.0, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+        result = medium.resolve_reception(candidates, use_sinr=True)
+        assert result is tx
+
+    def test_no_candidates_sinr_returns_none(self) -> None:
+        """No candidates still returns None in SINR mode."""
+        medium = Medium()
+        result = medium.resolve_reception([], use_sinr=True)
+        assert result is None
+
+    def test_strong_signal_dominates_in_sinr(self) -> None:
+        """Strong signal at close range wins in SINR mode."""
+        medium = Medium()
+
+        medium.start_tx(
+            node_id="tx_strong", payload=b"strong",
+            tx_power_dbm=14, position=(10.0, 0.0, 0.0), time_us=1000,
+        )
+        medium.start_tx(
+            node_id="tx_weak", payload=b"weak",
+            tx_power_dbm=14, position=(-1000.0, 0.0, 0.0), time_us=1000,
+        )
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node", rx_position=(0.0, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+        assert len(candidates) == 2
+
+        result = medium.resolve_reception(candidates, use_sinr=True)
+        assert result is not None
+        assert result.source_node_id == "tx_strong"
+
+    def test_sinr_with_three_interferers(self) -> None:
+        """Three equal-power interferers cause packet loss in SINR mode."""
+        medium = Medium()
+
+        medium.start_tx(
+            node_id="tx_target", payload=b"target" * 10,
+            tx_power_dbm=14, position=(150.0, 0.0, 0.0), time_us=1000,
+        )
+        medium.start_tx(
+            node_id="tx_i1", payload=b"interfere" * 5,
+            tx_power_dbm=14, position=(0.0, 155.0, 0.0), time_us=1000,
+        )
+        medium.start_tx(
+            node_id="tx_i2", payload=b"interfere" * 5,
+            tx_power_dbm=14, position=(0.0, -160.0, 0.0), time_us=1000,
+        )
+        medium.start_tx(
+            node_id="tx_i3", payload=b"interfere" * 5,
+            tx_power_dbm=14, position=(165.0, 0.0, 0.0), time_us=1000,
+        )
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node", rx_position=(0.0, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+
+        assert len(candidates) == 4
+        result = medium.resolve_reception(candidates, use_sinr=True)
+
+        # Target and interferers have similar RSSI, so SINR is low -> loss
+        assert result is None
+
+
+class TestSinrVsStandardResolution:
+    """Compare SINR and standard resolution on the same scenario."""
+
+    def test_capture_scenario_both_agree(self) -> None:
+        """Strong capture scenario: both methods agree on strongest."""
+        medium = Medium()
+
+        medium.start_tx(
+            node_id="tx_strong", payload=b"strong",
+            tx_power_dbm=14, position=(30.0, 0.0, 0.0), time_us=1000,
+        )
+        medium.start_tx(
+            node_id="tx_weak", payload=b"weak",
+            tx_power_dbm=14, position=(-500.0, 0.0, 0.0), time_us=1000,
+        )
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node", rx_position=(0.0, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+
+        result_standard = medium.resolve_reception(candidates, use_sinr=False)
+        result_sinr = medium.resolve_reception(candidates, use_sinr=True)
+
+        assert result_standard is result_sinr
+
+    def test_edge_scenario_standard_loses_sinr_may_win(self) -> None:
+        """Near-threshold: standard loses both, SINR may still decode."""
+        medium = Medium()
+
+        medium.start_tx(
+            node_id="tx1", payload=b"a" * 5,
+            tx_power_dbm=14, position=(100.0, 0.0, 0.0), time_us=1000,
+        )
+        medium.start_tx(
+            node_id="tx2", payload=b"b" * 5,
+            tx_power_dbm=14, position=(-115.0, 0.0, 0.0), time_us=1000,
+        )
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node", rx_position=(0.0, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+
+        result_standard = medium.resolve_reception(candidates, use_sinr=False)
+        result_sinr = medium.resolve_reception(candidates, use_sinr=True)
+
+        if len(candidates) == 2:
+            sorted_c = sorted(candidates, key=lambda c: c.rssi, reverse=True)
+            rssi_diff = sorted_c[0].rssi - sorted_c[1].rssi
+            if rssi_diff < CAPTURE_THRESHOLD_DB:
+                assert result_standard is None
+
+            if result_sinr is not None:
+                assert result_sinr.source_node_id == sorted_c[0].transmission.source_node_id

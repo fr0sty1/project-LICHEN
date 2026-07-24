@@ -1,0 +1,114 @@
+{
+  "format_version": 2,
+  "name": "LoRa propagation reference values",
+  "description": "Canonical reference values for the LICHEN propagation model. All values computed from the deterministic log-distance path loss model PL(d) = PL0 + 10*n*log10(d/d0) with PL0=32.44dB, d0=1.0m. Urban (n=2.7) unless otherwise specified. Noise floor = -120 dBm. These are the fixed oracles against which all implementations MUST produce matching output. Shadowing and fading are non-deterministic (seeded RNG) and not part of this fixed-vector set.",
+  "spec": "spec/02a-physical-layer.md",
+  "vectors": [
+    {
+      "name": "path_loss_at_1m",
+      "description": "Path loss at reference distance equals PL0 (32.44 dB).",
+      "distance_m": 1.0,
+      "pl_dbm": 32.44,
+      "rx_dbm_14dbm": -18.44,
+      "snr_db_14dbm": 101.56
+    },
+    {
+      "name": "path_loss_at_100m_urban",
+      "description": "Path loss at 100m with urban exponent n=2.7. PL = 32.44 + 27*log10(100) = 86.44 dB.",
+      "distance_m": 100.0,
+      "n": 2.7,
+      "pl_dbm": 86.44,
+      "rx_dbm_14dbm": -72.44,
+      "snr_db_14dbm": 47.56
+    },
+    {
+      "name": "path_loss_at_1000m_urban",
+      "description": "Path loss at 1000m with urban exponent n=2.7.",
+      "distance_m": 1000.0,
+      "n": 2.7,
+      "pl_dbm": 113.44,
+      "rx_dbm_14dbm": -99.44,
+      "snr_db_14dbm": 20.56
+    },
+    {
+      "name": "path_loss_at_2000m_urban",
+      "description": "Path loss at 2000m with urban exponent n=2.7.",
+      "distance_m": 2000.0,
+      "n": 2.7,
+      "pl_dbm": 121.5678,
+      "rx_dbm_14dbm": -107.5678,
+      "snr_db_14dbm": 12.4322
+    },
+    {
+      "name": "path_loss_at_100m_free_space",
+      "description": "Path loss at 100m with free space exponent n=2.0.",
+      "distance_m": 100.0,
+      "n": 2.0,
+      "pl_dbm": 72.44,
+      "rx_dbm_14dbm": -58.44,
+      "snr_db_14dbm": 61.56
+    },
+    {
+      "name": "receiver_sensitivity_sf7",
+      "description": "SF7 sensitivity at 125kHz bandwidth: -123 dBm.",
+      "sf": 7,
+      "sensitivity_dbm": -123.0
+    },
+    {
+      "name": "receiver_sensitivity_sf10",
+      "description": "SF10 sensitivity at 125kHz bandwidth: -132 dBm.",
+      "sf": 10,
+      "sensitivity_dbm": -132.0
+    },
+    {
+      "name": "receiver_sensitivity_sf12",
+      "description": "SF12 sensitivity at 125kHz bandwidth: -137 dBm.",
+      "sf": 12,
+      "sensitivity_dbm": -137.0
+    },
+    {
+      "name": "capture_threshold",
+      "description": "Capture effect threshold: 6.0 dB per Bor et al. 2016.",
+      "capture_threshold_db": 6.0
+    },
+    {
+      "name": "max_range_sf10_14dbm_urban",
+      "description": "Maximum range in urban environment at 14 dBm TX power with SF10 sensitivity (-132 dBm).",
+      "tx_power_dbm": 14,
+      "sensitivity_dbm": -132.0,
+      "n": 2.7,
+      "max_range_m": 16066.6719
+    },
+    {
+      "name": "max_range_sf7_14dbm_urban",
+      "description": "Maximum range in urban environment at 14 dBm TX power with SF7 sensitivity (-123 dBm).",
+      "tx_power_dbm": 14,
+      "sensitivity_dbm": -123.0,
+      "n": 2.7,
+      "max_range_m": 7457.4885
+    },
+    {
+      "name": "max_range_sf12_14dbm_urban",
+      "description": "Maximum range in urban environment at 14 dBm TX power with SF12 sensitivity (-137 dBm).",
+      "tx_power_dbm": 14,
+      "sensitivity_dbm": -137.0,
+      "n": 2.7,
+      "max_range_m": 24609.9715
+    },
+    {
+      "name": "max_range_sf10_20dbm_urban",
+      "description": "Maximum range in urban environment at 20 dBm TX power with SF10 sensitivity (-132 dBm).",
+      "tx_power_dbm": 20,
+      "sensitivity_dbm": -132.0,
+      "n": 2.7,
+      "max_range_m": 26800.8241
+    },
+    {
+      "name": "shadowing_std_constants",
+      "description": "Shadowing standard deviation constants for different environments. ITU-R P.1411.",
+      "suburban_std_db": 4.0,
+      "urban_std_db": 6.0,
+      "indoor_std_db": 8.0
+    }
+  ]
+}

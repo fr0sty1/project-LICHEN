@@ -74,7 +74,6 @@ class SimNode:
         seed: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
-        seed: int = 0,
         sfn: int = 0,
         num_channels: int = 8,
     ) -> None:

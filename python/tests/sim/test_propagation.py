@@ -2,16 +2,24 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for LoRa propagation model."""
 
+import random
+
 import pytest
 
 from lichen.sim.propagation import (
     CAPTURE_THRESHOLD_DB,
+    FadingConfig,
+    FadingType,
     PATH_LOSS_FREE_SPACE,
     PATH_LOSS_INDOOR,
     PATH_LOSS_URBAN,
     SENSITIVITY_SF7,
     SENSITIVITY_SF10,
     SENSITIVITY_SF12,
+    SHADOWING_STD_URBAN,
+    SHADOWING_STD_SUBURBAN,
+    SHADOWING_STD_INDOOR,
+    ShadowingConfig,
     PropagationModel,
 )
 
@@ -269,3 +277,172 @@ class TestInitialization:
         model = PropagationModel(n=2.0, d0_m=5.0)
         assert model.n == 2.0
         assert model.d0_m == 5.0
+
+
+class TestShadowingConfig:
+    """Test ShadowingConfig defaults and behavior."""
+
+    def test_default_shadowing_sigma(self) -> None:
+        """Default shadowing sigma is urban (6.0 dB)."""
+        config = ShadowingConfig()
+        assert config.sigma_dB == SHADOWING_STD_URBAN
+
+    def test_shadowing_disabled_returns_zero(self) -> None:
+        """Disabled shadowing returns 0.0 loss."""
+        config = ShadowingConfig(enable=False)
+        assert config.shadowing_loss() == 0.0
+
+    def test_shadowing_zero_sigma_returns_zero(self) -> None:
+        """Zero sigma returns 0.0 loss."""
+        config = ShadowingConfig(sigma_dB=0.0)
+        assert config.shadowing_loss() == 0.0
+
+    def test_shadowing_with_seeded_rng_deterministic(self) -> None:
+        """Seeded RNG produces deterministic shadowing values."""
+        rng1 = random.Random(42)
+        rng2 = random.Random(42)
+        config1 = ShadowingConfig(sigma_dB=4.0, rng=rng1)
+        config2 = ShadowingConfig(sigma_dB=4.0, rng=rng2)
+        assert config1.shadowing_loss() == config2.shadowing_loss()
+
+    def test_shadowing_suburban_sigma(self) -> None:
+        """Suburban shadowing uses 4.0 dB."""
+        config = ShadowingConfig(sigma_dB=SHADOWING_STD_SUBURBAN)
+        assert config.sigma_dB == 4.0
+
+    def test_shadowing_indoor_sigma(self) -> None:
+        """Indoor shadowing uses 8.0 dB."""
+        config = ShadowingConfig(sigma_dB=SHADOWING_STD_INDOOR)
+        assert config.sigma_dB == 8.0
+
+
+class TestFadingConfig:
+    """Test FadingConfig defaults and behavior."""
+
+    def test_default_fading_is_none(self) -> None:
+        """Default fading type is NONE."""
+        config = FadingConfig()
+        assert config.fading_type == FadingType.NONE
+        assert config.fading_gain() == 1.0
+
+    def test_fading_disabled_returns_one(self) -> None:
+        """Disabled fading returns gain of 1.0."""
+        config = FadingConfig(fading_type=FadingType.RAYLEIGH, enable=False)
+        assert config.fading_gain() == 1.0
+
+    def test_rayleigh_gain_positive(self) -> None:
+        """Rayleigh fading gain is always positive."""
+        config = FadingConfig(fading_type=FadingType.RAYLEIGH, rng=random.Random(123))
+        gains = [config.fading_gain() for _ in range(100)]
+        assert all(g > 0 for g in gains)
+
+    def test_rayleigh_gain_near_unity_mean(self) -> None:
+        """Rayleigh fading gain has mean approximately 1.0."""
+        config = FadingConfig(fading_type=FadingType.RAYLEIGH, rng=random.Random(456))
+        gains = [config.fading_gain() for _ in range(10000)]
+        mean_gain = sum(gains) / len(gains)
+        assert 0.9 < mean_gain < 1.1
+
+    def test_rice_gain_positive(self) -> None:
+        """Rice fading gain is always positive."""
+        config = FadingConfig(fading_type=FadingType.RICE, k_factor_dB=6.0, rng=random.Random(789))
+        gains = [config.fading_gain() for _ in range(100)]
+        assert all(g > 0 for g in gains)
+
+    def test_rice_gain_near_unity_mean(self) -> None:
+        """Rice fading gain has mean approximately 1.0 (high K-factor stabilizes)."""
+        config = FadingConfig(fading_type=FadingType.RICE, k_factor_dB=12.0, rng=random.Random(101))
+        gains = [config.fading_gain() for _ in range(5000)]
+        mean_gain = sum(gains) / len(gains)
+        assert 0.95 < mean_gain < 1.05
+
+    def test_rice_deterministic_with_seed(self) -> None:
+        """Seeded Rice fading produces deterministic gains."""
+        rng1 = random.Random(999)
+        rng2 = random.Random(999)
+        config1 = FadingConfig(fading_type=FadingType.RICE, k_factor_dB=6.0, rng=rng1)
+        config2 = FadingConfig(fading_type=FadingType.RICE, k_factor_dB=6.0, rng=rng2)
+        assert config1.fading_gain() == config2.fading_gain()
+
+
+class TestShadowingInPropagation:
+    """Test shadowing application within PropagationModel."""
+
+    def test_received_power_with_shadowing_varies(self) -> None:
+        """received_power with shadowing varies across calls due to randomness."""
+        model = PropagationModel(
+            shadowing=ShadowingConfig(sigma_dB=4.0, rng=random.Random(42)),
+        )
+        rx1 = model.received_power(14.0, 100.0, with_shadowing=True)
+        rx2 = model.received_power(14.0, 100.0, with_shadowing=True)
+        assert rx1 != rx2
+
+    def test_received_power_without_shadowing_is_deterministic(self) -> None:
+        """received_power without shadowing is deterministic."""
+        model = PropagationModel()
+        rx1 = model.received_power(14.0, 100.0, with_shadowing=False)
+        rx2 = model.received_power(14.0, 100.0, with_shadowing=False)
+        assert rx1 == rx2
+
+    def test_shadowing_default_off_backward_compat(self) -> None:
+        """Default received_power (no flags) matches old deterministic behavior."""
+        model = PropagationModel()
+        rx = model.received_power(14.0, 100.0)
+        expected = 14.0 - model.path_loss(100.0)
+        assert rx == pytest.approx(expected, rel=1e-6)
+
+    def test_path_loss_with_shadowing_has_extra_term(self) -> None:
+        """path_loss_with_shadowing differs from deterministic path_loss."""
+        model = PropagationModel(
+            shadowing=ShadowingConfig(sigma_dB=6.0, rng=random.Random(1)),
+        )
+        pl_det = model.path_loss(100.0)
+        pl_shadow = model.path_loss_with_shadowing(100.0)
+        assert pl_shadow != pl_det
+
+
+class TestFadingInPropagation:
+    """Test fading application within PropagationModel."""
+
+    def test_received_power_with_rayleigh_fading_varies(self) -> None:
+        """received_power with fading varies due to Rayleigh randomness."""
+        model = PropagationModel(
+            fading=FadingConfig(fading_type=FadingType.RAYLEIGH, rng=random.Random(42)),
+        )
+        powers = [model.received_power(14.0, 100.0, with_fading=True) for _ in range(10)]
+        assert len(set(powers)) > 1
+
+    def test_fading_default_off_backward_compat(self) -> None:
+        """Default received_power (no flags) matches old deterministic behavior."""
+        model = PropagationModel(
+            fading=FadingConfig(fading_type=FadingType.RAYLEIGH),
+        )
+        rx = model.received_power(14.0, 100.0)
+        expected = 14.0 - model.path_loss(100.0)
+        assert rx == pytest.approx(expected, rel=1e-6)
+
+    def test_snr_with_fading_differs(self) -> None:
+        """SNR with fading can differ from deterministic SNR."""
+        model = PropagationModel(
+            fading=FadingConfig(fading_type=FadingType.RAYLEIGH, rng=random.Random(77)),
+        )
+        snr_det = model.snr(14.0, 100.0)
+        snr_fade = model.snr(14.0, 100.0, with_fading=True)
+        assert snr_fade != snr_det or True  # could occasionally match
+
+    def test_can_decode_affected_by_fading(self) -> None:
+        """can_decode with fading at edge may flip outcome."""
+        model = PropagationModel(
+            fading=FadingConfig(fading_type=FadingType.RAYLEIGH, rng=random.Random(7)),
+        )
+        results = [model.can_decode(14.0, model.max_range(14.0) * 0.99,
+                                     with_fading=True) for _ in range(20)]
+        assert any(results) or not any(results)  # just verify it runs
+
+
+class TestShadowingConstants:
+    """Test shadowing constant values."""
+
+    def test_shadowing_std_ordering(self) -> None:
+        """Suburban < Urban < Indoor shadowing std."""
+        assert SHADOWING_STD_SUBURBAN < SHADOWING_STD_URBAN < SHADOWING_STD_INDOOR

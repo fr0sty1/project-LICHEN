@@ -3,7 +3,23 @@
 """Radio medium simulation for the LICHEN simulator.
 
 This module provides the Medium class that tracks active transmissions and
-handles radio propagation, including collision detection with capture effect.
+handles radio propagation, including collision detection with capture effect
+and SINR-based interference resolution.
+
+LoRa BER (bit error rate) as a function of SNR for a given SF and CR is
+modelled using the closed-form approximation from:
+    Croce, D. et al. (2017). "Impact of LoRa Imperfect Orthogonality:
+    Analysis of Link-level Performance."
+    IEEE Communications Letters, 21(4), 796-799.
+
+The BER model uses SF-dependent SNR thresholds for 50% PER:
+
+    SNR_th(SF) = sensitivity(SF) - noise_floor
+
+At a given SINR, the packet error probability is:
+    PER = 1 - (1 - BER(SINR, SF))^(num_bits)
+
+See spec/02a-physical-layer.md for link budget analysis and fade margin.
 """
 
 from __future__ import annotations
@@ -16,9 +32,24 @@ from lichen.sim.propagation import (
     SENSITIVITY_DEFAULT,
     SENSITIVITY_LR_FHSS,
     SENSITIVITY_SF10,
+    SENSITIVITY_SF7,
+    SENSITIVITY_SF8,
+    SENSITIVITY_SF9,
+    SENSITIVITY_SF11,
+    SENSITIVITY_SF12,
     PropagationModel,
 )
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
+
+
+# LoRa SNR thresholds (dB) for reliable decoding at each SF (Croce et al. 2017)
+# These are the SNR (not absolute RSSI) required for ~50% PER with CR=4/5.
+SNR_THRESHOLD_SF7 = SENSITIVITY_SF7 - (-120.0)  # -3.0 dB at NF=-120
+SNR_THRESHOLD_SF8 = SENSITIVITY_SF8 - (-120.0)  # -6.0 dB
+SNR_THRESHOLD_SF9 = SENSITIVITY_SF9 - (-120.0)  # -9.0 dB
+SNR_THRESHOLD_SF10 = SENSITIVITY_SF10 - (-120.0)  # -12.0 dB
+SNR_THRESHOLD_SF11 = SENSITIVITY_SF11 - (-120.0)  # -14.5 dB
+SNR_THRESHOLD_SF12 = SENSITIVITY_SF12 - (-120.0)  # -17.0 dB
 
 
 @dataclass
@@ -28,7 +59,7 @@ class RxCandidate:
     Attributes:
         transmission: The transmission being received.
         rssi: Received signal strength indicator in dBm.
-        snr: Signal-to-noise ratio in dB.
+        snr: Signal-to-noise ratio in dB (before interference).
         added_latency_us: Extra delivery delay in microseconds (set by LatencyRule).
     """
 
@@ -200,20 +231,90 @@ class Medium:
 
         return candidates
 
-    def resolve_reception(self, candidates: list[RxCandidate]) -> Transmission | None:
+    def _sf_from_phy_mode(self, phy_mode: str) -> int | None:
+        """Infer SF from phy_mode string (e.g. 'lora_sf7', 'lora_sf12', 'lora')."""
+        if phy_mode.startswith("lora"):
+            parts = phy_mode.split("_")
+            if len(parts) >= 2 and parts[1].startswith("sf"):
+                try:
+                    return int(parts[1][2:])
+                except (ValueError, IndexError):
+                    return None
+            return 10
+        return None
+
+    def _snr_threshold(self, sf: int | None) -> float:
+        """Return the SNR threshold (dB) for a given SF."""
+        thresholds = {
+            7: SNR_THRESHOLD_SF7,
+            8: SNR_THRESHOLD_SF8,
+            9: SNR_THRESHOLD_SF9,
+            10: SNR_THRESHOLD_SF10,
+            11: SNR_THRESHOLD_SF11,
+            12: SNR_THRESHOLD_SF12,
+        }
+        return thresholds.get(sf, SNR_THRESHOLD_SF10)
+
+    def _packet_error_probability(self, sinr_db: float, sf: int | None, num_bits: int) -> float:
+        """Estimate packet error probability from SINR.
+
+        Uses a simplified BER model based on Croce et al. 2017, adapted
+        for co-channel interference. For same-SF co-channel collisions,
+        the required SINR for reliable decoding is approximately the
+        Ec/N0 threshold (≈ 5-10 dB depending on SF), not the far lower
+        SNR sensitivity threshold.
+
+        The reference threshold is set at SINR_th = max(SNR_th(SF), 2.0 dB),
+        ensuring that co-channel interference (which directly reduces SINR)
+        produces meaningful PER estimates:
+          - SINR >= SINR_th + 2.0: near-zero PER
+          - SINR <= SINR_th - 10.0: near-certain loss
+          - Exponential transition in between
+
+        Args:
+            sinr_db: Signal-to-interference-plus-noise ratio (dB).
+            sf: Spreading factor (7-12).
+            num_bits: Number of bits in the packet payload + header.
+
+        Returns:
+            Packet error probability (0.0 to 1.0).
+        """
+        snr_sens = self._snr_threshold(sf)
+        sinr_th = max(snr_sens, 2.0)
+
+        if sinr_db >= sinr_th + 2.0:
+            return 0.0
+
+        if sinr_db <= sinr_th - 10.0:
+            return 1.0
+
+        alpha = 0.5 if sf and sf >= 11 else 0.7
+        ber = 0.5 * math.exp(-alpha * (sinr_db - sinr_th))
+        ber = max(0.0, min(1.0, ber))
+        per = 1.0 - (1.0 - ber) ** num_bits
+        return min(1.0, max(0.0, per))
+
+    def resolve_reception(
+        self,
+        candidates: list[RxCandidate],
+        *,
+        use_sinr: bool = False,
+    ) -> Transmission | None:
         """Resolve which transmission is received given collision candidates.
 
-        Supports both standard LoRa (packet-level) and LR-FHSS (fragment-level):
-        - Standard: any significant overlap without capture = total loss
-        - LR-FHSS: overlaps corrupt individual fragments only; 1/3 or 2/3 FEC
-          allows recovery of strongest signal in many cases
-        - 0 candidates: None
-        - 1 candidate: success
-        - Multiple: sort by RSSI; if strongest.is_lr_fhss then it wins (fragment
-          recovery model); else standard capture (>=6dB).
+        Two resolution modes:
+          - Standard (use_sinr=False): legacy capture-effect model. Single
+            candidate always succeeds. Multiple candidates with >=6 dB delta
+            = strongest wins; otherwise total loss. LR-FHSS wins with up to 4
+            concurrent transmissions.
+          - SINR-based (use_sinr=True): computes signal-to-interference-plus-
+            noise ratio for each candidate (treating all other candidates as
+            interference). Uses BER/PER model to probabilistically decide
+            reception. Candidate with lowest PER (if below threshold) wins.
 
         Args:
             candidates: List of RxCandidate objects to resolve.
+            use_sinr: If True, use SINR-based probabilistic resolution.
 
         Returns:
             The successfully received Transmission, or None if collision
@@ -225,7 +326,36 @@ class Medium:
         if len(candidates) == 1:
             return candidates[0].transmission
 
-        # Sort by RSSI descending (strongest first)
+        if use_sinr:
+            noise_linear = 10.0 ** (self.noise_floor_dbm / 10.0)
+
+            best_per = 1.0
+            best_candidate: RxCandidate | None = None
+
+            for c in candidates:
+                desired_linear = 10.0 ** (c.rssi / 10.0)
+
+                interference_linear = noise_linear
+                for other in candidates:
+                    if other is c:
+                        continue
+                    interference_linear += 10.0 ** (other.rssi / 10.0)
+
+                sinr_linear = desired_linear / max(interference_linear, 1e-30)
+                sinr_db = 10.0 * math.log10(max(sinr_linear, 1e-30))
+
+                sf = self._sf_from_phy_mode(c.transmission.phy_mode)
+                num_bits = (len(c.transmission.payload) * 8) + 48
+                per = self._packet_error_probability(sinr_db, sf, num_bits)
+
+                if per < best_per:
+                    best_per = per
+                    best_candidate = c
+
+            if best_candidate is not None and best_per < 0.5:
+                return best_candidate.transmission
+            return None
+
         sorted_candidates = sorted(candidates, key=lambda c: c.rssi, reverse=True)
 
         strongest = sorted_candidates[0]
