@@ -33,6 +33,10 @@
 extern "C" {
 #endif
 
+/* Forward declaration - gradient table is defined in routing/gradient.h.
+ * Avoids pulling routing headers into L2 header dependencies. */
+struct lichen_gradient_table;
+
 /* ─── Peer table ─────────────────────────────────────────────────────────── */
 
 /**
@@ -264,6 +268,19 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
  * The only truly safe recovery from thread-abort is k_sys_reboot().
  */
 void lichen_l2_reinit_after_abort(void);
+
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+/**
+ * @brief Set gradient table for per-neighbor adaptive SF tracking.
+ *
+ * The routing layer calls this during init to register the gradient table
+ * so the L2 RX path can feed SNR samples for per-neighbor SF selection
+ * (CCP-16). May be called once or updated if the table is reallocated.
+ *
+ * @param table Gradient table for per-neighbor SF tracking, or NULL to clear.
+ */
+void lichen_l2_set_gradient_table(struct lichen_gradient_table *table);
+#endif
 
 /* Declare the L2 struct for external reference */
 NET_L2_DECLARE_PUBLIC(LICHEN_L2);

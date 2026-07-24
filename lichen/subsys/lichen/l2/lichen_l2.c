@@ -23,6 +23,7 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
+#include <lichen/routing/gradient.h>
 #include <monocypher.h>
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 #include <lichen/app_identity/app_identity.h>
@@ -461,6 +462,10 @@ BUILD_ASSERT(0, "LICHEN L2 requires single-core: atomic_t usage lacks memory bar
 		"Disable CONFIG_SMP or ensure CONFIG_MP_MAX_NUM_CPUS == 1.");
 #endif
 static atomic_t link_ctx_initialized;
+
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+static struct lichen_gradient_table *sf_gradient_table;
+#endif
 
 #ifdef CONFIG_LICHEN_L2_TEST_HOOKS
 static atomic_t test_tx_packets;
@@ -939,6 +944,13 @@ int lichen_l2_publish_app_identity(const char *display_name,
 	return -ENOTSUP;
 #endif
 }
+
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+void lichen_l2_set_gradient_table(struct lichen_gradient_table *table)
+{
+	sf_gradient_table = table;
+}
+#endif
 
 int lichen_l2_load_key(const uint8_t seed[32], uint8_t pubkey[32])
 {
@@ -2424,6 +2436,19 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		return;
 	}
 	L2RX_STAT_INC(verified);
+
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+	/*
+	 * Feed per-neighbor SF tracking: update SNR EWMA for the authenticated
+	 * source neighbor. This runs after signature verification (src_eui64 is
+	 * from an authenticated peer). Gradient table pointer is set by the
+	 * routing layer via lichen_l2_set_gradient_table().
+	 */
+	if (sf_gradient_table != NULL) {
+		lichen_gradient_sf_update(sf_gradient_table, src_eui64,
+					  snr, k_uptime_get_32());
+	}
+#endif
 
 	/* SECURITY: Validate ipv6_len before using it (project-LICHEN-3pun.5) */
 	if (ipv6_len > sizeof(rx_ipv6_buf)) {
