@@ -1912,7 +1912,41 @@ def ccp15_vectors() -> list[dict]:
         load_factor = h / 4294967295.0
         ema = 0.1 * load_factor + 0.9 * 0.4
         sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
-        v.append({"name": f"seed{seed}","sf":sf,"ema":round(ema,6),"load_factor":round(load_factor,6),"hash_32":f"{h:08x}"})
+        interference_score = round(0.5 * ema + 0.3 * load_factor + 0.2 * (1.0 - sf / 12.0), 6)
+        input_bytes = struct.pack(">Bff", sf, ema, load_factor)
+        backoff_jitter_ms = hash_32(input_bytes + b"jitter") % 100
+        v.append({
+            "name": f"seed{seed}",
+            "sf": sf,
+            "ema": round(ema, 6),
+            "load_factor": round(load_factor, 6),
+            "hash_32": f"{h:08x}",
+            "interference_score": interference_score,
+            "backoff_jitter_ms": backoff_jitter_ms,
+        })
+    # Additional edge-case vectors for interference score and backoff jitter.
+    edge_cases = [
+        ("high_interference", 12, 0.85, 0.9),
+        ("moderate_interference", 10, 0.5, 0.5),
+        ("low_interference", 7, 0.1, 0.05),
+        ("full_interference", 12, 1.0, 1.0),
+        ("zero_interference", 7, 0.0, 0.0),
+        ("noisy_interference", 10, 0.75, 0.85),
+    ]
+    for name, sf, ema, load_factor in edge_cases:
+        interference_score = round(0.5 * ema + 0.3 * load_factor + 0.2 * (1.0 - sf / 12.0), 6)
+        input_bytes = struct.pack(">Bff", sf, ema, load_factor)
+        h = hash_32(input_bytes)
+        backoff_jitter_ms = hash_32(input_bytes + b"jitter") % 100
+        v.append({
+            "name": name,
+            "sf": sf,
+            "ema": ema,
+            "load_factor": load_factor,
+            "hash_32": f"{h:08x}",
+            "interference_score": interference_score,
+            "backoff_jitter_ms": backoff_jitter_ms,
+        })
     return v
 
 
@@ -2102,7 +2136,7 @@ def main() -> None:
     )
     _write(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test).",
+        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control, interference score, and backoff jitter. Interference score formula: 0.5*ema + 0.3*load_factor + 0.2*(1.0 - sf/12.0). Backoff jitter: hash_32(sf|ema|load_factor|'jitter') % 100 ms. Cross-ref test/vectors/ccp-interference.json for additional interference patterns under spec/02a-coordinated-capacity.md. Independent external arithmetic oracle (math based, no code under test).",
         ccp15_vectors(),
     )
     _write(

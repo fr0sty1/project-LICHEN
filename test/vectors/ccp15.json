@@ -1,28 +1,88 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test).",
+  "description": "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control, interference score, and backoff jitter. Interference score formula: 0.5*ema + 0.3*load_factor + 0.2*(1.0 - sf/12.0). Backoff jitter: hash_32(sf|ema|load_factor|'jitter') % 100 ms. Cross-ref test/vectors/ccp-interference.json for additional interference patterns under spec/02a-coordinated-capacity.md. Independent external arithmetic oracle (math based, no code under test).",
   "vectors": [
     {
       "name": "seed0",
       "sf": 7,
       "ema": 0.36,
       "load_factor": 0.0,
-      "hash_32": "00000000"
+      "hash_32": "00000000",
+      "interference_score": 0.263333,
+      "backoff_jitter_ms": 35
     },
     {
       "name": "seed1",
       "sf": 12,
       "ema": 0.421803,
       "load_factor": 0.618034,
-      "hash_32": "9e3779b9"
+      "hash_32": "9e3779b9",
+      "interference_score": 0.396312,
+      "backoff_jitter_ms": 92
     },
     {
       "name": "seed2",
       "sf": 10,
       "ema": 0.383607,
       "load_factor": 0.236068,
-      "hash_32": "3c6ef372"
+      "hash_32": "3c6ef372",
+      "interference_score": 0.295957,
+      "backoff_jitter_ms": 11
+    },
+    {
+      "name": "high_interference",
+      "sf": 12,
+      "ema": 0.85,
+      "load_factor": 0.9,
+      "hash_32": "070cc9f1",
+      "interference_score": 0.695,
+      "backoff_jitter_ms": 31
+    },
+    {
+      "name": "moderate_interference",
+      "sf": 10,
+      "ema": 0.5,
+      "load_factor": 0.5,
+      "hash_32": "62d6700d",
+      "interference_score": 0.433333,
+      "backoff_jitter_ms": 3
+    },
+    {
+      "name": "low_interference",
+      "sf": 7,
+      "ema": 0.1,
+      "load_factor": 0.05,
+      "hash_32": "5e19cfe2",
+      "interference_score": 0.148333,
+      "backoff_jitter_ms": 4
+    },
+    {
+      "name": "full_interference",
+      "sf": 12,
+      "ema": 1.0,
+      "load_factor": 1.0,
+      "hash_32": "d5977c5b",
+      "interference_score": 0.8,
+      "backoff_jitter_ms": 21
+    },
+    {
+      "name": "zero_interference",
+      "sf": 7,
+      "ema": 0.0,
+      "load_factor": 0.0,
+      "hash_32": "650b3f26",
+      "interference_score": 0.083333,
+      "backoff_jitter_ms": 64
+    },
+    {
+      "name": "noisy_interference",
+      "sf": 10,
+      "ema": 0.75,
+      "load_factor": 0.85,
+      "hash_32": "3916ed39",
+      "interference_score": 0.663333,
+      "backoff_jitter_ms": 3
     }
   ]
 }
