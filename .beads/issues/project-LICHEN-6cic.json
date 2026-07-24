@@ -2,18 +2,15 @@
   "id": "project-LICHEN-6cic",
   "title": "missing declaration for lichen_coordination_negotiate in link_ctx.h",
   "description": "Function implemented in link_ctx.c but no prototype in include/lichen/link_ctx.h. Will cause compile warning or error if used from other modules. Tag: codereview",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:21:28.995168437Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-24T16:16:14.583310308Z",
+  "updated_at": "2026-07-24T19:13:06.33538517Z",
   "started_at": "2026-07-24T16:16:14.583310308Z",
   "closed_at": "2026-07-22T17:22:10.16486096Z",
   "close_reason": "Fixed by adding declaration to header and implementing stub in link_ctx.c per codereview",
-  "lease_expires_at": "2026-07-24T16:21:14.583310308Z",
-  "heartbeat_at": "2026-07-24T16:16:14.583310308Z",
   "labels": [
     "codereview"
   ]
