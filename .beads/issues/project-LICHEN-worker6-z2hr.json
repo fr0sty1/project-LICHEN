@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-z2hr",
+  "title": "[review] project-LICHEN-worker6-69p2: Fragment wire format mismatch with test vectors",
+  "description": "The `write_to` method was rewritten, removing a 1-bit padding shift from the old wire format. The unit test `literal_regular_fragment` was updated to match (byte[1] changed from 0x7c to 0x3e), but the shared test vectors in `test/vectors/schc_fragmentation.json` still contain expected bytes in the OLD format. The integration test `shared_vectors_drive_production_implementations` FAILS because of this mismatch.\n\nFix options: (A) update test vectors to match new wire format, or (B) revert the wire format change to keep backward compatibility. Two implementations discipline requires agreement between the format produced by the code and the format documented in test vectors.\n\nAffected file: `rust/lichen-schc/src/fragment.rs` (write_to), `test/vectors/schc_fragmentation.json` (expected bytes in vectors).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:55:34.493355037Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:55:34.493355037Z"
+}
