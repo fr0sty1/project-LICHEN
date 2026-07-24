@@ -68,8 +68,6 @@ pub enum RadioError<E> {
     Connection,
     /// Operation not supported by this radio (e.g. multi-channel on single-radio impl).
     NotSupported,
-    /// CCP-15 CCA: channel is busy, cannot transmit.
-    ChannelBusy,
 }
 
 impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
@@ -80,7 +78,6 @@ impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
             Self::Protocol => write!(f, "protocol error"),
             Self::Connection => write!(f, "connection lost"),
             Self::NotSupported => write!(f, "not supported"),
-            Self::ChannelBusy => write!(f, "channel busy"),
         }
     }
 }
@@ -332,12 +329,7 @@ pub trait NonVolatile {
 // Device UI traits removed (dead code; superseded by ratatui in lichen-tui and
 // not wired to any HAL impl post-CCP-9/15/epic l3j5).
 
-/// Concentrator interface for RAK2287/SX130x multi-channel (reset, SPI, IRQ, PPS, RX).
-///
-/// Extends the base hardware control methods (`reset`, `spi_transfer`, `irq_status`,
-/// `pps_timestamp`) with lifecycle (`start`, `stop`) and packet I/O (`transmit`, `receive`).
-/// This is the trait that border-router (mesh-gateway) code consumes; each variant
-/// (Linux SPI, sim, SLIP loopback) provides its own impl.
+/// Concentrator interface for RAK2287/SX130x multi-channel (reset, SPI, IRQ, PPS).
 pub trait Concentrator {
     type Error;
     fn reset(&mut self) -> impl core::future::Future<Output = Result<(), Self::Error>>;
@@ -356,25 +348,15 @@ pub trait Concentrator {
         &mut self,
         payload: &[u8],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-    /// Receive a packet from the concentrator hardware.
+    /// Receive a packet from any channel on the concentrator.
     ///
-    /// Writes the received frame into `buf` and returns the number of bytes written
-    /// together with metadata (RSSI, SNR, timestamp). Returns `None` if no packet
-    /// is available (non-blocking or timeout).
+    /// Returns `Some((payload, rssi, snr))` on reception, `None` on timeout.
+    /// Buffer must be at least 255 bytes for max LoRa payload.
     fn receive(
         &mut self,
         buf: &mut [u8],
-    ) -> impl core::future::Future<Output = Result<Option<RxPacket>, Self::Error>>;
-    /// Start the concentrator (enable RX path, lock PLL, allocate internal buffers).
-    /// Calling `start` on an already-started concentrator is a no-op.
-    fn start(
-        &mut self,
-    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-    /// Stop the concentrator (disable RX path, release internal buffers).
-    /// Calling `stop` on an already-stopped concentrator is a no-op.
-    fn stop(
-        &mut self,
-    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+        timeout_ms: u32,
+    ) -> impl core::future::Future<Output = Result<Option<(usize, i16, i8)>, Self::Error>>;
 }
 
 #[cfg(feature = "std")]
@@ -393,16 +375,11 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn irq_status(&mut self) -> Result<u32, Self::Error> {
-        Ok(1) // simulate pending packet for RX
+        Ok(1)  // simulate pending packet for RX
     }
 
     fn pps_timestamp(&self) -> Option<u64> {
-        Some(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_micros() as u64,
-        )
+        Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as u64)
     }
 
     async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {
@@ -413,16 +390,12 @@ impl Concentrator for Sx1302Concentrator {
         Ok(())
     }
 
-    async fn receive(&mut self, _buf: &mut [u8]) -> Result<Option<RxPacket>, Self::Error> {
+    async fn receive(
+        &mut self,
+        _buf: &mut [u8],
+        _timeout_ms: u32,
+    ) -> Result<Option<(usize, i16, i8)>, Self::Error> {
         Ok(None)
-    }
-
-    async fn start(&mut self) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    async fn stop(&mut self) -> Result<(), Self::Error> {
-        Ok(())
     }
 }
 

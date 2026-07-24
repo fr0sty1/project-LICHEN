@@ -20,8 +20,6 @@ use lichen_gateway::{
     Gateway, RplEvent,
 };
 use lichen_hal::storage::fs::FileStorage;
-
-type GatewayFs = Gateway<FileStorage>;
 use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
 use lichen_hal::{Concentrator, RadioConfig, Sx1302Concentrator};
 use lichen_link::identity::Identity;
@@ -199,7 +197,7 @@ async fn main() {
         None
     };
 
-    let mut gw = Gateway::new(node_id, id, storage, safe_epoch);
+    let mut gw = Gateway::new(node_id);
 
     if use_hat {
         run_hat(&mut gw, tun).await;
@@ -226,7 +224,7 @@ async fn tun_send_none(_buf: &[u8]) -> std::io::Result<()> {
 
 #[cfg(target_os = "linux")]
 async fn run_sim(
-    gw: &mut GatewayFs,
+    gw: &mut Gateway,
     addr: &str,
     sim_id: &str,
     node_id: &str,
@@ -236,7 +234,7 @@ async fn run_sim(
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn run_sim(gw: &mut GatewayFs, addr: &str, sim_id: &str, node_id: &str, _tun: Option<()>) {
+async fn run_sim(gw: &mut Gateway, addr: &str, sim_id: &str, node_id: &str, _tun: Option<()>) {
     run_sim_inner(gw, addr, sim_id, node_id, None::<()>).await
 }
 
@@ -250,7 +248,7 @@ async fn run_sim(gw: &mut GatewayFs, addr: &str, sim_id: &str, node_id: &str, _t
 ///
 /// The sim task loops: drain tx_send → receive(50 ms) → push to rx_recv.
 /// The gateway task loops: select! on rx_recv, TUN recv, ctrl_c.
-async fn run_sim_inner<T>(gw: &mut GatewayFs, addr: &str, sim_id: &str, node_id: &str, tun: Option<T>)
+async fn run_sim_inner<T>(gw: &mut Gateway, addr: &str, sim_id: &str, node_id: &str, tun: Option<T>)
 where
     T: TunLike,
 {
@@ -391,16 +389,16 @@ where
 // ── serial mode ───────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "linux")]
-async fn run_serial(gw: &mut GatewayFs, interface: &str, baud: u32, tun: Option<TunDevice>) {
+async fn run_serial(gw: &mut Gateway, interface: &str, baud: u32, tun: Option<TunDevice>) {
     run_serial_inner(gw, interface, baud, tun).await
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn run_serial(gw: &mut GatewayFs, interface: &str, baud: u32, _tun: Option<()>) {
+async fn run_serial(gw: &mut Gateway, interface: &str, baud: u32, _tun: Option<()>) {
     run_serial_inner(gw, interface, baud, None::<()>).await
 }
 
-async fn run_serial_inner<T>(gw: &mut GatewayFs, interface: &str, baud: u32, tun: Option<T>)
+async fn run_serial_inner<T>(gw: &mut Gateway, interface: &str, baud: u32, tun: Option<T>)
 where
     T: TunLike,
 {
@@ -475,7 +473,7 @@ where
 }
 
 async fn forward_mesh_to_upstream<T: TunLike>(
-    gw: &mut GatewayFs,
+    gw: &mut Gateway,
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
@@ -556,7 +554,7 @@ impl TunLike for () {
     }
 }
 
-async fn run_hat_inner<T>(gw: &mut GatewayFs, tun: Option<T>)
+async fn run_hat_inner<T>(gw: &mut Gateway, tun: Option<T>)
 where
     T: TunLike,
 {
@@ -565,8 +563,9 @@ where
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
     let mut tun_buf = vec![0u8; 1500];
+    let mut rx_buf = vec![0u8; 255];
     let mut tx_queue: VecDeque<Vec<u8>> = VecDeque::new();
-    let mut maintenance = tokio::time::interval(std::time::Duration::from_millis(1000));
+    let mut maintenance = interval(Duration::from_millis(1000));
     loop {
         tokio::select! {
             _ = maintenance.tick() => {
@@ -592,6 +591,7 @@ where
                 break;
             }
         }
+        // TX: drain queued frames
         while let Some(payload) = tx_queue.pop_front() {
             if let Err(e) = conc.transmit(&payload).await {
                 warn!("concentrator transmit failed: {:?}", e);
@@ -599,16 +599,29 @@ where
                 info!(len = payload.len(), "hat TX");
             }
         }
+        // RX: poll concentrator for incoming frames
+        match conc.receive(&mut rx_buf, 50).await {
+            Ok(Some((len, rssi, snr))) => {
+                info!(len, rssi, snr, "hat RX frame from concentrator");
+                if let Some(reply) = forward_mesh_to_upstream(gw, &rx_buf[..len], &tun).await {
+                    tx_queue.push_back(reply);
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                warn!("concentrator receive error: {:?}", e);
+            }
+        }
     }
 }
 
 #[cfg(target_os = "linux")]
-async fn run_hat(gw: &mut GatewayFs, tun: Option<TunDevice>) {
+async fn run_hat(gw: &mut Gateway, tun: Option<TunDevice>) {
     run_hat_inner(gw, tun).await
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn run_hat(gw: &mut GatewayFs, _tun: Option<()>) {
+async fn run_hat(gw: &mut Gateway, _tun: Option<()>) {
     run_hat_inner(gw, None::<()>).await
 }
 
