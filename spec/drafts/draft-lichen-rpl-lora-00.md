@@ -277,7 +277,7 @@ To prevent DIS storms:
 | DAO refresh | Every 15 minutes (50% of default lifetime) |
 | DAO on parent change | Immediate (with jitter 0-500ms) |
 
-**DAO Source Address Model:** DAO packets use routable ULA source (DODAG-root derived prefix) for multi-hop forwarding. Relays preserve the original IPv6 source end-to-end (see spec/04-network.md and SCHC Rule 4). This satisfies security requirements for source binding.
+**DAO Source Address Model:** DAO packets use routable 02xx source (self-derived primary address) for multi-hop forwarding. Relays preserve the original IPv6 source end-to-end (see spec/04-network.md and SCHC Rule 4). This satisfies security requirements for source binding.
 
 ### 7.2. DAO Lifetime
 
