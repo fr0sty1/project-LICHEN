@@ -253,8 +253,6 @@ class DAO:
             raise RplError(f"DAO too short: {len(data)} bytes")
         kd = data[1]
         reserved = data[2]
-        if reserved != 0:
-            raise RplError(f"DAO reserved field must be zero per RFC 6550 §6.4, got {reserved}")
         d_flag = bool(kd & 0x40)
         offset = 4
         dodag_id = None

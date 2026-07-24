@@ -393,7 +393,7 @@ class EdhocInitiator:
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
             )
-            plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
+            plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
             pt2_items = _decode_cbor_sequence(plaintext_2)
             if len(pt2_items) != 2:
                 raise ValueError(
@@ -615,7 +615,7 @@ class EdhocResponder:
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
             )
-            ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
+            ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
             th_3_input = (
                 cbor2.dumps(self._th_2)
                 + cbor2.dumps(ciphertext_2)
