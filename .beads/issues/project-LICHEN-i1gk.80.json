@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:40:03.037505Z",
   "close_reason": "Architecture: requires key provisioning system not yet implemented. Empty peer table is expected initial state; peers must be provisioned via lichen_peer_add() or future EDHOC handshake.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

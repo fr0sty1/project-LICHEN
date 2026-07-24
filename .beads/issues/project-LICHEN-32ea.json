@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:15:37.402012Z",
   "closed_at": "2026-07-13T00:15:37.402012Z",
-  "close_reason": "Fixed: preserve trailing bytes after extracting complete message by copying remaining buffer data before clear and restoring it after. Added tests for multi-message scenarios."
+  "close_reason": "Fixed: preserve trailing bytes after extracting complete message by copying remaining buffer data before clear and restoring it after. Added tests for multi-message scenarios.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

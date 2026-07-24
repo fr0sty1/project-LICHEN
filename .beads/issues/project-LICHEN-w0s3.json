@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:08:13.97252Z",
   "close_reason": "Test correctly uses str() conversion to match Topology type annotation - no issue",
   "labels": [
+    "owner-reserved",
     "type-safety"
   ]
 }

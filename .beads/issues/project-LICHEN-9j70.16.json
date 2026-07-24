@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:26:23.239039Z",
   "close_reason": "Fixed: Added BUILD_ASSERT(HAVE_LICHEN_LINK) to fail build without CONFIG_LICHEN_LINK. Raw IPv6-over-LoRa mode is now blocked at compile time with clear error message explaining the security/interop implications.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

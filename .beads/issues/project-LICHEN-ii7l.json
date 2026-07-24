@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:12:21.389239Z",
   "closed_at": "2026-07-11T06:12:21.389239Z",
-  "close_reason": "Fixed: path_cost now checks for NaN/negative link_cost and saturates to u16::MAX, preventing invalid ETX values from making broken links appear optimal"
+  "close_reason": "Fixed: path_cost now checks for NaN/negative link_cost and saturates to u16::MAX, preventing invalid ETX values from making broken links appear optimal",
+  "labels": [
+    "owner-reserved"
+  ]
 }

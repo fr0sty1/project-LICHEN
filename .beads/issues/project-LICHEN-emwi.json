@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:37:55.852829Z",
   "closed_at": "2026-07-12T00:37:55.852829Z",
-  "close_reason": "Already fixed: dec_f64 already handles CBOR types 0 and 1 at lines 324-327, with tests dec_f64_accepts_cbor_integers and decode_record_with_integer_value confirming functionality"
+  "close_reason": "Already fixed: dec_f64 already handles CBOR types 0 and 1 at lines 324-327, with tests dec_f64_accepts_cbor_integers and decode_record_with_integer_value confirming functionality",
+  "labels": [
+    "owner-reserved"
+  ]
 }

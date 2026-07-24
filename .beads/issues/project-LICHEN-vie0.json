@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:53:48.003363Z",
   "closed_at": "2026-07-12T00:53:48.003363Z",
-  "close_reason": "Fixed: Added wire type 1 (fixed64) handling to Position.from_bytes - skips 8 bytes instead of breaking, allowing fields after fixed64 to be parsed correctly"
+  "close_reason": "Fixed: Added wire type 1 (fixed64) handling to Position.from_bytes - skips 8 bytes instead of breaking, allowing fields after fixed64 to be parsed correctly",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:39.236377Z",
   "close_reason": "Documented: architecture limitation - O(n) verification is acceptable because LoRa data rate limits attack throughput to ~9 frames/min at SF10, making CPU DoS impractical.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

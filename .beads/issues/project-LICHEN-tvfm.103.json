@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:12:43.893492Z",
   "close_reason": "Invalid: bridge-zephyr doesn't call sys_csrand_get - the crypto random usage is in lichen/subsys/lichen/link/ which isn't linked",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

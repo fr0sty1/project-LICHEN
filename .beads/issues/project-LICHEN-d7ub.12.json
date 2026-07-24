@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:48:50.131652Z",
   "close_reason": "Fixed lichen_lora_l2_tx state re-check after tx_buf_mutex acquisition and verified LoRa-enabled T-Echo build",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:26:03.94077Z",
   "close_reason": "Fixed: oscore_ctx_create now rejects calls before oscore_init under the OSCORE mutex and documents the required initialized state.",
   "labels": [
-    "review",
     "api-contract",
+    "c",
+    "owner-reserved",
+    "review",
     "underspecified",
-    "zephyr",
-    "c"
+    "zephyr"
   ],
   "dependencies": [
     {

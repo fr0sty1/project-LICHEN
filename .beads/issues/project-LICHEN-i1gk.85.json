@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:06.834035Z",
   "close_reason": "Fixed: Added BUILD_ASSERT to validate MAX_LORA_FRAME equals LICHEN_LORA_MAX_PHY_PAYLOAD",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round3",
-    "exhaustive"
+    "round3"
   ],
   "dependencies": [
     {

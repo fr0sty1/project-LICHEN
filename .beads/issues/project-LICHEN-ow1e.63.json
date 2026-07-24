@@ -11,11 +11,12 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T17:04:09.997688Z",
   "closed_at": "2026-07-06T17:04:09.997688Z",
-  "close_reason": "Added documentation to LinkLayer struct about O(n) signature verification cost and recommendation to keep peer count low (\u003c20) or add sender IID hints in upper layers",
+  "close_reason": "Added documentation to LinkLayer struct about O(n) signature verification cost and recommendation to keep peer count low (<20) or add sender IID hints in upper layers",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

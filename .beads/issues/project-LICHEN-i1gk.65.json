@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:50:36.155427Z",
   "close_reason": "Fixed: Added TOCTOU analysis documentation in lora_l2.c lichen_lora_l2_tx() explaining the race window between state check and mutex acquisition, why it is safe (deinit waits K_FOREVER on tx_buf_mutex), and the acceptable cost of deinit blocking for TX duration.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

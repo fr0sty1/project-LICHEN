@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:37.556934Z",
   "close_reason": "Documented: lichen_l2_enable(iface, false) is the key revocation API. It wipes link_ctx keys and peer_table pubkeys. No separate wipe-but-stay-online API - that requires defining what online-without-keys means for security-critical network.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

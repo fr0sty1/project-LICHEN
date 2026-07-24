@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T19:19:38.27739Z",
   "close_reason": "Completed: production L2-to-app-identity publication path, MeshCore BLE config dependency, degraded-to-real SELF_INFO retry, native_sim tests and gateway build evidence recorded.",
   "labels": [
-    "zephyr",
-    "meshcore",
     "app-interface",
-    "identity",
+    "firmware",
     "gateway",
-    "firmware"
+    "identity",
+    "meshcore",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

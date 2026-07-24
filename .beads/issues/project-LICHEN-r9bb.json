@@ -12,11 +12,12 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-02T22:09:06.05401Z",
   "labels": [
-    "zephyr",
-    "firmware",
     "announce",
+    "firmware",
+    "follow-up",
     "network-source",
-    "follow-up"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:59:48.469291Z",
   "close_reason": "Fixed: Code already has goto cleanup label at line 118 that properly calls lichen_lora_l2_stop() and lichen_lora_l2_deinit(). Issue appears to reference an older version of the code.",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

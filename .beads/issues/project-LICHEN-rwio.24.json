@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T06:17:59.777735Z",
   "close_reason": "By design: header comment (lines 54-56) explicitly documents LICHEN uses uncompressed lowercase hex format for visual clarity in logs",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-02T12:07:37.906674Z",
   "closed_at": "2026-07-02T12:07:37.906674Z",
-  "close_reason": "Implemented and validated qemu_x86 gateway adapter harness. native_sim retains production Meshtastic BLE coverage; qemu_x86 runs qemu-safe test surface with NET_TEST and fake BLE, no /tmp/slip.sock or Bluetooth serial socket dependency. EC2 Twister passed for both intended scenarios with 0 failures/errors/warnings."
+  "close_reason": "Implemented and validated qemu_x86 gateway adapter harness. native_sim retains production Meshtastic BLE coverage; qemu_x86 runs qemu-safe test surface with NET_TEST and fake BLE, no /tmp/slip.sock or Bluetooth serial socket dependency. EC2 Twister passed for both intended scenarios with 0 failures/errors/warnings.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

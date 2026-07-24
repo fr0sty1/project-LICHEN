@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:17:00.636411Z",
   "closed_at": "2026-07-12T16:17:00.636411Z",
-  "close_reason": "Fixed: EdhocResource now rejects unknown peers early in Message 1 with UNAUTHORIZED, preventing use of dummy all-zeros key. Added defense-in-depth check in Message 3 and test coverage."
+  "close_reason": "Fixed: EdhocResource now rejects unknown peers early in Message 1 with UNAUTHORIZED, preventing use of dummy all-zeros key. Added defense-in-depth check in Message 3 and test coverage.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:36.64129Z",
   "close_reason": "Fixed: changed K_FOREVER to K_MSEC(100) with error logging if join fails after abort",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round3",
-    "exhaustive"
+    "round3"
   ],
   "dependencies": [
     {

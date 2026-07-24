@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:30:29.775788Z",
   "closed_at": "2026-07-12T00:30:29.775788Z",
-  "close_reason": "Already fixed: MAC_2 context at lines 682-691 (Responder) and 388-397 (Initiator) already includes both ID_CRED_R and CRED_R per RFC 9528 Section 4.3.2. Full handshake test passes."
+  "close_reason": "Already fixed: MAC_2 context at lines 682-691 (Responder) and 388-397 (Initiator) already includes both ID_CRED_R and CRED_R per RFC 9528 Section 4.3.2. Full handshake test passes.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

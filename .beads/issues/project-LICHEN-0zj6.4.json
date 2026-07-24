@@ -14,6 +14,7 @@
   "close_reason": "Added return value checks for lichen_eui64_to_iid, lichen_make_link_local, lichen_ipv6_addr_to_str with early return on error",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

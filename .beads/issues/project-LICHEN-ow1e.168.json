@@ -14,6 +14,7 @@
   "close_reason": "Gateway runs on Linux (border router), not embedded. 1500-byte allocations per packet are acceptable for a std-environment gateway.",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

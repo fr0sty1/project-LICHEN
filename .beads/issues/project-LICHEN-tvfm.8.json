@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T02:27:58.208944Z",
   "close_reason": "Verified: code already had correct order (user_data before callback) and mutex protection. Added clarifying comment explaining why the order matters for race safety.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round1",
-    "exhaustive"
+    "round1"
   ],
   "dependencies": [
     {

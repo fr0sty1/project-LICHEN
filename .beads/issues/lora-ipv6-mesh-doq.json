@@ -12,5 +12,8 @@
   "updated_at": "2026-05-27T23:36:19Z",
   "started_at": "2026-05-27T23:28:26Z",
   "closed_at": "2026-05-27T23:36:19Z",
-  "close_reason": "Fixed: ChaosEngine now integrated with Simulation. Changes: (1) Added chaos_engine parameter to Simulation.__init__, (2) Added chaos_engine property/setter, (3) Modified get_rx_result() to apply chaos rules to candidates before resolve_reception(), (4) Wired up chaos engines in SimulatorAPI and SimulatorServer. Added 7 integration tests proving DropRule, PartitionRule, DegradeRule, and JammerRule all affect simulation results."
+  "close_reason": "Fixed: ChaosEngine now integrated with Simulation. Changes: (1) Added chaos_engine parameter to Simulation.__init__, (2) Added chaos_engine property/setter, (3) Modified get_rx_result() to apply chaos rules to candidates before resolve_reception(), (4) Wired up chaos engines in SimulatorAPI and SimulatorServer. Added 7 integration tests proving DropRule, PartitionRule, DegradeRule, and JammerRule all affect simulation results.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

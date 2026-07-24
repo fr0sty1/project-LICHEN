@@ -14,8 +14,9 @@
   "close_reason": "Closed",
   "labels": [
     "idiomatic-rust",
-    "unsafe",
-    "review"
+    "owner-reserved",
+    "review",
+    "unsafe"
   ],
   "dependencies": [
     {

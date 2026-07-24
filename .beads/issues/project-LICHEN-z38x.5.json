@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T04:28:23.926464Z",
   "close_reason": "Fixed: Replaced k_panic() calls at lines 1626 and 1638: (1) is_running check now returns early instead of panic; (2) k_mutex_init cannot fail in kernel mode so removed panic and just cast to void",
   "labels": [
-    "reliability",
-    "refactor"
+    "owner-reserved",
+    "refactor",
+    "reliability"
   ],
   "dependencies": [
     {

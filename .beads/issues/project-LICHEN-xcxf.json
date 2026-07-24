@@ -14,11 +14,12 @@
   "closed_at": "2026-07-02T09:40:56.631206Z",
   "close_reason": "Completed: native transport now uses HAL serial-local discovery, tests cover native-uart/uart-pipe/slip-uart/no-serial qemu paths, EC2 Twister and code reviews recorded.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "hal",
     "native",
-    "app-interface",
-    "firmware"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

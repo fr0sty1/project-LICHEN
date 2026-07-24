@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-10T23:28:42.58008Z",
   "closed_at": "2026-07-10T23:28:42.58008Z",
-  "close_reason": "wontfix"
+  "close_reason": "wontfix",
+  "labels": [
+    "owner-reserved"
+  ]
 }

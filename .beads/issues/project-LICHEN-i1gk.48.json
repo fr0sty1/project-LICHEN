@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:50:31.114395Z",
   "close_reason": "Fixed: Added CONTRACT comment in lora_l2.c stop() documenting that stop() ALWAYS clears RX callback, and updated lora_l2.h lichen_lora_l2_stop() documentation to specify callers must re-register callback after restart.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

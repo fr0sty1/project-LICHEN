@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T03:35:49.808192Z",
   "close_reason": "Completed: aligned link-layer AES-CCM includes with existing ../oscore include directory",
   "labels": [
+    "c",
+    "owner-reserved",
     "review",
     "workspace-api",
-    "zephyr",
-    "c"
+    "zephyr"
   ],
   "dependencies": [
     {

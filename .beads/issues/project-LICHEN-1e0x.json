@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:28:31.922558Z",
   "closed_at": "2026-07-12T00:28:31.922558Z",
-  "close_reason": "Already fixed: decrypt_response correctly calls unprotect_response at line 250, with SECURITY comment explaining RFC 8613 semantics"
+  "close_reason": "Already fixed: decrypt_response correctly calls unprotect_response at line 250, with SECURITY comment explaining RFC 8613 semantics",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-i1gk.15",
   "title": "[ipv6_addr.c:261] snprintf return value cast to size_t may wrap",
-  "description": "At line 261, (size_t)ret is compared to buflen. But at line 252, ret \u003c 0 is checked and handled. The remaining code at 261 assumes ret \u003e= 0. This is correct, but ret is int, and casting a large positive int to size_t and comparing to buflen (also size_t) is fine. However, the comment says 'defensive - buflen check above should prevent this' but the buflen check at line 226 ensures buflen \u003e= 40, and snprintf returns 39 (the fixed format produces exactly 39 chars). So this check can never trigger. This is defensive but dead code.",
+  "description": "At line 261, (size_t)ret is compared to buflen. But at line 252, ret < 0 is checked and handled. The remaining code at 261 assumes ret >= 0. This is correct, but ret is int, and casting a large positive int to size_t and comparing to buflen (also size_t) is fine. However, the comment says 'defensive - buflen check above should prevent this' but the buflen check at line 226 ensures buflen >= 40, and snprintf returns 39 (the fixed format produces exactly 39 chars). So this check can never trigger. This is defensive but dead code.",
   "status": "closed",
   "priority": 3,
   "issue_type": "bug",
@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:42:08.552306Z",
   "close_reason": "Fixed: Added comment clarifying the truncation check is defensive dead code",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

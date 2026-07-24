@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T02:39:51.7589Z",
   "close_reason": "Fixed: k_mutex_init failure now triggers k_panic() instead of continuing with unrecoverable state",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round1",
-    "exhaustive"
+    "round1"
   ],
   "dependencies": [
     {

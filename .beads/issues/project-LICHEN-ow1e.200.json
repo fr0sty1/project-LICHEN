@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:28.826983Z",
   "close_reason": "Removed local WINDOW_SIZE shadowing, now uses module-level constant",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

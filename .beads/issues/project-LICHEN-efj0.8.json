@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T05:04:58.319445Z",
   "close_reason": "Gateway logging is well-structured with tracing spans and fields. Minor polish: per-packet logs (TX done, RX frame, mesh↔upstream) could be debug! for high-traffic. Low priority.",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ],
   "dependencies": [
     {

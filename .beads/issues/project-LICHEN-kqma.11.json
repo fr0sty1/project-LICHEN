@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:44.006356Z",
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
-    "edhoc",
+    "c-safety",
     "crypto",
-    "c-safety"
+    "edhoc",
+    "owner-reserved"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:35:20.2232Z",
   "closed_at": "2026-07-12T00:35:20.2232Z",
-  "close_reason": "Verified compliant: RFC 8613 sequence number limit (40-bit max), ID length validation (iv_bytes-6), replay protection via aiocoap ReplayWindow, key derivation via SecurityContextUtils, echo recovery per B.1.2. EDHOC integration correct per Section 8.8. All 5 unit tests pass."
+  "close_reason": "Verified compliant: RFC 8613 sequence number limit (40-bit max), ID length validation (iv_bytes-6), replay protection via aiocoap ReplayWindow, key derivation via SecurityContextUtils, echo recovery per B.1.2. EDHOC integration correct per Section 8.8. All 5 unit tests pass.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

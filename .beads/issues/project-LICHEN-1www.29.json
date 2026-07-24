@@ -13,8 +13,9 @@
   "closed_at": "2026-06-27T22:02:32.445839Z",
   "close_reason": "Closed",
   "labels": [
-    "c-safety",
     "buffer",
+    "c-safety",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

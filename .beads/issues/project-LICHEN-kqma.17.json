@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-kqma.17",
   "title": "Validate link frame parse/write NULL parameters",
-  "description": "Trigger: a local caller passes NULL for frame, data, or buf to the public lichen_frame_parse()/lichen_frame_write() helpers. lichen/subsys/lichen/link/frame.c reads data[0] around line 44 and frame-\u003eaddr_mode around line 109 before validating pointers. Impact: malformed API use crashes the node instead of returning -EINVAL, unlike most neighboring LICHEN C APIs. Add entry-point NULL checks for frame/data/buf and tests for those error paths.",
+  "description": "Trigger: a local caller passes NULL for frame, data, or buf to the public lichen_frame_parse()/lichen_frame_write() helpers. lichen/subsys/lichen/link/frame.c reads data[0] around line 44 and frame->addr_mode around line 109 before validating pointers. Impact: malformed API use crashes the node instead of returning -EINVAL, unlike most neighboring LICHEN C APIs. Add entry-point NULL checks for frame/data/buf and tests for those error paths.",
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:44.180091Z",
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
-    "link",
+    "api",
     "c-safety",
-    "api"
+    "link",
+    "owner-reserved"
   ],
   "dependencies": [
     {

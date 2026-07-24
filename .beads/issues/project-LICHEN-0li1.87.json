@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:12:39.170218Z",
   "close_reason": "Added crash_info.c to subsys/lichen/CMakeLists.txt as unconditional source (alongside lichen_util.c). The app-level CMakeLists.txt includes sources directly due to zephyr_library linking issues, but the subsys CMakeLists.txt must also include crash_info.c for consistency when LICHEN is used as a proper Zephyr subsystem.",
   "labels": [
-    "review-r3",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r3"
   ],
   "dependencies": [
     {

@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T17:03:39.572586Z",
   "close_reason": "Completed no-hardware HAL location/time snapshot API, app status propagation, Meshtastic Position emission, gateway mapping/status exposure, synthetic and absent-provider tests, EC2 native_sim/Twister validation, and codereview fixes. Hardware GNSS validation and remaining policy/test gaps filed as child Beads.",
   "labels": [
-    "zephyr",
-    "meshtastic",
+    "app-interface",
     "config",
-    "status",
     "firmware",
-    "app-interface"
+    "meshtastic",
+    "owner-reserved",
+    "status",
+    "zephyr"
   ],
   "dependencies": [
     {

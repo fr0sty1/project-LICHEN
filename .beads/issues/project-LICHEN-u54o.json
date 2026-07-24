@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T05:30:31.475153Z",
   "closed_at": "2026-07-12T05:30:31.475153Z",
-  "close_reason": "Already implemented: icmpv6.c (526 lines), 21 tests, Kconfig integration"
+  "close_reason": "Already implemented: icmpv6.c (526 lines), 21 tests, Kconfig integration",
+  "labels": [
+    "owner-reserved"
+  ]
 }

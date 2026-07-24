@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:08:11.39728Z",
   "close_reason": "Positive finding - UnknownRuleIdError with rule_id attribute is good API design",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

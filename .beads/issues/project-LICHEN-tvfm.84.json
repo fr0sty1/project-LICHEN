@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:41:34.499911Z",
   "close_reason": "Fixed: Clear iface_init_failed at start of lichen_l2_iface_init() so retry after failure succeeds",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

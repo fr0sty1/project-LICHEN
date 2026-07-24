@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:36:21.054893Z",
   "closed_at": "2026-07-12T00:36:21.054893Z",
-  "close_reason": "Verified compliant: All 7 child audits complete. Production TX paths (Rust/Python/C) sign all frames with Schnorr48. RX paths reject unsigned frames. bridge.rs test helper documented as SECURITY: non-production only."
+  "close_reason": "Verified compliant: All 7 child audits complete. Production TX paths (Rust/Python/C) sign all frames with Schnorr48. RX paths reject unsigned frames. bridge.rs test helper documented as SECURITY: non-production only.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

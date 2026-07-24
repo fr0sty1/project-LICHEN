@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T05:04:42.911337Z",
   "close_reason": "Logging is consistent. Minor polish: per-packet logs (TX/RX bytes) should be debug! not info!. Heartbeat should be debug!. Low priority - defer to next cleanup pass.",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ],
   "dependencies": [
     {

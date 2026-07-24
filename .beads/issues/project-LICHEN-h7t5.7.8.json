@@ -14,17 +14,18 @@
   "closed_at": "2026-07-02T11:19:12.327613Z",
   "close_reason": "Completed no-hardware scope: GNSS UTC now feeds HAL time provider with build/provision epoch floor validation, native_sim/qemu tests passed, and physical GNSS/time plus battery/PMIC/power validation split to child Beads project-LICHEN-h7t5.7.8.1 and project-LICHEN-h7t5.7.8.2.",
   "labels": [
-    "zephyr",
-    "lilygo",
-    "gnss",
-    "power",
     "battery",
-    "hal",
-    "hardware",
     "board-support",
     "bringup",
     "firmware",
-    "partner-handoff"
+    "gnss",
+    "hal",
+    "hardware",
+    "lilygo",
+    "owner-reserved",
+    "partner-handoff",
+    "power",
+    "zephyr"
   ],
   "dependencies": [
     {

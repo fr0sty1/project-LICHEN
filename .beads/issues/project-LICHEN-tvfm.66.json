@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:41:21.271826Z",
   "close_reason": "Fixed: Added explicit memset() in lichen_l2_iface_init() to zero peer_table at boot. While C guarantees static BSS zeroing, explicit initialization is defensive and documents the invariant.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

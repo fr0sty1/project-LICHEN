@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:51:15.498313Z",
   "closed_at": "2026-07-12T00:51:15.498313Z",
-  "close_reason": "Fixed: _abs_window() now checks incomplete windows with matching parity before assuming current/next window, fixing both same-parity (window 0 vs 2) and different-parity (window 0 vs current=1) retransmission routing"
+  "close_reason": "Fixed: _abs_window() now checks incomplete windows with matching parity before assuming current/next window, fixing both same-parity (window 0 vs 2) and different-parity (window 0 vs current=1) retransmission routing",
+  "labels": [
+    "owner-reserved"
+  ]
 }

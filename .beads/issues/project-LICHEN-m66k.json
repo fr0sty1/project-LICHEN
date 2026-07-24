@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:51:11.2494Z",
   "closed_at": "2026-07-12T00:51:11.2494Z",
-  "close_reason": "Already fixed by tkze: LossRule._loss_cache now uses OrderedDict with max_cache_size=1024 and LRU eviction (lines 118-119, 154-155). Memory is bounded."
+  "close_reason": "Already fixed by tkze: LossRule._loss_cache now uses OrderedDict with max_cache_size=1024 and LRU eviction (lines 118-119, 154-155). Memory is bounded.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

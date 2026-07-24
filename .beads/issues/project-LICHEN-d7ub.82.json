@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:55:17.399068Z",
   "close_reason": "Documented lora_modem_config.tx semantics for supported SX12xx LoRa drivers and verified LoRa-enabled build",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

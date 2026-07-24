@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:07.551384Z",
   "close_reason": "Observation - dead code removed",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

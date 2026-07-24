@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:59:01.135588Z",
   "close_reason": "Invalid issue - no compute_mic with sender_pubkey exists. SCHC compute_mic is CRC32 without key parameter. Link layer MIC verification is a stub.",
   "labels": [
-    "crypto-security",
     "correctness",
+    "crypto-security",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

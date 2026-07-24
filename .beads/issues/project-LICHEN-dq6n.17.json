@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T01:39:34.599182Z",
   "close_reason": "Not a bug: rx_link_key is already zeroed at line 1120 BEFORE the code reaches net_pkt_rx_alloc_with_buffer at line 1137. The secure_zero call at line 1120 executes unconditionally in the success path before the #else directive, ensuring the key is cleared before any code after #endif runs. The alloc failure path at lines 1141-1144 cannot leave rx_link_key unzeroed because the key was already zeroed.",
   "labels": [
-    "review",
+    "exhaustive",
     "gap",
-    "security",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "security"
   ],
   "dependencies": [
     {

@@ -13,12 +13,13 @@
   "closed_at": "2026-06-30T02:52:07.914289Z",
   "close_reason": "Completed: added CONFIG_CRC to puck prj.conf so crc32_ieee links for T-Echo, verified t_echo/nrf52840 puck build compiles and links, confirmed CRC object inclusion, and filed follow-up for pre-existing non-native warnings.",
   "labels": [
-    "zephyr",
-    "c",
-    "puck",
     "build",
+    "c",
+    "exhaustive",
+    "owner-reserved",
+    "puck",
     "review",
-    "exhaustive"
+    "zephyr"
   ],
   "dependencies": [
     {

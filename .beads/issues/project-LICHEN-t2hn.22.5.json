@@ -16,12 +16,13 @@
   "closed_at": "2026-07-01T19:04:41.990418Z",
   "close_reason": "Completed",
   "labels": [
-    "zephyr",
-    "ble",
     "app-interface",
+    "ble",
     "design",
+    "firmware",
     "meshtastic",
-    "firmware"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

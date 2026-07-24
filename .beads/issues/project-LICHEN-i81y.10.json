@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-i81y.10",
   "title": "lichen_frame_write indexes addr_lens before validating addr_mode",
-  "description": "Trigger: a caller passes a struct lichen_frame with frame-\u003eaddr_mode outside the defined address-mode range, e.g. 4, to lichen_frame_write(). The function only rejects LICHEN_ADDR_ELIDED at lichen/subsys/lichen/link/frame.c:117, then indexes addr_lens[frame-\u003eaddr_mode] at lichen/subsys/lichen/link/frame.c:130. Because addr_lens has four entries (0..3) at lichen/subsys/lichen/link/frame.c:22, invalid values read past the table before any range check. Impact: out-of-bounds read in frame serialization, potentially selecting a bogus address length and causing subsequent memcpy/frame length calculations to operate on an unintended size. Fix: validate frame-\u003eaddr_mode is within ARRAY_SIZE(addr_lens) before indexing, and reject unsupported modes explicitly.",
+  "description": "Trigger: a caller passes a struct lichen_frame with frame->addr_mode outside the defined address-mode range, e.g. 4, to lichen_frame_write(). The function only rejects LICHEN_ADDR_ELIDED at lichen/subsys/lichen/link/frame.c:117, then indexes addr_lens[frame->addr_mode] at lichen/subsys/lichen/link/frame.c:130. Because addr_lens has four entries (0..3) at lichen/subsys/lichen/link/frame.c:22, invalid values read past the table before any range check. Impact: out-of-bounds read in frame serialization, potentially selecting a bogus address length and causing subsequent memcpy/frame length calculations to operate on an unintended size. Fix: validate frame->addr_mode is within ARRAY_SIZE(addr_lens) before indexing, and reject unsupported modes explicitly.",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:23:41.606074Z",
   "close_reason": "Completed",
   "labels": [
-    "review",
-    "c-safety",
     "buffer",
-    "zephyr",
-    "c"
+    "c",
+    "c-safety",
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

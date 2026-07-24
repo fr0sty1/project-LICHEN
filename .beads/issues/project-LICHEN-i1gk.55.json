@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:50:37.261295Z",
   "close_reason": "Documented: Expanded comment in reinit_after_abort to document architectural limitation. is_running() check is acceptable because: RUNNING panics (dangerous), STOPPED/UNINIT are harmless (mutex valid), ABORTED/DEINITING are expected states. No is_deiniting() API needed for this internal-only function.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:44:26.671029Z",
   "close_reason": "Fixed: clarified comment and log message for join timeout behavior",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

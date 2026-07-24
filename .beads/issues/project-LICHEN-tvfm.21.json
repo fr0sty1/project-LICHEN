@@ -11,12 +11,13 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:35:43.321941Z",
   "closed_at": "2026-06-28T02:35:43.321941Z",
-  "close_reason": "Fixed: Changed final DEINITING-\u003eUNINIT transition to use lora_transition_from() (atomic CAS) instead of lora_transition() to eliminate the state inconsistency window. The non-atomic read-then-write pattern could theoretically allow state corruption between the atomic_get() and atomic_set() calls.",
+  "close_reason": "Fixed: Changed final DEINITING->UNINIT transition to use lora_transition_from() (atomic CAS) instead of lora_transition() to eliminate the state inconsistency window. The non-atomic read-then-write pattern could theoretically allow state corruption between the atomic_get() and atomic_set() calls.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

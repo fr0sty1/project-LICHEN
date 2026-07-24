@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:56:30.060716Z",
   "close_reason": "Fixed: Added documentation note explaining half-duplex operation - .tx=true sets INITIAL state only, Zephyr's LoRa driver handles TX/RX mode switching internally. Both TX and RX work regardless of this setting.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

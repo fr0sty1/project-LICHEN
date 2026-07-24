@@ -14,13 +14,14 @@
   "closed_at": "2026-06-30T01:58:39.126871Z",
   "close_reason": "Closed",
   "labels": [
-    "review",
-    "exhaustive",
-    "zephyr",
     "c",
+    "exhaustive",
+    "feature-gap",
     "gateway",
+    "owner-reserved",
+    "review",
     "rpl",
-    "feature-gap"
+    "zephyr"
   ],
   "dependencies": [
     {

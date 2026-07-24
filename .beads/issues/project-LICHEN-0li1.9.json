@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:09:57.131902Z",
   "close_reason": "Fixed: Changed lichen_lora_l2_set_rx_callback return type from void to int. Returns -ENODEV when not initialized, 0 on success. Updated header documentation. All 4 callers in lichen_l2.c now handle return value (2 with error checks, 2 cast to void in cleanup paths). Caller in main.c now checks return value and returns error on failure.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

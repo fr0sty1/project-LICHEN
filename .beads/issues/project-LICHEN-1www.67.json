@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T22:03:14.760421Z",
   "close_reason": "Added 'depends on LICHEN_LINK' to CONFIG_LICHEN_L2 in Kconfig, making the dependency visible in menuconfig and preventing invalid configurations",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

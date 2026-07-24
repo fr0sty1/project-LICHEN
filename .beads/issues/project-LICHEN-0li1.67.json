@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:13:14.574973Z",
   "close_reason": "Acceptable: As the issue states, LICHEN targets Cortex-M where word-aligned writes are atomic and correct. The code has extensive comments (lines 70-83) explaining the safety model. Exotic architectures are not in scope. Adding ifdefs for hypothetical platforms would be speculative complexity.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

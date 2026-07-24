@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:49:37.274543Z",
   "close_reason": "Fixed: Added LRU eviction for peer table. When table is full, the least-recently-seen peer is evicted to make room for the new peer. Added last_seen timestamp field to peer entries, updated on successful frame verification and peer add/update.",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

@@ -14,6 +14,7 @@
   "close_reason": "Added defensive secure_zero before link_ctx re-initialization",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

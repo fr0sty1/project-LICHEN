@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:25:07.380056Z",
   "closed_at": "2026-07-12T16:25:07.380056Z",
-  "close_reason": "Fixed: StreamDecoder now passes byte through after invalid ESC per RFC 1055 (was already fixed in working tree)"
+  "close_reason": "Fixed: StreamDecoder now passes byte through after invalid ESC per RFC 1055 (was already fixed in working tree)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

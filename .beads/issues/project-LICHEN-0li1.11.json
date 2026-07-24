@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:09:54.620769Z",
   "close_reason": "Added UNINIT state check to lichen_peer_remove() using the same pattern as lichen_peer_add(): checks lichen_lora_l2_get_eui64() == NULL before acquiring mutex, returns -ENODEV with error log if module not initialized",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

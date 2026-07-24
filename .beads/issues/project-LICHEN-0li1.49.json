@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:10:28.744158Z",
   "close_reason": "Verified: hash buffer at line 75 already uses TC_SHA256_DIGEST_SIZE (uint8_t hash[TC_SHA256_DIGEST_SIZE]). Compile-time assertions at lines 212-217 verify buffer sizing. No change needed.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

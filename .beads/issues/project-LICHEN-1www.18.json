@@ -11,10 +11,11 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-27T22:03:43.646856Z",
   "closed_at": "2026-06-27T22:03:43.646856Z",
-  "close_reason": "Fixed: Added explicit SECURITY documentation warning that output buffer must be \u003e= 32 bytes and that the array parameter syntax provides no compile-time bounds checking. Runtime bounds checking was not added because: (1) all current callers use correctly-sized buffers, (2) adding a size parameter would change the API with no practical benefit, and (3) a struct wrapper would be over-engineering. The documentation now clearly warns callers about the requirement.",
+  "close_reason": "Fixed: Added explicit SECURITY documentation warning that output buffer must be >= 32 bytes and that the array parameter syntax provides no compile-time bounds checking. Runtime bounds checking was not added because: (1) all current callers use correctly-sized buffers, (2) adding a size parameter would change the API with no practical benefit, and (3) a struct wrapper would be over-engineering. The documentation now clearly warns callers about the requirement.",
   "labels": [
     "c-standards",
     "documentation",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

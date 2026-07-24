@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:58:21.112903Z",
   "close_reason": "Already fixed - uses single-pass partitioning with running byte counter",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

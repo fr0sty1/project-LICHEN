@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:14:58.536871Z",
   "closed_at": "2026-07-11T06:14:58.536871Z",
-  "close_reason": "Fixed: task ref stored with done callback to log exceptions (at coap/node_channel.py, not client/)"
+  "close_reason": "Fixed: task ref stored with done callback to log exceptions (at coap/node_channel.py, not client/)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

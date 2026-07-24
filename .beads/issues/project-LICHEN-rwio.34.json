@@ -13,8 +13,9 @@
   "closed_at": "2026-06-27T06:15:30.908048Z",
   "close_reason": "Duplicate of project-LICHEN-rwio.22. Both issues concern the same non-const data pointer in lichen_lora_l2_tx(). Fixed in .22.",
   "labels": [
-    "c-standards",
     "api-design",
+    "c-standards",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

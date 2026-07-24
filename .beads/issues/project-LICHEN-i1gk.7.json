@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:42:21.237963Z",
   "close_reason": "Fixed: removed early return before mutex; init() now always acquires mutex before checking state to ensure callers wait for full initialization",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

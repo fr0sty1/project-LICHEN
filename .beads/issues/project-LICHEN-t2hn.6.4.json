@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T17:44:44.721903Z",
   "close_reason": "Completed no-hardware scope: bounded deterministic Meshtastic NodeDB peer enumeration implemented, gateway app_identity peer source wired in production, native_sim/qemu/shared adapter validation passed, native gateway app build passed, reviews resolved. Follow-ups filed for metric exposure policy, drift-proof queue tests, qemu gateway harness, and physical BLE validation.",
   "labels": [
-    "zephyr",
-    "meshtastic",
+    "app-interface",
     "config",
-    "status",
     "firmware",
-    "app-interface"
+    "meshtastic",
+    "owner-reserved",
+    "status",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:40:08.873237Z",
   "close_reason": "Fixed: added comment documenting that watchdog reset is intentional for fatal error recovery",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round3",
-    "exhaustive"
+    "round3"
   ],
   "dependencies": [
     {

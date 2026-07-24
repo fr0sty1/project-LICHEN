@@ -14,14 +14,15 @@
   "closed_at": "2026-07-01T10:38:11.325571Z",
   "close_reason": "Completed: MeshCore app-compat vectors added under test/vectors/meshcore_app_compat.json, schema/generator/Python validation updated, and Zephyr meshcore_adapter consumes the deterministic adapter subset from generated JSON fixtures. Incoming MSG_WAITING, CHANNEL_MSG_RECV_V3, PUSH_SEND_CONFIRMED, and NO_MORE_MESSAGES vectors included.",
   "labels": [
-    "zephyr",
-    "meshcore",
-    "test-vectors",
-    "no-hardware",
-    "messaging",
-    "status",
+    "app-interface",
     "firmware",
-    "app-interface"
+    "meshcore",
+    "messaging",
+    "no-hardware",
+    "owner-reserved",
+    "status",
+    "test-vectors",
+    "zephyr"
   ],
   "dependencies": [
     {

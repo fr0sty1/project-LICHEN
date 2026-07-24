@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:44.680505Z",
   "close_reason": "Fixed: changed log to show full precision with kHz (e.g. 915.000MHz)",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

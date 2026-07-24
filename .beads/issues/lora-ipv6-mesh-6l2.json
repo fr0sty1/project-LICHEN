@@ -12,5 +12,8 @@
   "updated_at": "2026-06-13T04:23:34Z",
   "started_at": "2026-06-09T04:10:19Z",
   "closed_at": "2026-06-13T04:23:34Z",
-  "close_reason": "Superseded by the metrics implementation in sim/metrics.py + Simulation integration + REST GET /sim/{id}/metrics. See 4r8/xep. Tests in tests/sim/test_metrics.py and tests/sim/test_api.py."
+  "close_reason": "Superseded by the metrics implementation in sim/metrics.py + Simulation integration + REST GET /sim/{id}/metrics. See 4r8/xep. Tests in tests/sim/test_metrics.py and tests/sim/test_api.py.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

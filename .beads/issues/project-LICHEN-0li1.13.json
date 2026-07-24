@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:09:44.289442Z",
   "close_reason": "False positive: while the code reads state then checks it (TOCTOU pattern), lora_transition_from() uses atomic_cas() internally which atomically verifies the expected state. If state changes between lora_get_state() and the CAS, the CAS fails safely. The initial read is just an optimization to select which expected-state to try. Added SECURITY comment documenting why this is safe.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

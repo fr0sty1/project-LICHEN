@@ -13,6 +13,7 @@
   "closed_at": "2026-06-28T02:25:04.517407Z",
   "close_reason": "Not a bug - positive observation about secure_zero",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

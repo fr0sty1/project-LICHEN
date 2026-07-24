@@ -14,6 +14,7 @@
   "close_reason": "Taste: goto-cleanup is a standard idiom in kernel/embedded C code; both patterns are valid and the current code is readable with clearly labeled goto",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

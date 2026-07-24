@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:32.237388Z",
   "close_reason": "Invalid - issue description is factually incorrect. The function lichen_lora_l2_set_rx_callback() returns int (not void) and returns -ENODEV when called in UNINIT state. Callers can and should check the return value. See lora_l2.h declaration and lora_l2.c:1103-1107 implementation.",
   "labels": [
-    "review-r3",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r3"
   ],
   "dependencies": [
     {

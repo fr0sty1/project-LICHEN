@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:05.832017Z",
   "close_reason": "Observation - closure captures handler correctly",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

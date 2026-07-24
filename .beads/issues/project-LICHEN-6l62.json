@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:52:05.825287Z",
   "closed_at": "2026-07-12T00:52:05.825287Z",
-  "close_reason": "Fixed: next_tx_available_ms() now returns -1 when requested airtime exceeds maximum possible budget (window * limit_ratio). Previously fell through to time_until_budget_refill_ms() which returned a misleading wait time. Added upfront check and updated docstring. Tests added for edge case."
+  "close_reason": "Fixed: next_tx_available_ms() now returns -1 when requested airtime exceeds maximum possible budget (window * limit_ratio). Previously fell through to time_until_budget_refill_ms() which returned a misleading wait time. Added upfront check and updated docstring. Tests added for edge case.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

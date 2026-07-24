@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:12:25.302104Z",
   "closed_at": "2026-07-11T06:12:25.302104Z",
-  "close_reason": "Fixed: Changed rx_recv.recv() branch to handle None case when sim_task exits, breaking out of gateway loop with error log instead of silently continuing"
+  "close_reason": "Fixed: Changed rx_recv.recv() branch to handle None case when sim_task exits, breaking out of gateway loop with error log instead of silently continuing",
+  "labels": [
+    "owner-reserved"
+  ]
 }

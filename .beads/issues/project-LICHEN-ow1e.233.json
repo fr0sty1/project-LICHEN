@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:20.60918Z",
   "close_reason": "min_epoch auto-update suggestion - design decision, current approach is valid",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

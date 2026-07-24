@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T06:39:41.628595Z",
   "close_reason": "Changed NET_LINK_UNKNOWN to NET_LINK_IEEE802154 with comment explaining it's the closest match for 8-byte EUI-64 addresses",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

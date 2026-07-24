@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:37:08.41971Z",
   "closed_at": "2026-07-12T00:37:08.41971Z",
-  "close_reason": "Fixed: Removed line storing ephemeral secret back after DH computation. Added SECURITY comment explaining single-use semantics prevent cryptographic weakness from ephemeral key reuse."
+  "close_reason": "Fixed: Removed line storing ephemeral secret back after DH computation. Added SECURITY comment explaining single-use semantics prevent cryptographic weakness from ephemeral key reuse.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

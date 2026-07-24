@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:25.177802Z",
   "close_reason": "Documented: added SECURITY comment explaining EUI-64 is not cryptographically bound to keypair, Ed25519 pubkey is the true identity, future spec 6.2 compliance",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

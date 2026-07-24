@@ -15,13 +15,14 @@
   "closed_at": "2026-06-30T03:32:41.961447Z",
   "close_reason": "Completed generic SCHC module split, tests, and two review passes",
   "labels": [
-    "review",
-    "exhaustive",
-    "zephyr",
+    "architecture",
     "c",
-    "schc",
+    "exhaustive",
     "module",
-    "architecture"
+    "owner-reserved",
+    "review",
+    "schc",
+    "zephyr"
   ],
   "dependencies": [
     {

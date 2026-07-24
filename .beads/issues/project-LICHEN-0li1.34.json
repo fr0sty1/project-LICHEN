@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T05:13:44.829976Z",
   "close_reason": "Not a bug - the timing difference only reveals success/failure which is already conveyed by return value.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

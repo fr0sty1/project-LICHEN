@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:26:50.875538Z",
   "close_reason": "False positive: WINDOW_SIZE is defined as a pub const at line 84 of lib.rs. The diff showed it being used but not the definition because the definition was on a line that wasn't changed.",
   "labels": [
-    "bug"
+    "bug",
+    "owner-reserved"
   ]
 }

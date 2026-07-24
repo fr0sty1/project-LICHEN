@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:08.496258Z",
   "close_reason": "Fixed: crash_info_check_and_clear now zeros location and extra after logging. Count is intentionally preserved for lifetime tracking (accumulates across warm resets until power cycle). Added clarifying comment.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

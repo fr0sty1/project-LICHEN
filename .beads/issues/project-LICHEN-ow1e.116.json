@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:57:09.791091Z",
   "close_reason": "Closed",
   "labels": [
-    "workspace-api",
     "features",
-    "review"
+    "owner-reserved",
+    "review",
+    "workspace-api"
   ],
   "dependencies": [
     {

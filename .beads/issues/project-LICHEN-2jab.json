@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:27:33.133148Z",
   "closed_at": "2026-07-12T16:27:33.133148Z",
-  "close_reason": "Fixed: Added PB_WT_SGROUP/EGROUP constants and explicit handling for deprecated proto2 wire types 3 and 4 with SECURITY comments. Also documented why wire types 6/7 are rejected. Changes in both adapter.c and codec.c."
+  "close_reason": "Fixed: Added PB_WT_SGROUP/EGROUP constants and explicit handling for deprecated proto2 wire types 3 and 4 with SECURITY comments. Also documented why wire types 6/7 are rejected. Changes in both adapter.c and codec.c.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

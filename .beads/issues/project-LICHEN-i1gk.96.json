@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:37.881165Z",
   "close_reason": "Fixed: added comment documenting radio capability differences and improved error message",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round3",
-    "exhaustive"
+    "round3"
   ],
   "dependencies": [
     {

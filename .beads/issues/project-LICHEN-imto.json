@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T05:33:50.322512Z",
   "closed_at": "2026-07-12T05:33:50.322512Z",
-  "close_reason": "Verified fix: test builds and passes on native_sim/native/64. Both issues resolved: (1) CONFIG_PM_DEVICE_RUNTIME=y provides pm_device_runtime_is_enabled, (2) native_sim_native_64.overlay symlink provides DT_ALIAS(gnss). Test passes all 6 assertions."
+  "close_reason": "Verified fix: test builds and passes on native_sim/native/64. Both issues resolved: (1) CONFIG_PM_DEVICE_RUNTIME=y provides pm_device_runtime_is_enabled, (2) native_sim_native_64.overlay symlink provides DT_ALIAS(gnss). Test passes all 6 assertions.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

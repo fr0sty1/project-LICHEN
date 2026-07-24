@@ -14,14 +14,15 @@
   "closed_at": "2026-07-02T02:17:36.103289Z",
   "close_reason": "Completed no-hardware firmware-wide time provider abstraction. Implemented HAL/app/gateway/Meshtastic integration, native_sim/qemu Twister validation, qemu gateway build evidence, and three clean final codereviews. Deferred build metadata wiring to child project-LICHEN-2067.1.",
   "labels": [
-    "zephyr",
     "firmware",
-    "time",
-    "rtc",
     "gnss",
     "gpsd",
+    "network-source",
+    "owner-reserved",
+    "rtc",
     "sntp",
-    "network-source"
+    "time",
+    "zephyr"
   ],
   "dependencies": [
     {

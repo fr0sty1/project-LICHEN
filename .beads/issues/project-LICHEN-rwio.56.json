@@ -13,8 +13,9 @@
   "closed_at": "2026-06-27T06:18:09.061979Z",
   "close_reason": "Added SECURITY comments in lora_l2.c and ipv6_addr.c explaining SHA-256 truncation safety for EUI-64/IID derivation",
   "labels": [
-    "crypto-security",
     "algorithm",
+    "crypto-security",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

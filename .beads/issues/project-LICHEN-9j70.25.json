@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:25:19.864839Z",
   "close_reason": "Fixed: Added inline comment at goto site explaining purpose (cleanup needed after RX callback registration) and pointing to label for details",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

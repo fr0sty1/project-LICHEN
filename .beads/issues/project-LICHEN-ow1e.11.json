@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:46:06.652119Z",
   "close_reason": "Closed",
   "labels": [
+    "owner-reserved",
     "python-standards",
-    "tooling",
-    "review"
+    "review",
+    "tooling"
   ],
   "dependencies": [
     {

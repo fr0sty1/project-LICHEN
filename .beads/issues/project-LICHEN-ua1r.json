@@ -14,14 +14,15 @@
   "closed_at": "2026-07-02T22:21:17.019843Z",
   "close_reason": "Completed no-hardware fallback gate. Added default-off CONFIG_LICHEN_GATEWAY_ANNOUNCE_NETWORK_LOCATION_FALLBACK, preserved announce coordinate retention for routing/diagnostics while preventing default local NETWORK publication, added ztest opt-in hook and disabled-by-default regression coverage, completed two clean independent reviews, and validated with EC2 native_sim/qemu Twister.",
   "labels": [
-    "zephyr",
-    "firmware",
     "announce",
+    "firmware",
     "location",
-    "privacy",
     "network-source",
+    "no-hardware",
+    "owner-reserved",
+    "privacy",
     "test",
-    "no-hardware"
+    "zephyr"
   ],
   "dependencies": [
     {

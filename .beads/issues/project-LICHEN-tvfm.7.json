@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:29:05.202442Z",
   "close_reason": "Fixed: Added BUILD_ASSERTs to verify API array sizes (eui64[8], pubkey[32]) match internal constants (LICHEN_EUI64_LEN, LICHEN_L2_PUBKEY_LEN). Enhanced header documentation to explicitly warn that C arrays decay to pointers with no runtime size check, and callers must pass exactly-sized buffers.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

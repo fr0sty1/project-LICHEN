@@ -14,8 +14,9 @@
   "closed_at": "2026-06-30T02:49:03.069353Z",
   "close_reason": "Completed: moved shared AES-CCM helper into crypto, made link and OSCORE select it directly, removed link_crypto OSCORE/CoAP dependency, removed bridge workaround, verified link_crypto/OSCORE/bridge builds and test runs, and filed follow-up Beads for out-of-scope findings.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

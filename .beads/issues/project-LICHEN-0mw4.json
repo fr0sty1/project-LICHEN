@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:36:02.539357Z",
   "closed_at": "2026-07-13T00:36:02.539357Z",
-  "close_reason": "Fixed: All sensitive LOG_ERR statements converted to LOG_WRN with generic messages that don't expose cryptographic operations or protocol state"
+  "close_reason": "Fixed: All sensitive LOG_ERR statements converted to LOG_WRN with generic messages that don't expose cryptographic operations or protocol state",
+  "labels": [
+    "owner-reserved"
+  ]
 }

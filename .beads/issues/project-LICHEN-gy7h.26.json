@@ -14,6 +14,7 @@
   "close_reason": "Not a bug - mutex protects the copy operation and buffer access. Early size check is just optimization to fail fast without blocking.",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

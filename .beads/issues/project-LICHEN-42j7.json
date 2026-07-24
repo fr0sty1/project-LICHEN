@@ -13,10 +13,11 @@
   "closed_at": "2026-06-30T05:59:46.803849Z",
   "close_reason": "Completed: fixed Node's Meshtastic lazy import path to lichen.interface.meshtastic.adapter, typed the optional adapter through a lifecycle Protocol, and added async start/stop hooks to MeshtasticAdapter with focused lifecycle test coverage. Tests/checks: uv run python -m pytest tests/interface/meshtastic/test_adapter.py; uv run python -m ruff check touched files; uv run python -m mypy src/lichen/node.py --disable-error-code type-arg; git diff --check. Full mypy on node.py now has only unrelated strict type-arg errors, tracked as follow-up project-LICHEN-7ax6. Review pass 1: no findings; diff scoped to import path, adapter lifecycle typing/hooks, and test. Review pass 2: no findings.",
   "labels": [
-    "python",
+    "follow-up",
     "meshtastic",
     "mypy",
-    "follow-up"
+    "owner-reserved",
+    "python"
   ],
   "dependencies": [
     {

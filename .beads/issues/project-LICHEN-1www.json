@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T22:09:44.705771Z",
   "close_reason": "All 44 findings addressed: 5 P0 bugs fixed, 28 P1 issues fixed, 2 P2 closed as intentional design, 9 P3 closed as good patterns",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

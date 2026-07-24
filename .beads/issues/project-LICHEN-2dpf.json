@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2dpf",
   "title": "task",
-  "description": "rust/lichen-coap/src/block.rs:173-182. Values \u003e= 256 encode as 0.",
+  "description": "rust/lichen-coap/src/block.rs:173-182. Values >= 256 encode as 0.",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:36:52.555095Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

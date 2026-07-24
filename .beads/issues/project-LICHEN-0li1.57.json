@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:11.93828Z",
   "close_reason": "Intentional fail-safe design: The ABORTED state on invalid transitions is defensive by design (see comment lines 83-84). The state machine treats programming errors as requiring full reinitialization to ensure consistent state. This conflation of 'unexpected state' with 'hardware fault' is intentional - both require operator attention and deinit/init cycle. Graceful handling of double-start() would hide bugs.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

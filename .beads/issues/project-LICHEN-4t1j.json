@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-4t1j",
   "title": "task",
-  "description": "rust/lichen-rpl/src/dodag.rs:155. Version 255-\u003e0 rejected.",
+  "description": "rust/lichen-rpl/src/dodag.rs:155. Version 255->0 rejected.",
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:36:53.675719Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

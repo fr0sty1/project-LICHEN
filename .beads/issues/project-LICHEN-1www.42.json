@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T21:44:38.652659Z",
   "close_reason": "Not a real risk - mutex ensures atomicity as code already states. Comment is adequate.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

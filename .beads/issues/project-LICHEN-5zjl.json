@@ -14,6 +14,7 @@
   "close_reason": "False positive: nacl.signing.VerifyKey.verify() does support a separate signature parameter for detached signature verification. The call verify_key.verify(m_2, signature_2) is correct - m_2 is the message and signature_2 is the detached signature.",
   "labels": [
     "bug",
+    "owner-reserved",
     "security"
   ]
 }

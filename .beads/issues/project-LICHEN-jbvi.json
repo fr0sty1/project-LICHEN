@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:35:23.1605Z",
   "closed_at": "2026-07-12T00:35:23.1605Z",
-  "close_reason": "Verified compliant: All memcpy ops bounds-checked (lines 72-76, 109-112), no banned functions, all return values checked, no VLAs, explicit buffer size params on all functions, security trust boundary documented (lines 61-66). Minor: could add _Nonnull annotations but no functional safety issues."
+  "close_reason": "Verified compliant: All memcpy ops bounds-checked (lines 72-76, 109-112), no banned functions, all return values checked, no VLAs, explicit buffer size params on all functions, security trust boundary documented (lines 61-66). Minor: could add _Nonnull annotations but no functional safety issues.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

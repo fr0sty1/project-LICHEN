@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:37:06.643847Z",
   "close_reason": "Fixed: Added BUILD_ASSERTs to validate CONFIG_LICHEN_LINK_MAX_NEIGHBORS bounds (4-64) at compile time, with documentation of memory constraints (~44 bytes/entry, ~2.8KB at max)",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

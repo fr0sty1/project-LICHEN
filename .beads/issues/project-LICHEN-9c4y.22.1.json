@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T19:04:43.579716Z",
   "close_reason": "Completed no-hardware compatibility submit/ACK contract work by documenting the at-least-once app-ingress/error semantic, adding MeshCore and Meshtastic gateway disconnect-race tests, completing two independent code reviews with no P0/P1/P2 findings, and validating affected native_sim tests on EC2 Twister.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshcore",
     "messaging",
-    "app-interface",
+    "owner-reserved",
     "tests",
-    "firmware"
+    "zephyr"
   ],
   "dependencies": [
     {

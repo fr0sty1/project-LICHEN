@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:50:34.926399Z",
   "close_reason": "Fixed: Removed premature clearing of iface_init_failed at start of lichen_l2_iface_init(). Added documentation explaining that the flag starts at 0 (static init), is set on failure paths, and failure is permanent until reboot due to lichen_iface != NULL check.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

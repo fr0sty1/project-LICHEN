@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:25:34.681819Z",
   "close_reason": "Fixed: Moved lichen_sha256() from static inline in header to extern declaration with implementation in new lichen_util.c file",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

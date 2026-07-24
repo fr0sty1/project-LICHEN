@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T16:10:48.519723Z",
   "close_reason": "Added #[non_exhaustive] attribute to 30 public error enums across the Rust codebase",
   "labels": [
-    "idiomatic-rust",
     "error-handling",
+    "idiomatic-rust",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -15,6 +15,7 @@
   "labels": [
     "api-contract",
     "idiomatic-rust",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

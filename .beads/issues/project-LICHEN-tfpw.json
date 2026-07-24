@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-tfpw",
   "title": "task",
-  "description": "rust/lichen-oscore/src/edhoc.rs:117,700. heapless::Vec\u003cu8,32\u003e cannot hold ~100 bytes needed for PLAINTEXT_2; handshake cannot complete.",
+  "description": "rust/lichen-oscore/src/edhoc.rs:117,700. heapless::Vec<u8,32> cannot hold ~100 bytes needed for PLAINTEXT_2; handshake cannot complete.",
   "status": "closed",
   "priority": 1,
   "issue_type": "task",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:36:47.743602Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

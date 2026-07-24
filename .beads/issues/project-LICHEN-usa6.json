@@ -13,7 +13,8 @@
   "closed_at": "2026-06-30T05:49:14.410729Z",
   "close_reason": "Completed: added frame processing transition verification, replay-window Empty/Tracking state verification, peer authentication typestate, and runtime peer auth state tracking. Also fixed a review-found state ordering bug so a replay rejected after unpin cannot reauthenticate/re-pin the peer. Tests: cargo test -p lichen-link --features std,schnorr; cargo check -p lichen-link --no-default-features; cargo clippy -p lichen-link --features std,schnorr --all-targets -- -D warnings -A clippy::manual_is_multiple_of -A clippy::needless_borrows_for_generic_args; git diff --check. Review pass 1: no out-of-scope source edits or behavior regressions found. Review pass 2: found replay-after-unpin repin bug, fixed and covered by regression test.",
   "labels": [
-    "state-machine",
-    "rust"
+    "owner-reserved",
+    "rust",
+    "state-machine"
   ]
 }

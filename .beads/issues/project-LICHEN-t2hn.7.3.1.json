@@ -14,12 +14,13 @@
   "closed_at": "2026-07-03T04:10:36.524569Z",
   "close_reason": "Completed no-hardware scope: added Meshtastic payload drift negative build helper, CI hook, explicit BUILD_ASSERT diagnostic, EC2 positive/negative validation, and three independent code reviews.",
   "labels": [
-    "zephyr",
-    "meshtastic",
     "app-interface",
-    "testing",
+    "firmware",
+    "meshtastic",
     "messaging",
-    "firmware"
+    "owner-reserved",
+    "testing",
+    "zephyr"
   ],
   "dependencies": [
     {

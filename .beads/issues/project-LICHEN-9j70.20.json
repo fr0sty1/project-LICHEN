@@ -11,11 +11,12 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-27T18:25:43.080339Z",
   "closed_at": "2026-06-27T18:25:43.080339Z",
-  "close_reason": "Fixed: replaced GCC-specific __asm__ __volatile__ with Zephyr's portable compiler_barrier() from \u003czephyr/toolchain.h\u003e",
+  "close_reason": "Fixed: replaced GCC-specific __asm__ __volatile__ with Zephyr's portable compiler_barrier() from <zephyr/toolchain.h>",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

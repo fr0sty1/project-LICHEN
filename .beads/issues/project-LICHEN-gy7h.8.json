@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T21:33:18.082996Z",
   "close_reason": "Commendation - no action needed",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

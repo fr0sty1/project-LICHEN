@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T22:06:47.690019Z",
   "close_reason": "Fixed: Added explicit LOCK ORDER comment documenting tx_mutex before rx_mutex",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

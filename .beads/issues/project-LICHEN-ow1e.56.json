@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.56",
   "title": "rpl/dodag: parent selection logic has triple-nested conditionals",
-  "description": "In dodag.rs:297-335, select_parent() hysteresis logic uses three levels of nested conditionals with multiple paths returning (best_addr, best_cost). Simplify with: match self.preferred_parent { Some(cur_addr) if cur_addr != best_addr =\u003e { let stick_with_current = self.parents.get(\u0026cur_addr).is_some_and(|cur| best_cost \u003e cur.path_cost(mhri).saturating_sub(threshold)); if stick_with_current { ... } else { (best_addr, best_cost) } } _ =\u003e (best_addr, best_cost) };",
+  "description": "In dodag.rs:297-335, select_parent() hysteresis logic uses three levels of nested conditionals with multiple paths returning (best_addr, best_cost). Simplify with: match self.preferred_parent { Some(cur_addr) if cur_addr != best_addr => { let stick_with_current = self.parents.get(&cur_addr).is_some_and(|cur| best_cost > cur.path_cost(mhri).saturating_sub(threshold)); if stick_with_current { ... } else { (best_addr, best_cost) } } _ => (best_addr, best_cost) };",
   "status": "closed",
   "priority": 3,
   "issue_type": "task",
@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:02:54.980665Z",
   "close_reason": "Closed",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

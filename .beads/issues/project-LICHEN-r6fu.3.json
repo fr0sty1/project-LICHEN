@@ -13,9 +13,10 @@
   "closed_at": "2026-07-12T01:36:53.272064Z",
   "close_reason": "Implemented: Made SecureStack the primary/recommended export with clear documentation that all CoAP traffic MUST use OSCORE (spec 8.7). Added PlaintextStack type alias with security warnings. Removed plaintext CoAP test; added security documentation explaining ICMPv6 does not require OSCORE per RFC 8613.",
   "labels": [
-    "security",
     "oscore",
-    "rust"
+    "owner-reserved",
+    "rust",
+    "security"
   ],
   "dependencies": [
     {

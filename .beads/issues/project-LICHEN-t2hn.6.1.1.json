@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T07:29:01.6825Z",
   "close_reason": "Added native_sim/qemu gateway_status CBOR tests for power provider keys, valid-only battery/voltage/charging/external_power fields, map counts, and fixed buffer bound; EC2 direct and Twister gates passed; three reviews clean.",
   "labels": [
-    "zephyr",
-    "meshtastic",
+    "app-interface",
     "config",
-    "status",
     "firmware",
-    "app-interface"
+    "meshtastic",
+    "owner-reserved",
+    "status",
+    "zephyr"
   ],
   "dependencies": [
     {

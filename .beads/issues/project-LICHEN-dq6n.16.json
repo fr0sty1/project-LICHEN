@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T01:39:28.669422Z",
   "close_reason": "Fixed: Added atomic deiniting flag with CAS to prevent TOCTOU race between deinit() and start()",
   "labels": [
-    "review",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

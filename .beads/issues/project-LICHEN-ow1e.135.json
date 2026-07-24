@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:45:41.98027Z",
   "close_reason": "Closed",
   "labels": [
-    "idiomatic-python",
     "data-modeling",
+    "idiomatic-python",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

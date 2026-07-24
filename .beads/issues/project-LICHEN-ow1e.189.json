@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:53.653079Z",
   "close_reason": "Design suggestion - TTL expiration deferred to future work",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

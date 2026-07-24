@@ -15,6 +15,7 @@
   "labels": [
     "c-standards",
     "headers",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

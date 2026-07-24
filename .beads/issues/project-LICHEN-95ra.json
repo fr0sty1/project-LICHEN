@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:07:53.529495Z",
   "close_reason": "VecExt trait is appropriately scoped as private to edhoc.rs - extraction to shared utility would be premature",
   "labels": [
-    "architecture"
+    "architecture",
+    "owner-reserved"
   ]
 }

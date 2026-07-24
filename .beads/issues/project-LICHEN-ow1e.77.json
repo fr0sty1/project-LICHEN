@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:14:53.915958Z",
   "close_reason": "Added debug-level logging to silent except blocks in tcp.py (peername, close) and packet_coap.py (parse failure).",
   "labels": [
-    "idiomatic-python",
     "error-handling",
+    "idiomatic-python",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:15:53.006016Z",
   "closed_at": "2026-07-13T00:15:53.006016Z",
-  "close_reason": "Fixed: Wrapped enum construction in try/except at lines 141 and 376. Unknown RoutingError values now default to NONE, unknown PacketPriority values default to DEFAULT. This provides forward compatibility with newer Meshtastic clients."
+  "close_reason": "Fixed: Wrapped enum construction in try/except at lines 141 and 376. Unknown RoutingError values now default to NONE, unknown PacketPriority values default to DEFAULT. This provides forward compatibility with newer Meshtastic clients.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

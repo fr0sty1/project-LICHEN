@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:43:50.810428Z",
   "closed_at": "2026-07-12T00:43:50.810428Z",
-  "close_reason": "Fixed: Changed line 88 in output.rs from Debug format ({:?}) to Display by converting CBOR to JSON first then stringifying"
+  "close_reason": "Fixed: Changed line 88 in output.rs from Debug format ({:?}) to Display by converting CBOR to JSON first then stringifying",
+  "labels": [
+    "owner-reserved"
+  ]
 }

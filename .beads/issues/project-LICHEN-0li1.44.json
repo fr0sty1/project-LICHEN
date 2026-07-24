@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:12:46.729334Z",
   "close_reason": "Added domain separation prefix 'LICHEN-EUI64-v1' to SHA-256 hash input before hwid. Hash now computes SHA-256(prefix || hwid) instead of SHA-256(hwid). This ensures the EUI-64 derivation produces different output than other potential uses of SHA-256 on the same hardware ID. Also added secure_zero for the hash_input buffer in cleanup.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

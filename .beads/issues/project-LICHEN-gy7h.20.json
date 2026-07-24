@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T21:22:24.485321Z",
   "close_reason": "Known limitation with documented workaround (LICHEN_HAVE_IN6_ADDR), not a bug",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

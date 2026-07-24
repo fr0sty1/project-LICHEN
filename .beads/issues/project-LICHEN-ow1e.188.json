@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:30.664585Z",
   "close_reason": "Extracted RELAY_SEEN_MAX_SIZE = 128 constant, replaced hardcoded values",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

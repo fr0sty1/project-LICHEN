@@ -15,11 +15,12 @@
   "closed_at": "2026-07-01T19:37:05.432251Z",
   "close_reason": "Completed: native BLE UART now uses ble_app_owner for connection callbacks and owner-held send connection refs; native_sim Twister evidence recorded; P3 multi-notify coverage follow-up created.",
   "labels": [
-    "zephyr",
-    "ble",
     "app-interface",
+    "ble",
     "firmware",
-    "meshtastic"
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

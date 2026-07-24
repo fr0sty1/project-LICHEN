@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:19:36.669491Z",
   "closed_at": "2026-07-12T16:19:36.669491Z",
-  "close_reason": "Fixed: Race condition in build_announce_frame() by capturing app_data_len in local snapshot while holding mutex, and copying app_data from the already-captured signed_data buffer instead of re-reading from sched.app_data"
+  "close_reason": "Fixed: Race condition in build_announce_frame() by capturing app_data_len in local snapshot while holding mutex, and copying app_data from the already-captured signed_data buffer instead of re-reading from sched.app_data",
+  "labels": [
+    "owner-reserved"
+  ]
 }

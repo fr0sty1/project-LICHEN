@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:42:06.371641Z",
   "close_reason": "Fixed lichen_sha256 empty-input handling and added focused Zephyr regression test",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gaps",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

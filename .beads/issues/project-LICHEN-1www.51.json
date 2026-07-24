@@ -12,9 +12,10 @@
   "closed_at": "2026-06-27T21:45:26.337182Z",
   "close_reason": "Not a risk - BUILD_ASSERT at line 71 forces HAVE_LICHEN_LINK=1, so link.h is always included when this code is compiled",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

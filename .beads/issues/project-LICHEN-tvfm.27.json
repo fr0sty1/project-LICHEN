@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:35:29.52275Z",
   "close_reason": "Fixed: lichen_lora_l2_stop now returns -ECANCELED when thread abort occurs, informing caller that module requires deinit/reinit cycle",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

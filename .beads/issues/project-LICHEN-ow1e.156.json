@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:59:36.181085Z",
   "close_reason": "Already fixed - both lichen-ipv6 and lichen-core use required/provided field names",
   "labels": [
-    "workspace-api",
     "naming",
-    "review"
+    "owner-reserved",
+    "review",
+    "workspace-api"
   ],
   "dependencies": [
     {

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-i81y.11",
   "title": "ble_uart_send_slip dereferences ipv6 without validating it",
-  "description": "Trigger: any caller invokes ble_uart_send_slip(NULL, len) with len \u003e 0 while a BLE connection is present. The function validates the connection at firmware-independent gateway code lichen/apps/gateway/src/ble_uart.c:282 and validates len at lichen/apps/gateway/src/ble_uart.c:287, but never checks ipv6 before indexing ipv6[i] in the SLIP encoder at lichen/apps/gateway/src/ble_uart.c:297 and lichen/apps/gateway/src/ble_uart.c:305. Impact: a bad local caller can crash the gateway thread with a NULL pointer dereference instead of receiving -EINVAL; because this is the local client interface path, a missed check here can turn an upstream error into device instability. Fix: return -EINVAL when ipv6 is NULL and len \u003e 0 before acquiring the TX mutex.",
+  "description": "Trigger: any caller invokes ble_uart_send_slip(NULL, len) with len > 0 while a BLE connection is present. The function validates the connection at firmware-independent gateway code lichen/apps/gateway/src/ble_uart.c:282 and validates len at lichen/apps/gateway/src/ble_uart.c:287, but never checks ipv6 before indexing ipv6[i] in the SLIP encoder at lichen/apps/gateway/src/ble_uart.c:297 and lichen/apps/gateway/src/ble_uart.c:305. Impact: a bad local caller can crash the gateway thread with a NULL pointer dereference instead of receiving -EINVAL; because this is the local client interface path, a missed check here can turn an upstream error into device instability. Fix: return -EINVAL when ipv6 is NULL and len > 0 before acquiring the TX mutex.",
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:27:15.461722Z",
   "close_reason": "Added NULL ipv6 validation before SLIP encoding; local diff check passed; Zephyr gateway build remains blocked by existing missing firmware/bridge-zephyr/subsys path.",
   "labels": [
-    "review",
+    "c",
     "c-safety",
     "null",
-    "zephyr",
-    "c"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

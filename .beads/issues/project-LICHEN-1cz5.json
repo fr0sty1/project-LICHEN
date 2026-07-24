@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:07:37.881579Z",
   "closed_at": "2026-07-06T18:07:37.881579Z",
-  "close_reason": "Added test coverage in tests/link/test_frame.py to verify AddrMode.addr_len lookup table correctness and values"
+  "close_reason": "Added test coverage in tests/link/test_frame.py to verify AddrMode.addr_len lookup table correctness and values",
+  "labels": [
+    "owner-reserved"
+  ]
 }

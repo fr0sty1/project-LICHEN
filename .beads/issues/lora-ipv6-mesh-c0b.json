@@ -12,5 +12,8 @@
   "updated_at": "2026-06-26T21:27:14Z",
   "started_at": "2026-06-09T04:44:50Z",
   "closed_at": "2026-06-09T04:46:25Z",
-  "close_reason": "libschc evaluation complete. Library provides full RFC 8724 support including ACK-on-Error fragmentation. Well-maintained, memory-efficient implementation suitable for constrained devices. Recommended for LICHEN integration."
+  "close_reason": "libschc evaluation complete. Library provides full RFC 8724 support including ACK-on-Error fragmentation. Well-maintained, memory-efficient implementation suitable for constrained devices. Recommended for LICHEN integration.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

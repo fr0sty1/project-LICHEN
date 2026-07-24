@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:42:27.233927Z",
   "closed_at": "2026-07-12T00:42:27.233927Z",
-  "close_reason": "Fixed: Separated alloc-dependent tests into nested module with cfg(feature = alloc); 9 tests now run without alloc, 2 remain gated"
+  "close_reason": "Fixed: Separated alloc-dependent tests into nested module with cfg(feature = alloc); 9 tests now run without alloc, 2 remain gated",
+  "labels": [
+    "owner-reserved"
+  ]
 }

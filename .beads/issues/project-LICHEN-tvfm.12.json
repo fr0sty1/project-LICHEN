@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:28:43.974701Z",
   "close_reason": "Fixed: Added state check at function entry that rejects with LOG_WRN and returns early if module is in LORA_UNINIT state, matching the pattern used by lichen_lora_l2_get_eui64",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

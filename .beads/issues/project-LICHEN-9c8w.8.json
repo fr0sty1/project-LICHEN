@@ -14,8 +14,9 @@
   "close_reason": "Fixed: Abbreviated peer EUI-64 to last 2 bytes (..%02x:%02x) in all LOG_INF/LOG_DBG calls",
   "labels": [
     "logging",
-    "security",
-    "refactor"
+    "owner-reserved",
+    "refactor",
+    "security"
   ],
   "dependencies": [
     {

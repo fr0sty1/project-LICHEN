@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T07:23:46.726772Z",
   "close_reason": "Duplicate of project-LICHEN-d7ub.8 - same root cause (nonnull attribute conflicts with defensive NULL check)",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:56:27.958994Z",
   "close_reason": "Fixed: Modified generate_eui64() to zero the output buffer on all error paths. Changed early returns to goto cleanup, and added secure_zero(eui64, 8) when ret != 0. Defense-in-depth against caller misuse.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

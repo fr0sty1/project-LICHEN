@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:50:26.577126Z",
   "close_reason": "Fixed: Updated comment at line 70 - lichen_schc_init() does not exist; SCHC module is stateless (compress/decompress are pure functions). Comment now accurately lists lichen_schc_compress() and lichen_schc_decompress().",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round4",
-    "exhaustive"
+    "round4"
   ],
   "dependencies": [
     {

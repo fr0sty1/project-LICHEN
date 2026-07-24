@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T15:37:36.710738Z",
   "close_reason": "Not a finding - documenting that test code correctly uses .unwrap()",
   "labels": [
-    "idiomatic-rust",
     "error-handling",
+    "idiomatic-rust",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

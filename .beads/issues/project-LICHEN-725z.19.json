@@ -14,6 +14,7 @@
   "close_reason": "Removed unnecessary wrapper lichen_dev_iface_init, using lichen_l2_iface_init directly in net_if_api struct",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

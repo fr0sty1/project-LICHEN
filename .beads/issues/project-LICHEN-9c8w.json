@@ -14,6 +14,7 @@
   "close_reason": "All 11 logging tasks completed",
   "labels": [
     "logging",
+    "owner-reserved",
     "refactor"
   ]
 }

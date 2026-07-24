@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:15:04.293896Z",
   "closed_at": "2026-07-11T06:15:04.293896Z",
-  "close_reason": "Fixed: Added done callback to create_task() in send_datagram() that logs exceptions via logger.warning, ensuring send failures are no longer silently lost"
+  "close_reason": "Fixed: Added done callback to create_task() in send_datagram() that logs exceptions via logger.warning, ensuring send failures are no longer silently lost",
+  "labels": [
+    "owner-reserved"
+  ]
 }

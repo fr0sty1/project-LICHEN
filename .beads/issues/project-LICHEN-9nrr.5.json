@@ -14,11 +14,12 @@
   "closed_at": "2026-06-30T04:39:45.894559Z",
   "close_reason": "Fixed standalone SenML zcbor stub uint64 encoding by routing zcbor_uint64_put() through unsigned CBOR major type 0 encoding instead of casting to int64_t. Added regression vector/test for SenML base_time 0x8000000000000000 to verify CBOR uint64 major type 0 with 8-byte payload. Tests: cmake -S lichen/tests/senml -B build/senml_test; cmake --build build/senml_test; ./build/senml_test/senml_test; git diff --check. Review pass 1: no findings; verified acceptance criteria and that no uint64-to-int64 signed cast remains in zcbor_uint64_put(). Review pass 2: no findings; verified scope limited to standalone SenML test/stub and no follow-up Beads needed.",
   "labels": [
-    "review",
-    "zephyr",
     "c",
+    "exhaustive",
+    "owner-reserved",
+    "review",
     "test",
-    "exhaustive"
+    "zephyr"
   ],
   "dependencies": [
     {

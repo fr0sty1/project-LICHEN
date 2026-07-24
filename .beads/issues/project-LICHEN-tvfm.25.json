@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:35:37.501078Z",
   "close_reason": "Fixed: added lock order documentation at mutex definitions (~line 217) with canonical LOCK ORDER comment explaining tx_mutex must be acquired before rx_mutex. Updated comments in lichen_l2_enable() to reference the canonical location. Lock order was already consistent across all call sites - this fix documents it properly.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

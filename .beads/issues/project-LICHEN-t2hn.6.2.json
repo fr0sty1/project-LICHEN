@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T16:40:27.696966Z",
   "close_reason": "Completed no-hardware scope: multi-section Config sync implemented, tested, reviewed, vectors/docs updated; residual gaps filed as child Beads.",
   "labels": [
-    "zephyr",
-    "meshtastic",
+    "app-interface",
     "config",
-    "status",
     "firmware",
-    "app-interface"
+    "meshtastic",
+    "owner-reserved",
+    "status",
+    "zephyr"
   ],
   "dependencies": [
     {

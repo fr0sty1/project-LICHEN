@@ -14,6 +14,7 @@
   "close_reason": "Changed link_ctx_initialized from bool to atomic_t, using atomic_get/atomic_set throughout. RX path already holds rx_mutex, TX path holds tx_mutex.",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

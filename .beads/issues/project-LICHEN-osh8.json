@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:03:24.846063Z",
   "closed_at": "2026-07-11T06:03:24.846063Z",
-  "close_reason": "Verified: imports already correct (RadioError aliased as LoraRadioError from mod_params, InterfaceVariant from mod_traits). Cargo check passes."
+  "close_reason": "Verified: imports already correct (RadioError aliased as LoraRadioError from mod_params, InterfaceVariant from mod_traits). Cargo check passes.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

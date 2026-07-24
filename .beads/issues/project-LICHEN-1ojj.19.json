@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T05:51:22.402435Z",
   "close_reason": "By design: empty struct required by Zephyr NET_DEVICE_INIT API",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

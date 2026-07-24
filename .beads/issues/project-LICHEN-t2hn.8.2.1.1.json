@@ -14,14 +14,15 @@
   "closed_at": "2026-07-02T07:16:44.194088Z",
   "close_reason": "Implemented and validated no-hardware gateway inbound CoAP URI dispatch tests for /inbound/text and /inbound/status; EC2 native_sim direct run and Twister passed 27/27; three final review passes clean.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "gateway",
-    "messaging",
     "app-interface",
+    "firmware",
+    "gateway",
+    "meshtastic",
+    "messaging",
+    "owner-reserved",
     "status",
     "test-harness",
-    "firmware"
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:27:54.988995Z",
   "close_reason": "False positive: The dependency is correctly one-way. lichen-core depends on lichen-ipv6, and lichen-ipv6 does not depend on lichen-core. This is the correct dependency direction - fundamental types like TooShort and BufferTooSmall are defined in the lower-level lichen-ipv6 crate and re-exported by lichen-core for convenience.",
   "labels": [
-    "architecture"
+    "architecture",
+    "owner-reserved"
   ]
 }

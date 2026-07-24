@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:45:19.65707Z",
   "close_reason": "Fixed: Added security documentation explaining behavior when has_link_key is false. The code already correctly checks has_link_key before copying (line 1349). Enhanced comment now documents that NULL link_key causes: AES-CCM-64 MIC to fail with -LICHEN_EAUTH; CRC32 MIC to fall back to non-cryptographic verification. This is expected during unauthenticated bootstrap.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

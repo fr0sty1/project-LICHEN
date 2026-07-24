@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:05:16.456697Z",
   "closed_at": "2026-07-11T06:05:16.456697Z",
-  "close_reason": "Fixed: Use lora_phy::mod_params::RadioError and lora_phy::mod_traits::InterfaceVariant instead of private re-exports"
+  "close_reason": "Fixed: Use lora_phy::mod_params::RadioError and lora_phy::mod_traits::InterfaceVariant instead of private re-exports",
+  "labels": [
+    "owner-reserved"
+  ]
 }

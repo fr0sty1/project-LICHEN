@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:37:54.68656Z",
   "close_reason": "Not a bug: rx_callback and rx_callback_user_data are already explicitly cleared to NULL in lichen_lora_l2_init() at lines 400-401. The issue was a false positive from static analysis.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:43.802401Z",
   "close_reason": "Fixed in oscore_ctx_create: reject both zero-length sender_id and recipient_id (lines 570-575). Uses saturating checks and explicit error. Matches RFC 8613 §5.2. Commit e791bd4ab.",
   "labels": [
-    "oscore",
+    "correctness",
     "crypto",
-    "correctness"
+    "oscore",
+    "owner-reserved"
   ],
   "dependencies": [
     {

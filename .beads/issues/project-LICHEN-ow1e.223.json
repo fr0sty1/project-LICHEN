@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:19:14.760176Z",
   "close_reason": "Design documentation - MIC/signature coverage divergence is intentional",
   "labels": [
-    "review",
-    "crypto-security"
+    "crypto-security",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

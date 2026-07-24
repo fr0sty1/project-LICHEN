@@ -14,8 +14,9 @@
   "close_reason": "Added compiler memory barrier to prevent LTO removal and reordering",
   "labels": [
     "c-safety",
-    "security",
-    "review"
+    "owner-reserved",
+    "review",
+    "security"
   ],
   "dependencies": [
     {

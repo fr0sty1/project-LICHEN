@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-10T22:48:51.694214Z",
   "closed_at": "2026-07-10T22:48:51.694214Z",
-  "close_reason": "Converted sim_client.py to push-based RX"
+  "close_reason": "Converted sim_client.py to push-based RX",
+  "labels": [
+    "owner-reserved"
+  ]
 }

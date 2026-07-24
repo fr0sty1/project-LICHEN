@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:51.924588Z",
   "close_reason": "Fixed: added comment documenting that error counter is thread-local and resets on stop/start intentionally",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round3",
-    "exhaustive"
+    "round3"
   ],
   "dependencies": [
     {

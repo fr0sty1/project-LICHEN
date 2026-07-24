@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:59:54.853835Z",
   "close_reason": "Fixed: Added clarifying comments distinguishing LICHEN_FRAME_BASE_OVERHEAD (9 bytes, for runt frame validation) from LICHEN_LORA_FRAME_OVERHEAD (55 bytes, conservative MTU overhead).",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

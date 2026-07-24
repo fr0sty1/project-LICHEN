@@ -15,14 +15,15 @@
   "closed_at": "2026-07-01T07:52:18.890383Z",
   "close_reason": "Completed Meshtastic/MeshCore HAL-pattern evaluation with commit-pinned source refs, reusable patterns, anti-patterns, LICHEN HAL mapping, h7t5.1 and h7t5.2 linkage, and clean final review pair.",
   "labels": [
-    "zephyr",
-    "hal",
-    "meshtastic",
-    "meshcore",
-    "platformio",
-    "firmware",
     "board-support",
-    "partner-handoff"
+    "firmware",
+    "hal",
+    "meshcore",
+    "meshtastic",
+    "owner-reserved",
+    "partner-handoff",
+    "platformio",
+    "zephyr"
   ],
   "dependencies": [
     {

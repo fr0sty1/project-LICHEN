@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:10:10.783129Z",
   "close_reason": "Fixed: Added has_peer_identity guard to skip replay_get when peer_pubkey is NULL, preventing all-zeros EUI64 from creating a shared anonymous replay window that could be poisoned by unsigned frames",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

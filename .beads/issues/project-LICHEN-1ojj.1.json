@@ -11,9 +11,10 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-27T05:56:24.527317Z",
   "closed_at": "2026-06-27T05:56:24.527317Z",
-  "close_reason": "Not a bug: Zephyr net_l2 contract requires L2 to unref on success return (verified in zephyr/subsys/net/ip/net_if.c:302-304 - stack only unrefs on status \u003c 0)",
+  "close_reason": "Not a bug: Zephyr net_l2 contract requires L2 to unref on success return (verified in zephyr/subsys/net/ip/net_if.c:302-304 - stack only unrefs on status < 0)",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

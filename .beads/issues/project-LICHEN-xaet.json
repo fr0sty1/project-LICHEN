@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-15T02:55:22.466418Z",
   "closed_at": "2026-07-15T02:55:22.466418Z",
-  "close_reason": "Completed comprehensive simulation debugging infrastructure enhancements including enhanced logging with contextual information, debug mode controls, fail-fast mechanisms, and detailed system state tracking that enables fast debug, fix, retry cycles"
+  "close_reason": "Completed comprehensive simulation debugging infrastructure enhancements including enhanced logging with contextual information, debug mode controls, fail-fast mechanisms, and detailed system state tracking that enables fast debug, fix, retry cycles",
+  "labels": [
+    "owner-reserved"
+  ]
 }

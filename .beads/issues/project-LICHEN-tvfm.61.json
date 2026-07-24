@@ -11,12 +11,13 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:18:00.889045Z",
   "closed_at": "2026-06-28T02:18:00.889045Z",
-  "close_reason": "Fixed: state machine verifies STOPPED-\u003eRUNNING transition atomically",
+  "close_reason": "Fixed: state machine verifies STOPPED->RUNNING transition atomically",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

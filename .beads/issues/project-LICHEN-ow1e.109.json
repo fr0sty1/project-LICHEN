@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:14:56.165722Z",
   "close_reason": "Removed import-time deprecation warning. The module docstring notes deprecation; individual functions emit warnings when called.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

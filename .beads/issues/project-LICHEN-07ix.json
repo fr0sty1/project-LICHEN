@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:29:55.516887Z",
   "closed_at": "2026-07-13T00:29:55.516887Z",
-  "close_reason": "Fixed: Added RFC-compliant validation of ICMPv6 code field. Echo Request and Neighbor Solicitation now reject packets with code != 0 per RFC 4443/4861."
+  "close_reason": "Fixed: Added RFC-compliant validation of ICMPv6 code field. Echo Request and Neighbor Solicitation now reject packets with code != 0 per RFC 4443/4861.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

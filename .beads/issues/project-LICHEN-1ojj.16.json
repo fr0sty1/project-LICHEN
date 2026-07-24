@@ -14,6 +14,7 @@
   "close_reason": "Won't fix: goto pattern is C-correct and commented, refactor adds complexity",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

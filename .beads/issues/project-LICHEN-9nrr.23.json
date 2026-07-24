@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T03:04:28.550979Z",
   "close_reason": "Fixed by adding lichen/apps/gateway/boards/qemu_x86.conf to disable CONFIG_LORA, CONFIG_LICHEN_LORA_L2, and CONFIG_LICHEN_L2 for qemu_x86 only. Verified qemu_x86 gateway builds without lora0 or L2 objects, and t_echo/nrf52840 gateway still builds with LoRa/L2 enabled and lora0 present. Two review passes completed; no follow-up Beads needed.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

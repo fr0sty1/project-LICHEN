@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T04:00:27.490677Z",
   "closed_at": "2026-06-29T04:00:27.490677Z",
-  "close_reason": "Fixed: generic nRF52840 DK no longer enables LoRa L2 without a lora0 alias; supported LoRa board configs explicitly enable CONFIG_LORA; requested west build passes."
+  "close_reason": "Fixed: generic nRF52840 DK no longer enables LoRa L2 without a lora0 alias; supported LoRa board configs explicitly enable CONFIG_LORA; requested west build passes.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

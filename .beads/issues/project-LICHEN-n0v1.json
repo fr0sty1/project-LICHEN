@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:49:34.102981Z",
   "closed_at": "2026-07-12T00:49:34.102981Z",
-  "close_reason": "Fixed: Added _connect_lock to serialize connect() calls, preventing connection leaks when called concurrently. Early-return if already connected."
+  "close_reason": "Fixed: Added _connect_lock to serialize connect() calls, preventing connection leaks when called concurrently. Early-return if already connected.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

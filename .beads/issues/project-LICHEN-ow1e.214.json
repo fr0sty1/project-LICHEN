@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:10.929101Z",
   "close_reason": "Frame validation review - existing code is correct",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

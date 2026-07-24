@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T07:48:03.51871Z",
   "close_reason": "Completed no-hardware HAL capability/status stubs, app migrations, tests, reviews, EC2 native_sim validation, cleanup, and follow-up project-LICHEN-xcxf for native UART HAL migration.",
   "labels": [
-    "zephyr",
-    "hal",
+    "board-support",
     "capabilities",
     "firmware",
-    "board-support",
-    "partner-handoff"
+    "hal",
+    "owner-reserved",
+    "partner-handoff",
+    "zephyr"
   ],
   "dependencies": [
     {

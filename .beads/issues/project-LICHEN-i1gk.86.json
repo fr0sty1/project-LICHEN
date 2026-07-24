@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:30.156471Z",
   "close_reason": "Fixed: Updated outdated comment. Replay windows are correctly allocated AFTER signature verification in lichen_link_rx() Step 4 (after Step 2 signature check). The poisoning attack is already mitigated.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

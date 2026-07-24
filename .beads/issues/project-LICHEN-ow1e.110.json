@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:12:34.202968Z",
   "close_reason": "Replaced inline UDP header construction with UdpHeader::write_to from lichen-ipv6. Removed duplicate checksum helper functions (udp_checksum, oc_add, checksum_bytes, pseudo_sum, finalize). Magic offsets 40, 42, 44, 46, 48 replaced with IPV6_HEADER_LEN constant expressions.",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

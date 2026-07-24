@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:26.419044Z",
   "close_reason": "Documented: added SECURITY comment explaining L2 broadcast implications (eavesdropping, DoS), mitigations (OSCORE, Schnorr sigs, IPv6 filtering)",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

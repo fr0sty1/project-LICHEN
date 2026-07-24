@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:26.681475Z",
   "close_reason": "Already handled: generate_eui64() at line 357 explicitly zeros the eui64 output buffer on any failure path (secure_zero(eui64, 8) when ret != 0). The defensive zeroing requested in this issue is already implemented.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

@@ -14,11 +14,12 @@
   "closed_at": "2026-07-01T03:05:34.051752Z",
   "close_reason": "Completed Meshtastic adapter dispatcher MVP with direct native_sim coverage and R1 Neo Meshtastic gateway build evidence; follow-up Twister/gateway-thread coverage gaps filed.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "framing",
+    "app-interface",
     "firmware",
-    "app-interface"
+    "framing",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

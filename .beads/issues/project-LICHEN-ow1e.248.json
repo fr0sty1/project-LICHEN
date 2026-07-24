@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:23:15.872602Z",
   "close_reason": "Test passes - pattern matches correctly with BufferTooSmall(_) wildcard",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

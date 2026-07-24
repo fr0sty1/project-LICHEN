@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T04:59:18.421668Z",
   "close_reason": "Gated puck native-only state so non-native builds do not define unused s_iid or last_info_ms while preserving the CONFIG_LICHEN_NATIVE node-info/reporting path. Tests/builds: west build -b t_echo/nrf52840 lichen/apps/puck -d build/puck_t_echo_nrf52840 --pristine=always passed; west build -b t1000_e/nrf52840 lichen/apps/puck -d build/puck_t1000_e_nrf52840 --pristine=always passed; git diff --check passed. Review pass 1: no findings; verified the non-native T-Echo config has CONFIG_LICHEN_NATIVE disabled and the unused symbols are inside IS_ENABLED(CONFIG_LICHEN_NATIVE). Review pass 2: no findings in scope; filed project-LICHEN-9nrr.33 for unrelated T1000-E USB default VID/PID warnings seen during native-enabled validation.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T06:03:12.696029Z",
   "close_reason": "Invalid - verified all paths return correctly: line 235 (-ENODEV), line 241 (start result), line 278 (ret from stop)",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

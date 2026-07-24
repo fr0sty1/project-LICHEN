@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:52:00.941283Z",
   "closed_at": "2026-07-06T18:52:00.941283Z",
-  "close_reason": "All 7 children complete: SCHC Rule 2, compact CoT codec, UDP dispatch, test vectors, CoT↔XML gateway, APRS-IS."
+  "close_reason": "All 7 children complete: SCHC Rule 2, compact CoT codec, UDP dispatch, test vectors, CoT↔XML gateway, APRS-IS.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

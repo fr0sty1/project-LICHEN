@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:40:47.86805Z",
   "closed_at": "2026-07-12T00:40:47.86805Z",
-  "close_reason": "Verified compliant: RX path uses interrupt-driven await_irq() with IRQ_SIGNAL.wait().await. wait_on_busy() is for SPI sync (now yields with Timer::after_micros)"
+  "close_reason": "Verified compliant: RX path uses interrupt-driven await_irq() with IRQ_SIGNAL.wait().await. wait_on_busy() is for SPI sync (now yields with Timer::after_micros)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

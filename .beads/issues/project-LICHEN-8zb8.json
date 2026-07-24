@@ -13,7 +13,8 @@
   "closed_at": "2026-07-06T18:07:51.545474Z",
   "close_reason": "Context Debug impl is correct - length fields are not security-sensitive, secrets are properly redacted",
   "labels": [
-    "security",
-    "documentation"
+    "documentation",
+    "owner-reserved",
+    "security"
   ]
 }

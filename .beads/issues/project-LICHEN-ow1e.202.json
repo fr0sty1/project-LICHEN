@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:06.695789Z",
   "close_reason": "List sharing semantics observation - current behavior is correct",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

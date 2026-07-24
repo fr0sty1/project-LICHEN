@@ -14,10 +14,11 @@
   "closed_at": "2026-07-02T22:12:25.821255Z",
   "close_reason": "Completed as design confirmation and de-duplication: existing closed Beads project-LICHEN-xj8k, project-LICHEN-ecq7, project-LICHEN-2067, and project-LICHEN-2067.1 already accept and implement the no-hardware policy that firmware build epoch and optional authenticated board/provision epoch are lower-bound freshness floors for GNSS/time, not authoritative clocks. Confirmed current implementation surfaces in docs/firmware-time-provider.md, lichen/cmake/lichen_build_epoch.cmake, lichen/subsys/lichen/hal, lichen/tests/build_epoch, lichen/tests/hal, and lichen/tests/puck_location. Physical validation remains blocked/tracked by existing GNSS hardware Beads. Created follow-ups project-LICHEN-7rmw, project-LICHEN-vfdi, and project-LICHEN-okar for newly identified spec/status/provision-persistence gaps.",
   "labels": [
-    "time",
-    "gnss",
     "firmware",
-    "software-design"
+    "gnss",
+    "owner-reserved",
+    "software-design",
+    "time"
   ],
   "dependencies": [
     {

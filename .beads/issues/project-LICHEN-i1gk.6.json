@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:23.26599Z",
   "close_reason": "Fixed: changed return type to int, returns -EINVAL or -ECANCELED on failure",
   "labels": [
-    "review",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

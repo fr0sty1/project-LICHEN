@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:32.309514Z",
   "close_reason": "Documented: architecture limitation - weak constant-time due to variable timing in SCHC decompression and Schnorr-48 verify. Accepted risk: attack requires sub-millisecond timing precision over LoRa which is impractical.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

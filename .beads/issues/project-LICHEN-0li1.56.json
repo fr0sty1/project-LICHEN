@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:09.315985Z",
   "close_reason": "Already fixed: secure_zero(rx_link_key) is now called on all exit paths - line 1819 (auth failure), line 1827 (oversized packet), and line 1847 (success). Fixed in commit a24db525 'fix(zephyr): address 115 exhaustive code review findings'.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

@@ -14,11 +14,12 @@
   "closed_at": "2026-07-02T02:25:10.433297Z",
   "close_reason": "Completed EBS primary worktree cleanup. Dirty state preserved under /mnt/lichen-zephyr/work/preserved-primary-worktree-20260702T0225Z, primary reset to origin/main, git clean completed, git pull --ff-only now succeeds, and Zephyr cache dirs remain present.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "framing",
+    "app-interface",
     "firmware",
-    "app-interface"
+    "framing",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

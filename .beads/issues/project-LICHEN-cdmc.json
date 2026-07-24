@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T01:47:09.527469Z",
   "closed_at": "2026-07-12T01:47:09.527469Z",
-  "close_reason": "Implemented: Added test/vectors/rpl_messages.json with 17 vectors covering DIO/DAO/DAO-ACK/DIS base messages, DODAG Config/RPL Target/Transit Info options, and option iteration. Updated schema.json with rpl_messages_vector definition. Added test_rpl_messages_vector to python/tests/test_vectors.py for Python validation. All 128 vector tests pass."
+  "close_reason": "Implemented: Added test/vectors/rpl_messages.json with 17 vectors covering DIO/DAO/DAO-ACK/DIS base messages, DODAG Config/RPL Target/Transit Info options, and option iteration. Updated schema.json with rpl_messages_vector definition. Added test_rpl_messages_vector to python/tests/test_vectors.py for Python validation. All 128 vector tests pass.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

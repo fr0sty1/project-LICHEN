@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-15T04:47:36.8157Z",
   "closed_at": "2026-07-15T04:47:36.8157Z",
-  "close_reason": "Added destination-address length prefix to Python signable data, updated valid signature fixture, and verified focused tests plus Ruff."
+  "close_reason": "Added destination-address length prefix to Python signable data, updated valid signature fixture, and verified focused tests plus Ruff.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

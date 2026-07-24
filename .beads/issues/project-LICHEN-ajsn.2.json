@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:07:58.195815Z",
   "close_reason": "Positive finding - test correctly uses hand-computed oracle independent of code under test",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

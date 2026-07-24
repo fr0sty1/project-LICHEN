@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T05:51:22.063093Z",
   "close_reason": "Won't fix: zero compression is nice-to-have, current format is valid IPv6",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

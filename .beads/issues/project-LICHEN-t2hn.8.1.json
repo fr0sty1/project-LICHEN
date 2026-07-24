@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T05:41:34.479344Z",
   "close_reason": "Completed: Meshtastic incoming status event API and ROUTING_APP ACK/NAK encoder/tests implemented and reviewed.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "status",
-    "firmware",
     "app-interface",
-    "messaging"
+    "firmware",
+    "meshtastic",
+    "messaging",
+    "owner-reserved",
+    "status",
+    "zephyr"
   ],
   "dependencies": [
     {

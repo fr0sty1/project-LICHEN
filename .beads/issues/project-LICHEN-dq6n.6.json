@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T01:38:26.881373Z",
   "close_reason": "Fixed: Changed memcpy to use LICHEN_L2_ADDR_LEN constant instead of sizeof(iface_link_addr) for consistent address length handling",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

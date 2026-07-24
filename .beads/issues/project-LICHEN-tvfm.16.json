@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:21:21.983188Z",
   "close_reason": "Fixed: Added k_panic() precondition check that refuses to reinit mutex if module is running, plus strengthened SECURITY comments in both .c and .h files documenting the danger and correct usage",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

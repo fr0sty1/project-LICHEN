@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:53:16.414386Z",
   "close_reason": "Fixed lichen_lora_l2_set_rx_callback() precondition checks for aborted/needs-reinit and deiniting states; verified with focused object rebuild and full LoRa-enabled T-Echo build",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

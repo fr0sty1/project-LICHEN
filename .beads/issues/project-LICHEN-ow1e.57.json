@@ -14,6 +14,7 @@
   "close_reason": "Fixed: Added epoch validation to ReplayProtector. New set_min_epoch() method allows setting minimum acceptable epoch per peer, which should be called after boot with last-known epoch from persistent storage to prevent cross-boot replay attacks. Added 3 tests and filed 3 P3 codereview findings as child issues.",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:14:32.306722Z",
   "closed_at": "2026-07-13T00:14:32.306722Z",
-  "close_reason": "Fixed: Removed incorrect zcbor state backtracking. The key is already successfully decoded, so we just skip the value with one zcbor_any_skip() call. Removed unnecessary zcbor_pop_error(), state restoration, and key_state variable at both locations (lines 468-471 and 775-779)."
+  "close_reason": "Fixed: Removed incorrect zcbor state backtracking. The key is already successfully decoded, so we just skip the value with one zcbor_any_skip() call. Removed unnecessary zcbor_pop_error(), state restoration, and key_state variable at both locations (lines 468-471 and 775-779).",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T06:15:34.778717Z",
   "close_reason": "Enhanced documentation in lora_l2.h for lichen_lora_l2_tx(): explains that Zephyr's lora_send() takes non-const because radio drivers may modify the buffer for DMA alignment or in-place encryption. Advises using a dedicated TX buffer rather than const data.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

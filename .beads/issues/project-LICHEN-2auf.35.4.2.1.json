@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.35.4.2.1",
   "title": "Fail link init closed on entropy error",
   "description": "Change lichen_link_init to obtain entropy before context mutation, return -EIO on Zephyr/POSIX/unsupported-platform failure, document the contract, and add a deterministic host POSIX fault-injection CTest proving success mapping and failure non-mutation.",
-  "acceptance_criteria": "lichen_link_init returns -EIO without modifying context when entropy fails; successful fixed entropy maps to epoch 128+(byte\u00260x7f); header documents errors; host POSIX fault test passes; three reviews pass.",
+  "acceptance_criteria": "lichen_link_init returns -EIO without modifying context when entropy fails; successful fixed entropy maps to epoch 128+(byte&0x7f); header documents errors; host POSIX fault test passes; three reviews pass.",
   "notes": "Completed in d73e48827. lichen_link_init now acquires entropy before context/mutex mutation and returns -EIO on all entropy failures; unsupported key generation also fails at runtime. Added strict-C11 host getentropy fault oracle wired into interop CI. Default and Release CTests pass; three final reviews found no issues. Linux CI remains pending.",
   "status": "closed",
   "priority": 1,
@@ -24,5 +24,8 @@
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-nzz3",
   "title": "task",
-  "description": "python/src/lichen/rpl/dodag.py:148-152. Rank \u003e 0xFFFF crashes.",
+  "description": "python/src/lichen/rpl/dodag.py:148-152. Rank > 0xFFFF crashes.",
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:36:59.669444Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

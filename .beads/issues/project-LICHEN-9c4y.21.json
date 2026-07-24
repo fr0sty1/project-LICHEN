@@ -14,13 +14,14 @@
   "closed_at": "2026-07-02T18:27:33.481884Z",
   "close_reason": "Completed no-hardware RAM-backed MeshCore compatibility-local settings store slice with vectors, docs, reviews, local checks, and EC2 Twister evidence. Durable flash-backed persistence remains tracked by child project-LICHEN-9c4y.21.1.",
   "labels": [
-    "zephyr",
-    "meshcore",
-    "settings",
-    "compatibility",
-    "tests",
     "app-interface",
-    "firmware"
+    "compatibility",
+    "firmware",
+    "meshcore",
+    "owner-reserved",
+    "settings",
+    "tests",
+    "zephyr"
   ],
   "dependencies": [
     {

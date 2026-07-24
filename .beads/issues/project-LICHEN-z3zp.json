@@ -14,6 +14,7 @@
   "closed_at": "2026-06-28T22:19:55.760789Z",
   "close_reason": "All review findings fixed",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

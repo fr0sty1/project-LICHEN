@@ -14,6 +14,7 @@
   "close_reason": "Fixed: Clarified consecutive_errors reset comment at -EAGAIN branch to explicitly state 'Timeout is normal operation, not an error - reset counter', distinguishing it from the success-path reset",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

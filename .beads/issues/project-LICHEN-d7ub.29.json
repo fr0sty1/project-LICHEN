@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:53:14.373121Z",
   "close_reason": "Cleared link_ctx_initialized during lichen_l2_reinit_after_abort() abort recovery and verified lichen_l2.c object compile",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

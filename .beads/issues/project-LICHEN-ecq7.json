@@ -14,11 +14,12 @@
   "closed_at": "2026-07-02T01:18:11.292439Z",
   "close_reason": "Completed no-hardware firmware date/time epoch floor design in docs/firmware-time-provider.md. Defined deterministic build epoch, valid board provision epoch, GNSS freshness handling, provider boundary, and native_sim/qemu test expectations; final-final three-agent review found no P0/P1/P2 findings; git diff --check passed; EC2 not required for docs-only work.",
   "labels": [
-    "zephyr",
+    "design",
     "firmware",
     "gnss",
+    "owner-reserved",
+    "test",
     "time",
-    "design",
-    "test"
+    "zephyr"
   ]
 }

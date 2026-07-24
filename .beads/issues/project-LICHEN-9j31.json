@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9j31",
   "title": "Python headers.py: Removed length checks may cause parsing exceptions",
-  "description": "In python/src/lichen/schc/headers.py, the changes removed minimum length checks (e.g., 'if len(raw) \u003c HEADER_LENGTH + ...' guards) from _CoapUdpProfile.matches(), _RplProfile.matches(), and Icmpv6EchoProfile.matches(). While IPv6Header.from_bytes() will raise on truncated input, the exception is caught, but the explicit early-return-False was clearer for code maintainers. Not a correctness bug but a minor code clarity regression.",
+  "description": "In python/src/lichen/schc/headers.py, the changes removed minimum length checks (e.g., 'if len(raw) < HEADER_LENGTH + ...' guards) from _CoapUdpProfile.matches(), _RplProfile.matches(), and Icmpv6EchoProfile.matches(). While IPv6Header.from_bytes() will raise on truncated input, the exception is caught, but the explicit early-return-False was clearer for code maintainers. Not a correctness bug but a minor code clarity regression.",
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:53:05.602964Z",
   "close_reason": "Fixed by workflow",
   "labels": [
-    "cleanup"
+    "cleanup",
+    "owner-reserved"
   ]
 }

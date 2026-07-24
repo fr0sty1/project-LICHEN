@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:49:03.244719Z",
   "close_reason": "Fixed: Corrected inline comment to match the block comment explanation. Changed from '5 (header) + 4 (MIC) + 48 (signature) - 2 (margin) = 55' (misleading arithmetic) to '57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom' (matches semantic explanation above).",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

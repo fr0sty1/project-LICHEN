@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-24T08:54:55.55766797Z",
   "closed_at": "2026-07-24T08:54:55.55766797Z",
-  "close_reason": "Verified: LRU cache with max_cache_size=1024 using OrderedDict in LossRule._loss_cache. Cache evicts oldest entries when full. All bead requirements verified."
+  "close_reason": "Verified: LRU cache with max_cache_size=1024 using OrderedDict in LossRule._loss_cache. Cache evicts oldest entries when full. All bead requirements verified.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

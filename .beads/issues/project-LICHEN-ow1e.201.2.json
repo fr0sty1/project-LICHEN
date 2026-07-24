@@ -15,6 +15,7 @@
   "labels": [
     "api-contract",
     "docs",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

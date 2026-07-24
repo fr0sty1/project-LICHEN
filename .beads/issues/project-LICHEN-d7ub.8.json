@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T07:44:19.364274Z",
   "close_reason": "False positive: lichen_peer_add() does NOT have __attribute__((nonnull)). Verified by grep across entire bridge-zephyr codebase - no nonnull attribute exists on this function. The defensive NULL checks at lines 610-612 work correctly without conflicting attributes. The documentation at line 67 correctly states -EINVAL is returned for NULL. No code changes needed.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

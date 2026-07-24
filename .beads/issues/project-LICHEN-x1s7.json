@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T06:30:05.977754Z",
   "closed_at": "2026-07-12T06:30:05.977754Z",
-  "close_reason": "Not a bug - the parsing correctly handles all edge cases including trailing commas by raising ValueError which is caught"
+  "close_reason": "Not a bug - the parsing correctly handles all edge cases including trailing commas by raising ValueError which is caught",
+  "labels": [
+    "owner-reserved"
+  ]
 }

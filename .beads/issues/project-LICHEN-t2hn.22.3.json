@@ -15,11 +15,12 @@
   "closed_at": "2026-07-01T19:47:03.191569Z",
   "close_reason": "Completed: Meshtastic BLE now uses ble_app_owner for connection callbacks and owner-held connection refs; native_sim/Twister evidence recorded; P3 coverage follow-up created.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "ble",
     "app-interface",
-    "firmware"
+    "ble",
+    "firmware",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:01:13.658871Z",
   "close_reason": "Added doc comment to MicLength enum explaining reserved values 2-7",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

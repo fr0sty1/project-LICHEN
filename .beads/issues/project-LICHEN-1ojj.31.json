@@ -13,8 +13,9 @@
   "closed_at": "2026-06-27T05:51:39.318883Z",
   "close_reason": "By design: CRC32 fallback is for unauthenticated bootstrap; link keys provide security per spec",
   "labels": [
-    "crypto-security",
     "algorithm",
+    "crypto-security",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

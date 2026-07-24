@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T05:16:20.360469Z",
   "close_reason": "Duplicate of project-LICHEN-0li1.7 (same issue: rx_mutex reinit at lichen_l2.c:1141)",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

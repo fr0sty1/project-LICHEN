@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T03:39:09.805Z",
   "close_reason": "Completed",
   "labels": [
+    "c",
+    "owner-reserved",
     "review",
     "workspace-api",
-    "zephyr",
-    "c"
+    "zephyr"
   ],
   "dependencies": [
     {

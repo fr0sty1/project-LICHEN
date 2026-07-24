@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T21:36:37.429951Z",
   "closed_at": "2026-06-28T21:36:37.429951Z",
-  "close_reason": "Fixed gateway native_sim Kconfig dependency warnings by enabling LICHEN_LINK and disabling Zephyr SLIP/TAP for native_sim; targeted build now passes Kconfig and stops on host platform native_sim limitation."
+  "close_reason": "Fixed gateway native_sim Kconfig dependency warnings by enabling LICHEN_LINK and disabling Zephyr SLIP/TAP for native_sim; targeted build now passes Kconfig and stops on host platform native_sim limitation.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

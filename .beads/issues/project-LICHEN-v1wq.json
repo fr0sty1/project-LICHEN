@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T03:53:28.81691Z",
   "closed_at": "2026-07-12T03:53:28.81691Z",
-  "close_reason": "Fixed: Added OSCORE_MAX_OVERHEAD (24 bytes) constant and increased tx_ipv6_buf/rx_ipv6_buf sizes from 240 to 264 bytes in both lichen/subsys/lichen/l2/lichen_l2.c and firmware/bridge-zephyr/subsys/lichen/lichen_l2.c to accommodate OSCORE Object-Security option overhead (~20+ bytes). Updated documentation comments to reflect new buffer sizes and removed FIXME(OSCORE) markers."
+  "close_reason": "Fixed: Added OSCORE_MAX_OVERHEAD (24 bytes) constant and increased tx_ipv6_buf/rx_ipv6_buf sizes from 240 to 264 bytes in both lichen/subsys/lichen/l2/lichen_l2.c and firmware/bridge-zephyr/subsys/lichen/lichen_l2.c to accommodate OSCORE Object-Security option overhead (~20+ bytes). Updated documentation comments to reflect new buffer sizes and removed FIXME(OSCORE) markers.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

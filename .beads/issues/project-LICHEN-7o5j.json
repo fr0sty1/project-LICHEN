@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-30T14:47:04.714559Z",
   "closed_at": "2026-06-30T14:46:28.116304Z",
-  "close_reason": "Completed: active module owns L2 source/Kconfig/CMake, gateway native_sim builds with CONFIG_LICHEN_L2=y, and smoke run initializes/enables L2 with LoRa loopback RX thread."
+  "close_reason": "Completed: active module owns L2 source/Kconfig/CMake, gateway native_sim builds with CONFIG_LICHEN_L2=y, and smoke run initializes/enables L2 with LoRa loopback RX thread.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

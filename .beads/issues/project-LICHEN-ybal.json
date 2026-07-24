@@ -13,6 +13,7 @@
   "closed_at": "2026-07-24T13:30:39.515363517Z",
   "close_reason": "All 8 remaining child issues verified as fixed in code -- subagent audit confirms each requirement satisfied",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

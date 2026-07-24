@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:25:09.072822Z",
   "close_reason": "Already fixed: BUILD_ASSERT with DT_NODE_EXISTS now produces clear compile-time error when lora0 alias is missing",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

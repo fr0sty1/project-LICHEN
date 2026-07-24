@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:59:49.246698Z",
   "close_reason": "Cosmetic naming issue - renaming Addr to Ipv6Addr at source would be a breaking change. Re-export as Ipv6Addr is correct practice.",
   "labels": [
-    "workspace-api",
     "naming",
-    "review"
+    "owner-reserved",
+    "review",
+    "workspace-api"
   ],
   "dependencies": [
     {

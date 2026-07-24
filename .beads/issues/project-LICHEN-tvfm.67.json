@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:53:16.724385Z",
   "close_reason": "Fixed: Added MIC size clarification comment explaining that 32-bit MIC is the minimum, 64-bit MIC frames are always longer, and that MIC size/security policy enforcement happens during lichen_link_rx() MIC verification, not at this early length check.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

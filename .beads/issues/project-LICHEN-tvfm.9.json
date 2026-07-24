@@ -11,12 +11,13 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:21:01.709734Z",
   "closed_at": "2026-06-28T02:21:01.709734Z",
-  "close_reason": "Fixed: Added explicit NULL check with printk warning before early return. The function now logs 'WARN: secure_zero called with NULL pointer' in release builds instead of silently returning. Also added #include \u003czephyr/sys/printk.h\u003e.",
+  "close_reason": "Fixed: Added explicit NULL check with printk warning before early return. The function now logs 'WARN: secure_zero called with NULL pointer' in release builds instead of silently returning. Also added #include <zephyr/sys/printk.h>.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

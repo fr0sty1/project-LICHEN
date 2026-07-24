@@ -14,11 +14,12 @@
   "closed_at": "2026-07-02T13:12:18.59711Z",
   "close_reason": "Completed no-hardware scope: implemented compact /inbound/location parser and HAL bridge, added native_sim/qemu ztests for scoped local-client source gating and parser/HAL behavior, recorded EC2 Twister pass and review evidence. Production BLE registration remains intentionally deferred to child project-LICHEN-zte2.6.1 pending authenticated encrypted GATT write policy and physical BLE smoke validation.",
   "labels": [
-    "zephyr",
     "firmware",
     "gnss",
-    "location",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "zephyr"
   ]
 }

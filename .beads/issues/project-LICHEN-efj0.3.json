@@ -14,8 +14,9 @@
   "closed_at": "2026-06-28T05:04:05.374674Z",
   "close_reason": "Replaced panic/expect with error logging and graceful degradation (LED blink pattern or continue loop)",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ],
   "dependencies": [
     {

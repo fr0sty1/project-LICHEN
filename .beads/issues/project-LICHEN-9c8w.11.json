@@ -14,6 +14,7 @@
   "close_reason": "Added LICHEN_IPV6_ADDR_LOG_LEVEL Kconfig option and updated ipv6_addr.c to use it. The other two modules (lora_l2.c, lichen_l2.c) already had their log level config options defined and in use. Build verification blocked by pre-existing project issue: lichen module not detected by Zephyr build system.",
   "labels": [
     "logging",
+    "owner-reserved",
     "refactor"
   ],
   "dependencies": [

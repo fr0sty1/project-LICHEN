@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-15T02:55:29.626523Z",
   "closed_at": "2026-07-15T02:55:29.626523Z",
-  "close_reason": "Implemented complete simulation validation test suite covering core simulation components, cross-platform capability, metrics export, and distributed testing scenarios. All key simulation functionalities are now validated before hardware testing."
+  "close_reason": "Implemented complete simulation validation test suite covering core simulation components, cross-platform capability, metrics export, and distributed testing scenarios. All key simulation functionalities are now validated before hardware testing.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

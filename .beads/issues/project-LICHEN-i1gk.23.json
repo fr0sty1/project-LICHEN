@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:43:45.464183Z",
   "close_reason": "Fixed: Added secure_zero(peer_table) to fail_late_init path to match disable path cleanup behavior",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:15:54.450313Z",
   "closed_at": "2026-07-11T06:15:54.450313Z",
-  "close_reason": "Fixed: Use copy.deepcopy(body) when storing to _sent to prevent shared dict reference with _inbox"
+  "close_reason": "Fixed: Use copy.deepcopy(body) when storing to _sent to prevent shared dict reference with _inbox",
+  "labels": [
+    "owner-reserved"
+  ]
 }

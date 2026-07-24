@@ -12,5 +12,8 @@
   "updated_at": "2026-06-26T21:27:14Z",
   "started_at": "2026-05-27T14:58:16Z",
   "closed_at": "2026-05-27T14:59:49Z",
-  "close_reason": "Created python/ with pyproject.toml, src/lichen/{sim,radio,link}/, tests/, all __init__.py files. Package installs and imports successfully."
+  "close_reason": "Created python/ with pyproject.toml, src/lichen/{sim,radio,link}/, tests/, all __init__.py files. Package installs and imports successfully.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

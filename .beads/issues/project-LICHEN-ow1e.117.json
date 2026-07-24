@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:01:24.580743Z",
   "close_reason": "Added INFALLIBLE comment and doc comment to peer_key() in storage.rs explaining why the expect cannot fail",
   "labels": [
-    "idiomatic-rust",
     "error-handling",
+    "idiomatic-rust",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

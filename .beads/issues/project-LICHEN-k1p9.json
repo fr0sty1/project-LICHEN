@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T04:21:01.385976Z",
   "closed_at": "2026-07-12T04:21:01.385976Z",
-  "close_reason": "Verified: Python delegates block-wise transfers to aiocoap (transport.py line 3: 'aiocoap handles CoAP message serialization, retransmission, and blockwise'). Rust implements block.rs (593 lines) with BlockOption, BlockSender, BlockReceiver. Both achieve RFC 7959 support - Python via aiocoap, Rust via lichen-coap. Parity confirmed."
+  "close_reason": "Verified: Python delegates block-wise transfers to aiocoap (transport.py line 3: 'aiocoap handles CoAP message serialization, retransmission, and blockwise'). Rust implements block.rs (593 lines) with BlockOption, BlockSender, BlockReceiver. Both achieve RFC 7959 support - Python via aiocoap, Rust via lichen-coap. Parity confirmed.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

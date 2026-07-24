@@ -14,9 +14,10 @@
   "closed_at": "2026-07-02T00:56:04.724558Z",
   "close_reason": "Completed no-hardware HAL serial-local chosen precedence coverage. Added qemu_x86 Twister suite proving native-uart, uart-pipe, slip-uart, shell-uart, and console fallback ordering with distinct devices; EC2 Twister passed 5/5 with 0 warnings; three final codereviews found no P0/P1/P2.",
   "labels": [
-    "zephyr",
+    "follow-up",
     "hal",
+    "owner-reserved",
     "test",
-    "follow-up"
+    "zephyr"
   ]
 }

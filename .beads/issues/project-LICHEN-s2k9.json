@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:07:40.399867Z",
   "close_reason": "Added explicit length validation in to_ipv6() - now raises AddrError with clear message for wrong-length bytes",
   "labels": [
+    "owner-reserved",
     "robustness"
   ]
 }

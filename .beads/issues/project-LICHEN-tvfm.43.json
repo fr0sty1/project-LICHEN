@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:48:30.280646Z",
   "close_reason": "Fixed: Removed header default for CONFIG_LICHEN_LINK_MAX_NEIGHBORS. Kconfig in lichen/subsys/lichen/link/Kconfig provides the definitive default (16, range 4-64). LICHEN_L2 depends on LICHEN_LINK, guaranteeing the config is set. Header now documents the Kconfig source instead of providing a bypass.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:49:49.337589Z",
   "close_reason": "Added dummy uint8_t field to empty struct lichen_l2_ctx to avoid -Wpedantic/-Wempty-struct warnings",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

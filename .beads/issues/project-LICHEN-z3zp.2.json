@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T21:23:19.904493Z",
   "close_reason": "Fixed encrypt cleanup to avoid decrypt-only ct_len and const plaintext wipe; verified aes_ccm.c syntax.",
   "labels": [
-    "correctness",
     "c-standards",
     "compiler",
+    "correctness",
     "crypto-security",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

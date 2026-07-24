@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:08:24.58272Z",
   "close_reason": "Test coverage exists - round_trip tests in codec.rs verify compression/decompression for all rules",
   "labels": [
+    "owner-reserved",
     "test-coverage"
   ]
 }

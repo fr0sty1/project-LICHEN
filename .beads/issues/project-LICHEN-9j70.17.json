@@ -14,6 +14,7 @@
   "close_reason": "Fixed: BUILD_ASSERT already added to lichen_l2.c (lines 25-34) enforcing LICHEN_L2_MTU == LICHEN_LORA_MTU at compile time. If the values ever diverge, compilation will fail with clear error message.",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

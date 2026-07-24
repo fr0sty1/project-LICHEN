@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:13:34.482625Z",
   "close_reason": "Added FIXME(OSCORE) tag for grep-able tracking of buffer sizing debt",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T22:27:46.061873Z",
   "close_reason": "Intentional - documented risk acceptance. The SECURITY comment (lines 509-538) comprehensively documents: (1) the exact UB (reinit of potentially-held mutex), (2) concrete failure modes (state corruption, kernel data corruption, debug assertions), (3) why it is done anyway (recovery preferable to permanent module failure), and (4) the safe alternative (system reboot for applications requiring correctness). No changes needed.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

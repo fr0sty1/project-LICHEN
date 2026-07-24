@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T04:12:03.300322Z",
   "closed_at": "2026-06-29T04:12:03.300322Z",
-  "close_reason": "Fixed: T-Echo gateway board config disables Zephyr wired SLIP because this variant exposes LCI over BLE NUS. Verified requested west build passes Kconfig with CONFIG_SLIP and CONFIG_SERIAL unset; it now reaches link and stops on separate undefined symbols tracked as project-LICHEN-wnnz."
+  "close_reason": "Fixed: T-Echo gateway board config disables Zephyr wired SLIP because this variant exposes LCI over BLE NUS. Verified requested west build passes Kconfig with CONFIG_SLIP and CONFIG_SERIAL unset; it now reaches link and stops on separate undefined symbols tracked as project-LICHEN-wnnz.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

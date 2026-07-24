@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T07:27:23.719633Z",
   "close_reason": "not-a-bug: four separate mutexes with no cross-module locking",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "interaction",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

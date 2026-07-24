@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:24:43.314919Z",
   "close_reason": "Fixed: Added secure_zero(hwid, sizeof(hwid)) in cleanup section at line 132, consistent with existing pattern for hash buffer zeroing",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

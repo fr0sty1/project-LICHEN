@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:51:32.903247Z",
   "closed_at": "2026-07-12T00:51:32.903247Z",
-  "close_reason": "Fixed: Added exit_rx_mode() call after RX loop to cancel pending RxTimeoutEvent when packet received early, preventing event queue pollution"
+  "close_reason": "Fixed: Added exit_rx_mode() call after RX loop to cancel pending RxTimeoutEvent when packet received early, preventing event queue pollution",
+  "labels": [
+    "owner-reserved"
+  ]
 }

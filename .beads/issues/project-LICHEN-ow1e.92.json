@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:10:00.974881Z",
   "close_reason": "Implemented wrapped TooShort/BufferTooSmall error types using lichen-core::error re-exports from lichen-ipv6; updated lichen-senml, lichen-oscore, and lichen-rpl to use the new wrapped types with proper size information",
   "labels": [
-    "workspace-api",
     "error-type",
-    "review"
+    "owner-reserved",
+    "review",
+    "workspace-api"
   ],
   "dependencies": [
     {

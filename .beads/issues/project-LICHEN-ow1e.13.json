@@ -14,6 +14,7 @@
   "close_reason": "Known limitation documented in code. Requires frame format change to include sender IID. TODOs acknowledge this.",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-d7bf",
   "title": "task",
-  "description": "rust/lichen-cli/src/commands.rs:287,301,311. ep=foo\u0026evil=true injects params.",
+  "description": "rust/lichen-cli/src/commands.rs:287,301,311. ep=foo&evil=true injects params.",
   "status": "closed",
   "priority": 3,
   "issue_type": "task",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:37:02.978827Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

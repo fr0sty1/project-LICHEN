@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T15:26:35.063481Z",
   "closed_at": "2026-07-06T15:26:35.063481Z",
-  "close_reason": "Implemented with triple code review"
+  "close_reason": "Implemented with triple code review",
+  "labels": [
+    "owner-reserved"
+  ]
 }

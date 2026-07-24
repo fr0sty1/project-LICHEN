@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:58:52.490185Z",
   "close_reason": "Issue recommends 'No action needed' - the SECURITY comment is clear and test imports are explicit",
   "labels": [
-    "maintainer-burden",
     "api-contract",
+    "maintainer-burden",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

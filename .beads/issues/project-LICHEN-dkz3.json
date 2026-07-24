@@ -13,10 +13,11 @@
   "closed_at": "2026-06-30T02:30:00.448921Z",
   "close_reason": "Updated AGENTS.md and Beads memory zephyr-builds-ec2 to require the prepared EBS builder cache whenever EC2 is used for Zephyr builds/tests. Verified AGENTS.md and .beads/config_kv.json contain the mandatory EBS wording and volume ID; git diff --check passed.",
   "labels": [
-    "docs",
-    "workflow",
-    "beads",
     "aws",
+    "beads",
+    "docs",
+    "owner-reserved",
+    "workflow",
     "zephyr"
   ]
 }

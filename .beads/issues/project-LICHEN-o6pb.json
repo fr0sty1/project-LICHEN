@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T05:27:40.517478Z",
   "closed_at": "2026-07-12T05:27:40.517478Z",
-  "close_reason": "Implemented coap_server.c with /status, /config, /neighbors, /key, /msg/inbox resources"
+  "close_reason": "Implemented coap_server.c with /status, /config, /neighbors, /key, /msg/inbox resources",
+  "labels": [
+    "owner-reserved"
+  ]
 }

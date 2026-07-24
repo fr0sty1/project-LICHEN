@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T01:07:30.436914Z",
   "close_reason": "Completed MeshCore compatibility support matrix. docs/meshcore-compat-dev.md now documents supported transport, identity/status/config surfaces, message ingress/egress, unsupported operations, RF non-compatibility, troubleshooting symptoms, and exact remaining gap Beads. Three final reviews found no P0/P1/P2.",
   "labels": [
-    "zephyr",
-    "meshcore",
-    "docs",
-    "compatibility",
     "app-interface",
-    "firmware"
+    "compatibility",
+    "docs",
+    "firmware",
+    "meshcore",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

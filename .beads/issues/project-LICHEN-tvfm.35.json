@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:38:22.735055Z",
   "close_reason": "Fixed: Added comment documenting that lora_config() copies struct values (sx12xx_lora_config uses memcpy, rylr_config reads fields) and does not retain a pointer, so stack-local config is safe.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

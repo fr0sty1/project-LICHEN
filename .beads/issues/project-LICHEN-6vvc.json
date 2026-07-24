@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:07:41.764648Z",
   "closed_at": "2026-07-06T18:07:41.764648Z",
-  "close_reason": "Restored deprecation warning on import in lichen/interface/__init__.py"
+  "close_reason": "Restored deprecation warning on import in lichen/interface/__init__.py",
+  "labels": [
+    "owner-reserved"
+  ]
 }

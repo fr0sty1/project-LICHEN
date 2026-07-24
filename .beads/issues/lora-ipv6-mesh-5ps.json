@@ -12,5 +12,8 @@
   "updated_at": "2026-05-28T05:32:55Z",
   "started_at": "2026-05-28T05:32:27Z",
   "closed_at": "2026-05-28T05:32:55Z",
-  "close_reason": "Added empty src/lichen/py.typed marker file. Verified it's included in wheel build. Downstream mypy users will now see the package's type annotations per PEP 561."
+  "close_reason": "Added empty src/lichen/py.typed marker file. Verified it's included in wheel build. Downstream mypy users will now see the package's type annotations per PEP 561.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

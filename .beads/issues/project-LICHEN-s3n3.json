@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T21:33:08.491891Z",
   "closed_at": "2026-06-28T21:33:08.491891Z",
-  "close_reason": "Fixed LICHEN Zephyr module metadata so ZEPHYR_EXTRA_MODULES=\u003crepo\u003e/lichen sources lichen/zephyr/Kconfig and lichen/zephyr/CMakeLists.txt. Verified gateway native_sim no longer reports undefined CONFIG_LICHEN* symbols; follow-up project-LICHEN-wg5w tracks remaining native_sim dependency warnings."
+  "close_reason": "Fixed LICHEN Zephyr module metadata so ZEPHYR_EXTRA_MODULES=<repo>/lichen sources lichen/zephyr/Kconfig and lichen/zephyr/CMakeLists.txt. Verified gateway native_sim no longer reports undefined CONFIG_LICHEN* symbols; follow-up project-LICHEN-wg5w tracks remaining native_sim dependency warnings.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

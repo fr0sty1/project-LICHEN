@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-kmxm.1",
   "title": "frame_write can serialize inconsistent MIC length metadata",
-  "description": "Why this issue exists: lichen_frame_write validates frame-\u003emic_len but derives the serialized MIC length from frame-\u003emic_length, so inconsistent fields can make it copy the wrong number of MIC bytes and leak uninitialized bytes. What needs to be done: require frame-\u003emic_len to match frame-\u003emic_length or serialize from one canonical field.",
+  "description": "Why this issue exists: lichen_frame_write validates frame->mic_len but derives the serialized MIC length from frame->mic_length, so inconsistent fields can make it copy the wrong number of MIC bytes and leak uninitialized bytes. What needs to be done: require frame->mic_len to match frame->mic_length or serialize from one canonical field.",
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
@@ -19,5 +19,8 @@
       "type": "parent-child",
       "created_at": "2026-06-29T18:49:36.951963Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

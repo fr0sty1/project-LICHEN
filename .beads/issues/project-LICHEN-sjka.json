@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:45:39.721658Z",
   "closed_at": "2026-07-12T00:45:39.721658Z",
-  "close_reason": "Already fixed: ProxyResource.render() validates Proxy-Uri via _is_mesh_uri() at lines 216-218, rejecting IPv4, hostnames, and non-mesh IPv6. TestProxySsrfProtection (5 tests) confirms SSRF protection works."
+  "close_reason": "Already fixed: ProxyResource.render() validates Proxy-Uri via _is_mesh_uri() at lines 216-218, rejecting IPv4, hostnames, and non-mesh IPv6. TestProxySsrfProtection (5 tests) confirms SSRF protection works.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

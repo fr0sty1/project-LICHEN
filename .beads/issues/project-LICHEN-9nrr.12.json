@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T23:36:02.625189Z",
   "close_reason": "Added inline SCHC design-decision documentation and compile-time packet-layout constants; standalone SCHC C tests pass.",
   "labels": [
-    "review",
-    "exhaustive",
-    "schc",
     "c",
     "documentation",
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "schc",
     "zephyr"
   ],
   "dependencies": [

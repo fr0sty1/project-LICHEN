@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:09:55.355119Z",
   "close_reason": "not-a-bug",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

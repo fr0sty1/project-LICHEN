@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:11.961448Z",
   "close_reason": "DTN monotonic review - existing code is correct",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

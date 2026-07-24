@@ -14,14 +14,15 @@
   "closed_at": "2026-07-03T01:46:36.024509Z",
   "close_reason": "Completed: gateway status now exposes build/effective/provision epoch diagnostics and active rejection-source metadata; HAL retains below-floor time samples as diagnostic-only state without promoting stale diagnostics; native_sim/qemu Twister and gateway app build-only validation passed on EC2; final three independent reviews reported no P0/P1/P2 findings.",
   "labels": [
-    "zephyr",
     "firmware",
-    "time",
     "gnss",
-    "status",
     "lci",
+    "no-hardware",
+    "owner-reserved",
+    "status",
     "test",
-    "no-hardware"
+    "time",
+    "zephyr"
   ],
   "dependencies": [
     {

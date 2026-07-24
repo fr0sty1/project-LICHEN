@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:44:19.039818Z",
   "closed_at": "2026-07-12T00:44:19.039818Z",
-  "close_reason": "Fixed: Changed eviction from min_by_key(*t) to max_by_key(now_ms.wrapping_sub(*t)) for wraparound-safe comparison. Added test for u32 timestamp wraparound scenario."
+  "close_reason": "Fixed: Changed eviction from min_by_key(*t) to max_by_key(now_ms.wrapping_sub(*t)) for wraparound-safe comparison. Added test for u32 timestamp wraparound scenario.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

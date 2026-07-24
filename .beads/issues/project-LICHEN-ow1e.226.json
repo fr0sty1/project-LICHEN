@@ -12,6 +12,7 @@
   "closed_at": "2026-07-06T17:19:15.85827Z",
   "close_reason": "LOADng seqnum RFC 1982 implementation verified correct",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

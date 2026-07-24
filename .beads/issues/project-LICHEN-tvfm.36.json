@@ -11,12 +11,13 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:38:41.858226Z",
   "closed_at": "2026-06-28T02:38:41.858226Z",
-  "close_reason": "Fixed: Moved atomic_set(\u0026iface_init_failed, 1) to BEFORE lichen_lora_l2_set_rx_callback(NULL, NULL) in fail_late_init. This ensures any RX callback invoked between registration and cleanup sees the failure flag and bails out immediately, preventing races where a callback could proceed into lichen_l2_input() while cleanup is in progress.",
+  "close_reason": "Fixed: Moved atomic_set(&iface_init_failed, 1) to BEFORE lichen_lora_l2_set_rx_callback(NULL, NULL) in fail_late_init. This ensures any RX callback invoked between registration and cleanup sees the failure flag and bails out immediately, preventing races where a callback could proceed into lichen_l2_input() while cleanup is in progress.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

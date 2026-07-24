@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T21:33:24.856452Z",
   "close_reason": "All 31 findings addressed: 24 fixed, 7 commendations acknowledged",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

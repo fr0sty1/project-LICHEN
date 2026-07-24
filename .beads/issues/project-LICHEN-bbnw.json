@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:55:19.12169Z",
   "closed_at": "2026-07-12T00:55:19.12169Z",
-  "close_reason": "Fixed: Embedded sender's msg_id in LICHEN payload (STX + msg_id + NUL + text format). Receiver now extracts and uses original msg_id for acking, so sender's tracker matches and APRSDroid checkmarks appear."
+  "close_reason": "Fixed: Embedded sender's msg_id in LICHEN payload (STX + msg_id + NUL + text format). Receiver now extracts and uses original msg_id for acking, so sender's tracker matches and APRSDroid checkmarks appear.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

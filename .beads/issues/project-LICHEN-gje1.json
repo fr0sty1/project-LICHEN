@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:03:15.555517Z",
   "closed_at": "2026-07-11T06:03:15.555517Z",
-  "close_reason": "Already fixed: seed.clone() is already present on line 108, allowing the seed to be used twice since Seed has ZeroizeOnDrop and cannot implement Copy. lichen-link crate compiles successfully."
+  "close_reason": "Already fixed: seed.clone() is already present on line 108, allowing the seed to be used twice since Seed has ZeroizeOnDrop and cannot implement Copy. lichen-link crate compiles successfully.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

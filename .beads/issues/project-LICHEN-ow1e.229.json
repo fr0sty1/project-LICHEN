@@ -12,6 +12,7 @@
   "closed_at": "2026-07-06T17:19:16.457291Z",
   "close_reason": "LOADng seqnum wrap-around and half-space coverage verified correct",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

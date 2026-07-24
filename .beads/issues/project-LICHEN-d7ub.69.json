@@ -14,10 +14,11 @@
   "closed_at": "2026-06-29T21:51:58.062115Z",
   "close_reason": "Implemented crash_info_store hooks in lichen_l2 critical failure paths and verified lichen_l2.c object compile after EUI-64 copy API fix",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "interaction",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

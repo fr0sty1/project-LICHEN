@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:42:12.442005Z",
   "close_reason": "Fixed: Added SECURITY comment documenting caller buffer size contract",
   "labels": [
-    "review",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

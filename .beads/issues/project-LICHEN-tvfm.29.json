@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:22:59.154377Z",
   "close_reason": "Fixed: Moved link_ctx_initialized state check to the beginning of lichen_l2_send(), before taking the mutex or doing any packet processing. This ensures early rejection when the module is not initialized.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

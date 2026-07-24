@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:07:54.273018Z",
   "close_reason": "Positive finding - SECURITY comment is valuable documentation, should be preserved",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

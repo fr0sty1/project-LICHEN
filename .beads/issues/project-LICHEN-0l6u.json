@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T03:43:24.588314Z",
   "closed_at": "2026-07-12T03:43:24.588314Z",
-  "close_reason": "Fixed: All callers already use Stack::new_default_epoch helper which handles the epoch parameter. Tests pass."
+  "close_reason": "Fixed: All callers already use Stack::new_default_epoch helper which handles the epoch parameter. Tests pass.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

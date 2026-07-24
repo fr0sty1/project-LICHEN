@@ -15,10 +15,11 @@
   "closed_at": "2026-07-01T08:48:53.324339Z",
   "close_reason": "Completed: MeshCore command/response/push matrix recorded, review findings fixed, downstream implementation/vector Beads updated, and follow-up reviews cleared closure.",
   "labels": [
-    "zephyr",
-    "meshcore",
     "app-interface",
-    "firmware"
+    "firmware",
+    "meshcore",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

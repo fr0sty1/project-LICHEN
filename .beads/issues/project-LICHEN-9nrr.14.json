@@ -14,14 +14,15 @@
   "closed_at": "2026-06-30T02:09:24.136901Z",
   "close_reason": "Implemented BLE UART IPv6 ingress by validating SLIP-decoded IPv6 frames and injecting them into Zephyr net_recv_data() via RX net_pkt allocation with failure-side unref ownership. Added focused ble_ingress qemu_x86 test covering malformed rejection and a valid BLE-originated ICMPv6 echo request reaching the RX path and producing a dummy-L2 echo reply. Review pass 1 found and fixed a bounded-read issue in the test hook and replaced a literal ICMPv6 reply type with Zephyr's named constant; review pass 2 found no new defects, and the production LoRa RX/interface gap is already tracked by project-LICHEN-9nrr.15. Tests/builds: ble_ingress qemu_x86 build passed; ble_ingress run reached PROJECT EXECUTION SUCCESSFUL (wrapper used timeout only to terminate QEMU after summary); BLE-enabled nrf52840dk gateway build passed.",
   "labels": [
-    "review",
-    "exhaustive",
-    "zephyr",
-    "c",
-    "gateway",
     "ble",
+    "c",
+    "exhaustive",
+    "feature-gap",
+    "gateway",
     "lci",
-    "feature-gap"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

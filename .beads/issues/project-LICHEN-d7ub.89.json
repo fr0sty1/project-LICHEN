@@ -13,8 +13,9 @@
   "closed_at": "2026-06-29T21:51:45.025419Z",
   "close_reason": "Fixed RAK4631 bridge overlay duplicate labels by reusing upstream board DTS lora and green_led nodes; verified full rak4631/nrf52840 bridge build",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

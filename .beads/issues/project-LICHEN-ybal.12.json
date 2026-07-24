@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T05:35:14.138454Z",
   "close_reason": "Fixed by hashing full hardware ID with SHA-256 before deriving EUI-64. Added TINYCRYPT_SHA256 dependency to LICHEN_LORA_L2 Kconfig. Build verified on nucleo_wl55jc.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

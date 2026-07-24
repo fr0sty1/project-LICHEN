@@ -14,12 +14,13 @@
   "closed_at": "2026-07-03T03:02:35.039934Z",
   "close_reason": "Completed no-hardware HAL contract feature and closed blocker children.",
   "labels": [
-    "zephyr",
-    "hal",
     "api",
-    "firmware",
     "board-support",
-    "partner-handoff"
+    "firmware",
+    "hal",
+    "owner-reserved",
+    "partner-handoff",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:23:22.713418Z",
   "close_reason": "Design observation - SCHC address compression duplication is acceptable; refactoring deferred",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

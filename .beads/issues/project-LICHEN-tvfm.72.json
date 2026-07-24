@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:41:56.726166Z",
   "close_reason": "Fixed: Added callback rollback on start() failure - if lichen_lora_l2_start() fails, the callback is now cleared to maintain consistent state",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

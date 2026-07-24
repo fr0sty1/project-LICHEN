@@ -13,7 +13,8 @@
   "closed_at": "2026-06-28T04:33:09.722591Z",
   "close_reason": "All 6 panic removal tasks completed",
   "labels": [
-    "reliability",
-    "refactor"
+    "owner-reserved",
+    "refactor",
+    "reliability"
   ]
 }

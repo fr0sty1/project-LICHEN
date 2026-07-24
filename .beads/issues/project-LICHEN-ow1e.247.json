@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:23:14.608866Z",
   "close_reason": "Design suggestion - EMA alpha=1/8 is acceptable default, deferred to future configurability",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

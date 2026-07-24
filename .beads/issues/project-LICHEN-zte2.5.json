@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T00:22:00.742903Z",
   "close_reason": "Completed shared no-hardware network/manual-static producer APIs and tests; concrete configured/network ingestion captured in parent-blocking follow-ups project-LICHEN-zte2.8 and project-LICHEN-zte2.9.",
   "labels": [
-    "zephyr",
     "firmware",
     "gnss",
-    "location",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

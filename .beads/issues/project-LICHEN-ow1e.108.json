@@ -14,6 +14,7 @@
   "close_reason": "256-byte Vec allocation per receive is negligible. Buffer reuse would require API changes. Optimize when profiling shows bottleneck.",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

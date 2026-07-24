@@ -12,8 +12,9 @@
   "closed_at": "2026-07-06T17:57:10.129191Z",
   "close_reason": "Closed",
   "labels": [
-    "dry-violation",
     "cleanup",
+    "dry-violation",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

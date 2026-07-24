@@ -15,6 +15,7 @@
   "labels": [
     "c-standards",
     "initialization",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

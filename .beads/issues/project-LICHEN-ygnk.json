@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:38:29.51554Z",
   "closed_at": "2026-07-12T00:38:29.51554Z",
-  "close_reason": "All TOFU violations fixed: 5/5 children complete. Added key pinning checks in lichen_l2.c, app_identity.c, and address.py. First contact pins pubkey; subsequent contacts with different key are rejected with -EEXIST (C) or ValueError (Python)."
+  "close_reason": "All TOFU violations fixed: 5/5 children complete. Added key pinning checks in lichen_l2.c, app_identity.c, and address.py. First contact pins pubkey; subsequent contacts with different key are rejected with -EEXIST (C) or ValueError (Python).",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:22.647004Z",
   "close_reason": "Already documented: Lines 1535-1542 already document that this check catches both true double-init and recovery-after-failure. The message 'iface already set (init requires reboot after failure)' is accurate - in both cases the fix is reboot. Adding state tracking to distinguish the two cases provides no operational benefit since the recovery action is identical.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

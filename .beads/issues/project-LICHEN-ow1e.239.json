@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:23:13.699449Z",
   "close_reason": "Removed redundant 'as f64' casts in aprs_is.rs lat_min/lon_min calculation",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T03:58:40.23019Z",
   "closed_at": "2026-06-29T03:58:40.23019Z",
-  "close_reason": "Fixed: nrf52840dk gateway board config disables Zephyr wired SLIP because this board uses BLE NUS for the local client interface. Verified west build gets past the previous zephyr,uart-pipe/uart_pipe.c failure; next blocker is OSCORE dependency compile errors tracked as project-LICHEN-zq76."
+  "close_reason": "Fixed: nrf52840dk gateway board config disables Zephyr wired SLIP because this board uses BLE NUS for the local client interface. Verified west build gets past the previous zephyr,uart-pipe/uart_pipe.c failure; next blocker is OSCORE dependency compile errors tracked as project-LICHEN-zq76.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:08:20.288486Z",
   "closed_at": "2026-07-06T18:08:20.288486Z",
-  "close_reason": "ValueError message with unknown keys is appropriate - this is internal debugging info, not exposed via CoAP"
+  "close_reason": "ValueError message with unknown keys is appropriate - this is internal debugging info, not exposed via CoAP",
+  "labels": [
+    "owner-reserved"
+  ]
 }

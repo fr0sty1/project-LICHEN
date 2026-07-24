@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:09:33.320882Z",
   "close_reason": "False positive - the code correctly handles all error cases. When ipv6_addr_to_str fails, the ll_addr is still valid (it was successfully constructed), just couldn't be logged as a string. The function returns success and outputs the valid address.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

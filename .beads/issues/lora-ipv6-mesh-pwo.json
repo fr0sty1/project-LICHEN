@@ -1,7 +1,7 @@
 {
   "id": "lora-ipv6-mesh-pwo",
   "title": "Define Radio ABC/Protocol",
-  "description": "Create python/src/lichen/radio/base.py with Radio Protocol (typing.Protocol). Methods: async transmit(payload: bytes) -\u003e bool, async receive(timeout_ms: int) -\u003e tuple[bytes, int, int] | None (payload, rssi, snr), configure(freq_hz: int, tx_power_dbm: int) -\u003e None. This is the interface all radio implementations must satisfy.",
+  "description": "Create python/src/lichen/radio/base.py with Radio Protocol (typing.Protocol). Methods: async transmit(payload: bytes) -> bool, async receive(timeout_ms: int) -> tuple[bytes, int, int] | None (payload, rssi, snr), configure(freq_hz: int, tx_power_dbm: int) -> None. This is the interface all radio implementations must satisfy.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
@@ -22,5 +22,8 @@
       "created_by": "Mark Frost",
       "metadata": "{}"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

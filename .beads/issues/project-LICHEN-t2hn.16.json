@@ -14,10 +14,11 @@
   "closed_at": "2026-07-01T12:59:14.215595Z",
   "close_reason": "Completed",
   "labels": [
-    "zephyr",
-    "meshtastic",
     "app-interface",
-    "firmware"
+    "firmware",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

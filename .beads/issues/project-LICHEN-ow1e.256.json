@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:23:21.391196Z",
   "close_reason": "Design suggestion - VecExt as private trait is acceptable; reuse deferred to future work",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -14,8 +14,9 @@
   "close_reason": "Added manual Debug impl for OSCORE Context struct that redacts sensitive fields (master_secret, master_salt, common_iv, sender_key, recipient_key)",
   "labels": [
     "idiomatic-rust",
-    "type-design",
-    "review"
+    "owner-reserved",
+    "review",
+    "type-design"
   ],
   "dependencies": [
     {

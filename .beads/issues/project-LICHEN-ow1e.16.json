@@ -14,8 +14,9 @@
   "close_reason": "Fixed in worktrees, verified by codereview passes",
   "labels": [
     "idiomatic-rust",
-    "unsafe",
-    "review"
+    "owner-reserved",
+    "review",
+    "unsafe"
   ],
   "dependencies": [
     {

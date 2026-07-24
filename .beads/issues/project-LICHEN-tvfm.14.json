@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:33:33.400769Z",
   "close_reason": "Documented: Zephyr's net_if_api.init callback mandates void return. Error handling via iface_init_failed atomic flag is correct; added @note documenting this design constraint.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

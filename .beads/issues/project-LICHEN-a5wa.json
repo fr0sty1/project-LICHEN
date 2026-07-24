@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:08:22.701325Z",
   "closed_at": "2026-07-11T06:08:22.701325Z",
-  "close_reason": "Fixed: Added explicit tie-break by slot index to NeighborTable eviction. Changed min_by_key from (*t) to (*t, *i) for deterministic behavior when timestamps match."
+  "close_reason": "Fixed: Added explicit tie-break by slot index to NeighborTable eviction. Changed min_by_key from (*t) to (*t, *i) for deterministic behavior when timestamps match.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

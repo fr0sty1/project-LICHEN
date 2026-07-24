@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:56:05.508984Z",
   "close_reason": "Fixed: Added 'WHY NET_CONTINUE IS ALWAYS RETURNED' section explaining L2 validation happens in lichen_l2_input before this callback",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

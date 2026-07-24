@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:19:13.497506Z",
   "close_reason": "MIC implementation review - constant-time comparison is correct",
   "labels": [
-    "review",
-    "crypto-security"
+    "crypto-security",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

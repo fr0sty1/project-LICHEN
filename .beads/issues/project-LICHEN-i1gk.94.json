@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:34.405756Z",
   "close_reason": "Documented: EUI-64 logging at DEBUG level is accepted risk. Requires explicit CONFIG_LICHEN_L2_LOG_LEVEL=4, logs authenticated peers only, EUI-64 already exposed in link-layer addresses.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

@@ -14,11 +14,12 @@
   "closed_at": "2026-07-12T03:45:08.132716Z",
   "close_reason": "Complete: Python TUI native client implemented (30+ sub-tasks done)",
   "labels": [
-    "zephyr",
-    "lichen",
     "app-interface",
     "firmware",
-    "lci"
+    "lci",
+    "lichen",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

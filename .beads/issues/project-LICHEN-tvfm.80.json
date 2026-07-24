@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:42:48.768628Z",
   "close_reason": "Fixed: Documented that lichen_replay_table_init() handles stale state via memset - no dynamic allocation in replay table. Added comments at all three call sites explaining this is safe on dirty tables.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

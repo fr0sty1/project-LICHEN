@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:53:59.17475Z",
   "closed_at": "2026-07-12T00:53:59.17475Z",
-  "close_reason": "Fixed: Wrapped Position.from_bytes() and User.from_bytes() parsing loops in try/except TranslationError to return partial results on malformed protobuf instead of propagating exceptions. Also added missing bounds checks for fixed32/fixed64 skip operations in User.from_bytes()."
+  "close_reason": "Fixed: Wrapped Position.from_bytes() and User.from_bytes() parsing loops in try/except TranslationError to return partial results on malformed protobuf instead of propagating exceptions. Also added missing bounds checks for fixed32/fixed64 skip operations in User.from_bytes().",
+  "labels": [
+    "owner-reserved"
+  ]
 }

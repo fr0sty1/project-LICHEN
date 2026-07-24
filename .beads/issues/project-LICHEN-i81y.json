@@ -13,8 +13,9 @@
   "closed_at": "2026-06-29T04:15:26.251455Z",
   "close_reason": "Completed: all codereview findings and fix-discovered child blockers were addressed or preserved, scoped tests/builds run, and no open children remain.",
   "labels": [
+    "c",
+    "owner-reserved",
     "review",
-    "zephyr",
-    "c"
+    "zephyr"
   ]
 }

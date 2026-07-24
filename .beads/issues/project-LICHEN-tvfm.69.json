@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:18:01.021806Z",
   "close_reason": "Fixed: state transitions are now atomic and validated",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

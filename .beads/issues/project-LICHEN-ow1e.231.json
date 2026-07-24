@@ -12,6 +12,7 @@
   "closed_at": "2026-07-06T17:19:18.325077Z",
   "close_reason": "LOADng seqnum docs and style adequate",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

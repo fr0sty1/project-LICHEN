@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:13:55.497533Z",
   "closed_at": "2026-07-11T06:13:55.497533Z",
-  "close_reason": "Fixed: TX ring buffer now uses head/tail pointers with proper wrap-around, reusing consumed space even while packets pending"
+  "close_reason": "Fixed: TX ring buffer now uses head/tail pointers with proper wrap-around, reusing consumed space even while packets pending",
+  "labels": [
+    "owner-reserved"
+  ]
 }

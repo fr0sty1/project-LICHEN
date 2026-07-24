@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-i1gk.21",
   "title": "[lora_l2.c:884] cast to uint32_t for lora_send len parameter",
-  "description": "At line 884, len (size_t) is cast to uint32_t for lora_send(). While the bounds check at line 814 ensures len \u003c= 255, on 64-bit platforms size_t is 64 bits and uint32_t is 32 bits. The cast is safe here due to the bounds check, but if the bounds check were removed or modified in the future, this cast could silently truncate. Consider using a compile-time assert that LICHEN_LORA_MAX_PHY_PAYLOAD \u003c= UINT32_MAX.",
+  "description": "At line 884, len (size_t) is cast to uint32_t for lora_send(). While the bounds check at line 814 ensures len <= 255, on 64-bit platforms size_t is 64 bits and uint32_t is 32 bits. The cast is safe here due to the bounds check, but if the bounds check were removed or modified in the future, this cast could silently truncate. Consider using a compile-time assert that LICHEN_LORA_MAX_PHY_PAYLOAD <= UINT32_MAX.",
   "status": "closed",
   "priority": 3,
   "issue_type": "bug",
@@ -11,10 +11,11 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T03:44:27.732047Z",
   "closed_at": "2026-06-28T03:44:27.732047Z",
-  "close_reason": "Fixed: added BUILD_ASSERT(LICHEN_LORA_MAX_PHY_PAYLOAD \u003c= UINT32_MAX)",
+  "close_reason": "Fixed: added BUILD_ASSERT(LICHEN_LORA_MAX_PHY_PAYLOAD <= UINT32_MAX)",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:50.223541Z",
   "close_reason": "Test coverage suggestion - deferred to future work",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

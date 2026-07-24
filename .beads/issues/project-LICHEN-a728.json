@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:25:03.569685Z",
   "closed_at": "2026-06-28T02:25:03.569685Z",
-  "close_reason": "Already fixed by tvfm.13 fix - added CONFIG_LICHEN_L2 guards"
+  "close_reason": "Already fixed by tvfm.13 fix - added CONFIG_LICHEN_L2 guards",
+  "labels": [
+    "owner-reserved"
+  ]
 }

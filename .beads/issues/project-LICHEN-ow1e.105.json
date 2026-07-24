@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.105",
-  "title": "node/dispatch: dispatch_udp() returns Option\u003cResult\u003e conflating concerns",
-  "description": "In node.rs:165, dispatch_udp() returns Option\u003cResult\u003cDispatched, DispatchError\u003e\u003e which conflates 'is this UDP?' vs 'is this a recognized port?'. Consider returning Result\u003cDispatched, DispatchResult\u003e where DispatchResult has a NotUdp variant, or document the convention clearly.",
+  "title": "node/dispatch: dispatch_udp() returns Option<Result> conflating concerns",
+  "description": "In node.rs:165, dispatch_udp() returns Option<Result<Dispatched, DispatchError>> which conflates 'is this UDP?' vs 'is this a recognized port?'. Consider returning Result<Dispatched, DispatchResult> where DispatchResult has a NotUdp variant, or document the convention clearly.",
   "status": "closed",
   "priority": 3,
   "issue_type": "task",
@@ -14,6 +14,7 @@
   "close_reason": "Closed",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

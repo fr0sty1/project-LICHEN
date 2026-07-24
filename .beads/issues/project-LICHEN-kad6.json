@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:04:44.702685Z",
   "closed_at": "2026-07-11T06:04:44.702685Z",
-  "close_reason": "Fixed: Added 'self' to sx126x import to allow sx126x::Config usage. Imports now correctly use lora_phy::mod_params::RadioError, lora_phy::mod_traits::InterfaceVariant, and lora_phy::sx126x::{self, ...} for lora-phy 3.x compatibility"
+  "close_reason": "Fixed: Added 'self' to sx126x import to allow sx126x::Config usage. Imports now correctly use lora_phy::mod_params::RadioError, lora_phy::mod_traits::InterfaceVariant, and lora_phy::sx126x::{self, ...} for lora-phy 3.x compatibility",
+  "labels": [
+    "owner-reserved"
+  ]
 }

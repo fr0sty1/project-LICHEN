@@ -14,6 +14,7 @@
   "close_reason": "Issue misdescribed - SeqExhausted is an enum variant, not a struct. OscoreError enum already has #[non_exhaustive] at line 88.",
   "labels": [
     "api-contract",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:24:21.808958Z",
   "closed_at": "2026-07-12T16:24:21.808958Z",
-  "close_reason": "Fixed: Added starting_sequence_number parameter to MemorySecurityContext for state recovery, with validation and SECURITY documentation to prevent nonce reuse across context reinstantiation"
+  "close_reason": "Fixed: Added starting_sequence_number parameter to MemorySecurityContext for state recovery, with validation and SECURITY documentation to prevent nonce reuse across context reinstantiation",
+  "labels": [
+    "owner-reserved"
+  ]
 }

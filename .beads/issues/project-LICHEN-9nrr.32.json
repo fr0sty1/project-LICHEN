@@ -13,13 +13,14 @@
   "closed_at": "2026-06-30T04:22:32.519741Z",
   "close_reason": "Completed: implemented generic SCHC ACK-mode fragmentation support with DTag-aware fragment control, All-1 MIC generation/verification, receiver tile bitmap state, ACK encode/decode, and retransmission helper. Added native_sim ztests for DTag/MIC, missing-tile ACK bitmap contents, retransmission, MIC mismatch rejection and recovery, and All-1 not completing when prior tiles are missing. Tests: host cc -std=c11 -Wall -Wextra -Werror compile, git diff --check, and EC2 native_sim west build -b native_sim lichen/tests/schc_generic -t run passed 15/15. Review pass 1 found and fixed MIC-mismatch reassembler state poisoning. Review pass 2 found and fixed stale ACK-mode comment plus fixed-width ACK DTag/window packing. No follow-up Beads created.",
   "labels": [
-    "zephyr",
     "c",
-    "schc",
-    "fragmentation",
+    "exhaustive",
     "follow-up",
+    "fragmentation",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "schc",
+    "zephyr"
   ],
   "dependencies": [
     {

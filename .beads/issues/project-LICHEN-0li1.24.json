@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:06:51.80589Z",
   "close_reason": "Fixed: Updated lichen_lora_l2_stop() documentation in lora_l2.h to accurately reflect return values - now documents both 0 (graceful stop) and -ECANCELED (forced abort requiring deinit/init cycle)",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

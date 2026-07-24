@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T05:12:59.179114Z",
   "close_reason": "Not a bug - intentional fail-safe design documented in comment at line 1476.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

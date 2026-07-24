@@ -14,12 +14,13 @@
   "closed_at": "2026-06-30T01:41:03.992703Z",
   "close_reason": "Completed: replaced native log_subscribe positional/simple byte parser with decoder-backed zcbor map parsing for key 1 independent of map order, safely skipping optional key 2/key 3 and extension fields. Added qemu_x86 native_parse regressions for key 3 before key 1, extension fields before key 1, disable, missing enable, non-bool enable, and truncated extension. Ran qemu_x86 native_parse build/test (13/13 pass) plus final compile/diff checks. Review pass 1 found and fixed stale ARG_UNUSED markers after buf/len became used. Review pass 2 found no further issues. No follow-up Beads created.",
   "labels": [
-    "review",
-    "zephyr",
     "c",
-    "native",
     "cbor",
-    "exhaustive"
+    "exhaustive",
+    "native",
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

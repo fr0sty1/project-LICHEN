@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:43.430692Z",
   "close_reason": "Fixed: clarified BUILD_ASSERT message to indicate callbacks may receive up to 255 bytes",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

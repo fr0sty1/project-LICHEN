@@ -15,6 +15,7 @@
   "labels": [
     "c-safety",
     "integer",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T03:36:40.946197Z",
   "close_reason": "Completed: added EDHOC zephyr_library() setup and aligned source/include wiring with sibling LICHEN subsystems. Narrow Zephyr configure attempts were blocked by separate existing setup issues; follow-up project-LICHEN-i81y.20 tracks the module path blocker.",
   "labels": [
+    "c",
+    "owner-reserved",
     "review",
     "workspace-api",
-    "zephyr",
-    "c"
+    "zephyr"
   ],
   "dependencies": [
     {

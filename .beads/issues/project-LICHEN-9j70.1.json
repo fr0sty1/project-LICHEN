@@ -14,6 +14,7 @@
   "close_reason": "Fixed: Added BUILD_ASSERT(LICHEN_L2_MTU == LICHEN_LORA_MTU) in lichen_l2.c after including both headers. This ensures compile-time failure if either MTU constant changes independently.",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

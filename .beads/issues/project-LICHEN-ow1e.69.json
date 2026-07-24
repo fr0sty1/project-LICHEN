@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:14:52.179065Z",
   "close_reason": "Added validation in set_config() - now raises ValueError for unknown config keys instead of silently ignoring them.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

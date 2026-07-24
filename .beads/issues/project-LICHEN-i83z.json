@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:38:52.430045Z",
   "closed_at": "2026-07-12T00:38:52.430045Z",
-  "close_reason": "No fix needed: code is already correct. Seed is cloned on line 108 (seed.clone()) then the original is moved on line 109 - valid Rust, no double-move. Test compiles and passes."
+  "close_reason": "No fix needed: code is already correct. Seed is cloned on line 108 (seed.clone()) then the original is moved on line 109 - valid Rust, no double-move. Test compiles and passes.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

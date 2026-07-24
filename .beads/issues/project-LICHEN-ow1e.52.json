@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T16:06:45.957547Z",
   "close_reason": "Closed",
   "labels": [
-    "rust-standards",
     "docs",
-    "review"
+    "owner-reserved",
+    "review",
+    "rust-standards"
   ],
   "dependencies": [
     {

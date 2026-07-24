@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:55:42.085617Z",
   "close_reason": "Fixed deinit RX thread join failure contract: abort-recovery join failures now leave lora_l2 aborted and return an error instead of proceeding with unsafe cleanup; normal STOPPED deinit skips the abort-only join.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

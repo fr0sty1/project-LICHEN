@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:40:12.11405Z",
   "close_reason": "Fixed: consolidated two LOG_INF calls into single line: len, RSSI, SNR together",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

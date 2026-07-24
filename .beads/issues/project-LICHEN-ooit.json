@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:02:27.485312Z",
   "closed_at": "2026-07-11T06:02:27.485312Z",
-  "close_reason": "Fixed: build_frame() now derives addr_mode from dst_addr.len() via AddrMode::from_addr_len(), returning FrameError::AddrLenMismatch for invalid lengths. The LLSec byte now correctly encodes the address mode (None/Short/Extended) matching the actual dst_addr bytes written to wire."
+  "close_reason": "Fixed: build_frame() now derives addr_mode from dst_addr.len() via AddrMode::from_addr_len(), returning FrameError::AddrLenMismatch for invalid lengths. The LLSec byte now correctly encodes the address mode (None/Short/Extended) matching the actual dst_addr bytes written to wire.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

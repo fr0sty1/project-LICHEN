@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:36:21.755711Z",
   "close_reason": "No fix needed: code review found cleanup already zeros hash on all paths. The function structure ensures secure_zero(hash, sizeof(hash)) is called whether SHA-256 succeeds or fails - there is no early return after hash is populated, so control flow always reaches the cleanup label.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

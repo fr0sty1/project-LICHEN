@@ -13,6 +13,7 @@
   "close_reason": "Changed K_NO_WAIT to K_MSEC(10) with comment explaining purpose: 'Use short timeout to allow brief memory reclaim under pressure'",
   "labels": [
     "c-standards",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

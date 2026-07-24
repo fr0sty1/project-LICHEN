@@ -14,10 +14,11 @@
   "closed_at": "2026-07-01T12:24:31.355457Z",
   "close_reason": "Retired stale uncompiled Rust Meshtastic config handler. Verified export experiment failed against current schema, deleted the file, documented Zephyr/current sync ownership and deferred ADMIN_APP reads, ran Rust tests, and completed independent reviews.",
   "labels": [
-    "zephyr",
-    "meshtastic",
     "app-interface",
-    "firmware"
+    "firmware",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

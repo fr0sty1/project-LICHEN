@@ -13,8 +13,9 @@
   "closed_at": "2026-07-12T01:39:49.603348Z",
   "close_reason": "Implemented SecureDatagramChannel wrapper for OSCORE protection per spec 8.7. Created python/src/lichen/coap/secure.py with: OscoreContextStore for managing security contexts, TofuPeerResolver for TOFU key pinning, SecureDatagramChannel that wraps any DatagramChannel with transparent OSCORE protect/unprotect. Contexts can be pre-provisioned via add_context() or established via EDHOC (interface provided, full EDHOC CoAP exchange deferred to separate bead). Added 18 tests in tests/coap/test_secure.py.",
   "labels": [
-    "security",
-    "oscore"
+    "oscore",
+    "owner-reserved",
+    "security"
   ],
   "dependencies": [
     {

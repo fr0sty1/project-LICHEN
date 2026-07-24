@@ -13,7 +13,8 @@
   "closed_at": "2026-06-27T23:18:54.258983Z",
   "close_reason": "All 15 findings fixed. Exhaustive review converged in 3 rounds.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ]
 }

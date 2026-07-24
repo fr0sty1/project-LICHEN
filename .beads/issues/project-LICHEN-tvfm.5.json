@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T02:26:23.215795Z",
   "close_reason": "Not a bug: packet is guaranteed valid because lichen_lora_l2_tx() only receives static buffer data, not the net_pkt. Added clarifying comment explaining ownership semantics.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round1",
-    "exhaustive"
+    "round1"
   ],
   "dependencies": [
     {

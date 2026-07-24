@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:05:44.135307Z",
   "close_reason": "not-an-issue - Reviewed lora_l2_start() and the thread is created AFTER lora_config() succeeds, so the race cannot occur",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

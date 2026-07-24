@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:59.083396Z",
   "close_reason": "Documentation review - defense-in-depth is appropriate",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

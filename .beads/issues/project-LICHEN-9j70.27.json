@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:28:45.705973Z",
   "close_reason": "Fixed: made logging conditional with __ZEPHYR__ guard - falls back to no-op macros for host builds; also wrapped BUILD_ASSERT in same guard with _Static_assert fallback",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

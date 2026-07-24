@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:02:36.954353Z",
   "close_reason": "Fixed: Added SCHC_MAX_DECOMPRESSED constant (256) to lichen-core/constants.rs and replaced all hardcoded buffer sizes in lichen-schc/codec.rs decompress functions with the constant.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

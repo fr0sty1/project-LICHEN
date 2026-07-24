@@ -14,10 +14,11 @@
   "closed_at": "2026-07-03T00:22:38.999915Z",
   "close_reason": "Completed: neutral routing announce owner implemented, tested on EC2 native_sim/qemu_x86, reviewed cleanly, and pushed in commit 795b7c99.",
   "labels": [
-    "zephyr",
-    "firmware",
     "announce",
+    "firmware",
+    "no-hardware",
+    "owner-reserved",
     "routing",
-    "no-hardware"
+    "zephyr"
   ]
 }

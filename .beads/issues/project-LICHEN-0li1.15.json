@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:10:14.476163Z",
   "close_reason": "Documented error behavior in ipv6_addr.h: ll_addr_out is zeroed on error to prevent stale data. This is a defensible contract (fail-safe pattern) and the documentation now makes it explicit. The current behavior is consistent across all error paths.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

@@ -14,14 +14,15 @@
   "closed_at": "2026-07-01T23:09:10.044369Z",
   "close_reason": "Completed no-hardware app-interface location metadata mirror with HAL bridge, tests, two clean final review passes, and EC2 Twister evidence.",
   "labels": [
-    "zephyr",
-    "firmware",
-    "location",
     "app-interface",
-    "test",
+    "firmware",
     "gnss",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "test",
+    "zephyr"
   ],
   "dependencies": [
     {

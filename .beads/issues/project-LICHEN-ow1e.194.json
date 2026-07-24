@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:57.392959Z",
   "close_reason": "Positive observation - secure zeroing pattern is good",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

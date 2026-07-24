@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:25:37.709553Z",
   "close_reason": "Fixed: Extracted hardcoded K_MSEC(10) to CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS Kconfig option with documented tradeoff rationale",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

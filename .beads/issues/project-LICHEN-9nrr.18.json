@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T03:17:56.632451Z",
   "close_reason": "Added permanent native TX concurrency scaffolding to the existing native_parse Zephyr test. The native library now has a LICHEN_NATIVE_TEST_TX-only byte-wise capture sink that yields during frame emission, allowing public send APIs to run without UART hardware while preserving the production UART path. The test drives lichen_native_send_hello(), lichen_native_send_node_info(), lichen_native_send_message_received(), and lichen_native_send_log_entry() from concurrent threads, then validates every captured frame and payload with named frame-header helpers and zcbor-backed CBOR map parsing. Verified west build -b qemu_x86 lichen/tests/native_parse -d build/lichen_native_parse_qemu --pristine=always, and timeout 30 west build -t run -d build/lichen_native_parse_qemu; the QEMU suite reported 15/15 pass and PROJECT EXECUTION SUCCESSFUL before timeout terminated QEMU. Twister could not start locally due missing pkg_resources; filed project-LICHEN-9nrr.29. Review pass 1 clean: diff/whitespace/test macro scoping/CBOR decoder use. Review pass 2 clean for Bead scope and coverage; no code follow-ups.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

@@ -15,13 +15,14 @@
   "closed_at": "2026-06-30T03:21:23.45553Z",
   "close_reason": "Completed libSCHC evaluation and recorded recommendation in Bead notes plus Beads memory schc-libschc-evaluation-2026-06-30-evaluated-upstream. Evaluated upstream imec-idlab/libschc at a01d7856243d3aa1242918e31649d8a5ee92872e. GPL-3.0 licensing is compatible with LICHEN GPL firmware, but libSCHC is not a Zephyr module, is documented upstream as experimental/missing RFC 8724 features, uses compile-time config/rule headers and platform callbacks, and has a much larger rough embedded footprint than the current profile implementation. Rough arm-zephyr-eabi -Os object measurement: libSCHC example config about 41.9 KiB text and 3.8 KiB BSS before GC; current LICHEN schc.c about 6.2 KiB text and 0 BSS. Existing LICHEN SCHC standalone vectors pass 12/12. Recommendation: do not import/swap libSCHC for embedded nodes now; use it only as reference/prototype or possible future gateway-side dependency. Existing project-LICHEN-9nrr.11 covers the next step: factor a generic Zephyr SCHC module from current code rather than wrapping libSCHC by default. Review pass 1 checked acceptance coverage. Review pass 2 checked source/measurement reproducibility and follow-up coverage; no additional follow-up needed.",
   "labels": [
-    "review",
-    "exhaustive",
-    "zephyr",
     "c",
-    "schc",
     "dependency",
-    "evaluation"
+    "evaluation",
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "schc",
+    "zephyr"
   ],
   "dependencies": [
     {

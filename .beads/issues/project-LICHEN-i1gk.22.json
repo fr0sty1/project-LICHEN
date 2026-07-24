@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:39:57.414813Z",
   "close_reason": "Fixed: peer_table now cleared with secure_zero inside mutex-protected re-init path",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

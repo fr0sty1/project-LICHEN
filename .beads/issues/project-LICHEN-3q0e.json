@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-3q0e",
   "title": "task",
-  "description": "python/src/lichen/ipv6/icmpv6.py:122-151. \u003e0xFFFF causes OverflowError.",
+  "description": "python/src/lichen/ipv6/icmpv6.py:122-151. >0xFFFF causes OverflowError.",
   "status": "closed",
   "priority": 3,
   "issue_type": "task",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:37:07.065065Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

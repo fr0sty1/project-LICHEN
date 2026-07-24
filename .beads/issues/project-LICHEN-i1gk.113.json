@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:40:15.585292Z",
   "close_reason": "Fixed: added comment documenting watchdog reset is intentional (duplicate of i1gk.73)",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round4",
-    "exhaustive"
+    "round4"
   ],
   "dependencies": [
     {

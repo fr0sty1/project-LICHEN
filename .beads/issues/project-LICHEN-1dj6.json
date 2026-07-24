@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T01:46:00.554724Z",
   "closed_at": "2026-07-12T01:46:00.554724Z",
-  "close_reason": "Implemented: Added test/vectors/oscore.json with 19 test vectors from RFC 8613 Appendix C covering key derivation (6 vectors), request/response protection (4 vectors), roundtrip (2 vectors), replay window (5 vectors), and invalid inputs (2 vectors). Created Python test (15 tests) and Rust test (6 tests) that validate implementations against these vectors."
+  "close_reason": "Implemented: Added test/vectors/oscore.json with 19 test vectors from RFC 8613 Appendix C covering key derivation (6 vectors), request/response protection (4 vectors), roundtrip (2 vectors), replay window (5 vectors), and invalid inputs (2 vectors). Created Python test (15 tests) and Rust test (6 tests) that validate implementations against these vectors.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

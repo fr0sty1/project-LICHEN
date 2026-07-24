@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:42:22.946531Z",
   "close_reason": "Fixed: added BUILD_ASSERT(ARRAY_SIZE(state_names) == LORA_STATE_COUNT) to catch enum/array mismatch at compile time",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-30T05:56:17.626678Z",
   "close_reason": "Completed: declared filelock as a direct Python runtime dependency for aiocoap.oscore integration and refreshed python/uv.lock. Tests/checks: uv run python -c 'import lichen.crypto.oscore'; uv run python -m pytest tests/crypto/test_oscore.py; uv lock --check; git diff --check. Review pass 1: no findings; diff scoped to dependency metadata and lockfile. Review pass 2: no findings; lock metadata contains filelock package and lichen requires-dist entry.",
   "labels": [
-    "python",
     "dependencies",
-    "follow-up"
+    "follow-up",
+    "owner-reserved",
+    "python"
   ],
   "dependencies": [
     {

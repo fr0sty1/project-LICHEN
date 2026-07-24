@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T01:38:30.047398Z",
   "close_reason": "Fixed: Added __ASSERT for NULL ptr check in secure_zero; debug builds will now catch bugs while release builds maintain safe silent return",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

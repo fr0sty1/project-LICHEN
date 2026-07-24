@@ -15,12 +15,13 @@
   "closed_at": "2026-07-02T07:49:52.228488Z",
   "close_reason": "Completed decision: build/provision timestamps are accepted only as an epoch floor/freshness lower bound, not authoritative clock time; implementation and hardware validation follow-ups are filed.",
   "labels": [
+    "design",
     "firmware",
     "gnss",
+    "no-hardware",
+    "owner-reserved",
     "time",
-    "design",
-    "zephyr",
-    "no-hardware"
+    "zephyr"
   ],
   "dependencies": [
     {

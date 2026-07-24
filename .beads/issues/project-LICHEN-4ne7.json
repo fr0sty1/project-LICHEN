@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-15T02:55:33.44346Z",
   "closed_at": "2026-07-15T02:55:33.44346Z",
-  "close_reason": "Created comprehensive documentation for deploying LICHEN simulation infrastructure across multiple AWS EC2 instances for large-scale distributed mesh testing. Includes deployment methods, scaling strategies, resource requirements, and best practices for heterogeneous mesh testing."
+  "close_reason": "Created comprehensive documentation for deploying LICHEN simulation infrastructure across multiple AWS EC2 instances for large-scale distributed mesh testing. Includes deployment methods, scaling strategies, resource requirements, and best practices for heterogeneous mesh testing.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

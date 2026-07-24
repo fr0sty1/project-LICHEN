@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:49:18.47165Z",
   "closed_at": "2026-07-12T00:49:18.47165Z",
-  "close_reason": "Already fixed: stream cleanup on registration failure already implemented at lines 136-141 (try/except BaseException closes stream before re-raising)"
+  "close_reason": "Already fixed: stream cleanup on registration failure already implemented at lines 136-141 (try/except BaseException closes stream before re-raising)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

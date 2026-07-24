@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-15T20:28:46.746882Z",
   "closed_at": "2026-07-15T20:28:46.746882Z",
-  "close_reason": "Copied cache found and verified in personal AWS"
+  "close_reason": "Copied cache found and verified in personal AWS",
+  "labels": [
+    "owner-reserved"
+  ]
 }

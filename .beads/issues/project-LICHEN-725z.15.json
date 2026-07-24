@@ -14,6 +14,7 @@
   "close_reason": "Added lichen_sha256 helper to reduce repetition",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

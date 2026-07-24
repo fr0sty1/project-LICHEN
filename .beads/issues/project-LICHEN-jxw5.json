@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:41:42.14225Z",
   "closed_at": "2026-07-12T00:41:42.14225Z",
-  "close_reason": "Fixed: Return RadioError::Protocol when payload exceeds buffer instead of silently truncating"
+  "close_reason": "Fixed: Return RadioError::Protocol when payload exceeds buffer instead of silently truncating",
+  "labels": [
+    "owner-reserved"
+  ]
 }

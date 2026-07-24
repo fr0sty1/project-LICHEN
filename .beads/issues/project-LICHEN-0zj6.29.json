@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T06:37:45.65707Z",
   "close_reason": "Closed",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

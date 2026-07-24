@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:50:28.836416Z",
   "close_reason": "Fixed: Added SECURITY comment in lichen_peer_add documenting that C array parameters decay to pointers with no size enforcement. BUILD_ASSERTs at lines 108-111 verify API sizes match constants. Callers must ensure exact buffer sizes.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

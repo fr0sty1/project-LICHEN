@@ -13,6 +13,7 @@
   "close_reason": "Not a bug - stop() returning 0 is correct behavior; returning it preserves API flexibility for future error conditions",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

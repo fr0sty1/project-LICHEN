@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:50:27.147198Z",
   "close_reason": "Fixed the LICHEN Zephyr module bridge subsystem include to resolve from CMAKE_CURRENT_LIST_DIR, fail clearly if missing, and skip module inclusion when firmware/bridge-zephyr is the application. Gateway and bridge-zephyr nRF52840 checks now pass CMake configure; remaining compile blockers are tracked separately.",
   "labels": [
-    "zephyr",
+    "c",
     "cmake",
-    "validation",
+    "owner-reserved",
     "review",
-    "c"
+    "validation",
+    "zephyr"
   ],
   "dependencies": [
     {

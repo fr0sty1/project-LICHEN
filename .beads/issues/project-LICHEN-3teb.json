@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:10:56.317442Z",
   "closed_at": "2026-07-11T06:10:56.317442Z",
-  "close_reason": "Fixed: PositionAction::Broadcast now returns error instead of Ok"
+  "close_reason": "Fixed: PositionAction::Broadcast now returns error instead of Ok",
+  "labels": [
+    "owner-reserved"
+  ]
 }

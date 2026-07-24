@@ -14,6 +14,7 @@
   "close_reason": "Removed lichen_iface = NULL from fail_late_init; atomic flag is sufficient",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

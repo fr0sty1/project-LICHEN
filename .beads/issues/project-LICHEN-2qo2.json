@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:34:42.06368Z",
   "closed_at": "2026-07-12T16:34:42.06368Z",
-  "close_reason": "Already fixed in commit 7148562c3: LOW_ORDER_POINTS frozenset with all 8 points + explicit check in verify()"
+  "close_reason": "Already fixed in commit 7148562c3: LOW_ORDER_POINTS frozenset with all 8 points + explicit check in verify()",
+  "labels": [
+    "owner-reserved"
+  ]
 }

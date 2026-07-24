@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:17.757485Z",
   "close_reason": "Minor formatting - schnorr.rs formatting already correct in current code",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

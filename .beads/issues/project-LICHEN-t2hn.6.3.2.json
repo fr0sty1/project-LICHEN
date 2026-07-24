@@ -15,15 +15,16 @@
   "closed_at": "2026-07-02T01:01:12.289881Z",
   "close_reason": "Completed by existing gateway status encoder extraction and native_sim/qemu gateway_status tests. Fresh EC2 Twister evidence recorded: 2/2 configs passed, 10 cases, 0 warnings. No new code changes required.",
   "labels": [
-    "zephyr",
-    "gateway",
+    "app-interface",
     "cbor",
-    "status",
-    "test",
-    "meshtastic",
     "config",
     "firmware",
-    "app-interface"
+    "gateway",
+    "meshtastic",
+    "owner-reserved",
+    "status",
+    "test",
+    "zephyr"
   ],
   "dependencies": [
     {

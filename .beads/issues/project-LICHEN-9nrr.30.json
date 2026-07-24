@@ -14,11 +14,12 @@
   "closed_at": "2026-06-30T03:37:56.295638Z",
   "close_reason": "Completed generic SCHC bitstream helper promotion, tests, and two review passes",
   "labels": [
-    "zephyr",
     "c",
-    "schc",
+    "exhaustive",
     "follow-up",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "schc",
+    "zephyr"
   ]
 }

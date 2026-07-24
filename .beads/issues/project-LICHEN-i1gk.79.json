@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:49:54.611856Z",
   "close_reason": "Consolidated with i1gk.62: added FUTURE comment documenting fixed timeout and potential for adaptive backoff/counters",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round3",
-    "exhaustive"
+    "round3"
   ],
   "dependencies": [
     {

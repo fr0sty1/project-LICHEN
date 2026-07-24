@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T07:27:48.890703Z",
   "close_reason": "not-a-bug: idempotent operations, minor inefficiency only",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "interaction",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

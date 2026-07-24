@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T02:26:50.951066Z",
   "close_reason": "Fixed: peer_try_all_pubkeys now uses constant-time iteration - always checks all peers even after finding a match, storing found_idx and returning after full loop",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round1",
-    "exhaustive"
+    "round1"
   ],
   "dependencies": [
     {

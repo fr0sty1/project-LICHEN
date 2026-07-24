@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T06:38:00.994932Z",
   "close_reason": "Fixed: replaced hardcoded 915MHz with CONFIG_LICHEN_LORA_FREQUENCY Kconfig option (default 915000000 Hz)",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

@@ -13,11 +13,12 @@
   "closed_at": "2026-06-28T21:39:21.334336Z",
   "close_reason": "Fixed OSCORE replay reservation race",
   "labels": [
+    "concurrency",
     "correctness",
     "crypto-security",
-    "side-channel",
-    "concurrency",
-    "review"
+    "owner-reserved",
+    "review",
+    "side-channel"
   ],
   "dependencies": [
     {

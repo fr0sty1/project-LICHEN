@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T03:52:44.756957Z",
   "closed_at": "2026-07-12T03:52:44.756957Z",
-  "close_reason": "Fixed: Added x25519_private and x25519_public properties to Identity class per spec section 8.8. Derivation uses SHA-512(seed)[0:32] for private key and X25519 scalar multiplication for public key. Added comprehensive tests including known vectors and ECDH verification."
+  "close_reason": "Fixed: Added x25519_private and x25519_public properties to Identity class per spec section 8.8. Derivation uses SHA-512(seed)[0:32] for private key and X25519 scalar multiplication for public key. Added comprehensive tests including known vectors and ECDH verification.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

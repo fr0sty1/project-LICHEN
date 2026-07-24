@@ -14,20 +14,21 @@
   "closed_at": "2026-07-02T12:28:26.54131Z",
   "close_reason": "Completed no-hardware LR1110 build fix. Clean Zephyr worktree setup now initializes the loramac-node LR1110 nested submodule, CMake reports an actionable missing-source error if the source is absent, and EC2 t1000_e/nrf52840 puck build passed through link with CONFIG_LORA_LR1110=y. Physical radio smoke remains separate hardware work.",
   "labels": [
-    "zephyr",
+    "build",
     "firmware",
-    "puck",
-    "t1000-e",
+    "gnss",
+    "hardware",
+    "location",
     "lora",
     "lr1110",
-    "build",
-    "no-hardware",
-    "location",
-    "gnss",
     "native-interface",
+    "network-source",
+    "no-hardware",
+    "owner-reserved",
+    "puck",
+    "t1000-e",
     "test",
-    "hardware",
-    "network-source"
+    "zephyr"
   ],
   "dependencies": [
     {

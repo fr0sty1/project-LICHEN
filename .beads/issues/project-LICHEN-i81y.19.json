@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T03:50:27.194587Z",
   "close_reason": "Duplicate of project-LICHEN-i81y.20; the bad ../../../firmware/bridge-zephyr/subsys path is fixed and validated past CMake configure for the gateway build.",
   "labels": [
+    "c",
+    "owner-reserved",
     "review",
-    "zephyr",
-    "c"
+    "zephyr"
   ],
   "dependencies": [
     {

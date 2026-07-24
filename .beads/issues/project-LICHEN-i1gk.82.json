@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:25.85539Z",
   "close_reason": "Documented: architecture limitation - lichen_peer_add() requires caller to authenticate peer identity. Added SECURITY comment explaining valid callers and attack risk.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

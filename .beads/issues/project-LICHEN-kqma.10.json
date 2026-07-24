@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-kqma.10",
   "title": "Wipe EDHOC ephemeral private keys on successful handshake paths",
-  "description": "Trigger: successful EDHOC initiator or responder handshake. lichen/subsys/lichen/edhoc/edhoc.c sets state to completed/sent at lines 710 and 997 after deriving the shared secret, but ctx-\u003eeph_sk remains in the long-lived context. Impact: ephemeral X25519 private keys remain resident after they are no longer needed, increasing exposure if memory is later disclosed. Wipe ctx-\u003eeph_sk once G_XY and the required PRKs have been derived, while preserving any material needed for OSCORE export.",
+  "description": "Trigger: successful EDHOC initiator or responder handshake. lichen/subsys/lichen/edhoc/edhoc.c sets state to completed/sent at lines 710 and 997 after deriving the shared secret, but ctx->eph_sk remains in the long-lived context. Impact: ephemeral X25519 private keys remain resident after they are no longer needed, increasing exposure if memory is later disclosed. Wipe ctx->eph_sk once G_XY and the required PRKs have been derived, while preserving any material needed for OSCORE export.",
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:43.977776Z",
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
-    "edhoc",
     "crypto",
-    "key-lifecycle"
+    "edhoc",
+    "key-lifecycle",
+    "owner-reserved"
   ],
   "dependencies": [
     {

@@ -14,11 +14,12 @@
   "closed_at": "2026-06-30T01:14:51.003266Z",
   "close_reason": "Completed: serialized native TX encode plus frame emission under s_tx_mutex so shared s_tx_buf cannot be corrupted by concurrent senders. Verified with focused t_echo/nrf52840 gateway build using CONFIG_LICHEN_NATIVE=y. Review pass 1 found and fixed overflow logging under the TX mutex. Review pass 2 found no remaining patch issues. Follow-ups filed: project-LICHEN-9nrr.18 for permanent native TX concurrency test scaffolding and project-LICHEN-9nrr.19 for unrelated T1000-E LR1110 build failure.",
   "labels": [
-    "review",
-    "zephyr",
     "c",
+    "exhaustive",
     "native",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

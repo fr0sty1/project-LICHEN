@@ -14,8 +14,9 @@
   "close_reason": "Documented as known security gap with SECURITY comment in lichen_l2.c. Created follow-up issue project-LICHEN-j70n to implement peer table for signature verification. The NULL peer_pubkey is NOT intentional for bootstrap - it is missing functionality that must be implemented before production use.",
   "labels": [
     "crypto-security",
-    "untrusted-input",
-    "review"
+    "owner-reserved",
+    "review",
+    "untrusted-input"
   ],
   "dependencies": [
     {

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:51:31.495196Z",
   "close_reason": "Added mutex-held EUI-64 copy API and migrated local call sites away from internal-pointer aliasing",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

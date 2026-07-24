@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:59:59.388108Z",
   "close_reason": "Fixed: Added documentation explaining .tx=true is effectively unused since RX thread calls lora_recv() first, which switches to RX mode. Kept for driver default behavior and PA/LNA initialization hints.",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

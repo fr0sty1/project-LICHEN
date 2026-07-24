@@ -11,11 +11,12 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:30:57.677538Z",
   "closed_at": "2026-06-28T02:30:57.677538Z",
-  "close_reason": "Fixed: Added documentation explaining why the peer_table clearing loop is thread-safe. The loop is already protected by both tx_mutex and rx_mutex, and is only called from thread context (via net_if_down -\u003e l2-\u003eenable). All peer_table accessors require rx_mutex, so preemption cannot cause inconsistent state. No IRQs access peer_table directly. Added detailed comment (project-LICHEN-tvfm.6) explaining the safety invariants.",
+  "close_reason": "Fixed: Added documentation explaining why the peer_table clearing loop is thread-safe. The loop is already protected by both tx_mutex and rx_mutex, and is only called from thread context (via net_if_down -> l2->enable). All peer_table accessors require rx_mutex, so preemption cannot cause inconsistent state. No IRQs access peer_table directly. Added detailed comment (project-LICHEN-tvfm.6) explaining the safety invariants.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round1",
-    "exhaustive"
+    "round1"
   ],
   "dependencies": [
     {

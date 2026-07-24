@@ -15,12 +15,13 @@
   "closed_at": "2026-07-02T16:46:05.813419Z",
   "close_reason": "Completed no-hardware Meshtastic BLE owner-path native_sim coverage. ToRadio session test now uses owner-connected write; FromNum notify ztest hook covers disabled/enabled CCC, owner conn_ref/conn_unref, injected notify failure unref, and stale enqueue after disconnect. Initial review findings fixed; three follow-up reviews clean. Local git diff --check passed. EC2 Twister command: west twister -T lichen/tests/meshtastic_ble -T lichen/tests/meshtastic_gateway_adapter -p native_sim --inline-logs --outdir twister-out-meshtastic-owner-tighten --extra-args ZEPHYR_EXTRA_MODULES=$PWD/lichen. Result: 2/2 executed configs passed, 1 static-filter skip, 0 failures/errors/warnings, 60 cases executed. EC2 i-0ef99bf29a2adf01d cleaned; EBS vol-0875d0df8bdf82a58 available with no attachments.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "ble",
     "app-interface",
+    "ble",
+    "firmware",
+    "meshtastic",
+    "owner-reserved",
     "test",
-    "firmware"
+    "zephyr"
   ],
   "dependencies": [
     {

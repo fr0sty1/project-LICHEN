@@ -11,12 +11,13 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:50:31.343539Z",
   "closed_at": "2026-06-28T02:50:31.343539Z",
-  "close_reason": "Not a bug: peer_find_locked already has early return at line 393. The function returns \u0026peer_table[i] immediately upon finding a match and does NOT continue iterating. The line numbers in the issue (298-307) are incorrect - they point to BUILD_ASSERT statements, not the function. This is a false positive.",
+  "close_reason": "Not a bug: peer_find_locked already has early return at line 393. The function returns &peer_table[i] immediately upon finding a match and does NOT continue iterating. The line numbers in the issue (298-307) are incorrect - they point to BUILD_ASSERT statements, not the function. This is a false positive.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

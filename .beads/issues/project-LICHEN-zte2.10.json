@@ -14,15 +14,16 @@
   "closed_at": "2026-07-02T17:02:24.995218Z",
   "close_reason": "Completed no-hardware manual-location CBOR hardening, gateway app build-only Twister coverage, HAL app-build guard fix, reviews, and EC2 native_sim/qemu_x86 validation with evidence recorded.",
   "labels": [
-    "zephyr",
-    "firmware",
     "cbor",
-    "tests",
+    "firmware",
     "gateway",
     "gnss",
-    "location",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "tests",
+    "zephyr"
   ],
   "dependencies": [
     {

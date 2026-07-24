@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:08:08.939298Z",
   "closed_at": "2026-07-06T18:08:08.939298Z",
-  "close_reason": "Known protocol limitation documented - O(n) verification is acceptable for expected peer counts (\u003c100)"
+  "close_reason": "Known protocol limitation documented - O(n) verification is acceptable for expected peer counts (<100)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

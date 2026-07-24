@@ -13,8 +13,9 @@
   "closed_at": "2026-06-27T06:17:59.02526Z",
   "close_reason": "invalid",
   "labels": [
-    "c-standards",
     "api-design",
+    "c-standards",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

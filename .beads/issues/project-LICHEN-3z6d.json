@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:54:03.859438Z",
   "close_reason": "All 5 children complete: non_exhaustive, PIV overflow fix, Clone key material fix, seqnum API.",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T22:00:48.026866Z",
   "close_reason": "Positive finding - pattern to preserve, not an issue",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

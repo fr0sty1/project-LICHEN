@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:21:00.062708Z",
   "close_reason": "Fixed: Added BUILD_ASSERT to verify TC_SHA256_DIGEST_SIZE==32 at compile time. Header already has comprehensive SECURITY documentation (lines 89-101) requiring 32-byte output buffer. Runtime check not feasible without API change; existing callers verified to use correctly-sized buffers.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:08:19.379205Z",
   "closed_at": "2026-07-06T18:08:19.379205Z",
-  "close_reason": "OSCORE key derivation verified correct per RFC 8613 Section 3.2 - initiator recipient_key equals responder sender_key"
+  "close_reason": "OSCORE key derivation verified correct per RFC 8613 Section 3.2 - initiator recipient_key equals responder sender_key",
+  "labels": [
+    "owner-reserved"
+  ]
 }

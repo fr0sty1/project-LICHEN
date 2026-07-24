@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:14:51.835617Z",
   "closed_at": "2026-07-11T06:14:51.835617Z",
-  "close_reason": "Already fixed: verify_checksum call present at lines 243-246 before echo processing"
+  "close_reason": "Already fixed: verify_checksum call present at lines 243-246 before echo processing",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:38.669881Z",
   "close_reason": "Duplicate of project-LICHEN-ow1e.263 which covers the same issue with more security context",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:42:03.067482Z",
   "close_reason": "Fixed: Added detailed comment documenting alignment correctness, changed to uint32_t for consistent 4-byte alignment",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

@@ -13,8 +13,9 @@
   "closed_at": "2026-07-12T05:58:02.018074Z",
   "close_reason": "Fixed: Added rsource subsys/Kconfig before rsource gateway/Kconfig in all 5 affected test Kconfig files. This ensures LICHEN symbols are defined before gateway Kconfig evaluates depends on clauses.",
   "labels": [
-    "zephyr",
+    "build",
     "kconfig",
-    "build"
+    "owner-reserved",
+    "zephyr"
   ]
 }

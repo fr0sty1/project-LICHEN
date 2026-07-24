@@ -14,8 +14,9 @@
   "close_reason": "Fixed in worktrees, verified by codereview passes",
   "labels": [
     "correctness",
-    "security",
-    "review"
+    "owner-reserved",
+    "review",
+    "security"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:32:31.428832Z",
   "closed_at": "2026-07-13T00:32:31.428832Z",
-  "close_reason": "Fixed: decode() now follows RFC 1055 by passing invalid escape bytes through (matching StreamDecoder behavior). Both APIs are now consistent."
+  "close_reason": "Fixed: decode() now follows RFC 1055 by passing invalid escape bytes through (matching StreamDecoder behavior). Both APIs are now consistent.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

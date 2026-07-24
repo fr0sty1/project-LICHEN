@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:18:00.752571Z",
   "close_reason": "Fixed: lora_l2.c now uses explicit state machine with lora_transition()",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

@@ -14,6 +14,7 @@
   "close_reason": "Fixed: removed mutex from lichen_lora_l2_tx(). The atomic_t running field is read directly without locking, allowing RX thread to proceed during TX. Added detailed comment explaining why this is safe (atomic read, Zephyr driver thread-safety, driver handles stop race).",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

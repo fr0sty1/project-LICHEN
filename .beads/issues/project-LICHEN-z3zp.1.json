@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-z3zp.1",
   "title": "OSCORE CBOR helpers do not compile",
-  "description": "build_info_cbor() uses off without declaring or initializing it, then returns state-\u003epayload even though all writes are done through manual indexing. build_oscore_aad() similarly uses inner_off and off without declarations and returns state-\u003epayload even though only inner_state exists. Trigger: compile lichen/subsys/lichen/oscore/oscore.c. Bad behavior: OSCORE code cannot build, blocking any Zephyr configuration that enables it. Locations: lichen/subsys/lichen/oscore/oscore.c:161-258 and :301-410.",
+  "description": "build_info_cbor() uses off without declaring or initializing it, then returns state->payload even though all writes are done through manual indexing. build_oscore_aad() similarly uses inner_off and off without declarations and returns state->payload even though only inner_state exists. Trigger: compile lichen/subsys/lichen/oscore/oscore.c. Bad behavior: OSCORE code cannot build, blocking any Zephyr configuration that enables it. Locations: lichen/subsys/lichen/oscore/oscore.c:161-258 and :301-410.",
   "status": "closed",
   "priority": 0,
   "issue_type": "bug",
@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T21:23:27.679857Z",
   "close_reason": "Fixed manual CBOR encoder offset initialization and length returns",
   "labels": [
-    "correctness",
     "c-standards",
     "compiler",
+    "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

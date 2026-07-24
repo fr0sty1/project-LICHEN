@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:07:21.636029Z",
   "close_reason": "Duplicate of project-LICHEN-i1gk.22 - both describe same peer_table clearing issue on re-init path",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

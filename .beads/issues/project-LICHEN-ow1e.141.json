@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:45:33.694963Z",
   "close_reason": "Closed",
   "labels": [
-    "idiomatic-rust",
     "error-handling",
+    "idiomatic-rust",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

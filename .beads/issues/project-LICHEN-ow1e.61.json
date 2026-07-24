@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:01:11.092155Z",
   "close_reason": "Changed SAFETY to INFALLIBLE for unwrap justifications in identity.rs, schnorr.rs, and message.rs",
   "labels": [
-    "idiomatic-rust",
     "error-handling",
+    "idiomatic-rust",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

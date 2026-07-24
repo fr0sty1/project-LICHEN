@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:25.805765Z",
   "close_reason": "Fixed: updated header doc to document -ECANCELED return on forced abort",
   "labels": [
-    "review",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

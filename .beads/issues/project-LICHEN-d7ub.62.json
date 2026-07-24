@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:43:04.953632Z",
   "close_reason": "Completed: init_standalone_lora now deinitializes LoRa L2 after post-init callback/start failures.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gaps",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:55.47434Z",
   "close_reason": "SAFETY comment observation - documented behavior is acceptable for test-only code",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

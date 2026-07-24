@@ -13,8 +13,9 @@
   "close_reason": "Positive finding - no changes needed",
   "labels": [
     "good",
-    "security",
-    "review"
+    "owner-reserved",
+    "review",
+    "security"
   ],
   "dependencies": [
     {

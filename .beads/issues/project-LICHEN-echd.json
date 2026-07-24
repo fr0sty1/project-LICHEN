@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:38:40.046103Z",
   "closed_at": "2026-07-12T00:38:40.046103Z",
-  "close_reason": "Verified compliant: All implementations properly handle private keys - Rust uses Zeroize/ZeroizeOnDrop with REDACTED debug output; C uses crypto_wipe/secure_wipe after key operations; Python documents memory limitation and recommends HSM. No hardcoded keys, no secret logging, no plaintext transmission of private material. Storage abstracted via NonVolatile trait for platform-specific secure storage."
+  "close_reason": "Verified compliant: All implementations properly handle private keys - Rust uses Zeroize/ZeroizeOnDrop with REDACTED debug output; C uses crypto_wipe/secure_wipe after key operations; Python documents memory limitation and recommends HSM. No hardcoded keys, no secret logging, no plaintext transmission of private material. Storage abstracted via NonVolatile trait for platform-specific secure storage.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

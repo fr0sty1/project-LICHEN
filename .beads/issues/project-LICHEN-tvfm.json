@@ -13,7 +13,8 @@
   "closed_at": "2026-06-28T03:00:37.916305Z",
   "close_reason": "All 102 findings fixed. Build passes. See notes for convergence report.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ]
 }

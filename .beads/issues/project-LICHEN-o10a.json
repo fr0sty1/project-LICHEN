@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:57:34.059803Z",
   "closed_at": "2026-07-12T00:57:34.059803Z",
-  "close_reason": "Fixed: Added NULL check for cs.gpio.port in lr1110_hal_wakeup(). If hardware CS is used (no cs-gpios in devicetree), falls back to zero-byte SPI transaction to pulse CS instead of crashing on NULL dereference."
+  "close_reason": "Fixed: Added NULL check for cs.gpio.port in lr1110_hal_wakeup(). If hardware CS is used (no cs-gpios in devicetree), falls back to zero-byte SPI transaction to pulse CS instead of crashing on NULL dereference.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

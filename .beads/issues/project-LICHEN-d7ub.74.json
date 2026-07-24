@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:43:32.192111Z",
   "close_reason": "Fixed crash_info_store initialization ordering so CRASH_MAGIC is written before resetting retained crash count, and verified with focused object compile plus full existing bridge build",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

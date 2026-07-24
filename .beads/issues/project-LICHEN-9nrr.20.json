@@ -14,12 +14,13 @@
   "closed_at": "2026-06-30T02:50:43.632685Z",
   "close_reason": "Completed: removed contradictory nonnull annotations from peer add/remove declarations, documented NULL as the -EINVAL contract, verified rak4631/nrf52840 bridge build and confirmed no -Wnonnull-compare output; two review passes clean.",
   "labels": [
-    "zephyr",
-    "c",
     "bridge",
-    "warning",
+    "c",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "warning",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:26.711381Z",
   "close_reason": "By design: SCHC errors after MIC verification indicate either corrupted compressed data or buffer sizing issues. At this point, frame authenticity is already verified so detailed error differentiation adds logging overhead without actionable recovery - the frame is dropped regardless. The -EINVAL/-ENOMEM distinction is sufficient for resource vs format diagnosis.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

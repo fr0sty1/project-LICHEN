@@ -15,6 +15,7 @@
   "labels": [
     "c-safety",
     "concurrency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -14,11 +14,12 @@
   "closed_at": "2026-07-01T00:11:57.558495Z",
   "close_reason": "Completed: Meshtastic BLE GATT service surface implemented for gateway Meshtastic compatibility mode, R1 build passed, follow-up coexistence Bead created, and three final code reviews passed.",
   "labels": [
-    "zephyr",
-    "meshtastic",
+    "app-interface",
     "ble",
     "firmware",
-    "app-interface"
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

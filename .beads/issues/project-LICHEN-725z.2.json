@@ -14,6 +14,7 @@
   "close_reason": "Moved Ready log above led_off label so it only prints on success",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

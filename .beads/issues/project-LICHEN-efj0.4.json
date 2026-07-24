@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-efj0.4",
   "title": "lichen-link: link_layer.rs build_frame expect() should return Result",
-  "description": "rust/lichen-link/src/link_layer.rs:215 uses expect('buffer too small'). If caller provides undersized buffer, this panics. Should return Result\u003cusize, BufferTooSmall\u003e instead.",
+  "description": "rust/lichen-link/src/link_layer.rs:215 uses expect('buffer too small'). If caller provides undersized buffer, this panics. Should return Result<usize, BufferTooSmall> instead.",
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
@@ -11,10 +11,11 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T04:58:46.13639Z",
   "closed_at": "2026-06-28T04:58:46.13639Z",
-  "close_reason": "Changed build_frame return type from usize to Result\u003cusize, FrameError\u003e, updated callers",
+  "close_reason": "Changed build_frame return type from usize to Result<usize, FrameError>, updated callers",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ],
   "dependencies": [
     {

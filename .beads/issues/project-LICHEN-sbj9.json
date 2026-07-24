@@ -14,6 +14,7 @@
   "close_reason": "Verified fixed: fresh Zephyr build now sources lichen/zephyr/Kconfig and qemu_cortex_m3 bridge build completes without undefined CONFIG_LICHEN.",
   "labels": [
     "build",
+    "owner-reserved",
     "zephyr"
   ]
 }

@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:52:33.971987Z",
   "close_reason": "All children complete",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-10T22:48:52.548196Z",
   "closed_at": "2026-07-10T22:48:52.548196Z",
-  "close_reason": "Created LR1110.cs Renode peripheral based on SX1262.cs"
+  "close_reason": "Created LR1110.cs Renode peripheral based on SX1262.cs",
+  "labels": [
+    "owner-reserved"
+  ]
 }

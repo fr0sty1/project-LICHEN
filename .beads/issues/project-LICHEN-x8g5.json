@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:38:24.447269Z",
   "closed_at": "2026-07-12T00:38:24.447269Z",
-  "close_reason": "Already fixed: rx_queue uses VecDeque with push_back/pop_front for FIFO ordering"
+  "close_reason": "Already fixed: rx_queue uses VecDeque with push_back/pop_front for FIFO ordering",
+  "labels": [
+    "owner-reserved"
+  ]
 }

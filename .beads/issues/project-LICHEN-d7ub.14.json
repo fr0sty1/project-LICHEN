@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T21:57:20.24476Z",
   "close_reason": "Added pre-start LoRa L2 availability check in lichen_l2_enable(true) using copy_eui64 and verified with focused object and full T-Echo build",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

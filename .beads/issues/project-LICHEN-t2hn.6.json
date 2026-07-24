@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T03:42:39.303874Z",
   "close_reason": "Implemented MVP Meshtastic local app sync/read handlers and recorded remaining non-MVP gaps as child/follow-up Beads. EC2 validation passed qemu_x86 codec 13/13, qemu_x86 adapter 18/18, and R1 Neo gateway build with meshtastic_compat.conf; native_sim/Twister host bootstrap gap is tracked separately as project-LICHEN-t2hn.5.2.1.",
   "labels": [
-    "zephyr",
-    "meshtastic",
+    "app-interface",
     "config",
-    "status",
     "firmware",
-    "app-interface"
+    "meshtastic",
+    "owner-reserved",
+    "status",
+    "zephyr"
   ],
   "dependencies": [
     {

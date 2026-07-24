@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:25:34.156186Z",
   "close_reason": "Completed duplicate helper cleanup in routing.c",
   "labels": [
-    "review",
+    "c",
     "elegance",
+    "owner-reserved",
     "readability",
-    "zephyr",
-    "c"
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

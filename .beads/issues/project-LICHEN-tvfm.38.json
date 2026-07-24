@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:38:06.822081Z",
   "close_reason": "Verified: timeout already configurable via CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS (default 50ms, range 0-1000ms) with documented tradeoffs in Kconfig help. Code at line 1367-1369 properly references this config with explanatory comment.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:26:33.355382Z",
   "close_reason": "Fixed: Moved LICHEN_MIN_FRAME_LEN from inside lichen_l2_input() to file scope near MAX_LORA_FRAME. Updated the value from 14 to 9 to match lichen_frame_parse() in frame.c, and corrected the documentation to reflect the actual wire format (source EUI-64 is not in the frame header).",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:25:43.827706Z",
   "closed_at": "2026-07-13T00:25:43.827706Z",
-  "close_reason": "Fixed: AddressMapper.learn() now returns bool and logs warning on TOFU violation instead of raising ValueError"
+  "close_reason": "Fixed: AddressMapper.learn() now returns bool and logs warning on TOFU violation instead of raising ValueError",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-10T22:48:52.876291Z",
   "closed_at": "2026-07-10T22:48:52.876291Z",
-  "close_reason": "Audit complete. See workflow results for queue analysis."
+  "close_reason": "Audit complete. See workflow results for queue analysis.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

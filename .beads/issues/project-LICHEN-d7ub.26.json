@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T07:23:54.667628Z",
   "close_reason": "Duplicate of project-LICHEN-d7ub.18 - same root cause (non-CAS state transitions)",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

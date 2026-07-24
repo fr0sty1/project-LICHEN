@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:46:03.103929Z",
   "close_reason": "Closed",
   "labels": [
+    "owner-reserved",
     "test-coverage"
   ]
 }

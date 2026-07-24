@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:26:31.597324Z",
   "close_reason": "Fixed: Added BUILD_ASSERT with DT_NODE_EXISTS guard before LORA_DEV macro. Users without lora0 devicetree alias now get a clear compile-time error message explaining the problem and how to fix it.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

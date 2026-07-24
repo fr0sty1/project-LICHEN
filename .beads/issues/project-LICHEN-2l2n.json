@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:12:57.491923Z",
   "closed_at": "2026-07-13T00:12:57.491923Z",
-  "close_reason": "Fixed: Converted recursive PAD1 handling to iterative loop in OptionIter::next(). Added SECURITY comment and two regression tests (many PAD1 bytes, all PAD1 bytes)."
+  "close_reason": "Fixed: Converted recursive PAD1 handling to iterative loop in OptionIter::next(). Added SECURITY comment and two regression tests (many PAD1 bytes, all PAD1 bytes).",
+  "labels": [
+    "owner-reserved"
+  ]
 }

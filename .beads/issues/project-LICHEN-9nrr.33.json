@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T05:07:40.100132Z",
   "close_reason": "Set T1000-E puck USB identifiers to non-default LICHEN values: VID 0x239A, PID 0x0029, product LICHEN Puck, manufacturer LICHEN. Preserved CDC-ACM Native and MCUmgr behavior. Tests/builds: west build -b t1000_e/nrf52840 lichen/apps/puck -d build/puck_t1000_e_nrf52840 --pristine=always passed; generated .config verified CONFIG_USB_DEVICE_STACK=y, CONFIG_USB_CDC_ACM=y, CONFIG_LICHEN_NATIVE=y, CONFIG_MCUMGR=y, VID/PID/product/manufacturer set as intended; default VID/PID warnings are gone; git diff --check passed. Review pass 1: no findings; verified built config values and matching project USB-ID pattern. Review pass 2: no findings; scope limited to T1000-E puck config and Beads metadata, with unrelated gateway T1000-E USB warning already tracked by project-LICHEN-9nrr.34.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

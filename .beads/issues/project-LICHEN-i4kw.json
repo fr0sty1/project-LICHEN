@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:42:23.536587Z",
   "closed_at": "2026-07-12T00:42:23.536587Z",
-  "close_reason": "Fixed: ephemeral key consumption was already correct (using .take()), added matching SECURITY comment to initiator side for consistency with responder"
+  "close_reason": "Fixed: ephemeral key consumption was already correct (using .take()), added matching SECURITY comment to initiator side for consistency with responder",
+  "labels": [
+    "owner-reserved"
+  ]
 }

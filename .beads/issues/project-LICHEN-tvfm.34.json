@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:36:30.968774Z",
   "close_reason": "Fixed: zero ll_addr_out on all failure paths in lichen_log_link_local_from_eui64",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

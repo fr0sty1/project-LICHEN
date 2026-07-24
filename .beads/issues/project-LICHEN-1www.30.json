@@ -13,6 +13,7 @@
   "close_reason": "Invalid finding - early error paths return explicit error codes directly, not via ret variable",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

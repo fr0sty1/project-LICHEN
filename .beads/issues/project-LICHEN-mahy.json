@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T04:43:19.258044Z",
   "closed_at": "2026-07-12T04:43:19.258044Z",
-  "close_reason": "All child tasks completed"
+  "close_reason": "All child tasks completed",
+  "labels": [
+    "owner-reserved"
+  ]
 }

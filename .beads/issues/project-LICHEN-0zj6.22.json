@@ -13,8 +13,9 @@
   "closed_at": "2026-06-27T06:38:04.316553Z",
   "close_reason": "Fixed: added consecutive_errors counter in rx_thread with LOG_WRN after 5 consecutive errors suggesting hardware check",
   "labels": [
-    "risk",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

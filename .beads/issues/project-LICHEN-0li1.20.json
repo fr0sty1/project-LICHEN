@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:10:11.743792Z",
   "close_reason": "The is_running() check is correct. The comment (lines 1643-1661) thoroughly documents this as an architectural limitation and explains why it is acceptable: (1) The dangerous case (RUNNING) is correctly rejected; (2) Other states (STOPPED/UNINIT) result in harmless mutex reinit; (3) The function is internal-only with a single caller (deinit); (4) Adding is_deiniting() API would expand API surface for a single caller. No code change needed - the limitation is properly documented and the check is sufficient.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

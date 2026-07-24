@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:48.536964Z",
   "close_reason": "SAFETY comment review - existing code is correct",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

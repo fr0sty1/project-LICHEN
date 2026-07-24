@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:25:02.724587Z",
   "close_reason": "Fixed: Added initialized check at line 379 with defense-in-depth comment explaining the invariant",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

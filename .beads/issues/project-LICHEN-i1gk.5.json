@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:44:21.952377Z",
   "close_reason": "Fixed: cast ret to (size_t) in callback invocation",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

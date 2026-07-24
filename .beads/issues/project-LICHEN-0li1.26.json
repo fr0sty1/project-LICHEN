@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:02.487355Z",
   "close_reason": "Added SECURITY comment documenting the caller contract for buffer sizes. Both lichen_eui64_to_iid and lichen_pubkey_to_iid now have explicit documentation that buffer sizes are not bounds-checked at runtime due to C array decay, matching the pattern used in lichen_sha256. This is an accepted C language limitation with caller contract documentation.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

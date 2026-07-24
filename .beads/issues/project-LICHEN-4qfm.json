@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:25:52.756207Z",
   "closed_at": "2026-07-12T16:25:52.756207Z",
-  "close_reason": "Fixed: raw_events tuple now trimmed to last 10 entries to prevent unbounded memory growth"
+  "close_reason": "Fixed: raw_events tuple now trimmed to last 10 entries to prevent unbounded memory growth",
+  "labels": [
+    "owner-reserved"
+  ]
 }

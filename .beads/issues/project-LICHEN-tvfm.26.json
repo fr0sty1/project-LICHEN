@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T01:49:41.487245Z",
   "close_reason": "Duplicate of .13 - same init_standalone_lora cleanup",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

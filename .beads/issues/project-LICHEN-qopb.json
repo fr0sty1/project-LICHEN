@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T05:19:23.228952Z",
   "closed_at": "2026-07-12T05:19:23.228952Z",
-  "close_reason": "Implemented headers.rs (~580 lines) and context.rs (~170 lines) in lichen-schc. 5 packet profiles, rule matching, no_std compatible. 34 tests pass."
+  "close_reason": "Implemented headers.rs (~580 lines) and context.rs (~170 lines) in lichen-schc. 5 packet profiles, rule matching, no_std compatible. 34 tests pass.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

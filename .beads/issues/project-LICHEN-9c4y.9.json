@@ -14,11 +14,12 @@
   "closed_at": "2026-07-01T09:50:44.826737Z",
   "close_reason": "Completed: explicit unsupported-operation behavior is implemented and tested by the MeshCore dispatcher. Full command range constants 0x01..0x41 exist, valid unsupported commands and unknown bytes return RESP_ERR/ERR_UNSUPPORTED_CMD deterministically, malformed inputs return ERR_ILLEGAL_ARG, unknown channel returns ERR_NOT_FOUND, and tests cover representative plus full-range unsupported cases. Two acceptance reviews found no P0/P1/P2 blockers and recommended closure.",
   "labels": [
-    "zephyr",
-    "meshcore",
+    "app-interface",
     "compatibility",
     "firmware",
-    "app-interface"
+    "meshcore",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

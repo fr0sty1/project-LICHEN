@@ -15,8 +15,9 @@
   "labels": [
     "c-safety",
     "null",
-    "untrusted-input",
-    "review"
+    "owner-reserved",
+    "review",
+    "untrusted-input"
   ],
   "dependencies": [
     {

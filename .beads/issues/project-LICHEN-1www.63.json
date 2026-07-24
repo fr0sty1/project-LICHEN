@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T22:03:15.629763Z",
   "close_reason": "Increased default from 10ms to 50ms and added help text mentioning the 'Failed to allocate RX packet' symptom",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

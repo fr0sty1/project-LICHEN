@@ -11,9 +11,10 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:02:52.191341Z",
   "closed_at": "2026-07-06T18:02:52.191341Z",
-  "close_reason": "Acceptable - mapping tuples are typically small (2-8 port numbers). For N\u003c10, tuple 'in' is faster than frozenset due to lower overhead.",
+  "close_reason": "Acceptable - mapping tuples are typically small (2-8 port numbers). For N<10, tuple 'in' is faster than frozenset due to lower overhead.",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

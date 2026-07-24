@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T05:13:34.243169Z",
   "close_reason": "Not a bug - device_is_ready() check happens after assignment, sequence is correct.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

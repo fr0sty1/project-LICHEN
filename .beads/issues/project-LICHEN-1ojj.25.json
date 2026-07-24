@@ -14,8 +14,9 @@
   "close_reason": "Addressed by .10: sys_rand_get() fallback paths were removed. The function now returns -ENODEV when hwinfo is unavailable and -EINVAL when SHA-256 fails, refusing to start rather than using weak RNG.",
   "labels": [
     "crypto-security",
-    "rng",
-    "review"
+    "owner-reserved",
+    "review",
+    "rng"
   ],
   "dependencies": [
     {

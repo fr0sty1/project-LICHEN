@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T01:39:38.996441Z",
   "close_reason": "Invalid: rx_link_key is already zeroed at line 1124 (secure_zero call before #else directive) before execution reaches net_pkt_write failure path at line 1154. The code structure ensures the key is zeroed unconditionally in the LICHEN path before any packet allocation/write operations.",
   "labels": [
-    "review",
+    "exhaustive",
     "gap",
-    "security",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "security"
   ],
   "dependencies": [
     {

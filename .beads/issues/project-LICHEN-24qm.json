@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:36:50.888132Z",
   "closed_at": "2026-07-12T00:36:50.888132Z",
-  "close_reason": "Verified compliant: All 9 code paths (C, Rust, Python) explicitly check dispatch byte (0x14 SCHC, 0x15 routing) before payload parsing. No namespace inference from first byte."
+  "close_reason": "Verified compliant: All 9 code paths (C, Rust, Python) explicitly check dispatch byte (0x14 SCHC, 0x15 routing) before payload parsing. No namespace inference from first byte.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

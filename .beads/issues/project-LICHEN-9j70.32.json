@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:25:53.404733Z",
   "close_reason": "Fixed: Updated lora_rx_handler() log to 'RX: N bytes (standalone mode - not processed)' making it explicit that packets are logged but discarded in standalone mode",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

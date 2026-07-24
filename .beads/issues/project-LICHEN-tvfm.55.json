@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:51:40.148529Z",
   "close_reason": "Fixed: Added explanatory comment for empty lichen_l2_ctx struct - documents that it is intentionally empty because Zephyr's NET_DEVICE_INIT requires a context type, but LICHEN uses module-static state instead of per-interface context",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:34:09.776481Z",
   "closed_at": "2026-07-12T00:34:09.776481Z",
-  "close_reason": "Fixed: Updated stm32wl.rs and esp32s3.rs for lora-phy v3 API - replaced direct struct construction with factory methods (create_modulation_params, create_tx_packet_params, create_rx_packet_params), fixed Config struct fields, and corrected RxMode::Single to use u16 timeout"
+  "close_reason": "Fixed: Updated stm32wl.rs and esp32s3.rs for lora-phy v3 API - replaced direct struct construction with factory methods (create_modulation_params, create_tx_packet_params, create_rx_packet_params), fixed Config struct fields, and corrected RxMode::Single to use u16 timeout",
+  "labels": [
+    "owner-reserved"
+  ]
 }

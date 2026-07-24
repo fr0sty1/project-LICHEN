@@ -15,6 +15,7 @@
   "labels": [
     "efficiency",
     "opinion",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

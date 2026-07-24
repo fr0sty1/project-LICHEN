@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T01:39:08.386493Z",
   "close_reason": "Fixed: replaced strict-aliasing-violating cast with __builtin_memcpy + volatile read-back",
   "labels": [
-    "review",
     "critic",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

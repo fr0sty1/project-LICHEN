@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:07:50.310496Z",
   "closed_at": "2026-07-06T18:07:50.310496Z",
-  "close_reason": "Architecture concern documented - lichen-ipv6 remains a leaf crate, dependency direction is intentional"
+  "close_reason": "Architecture concern documented - lichen-ipv6 remains a leaf crate, dependency direction is intentional",
+  "labels": [
+    "owner-reserved"
+  ]
 }

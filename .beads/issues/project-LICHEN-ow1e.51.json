@@ -11,11 +11,12 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T17:02:35.796251Z",
   "closed_at": "2026-07-06T17:02:35.796251Z",
-  "close_reason": "Fixed: TUN error messages now show actual error first, then suggest cause based on error kind (NotFound -\u003e tun module not loaded, PermissionDenied -\u003e CAP_NET_ADMIN/root, other -\u003e check logs).",
+  "close_reason": "Fixed: TUN error messages now show actual error first, then suggest cause based on error kind (NotFound -> tun module not loaded, PermissionDenied -> CAP_NET_ADMIN/root, other -> check logs).",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:50:31.836285Z",
   "close_reason": "Fixed: In lichen_l2_enable(), changed to copy EUI-64 to local buffer immediately after get_eui64() call before any further use. Added THREAD SAFETY comment in iface_init() documenting why boot-time path is safe (no concurrency, immediate copy). lichen_link_init() also copies internally via memcpy.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

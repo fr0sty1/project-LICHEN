@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:44.150987Z",
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
-    "schc",
+    "owner-reserved",
+    "parsing",
     "protocol",
-    "parsing"
+    "schc"
   ],
   "dependencies": [
     {

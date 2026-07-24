@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T05:09:05.41378Z",
   "close_reason": "Set the T1000-E gateway USB VID to non-default LICHEN value 0x239A and added CONFIG_USB_DEVICE_MANUFACTURER=\"LICHEN\", preserving the existing gateway PID 0x0101, product string, CDC-ACM, LICHEN Native, and MCUmgr settings. Tests/builds: west build -b t1000_e/nrf52840 lichen/apps/gateway -d build/gateway_t1000_e_nrf52840 --pristine=always passed; generated .config verified CONFIG_USB_DEVICE_STACK=y, CONFIG_USB_CDC_ACM=y, CONFIG_LICHEN_NATIVE=y, CONFIG_MCUMGR=y, VID/PID/product/manufacturer set as intended; default VID warning is gone; git diff --check passed. Review pass 1: no findings; verified generated config and no default-VID warning. Review pass 2: no findings; scope limited to T1000-E gateway board config and Beads metadata, with nearby T1000-E puck/bridge configs checked for identifier pattern consistency.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

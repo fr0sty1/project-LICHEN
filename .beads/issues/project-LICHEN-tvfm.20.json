@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:32:21.695923Z",
   "close_reason": "Fixed: Changed lichen_peer_remove return type from void to int. Now returns: 0 on success, -EINVAL for NULL eui64, -ENOENT if peer not found, -ECANCELED if LoRa L2 needs reinit, -ENOTSUP if link support disabled.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

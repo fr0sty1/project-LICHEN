@@ -14,6 +14,7 @@
   "close_reason": "Already fixed - handler.py line 163 uses public entries() method, not _entries",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

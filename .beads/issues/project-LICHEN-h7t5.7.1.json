@@ -14,15 +14,16 @@
   "closed_at": "2026-06-30T19:26:25.908234Z",
   "close_reason": "Selected LilyGO T-Deck as first concrete LilyGO bring-up board; recorded hardware availability and official LilyGO source references; revision-specific caveat remains for follow-up hardware-facts work.",
   "labels": [
-    "lilygo",
-    "hardware",
-    "procurement",
-    "bringup",
-    "zephyr",
     "board-support",
+    "bringup",
     "firmware",
     "hal",
-    "partner-handoff"
+    "hardware",
+    "lilygo",
+    "owner-reserved",
+    "partner-handoff",
+    "procurement",
+    "zephyr"
   ],
   "dependencies": [
     {

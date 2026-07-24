@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T05:50:38.203877Z",
   "close_reason": "Positive review findings - worth defending, not fixing",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

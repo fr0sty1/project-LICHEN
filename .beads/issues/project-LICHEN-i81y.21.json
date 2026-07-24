@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:55:13.319016Z",
   "close_reason": "Completed: added focused Zephyr CoAP client API validation test target covering invalid request/post_cbor parameters and timeout overflow bounds.",
   "labels": [
-    "zephyr",
     "c",
     "coap",
+    "owner-reserved",
+    "review",
     "test",
-    "review"
+    "zephyr"
   ],
   "dependencies": [
     {

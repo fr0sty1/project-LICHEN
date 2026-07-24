@@ -14,6 +14,7 @@
   "close_reason": "P3 observations acknowledged, no fix needed",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

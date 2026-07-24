@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:05.0245Z",
   "close_reason": "Intentional stub: standalone mode handler is explicitly marked as unimplemented with ponytail comment (line 78). The ARG_UNUSED annotations and 'RX processing not implemented - add when needed' comment clearly document this is a no-op for testing. Standalone mode is only enabled when CONFIG_LICHEN_LORA_L2 is set WITHOUT CONFIG_LICHEN_L2. No change needed.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:09:58.609014Z",
   "close_reason": "The function returns string literals directly from switch cases, not via array indexing. String literals are compile-time constants in .rodata - always valid and null-terminated. No bounds check is needed or possible.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:01:24.896538Z",
   "close_reason": "Added INFALLIBLE comments documenting block number bounds in block.rs next_block() and next_request_block()",
   "labels": [
-    "idiomatic-rust",
     "error-handling",
+    "idiomatic-rust",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

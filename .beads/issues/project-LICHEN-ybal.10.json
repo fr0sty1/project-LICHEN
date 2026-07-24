@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T05:37:17.019218Z",
   "close_reason": "Fix verified: mutex acquired at line 163 before checking initialized at line 170, preventing TOCTOU race. Security comment at lines 168-169 documents the fix.",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

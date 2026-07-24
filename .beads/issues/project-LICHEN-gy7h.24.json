@@ -14,6 +14,7 @@
   "close_reason": "Not a bug - lora_rx_callback checks both lichen_iface AND iface_init_failed, so late init failure is properly handled",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

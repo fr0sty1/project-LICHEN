@@ -14,10 +14,11 @@
   "closed_at": "2026-06-30T22:15:30.767708Z",
   "close_reason": "Updated Meshtastic compatibility contract for current app sync flow, recorded source baselines, deterministic sync/admin/unsupported behavior, and completed three independent review passes with fixes.",
   "labels": [
-    "zephyr",
-    "meshtastic",
     "app-interface",
-    "firmware"
+    "firmware",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

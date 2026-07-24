@@ -14,12 +14,13 @@
   "closed_at": "2026-07-12T06:25:55.767382Z",
   "close_reason": "Closed",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshtastic",
     "native_sim",
+    "owner-reserved",
     "test",
-    "app-interface",
-    "firmware"
+    "zephyr"
   ],
   "dependencies": [
     {

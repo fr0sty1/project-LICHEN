@@ -14,8 +14,9 @@
   "close_reason": "Closed",
   "labels": [
     "crypto-security",
-    "side-channel",
-    "review"
+    "owner-reserved",
+    "review",
+    "side-channel"
   ],
   "dependencies": [
     {

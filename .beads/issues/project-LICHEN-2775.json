@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T02:47:09.072976Z",
   "closed_at": "2026-06-29T02:47:09.072976Z",
-  "close_reason": "Zephyr C code review completed; actionable kqma findings were filed and fixed in assigned subagents."
+  "close_reason": "Zephyr C code review completed; actionable kqma findings were filed and fixed in assigned subagents.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

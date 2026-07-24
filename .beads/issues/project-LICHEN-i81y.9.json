@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:27:06.642084Z",
   "close_reason": "Completed: expire_parents now treats NULL DODAG as expiring zero parents and documents that contract.",
   "labels": [
-    "review",
     "api-contract",
+    "c",
+    "owner-reserved",
+    "review",
     "underspecified",
-    "zephyr",
-    "c"
+    "zephyr"
   ],
   "dependencies": [
     {

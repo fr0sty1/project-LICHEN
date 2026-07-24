@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:14:13.262976Z",
   "closed_at": "2026-07-13T00:14:13.262976Z",
-  "close_reason": "Fixed: replaced bool nus_tx_notify_enabled with atomic_t, using atomic_set() for writes and atomic_get() for reads to eliminate data race"
+  "close_reason": "Fixed: replaced bool nus_tx_notify_enabled with atomic_t, using atomic_set() for writes and atomic_get() for reads to eliminate data race",
+  "labels": [
+    "owner-reserved"
+  ]
 }

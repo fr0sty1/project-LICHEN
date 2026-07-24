@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T06:18:02.729004Z",
   "close_reason": "Framework-required: NET_DEVICE_INIT macro requires a context type; empty struct with explanatory comment is the minimal solution",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

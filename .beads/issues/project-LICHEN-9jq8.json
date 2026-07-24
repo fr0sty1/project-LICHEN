@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:13:32.484539Z",
   "closed_at": "2026-07-11T06:13:32.484539Z",
-  "close_reason": "Already fixed: seed.clone() already present at line 108, all identity tests pass"
+  "close_reason": "Already fixed: seed.clone() already present at line 108, all identity tests pass",
+  "labels": [
+    "owner-reserved"
+  ]
 }

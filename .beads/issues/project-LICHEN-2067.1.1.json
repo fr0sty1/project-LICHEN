@@ -14,17 +14,18 @@
   "closed_at": "2026-07-02T08:42:28.969042Z",
   "close_reason": "Completed no-hardware scope: bridge-zephyr no longer compiles legacy vendored LICHEN sources or Kconfig under a west workspace; module-owned L2/Kconfig is the single owner, LICHEN_LORA_L2 selects LICHEN_LINK, qemu/native_sim smoke coverage added, EC2 qemu/native_sim/nucleo validation passed. Remaining bridge board config filename audit is tracked in child project-LICHEN-2067.1.1.1.",
   "labels": [
-    "zephyr",
-    "firmware",
     "bridge",
     "build",
-    "tooling",
-    "time",
-    "rtc",
+    "firmware",
     "gnss",
     "gpsd",
+    "network-source",
+    "owner-reserved",
+    "rtc",
     "sntp",
-    "network-source"
+    "time",
+    "tooling",
+    "zephyr"
   ],
   "dependencies": [
     {

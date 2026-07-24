@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:19:23.763854Z",
   "closed_at": "2026-07-12T16:19:23.763854Z",
-  "close_reason": "Fixed: Replaced direct private field access (sender_key, recipient_key, common_iv) with functional roundtrip test. Test now verifies EDHOC-derived OSCORE contexts work by encrypting/decrypting requests and responses between initiator and responder, which is more robust than comparing raw keys and avoids relying on implementation details."
+  "close_reason": "Fixed: Replaced direct private field access (sender_key, recipient_key, common_iv) with functional roundtrip test. Test now verifies EDHOC-derived OSCORE contexts work by encrypting/decrypting requests and responses between initiator and responder, which is more robust than comparing raw keys and avoids relying on implementation details.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

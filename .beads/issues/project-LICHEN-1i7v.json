@@ -13,9 +13,10 @@
   "closed_at": "2026-06-30T05:51:36.664844Z",
   "close_reason": "Completed: replaced the IPv6 extension-header length modulo check with is_multiple_of so lichen-core clippy passes without the previous allow. Tests: cargo test -p lichen-core; cargo clippy -p lichen-core --all-targets -- -D warnings; git diff --check. Review pass 1: found unrelated rustfmt churn in ipv6.rs tests and reverted it. Review pass 2: no findings; final diff is the intended one-line source change plus Beads metadata.",
   "labels": [
-    "rust",
     "clippy",
-    "follow-up"
+    "follow-up",
+    "owner-reserved",
+    "rust"
   ],
   "dependencies": [
     {

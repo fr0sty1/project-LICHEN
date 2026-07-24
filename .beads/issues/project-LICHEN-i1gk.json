@@ -14,7 +14,8 @@
   "closed_at": "2026-06-28T03:51:24.568672Z",
   "close_reason": "Exhaustive review complete: 115 findings discovered, all fixed or documented",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ]
 }

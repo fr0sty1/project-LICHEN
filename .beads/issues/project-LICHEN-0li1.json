@@ -14,7 +14,8 @@
   "closed_at": "2026-06-28T07:16:27.259618Z",
   "close_reason": "All 87 findings resolved: 3 P1, 20 P2, 45 P3, 2 P4. Key security fixes: replay epoch tracking, mutex UB prevention, state desync handling, EUI-64 validation. 11 files changed, +470/-117 lines.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ]
 }

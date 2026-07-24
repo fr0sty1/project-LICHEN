@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:18:08.331349Z",
   "closed_at": "2026-07-12T16:18:08.331349Z",
-  "close_reason": "Fixed: Replaced xml.etree.ElementTree.fromstring with defusedxml.ElementTree.fromstring in parse_cot_xml() to prevent XML entity expansion attacks (Billion Laughs, Quadratic Blowup, XXE). Added defusedxml dependency and 5 security tests."
+  "close_reason": "Fixed: Replaced xml.etree.ElementTree.fromstring with defusedxml.ElementTree.fromstring in parse_cot_xml() to prevent XML entity expansion attacks (Billion Laughs, Quadratic Blowup, XXE). Added defusedxml dependency and 5 security tests.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

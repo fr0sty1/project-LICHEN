@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:52:26.937965Z",
   "closed_at": "2026-07-12T00:52:26.937965Z",
-  "close_reason": "Fixed: captured self._serial to local var before closure in _read() and _close() to prevent TOCTOU race with concurrent close()"
+  "close_reason": "Fixed: captured self._serial to local var before closure in _read() and _close() to prevent TOCTOU race with concurrent close()",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-10T22:48:50.887978Z",
   "closed_at": "2026-07-10T22:48:50.887978Z",
-  "close_reason": "Converted sim.rs to push-based RX (RX_ENTER/RX_PACKET/RX_TIMEOUT)"
+  "close_reason": "Converted sim.rs to push-based RX (RX_ENTER/RX_PACKET/RX_TIMEOUT)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

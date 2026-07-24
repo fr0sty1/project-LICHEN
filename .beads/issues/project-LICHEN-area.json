@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:09:37.296247Z",
   "closed_at": "2026-07-11T06:09:37.296247Z",
-  "close_reason": "Fixed: Added conditional logging (defmt/log) in Request::from_coap to warn when URI path segments beyond MAX_PATH_DEPTH are dropped"
+  "close_reason": "Fixed: Added conditional logging (defmt/log) in Request::from_coap to warn when URI path segments beyond MAX_PATH_DEPTH are dropped",
+  "labels": [
+    "owner-reserved"
+  ]
 }

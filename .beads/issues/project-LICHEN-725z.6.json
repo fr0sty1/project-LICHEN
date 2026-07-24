@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-725z.6",
   "title": "Buffer overflow check after lora_recv already wrote to buffer",
-  "description": "lora_l2.c:191-194 — Check 'ret \u003e sizeof(rx_buf)' occurs AFTER lora_recv at line 167 already wrote data. If driver misbehaves and writes \u003e255 bytes, overflow already occurred. Defense-in-depth gap.",
+  "description": "lora_l2.c:191-194 — Check 'ret > sizeof(rx_buf)' occurs AFTER lora_recv at line 167 already wrote data. If driver misbehaves and writes >255 bytes, overflow already occurred. Defense-in-depth gap.",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -14,8 +14,9 @@
   "close_reason": "Added BUILD_ASSERT for buffer size and improved error logging",
   "labels": [
     "crypto-security",
-    "untrusted-input",
-    "review"
+    "owner-reserved",
+    "review",
+    "untrusted-input"
   ],
   "dependencies": [
     {

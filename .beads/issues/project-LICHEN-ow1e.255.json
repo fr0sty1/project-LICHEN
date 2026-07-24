@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:01:45.518834Z",
   "close_reason": "Valid but requires Zephyr test infrastructure. UTF-8 validator appears correct (covers all RFC 3629 cases). Defer to firmware test sprint.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

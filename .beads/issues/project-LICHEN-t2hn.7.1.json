@@ -14,11 +14,12 @@
   "closed_at": "2026-07-01T18:24:06.091565Z",
   "close_reason": "Completed no-hardware implementation: directed Meshtastic node_num destinations resolve through peer snapshots to LICHEN EUI/IID metadata; unknown/self/collision paths are unsupported; gateway path now uses production message_contract submit_text sink from project-LICHEN-t2hn.7.2; native_sim/qemu/build evidence recorded.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshtastic",
     "messaging",
-    "firmware",
-    "app-interface"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

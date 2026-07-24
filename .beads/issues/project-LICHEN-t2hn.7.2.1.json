@@ -14,13 +14,14 @@
   "closed_at": "2026-07-02T15:58:16.218953Z",
   "close_reason": "Completed native_sim gateway message-contract pop-then-push FIFO wraparound coverage; reviewed, tested via EC2 Twister, evidence recorded in notes.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "meshcore",
-    "testing",
     "app-interface",
+    "firmware",
+    "meshcore",
+    "meshtastic",
     "messaging",
-    "firmware"
+    "owner-reserved",
+    "testing",
+    "zephyr"
   ],
   "dependencies": [
     {

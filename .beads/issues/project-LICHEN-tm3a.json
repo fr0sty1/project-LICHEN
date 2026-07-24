@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:20:18.915509Z",
   "closed_at": "2026-07-12T16:20:18.915509Z",
-  "close_reason": "Fixed: Disabled key pinning while MIC verification is a stub. Added _should_pin_key() function that returns False and logs a warning when MIC is not implemented. Updated misleading SECURITY comments to reflect actual state. This prevents potential key-pinning poisoning attacks and removes false sense of security."
+  "close_reason": "Fixed: Disabled key pinning while MIC verification is a stub. Added _should_pin_key() function that returns False and logs a warning when MIC is not implemented. Updated misleading SECURITY comments to reflect actual state. This prevents potential key-pinning poisoning attacks and removes false sense of security.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

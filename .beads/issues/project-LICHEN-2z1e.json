@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:37:19.114264Z",
   "closed_at": "2026-07-12T00:37:19.114264Z",
-  "close_reason": "Fixed: Added ID_CRED_R to context_2 in responder MAC_2 computation (lines 680-689), matching RFC 9528 Section 4.3.2 and initiator implementation. test_full_handshake validates end-to-end."
+  "close_reason": "Fixed: Added ID_CRED_R to context_2 in responder MAC_2 computation (lines 680-689), matching RFC 9528 Section 4.3.2 and initiator implementation. test_full_handshake validates end-to-end.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

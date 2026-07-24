@@ -13,8 +13,9 @@
   "closed_at": "2026-06-29T21:48:07.613005Z",
   "close_reason": "Replaced obsolete SX1262 TCXO overlay properties with dio3-tcxo-voltage and tcxo-power-startup-delay-ms, verified all changed bridge overlays with LoRa-enabled nrf52840dk bridge builds",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

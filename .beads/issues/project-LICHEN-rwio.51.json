@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T06:15:38.521171Z",
   "close_reason": "Documented net_pkt ownership semantics in both lichen_l2.h (module-level comment explaining TX/RX ownership contract) and lichen_l2.c (lichen_l2_send function docstring). On success L2 takes ownership and calls net_pkt_unref(); on error caller retains ownership.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

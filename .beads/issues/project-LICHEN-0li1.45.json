@@ -11,11 +11,12 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T07:11:09.461928Z",
   "closed_at": "2026-06-28T07:11:09.461928Z",
-  "close_reason": "Not external - this is project code in lichen/subsys/lichen/link/lichen_link_rx.c. The tc_sha256 returns (lines 250-253) are explicitly cast to (void), a deliberate idiom indicating intentional ignore. Failure is impossible: sha_state is a valid stack variable, ctx-\u003epeer_pubkey is guarded by has_peer_identity check, and hash is a valid stack array. The (void) casts satisfy static analyzers while documenting the intent.",
+  "close_reason": "Not external - this is project code in lichen/subsys/lichen/link/lichen_link_rx.c. The tc_sha256 returns (lines 250-253) are explicitly cast to (void), a deliberate idiom indicating intentional ignore. Failure is impossible: sha_state is a valid stack variable, ctx->peer_pubkey is guarded by has_peer_identity check, and hash is a valid stack array. The (void) casts satisfy static analyzers while documenting the intent.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T02:59:41.882737Z",
   "close_reason": "Fixed by making CONFIG_LICHEN_OSCORE select LICHEN_CRYPTO_MONOCYPHER and removing the oscore test's direct Monocypher enable so the dependency is proven by the subsystem. Verified qemu_x86 OSCORE unit build/run, OSCORE with link enabled, and EDHOC compile checks with and without link. Filed project-LICHEN-9nrr.27 for the unrelated EDHOC hkdf_expand warning found during verification.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

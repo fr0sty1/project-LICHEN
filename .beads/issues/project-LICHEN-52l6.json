@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:34:37.742086Z",
   "closed_at": "2026-07-12T00:34:37.742086Z",
-  "close_reason": "Verified compliant: SecureStack correctly implements OSCORE RFC 8613 - uses protect_request() for encryption, unprotect_response() with request_piv for decryption, proper PIV extraction, and has SECURITY comment documenting compliance"
+  "close_reason": "Verified compliant: SecureStack correctly implements OSCORE RFC 8613 - uses protect_request() for encryption, unprotect_response() with request_piv for decryption, proper PIV extraction, and has SECURITY comment documenting compliance",
+  "labels": [
+    "owner-reserved"
+  ]
 }

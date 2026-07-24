@@ -14,11 +14,12 @@
   "closed_at": "2026-06-30T05:05:13.548428Z",
   "close_reason": "Added local LR1110 HAL last-error tracking and checked it around Zephyr driver config/send/recv vendor-helper calls, preserving vendor source compatibility while returning -EIO, -ETIMEDOUT, or -EMSGSIZE when SPI/BUSY/GPIO HAL operations fail. Touched only the project LR1110 Zephyr driver/HAL. Tests/builds: west build -b t1000_e/nrf52840 lichen/apps/gateway -d build/gateway_t1000_e_nrf52840 --pristine=always passed; west build -b t1000_e/nrf52840 lichen/apps/puck -d build/puck_t1000_e_nrf52840 --pristine=always passed; git diff --check passed. Review pass 1: no findings; verified config/send/recv now observe HAL failures after vendor helper calls and vendor sources are untouched. Review pass 2: no findings; verified scope limited to LR1110, existing successful command flow still clears/checks zero last_error, and unrelated USB warnings are tracked by project-LICHEN-9nrr.33 and project-LICHEN-9nrr.34.",
   "labels": [
-    "zephyr",
-    "lr1110",
+    "exhaustive",
     "follow-up",
+    "lr1110",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "zephyr"
   ],
   "dependencies": [
     {

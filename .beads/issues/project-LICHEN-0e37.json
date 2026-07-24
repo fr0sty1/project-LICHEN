@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-02T11:32:40.613418Z",
   "closed_at": "2026-07-02T11:32:40.613418Z",
-  "close_reason": "Completed no-hardware policy/docs/tests/reviews/EC2 validation"
+  "close_reason": "Completed no-hardware policy/docs/tests/reviews/EC2 validation",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:10.464191Z",
   "close_reason": "Fixed: Added secure_zero(out_ipv6) on final failure in peer_try_all_pubkeys to clear partial unauthenticated data",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round4",
-    "exhaustive"
+    "round4"
   ],
   "dependencies": [
     {

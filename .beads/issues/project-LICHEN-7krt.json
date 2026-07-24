@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:11:52.273071Z",
   "closed_at": "2026-07-11T06:11:52.273071Z",
-  "close_reason": "Fixed: clamp altitude feet-to-decimeters conversion to i16 range before casting to prevent overflow (e.g., 40,000 feet would overflow i16::MAX of ~10,749 feet equivalent)"
+  "close_reason": "Fixed: clamp altitude feet-to-decimeters conversion to i16 range before casting to prevent overflow (e.g., 40,000 feet would overflow i16::MAX of ~10,749 feet equivalent)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

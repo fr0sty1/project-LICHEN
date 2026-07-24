@@ -15,8 +15,9 @@
   "close_reason": "Created EBS Zephyr builder cache volume vol-0875d0df8bdf82a58 in us-east-2a, populated Zephyr SDK 0.16.8 and v3.7.0 west workspace, validated native_sim link_crypto build/run, documented usage in AGENTS.md and Beads memory.",
   "labels": [
     "aws",
-    "zephyr",
+    "build",
     "ec2",
-    "build"
+    "owner-reserved",
+    "zephyr"
   ]
 }

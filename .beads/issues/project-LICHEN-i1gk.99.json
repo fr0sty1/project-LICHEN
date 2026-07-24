@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:50:38.613076Z",
   "close_reason": "Documented: Added SECURITY comment on last_seen field in lichen_peer_entry struct. Documents that k_uptime_get() relies on fixed-frequency kernel tick timer. LICHEN targets single-core Cortex-M without DVFS. Notes considerations for porting to platforms with variable CPU clocks.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

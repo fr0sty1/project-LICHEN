@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T00:10:50.298112Z",
   "close_reason": "Completed shared no-hardware app/local-client location submit path; endpoint-specific LCI/Meshtastic wiring captured in blocking follow-up Beads.",
   "labels": [
-    "zephyr",
     "firmware",
     "gnss",
-    "location",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

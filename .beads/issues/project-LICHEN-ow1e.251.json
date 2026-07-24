@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:23:18.401421Z",
   "close_reason": "Fixed: added rejection of null island (0,0) coordinates in gpsr_forward",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

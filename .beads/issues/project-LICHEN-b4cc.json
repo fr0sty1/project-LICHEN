@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:55:42.26064Z",
   "closed_at": "2026-07-12T00:55:42.26064Z",
-  "close_reason": "Already fixed: duplicate of 57os, code at lines 199-201 already awaits next_task after cancel"
+  "close_reason": "Already fixed: duplicate of 57os, code at lines 199-201 already awaits next_task after cancel",
+  "labels": [
+    "owner-reserved"
+  ]
 }

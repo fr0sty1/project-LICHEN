@@ -15,6 +15,7 @@
   "labels": [
     "c-standards",
     "concurrency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

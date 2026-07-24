@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T13:47:43.526295Z",
   "close_reason": "completed",
   "labels": [
-    "zephyr",
     "firmware",
     "gnss",
-    "location",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

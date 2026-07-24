@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:14:29.790695Z",
   "closed_at": "2026-07-11T06:14:29.790695Z",
-  "close_reason": "Fixed: Added len(eui64) != 8 validation after bytes.fromhex() in SosResource.render_put() to ensure EUI-64 is exactly 8 bytes"
+  "close_reason": "Fixed: Added len(eui64) != 8 validation after bytes.fromhex() in SosResource.render_put() to ensure EUI-64 is exactly 8 bytes",
+  "labels": [
+    "owner-reserved"
+  ]
 }

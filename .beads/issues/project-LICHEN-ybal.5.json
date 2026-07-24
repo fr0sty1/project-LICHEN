@@ -13,9 +13,10 @@
   "closed_at": "2026-07-24T13:30:35.89733556Z",
   "close_reason": "Verified: code already fixed -- see subagent audit for each",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

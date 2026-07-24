@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:12:48.524256Z",
   "close_reason": "Added LICHEN_HAVE_IN6_ADDR override macro for platform portability",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

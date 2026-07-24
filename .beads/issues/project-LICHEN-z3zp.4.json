@@ -14,8 +14,9 @@
   "close_reason": "Completed",
   "labels": [
     "c-safety",
-    "null",
     "crypto-security",
+    "null",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:22:41.563056Z",
   "close_reason": "Fixed: deinit() now acquires tx_buf_mutex before cleanup to wait for any in-flight TX to complete, and reinitializes both tx_buf_mutex and lora_mutex for abort recovery",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

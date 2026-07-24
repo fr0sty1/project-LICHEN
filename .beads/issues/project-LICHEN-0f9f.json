@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T01:35:41.10755Z",
   "closed_at": "2026-06-29T01:35:41.10755Z",
-  "close_reason": "Created Codex codereview prompt from the Claude codereview command and installed it under ~/.codex/prompts."
+  "close_reason": "Created Codex codereview prompt from the Claude codereview command and installed it under ~/.codex/prompts.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

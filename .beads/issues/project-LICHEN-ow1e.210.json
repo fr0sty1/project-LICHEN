@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.210",
   "title": "Codereview pass 1: DutyCycleTracker with_duty_cycle accepts invalid duty cycle values",
-  "description": "rust/lichen-core/src/duty_cycle.rs:79 - with_duty_cycle(f32) accepts any value including negative, NaN, infinity, or \u003e1.0 which would cause nonsensical behavior (negative budget, infinite budget, etc.). Should either validate input with debug_assert! or use a validated wrapper type. Not P0 because callers control input, but footgun for maintainability.",
+  "description": "rust/lichen-core/src/duty_cycle.rs:79 - with_duty_cycle(f32) accepts any value including negative, NaN, infinity, or >1.0 which would cause nonsensical behavior (negative budget, infinite budget, etc.). Should either validate input with debug_assert! or use a validated wrapper type. Not P0 because callers control input, but footgun for maintainability.",
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:57:42.324675Z",
   "close_reason": "Closed",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

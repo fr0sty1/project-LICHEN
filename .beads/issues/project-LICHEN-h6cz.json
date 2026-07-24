@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:08:04.14999Z",
   "close_reason": "Refactor verified correct - checksum logic consolidated in UdpHeader::write_to",
   "labels": [
-    "cleanup"
+    "cleanup",
+    "owner-reserved"
   ]
 }

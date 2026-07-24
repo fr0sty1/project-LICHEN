@@ -14,13 +14,14 @@
   "closed_at": "2026-06-30T03:44:37.787441Z",
   "close_reason": "Completed bounded generic SCHC fragmentation/reassembly engine, tests, and two review passes",
   "labels": [
-    "zephyr",
     "c",
-    "schc",
-    "fragmentation",
+    "exhaustive",
     "follow-up",
+    "fragmentation",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "schc",
+    "zephyr"
   ],
   "dependencies": [
     {

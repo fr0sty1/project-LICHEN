@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-15T21:59:26.64296Z",
   "closed_at": "2026-07-15T21:59:26.64296Z",
-  "close_reason": "Created, validated, documented, and wired LICHEN fleet AMI ami-0764d1b512e22671f"
+  "close_reason": "Created, validated, documented, and wired LICHEN fleet AMI ami-0764d1b512e22671f",
+  "labels": [
+    "owner-reserved"
+  ]
 }

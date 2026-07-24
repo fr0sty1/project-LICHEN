@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:16:57.416941Z",
   "closed_at": "2026-07-12T16:16:57.416941Z",
-  "close_reason": "Fixed: Added CBOR encoding error checks in build_sig_structure(). All zcbor calls now check return values and propagate -EINVAL on failure. Updated all 4 callers to check return value and goto err_wipe on failure. Added SECURITY comment explaining the vulnerability. EC2 build verification not possible - SSH key missing."
+  "close_reason": "Fixed: Added CBOR encoding error checks in build_sig_structure(). All zcbor calls now check return values and propagate -EINVAL on failure. Updated all 4 callers to check return value and goto err_wipe on failure. Added SECURITY comment explaining the vulnerability. EC2 build verification not possible - SSH key missing.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

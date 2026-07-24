@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T02:05:11.343508Z",
   "closed_at": "2026-06-29T02:05:11.343508Z",
-  "close_reason": "Code review completed; actionable findings filed as child issues project-LICHEN-kqma.1 through project-LICHEN-kqma.17."
+  "close_reason": "Code review completed; actionable findings filed as child issues project-LICHEN-kqma.1 through project-LICHEN-kqma.17.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

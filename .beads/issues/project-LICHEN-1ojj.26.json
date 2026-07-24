@@ -15,6 +15,7 @@
   "labels": [
     "c-standards",
     "error-handling",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -14,11 +14,12 @@
   "closed_at": "2026-06-30T02:25:02.971082Z",
   "close_reason": "Default native hello capabilities now match the native library's implemented device-side behavior: HELLO, MESSAGE_RECEIVED, NODE_INFO, LOG_ENTRY, and LOG_SUBSCRIBE. lichen_native_send_hello no longer advertises LN_TYPE_SEND_MESSAGE, LN_TYPE_CONFIG_GET, or LN_TYPE_CONFIG_RESULT, so gateway and puck callers that use the default hello no longer tell hosts that unsupported host-to-device send/config operations are available. Added a test-only hello encoder hook and decoder-backed zcbor assertions that the generated hello omits those unhandled commands while retaining supported native messages. Tests/builds: west build -b qemu_x86 lichen/tests/native_parse -d build/native_parse_qemu --pristine=always passed; west build -t run -d build/native_parse_qemu printed 14/14 pass and PROJECT EXECUTION SUCCESSFUL before timeout stopped QEMU; west build -b nrf52840dk_nrf52840 lichen/apps/gateway -d build/gateway_nrf52840dk --pristine=always passed; git diff --check passed. Review pass 1: verified no advertised send_message/config entries remained in the default hello list and strengthened positive test coverage for retained capabilities. Review pass 2: verified remaining LN_TYPE_SEND_MESSAGE reference is only puck defensive handling for unexpected input, not advertisement. Follow-ups created for unrelated validation blockers: project-LICHEN-9nrr.21 for puck RAK4631 undefined lora0 overlay and project-LICHEN-9nrr.22 for puck T-Echo crc32_ieee link failure.",
   "labels": [
-    "review",
-    "zephyr",
     "c",
+    "exhaustive",
     "native",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

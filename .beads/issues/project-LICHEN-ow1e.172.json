@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:14:05.50601Z",
   "close_reason": "Verified: slip.rs already implements these positive patterns. slip_encode pre-allocates with worst-case capacity. SlipFramer uses boxed fixed-size buffer. SlipFeedIter is a clean streaming iterator. No changes needed - this was a 'good' code review finding documenting existing quality.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

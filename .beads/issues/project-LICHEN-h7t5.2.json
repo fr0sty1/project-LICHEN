@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T07:19:09.901051Z",
   "close_reason": "Completed: committed docs/firmware-board-capability-matrix.md with four selected reference profiles, partner-owned long-tail targets, no-hardware evidence, review outcomes, and git diff --check pass.",
   "labels": [
-    "zephyr",
-    "hal",
     "board-matrix",
+    "board-support",
     "firmware",
+    "hal",
+    "owner-reserved",
     "partner-handoff",
-    "board-support"
+    "zephyr"
   ],
   "dependencies": [
     {

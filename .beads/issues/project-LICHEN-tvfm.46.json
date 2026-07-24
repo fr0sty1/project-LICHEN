@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:50:25.618244Z",
   "close_reason": "Duplicate of tvfm.109: The _SYS_SOCKET_H false positive described in this issue was already fixed by tvfm.109. The current code no longer checks _SYS_SOCKET_H, and documentation at lines 56-59 explains why it was removed.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

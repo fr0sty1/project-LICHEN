@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:08:45.447821Z",
   "closed_at": "2026-07-11T06:08:45.447821Z",
-  "close_reason": "Fixed: dec_f64 now decodes CBOR half-precision floats (0xf9) via f16_to_f64 helper using bit manipulation for no_std compatibility"
+  "close_reason": "Fixed: dec_f64 now decodes CBOR half-precision floats (0xf9) via f16_to_f64 helper using bit manipulation for no_std compatibility",
+  "labels": [
+    "owner-reserved"
+  ]
 }

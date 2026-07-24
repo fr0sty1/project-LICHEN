@@ -14,6 +14,7 @@
   "close_reason": "Implementation alternative suggestion - current approach is valid",
   "labels": [
     "opinion",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

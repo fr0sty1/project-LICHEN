@@ -10,9 +10,10 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-27T21:47:34.095947Z",
   "closed_at": "2026-06-27T21:47:34.095947Z",
-  "close_reason": "Not a bug - src_eui64 is only used in LOG_DBG at line 727 which is after the ret \u003c 0 check at line 719",
+  "close_reason": "Not a bug - src_eui64 is only used in LOG_DBG at line 727 which is after the ret < 0 check at line 719",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

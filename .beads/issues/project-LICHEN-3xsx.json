@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:03:16.759555Z",
   "closed_at": "2026-07-11T06:03:16.759555Z",
-  "close_reason": "Fixed: dec_f64 now accepts CBOR integers (major types 0 and 1) in addition to floats, per RFC 8428 Section 4.3. Added tests for integer value decoding."
+  "close_reason": "Fixed: dec_f64 now accepts CBOR integers (major types 0 and 1) in addition to floats, per RFC 8428 Section 4.3. Added tests for integer value decoding.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:49:50.400551Z",
   "close_reason": "Added FUTURE comment documenting config-driven timeout and potential for adaptive backoff/observability",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:50:17.460081Z",
   "closed_at": "2026-07-12T00:50:17.460081Z",
-  "close_reason": "Fixed: Added re-check of get_rx_result() after maybe_advance_time() to catch packets that become available at timeout boundary"
+  "close_reason": "Fixed: Added re-check of get_rx_result() after maybe_advance_time() to catch packets that become available at timeout boundary",
+  "labels": [
+    "owner-reserved"
+  ]
 }

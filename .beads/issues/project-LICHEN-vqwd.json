@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:37:14.689192Z",
   "closed_at": "2026-07-12T00:37:14.689192Z",
-  "close_reason": "Verified RFC 9528 compliant: Suite 0 (X25519+Ed25519+AES-CCM-16-64-128+SHA-256), correct EDHOC-KDF info structure, transcript hashes (TH_2/TH_3/TH_4), PRK derivation chain, both signature verifications, OSCORE export with correct labels. Tests pass. PRK secrets zeroized."
+  "close_reason": "Verified RFC 9528 compliant: Suite 0 (X25519+Ed25519+AES-CCM-16-64-128+SHA-256), correct EDHOC-KDF info structure, transcript hashes (TH_2/TH_3/TH_4), PRK derivation chain, both signature verifications, OSCORE export with correct labels. Tests pass. PRK secrets zeroized.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

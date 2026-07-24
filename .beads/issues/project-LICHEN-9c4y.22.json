@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T18:48:11.560405Z",
   "close_reason": "Completed no-hardware MeshCore direct peer prefix mapping with vectors, docs, gateway/app-interface tests, reviews, and EC2 Twister evidence. Submit/ACK atomicity follow-up remains tracked by project-LICHEN-9c4y.22.1.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshcore",
     "messaging",
-    "app-interface",
+    "owner-reserved",
     "tests",
-    "firmware"
+    "zephyr"
   ],
   "dependencies": [
     {

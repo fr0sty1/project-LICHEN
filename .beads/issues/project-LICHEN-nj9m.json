@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-15T20:41:50.247863Z",
   "closed_at": "2026-07-15T20:41:50.247863Z",
-  "close_reason": "Personal AWS documentation and EC2 tooling migration complete"
+  "close_reason": "Personal AWS documentation and EC2 tooling migration complete",
+  "labels": [
+    "owner-reserved"
+  ]
 }

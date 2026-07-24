@@ -14,8 +14,9 @@
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
     "ble",
+    "c-safety",
     "gateway",
-    "c-safety"
+    "owner-reserved"
   ],
   "dependencies": [
     {

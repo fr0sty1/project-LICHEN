@@ -14,12 +14,13 @@
   "closed_at": "2026-07-03T02:33:17.500742Z",
   "close_reason": "Completed no-hardware reset/reboot diagnostics boundary; retained diagnostics and clear support split to child Beads.",
   "labels": [
-    "zephyr",
-    "hal",
     "api",
-    "firmware",
     "board-support",
-    "partner-handoff"
+    "firmware",
+    "hal",
+    "owner-reserved",
+    "partner-handoff",
+    "zephyr"
   ],
   "dependencies": [
     {

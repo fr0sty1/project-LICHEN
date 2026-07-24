@@ -13,9 +13,10 @@
   "closed_at": "2026-06-30T02:28:56.702993Z",
   "close_reason": "Removed legacy SSH-host remote build guidance from AGENTS.md and replaced it with direct AWS EC2 guidance for Linux-only Zephyr builds. Updated Beads memory zephyr-builds-ec2 to say Linux-only Zephyr builds/tests should use AWS EC2 when local macOS cannot run them. Verified bd memories query and repository Beads exports have no remaining old-host references; git diff --check passed.",
   "labels": [
-    "docs",
-    "workflow",
+    "aws",
     "beads",
-    "aws"
+    "docs",
+    "owner-reserved",
+    "workflow"
   ]
 }

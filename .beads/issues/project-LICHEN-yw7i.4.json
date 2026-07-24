@@ -13,6 +13,7 @@
   "closed_at": "2026-07-02T15:24:33.763519Z",
   "close_reason": "Positive review observation recorded; no implementation action required.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

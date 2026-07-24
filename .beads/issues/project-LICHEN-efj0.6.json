@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T05:03:41.822306Z",
   "close_reason": "Added conditional logging (feature=log) to link_layer.rs: warn for unsigned/key-change, debug for unknown-sender/replay",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ],
   "dependencies": [
     {

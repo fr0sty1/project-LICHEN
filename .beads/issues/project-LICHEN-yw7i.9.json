@@ -14,6 +14,7 @@
   "close_reason": "Duplicate of project-LICHEN-yw7i.16",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

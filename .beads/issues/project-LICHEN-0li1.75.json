@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:25.148106Z",
   "close_reason": "Won't fix P3: lichen_sha256 returning only -EIO is intentional simplification. SHA-256 failure is extremely rare (hardware fault) and distinguishing init/update/final stages provides minimal debug value. The error code is logged. If SHA-256 fails, the system has bigger problems. Refactoring lichen_sha256 for this edge case adds complexity without proportional benefit.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

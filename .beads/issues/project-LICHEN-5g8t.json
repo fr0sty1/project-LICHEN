@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:53:03.547538Z",
   "closed_at": "2026-07-06T18:53:03.547538Z",
-  "close_reason": "All 6 children complete: duty cycle tracking, cheat detection, TX queue API, RF health, both TUI tabs."
+  "close_reason": "All 6 children complete: duty cycle tracking, cheat detection, TX queue API, RF health, both TUI tabs.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

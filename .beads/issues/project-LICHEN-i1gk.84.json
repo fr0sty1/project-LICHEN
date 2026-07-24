@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:28.141053Z",
   "close_reason": "Documented: CRC32 is gated by CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC with compile-time warning. Updated SECURITY comment documenting that signature verification provides authentication when CRC32 is used for integrity only.",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

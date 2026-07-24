@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:31.326176Z",
   "close_reason": "Fixed: added LORA_ABORTED state check in set_rx_callback",
   "labels": [
-    "review",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

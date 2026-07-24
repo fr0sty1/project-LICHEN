@@ -11,14 +11,15 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-30T02:55:37.922143Z",
   "closed_at": "2026-06-30T02:55:37.922143Z",
-  "close_reason": "Completed: updated RAK4631 puck overlay to use the actual \u0026lora node label and current zephyr,uart-pipe chosen property, removed unsupported LoRa DT properties, fixed board Kconfig symbols/dependencies for SPI, SX1262, SLIP, and verified west build -b rak4631/nrf52840 lichen/apps/puck compiles and links. Filed follow-up for USB VID/PID warnings; non-native unused warnings already tracked.",
+  "close_reason": "Completed: updated RAK4631 puck overlay to use the actual &lora node label and current zephyr,uart-pipe chosen property, removed unsupported LoRa DT properties, fixed board Kconfig symbols/dependencies for SPI, SX1262, SLIP, and verified west build -b rak4631/nrf52840 lichen/apps/puck compiles and links. Filed follow-up for USB VID/PID warnings; non-native unused warnings already tracked.",
   "labels": [
-    "zephyr",
     "c",
-    "puck",
     "devicetree",
+    "exhaustive",
+    "owner-reserved",
+    "puck",
     "review",
-    "exhaustive"
+    "zephyr"
   ],
   "dependencies": [
     {

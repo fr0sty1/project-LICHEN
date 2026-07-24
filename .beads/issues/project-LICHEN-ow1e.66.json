@@ -11,9 +11,10 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:03:08.525373Z",
   "closed_at": "2026-07-06T18:03:08.525373Z",
-  "close_reason": "Acceptable - SCHC residues are typically \u003c200 bits. Per-bit loop is simple and correct. Optimize when profiling shows bottleneck.",
+  "close_reason": "Acceptable - SCHC residues are typically <200 bits. Per-bit loop is simple and correct. Optimize when profiling shows bottleneck.",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

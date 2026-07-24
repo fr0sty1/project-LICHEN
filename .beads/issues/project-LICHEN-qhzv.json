@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T03:44:01.499073Z",
   "closed_at": "2026-07-12T03:44:01.499073Z",
-  "close_reason": "No change needed: secure.rs already uses Stack::new_default_epoch(radio, identity) which is the correct 2-arg convenience wrapper. All tests pass."
+  "close_reason": "No change needed: secure.rs already uses Stack::new_default_epoch(radio, identity) which is the correct 2-arg convenience wrapper. All tests pass.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

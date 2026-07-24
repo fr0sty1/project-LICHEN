@@ -14,12 +14,13 @@
   "closed_at": "2026-07-10T18:33:18.036162Z",
   "close_reason": "All children closed (status events, gateway wiring, smoke harness). Tests pass on EC2 native_sim (8/8 BLE, 38/38 adapter, 19/19 codec). Incoming text/status events encode to FromRadio and enqueue over BLE.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshtastic",
     "messaging",
+    "owner-reserved",
     "status",
-    "firmware",
-    "app-interface"
+    "zephyr"
   ],
   "dependencies": [
     {

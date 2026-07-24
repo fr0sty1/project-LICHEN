@@ -14,8 +14,9 @@
   "close_reason": "Closed",
   "labels": [
     "idiomatic-python",
-    "type-hints",
-    "review"
+    "owner-reserved",
+    "review",
+    "type-hints"
   ],
   "dependencies": [
     {

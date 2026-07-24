@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:43:42.109845Z",
   "close_reason": "Fixed: Changed memset to secure_zero at line 1343 for defense-in-depth consistency with other peer_table clearing paths",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

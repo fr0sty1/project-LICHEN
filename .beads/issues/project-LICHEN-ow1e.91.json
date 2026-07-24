@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:14:55.181685Z",
   "close_reason": "Added validation in gpsr_forward() - now checks for None coords, validates lat/lon ranges, and rejects NaN/inf values.",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

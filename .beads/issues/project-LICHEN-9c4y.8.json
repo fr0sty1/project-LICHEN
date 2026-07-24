@@ -14,12 +14,13 @@
   "closed_at": "2026-07-01T10:28:21.326286Z",
   "close_reason": "Completed no-hardware scope: MeshCore incoming text/status app-interface events are encoded, queued, delivered through MSG_WAITING/SYNC_NEXT_MESSAGE, protected against BLE session epoch leaks, covered by native_sim and Twister, and reviewed clean. Residual vector and hardware BLE smoke gaps filed as project-LICHEN-9c4y.8.1 and project-LICHEN-9c4y.8.2.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshcore",
     "messaging",
+    "owner-reserved",
     "status",
-    "firmware",
-    "app-interface"
+    "zephyr"
   ],
   "dependencies": [
     {

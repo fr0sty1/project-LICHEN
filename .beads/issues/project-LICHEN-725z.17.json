@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:14:09.77441Z",
   "close_reason": "Restructured init flow using local init_ok flag to avoid dead label warning when ifdef is disabled",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

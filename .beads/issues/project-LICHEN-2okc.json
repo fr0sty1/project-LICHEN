@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T04:26:42.407615Z",
   "closed_at": "2026-07-12T04:26:42.407615Z",
-  "close_reason": "Implemented RFC 8613 Section 5.4 AAD structure in Rust OSCORE: added build_aad_cbor() function matching Zephyr oscore.c build_oscore_aad(). Updated protect_request(), unprotect_request(), unprotect_response() to use proper AAD. Added protect_response() function for correct response AAD handling. All 17 tests pass."
+  "close_reason": "Implemented RFC 8613 Section 5.4 AAD structure in Rust OSCORE: added build_aad_cbor() function matching Zephyr oscore.c build_oscore_aad(). Updated protect_request(), unprotect_request(), unprotect_response() to use proper AAD. Added protect_response() function for correct response AAD handling. All 17 tests pass.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-4my1",
   "title": "task",
-  "description": "rust/lichen-ipv6/src/lib.rs:719 - verify_icmpv6_checksum uses local_addr instead of ip_header.dst. When packets are sent to multicast addresses (e.g. solicited-node multicast ff02::1:ffXX:XXXX for Neighbor Solicitation), checksum verification fails because the sender computed checksum with multicast dst but we verify with unicast local_addr. This breaks Neighbor Discovery when NS is sent to solicited-node multicast. Fix: change local_addr to \u0026ip_header.dst on line 719.",
+  "description": "rust/lichen-ipv6/src/lib.rs:719 - verify_icmpv6_checksum uses local_addr instead of ip_header.dst. When packets are sent to multicast addresses (e.g. solicited-node multicast ff02::1:ffXX:XXXX for Neighbor Solicitation), checksum verification fails because the sender computed checksum with multicast dst but we verify with unicast local_addr. This breaks Neighbor Discovery when NS is sent to solicited-node multicast. Fix: change local_addr to &ip_header.dst on line 719.",
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:37:50.284863Z",
   "closed_at": "2026-07-12T00:37:50.284863Z",
-  "close_reason": "Duplicate of 6wl0, already fixed: verify_icmpv6_checksum now uses \u0026ip_header.dst instead of local_addr at line 741."
+  "close_reason": "Duplicate of 6wl0, already fixed: verify_icmpv6_checksum now uses &ip_header.dst instead of local_addr at line 741.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

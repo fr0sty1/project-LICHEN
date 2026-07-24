@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:29:10.453774Z",
   "close_reason": "Review complete: 27 issues fixed, 5 good patterns documented",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

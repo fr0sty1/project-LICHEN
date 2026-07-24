@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:05:59.711111Z",
   "closed_at": "2026-07-13T00:05:59.711111Z",
-  "close_reason": "Fixed: Replaced all __ASSERT calls in sha256_hash(), hmac_sha256(), hkdf_extract(), and hkdf_expand() with proper error checking that returns error codes (-EIO). Updated compute_th() to return int. Updated all 10 call sites (5 initiator, 5 responder) to check return values and goto err_wipe on failure. Crypto failures now properly propagate to callers."
+  "close_reason": "Fixed: Replaced all __ASSERT calls in sha256_hash(), hmac_sha256(), hkdf_extract(), and hkdf_expand() with proper error checking that returns error codes (-EIO). Updated compute_th() to return int. Updated all 10 call sites (5 initiator, 5 responder) to check return values and goto err_wipe on failure. Crypto failures now properly propagate to callers.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

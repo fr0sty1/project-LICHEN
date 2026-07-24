@@ -13,8 +13,9 @@
   "closed_at": "2026-06-29T23:27:33.818578Z",
   "close_reason": "Superseded by decision to keep the local Python SCHC implementation for now and avoid swapping in OpenSCHC casually. OpenSCHC PyPI package does not include the useful compressor modules, and the source tree is not a clean library dependency. Future work should evaluate external SCHC libraries deliberately against vectors and API compatibility.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

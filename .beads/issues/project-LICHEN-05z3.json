@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:50:39.892801Z",
   "closed_at": "2026-07-12T00:50:39.892801Z",
-  "close_reason": "Fixed: Corrected window confusion in SCHC reassembly by: (1) restoring payload comparison in _abs_window() to properly identify stale retransmissions, (2) rejecting fragments for already-completed windows in receive(), (3) never regressing _current_window, (4) refusing to overwrite existing tiles to prevent corrupted retransmissions from corrupting data. Added test coverage for the specific failure scenario."
+  "close_reason": "Fixed: Corrected window confusion in SCHC reassembly by: (1) restoring payload comparison in _abs_window() to properly identify stale retransmissions, (2) rejecting fragments for already-completed windows in receive(), (3) never regressing _current_window, (4) refusing to overwrite existing tiles to prevent corrupted retransmissions from corrupting data. Added test coverage for the specific failure scenario.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

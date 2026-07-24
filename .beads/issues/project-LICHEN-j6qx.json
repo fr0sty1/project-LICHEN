@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:46:00.201324Z",
   "closed_at": "2026-07-12T00:46:00.201324Z",
-  "close_reason": "Fixed: Added type check for from_hex before bytes.fromhex() to prevent TypeError on non-string CBOR values. Added test case."
+  "close_reason": "Fixed: Added type check for from_hex before bytes.fromhex() to prevent TypeError on non-string CBOR values. Added test case.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

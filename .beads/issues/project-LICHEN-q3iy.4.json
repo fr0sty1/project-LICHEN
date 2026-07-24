@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-q3iy.4",
   "title": "secure_zero: word-aligned path rechecks alignment",
-  "description": "In lichen_util.h:51, the word-aligned write loop redundantly checks alignment:\n\n```c\nwhile (len \u003e= sizeof(unsigned long) \u0026\u0026\n       ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) == 0) {\n```\n\nAfter the initial alignment loop (lines 46-49), p is guaranteed word-aligned. The second alignment check inside the bulk loop is dead code - it will always be true if execution reaches this point.\n\nWhat goes wrong: Nothing functionally breaks, but the check runs every iteration for buffers \u003e= 32 bytes. On a hot path (mutex-protected key wiping), this adds measurable overhead.\n\nSuggested fix: Remove the redundant alignment check from the bulk loop condition.",
+  "description": "In lichen_util.h:51, the word-aligned write loop redundantly checks alignment:\n\n```c\nwhile (len >= sizeof(unsigned long) &&\n       ((uintptr_t)p & (sizeof(unsigned long) - 1)) == 0) {\n```\n\nAfter the initial alignment loop (lines 46-49), p is guaranteed word-aligned. The second alignment check inside the bulk loop is dead code - it will always be true if execution reaches this point.\n\nWhat goes wrong: Nothing functionally breaks, but the check runs every iteration for buffers >= 32 bytes. On a hot path (mutex-protected key wiping), this adds measurable overhead.\n\nSuggested fix: Remove the redundant alignment check from the bulk loop condition.",
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
@@ -14,6 +14,7 @@
   "close_reason": "Duplicate of project-LICHEN-q3iy.1",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

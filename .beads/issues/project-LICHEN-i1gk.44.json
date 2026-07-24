@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:46.012502Z",
   "close_reason": "Fixed: changed comment from 'rounded to 55' to 'minus 2 for SCHC rule ID headroom'",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

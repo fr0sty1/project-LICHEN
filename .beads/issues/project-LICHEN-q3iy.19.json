@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T22:40:20.665127Z",
   "close_reason": "Positive finding - no action needed, documents good practice",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

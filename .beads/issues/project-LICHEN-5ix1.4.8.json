@@ -16,7 +16,8 @@
   "closed_at": "2026-07-16T21:46:40.896257Z",
   "close_reason": "Classified gateway as expected idle and puck as 100 ms pre-main watchdog auto-start; linked repair project-LICHEN-5ix1.5.",
   "labels": [
-    "evidence-needed"
+    "evidence-needed",
+    "owner-reserved"
   ],
   "dependencies": [
     {

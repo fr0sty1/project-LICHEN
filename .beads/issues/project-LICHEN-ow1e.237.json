@@ -11,8 +11,9 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:00:33.282707Z",
   "closed_at": "2026-07-06T18:00:33.282707Z",
-  "close_reason": "Acceptable complexity - heapless::Vec has fixed capacity L (typically 64). O(n) where n\u003c=64 is bounded. Ring buffer would add complexity for marginal gain.",
+  "close_reason": "Acceptable complexity - heapless::Vec has fixed capacity L (typically 64). O(n) where n<=64 is bounded. Ring buffer would add complexity for marginal gain.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

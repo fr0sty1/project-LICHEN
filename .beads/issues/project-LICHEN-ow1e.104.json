@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:01:23.961957Z",
   "close_reason": "Removed dead debug_assert! calls in loadng.rs, replaced with doc comments explaining typestate enforces transition validity",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:15:15.963378Z",
   "close_reason": "All 19 findings fixed: 2 P0, 7 P1, 5 P2, 5 P3. Build verified.",
   "labels": [
+    "owner-reserved",
     "review"
   ]
 }

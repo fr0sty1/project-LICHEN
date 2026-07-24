@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-02T11:45:57.808341Z",
   "closed_at": "2026-07-02T11:45:57.808341Z",
-  "close_reason": "Completed drift-proof Kconfig-derived queue-capacity regression with reviews and EC2 Twister evidence"
+  "close_reason": "Completed drift-proof Kconfig-derived queue-capacity regression with reviews and EC2 Twister evidence",
+  "labels": [
+    "owner-reserved"
+  ]
 }

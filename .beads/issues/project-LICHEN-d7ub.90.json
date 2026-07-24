@@ -13,8 +13,9 @@
   "closed_at": "2026-06-29T21:52:19.578722Z",
   "close_reason": "Fixed T-Echo LoRa overlay to enable the existing board-defined SX1262 node instead of redefining a duplicate node; verified LoRa-enabled t_echo/nrf52840 bridge build compiles lora_l2.c, builds sx126x driver objects, and links zephyr.elf.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

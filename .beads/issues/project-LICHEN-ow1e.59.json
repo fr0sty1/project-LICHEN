@@ -11,9 +11,10 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:03:39.177927Z",
   "closed_at": "2026-07-06T18:03:39.177927Z",
-  "close_reason": "Acceptable for typical mesh sizes (\u003c50 nodes). Incremental updates would require dependency tracking - significant complexity for marginal gain.",
+  "close_reason": "Acceptable for typical mesh sizes (<50 nodes). Incremental updates would require dependency tracking - significant complexity for marginal gain.",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

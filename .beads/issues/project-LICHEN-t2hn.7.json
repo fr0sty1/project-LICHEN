@@ -14,11 +14,12 @@
   "closed_at": "2026-07-10T18:33:17.861643Z",
   "close_reason": "All children closed, tests pass (33/33 on qemu_x86). Message ingress implemented with UTF-8 validation, payload limits, broadcast-only MVP, and hook-based gateway callback.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshtastic",
     "messaging",
-    "firmware",
-    "app-interface"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

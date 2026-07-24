@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T05:35:43.983019Z",
   "closed_at": "2026-07-12T05:35:43.983019Z",
-  "close_reason": "Fixed array-parameter signatures in link_ctx.c, 10/10 tests pass on EC2"
+  "close_reason": "Fixed array-parameter signatures in link_ctx.c, 10/10 tests pass on EC2",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:48:11.783424Z",
   "closed_at": "2026-07-12T00:48:11.783424Z",
-  "close_reason": "Fixed: _recv() now calls aclose() before setting self._stream = None on protocol errors, preventing socket leak when cleanup handler checks stream is not None"
+  "close_reason": "Fixed: _recv() now calls aclose() before setting self._stream = None on protocol errors, preventing socket leak when cleanup handler checks stream is not None",
+  "labels": [
+    "owner-reserved"
+  ]
 }

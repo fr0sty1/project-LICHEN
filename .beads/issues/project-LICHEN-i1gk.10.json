@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:41.334347Z",
   "close_reason": "Fixed: documented -EINVAL for data=NULL or len=0, and all other return values",
   "labels": [
-    "review",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

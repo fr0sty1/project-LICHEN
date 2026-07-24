@@ -14,13 +14,14 @@
   "closed_at": "2026-07-03T03:13:46.825628Z",
   "close_reason": "Completed no-hardware Kconfig/devicetree model validation.",
   "labels": [
-    "zephyr",
-    "kconfig",
-    "devicetree",
-    "hal",
-    "firmware",
     "board-support",
-    "partner-handoff"
+    "devicetree",
+    "firmware",
+    "hal",
+    "kconfig",
+    "owner-reserved",
+    "partner-handoff",
+    "zephyr"
   ],
   "dependencies": [
     {

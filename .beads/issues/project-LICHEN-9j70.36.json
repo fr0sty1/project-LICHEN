@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:25:35.316606Z",
   "close_reason": "Fixed: Added LED visual feedback (3 rapid blinks) when USB CDC initialization fails, providing user indication even when console output is unavailable",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

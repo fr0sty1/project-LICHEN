@@ -14,6 +14,7 @@
   "close_reason": "Fixed: Added ipv6_addr: prefix to all 16 LOG_* calls, normalized error format to 'function failed (reason)', added %d error codes where applicable",
   "labels": [
     "logging",
+    "owner-reserved",
     "refactor"
   ],
   "dependencies": [

@@ -14,11 +14,12 @@
   "closed_at": "2026-07-02T02:22:34.400149Z",
   "close_reason": "Completed by EC2 Twister evidence on current main. Native_sim meshtastic_adapter/codec/ble passed 3/3 configs with 108 cases and 0 warnings; qemu_x86 codec/adapter passed 2/2 configs with 97 cases and 0 warnings. No code changes required.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "framing",
+    "app-interface",
     "firmware",
-    "app-interface"
+    "framing",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

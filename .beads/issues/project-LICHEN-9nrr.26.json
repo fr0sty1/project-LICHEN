@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T05:01:04.607763Z",
   "close_reason": "Set explicit RAK4631 puck USB VID/PID/product/manufacturer values using the existing project RAK bridge VID/PID pattern while distinguishing the product as LICHEN Puck. Tests/builds: west build -b rak4631/nrf52840 lichen/apps/puck -d build/puck_rak4631_nrf52840 --pristine=always passed; generated .config has CONFIG_USB_DEVICE_VID=0x239A, CONFIG_USB_DEVICE_PID=0x0029, CONFIG_USB_DEVICE_PRODUCT=\"LICHEN Puck\", CONFIG_USB_CDC_ACM=y, and CONFIG_SLIP=y; git diff --check passed. Review pass 1: no findings; verified the default Zephyr VID/PID warnings no longer appear and CDC-ACM/SLIP remain enabled. Review pass 2: no findings; verified scope is limited to RAK4631 and the separate T1000-E USB warning remains tracked by project-LICHEN-9nrr.33.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

@@ -12,8 +12,9 @@
   "closed_at": "2026-07-06T17:18:27.528779Z",
   "close_reason": "Removed unused DATA_GRADIENT_TIMEOUT_MS constant. seq_ge does not exist in the codebase.",
   "labels": [
-    "dead-code",
     "cleanup",
+    "dead-code",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

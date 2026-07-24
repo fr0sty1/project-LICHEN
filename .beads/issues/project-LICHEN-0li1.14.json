@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:07:44.524905Z",
   "close_reason": "Fixed: Added SECURITY comment at callback invocation site (line 476-494) documenting k_thread_abort() interruption risk and the LORA_ABORTED/needs_reinit() recovery mechanism",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

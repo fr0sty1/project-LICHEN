@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:08:11.776958Z",
   "close_reason": "Added __attribute__((nonnull)) to lichen_peer_add() and lichen_peer_remove() for compile-time NULL checks. Added SECURITY comment to lichen_peer_remove() documenting the array size contract (matching existing documentation in lichen_peer_add). The array decay limitation is inherent to C; these changes add compiler-enforced NULL checks and make the caller contract explicit in both function docstrings.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

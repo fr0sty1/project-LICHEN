@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-kqma.3",
   "title": "Make link TX sequence allocation atomic per context",
-  "description": "Trigger: two threads call lichen_link_tx()/lichen_link_next_seq() on the same lichen_link_ctx. lichen/subsys/lichen/link/link_ctx.c updates ctx-\u003etx_seq and ctx-\u003eepoch without synchronization around line 163. Impact: concurrent TX can allocate duplicate (epoch, seqnum) pairs. When ctx-\u003ehas_link_key is true, duplicate pairs reuse the AES-CCM nonce built from eui64, epoch, and seqnum, breaking link-layer authentication guarantees. Add per-context locking or an atomic sequence allocation contract.",
+  "description": "Trigger: two threads call lichen_link_tx()/lichen_link_next_seq() on the same lichen_link_ctx. lichen/subsys/lichen/link/link_ctx.c updates ctx->tx_seq and ctx->epoch without synchronization around line 163. Impact: concurrent TX can allocate duplicate (epoch, seqnum) pairs. When ctx->has_link_key is true, duplicate pairs reuse the AES-CCM nonce built from eui64, epoch, and seqnum, breaking link-layer authentication guarantees. Add per-context locking or an atomic sequence allocation contract.",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:43.773615Z",
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
-    "link",
+    "concurrency",
     "crypto",
-    "concurrency"
+    "link",
+    "owner-reserved"
   ],
   "dependencies": [
     {

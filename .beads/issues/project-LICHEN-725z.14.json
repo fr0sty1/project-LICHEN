@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:13:22.432566Z",
   "close_reason": "Improved thread abort warning to indicate potential data loss",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

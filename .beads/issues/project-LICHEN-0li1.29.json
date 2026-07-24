@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T05:13:17.423903Z",
   "close_reason": "Not a bug - zeroing uninitialized memory is safe, and secure_zero's volatile prevents optimization.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

@@ -14,10 +14,11 @@
   "closed_at": "2026-07-12T03:45:12.068887Z",
   "close_reason": "Complete: MeshCore app interface implemented (25+ sub-tasks done, 1 in-progress settings persistence)",
   "labels": [
-    "zephyr",
-    "meshcore",
     "app-interface",
-    "firmware"
+    "firmware",
+    "meshcore",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

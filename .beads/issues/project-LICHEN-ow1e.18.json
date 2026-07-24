@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:26.212969Z",
   "close_reason": "Added comment explaining MSB-first bit reversal in BitWriter.write()",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T03:58:50.222387Z",
   "closed_at": "2026-07-12T03:58:50.222387Z",
-  "close_reason": "Fixed: Added SCHC rules 5/6 for OSCORE-protected CoAP packets across C, Python, and Rust implementations. Rules detect OSCORE option (option 9) to distinguish secured traffic from plain CoAP. Test vectors and round-trip tests added."
+  "close_reason": "Fixed: Added SCHC rules 5/6 for OSCORE-protected CoAP packets across C, Python, and Rust implementations. Rules detect OSCORE option (option 9) to distinguish secured traffic from plain CoAP. Test vectors and round-trip tests added.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

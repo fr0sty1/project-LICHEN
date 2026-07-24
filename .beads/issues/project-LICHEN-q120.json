@@ -13,7 +13,8 @@
   "closed_at": "2026-06-30T05:42:28.624813Z",
   "close_reason": "Completed: added DODAG membership typestate and guarded role transitions, route entry fresh/stale/expired runtime checks, and checked Trickle timer transitions. Tests: cargo test -p lichen-rpl; cargo test -p lichen-node; cargo check -p lichen-rpl --no-default-features; cargo clippy -p lichen-rpl --all-targets -- -D warnings -A clippy::manual_is_multiple_of; git diff --check. Review pass 1: no scope creep or behavior regression; generated rust/target removed. Review pass 2: no defects found; adjacent lichen-node compatibility tests passed.",
   "labels": [
-    "state-machine",
-    "rust"
+    "owner-reserved",
+    "rust",
+    "state-machine"
   ]
 }

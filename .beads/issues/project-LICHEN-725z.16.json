@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:13:40.102269Z",
   "close_reason": "Used existing LICHEN_LORA_MAX_PHY_PAYLOAD constant (already defined in lora_l2.h) instead of magic number 255 in lora_l2.c at lines 159 and 368",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

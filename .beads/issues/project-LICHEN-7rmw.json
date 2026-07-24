@@ -14,11 +14,12 @@
   "close_reason": "Implemented with triple code review",
   "labels": [
     "docs",
-    "spec",
-    "time",
     "gnss",
     "lci",
-    "no-hardware"
+    "no-hardware",
+    "owner-reserved",
+    "spec",
+    "time"
   ],
   "dependencies": [
     {

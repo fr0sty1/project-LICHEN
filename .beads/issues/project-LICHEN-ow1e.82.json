@@ -14,6 +14,7 @@
   "close_reason": "Changed poll_node() to use is_err() check and unwrap_err() to return owned error instead of cloning",
   "labels": [
     "idiomatic-rust",
+    "owner-reserved",
     "ownership",
     "review"
   ],

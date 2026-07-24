@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:13:13.203276Z",
   "close_reason": "Acknowledged positive review finding. Verified all 54 IPv6/UDP tests pass. Code quality confirmed: clean dataclass design, proper validation, RFC-compliant checksum calculation, explicit Fragment header rejection. No changes needed.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

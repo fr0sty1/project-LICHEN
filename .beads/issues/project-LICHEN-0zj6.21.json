@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T06:38:02.235496Z",
   "close_reason": "Fixed: replaced hardcoded tx_power=22 with CONFIG_LICHEN_LORA_TX_POWER Kconfig option (default 14 dBm, range 0-22)",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

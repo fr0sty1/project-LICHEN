@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:37:57.244699Z",
   "closed_at": "2026-07-12T00:37:57.244699Z",
-  "close_reason": "Already fixed: addr_mode is now derived from dst_addr.len() via AddrMode::from_addr_len() at lines 330-331. All 56 tests pass."
+  "close_reason": "Already fixed: addr_mode is now derived from dst_addr.len() via AddrMode::from_addr_len() at lines 330-331. All 56 tests pass.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

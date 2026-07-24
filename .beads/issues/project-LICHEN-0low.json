@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T04:09:45.182766Z",
   "closed_at": "2026-06-29T04:09:45.182766Z",
-  "close_reason": "Fixed generic nRF52840DK gateway LoRa gating; requested west build now succeeds without lora0 alias."
+  "close_reason": "Fixed generic nRF52840DK gateway LoRa gating; requested west build now succeeds without lora0 alias.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

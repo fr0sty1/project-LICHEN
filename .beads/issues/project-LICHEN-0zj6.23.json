@@ -10,10 +10,11 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-27T06:38:06.194661Z",
   "closed_at": "2026-06-27T06:38:06.194661Z",
-  "close_reason": "Fixed: added comment explaining ssize_t to size_t cast is safe because hwid_len \u003e 0 and hwid_len \u003c= sizeof(hwid) per hwinfo_get_device_id contract",
+  "close_reason": "Fixed: added comment explaining ssize_t to size_t cast is safe because hwid_len > 0 and hwid_len <= sizeof(hwid) per hwinfo_get_device_id contract",
   "labels": [
     "c-standards",
     "integer",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

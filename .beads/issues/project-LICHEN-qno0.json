@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:08:12.641617Z",
   "close_reason": "Type consistency is correct - Topology type is defined as dict[str, str | None], string conversion is intentional",
   "labels": [
+    "owner-reserved",
     "type-safety"
   ]
 }

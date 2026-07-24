@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T04:59:09.663194Z",
   "close_reason": "Wontfix: the value is masked to 0-3 which covers all AddrMode variants. The unwrap is safe by construction and the comment documents this. Changing to ok_or would add noise for no safety benefit.",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ],
   "dependencies": [
     {

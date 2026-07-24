@@ -14,6 +14,7 @@
   "close_reason": "Intentional design. Both copies are necessary: (1) lichen_l2_send linearizes fragmented net_pkt into contiguous buffer for SCHC compression - unavoidable since net_pkt uses scatter-gather. (2) lichen_lora_l2_tx copies to internal buffer because Zephyr's lora_send takes non-const pointer - some radio drivers modify the buffer. See lora_l2.c lines 68-70 comment documenting this rationale.",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

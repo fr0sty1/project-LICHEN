@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:54:48.844991Z",
   "closed_at": "2026-07-12T00:54:48.844991Z",
-  "close_reason": "Fixed: Added await for cancelled next_task in _next_observation_or_close() to prevent 'Task was destroyed but it is pending!' warnings and ensure proper cleanup"
+  "close_reason": "Fixed: Added await for cancelled next_task in _next_observation_or_close() to prevent 'Task was destroyed but it is pending!' warnings and ensure proper cleanup",
+  "labels": [
+    "owner-reserved"
+  ]
 }

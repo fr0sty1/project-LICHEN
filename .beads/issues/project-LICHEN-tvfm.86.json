@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:22:56.551893Z",
   "close_reason": "Fixed: tx_buf_mutex now reinitialized in deinit() alongside lora_mutex",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

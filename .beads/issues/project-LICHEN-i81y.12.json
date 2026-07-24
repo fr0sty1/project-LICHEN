@@ -13,11 +13,12 @@
   "closed_at": "2026-06-29T03:28:24.183123Z",
   "close_reason": "Completed",
   "labels": [
-    "review",
     "api-contract",
+    "c",
     "defensive",
-    "zephyr",
-    "c"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

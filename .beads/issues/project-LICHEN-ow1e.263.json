@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:19:42.214857Z",
   "close_reason": "Duplicate of project-LICHEN-ow1e.39 which covers the same EDHOC signature verification issue",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:59:51.671908Z",
   "close_reason": "Fixed: Added documentation comment explaining struct padding is intentional, and that secure_zero on pubkey/eui64 fields is sufficient since padding bytes are never initialized from security-sensitive sources.",
   "labels": [
-    "review",
-    "round3",
     "completeness",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round3"
   ],
   "dependencies": [
     {

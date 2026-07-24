@@ -13,10 +13,11 @@
   "closed_at": "2026-06-30T03:01:58.473168Z",
   "close_reason": "Fixed EDHOC hkdf_expand() control flow by returning 0 on success and propagating that result through edhoc_kdf() after wiping the info buffer. Verified qemu_x86 EDHOC compile paths with CONFIG_LICHEN_LINK disabled and enabled; both are clean for the previous control-reaches-end warning. Two review passes completed; no follow-up Beads needed.",
   "labels": [
-    "review",
+    "c",
     "exhaustive",
-    "zephyr",
-    "c"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

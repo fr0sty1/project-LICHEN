@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:24:27.37118Z",
   "close_reason": "Fixed: Added comment explaining that current_time is reserved for future time-based replay aging but not currently used. The replay protection uses sliding window with monotonic access_counter, not wall-clock time. Setting to 0 is safe because lichen_link_rx() does not read this field.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

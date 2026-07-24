@@ -13,8 +13,9 @@
   "closed_at": "2026-07-12T04:09:18.872421Z",
   "close_reason": "Fixed: Added GNSS stub for native_sim testing with two approaches: (1) gnss_nmea_generic on uart1 with PTY for NMEA injection via tools/gnss_nmea_feeder.py, (2) gnss_emul driver for simple synthetic data. Gateway native_sim overlay updated, Python NMEA feeder with 19 tests, Zephyr test for gnss_emul driver.",
   "labels": [
-    "simulation",
     "native_sim",
+    "owner-reserved",
+    "simulation",
     "zephyr"
   ]
 }

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:42.179671Z",
   "close_reason": "Fixed: clarified comment explaining the is_running() check is sufficient",
   "labels": [
-    "review",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

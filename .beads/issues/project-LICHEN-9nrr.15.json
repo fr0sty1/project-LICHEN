@@ -14,13 +14,14 @@
   "closed_at": "2026-06-30T02:18:11.889546Z",
   "close_reason": "Removed the unsupported standalone CONFIG_LICHEN_LORA_L2-without-CONFIG_LICHEN_L2 path from bridge-zephyr so inbound LoRa frames cannot be accepted and dropped outside the full Zephyr L2 ingress pipeline. Added a compile-time guard for that invalid configuration, moved bridge prj.conf to full Zephyr IPv6 networking for LoRa ingress, tightened LICHEN_LORA_L2 Kconfig dependencies/selects, and temporarily wired the AES-CCM helper for LICHEN_LINK until project-LICHEN-9nrr.17 moves that helper out of OSCORE. Tests/builds: west build -b rak4631/nrf52840 firmware/bridge-zephyr -d build/bridge_zephyr_rak4631 --pristine=always passed with CONFIG_LICHEN_LORA_L2=y, CONFIG_LICHEN_L2=y, CONFIG_LICHEN_LINK=y, CONFIG_TINYCRYPT_AES_CCM=y; west build -b nucleo_wl55jc firmware/bridge-zephyr -d build/bridge_zephyr_nucleo_wl55jc --pristine=always passed with CONFIG_LICHEN_LINK unset; git diff --check passed. Review pass 1: found existing lichen_l2 peer API -Wnonnull-compare warnings in the full L2 build and filed project-LICHEN-9nrr.20. Review pass 2: no new defects; AES helper module boundary risk already tracked by project-LICHEN-9nrr.17.",
   "labels": [
-    "review",
-    "exhaustive",
-    "zephyr",
-    "c",
     "bridge",
+    "c",
+    "exhaustive",
+    "feature-gap",
     "lora",
-    "feature-gap"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

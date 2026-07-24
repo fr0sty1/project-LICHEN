@@ -14,6 +14,7 @@
   "close_reason": "Fixed: gotos now target led_off label which turns off LED before falling through to main_loop",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

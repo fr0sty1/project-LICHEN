@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:52:57.848936Z",
   "closed_at": "2026-07-12T00:52:57.848936Z",
-  "close_reason": "Fixed: converted recursive _try_extract_frame to iterative while-loop to prevent stack overflow from consecutive invalid frames"
+  "close_reason": "Fixed: converted recursive _try_extract_frame to iterative while-loop to prevent stack overflow from consecutive invalid frames",
+  "labels": [
+    "owner-reserved"
+  ]
 }

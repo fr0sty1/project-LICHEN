@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:56:01.808726Z",
   "close_reason": "Fixed: Added defensive initialization comment documenting why src_eui64 is zeroed and confirming it's not used on failure paths",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

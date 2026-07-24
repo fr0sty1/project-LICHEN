@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:10:44.869932Z",
   "close_reason": "Fixed: Added distinct logging for schnorr48_verify_frame return values. Now logs 'signature verification failed' for forgery attempts (return 0), 'invalid parameters' for programming errors (return -1), and 'unexpected result' for defensive coverage of unknown return values. All cases still correctly return -LICHEN_EAUTH but the distinction is now observable in logs for debugging.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

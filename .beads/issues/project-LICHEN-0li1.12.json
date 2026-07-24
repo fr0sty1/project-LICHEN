@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T05:12:02.480174Z",
   "close_reason": "Not a bug - code correctly re-acquires mutexes after releasing them for the rollback path.",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

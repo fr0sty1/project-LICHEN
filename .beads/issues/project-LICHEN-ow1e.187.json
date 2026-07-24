@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:18:52.753984Z",
   "close_reason": "Style/docs review - no actionable issues",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -12,6 +12,7 @@
   "closed_at": "2026-07-06T17:56:31.925884Z",
   "close_reason": "seq_gt tests already exist in test_processor.py TestSeqNumWrapAround class, covering 0/65535 boundaries. No seq_ge function exists.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

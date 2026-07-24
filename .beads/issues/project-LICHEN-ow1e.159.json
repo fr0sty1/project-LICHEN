@@ -14,8 +14,9 @@
   "close_reason": "Closed",
   "labels": [
     "crypto-security",
-    "untrusted-input",
-    "review"
+    "owner-reserved",
+    "review",
+    "untrusted-input"
   ],
   "dependencies": [
     {

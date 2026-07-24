@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-27T22:37:51.775709Z",
   "closed_at": "2026-06-27T22:37:51.775709Z",
-  "close_reason": "Implemented: peer_table structure, lichen_peer_add/remove API, peer_try_all_pubkeys() wired into RX path. Frames from unknown peers are now REJECTED."
+  "close_reason": "Implemented: peer_table structure, lichen_peer_add/remove API, peer_try_all_pubkeys() wired into RX path. Frames from unknown peers are now REJECTED.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

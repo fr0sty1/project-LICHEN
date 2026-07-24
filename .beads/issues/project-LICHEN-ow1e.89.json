@@ -13,8 +13,9 @@
   "closed_at": "2026-07-06T17:56:47.740318Z",
   "close_reason": "Closed",
   "labels": [
-    "python-standards",
     "docs",
+    "owner-reserved",
+    "python-standards",
     "review"
   ],
   "dependencies": [

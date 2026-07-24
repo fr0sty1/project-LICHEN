@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T04:14:52.379212Z",
   "closed_at": "2026-06-29T04:14:52.379212Z",
-  "close_reason": "Fixed T-Echo gateway link undefined symbols by including link_nonce.h in RX and selecting HWINFO for LICHEN_LORA_L2; verified west build passes."
+  "close_reason": "Fixed T-Echo gateway link undefined symbols by including link_nonce.h in RX and selecting HWINFO for LICHEN_LORA_L2; verified west build passes.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

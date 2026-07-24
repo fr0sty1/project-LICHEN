@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:43:55.238141Z",
   "close_reason": "Invalid: lichen_link_rx() only writes to out_ipv6 buffer AFTER signature and MIC verification succeed (Step 6). If auth fails (Step 2 or 5), the function returns early without touching out_ipv6. The buffer cannot contain partial data from failed auth attempts because decompression never runs on auth failure.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

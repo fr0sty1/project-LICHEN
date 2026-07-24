@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:42:10.179817Z",
   "close_reason": "Fixed: LOG_ERR/LOG_WRN now go to stderr on host, LICHEN_HOST_VERBOSE enables LOG_INF/LOG_DBG",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

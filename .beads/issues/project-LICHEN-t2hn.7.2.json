@@ -14,11 +14,12 @@
   "closed_at": "2026-07-01T18:23:53.748626Z",
   "close_reason": "Completed no-hardware implementation: gateway message_contract now provides the production submit_text sink, copies Meshtastic directed IID metadata into a bounded local queue, backpressures deterministically, and has native_sim/qemu/build evidence recorded in notes.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshtastic",
     "messaging",
-    "firmware",
-    "app-interface"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

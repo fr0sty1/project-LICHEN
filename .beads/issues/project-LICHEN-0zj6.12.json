@@ -14,6 +14,7 @@
   "close_reason": "Added comment: 'Mutex released before callback - intentional to avoid holding lock during stack processing'",
   "labels": [
     "efficiency",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

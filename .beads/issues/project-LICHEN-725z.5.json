@@ -14,8 +14,9 @@
   "close_reason": "Added minimum frame length check (14 bytes) before processing",
   "labels": [
     "crypto-security",
-    "untrusted-input",
-    "review"
+    "owner-reserved",
+    "review",
+    "untrusted-input"
   ],
   "dependencies": [
     {

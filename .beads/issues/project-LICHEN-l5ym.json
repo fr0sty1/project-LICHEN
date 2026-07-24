@@ -12,5 +12,8 @@
   "updated_at": "2026-07-13T05:03:08.780404Z",
   "closed_at": "2026-07-13T05:03:08.780404Z",
   "close_reason": "Closed",
-  "notes": "Updated description to remove fragile hard-coded line numbers per kimi-review (project-LICHEN-qc8e). References now use function names `parse_data()`, `lichen_meshtastic_adapter_unsupported_operations()`. Attribution to original closer preserved."
+  "notes": "Updated description to remove fragile hard-coded line numbers per kimi-review (project-LICHEN-qc8e). References now use function names `parse_data()`, `lichen_meshtastic_adapter_unsupported_operations()`. Attribution to original closer preserved.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

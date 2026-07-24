@@ -15,6 +15,7 @@
   "labels": [
     "crypto-security",
     "key-lifecycle",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

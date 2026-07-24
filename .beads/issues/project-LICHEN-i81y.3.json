@@ -13,10 +13,11 @@
   "closed_at": "2026-06-29T03:25:24.861545Z",
   "close_reason": "Completed",
   "labels": [
-    "review",
+    "c",
     "efficiency",
-    "zephyr",
-    "c"
+    "owner-reserved",
+    "review",
+    "zephyr"
   ],
   "dependencies": [
     {

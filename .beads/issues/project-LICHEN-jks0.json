@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:12:29.781375Z",
   "closed_at": "2026-07-11T06:12:29.781375Z",
-  "close_reason": "Already fixed: FEND-skipping loop stops when \u003c3 bytes remain (handles CMD=0xC0), and closing FEND search starts after CMD byte"
+  "close_reason": "Already fixed: FEND-skipping loop stops when <3 bytes remain (handles CMD=0xC0), and closing FEND search starts after CMD byte",
+  "labels": [
+    "owner-reserved"
+  ]
 }

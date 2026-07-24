@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:12:38.531317Z",
   "close_reason": "Fixed: lichen_link_rx now returns -LICHEN_EAUTH when peer_pubkey is NULL instead of zeroing src_eui64 and returning success. This prevents frames from being processed with an unidentified source.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

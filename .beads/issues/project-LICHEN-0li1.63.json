@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:13:08.577367Z",
   "close_reason": "Acceptable: BUILD_ASSERT at lichen_l2.c:374-376 rejects multi-core builds at compile time. On single-core (the only supported config), atomic_get provides sufficient ordering. The public API implicitly inherits this constraint. Adding docs would be belt-and-suspenders; the compile-time enforcement is the real protection.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

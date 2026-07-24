@@ -14,15 +14,16 @@
   "closed_at": "2026-06-30T19:27:45.757045Z",
   "close_reason": "Confirmed standard LilyGO T-Deck hardware facts from official LilyGO sources and Meshtastic current variant source; recorded pin map, peripheral boundaries, TCXO correction, and revision uncertainty follow-up.",
   "labels": [
-    "lilygo",
-    "hardware",
-    "research",
-    "zephyr",
     "board-support",
     "bringup",
     "firmware",
     "hal",
-    "partner-handoff"
+    "hardware",
+    "lilygo",
+    "owner-reserved",
+    "partner-handoff",
+    "research",
+    "zephyr"
   ],
   "dependencies": [
     {

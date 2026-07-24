@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:19:52.479101Z",
   "close_reason": "Invalid - iface is guaranteed by Zephyr and net_if_set_link_addr failures are properly checked",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round4",
-    "exhaustive"
+    "round4"
   ],
   "dependencies": [
     {

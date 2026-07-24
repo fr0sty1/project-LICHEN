@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:08:21.796125Z",
   "closed_at": "2026-07-11T06:08:21.796125Z",
-  "close_reason": "Fixed: Changed pin/unpin commands to return errors instead of falsely printing success messages."
+  "close_reason": "Fixed: Changed pin/unpin commands to return errors instead of falsely printing success messages.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

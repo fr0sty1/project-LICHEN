@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:43.745262Z",
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
+    "c-safety",
     "coap",
     "concurrency",
-    "c-safety"
+    "owner-reserved"
   ],
   "dependencies": [
     {

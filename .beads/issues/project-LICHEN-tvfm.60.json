@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:51:59.349877Z",
   "close_reason": "Fixed: Added clarifying comment to the second k_thread_join timeout explaining why RX_TIMEOUT_MS is used directly - worst-case scenario where lora_recv() just started when stop flag was set.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

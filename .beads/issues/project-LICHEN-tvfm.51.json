@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:50:49.026091Z",
   "close_reason": "Documented: net_pkt_write() copies data from rx_ipv6_buf while mutex is held; after unlock net_recv_data() uses pkt (independent copy). Not a real concern.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

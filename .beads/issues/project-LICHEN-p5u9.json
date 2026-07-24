@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T18:28:50.702684Z",
   "closed_at": "2026-06-29T18:28:50.702684Z",
-  "close_reason": "Removed UserPromptSubmit Beads hook from .codex/hooks.json"
+  "close_reason": "Removed UserPromptSubmit Beads hook from .codex/hooks.json",
+  "labels": [
+    "owner-reserved"
+  ]
 }

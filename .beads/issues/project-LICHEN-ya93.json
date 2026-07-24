@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:21:14.992335Z",
   "closed_at": "2026-07-12T16:21:14.992335Z",
-  "close_reason": "Fixed: Added MID validation to CoAP response decode(). RFC 7252 Section 4.4 requires CON-ACK matching by both Message ID and token. The fix extracts the response MID from bytes 2-3 and validates it matches the request MID before accepting the response. Added test coverage for MID mismatch attacks."
+  "close_reason": "Fixed: Added MID validation to CoAP response decode(). RFC 7252 Section 4.4 requires CON-ACK matching by both Message ID and token. The fix extracts the response MID from bytes 2-3 and validates it matches the request MID before accepting the response. Added test coverage for MID mismatch attacks.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

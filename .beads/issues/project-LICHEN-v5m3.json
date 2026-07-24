@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T16:29:37.362987Z",
   "closed_at": "2026-07-12T16:29:37.362987Z",
-  "close_reason": "Fixed: Added __post_init__ to DodagState that makes a defensive copy of the parents dict, preventing cross-state pollution when callers share mutable dicts. Added test to verify the fix."
+  "close_reason": "Fixed: Added __post_init__ to DodagState that makes a defensive copy of the parents dict, preventing cross-state pollution when callers share mutable dicts. Added test to verify the fix.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

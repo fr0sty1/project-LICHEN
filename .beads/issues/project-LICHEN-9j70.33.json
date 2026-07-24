@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:27:12.004912Z",
   "close_reason": "Fixed: Added NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE flag to avoid unnecessary MLD solicited-node multicast joins. LoRa is broadcast - all nodes hear everything regardless of multicast group membership, so solicited-node optimization wastes airtime. Comment updated to explain both flags and why we keep MLD/ND otherwise (unlike OpenThread which disables them entirely).",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

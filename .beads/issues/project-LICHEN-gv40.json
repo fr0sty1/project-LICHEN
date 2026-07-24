@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:58:59.85899Z",
   "closed_at": "2026-07-12T00:58:59.85899Z",
-  "close_reason": "Fixed: lichen_link_rx() now decompresses to local ipv6_buf[240] first, then copies to caller's out_ipv6 only after commit_replay() passes. This matches the defense-in-depth pattern already used by lichen_link_rx_payload(). Added LICHEN_MAX_IPV6_LEN constant (240 = LICHEN_MAX_PAYLOAD + 40-byte header). Local buffer is zeroed on all exit paths."
+  "close_reason": "Fixed: lichen_link_rx() now decompresses to local ipv6_buf[240] first, then copies to caller's out_ipv6 only after commit_replay() passes. This matches the defense-in-depth pattern already used by lichen_link_rx_payload(). Added LICHEN_MAX_IPV6_LEN constant (240 = LICHEN_MAX_PAYLOAD + 40-byte header). Local buffer is zeroed on all exit paths.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

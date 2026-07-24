@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:44.034778Z",
   "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
   "labels": [
+    "build-test-reliability",
     "lora",
-    "simulator",
-    "build-test-reliability"
+    "owner-reserved",
+    "simulator"
   ],
   "dependencies": [
     {

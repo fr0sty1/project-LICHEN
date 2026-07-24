@@ -13,8 +13,9 @@
   "closed_at": "2026-06-29T21:39:17.925046Z",
   "close_reason": "Completed: crash_info.c is included in firmware/bridge-zephyr/CMakeLists.txt app target sources and nrf52840dk Zephyr build links successfully.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

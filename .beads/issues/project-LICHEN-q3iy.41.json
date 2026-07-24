@@ -14,8 +14,9 @@
   "close_reason": "Documented as known security gap with SECURITY comment in lichen_l2.c. Created follow-up issue project-LICHEN-4oeh to wire up replay table. The NULL replay table is NOT intentional - the replay.h infrastructure exists but is not connected. Must be implemented before production use.",
   "labels": [
     "crypto-security",
-    "untrusted-input",
-    "review"
+    "owner-reserved",
+    "review",
+    "untrusted-input"
   ],
   "dependencies": [
     {

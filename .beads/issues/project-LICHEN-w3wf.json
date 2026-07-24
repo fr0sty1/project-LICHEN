@@ -10,5 +10,8 @@
   "created_by": "Claude Code (EC2)",
   "updated_at": "2026-07-07T01:30:53.282604Z",
   "closed_at": "2026-07-07T01:30:53.282604Z",
-  "close_reason": "Test completed - auto-sync working"
+  "close_reason": "Test completed - auto-sync working",
+  "labels": [
+    "owner-reserved"
+  ]
 }

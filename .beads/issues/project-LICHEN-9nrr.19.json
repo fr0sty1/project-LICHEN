@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T03:12:11.848996Z",
   "close_reason": "Fixed T1000-E LR1110 gateway build by initializing the LR1110 vendor submodule locally, adapting the Zephyr LR1110 wrapper to the pinned Semtech void-return command API, and switching RX standby handling to lr1110_system_set_standby(). Verified west build -b t1000_e/nrf52840 lichen/apps/gateway and adjacent t_echo/nrf52840 gateway build. Review pass 1 clean for diff hygiene, manifest validation, submodule status, and stale API assumptions. Review pass 2 found runtime HAL status propagation gap; filed project-LICHEN-9nrr.28.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

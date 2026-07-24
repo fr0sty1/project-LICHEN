@@ -14,12 +14,13 @@
   "closed_at": "2026-07-02T00:49:09.881002Z",
   "close_reason": "Completed configured manual/static location producer no-hardware scope. Implemented /config manual_location CBOR parse/readback, atomic app-interface/HAL MANUAL_STATIC submission, status/HAL stale behavior coverage, native_sim/qemu Twister coverage, and qemu gateway app build validation. Evidence recorded in notes; non-blocking review hardening filed as project-LICHEN-zte2.10.",
   "labels": [
-    "zephyr",
     "firmware",
     "gnss",
-    "location",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:52:22.665551Z",
   "closed_at": "2026-07-12T00:52:22.665551Z",
-  "close_reason": "Fixed: Changed 'if path is not None' to 'if path' at line 186 to skip empty paths (target=root case). Added regression test."
+  "close_reason": "Fixed: Changed 'if path is not None' to 'if path' at line 186 to skip empty paths (target=root case). Added regression test.",
+  "labels": [
+    "owner-reserved"
+  ]
 }
