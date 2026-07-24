@@ -679,7 +679,7 @@ bd prime                # Refresh Beads context
 <!-- END BEADS CODEX SETUP -->
 
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:d327e327 -->
+<!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:4893cce7 -->
 ## Issue Tracking with bd (beads)
 
 **IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
@@ -687,7 +687,7 @@ bd prime                # Refresh Beads context
 ### Why bd?
 
 - Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: flat-file JSON storage tracked by git
+- Git-friendly: plain JSON files under `.beads/`, versioned by git itself
 - Agent-optimized: JSON output, ready work detection, discovered-from links
 - Prevents duplicate tracking systems and confusion
 
@@ -754,7 +754,7 @@ bd close bd-42 --reason "Completed" --json
 - `bd human <id>` to flag for human decisions
 - `bd formula list` / `bd mol pour <name>` for structured workflows
 
-### Storage
+### Sync
 
 Issues are stored as flat JSON files in `.beads/issues/`, tracked by git. Each write updates these files directly. Sync is via standard git operations (commit, push, pull).
 
@@ -764,12 +764,11 @@ Issues are stored as flat JSON files in `.beads/issues/`, tracked by git. Each w
 - ✅ Always use `--json` flag for programmatic use
 - ✅ Link discovered work with `discovered-from` dependencies
 - ✅ Check `bd ready` before asking "what should I work on?"
-- Before `bd update` or `bd close`, verify issue is not already closed by human (owner/created_by contains "Mark" or "ec2-user", or closed_at predates session). If so, create new follow-up with `discovered-from:<id>` dependency instead of rewriting to preserve audit trail.
 - ❌ Do NOT create markdown TODO lists
 - ❌ Do NOT use external issue trackers
 - ❌ Do NOT duplicate tracking systems
 
-For more details, see README.md and docs/QUICKSTART.md.
+For more details, see README.md and https://github.com/gastownhall/beads/blob/main/docs/getting-started/quickstart.md.
 
 ## Agent Context Profiles
 

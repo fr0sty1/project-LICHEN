@@ -454,14 +454,12 @@ fn encode_tstr<const N: usize>(
     Ok(())
 }
 
-/// TH_2 = H(G_Y || H(message_1)) per RFC 9528 / test vectors.
+/// TH_2 = H(CBOR(G_Y) || CBOR(H(message_1))) per RFC 9529 Section 2.2.
 fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 64>::new();
-    buf.extend_err(g_y)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    buf.extend_err(&h_msg1)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
+    let mut buf = heapless::Vec::<u8, 68>::new();
+    encode_bstr(&mut buf, g_y)?;
+    encode_bstr(&mut buf, &h_msg1)?;
     Ok(compute_th(&buf))
 }
 
