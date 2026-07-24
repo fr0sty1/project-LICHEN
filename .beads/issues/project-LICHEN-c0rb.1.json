@@ -9,10 +9,10 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:30:21.299253692Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:04:28.134439364Z",
-  "started_at": "2026-07-24T16:04:28.134439364Z",
-  "lease_expires_at": "2026-07-24T16:09:28.134439364Z",
-  "heartbeat_at": "2026-07-24T16:04:28.134439364Z",
+  "updated_at": "2026-07-24T16:03:43.81899039Z",
+  "started_at": "2026-07-24T16:03:43.81899039Z",
+  "lease_expires_at": "2026-07-24T16:08:43.81899039Z",
+  "heartbeat_at": "2026-07-24T16:03:43.81899039Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-c0rb.1",
