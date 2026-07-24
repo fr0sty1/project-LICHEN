@@ -90,8 +90,8 @@ impl TrickleTimer {
     /// Begin the first interval per RFC 6206 §4.2 rule 1 (I chosen in [Imin, Imax]).
     pub fn start(&mut self, now: u64, rand_offset: u32) {
         self.interval = self.imin;
-        self.begin_interval(now, rand_offset)
-            .expect("stopped or active Trickle timer can begin an interval");
+        let r = self.begin_interval(now, rand_offset);
+        debug_assert!(r.is_ok(), "stopped or active Trickle timer can begin an interval");
     }
 
     fn begin_interval(
@@ -134,8 +134,9 @@ impl TrickleTimer {
 
     /// Mark the transmit point reached; returns `true` if a DIO should be sent.
     pub fn fire_transmit(&mut self) -> bool {
-        self.try_fire_transmit()
-            .expect("fire_transmit only valid in WaitingTransmit state")
+        let r = self.try_fire_transmit();
+        debug_assert!(r.is_ok(), "fire_transmit only valid in WaitingTransmit state");
+        r.unwrap()
     }
 
     pub fn try_fire_transmit(&mut self) -> Result<bool, InvalidTrickleTransition> {
@@ -146,8 +147,8 @@ impl TrickleTimer {
 
     /// End the current interval: double I (capped at Imax) and start next per RFC 6206 §4.2 rule 5.
     pub fn expire(&mut self, now: u64, rand_offset: u32) {
-        self.try_expire(now, rand_offset)
-            .expect("expire only valid after transmit");
+        let r = self.try_expire(now, rand_offset);
+        debug_assert!(r.is_ok(), "expire only valid after transmit");
     }
 
     pub fn try_expire(
@@ -169,8 +170,8 @@ impl TrickleTimer {
     /// interval > imin, set I=imin and restart. No-op if at imin and running.
     /// State proxy for cross-impl (cf. C interval==0, Python generation==0).
     pub fn reset(&mut self, now: u64, rand_offset: u32) {
-        self.try_reset(now, rand_offset)
-            .expect("invalid trickle timer transition");
+        let r = self.try_reset(now, rand_offset);
+        debug_assert!(r.is_ok(), "invalid trickle timer transition");
     }
 
     pub fn try_reset(
