@@ -28,8 +28,9 @@ pub use lichen_rpl::dodag::{DodagRole, DodagState, ParentCandidate, ROOT_RANK};
 use lichen_rpl::message::DODAG_CONFIG_DATA_LEN;
 #[cfg(feature = "std")]
 pub use lichen_rpl::message::{
-    Dao, DaoOriginSignature, Dio, DodagConfig, OptionIter, RplError, RplTarget, SignedDaoEnvelope,
-    TransitInfo, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
+    Dao, DaoOriginSignature, Dio, DioTimeOption, DodagConfig, OptionIter, RplError, RplTarget,
+    SignedDaoEnvelope, TransitInfo, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG, OPT_RPL_TARGET,
+    OPT_TIME, OPT_TRANSIT_INFO,
 };
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SignatureVerifiedDao;
@@ -439,6 +440,8 @@ pub struct Router {
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
+    time_stratum: u8,
+    wall_clock_seconds: u32,
     #[cfg(test)]
     test_storage: lichen_hal::storage::mem::MemStorage,
     #[cfg(test)]
@@ -461,13 +464,15 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            time_stratum: 0,
+            wall_clock_seconds: 0,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
             test_rx_state: None,
             #[cfg(test)]
             test_origin_sequence: 0,
-        }
+        });
     }
 
     fn root_with_manager(
@@ -499,6 +504,8 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            time_stratum: 0,
+            wall_clock_seconds: 0,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
@@ -625,6 +632,7 @@ impl Router {
         }
 
         let mut proposed_config = self.dodag_config.clone();
+        let mut highest_time_stratum: Option<(u8, u32)> = None;
         for option in OptionIter::new(Dio::options_tail(dio_bytes)) {
             let Ok(option) = option else {
                 return DioProcessOutcome::Rejected;
@@ -645,6 +653,12 @@ impl Router {
                     return DioProcessOutcome::Rejected;
                 }
                 proposed_config = parsed;
+            } else if option.opt_type == OPT_TIME {
+                if let Ok(time) = DioTimeOption::from_bytes(option.data) {
+                    if time.stratum > self.time_stratum {
+                        highest_time_stratum = Some((time.stratum, time.timestamp));
+                    }
+                }
             }
         }
         let neighbor_known = self.neighbors.get_etx(&sender_addr).is_some();
@@ -711,6 +725,11 @@ impl Router {
         self.dodag = staged_dodag;
         self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
+
+        if let Some((stratum, timestamp)) = highest_time_stratum {
+            self.time_stratum = stratum;
+            self.wall_clock_seconds = timestamp;
+        }
 
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
@@ -946,7 +965,17 @@ impl Router {
         let Ok(config_len) = self.dodag_config.write_to(&mut out[base_len..]) else {
             return 0;
         };
-        base_len + config_len
+        let mut pos = base_len + config_len;
+        if self.time_stratum > 0 {
+            let time = DioTimeOption {
+                stratum: self.time_stratum,
+                timestamp: self.wall_clock_seconds,
+            };
+            if let Ok(n) = time.write_to(&mut out[pos..]) {
+                pos += n;
+            }
+        }
+        pos
     }
 
     /// Get the route path for a destination (root only).
@@ -1115,6 +1144,19 @@ impl Router {
     /// Set this node's geographic coordinates (from GPS or config).
     pub fn set_node_coords(&mut self, coords: GeoCoords) {
         self.node_coords = Some(coords);
+    }
+
+    /// Set wall-clock time with stratum (spec 14.6).
+    pub fn set_time(&mut self, stratum: u8, unix_seconds: u32) {
+        if stratum >= self.time_stratum {
+            self.time_stratum = stratum;
+            self.wall_clock_seconds = unix_seconds;
+        }
+    }
+
+    /// Current time stratum (0 = no sync).
+    pub fn time_stratum(&self) -> u8 {
+        self.time_stratum
     }
 
     /// Clear this node's coordinates (privacy mode or GPS unavailable).
