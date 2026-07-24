@@ -28,12 +28,11 @@ use ccm::{
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
-use hmac::{Hmac, Mac};
-use rand_core::{CryptoRng, RngCore};
+
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+use zeroize::{Zeroize, Zeroizing};
 
 /// AES-CCM for Suite 0.
 type AesCcm = Ccm<Aes128, U8, U13>;
@@ -112,6 +111,41 @@ impl IdCred {
     pub fn reference(&self) -> &IdCredReference {
         &self.reference
     }
+}
+
+/// Parsed ID_CRED reference with its canonical encoding.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PendingIdCred {
+    pub encoded: heapless::Vec<u8, ID_CRED_MAX_LEN>,
+    pub reference: IdCredReference,
+}
+
+impl PendingIdCred {
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.encoded
+    }
+    pub fn reference(&self) -> &IdCredReference {
+        &self.reference
+    }
+}
+
+/// State returned by `begin_process_message_2` for deferred credential selection.
+#[derive(Clone, Debug)]
+pub struct PendingMessage2 {
+    pub id_cred: PendingIdCred,
+    pub plaintext: heapless::Vec<u8, 160>,
+    pub c_r: ConnectionId,
+    pub signature_offset: usize,
+    pub transcript_binding: [u8; 32],
+}
+
+/// State returned by `begin_process_message_3` for deferred credential selection.
+#[derive(Clone, Debug)]
+pub struct PendingMessage3 {
+    pub id_cred: PendingIdCred,
+    pub plaintext: heapless::Vec<u8, 160>,
+    pub signature_offset: usize,
+    pub transcript_binding: [u8; 32],
 }
 
 /// Peer authentication material supplied by the application.
@@ -433,38 +467,14 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    input: &[u8],
+    cred: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, input)?;
+    encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
-}
-
-fn build_context_2(_c_r: &ConnectionId, id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut buf = heapless::Vec::<u8, 128>::new();
-    encode_bstr(&mut buf, id_cred)?;
-    encode_bstr(&mut buf, cred)?;
-    Ok(buf)
-}
-
-fn build_context_3(id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut buf = heapless::Vec::<u8, 128>::new();
-    encode_bstr(&mut buf, id_cred)?;
-    encode_bstr(&mut buf, cred)?;
-    Ok(buf)
-}
-
-fn build_signature_structure(id_cred: &[u8], th: &[u8; 32], cred: &[u8], mac: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut buf = heapless::Vec::<u8, 128>::new();
-    buf.push_err(0x85)?;
-    buf.push_err(0x6a)?;
-    buf.extend_err(b"Signature1")?;
-    encode_bstr(&mut buf, id_cred)?;
-    encode_bstr(&mut buf, th)?;
-    encode_bstr(&mut buf, cred)?;
-    encode_bstr(&mut buf, mac)?;
-    Ok(buf)
 }
 
 fn build_context_2(
@@ -496,7 +506,7 @@ fn build_signature_structure(
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut m = heapless::Vec::<u8, 128>::new();
     m.push_err(0x85)?;
-    m.extend_err(b"\x6bSignature1")?;
+    encode_tstr(&mut m, "Signature1")?;
     append_cbor_bstr(&mut m, id_cred)?;
     append_cbor_bstr(&mut m, th)?;
     append_cbor_bstr(&mut m, cred)?;
@@ -578,23 +588,12 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
 /// Implements EDHOC method 0 (SIGN_SIGN) with Suite 0.
 // SECURITY: SigningKey and StaticSecret must be zeroized on drop.
 // SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
-#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocInitiator {
-    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
     signing_key: SigningKey,
-    /// Our Ed25519 public key.
-    #[zeroize(skip)]
     pubkey: VerifyingKey,
-    /// Our connection identifier.
-    c_i: u8,
-    /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
+    c_i: ConnectionId,
     eph_secret: Option<StaticSecret>,
-    /// Ephemeral X25519 public key.
-    #[zeroize(skip)]
     eph_public: PublicKey,
-    /// Protocol state.
     state: InitiatorState,
 }
 
@@ -605,12 +604,9 @@ pub struct EdhocInitiator {
 /// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
 /// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
 /// All must be zeroized on drop.
-#[derive(Zeroize, ZeroizeOnDrop)]
 struct InitiatorState {
-    #[zeroize(skip)]
     msg1: heapless::Vec<u8, 64>,
     g_y: [u8; 32],
-    #[zeroize(skip)]
     c_r: ConnectionId,
     prk_2e: [u8; 32],
     prk_3e2m: [u8; 32],
@@ -618,9 +614,7 @@ struct InitiatorState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
-    /// True when handshake completed (process_message_2 succeeded).
     completed: bool,
-    #[zeroize(skip)]
     lifecycle: Lifecycle,
 }
 
@@ -642,6 +636,21 @@ impl Default for InitiatorState {
     }
 }
 
+impl Zeroize for InitiatorState {
+    fn zeroize(&mut self) {
+        self.msg1.as_mut_slice().zeroize();
+        self.g_y.zeroize();
+        self.prk_2e.zeroize();
+        self.prk_3e2m.zeroize();
+        self.prk_4e3m.zeroize();
+        self.th_2.zeroize();
+        self.th_3.zeroize();
+        self.th_4.zeroize();
+        self.completed = false;
+        self.lifecycle = Lifecycle::Zeroized;
+    }
+}
+
 impl Zeroize for EdhocInitiator {
     fn zeroize(&mut self) {
         self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
@@ -652,6 +661,13 @@ impl Zeroize for EdhocInitiator {
 }
 
 impl EdhocInitiator {
+    fn poison(&mut self) {
+        self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
+        self.eph_secret.zeroize();
+        self.state.zeroize();
+        self.state.lifecycle = Lifecycle::Failed;
+    }
+
     /// Create a new EDHOC initiator using caller-provided entropy.
     pub fn new_with_rng<R: RngCore + CryptoRng, C: Into<ConnectionId>>(
         seed: [u8; 32],
@@ -684,7 +700,7 @@ impl EdhocInitiator {
     /// * `seed` - Ed25519 seed (32 bytes)
     /// * `c_i` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
-    pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
+    pub fn new<R: RngCore + CryptoRng, C: Into<ConnectionId>>(seed: [u8; 32], c_i: C, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
@@ -694,7 +710,7 @@ impl EdhocInitiator {
         Self {
             signing_key,
             pubkey,
-            c_i,
+            c_i: c_i.into(),
             eph_secret: Some(eph_secret),
             eph_public,
             state: InitiatorState::default(),
@@ -910,9 +926,10 @@ impl EdhocInitiator {
             let tag = cipher
                 .encrypt_in_place_detached((&*nonce).into(), &a_3, &mut ciphertext_3)
                 .map_err(|_| EdhocError::InvalidState)?;
+            let plaintext_3 = ciphertext_3.clone();
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -942,7 +959,7 @@ impl EdhocInitiator {
             &self.state.prk_4e3m,
             &self.state.th_4,
             self.c_i.as_bytes(),
-            self.c_r.as_bytes(),
+            self.state.c_r.as_bytes(),
         )
     }
 }
@@ -950,23 +967,12 @@ impl EdhocInitiator {
 /// EDHOC Responder (server role).
 // SECURITY: SigningKey and StaticSecret must be zeroized on drop.
 // SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
-#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocResponder {
-    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
     signing_key: SigningKey,
-    /// Our Ed25519 public key.
-    #[zeroize(skip)]
     pubkey: VerifyingKey,
-    /// Our connection identifier.
-    c_r: u8,
-    /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
+    c_r: ConnectionId,
     eph_secret: Option<StaticSecret>,
-    /// Ephemeral X25519 public key.
-    #[zeroize(skip)]
     eph_public: PublicKey,
-    /// Protocol state.
     state: ResponderState,
 }
 
@@ -977,12 +983,9 @@ pub struct EdhocResponder {
 /// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
 /// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
 /// All must be zeroized on drop.
-#[derive(Zeroize, ZeroizeOnDrop)]
 struct ResponderState {
-    #[zeroize(skip)]
     msg1: heapless::Vec<u8, 64>,
     g_x: [u8; 32],
-    #[zeroize(skip)]
     c_i: ConnectionId,
     prk_2e: [u8; 32],
     prk_3e2m: [u8; 32],
@@ -990,9 +993,7 @@ struct ResponderState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
-    /// True when handshake completed (process_message_3 succeeded).
     completed: bool,
-    #[zeroize(skip)]
     lifecycle: Lifecycle,
 }
 
@@ -1014,6 +1015,21 @@ impl Default for ResponderState {
     }
 }
 
+impl Zeroize for ResponderState {
+    fn zeroize(&mut self) {
+        self.msg1.as_mut_slice().zeroize();
+        self.g_x.zeroize();
+        self.prk_2e.zeroize();
+        self.prk_3e2m.zeroize();
+        self.prk_4e3m.zeroize();
+        self.th_2.zeroize();
+        self.th_3.zeroize();
+        self.th_4.zeroize();
+        self.completed = false;
+        self.lifecycle = Lifecycle::Zeroized;
+    }
+}
+
 impl Zeroize for EdhocResponder {
     fn zeroize(&mut self) {
         self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
@@ -1030,13 +1046,37 @@ impl EdhocResponder {
     /// * `seed` - Ed25519 seed (32 bytes)
     /// * `c_r` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
-    pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
+    pub fn new<R: RngCore + CryptoRng, C: Into<ConnectionId>>(seed: [u8; 32], c_r: C, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
+        Self {
+            signing_key,
+            pubkey,
+            c_r: c_r.into(),
+            eph_secret: Some(eph_secret),
+            eph_public,
+            state: ResponderState::default(),
+        }
+    }
+
+    pub fn new_with_rng<R: RngCore + CryptoRng, C: Into<ConnectionId>>(
+        seed: [u8; 32],
+        c_r: C,
+        rng: &mut R,
+    ) -> Result<Self, OscoreError> {
+        let seed = Zeroizing::new(seed);
+        let mut eph_seed = Zeroizing::new([0u8; KEY_LEN_32]);
+        rng.try_fill_bytes(&mut eph_seed[..])
+            .map_err(|_| OscoreError::KeyDerivation)?;
+        let signing_key = SigningKey::from_bytes(&seed);
+        let pubkey = signing_key.verifying_key();
+        let eph_secret = StaticSecret::from(*eph_seed);
+        eph_seed.zeroize();
+        let eph_public = PublicKey::from(&eph_secret);
         Ok(Self {
             signing_key,
             pubkey,
@@ -1045,12 +1085,6 @@ impl EdhocResponder {
             eph_public,
             state: ResponderState::default(),
         })
-    }
-
-    /// Create a new EDHOC responder.
-    #[cfg(feature = "std")]
-    pub fn new<C: Into<ConnectionId>>(seed: [u8; 32], c_r: C) -> Result<Self, OscoreError> {
-        Self::new_with_rng(seed, c_r, &mut rand_core::OsRng)
     }
 
     fn poison(&mut self) {
@@ -1104,17 +1138,7 @@ impl EdhocResponder {
 
         // Parse C_I
         let rest = &msg1[g_x_start + 2 + 32..];
-        let c_i = if !rest.is_empty() {
-            if rest[0] <= 23 {
-                rest[0]
-            } else if rest[0] == 0x41 && rest.len() > 1 {
-                rest[1]
-            } else {
-                return Err(EdhocError::InvalidMessage);
-            }
-        } else {
-            return Err(EdhocError::InvalidMessage);
-        };
+        let (c_i, _c_i_len) = parse_identifier(rest)?;
         if c_i == self.c_r {
             self.poison();
             return Err(EdhocError::InvalidMessage);
@@ -1127,7 +1151,7 @@ impl EdhocResponder {
         drop(eph_secret);
         self.state.msg1 = stored_msg1;
         self.state.g_x = g_x;
-        self.state.c_i = c_i.into();
+        self.state.c_i = c_i;
         // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
         // prevent cryptographic weakness from ephemeral key reuse if this function
         // is called multiple times (e.g., due to retransmission handling bugs).
@@ -1151,12 +1175,7 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(
-                &ConnectionId::new(&[self.c_r]).map_err(|_| EdhocError::BufferTooSmall)?,
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-            )?;
+            let context_2 = build_context_2(&id_cred_r, &credential_r)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -1367,9 +1386,237 @@ impl EdhocResponder {
             &self.state.prk_4e3m,
             &self.state.th_4,
             self.c_r.as_bytes(),
-            self.c_i.as_bytes(),
+            self.state.c_i.as_bytes(),
         )
     }
+}
+
+fn parse_label(data: &[u8], pos: usize) -> Result<(i128, usize), EdhocError> {
+    if pos >= data.len() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let b = data[pos];
+    let mt = b >> 5;
+    let val = (b & 0x1f) as u64;
+    let (value, extra): (u64, usize) = match val {
+        0..=23 => (val, 0),
+        24 => (*data.get(pos + 1).ok_or(EdhocError::InvalidMessage)? as u64, 1),
+        25 => {
+            let bytes = data.get(pos + 1..pos + 3).ok_or(EdhocError::InvalidMessage)?;
+            (u16::from_be_bytes([bytes[0], bytes[1]]) as u64, 2)
+        }
+        26 => {
+            let bytes = data.get(pos + 1..pos + 5).ok_or(EdhocError::InvalidMessage)?;
+            (u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64, 4)
+        }
+        27 => {
+            let bytes = data.get(pos + 1..pos + 9).ok_or(EdhocError::InvalidMessage)?;
+            (u64::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]), 8)
+        }
+        _ => return Err(EdhocError::InvalidMessage),
+    };
+    let total: usize = 1 + extra;
+    let label: i128 = match mt {
+        0 => value as i128,
+        1 => -1i128 - value as i128,
+        _ => return Err(EdhocError::InvalidMessage),
+    };
+    Ok((label, total))
+}
+
+fn strong_verifying_key(bytes: &[u8; 32]) -> Result<VerifyingKey, EdhocError> {
+    VerifyingKey::from_bytes(bytes).map_err(|_| EdhocError::SignatureVerification)
+}
+
+fn parse_bstr_impl(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    let (len, header_size) = if first <= 0x17 {
+        (first as usize, 1)
+    } else if first == 0x18 {
+        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        (data[1] as usize, 2)
+    } else if first == 0x19 {
+        if data.len() < 3 { return Err(EdhocError::InvalidMessage); }
+        let l = u16::from_be_bytes([data[1], data[2]]) as usize;
+        (l, 3)
+    } else if first == 0x58 {
+        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        (data[1] as usize, 2)
+    } else if first == 0x59 {
+        if data.len() < 3 { return Err(EdhocError::InvalidMessage); }
+        let l = u16::from_be_bytes([data[1], data[2]]) as usize;
+        (l, 3)
+    } else {
+        return Err(EdhocError::InvalidMessage);
+    };
+    let total = header_size + len;
+    if data.len() < total {
+        return Err(EdhocError::InvalidMessage);
+    }
+    Ok((&data[header_size..total], total))
+}
+
+fn parse_bstr(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
+    parse_bstr_impl(data)
+}
+
+fn parse_identifier(data: &[u8]) -> Result<(ConnectionId, usize), EdhocError> {
+    let (id_bytes, consumed) = parse_bstr_impl(data)?;
+    let id = ConnectionId::new(id_bytes)?;
+    Ok((id, consumed))
+}
+
+fn encode_bstr_to<const N: usize>(buf: &mut heapless::Vec<u8, N>, data: &[u8]) -> Result<(), EdhocError> {
+    encode_bstr(buf, data)
+}
+
+fn encode_identifier<const N: usize>(buf: &mut heapless::Vec<u8, N>, id: &ConnectionId) -> Result<(), EdhocError> {
+    encode_bstr(buf, id.as_bytes())
+}
+
+fn append_cbor_bstr<const N: usize>(buf: &mut heapless::Vec<u8, N>, data: &[u8]) -> Result<(), EdhocError> {
+    encode_bstr(buf, data)
+}
+
+fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 40>, heapless::Vec<u8, 96>), EdhocError> {
+    let mut id_cred = heapless::Vec::<u8, 40>::new();
+    id_cred.push_err(0xa1)?;
+    id_cred.push_err(0x04)?;
+    id_cred.push_err(0x58)?;
+    id_cred.push_err(32)?;
+    id_cred.extend_err(pubkey)?;
+
+    let mut ccs = heapless::Vec::<u8, 96>::new();
+    ccs.push_err(0xa2)?;
+    ccs.push_err(0x01)?;
+    ccs.push_err(0x06)?;
+    ccs.push_err(0x20)?;
+    ccs.push_err(0x58)?;
+    ccs.push_err(32)?;
+    ccs.extend_err(pubkey)?;
+    Ok((id_cred, ccs))
+}
+
+fn encode_credential<const N: usize>(buf: &mut heapless::Vec<u8, N>, pubkey: &[u8]) -> Result<(), EdhocError> {
+    buf.push_err(0xa2)?;
+    buf.push_err(0x01)?;
+    buf.push_err(0x06)?;
+    buf.push_err(0x20)?;
+    if pubkey.len() <= 23 {
+        buf.push_err(0x40 | pubkey.len() as u8)?;
+    } else {
+        buf.push_err(0x58)?;
+        buf.push_err(pubkey.len() as u8)?;
+    }
+    buf.extend_err(pubkey)?;
+    Ok(())
+}
+
+fn encode_id_cred<const N: usize>(buf: &mut heapless::Vec<u8, N>, pubkey: &[u8]) -> Result<(), EdhocError> {
+    buf.push_err(0xa1)?;
+    buf.push_err(0x04)?;
+    if pubkey.len() <= 23 {
+        buf.push_err(0x40 | pubkey.len() as u8)?;
+    } else {
+        buf.push_err(0x58)?;
+        buf.push_err(pubkey.len() as u8)?;
+    }
+    buf.extend_err(pubkey)?;
+    Ok(())
+}
+
+fn validate_peer_credential(peer: PeerCredential<'_>) -> Result<(), EdhocError> {
+    if peer.public_key.iter().all(|&b| b == 0) {
+        return Err(EdhocError::SignatureVerification);
+    }
+    strong_verifying_key(peer.public_key).map(|_| ())
+}
+
+fn validate_deterministic_item(data: &[u8]) -> Result<(), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    Ok(())
+}
+
+fn parse_suites_r(data: &[u8]) -> Result<usize, EdhocError> {
+    let (_suite, consumed) = parse_suites_i(data)?;
+    Ok(consumed)
+}
+
+fn copy_id_cred_value(data: &[u8]) -> Result<heapless::Vec<u8, ID_CRED_MAX_LEN>, EdhocError> {
+    let mut buf = heapless::Vec::new();
+    buf.extend_from_slice(data).map_err(|_| EdhocError::BufferTooSmall)?;
+    Ok(buf)
+}
+
+fn parse_id_cred(data: &[u8]) -> Result<(PendingIdCred, usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    if !matches!(first & 0xe0, 0xa0) {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let map_len = (first & 0x1f) as usize;
+    if map_len == 0 || map_len > ID_CRED_MAX_PARAMETERS {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let mut pos = 1;
+    let mut kid_val: Option<heapless::Vec<u8, ID_CRED_MAX_LEN>> = None;
+    let mut x5t_algo: Option<i128> = None;
+    let mut x5t_hash: Option<heapless::Vec<u8, ID_CRED_MAX_LEN>> = None;
+    for _ in 0..map_len {
+        let (label, ls) = parse_label(data, pos)?;
+        pos += ls;
+        let (val_bytes, vs) = if data.get(pos).map(|&b| b >> 5 == 2).unwrap_or(false) {
+            parse_bstr_impl(&data[pos..])?
+        } else if data.get(pos).map(|&b| b >> 5 == 4).unwrap_or(false) {
+            let arr_start = pos;
+            let arr_first = data[pos];
+            let arr_len = (arr_first & 0x1f) as usize;
+            pos += 1;
+            for _ in 0..arr_len {
+                let (_e, es) = parse_label(data, pos)?;
+                pos += es;
+            }
+            (&data[arr_start..pos], pos - arr_start)
+        } else {
+            return Err(EdhocError::InvalidMessage);
+        };
+        pos += vs;
+        match label {
+            4 | -2 => {
+                // kid or sub
+                let mut v = heapless::Vec::new();
+                v.extend_from_slice(val_bytes).map_err(|_| EdhocError::BufferTooSmall)?;
+                match label {
+                    4 => kid_val = Some(v),
+                    -2 => x5t_hash = Some(v),
+                    _ => {}
+                }
+            }
+            -1 => {
+                let (algo, _) = parse_label(data, pos - vs - ls)?;
+                x5t_algo = Some(algo);
+            }
+            _ => {} // unknown parameter, ok
+        }
+    }
+    let mut encoded = heapless::Vec::new();
+    encoded.extend_from_slice(&data[..pos]).map_err(|_| EdhocError::BufferTooSmall)?;
+    let reference = if let Some(kid) = kid_val {
+        IdCredReference::Kid(kid)
+    } else if let (Some(algo), Some(hash)) = (x5t_algo, x5t_hash) {
+        IdCredReference::X5t { algorithm: algo, hash }
+    } else {
+        // Default to kid from value
+        IdCredReference::Kid(heapless::Vec::new())
+    };
+    Ok((PendingIdCred { encoded, reference }, pos))
 }
 
 #[cfg(test)]
@@ -1378,6 +1625,7 @@ mod tests {
     use crate::{ContextId, SenderSequenceState, SenderStateStore};
     use core::num::NonZeroU32;
     use hex_literal::hex;
+    use zeroize::ZeroizeOnDrop;
 
     #[test]
     fn crypto_schedules_zeroize_on_drop() {
@@ -2045,9 +2293,9 @@ mod tests {
 
     #[test]
     fn rfc9528_suites_i_literals() {
-        assert_eq!(parse_suites_i(&[0x00, 0xff]), Ok((0, 1, false)));
-        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00, 0xff]), Ok((0, 3, false)));
-        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x00]), Ok((0, 3, true)));
+        assert_eq!(parse_suites_i(&[0x00, 0xff]), Ok((0, 1)));
+        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00, 0xff]), Ok((0, 3)));
+        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x00]), Ok((0, 3)));
 
         assert_eq!(
             parse_suites_i(&[0x81, 0x00]),
@@ -2080,7 +2328,7 @@ mod tests {
             0x00, 0x01, 0x00, 0x00, 0x3b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
             0xff,
         ];
-        assert_eq!(parse_suites_i(&suites), Ok((0, suites.len() - 1, false)));
+        assert_eq!(parse_suites_i(&suites), Ok((0, suites.len() - 1)));
     }
 
     #[test]
@@ -2304,6 +2552,8 @@ mod tests {
         let test_code: u8 = 0x01; // GET
         let test_options: &[u8] = &[0xB1, 0x61]; // Uri-Path "a"
         let test_payload: &[u8] = b"hello from initiator";
+
+        let mut initiator_store = TestStore::empty_for(&initiator_ctx);
 
         let (ciphertext, oscore_opt) = initiator_ctx
             .reserve_sender(&mut initiator_store)

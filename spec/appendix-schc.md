@@ -10,10 +10,10 @@ See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T
 | Rule ID | Use Case | Compressed Size | Notes |
 |---------|----------|-----------------|-------|
 | 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports MSB(12)/LSB(4) for CoAP/SenML range |
-| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | ULA/GUA source, full dst as needed |
+| 1 | Mesh-local IPv6 + UDP + CoAP | ~26 bytes + tail | MSB(64)/LSB(64) IID-only for addresses matching /64 prefix |
 | 2 | ICMPv6 Echo | 3 bytes | Type 128/129, Code=0 not-sent |
 | 3 | RPL DIO (link-local) | 8 bytes | ICMPv6 type=155/code=0 + options |
-| 4 | RPL DAO (routable ULA source for multi-hop) | 6 bytes | Multi-hop source preservation |
+| 4 | RPL DAO (routable 02xx source for multi-hop) | 6 bytes | Multi-hop source preservation |
 | 5 | Link-local IPv6 + UDP + OSCORE | ~6 bytes residue | + OSCORE tail |
 | 6 | Global IPv6 + UDP + OSCORE | ~14 bytes residue | + OSCORE tail |
 | 7 | MQTT-SN (port 10883) | ~6 bytes | Exact port match |
@@ -25,7 +25,7 @@ Current constants (Rust/C synchronized):
 | Rule ID | Name | Use Case |
 |---------|------|----------|
 | 0 | LINK_LOCAL_COAP | Link-local IPv6 + UDP + CoAP |
-| 1 | GLOBAL_COAP | Global IPv6 + UDP + CoAP |
+| 1 | GLOBAL_COAP | Mesh-local IPv6 + UDP + CoAP |
 | 2 | ICMPV6_ECHO | ICMPv6 Echo Request/Reply |
 | 3 | RPL_DIO | RPL DIO over link-local ICMPv6 |
 | 4 | RPL_DAO | RPL DAO with DODAGID over link-local ICMPv6 |
