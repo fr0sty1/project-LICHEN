@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-5a2y",
   "title": "[review] project-LICHEN-worker6-voln: transcript_2 lacks CBOR bstr encoding for EDHOC transcript hash",
   "description": "In rust/lichen-oscore/src/edhoc.rs, the `transcript_2` function computes TH_2 as `SHA-256(G_Y_raw || H(message_1)_raw)` using raw byte concatenation. Per RFC 9528 Section 3.2 and verified by RFC 9529 Appendix C trace: TH_2 = H(CBOR_Sequence(G_Y, H(message_1))) where each element is individually CBOR-encoded as a bstr. The RFC 9529 trace shows the input as `bstr(G_Y) || bstr(H(message_1))` = 68 bytes, but the code produces 64 bytes (raw concatenation). This affects all downstream computations (KEYSTREAM_2 derivation, TH_3, TH_4, MAC_2 verification) because TH_2 feeds into all of them. Both initiator (line 794) and responder (line 1151) use the same non-compliant transcript_2. The EDHOC interop test in tests/vectors.rs only checks oscore_master_secret is non-empty, not actual computed values against the JSON oracle.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:34:10.825431342Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:19:08.230260624Z",
-  "started_at": "2026-07-24T19:19:08.230260624Z",
-  "lease_expires_at": "2026-07-24T19:24:08.230260624Z",
-  "heartbeat_at": "2026-07-24T19:19:08.230260624Z"
+  "updated_at": "2026-07-24T20:20:38.443533428Z",
+  "started_at": "2026-07-24T19:19:08.230260624Z"
 }
