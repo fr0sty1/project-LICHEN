@@ -418,6 +418,29 @@ static int test_frame_sign_verify(void)
 	return 1;
 }
 
+static int test_verify_bounds_checking(void)
+{
+	uint8_t pubkey[32];
+	uint8_t sig[48];
+	uint8_t message[] = "test message";
+
+	memset(pubkey, 0x42, sizeof(pubkey));
+	memset(sig, 0x42, sizeof(sig));
+
+	/* sig_len == 0 should be rejected */
+	ASSERT_FALSE(schnorr48_verify(pubkey, message, sizeof(message), sig, 0),
+		     "verify rejects sig_len == 0");
+
+	/* sig_len < SCHNORR48_SIG_LEN should be rejected */
+	ASSERT_FALSE(schnorr48_verify(pubkey, message, sizeof(message), sig, 47),
+		     "verify rejects sig_len == 47");
+
+	/* sig_len == SCHNORR48_SIG_LEN should be accepted (still fails because pubkey is bogus, but not for length) */
+	/* The internal pubkey_valid check will return false, which is fine */
+
+	return 1;
+}
+
 static int test_frame_bounds_checking(void)
 {
 	uint8_t seed[32] = { 0 };
@@ -437,6 +460,16 @@ static int test_frame_bounds_checking(void)
 	/* verify_frame should return -EINVAL for dst_addr_len > 8 */
 	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, dst_addr, 9, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == -EINVAL,
 		    "verify_frame rejects dst_addr_len > 8");
+
+	/* sig_len == 0 should be rejected */
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, NULL, 0, inner_payload, 4,
+					   sig, 0, pubkey) == -EINVAL,
+		    "verify_frame rejects sig_len == 0");
+
+	/* sig_len < SCHNORR48_SIG_LEN should be rejected */
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, NULL, 0, inner_payload, 4,
+					   sig, 47, pubkey) == -EINVAL,
+		    "verify_frame rejects sig_len == 47");
 
 	return 1;
 }
@@ -552,6 +585,7 @@ int main(void)
 	RUN_TEST(test_sign_matches_vectors);
 	RUN_TEST(test_verify_valid_signatures);
 	RUN_TEST(test_verify_invalid_signatures);
+	RUN_TEST(test_verify_bounds_checking);
 	RUN_TEST(test_sign_verify_roundtrip);
 	RUN_TEST(test_frame_sign_verify);
 	RUN_TEST(test_frame_bounds_checking);
