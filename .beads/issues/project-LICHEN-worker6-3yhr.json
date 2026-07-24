@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-3yhr",
+  "title": "[review] project-LICHEN-worker6-2729: 8 test failures after protect_response refactor",
+  "description": "8 tests fail after commit e60cbb8267:\n\n1. `response_without_piv_requires_requester_identity` — MISSING IDENTITY CHECK: `protect_response` returns `Ok` when it should return `InvalidParam` (no `request_kid` validation). Tracked separately as project-LICHEN-worker6-trau.\n\n2. `test_roundtrip_with_0xff_in_class_e_options` — `Context::new()` sets `active=false`, `TestProtect::protect_request` calls `reserve_sender` which returns `ReservationError::Conflict` mapped to `SeqExhausted`. Test uses direct `Context::new()` instead of `new_ephemeral()` (which sets `active=true`).\n\n3. `oversized_explicit_piv_response_does_not_poison_valid_retry` — `unprotect_response` returns `Err(Replay)` at line 2669 when expecting `Ok`. Possible replay window issue in `unprotect_response`.\n\n4. `response_without_piv_is_one_shot_per_request` — related to no-PIV response one-shot semantics.\n\n5. `delayed_explicit_piv_ordinary_response_ignores_peer_replay_window`\n6. `dropped_pending_response_preserves_committed_window_across_large_jump`  \n7. `fresh_context_activates_only_after_atomic_registration`\n8. `public_unprotect_rejects_malformed_inner_options`\n\nNeed to verify which of failures 3-8 are caused by this commit vs pre-existing from earlier commits in chain.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:34:58.621845463Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:34:58.621845463Z"
+}

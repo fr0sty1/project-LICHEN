@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-tadi",
   "title": "[review] project-LICHEN-worker6-p4bl: test_response_protection_vectors changed from encrypt-test to decrypt-test, losing protect_response coverage against RFC 8613 vectors",
   "description": "## Issue\n\nIn `tests/vectors.rs`, the old `test_response_protection_vectors` tested the **encryption** path:\n```rust\nlet (ciphertext, oscore_opt) = ctx.protect_response(...).unwrap();\nassert_eq!(oscore_opt, expected.oscore_option);\nassert_eq!(ciphertext, expected.ciphertext);\n```\n\nThe new version tests only the **decryption** path:\n```rust\nlet (code, options, payload) = requester.unprotect_response(...).unwrap();\nassert_eq!(code, plaintext.code);\nassert_eq!(options, plaintext.options);\nassert_eq!(payload, plaintext.payload);\n```\n\nWhile `unprotect_response` testing is valuable, the `protect_response` encryption path is no longer validated against RFC 8613 known answer test vectors (C7, C8). The encrypt path is only verified via `protect_request` (C4-C6).\n\n## Risk\n\nBugs in the `protect_response` encryption key derivation, nonce computation, or AEAD encryption would not be caught by the current test suite for response protection vectors.\n\n## Fix\n\nRestore testing of `protect_response` in addition to (or instead of) `unprotect_response`, using expected `oscore_option` and `ciphertext` from the JSON vectors.\n\n## Location\n\n`rust/lichen-oscore/tests/vectors.rs`, `test_response_protection_vectors` function",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:15:13.27673002Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:24:24.193842806Z",
-  "started_at": "2026-07-24T18:24:24.193842806Z",
-  "lease_expires_at": "2026-07-24T18:29:24.193842806Z",
-  "heartbeat_at": "2026-07-24T18:24:24.193842806Z"
+  "updated_at": "2026-07-24T18:15:13.27673002Z"
 }

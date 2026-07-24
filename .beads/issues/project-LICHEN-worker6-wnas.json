@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-wnas",
   "title": "[review] project-LICHEN-worker6-1ror: SCHC ACK bitmap omits received tiles for corrupted-All-1 RCS failure path",
   "description": "The SCHC fragmentation test shared_vectors_drive_production_implementations fails with rcs_failure_ack mismatch:\n\n  expected: 780000 (n=0, all 63 bits are trailing-ones = all tiles considered received)\n  actual: 78003e8000000000000000 (n=62, FCN 62=1, FCN 61=0, FCNs 60-1=0, FCN 0=1 trailing)\n\nThe test exercises: receive FCN 62 and FCN 61 (two regular tiles), then receive a corrupted All-1 that fails RCS. After correction, the receiver should report FCN 62=1, FCN 61=1, and FCNs 0-60=1 (since they were never sent). With all 63 bits as 1, n should be 0 (no bits before trailing ones).\n\nThe actual output marks FCN 61 as 0 (not received) even though it was received before the corrupted All-1. This indicates the bitmap serialization in Ack::write_to is not correctly reflecting the receiver's internal state.\n\nTest file: rust/lichen-schc/tests/fragmentation_vectors.rs:263\nSerialization in: rust/lichen-schc/src/fragment.rs:240-277\nTest vector: test/vectors/schc_fragmentation.json line 26 (rcs_failure_ack)",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:06:49.858046741Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:25:10.32765547Z",
-  "started_at": "2026-07-24T18:25:10.32765547Z",
-  "lease_expires_at": "2026-07-24T18:30:10.32765547Z",
-  "heartbeat_at": "2026-07-24T18:25:10.32765547Z"
+  "updated_at": "2026-07-24T18:06:49.858046741Z"
 }

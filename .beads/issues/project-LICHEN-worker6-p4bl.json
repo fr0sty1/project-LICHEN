@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-p4bl",
   "title": "[review] project-LICHEN-worker6-zvp7: 43 compilation errors in test code, regression from 1 error",
   "description": "Commit 794b4773a20db04e804e06cd39c2229287c185f9 (\"project-LICHEN-worker6-zvp7: fix\") introduces massive compilation breakage in `cargo check -p lichen-oscore --tests`: 43 errors vs 1 at parent commit 3658d1d353 (worker6-ghdn).\n\n## Files changed\n- rust/lichen-oscore/src/edhoc.rs -- 5 lines changed (TH_4 spec fix, _cred param leftover)\n- rust/lichen-oscore/src/lib.rs -- +109 lines (duplicate TestStore, TestProtect, SenderStateStore impl, TestProtect impl in mod tests)\n- rust/lichen-oscore/tests/vectors.rs -- +171/-20 lines (duplicate context_at, test_request_protection_vectors, test_response_protection_vectors; broken new tests calling nonexistent APIs)\n\n## Root causes\n\n### 1. Duplicate definitions (E0428, E0592, E0119)\n- vectors.rs: two context_at (lines 105, 126), two test_request_protection_vectors (175, 430), two test_response_protection_vectors (225, 492)\n- lib.rs mod tests: two TestStore structs, two TestProtect traits, two for_context methods, conflicting impl blocks\n\n### 2. API mismatches (E0599, E0061)\n- Context::load_existing called but does not exist (vectors.rs:114, 135, 343, 365, 399; lib.rs:2567, 2603)\n- ctx.protect_request() called directly on Context but only exists on ReservedSender (vectors.rs:201, 205, 252)\n- Context::new called with 4 args instead of 5 (vectors.rs:244, 325)\n- Context::protect_response called with 5 args instead of 6, missing bool (lib.rs:2396, 2543, 2551, 2847, 2929, 3375, 3380, 3411, 3415, 3421, 3425)\n- OscoreSeqNum::new takes u64 not u32 (seqnum.rs:180, 183, 191; lib.rs:2061, 2065)\n- .increment()/.fetch_increment()/.get()/.encode_piv() called on Option instead of SequenceNumber (seqnum.rs:181, 184, 186, 192)\n\n### 3. Type mismatches (E0308)\n- derive_key/derive_iv need Option\u003c\u0026[u8]\u003e not \u0026Vec\u003cu8\u003e (lib.rs:2029, 2035, 2041, 2077)\n\n### 4. Move-after-move (E0382)\n- hex_to_array borrows bytes after move into try_into (vectors.rs:170)\n\n### 5. edhoc.rs\n- transcript_4: _cred parameter unused (kept for ABI compat but misleading). Comment fixed to \"TH_4 = H(CBOR(TH_3) || CBOR(CIPHERTEXT_3)) per RFC 9528 Section 4.1\" -- correct spec compliance, but plaintext parameter name is misleading (it is actually CIPHERTEXT_3).\n\n## Impact\nAll tests for lichen-oscore cannot compile. Library crate itself compiles (cargo check -p lichen-oscore passes). Regression: parent commit had only 1 error in tests; this commit introduces 42 additional errors.\n\n## Fix required\nRemove the duplicate/broken test code (first instances of context_at, test_request_protection_vectors, test_response_protection_vectors in vectors.rs; duplicate TestStore, TestProtect, impl blocks in lib.rs mod tests). The second (pre-existing) versions of test_request_protection_vectors and test_response_protection_vectors at lines 430-556 are the correct ones with independent oracles.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:59:57.394252004Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:24:29.67809653Z",
-  "started_at": "2026-07-24T18:24:29.67809653Z",
-  "lease_expires_at": "2026-07-24T18:29:29.67809653Z",
-  "heartbeat_at": "2026-07-24T18:24:29.67809653Z"
+  "updated_at": "2026-07-24T18:00:15.691195297Z"
 }

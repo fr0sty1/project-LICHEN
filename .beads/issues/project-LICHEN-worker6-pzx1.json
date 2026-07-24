@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-pzx1",
+  "title": "[review] project-LICHEN-worker6-ojt7: fuzz_fragment.rs still uses old Fragment::from_bytes 2-arg API",
+  "description": "The commit efb5d298 changed Fragment::from_bytes to take only 1 argument (removing the tile buffer parameter). The integration test tests/fragmentation.rs was correctly updated, but fuzz/fuzz_targets/fuzz_fragment.rs line 8 still calls Fragment::from_bytes(data, \u0026mut tile) with 2 arguments. This causes a compilation failure when building the fuzz target.\\n\\nFix: remove the \u0026mut tile argument and the now-dead tile variable on line 7.\\n\\nAdditionally, there are pre-existing compilation errors in src/fragment.rs under the std feature (rule_id Option\u003cu8\u003e mismatches, fragments_in_window rename, Ack::new bitmap type mismatch) that are NOT caused by this commit but prevent any std-dependent test from compiling.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:35:22.32564382Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:35:22.32564382Z"
+}

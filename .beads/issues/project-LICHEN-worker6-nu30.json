@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-nu30",
   "title": "[review] project-LICHEN-worker6-1ror: test_key_change_detection uses stale tx_history index for second receive",
   "description": "File: python/tests/link/test_link_layer.py:574\\n\\nIn test_key_change_detection, the second receive does:\\n\\n    await peer_ll.send(b\"second\")\\n    mock_radio.queue_rx(peer_radio.tx_history[0])  # BUG: should be [-1] or [1]\\n    result2 = await node_ll.receive(timeout_ms=100)\\n\\nAfter two sends, tx_history contains [first_frame, second_frame]. Index [0] returns the first frame bytes, not the second. The test still passes because KEY_CHANGE (L562-570) is checked before replay protection (L593-599) in _receive_impl, but the test is not exercising the path its docstring claims.\\n\\nFix: change tx_history[0] to tx_history[-1].",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:00:23.976658506Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:25:12.598670041Z",
-  "started_at": "2026-07-24T18:25:12.598670041Z",
-  "lease_expires_at": "2026-07-24T18:30:12.598670041Z",
-  "heartbeat_at": "2026-07-24T18:25:12.598670041Z"
+  "updated_at": "2026-07-24T18:00:23.976658506Z"
 }
