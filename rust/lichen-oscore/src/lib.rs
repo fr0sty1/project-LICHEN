@@ -1006,6 +1006,7 @@ impl Context {
             let mut piv = [0u8; PIV_MAX_LEN];
             let piv_len = seq.encode_piv(&mut piv);
             self.protect_response_with_piv_inner(
+                seq,
                 code,
                 class_e_options,
                 payload,
@@ -1097,6 +1098,7 @@ impl Context {
         let mut piv = [0u8; PIV_MAX_LEN];
         let piv_len = seq.encode_piv(&mut piv);
         self.protect_response_with_piv_inner(
+            seq,
             code,
             class_e_options,
             payload,
@@ -1108,6 +1110,7 @@ impl Context {
 
     fn protect_response_with_piv_inner(
         &mut self,
+        seq: OscoreSeqNum,
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
@@ -1141,6 +1144,7 @@ impl Context {
         let tag = cipher
             .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
             .map_err(|_| OscoreError::EncryptFailed)?;
+        self.mark_response_used(seq);
         ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
 
         let mut option = heapless::Vec::<u8, OSCORE_OPTION_MAX_LEN>::new();
