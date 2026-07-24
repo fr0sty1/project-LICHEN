@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-aen8",
   "title": "[review] project-LICHEN-worker6-kkj5: transcript_4 credential asymmetry — initiator vs responder use different credential formats",
   "description": "In `EdhocInitiator::prepare_message_3` (line 949), TH_4 uses `peer.credential` — the full credential received from the responder in EDHOC message_2.\n\n```rust\nself.state.th_4 = transcript_4(\u0026self.state.th_3, \u0026plaintext_3, peer.credential)?;\n```\n\nIn `EdhocResponder::process_message_3` (lines 1416-1419), TH_4 uses a freshly-encoded COSE_Key:\n\n```rust\nlet mut credential_r = heapless::Vec::\u003cu8, 80\u003e::new();\nencode_credential(\u0026mut credential_r, self.pubkey.as_bytes())?;\nself.state.th_4 = transcript_4(\u0026self.state.th_3, \u0026pending.plaintext, \u0026credential_r)?;\n```\n\nThese will produce different TH_4 values unless the credential format transmitted in message_2 happens to be a COSE_Key (rather than CWT, X.509, or another format). The responder should use its own credential (as transmitted), not a reconstructed COSE_Key from the raw public key.\n\n**Severity**: P0 — cryptographic mismatch would prevent successful EDHOC handshake completion for many credential types.\n\n**Note**: This is related to the CBOR `0xa2`/`0xa3` bug; even after fixing that, the credential format mismatch remains.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:05:47.805783284Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:41:04.639000858Z",
-  "started_at": "2026-07-24T19:18:23.352099169Z"
+  "updated_at": "2026-07-24T20:41:15.736027425Z",
+  "started_at": "2026-07-24T19:18:23.352099169Z",
+  "lease_expires_at": "2026-07-24T20:46:15.736027425Z",
+  "heartbeat_at": "2026-07-24T20:41:15.736027425Z"
 }
