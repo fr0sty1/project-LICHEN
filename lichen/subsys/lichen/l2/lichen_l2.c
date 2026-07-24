@@ -492,8 +492,27 @@ static size_t test_last_injected_len;
  * For multi-core portability, this could use atomic_ptr_set/get, but Zephyr
  * does not provide atomic pointer operations for all architectures. The current
  * design is correct for the target hardware.
+ *
+ * ACCESSORS: Use lichen_iface_read() and lichen_iface_write() everywhere
+ * instead of reading/writing the pointer directly. These inline wrappers make
+ * the set-once-read-many invariant structural rather than documented:
+ * every access goes through a named function whose intent is self-documenting.
+ * On targets with relaxed memory ordering, READ_ONCE semantics can be added
+ * here without changing call sites. (project-LICHEN-yw7i.18)
  */
 static struct net_if *lichen_iface;
+
+/* Set-once-write: call exactly once during init, never after. */
+static inline void lichen_iface_write(struct net_if *iface)
+{
+	lichen_iface = iface;
+}
+
+/* Read-many: safe to call without synchronization after init. */
+static inline struct net_if *lichen_iface_read(void)
+{
+	return lichen_iface;
+}
 
 /*
  * Initialization error flag.
@@ -1078,8 +1097,8 @@ static int dev_provision_peer(uint8_t peer_eui64[LICHEN_EUI64_LEN])
 		if (ret == 0) {
 			ret = lichen_make_link_local(iid, &peer_ll);
 		}
-		if (ret != 0 || lichen_iface == NULL ||
-		    net_ipv6_nbr_add(lichen_iface, &peer_ll, &lladdr, false,
+		if (ret != 0 || lichen_iface_read() == NULL ||
+		    net_ipv6_nbr_add(lichen_iface_read(), &peer_ll, &lladdr, false,
 				     NET_IPV6_NBR_STATE_STATIC) == NULL) {
 			LOG_ERR("lichen_l2: static neighbor add failed (%d)", ret);
 			return ret != 0 ? ret : -ENOMEM;
@@ -1693,10 +1712,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 #endif
 			}
 		}
-		/*
-		 * Note: We intentionally do NOT clear lichen_iface here.
-		 * See the invariant comment at the lichen_iface declaration.
-		 */
 #if HAVE_LICHEN_LINK
 		/*
 		 * Clean up link context: wipe keys, reset sequence state.
@@ -1911,12 +1926,12 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
 	 * Check both conditions to distinguish init-failure from never-initialized.
 	 * (project-LICHEN-rwio.11)
 	 */
-	if (lichen_iface == NULL || atomic_get(&iface_init_failed)) {
+	if (lichen_iface_read() == NULL || atomic_get(&iface_init_failed)) {
 		LOG_WRN("lichen_l2: RX callback ignored (interface not ready)");
 		return;
 	}
 
-	lichen_l2_input(lichen_iface, data, len, rssi, snr);
+	lichen_l2_input(lichen_iface_read(), data, len, rssi, snr);
 }
 
 /**
@@ -2030,7 +2045,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * link_ctx_initialized prevents calling lichen_link_init() on an already-
 	 * initialized context without cleanup. At boot this is a no-op (flag is 0).
 	 * On re-init, we call lichen_link_cleanup() first. The invariant check
-	 * at lines ~1315 (lichen_iface != NULL) catches double-iface_init attempts,
+	 * at the lichen_iface_read() != NULL check catches double-iface_init attempts,
 	 * which is the only path that could bypass this cleanup.
 	 */
 	if (atomic_get(&link_ctx_initialized)) {
@@ -2094,8 +2109,9 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * Cache interface for RX callback.
 	 *
 	 * INVARIANT (project-LICHEN-1www.46): lichen_iface is set exactly once
-	 * during initialization and never cleared. This allows lora_rx_callback()
-	 * to read it without synchronization. Enforce with runtime check.
+	 * during initialization and never cleared, enforced structurally by
+	 * lichen_iface_write() (set-once intent) and lichen_iface_read().
+	 * This allows lora_rx_callback() to read it without synchronization.
 	 *
 	 * Recovery note (project-LICHEN-tvfm.93): If a previous init attempt
 	 * failed after setting lichen_iface (e.g., in fail_late_init), the
@@ -2105,12 +2121,12 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * the condition (iface already set) even if the original cause was a
 	 * late init failure rather than a true invariant violation.
 	 */
-	if (lichen_iface != NULL) {
+	if (lichen_iface_read() != NULL) {
 		LOG_ERR("lichen_l2: iface already set (init requires reboot after failure)");
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
-	lichen_iface = iface;
+	lichen_iface_write(iface);
 
 	/* Register RX callback - must happen AFTER link_ctx is initialized */
 	ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
@@ -2174,9 +2190,6 @@ fail_late_init:
 	 * Cleanup on failure after RX callback was registered (project-LICHEN-yw7i.20).
 	 * Clear callback and link_ctx state. The iface_init_failed atomic flag prevents
 	 * lora_rx_callback() from operating on half-initialized state.
-	 *
-	 * NOTE: Do NOT clear lichen_iface here — it has a set-once invariant
-	 * (project-LICHEN-ybal.4) because lora_rx_callback() reads it without mutex.
 	 *
 	 * SECURITY (project-LICHEN-3pun.15): Hold BOTH mutexes during link_ctx cleanup
 	 * to synchronize with any in-flight RX callback and maintain consistent lock
