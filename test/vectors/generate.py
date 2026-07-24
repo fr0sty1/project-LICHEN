@@ -1745,67 +1745,98 @@ def _l2_announce_with_channel(channel: int) -> bytes:
 
 def ccp16_vectors() -> list[dict]:
     eui = bytes.fromhex("0011223344556677")
-    return [
-        {
-            "name": "synchronized_hop_channel_consistency",
-            "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and independent hash_32(FNV-1a32 basis 0x811c9dc5) oracle per spec/02a-coordinated-capacity.md:123. Receiver prediction matches sender.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 1,
-                "density": 3,
-                "snr_db": 12,
-                "now": 4660
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 1),
-                "channel": 2,
-                "expected_channel": 2,
-                "sf": 9,
-                "select_channel": 2,
-                "now": 4660
-            }
-        },
-        {
-            "name": "epoch_wrap_hop_change",
-            "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 0,
-                "density": 4,
-                "snr_db": 5,
-                "now": 100
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 0),
-                "channel": 2,
-                "expected_channel": 2,
-                "sf": 10,
-                "select_channel": 2,
-                "now": 100
-            }
-        },
-        {
-            "name": "select_channel_timing_test",
-            "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per spec/02a-coordinated-capacity.md:123 and 09-packets-timing.md. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 0,
-                "density": 9,
-                "snr_db": -1,
-                "now": 0xfffffff0
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 0),
-                "channel": 0,
-                "expected_channel": 0,
-                "sf": 11,
-                "select_channel": 0,
-                "now": 0xfffffff0
-            }
+
+    def _v(name, desc, epoch, density, snr, now, load=0, nch=3):
+        h = _hop_hash(eui, epoch)
+        if density > 20 or snr < -5:
+            sf = 12
+        elif density > 8 or snr < 0 or load > 0.8:
+            sf = 11
+        elif density < 5 and snr > 8:
+            sf = 9
+        else:
+            sf = 10
+        ch = 0 if density > 8 else (1 + (h % nch))
+        inp = {
+            "eui64": "0011223344556677",
+            "epoch": epoch,
+            "density": density,
+            "snr_db": snr,
+            "now": now,
         }
+        if load:
+            inp["load_factor"] = load
+        return {
+            "name": name,
+            "description": desc,
+            "type": "slot_selection",
+            "input": inp,
+            "output": {
+                "hash_32": h,
+                "channel": ch,
+                "expected_channel": ch,
+                "sf": sf,
+                "select_channel": ch,
+                "now": now,
+            },
+        }
+
+    return [
+        _v(
+            "synchronized_hop_channel_consistency",
+            "synchronized_hop_channel yields expected per CCP-12 pseudocode and independent hash_32 oracle. sf=9: density<5 AND snr>8.",
+            1, 3, 12, 4660,
+        ),
+        _v(
+            "epoch_wrap_hop_change",
+            "Epoch increment changes hop sequence. Tests desync recovery. sf=10: default branch (no thresholds triggered).",
+            0, 4, 5, 100,
+        ),
+        _v(
+            "select_channel_timing_test",
+            "density>8 triggers CH0 fallback with sf=11 (density>8) and now near u32 wrap.",
+            0, 9, -1, 0xfffffff0,
+        ),
+        _v(
+            "select_channel_sf12_high_density",
+            "density>20 triggers sf=12 (max SF). Channel forced to 0 by density>8.",
+            0, 25, 5, 0,
+        ),
+        _v(
+            "select_channel_sf12_low_snr",
+            "snr<-5 triggers sf=12. Channel computed via hash (density<=8 so non-zero).",
+            2, 4, -10, 500,
+        ),
+        _v(
+            "select_channel_sf11_snr_threshold",
+            "snr<0 triggers sf=11. Channel via hash.",
+            3, 6, -3, 1000,
+        ),
+        _v(
+            "select_channel_sf11_load_threshold",
+            "load>0.8 triggers sf=11. density<=8 so channel via hash.",
+            4, 5, 5, 1500, load=0.9,
+        ),
+        _v(
+            "select_channel_sf9_low_density_high_snr",
+            "density<5 and snr>8 triggers sf=9 upgrade. Channel via hash.",
+            5, 2, 15, 2000,
+        ),
+        _v(
+            "select_channel_default_sf10",
+            "sf=10 default: no thresholds triggered. Channel via hash.",
+            6, 7, 3, 2500,
+        ),
+        _v(
+            "select_channel_density_high_ch0",
+            "density=10 forces channel 0, sf=11 (density>8).",
+            7, 10, 5, 3000,
+        ),
+        _v(
+            "select_channel_sfn_wrap_now",
+            "now=0 (SFN base) with moderate density/snr. Tests edge of u32 domain.",
+            8, 5, 7, 0,
+        ),
     ]
 
 
@@ -1857,8 +1888,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
         }
-    )
-    return vectors
+    ]
 
 
 def ccp9_vectors() -> list[dict]:
