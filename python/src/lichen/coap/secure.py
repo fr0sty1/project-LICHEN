@@ -1468,6 +1468,8 @@ class SecureDatagramChannel(DatagramChannel):
         peer_resolver: Resolver for peer public keys.
     """
 
+    _MAX_PENDING_OUTBOUND = 4096
+
     _STORE_METHODS = (
         "check_process",
         "get_sync",
@@ -1736,6 +1738,8 @@ class SecureDatagramChannel(DatagramChannel):
         correlation = None
         locally_originated = message.code.is_request()
         if locally_originated:
+            if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
+                return None
             correlation = _RequestCorrelation(
                 None, observe=message.opt.observe == 0
             )
@@ -2121,6 +2125,8 @@ class SecureDatagramChannel(DatagramChannel):
             ):
                 correlation = cached.correlation
             else:
+                if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
+                    return None
                 correlation = _RequestCorrelation(
                     None, observe=message.opt.observe == 0
                 )
