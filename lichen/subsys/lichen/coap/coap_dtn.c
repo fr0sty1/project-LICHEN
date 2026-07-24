@@ -32,6 +32,57 @@ static bool parse_recipient(const uint8_t *payload, size_t len,
 			    uint8_t dest_iid[8])
 {
 	if (!payload || len == 0) return false;
+	uint8_t major = payload[0] >> 5;
+
+	if (major == 4) {
+		ZCBOR_STATE_D(zsd, 8, payload, len, 1, 0);
+		if (!zcbor_list_start_decode(zsd)) return false;
+		while (!zcbor_list_end_decode(zsd)) {
+			if (!zcbor_map_start_decode(zsd)) return false;
+			const uint8_t *name_val = NULL;
+			size_t name_len = 0;
+			bool found_recipient = false;
+			while (!zcbor_map_end_decode(zsd)) {
+				int32_t k;
+				struct zcbor_string ks;
+				bool is_int = zcbor_int32_decode(zsd, &k);
+				if (!is_int &&
+				    !zcbor_tstr_decode(zsd, &ks, 1)) {
+					zcbor_any_skip(zsd, NULL);
+					continue;
+				}
+				if ((is_int && k == 0) ||
+				    (!is_int && ks.len == 1 &&
+				     ks.value[0] == 'n')) {
+					struct zcbor_string vs;
+					if (zcbor_tstr_decode(zsd, &vs, 1) &&
+					    vs.len == 9 &&
+					    memcmp(vs.value, "recipient", 9) == 0) {
+						found_recipient = true;
+					}
+				} else if ((is_int && k == 3) ||
+					   (!is_int && ks.len == 2 &&
+					    ks.value[0] == 'v' &&
+					    ks.value[1] == 's')) {
+					struct zcbor_string vs;
+					if (zcbor_tstr_decode(zsd, &vs, 1)) {
+						name_val = vs.value;
+						name_len = vs.len;
+					}
+				} else {
+					zcbor_any_skip(zsd, NULL);
+				}
+			}
+			if (found_recipient && name_val && name_len >= 2) {
+				size_t cp = name_len < 8 ? name_len : 8;
+				memset(dest_iid, 0, 8);
+				memcpy(dest_iid, name_val, cp);
+				return true;
+			}
+		}
+		return false;
+	}
+
 	ZCBOR_STATE_D(zsd, 8, payload, len, 1, 0);
 	if (!zcbor_map_start_decode(zsd)) return false;
 	while (!zcbor_map_end_decode(zsd)) {
@@ -45,7 +96,6 @@ static bool parse_recipient(const uint8_t *payload, size_t len,
 			}
 		} else if (!zcbor_any_skip(zsd, NULL)) break;
 	}
-	zcbor_map_end_force_decode(zsd);
 	return false;
 }
 
