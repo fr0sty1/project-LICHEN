@@ -1,14 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-/**
- * @file coap_status.c
- * @brief LCI /status resource handlers (RFC 7641 Observable)
- *
- * Implements /status, /status/neighbors, /status/routes per LCI spec 17.5.3.
- * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
- */
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -308,7 +300,6 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 	cbor_put_map_header(&ctx, map_count);
 	cbor_put_key(&ctx, "uptime_s");
 	cbor_put_uint(&ctx, status->uptime_s);
-
 
 	if (status->battery_pct_valid) {
 		cbor_put_key(&ctx, "battery_pct");
