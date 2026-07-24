@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-xyai",
+  "title": "[review] lora_ipv6_mesh-mkk4: rust/target build artifacts committed",
+  "description": "Commit d83cbc5 includes 3 files under `rust/target/debug/`:\n- `rust/target/debug/deps/lichen_gateway-*.d` (Cargo dep file)\n- `rust/target/debug/incremental/.../dep-graph.part.bin` (4.2 MB binary blob)\n- `rust/target/debug/incremental/.../*.lock`\n\nThese are ephemeral build artifacts. They should never be committed. The root `.gitignore` or `rust/.gitignore` lacks a `target/` rule to prevent this. Should add `target/` to the appropriate `.gitignore` and remove these files from tracking.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:57:51.409812361Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:57:51.409812361Z"
+}
