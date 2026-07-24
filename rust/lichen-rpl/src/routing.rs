@@ -819,6 +819,7 @@ pub enum DaoProcessError<E> {
     Exhausted,
     Corrupt,
     RouteRejected,
+    NotAdmitted,
 }
 
 #[cfg(feature = "std")]

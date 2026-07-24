@@ -83,6 +83,7 @@ pub enum DaoHandlingOutcome {
     Exhausted,
     Corrupt,
     RouteRejected,
+    NotAdmitted,
 }
 
 /// Top-level node state.
@@ -374,6 +375,7 @@ impl RplNode {
             Err(DaoProcessError::Exhausted) => DaoHandlingOutcome::Exhausted,
             Err(DaoProcessError::Corrupt) => DaoHandlingOutcome::Corrupt,
             Err(DaoProcessError::RouteRejected) => DaoHandlingOutcome::RouteRejected,
+            Err(DaoProcessError::NotAdmitted) => DaoHandlingOutcome::NotAdmitted,
         }
     }
 
