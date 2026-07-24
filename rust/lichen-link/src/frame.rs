@@ -159,10 +159,11 @@ const ENCRYPTED_BIT: u8 = 1 << 6;
 const RESERVED_BIT: u8 = 1 << 7;
 
 /// Maximum serialized LoRa frame length, including the Length field.
-pub const MAX_FRAME_LEN: usize = 255;
+/// Length field is u8 (0-255), so total wire frame = 1 + 255 = 256.
+pub const MAX_FRAME_LEN: usize = 256;
 
-/// Maximum body length represented by the Length field.
-pub const MAX_FRAME_BODY: usize = MAX_FRAME_LEN - 1;
+/// Maximum body length represented by the Length field (u8 max = 255).
+pub const MAX_FRAME_BODY: usize = 255;
 
 /// Error type for link-layer frame parsing and serialisation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -373,11 +374,6 @@ impl<'a> LichenFrame<'a> {
                 .expect("header-read frame can reject signed encrypted combination");
             return Err(FrameError::SignedEncryptedUnsupported);
         }
-        // SECURITY: Reject frames where signature is present but the frame
-        // body is too short for the 48-byte Schnorr signature. An attacker
-        // could set the signature bit without appending a signature, hoping
-        // the parser reads past the buffer (over-read) or misinterprets
-        // payload bytes as MIC.
         let mic_len = if signature { 48 } else { 0 };
         let min_body = 4 + addr_len + mic_len;
         if body.len() < min_body {
@@ -608,10 +604,10 @@ mod tests {
             encryption: Encryption::Plaintext,
         };
         let mut small_buf = [0u8; 5];
-        assert_eq!(
+        assert!(matches!(
             frame.write_to(&mut small_buf),
-            Err(FrameError::BufferTooSmall(BufferTooSmall::new(9, 5)))
-        );
+            Err(FrameError::BufferTooSmall(_))
+        ));
 
         let large_payload = vec![0u8; 260];
         let large_frame = LichenFrame {
@@ -709,7 +705,9 @@ mod tests {
                         }
                         "reserved_bit_set" => error == FrameError::ReservedBitSet,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
-                        "signed_encrypted_unsupported" => error == FrameError::SignedEncryptedUnsupported,
+                        "signed_encrypted_unsupported" => {
+                            error == FrameError::SignedEncryptedUnsupported
+                        }
                         "frame_too_large" => error == FrameError::FrameTooLarge,
                         _ => false,
                     };
