@@ -3,5 +3,3 @@ board:
   vendor: elecrow
   socs:
   - name: esp32s3
-    variants:
-    - name: esp32s3_procpu
