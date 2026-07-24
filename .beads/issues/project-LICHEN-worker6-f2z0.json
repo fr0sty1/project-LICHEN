@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-f2z0",
   "title": "[review] project-LICHEN-worker6-p0rc: TH_3/TH_4 transcript hash uses concatenation instead of CBOR array",
   "description": "Commit 4d37021 correctly fixed TH_2 computation from raw byte concatenation to `cbor2.dumps([...])`, but TH_3 and TH_4 at four call sites still use the old concatenation pattern:\n\n**EdhocInitiator:**\n- Line 379: `cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)` → should be `cbor2.dumps([self._th_2, ciphertext_2, id_cred_r])`\n- Line 424: `cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)` → should be `cbor2.dumps([self._th_3, ciphertext_3])`\n\n**EdhocResponder:**\n- Line 608: same TH_3 pattern as line 379\n- Line 678: same TH_4 pattern as line 424\n\nPer RFC 9528 §3.4, transcript hash TH(X) takes a CBOR data item (array). `cbor2.dumps([a,b,c])` produces `83 \u003cenc_a\u003e \u003cenc_b\u003e \u003cenc_c\u003e` (array wrapper), but concatenation produces `\u003cenc_a\u003e \u003cenc_b\u003e \u003cenc_c\u003e` (no array wrapper). These produce different hashes.\n\nFile: python/src/lichen/crypto/edhoc.py",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:42:43.579574943Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:45:57.224644714Z",
-  "started_at": "2026-07-24T19:45:57.224644714Z",
-  "lease_expires_at": "2026-07-24T19:50:57.224644714Z",
-  "heartbeat_at": "2026-07-24T19:45:57.224644714Z"
+  "updated_at": "2026-07-24T20:21:34.941042251Z",
+  "started_at": "2026-07-24T19:45:57.224644714Z"
 }
