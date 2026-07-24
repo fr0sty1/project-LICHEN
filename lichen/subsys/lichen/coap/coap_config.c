@@ -646,8 +646,8 @@ static int config_put(struct coap_resource *resource,
 	int ret;
 
 	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	const struct lichen_config_provider *p = lichen_coap_config_provider_get();
@@ -732,8 +732,8 @@ static int config_radio_put(struct coap_resource *resource,
 	int ret;
 
 	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	const struct lichen_config_provider *p = lichen_coap_config_provider_get();
