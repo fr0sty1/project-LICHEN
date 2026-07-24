@@ -932,16 +932,16 @@ impl Context {
         Ok((code, options, payload))
     }
 
-    /// Protect (encrypt) an OSCORE response.
+    /// Protect (encrypt) an OSCORE response by reusing the request nonce.
     ///
     /// Unlike `protect_request`, responses:
     /// - Use the ORIGINAL request's KID and PIV for the AAD (ties response to request)
-    /// - Omits PIV from the OSCORE option
-    /// - Reuses the request nonce
+    /// - Omits PIV from the OSCORE option (no new sender sequence consumed)
+    /// - Reuses the exact nonce from the original request
     ///
-    /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
-    /// the responder's Sender ID and PIV. When omitting PIV, the response reuses
-    /// the exact nonce from the original request.
+    /// For responses that need a fresh PIV (per RFC 8613 §5.2), use
+    /// `reserve_sender` + `ReservedSender::protect_response_with_piv` instead,
+    /// which durably reserves the sender sequence before encryption.
     ///
     /// Returns (ciphertext, oscore_option_value).
     ///
@@ -958,51 +958,28 @@ impl Context {
         payload: &[u8],
         request_kid: &[u8],
         request_piv: &[u8],
-        include_piv: bool,
     ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
         if !self.active {
             return Err(OscoreError::InvalidParam);
         }
-        // Determine PIV for nonce: own sequence if including, else request's PIV
-        let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
-            if include_piv {
-                // Generate own PIV.
-                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
-                let seq = self
-                    .sender_seq
-                    .fetch_increment()
-                    .ok_or(OscoreError::SeqExhausted)?;
-                let mut piv = [0u8; PIV_MAX_LEN];
-                let len = seq.encode_piv(&mut piv);
-                (piv, len, Some(len))
-            } else {
-                // Reuse the request nonce (no new sequence generated).
-                if !self.allow_no_piv_response {
-                    return Err(OscoreError::InvalidParam);
-                }
-                if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                    return Err(OscoreError::InvalidParam);
-                }
-                if request_kid != self.recipient_id() {
-                    return Err(OscoreError::InvalidParam);
-                }
-                let request_seq =
-                    OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
-                if self.is_response_reuse(request_seq) {
-                    return Err(OscoreError::Replay);
-                }
-                self.mark_response_used(request_seq);
-                let mut piv = [0u8; PIV_MAX_LEN];
-                piv[..request_piv.len()].copy_from_slice(request_piv);
-                (piv, request_piv.len(), None)
-            };
+        if !self.allow_no_piv_response {
+            return Err(OscoreError::InvalidParam);
+        }
+        if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
+            return Err(OscoreError::InvalidParam);
+        }
+        if request_kid != self.recipient_id() {
+            return Err(OscoreError::InvalidParam);
+        }
+        let request_seq = OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
+        if self.is_response_reuse(request_seq) {
+            return Err(OscoreError::Replay);
+        }
+        self.mark_response_used(request_seq);
 
-        let nonce_id = if include_piv {
-            self.sender_id()
-        } else {
-            request_kid
-        };
-        let nonce = compute_nonce(nonce_id, &nonce_piv[..piv_len], &self.common_iv);
+        let mut nonce_piv = [0u8; PIV_MAX_LEN];
+        nonce_piv[..request_piv.len()].copy_from_slice(request_piv);
+        let nonce = compute_nonce(request_kid, &nonce_piv[..request_piv.len()], &self.common_iv);
 
         // Build plaintext: code || options || 0xFF || payload
         const CT_CAP: usize = 280;
@@ -1037,18 +1014,8 @@ impl Context {
             .map_err(|_| OscoreError::EncryptFailed)?;
         ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
 
-        // Build OSCORE option
-        const OPT_CAP: usize = OSCORE_OPTION_MAX_LEN;
-        let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
-
-        if let Some(len) = piv_for_option {
-            // Include PIV in option
-            let flags = len as u8 & 0x07;
-            opt.push(flags)
-                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-            opt.extend_from_slice(&nonce_piv[..len])
-                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-        }
+        // No PIV in option (reusing request nonce)
+        let opt = heapless::Vec::<u8, OSCORE_OPTION_MAX_LEN>::new();
 
         Ok((ct_out, opt))
     }
@@ -2255,7 +2222,7 @@ mod tests {
 
         let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
         let (ciphertext, option) = c7
-            .protect_response(0x45, &[], payload, &[], &[0x14], false)
+            .protect_response(0x45, &[], payload, &[], &[0x14])
             .unwrap();
         assert_eq!(option.as_slice(), b"");
         assert_eq!(
@@ -2405,7 +2372,7 @@ mod tests {
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3], false)
+                .protect_response(0x45, &[], b"response", &[0], &[3])
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2413,7 +2380,7 @@ mod tests {
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
         assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3], false)
+            .protect_response(0x45, &[], b"response", &[0], &[3])
             .is_ok());
     }
 
@@ -2434,7 +2401,7 @@ mod tests {
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3], false)
+                .protect_response(0x45, &[], b"response", &[0], &[3])
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2728,7 +2695,7 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2810,7 +2777,7 @@ mod tests {
         responder.common_iv = [0; NONCE_LEN];
 
         let (ciphertext, option) = responder
-            .protect_response(0x45, &[], &[], b"\xaa", b"\x05", false)
+            .protect_response(0x45, &[], &[], b"\xaa", b"\x05")
             .unwrap();
 
         assert_eq!(ciphertext.as_slice(), &hex!("26f4d77f5a397d9c0a"));
@@ -3072,6 +3039,7 @@ mod tests {
         let mut bob_ctx = Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         let mut alice_store = TestStore::for_context(&alice_ctx);
+        let mut bob_store = TestStore::for_context(&bob_ctx);
         let (_ciphertext, request_opt) = alice_ctx
             .reserve_sender(&mut alice_store)
             .unwrap()
@@ -3083,13 +3051,14 @@ mod tests {
 
         let response_code = 0x45;
         let (response_ciphertext, response_opt) = bob_ctx
-            .protect_response(
+            .reserve_sender(&mut bob_store)
+            .unwrap()
+            .protect_response_with_piv(
                 response_code,
                 &[],
                 b"response",
                 request_kid,
                 request_piv,
-                true,
             )
             .unwrap();
 
@@ -3338,12 +3307,12 @@ mod tests {
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false)
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
             .unwrap();
     }
 
@@ -3377,21 +3346,21 @@ mod tests {
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3433,7 +3402,7 @@ mod tests {
         let request_piv = request_opt[1..1 + request_piv_len].to_vec();
         let request_kid = alice_ctx.sender_id();
 
-        // Bob sends response without PIV in OSCORE option (include_piv: false)
+        // Bob sends response without PIV in OSCORE option
         let response_code = 0x45u8;
         let payload = b"response";
         let (response_ciphertext, response_opt) = bob_ctx
@@ -3443,7 +3412,6 @@ mod tests {
                 payload,
                 request_kid,
                 &request_piv,
-                false,
             )
             .unwrap();
 
