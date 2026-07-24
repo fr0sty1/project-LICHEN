@@ -151,8 +151,8 @@ impl NeighborState {
         let failure_ratio = if self.tx_count == 0 {
             0u32
         } else {
-            ((self.tx_fail_count as u64) << 16) / (self.tx_count as u64)
-        } as u32;
+            (((self.tx_fail_count as u64) << 16) / (self.tx_count as u64)) as u32
+        };
         if !self.loss_initialized {
             self.loss_ema_fp = failure_ratio;
             self.loss_initialized = true;
@@ -395,32 +395,7 @@ impl PacketLossRate {
     }
 }
 
-impl RfHealthMetrics {
-    /// Adaptive SF selection per spec/02a-coordinated-capacity.md §2a.3
-    /// table and pseudocode (critical conditions first). Uses named constants
-    /// matching the IF conditions exactly. See also 02-physical-link.md:3.5.
-    #[inline]
-    pub fn adaptive_sf(&self) -> u8 {
-        let snr_ema = self.snr.avg().unwrap_or(0);
-        let load_high = self.load_factor_fp > LOAD_HIGH;
-        if self.density > DENSITY_CRITICAL || snr_ema < SNR_CRITICAL {
-            12
-        } else if self.density > DENSITY_HIGH || snr_ema < SNR_POOR || load_high {
-            11
-        } else if self.density < DENSITY_LOW && snr_ema > SNR_GOOD {
-            9
-        } else {
-            10
-        }
-    }
 
-    #[inline]
-    pub fn should_rebalance(&self) -> bool {
-        self.density > DENSITY_HIGH
-            || self.load_factor_fp > LOAD_REBALANCE
-            || self.packet_loss_rate_fp().as_percent() > 40
-    }
-}
 
 #[cfg(test)]
 mod tests {
