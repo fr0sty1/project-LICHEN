@@ -76,8 +76,10 @@ All MUST match test/vectors/ccp_tdma.json (slot hash, guard boundaries, drift), 
 - SLOT_DURATION_MS (SF10) = 250
 - SUPERFRAME_SLOTS = 240 (for 60s at 250ms)
 - HASH_BASIS = 0x811c9dc5 (FNV-1a32)
+- slot_adjust_ticks = 8 (scheduler tolerance for predictive wakeup; matches ccp_load_balancing.json vector)
+- PPM_DESYNC_THRESHOLD = 5000 (drift ppm threshold triggering desync recovery per ccp16-desync.json)
 
-(Updated per project-LICHEN-frdz: beacon format, rendezvous priority, drift formula, FSM join procedure.)
+(Updated per project-LICHEN-frdz: beacon format, rendezvous priority, drift formula, FSM join procedure. Extended per project-LICHEN-k2c6: slot_adjust_ticks, PPM_DESYNC_THRESHOLD.)
 
 ---
 [← Coordinated Capacity](02a-coordinated-capacity.md) | [Index](README.md)

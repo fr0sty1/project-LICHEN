@@ -7,9 +7,10 @@
 
 The Coordinated Capacity Protocol (CCP) defines mechanisms for coordinated capacity management in LICHEN LoRa meshes. This includes TDMA slot assignment, channel agility via select_channel with density-aware fallback, adaptive spreading factor selection via adaptive_sf_select (incorporating EMA-smoothed SNR and load_factor), time synchronization via now(), CH0 control channel rules, signed rx_channel for CCP-9 da2q rendezvous, density/load rules, capability signaling in DIOs, and desynchronization recovery.
 
-All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, and `l2_payload.json`:
+All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`, `ccp_load_balancing.json`, and `ccp_interference.json` (see Appendix A):
 - TDMA beacon byte layout, CDDL, SCHC rule 0x08, slot/hash, SFN wrap, join flows, epoch/num_slots per 2a.2
 - vectors for CCP-16/14 slot, SF, channel, tx_allowed, Multi-RX, capacity metrics (independent oracle: FNV-1a + SX126x airtime + multi-channel sim).
+- CCP-15.2 CCA integration: Clear Channel Assessment (CCA) MUST be performed prior to transmission in the assigned slot via `cca_check()` with `slot_adjust_ticks=8` for the CAD retune window (see `test/vectors/ccp_load_balancing.json`). Nodes that detect channel busy MUST defer and retry on the next slot per the backoff procedure in §2a.5.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
@@ -24,8 +25,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 7. 2a.5. Desync Recovery State Machine
 8. 2a.6. Regional Channel Plans and CH0 Rules
 9. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
-10. Implementation Status
-11. References
+10. Appendix A: Test Vectors and Constants
+11. Implementation Status
+12. References
 
 ## Overview
 
@@ -98,7 +100,7 @@ delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json and ccp_tdma.json MUST cover this and similar boundaries.
 
-A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
+A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard (`slot_adjust_ticks=8` for predictive wakeup scheduling per `test/vectors/ccp_load_balancing.json`). The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
 
 ## CCP-4. Regional Channel Plans
 
