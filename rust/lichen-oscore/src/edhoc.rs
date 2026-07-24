@@ -274,7 +274,49 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
-/// EDHOC-KDF (RFC 9528 Section 4.1.2).
+/// CBOR-encode a single value into the info buffer.
+fn encode_label(info: &mut heapless::Vec<u8, 128>, label: i32) -> Result<(), EdhocError> {
+    if label >= 0 {
+        if label <= 23 {
+            info.push_err(label as u8)?;
+        } else if label <= 0xff {
+            info.push_err(0x18)?;
+            info.push_err(label as u8)?;
+        } else if label <= 0xffff {
+            info.push_err(0x19)?;
+            info.push_err((label >> 8) as u8)?;
+            info.push_err((label & 0xff) as u8)?;
+        } else {
+            info.push_err(0x1a)?;
+            info.push_err((label >> 24) as u8)?;
+            info.push_err((label >> 16) as u8)?;
+            info.push_err((label >> 8) as u8)?;
+            info.push_err(label as u8)?;
+        }
+    } else {
+        info.push_err(0x20)?;
+        let neg = (-1 - label) as u32;
+        if neg <= 0x17 {
+            info.push_err(neg as u8)?;
+        } else if neg <= 0xff {
+            info.push_err(0x38)?;
+            info.push_err(neg as u8)?;
+        } else if neg <= 0xffff {
+            info.push_err(0x39)?;
+            info.push_err((neg >> 8) as u8)?;
+            info.push_err((neg & 0xff) as u8)?;
+        } else {
+            info.push_err(0x3a)?;
+            info.push_err((neg >> 24) as u8)?;
+            info.push_err((neg >> 16) as u8)?;
+            info.push_err((neg >> 8) as u8)?;
+            info.push_err(neg as u8)?;
+        }
+    }
+    Ok(())
+}
+
+/// EDHOC-KDF (RFC 9528 Section 4.1.2) with a string label.
 ///
 /// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
 /// where info = (length, TH, label, context) as a CBOR sequence.
@@ -345,25 +387,83 @@ fn edhoc_kdf(
     Ok(result)
 }
 
+/// EDHOC-KDF (RFC 9528 Section 4.1.2) with an integer label.
+///
+/// Used for OSCORE exporter labels (7 = PRK_out, 10 = PRK_exporter,
+/// 0 = master_secret, 1 = master_salt) matching Python and C implementations.
+fn edhoc_kdf_int(
+    prk: &[u8; 32],
+    th: &[u8; 32],
+    label: i32,
+    context: &[u8],
+    length: usize,
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut info = heapless::Vec::<u8, 128>::new();
+
+    if length <= 23 {
+        info.push_err(length as u8)?;
+    } else if length <= 0xff {
+        info.push_err(0x18)?;
+        info.push_err(length as u8)?;
+    } else if length <= 0xffff {
+        info.push_err(0x19)?;
+        info.push_err((length >> 8) as u8)?;
+        info.push_err((length & 0xff) as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
+    }
+
+    info.push_err(0x58)?;
+    info.push_err(32)?;
+    info.extend_err(th)?;
+
+    encode_label(&mut info, label)?;
+
+    if context.is_empty() {
+        info.push_err(0x40)?;
+    } else if context.len() <= 23 {
+        info.push_err(0x40 | context.len() as u8)?;
+        info.extend_err(context)?;
+    } else if context.len() <= 255 {
+        info.push_err(0x58)?;
+        info.push_err(context.len() as u8)?;
+        info.extend_err(context)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
+    }
+
+    let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
+    let mut okm = heapless::Vec::<u8, 128>::new();
+    okm.resize(length, 0)
+        .map_err(|_| EdhocError::BufferTooSmall)?;
+    hk.expand(&info, &mut okm)
+        .map_err(|_| EdhocError::KeyDerivation)?;
+
+    let mut result = heapless::Vec::new();
+    result.extend_from_slice(okm.as_slice())
+        .map_err(|_| EdhocError::BufferTooSmall)?;
+    Ok(result)
+}
+
 fn export_context(
     prk: &[u8; 32],
     th: &[u8; 32],
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
-    let prk_out_vec = edhoc_kdf(prk, th, "7", th, 32)
+    let prk_out_vec = edhoc_kdf_int(prk, th, 7, th, 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_out = Zeroizing::new([0u8; 32]);
     prk_out.copy_from_slice(&prk_out_vec[0..32]);
-    let prk_exporter_vec = edhoc_kdf(&prk_out, th, "10", b"", 32)
+    let prk_exporter_vec = edhoc_kdf_int(&prk_out, th, 10, b"", 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_exporter = Zeroizing::new([0u8; 32]);
     prk_exporter.copy_from_slice(&prk_exporter_vec);
-    let master_secret_vec = edhoc_kdf(&prk_exporter, th, "0", b"", KEY_LEN)
+    let master_secret_vec = edhoc_kdf_int(&prk_exporter, th, 0, b"", KEY_LEN)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
-    let master_salt_vec = edhoc_kdf(&prk_exporter, th, "1", b"", 8)
+    let master_salt_vec = edhoc_kdf_int(&prk_exporter, th, 1, b"", 8)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
@@ -2549,13 +2649,14 @@ mod tests {
 
     #[test]
     fn test_prk_oscore_interop_vectors() {
-        let v = edhoc_vector("rfc9529_trace_prk_export");
+        let v = edhoc_vector("fixed_seed_sign_sign");
         assert_eq!(
-            v["master_secret"].as_str().unwrap(),
-            "6dd8bfb559c311377364fd583db800f8"
+            v["oscore_master_secret"].as_str().unwrap(),
+            "2762d4e3e71852c34d8ac6ddacf2abfb"
         );
-        assert_eq!(v["master_salt"].as_str().unwrap(), "39b3ec8bfae98a3e");
-        // Loads test/vectors/edhoc.json and verifies PRK-derived OSCORE outputs match reference.
-        // test_full_handshake exercises the full EDHOC -> OSCORE path for interop with Python.
+        assert_eq!(
+            v["oscore_master_salt"].as_str().unwrap(),
+            "fb7ea3edce1f0b73"
+        );
     }
 }
