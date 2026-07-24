@@ -1,26 +1,26 @@
 {
-  "description": "Canonical test vectors for human-readable node addresses. Implementations MUST produce identical human_address for the given pubkey using Crockford base32 encoding of SHA-256(pubkey)[:8] (13 uppercase chars with dashes every 4 chars: XXXX-XXXX-XXXXX). IID is shown for cross-reference but derived separately with U/L bit cleared.",
+  "description": "Canonical test vectors for human-readable node addresses. Implementations MUST produce identical human_address for the given pubkey using Crockford base32 encoding of SHA-512(pubkey)[:8] (13 uppercase chars with dashes every 4 chars: XXXX-XXXX-XXXXX). IID is shown for cross-reference but derived separately with U/L bit cleared.",
   "vectors": [
     {
       "name": "all-zero-pubkey",
       "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
-      "hash8": "66687aadf862bd77",
-      "iid": "64687aadf862bd77",
-      "human_address": "68T3-TNQW-65FBQ"
+      "hash8": "5046adc1dba83886",
+      "iid": "5046adc1dba83886",
+      "human_address": "50HN-DR7D-TGE46"
     },
     {
       "name": "all-ab-pubkey",
       "pubkey": "abababababababababababababababababababababababababababababababab",
-      "hash8": "9a2db2e23f1504cd",
-      "iid": "982db2e23f1504cd",
-      "human_address": "9GBD-JW8Z-HA16D"
+      "hash8": "dde68b6d67350a45",
+      "iid": "dde68b6d67350a45",
+      "human_address": "DVSM-BDNK-KA2J5"
     },
     {
       "name": "test-seed-01",
       "pubkey": "0101010101010101010101010101010101010101010101010101010101010101",
-      "hash8": "72cd6e8422c407fb",
-      "iid": "70cd6e8422c407fb",
-      "human_address": "71KB-EGGH-C81ZV"
+      "hash8": "5ce86efb75fa4e2c",
+      "iid": "5ce86efb75fa4e2c",
+      "human_address": "5ST3-EZDT-ZMKHC"
     }
   ]
 }

@@ -5,24 +5,13 @@ extern crate alloc;
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::derive_keypair;
 use lichen_core::{addr::ygg_addr_from_pubkey, lichen_hash_32};
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha512};
 
-/// Derive a link-local IID from an Ed25519 public key.
-///
-/// Canonical SHA-256(pubkey)[0..8] with U/L bit cleared (IID[0] &= 0b11111101)
-/// per RFC 4291 §2.5.1 and spec/04-network.md §6.2. Matches Python/C exactly
-/// for cross-impl consistency (project-LICHEN-iqxx).
 pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
-    iid_from_pubkey_bytes(pubkey.as_bytes())
-}
-
-
-/// Derive a link-local IID from raw public key bytes (SHA-256 truncation).
-fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
-    let digest = Sha256::digest(pubkey);
+    let digest = Sha512::digest(pubkey.as_bytes());
     let mut iid = [0u8; 8];
     iid.copy_from_slice(&digest[0..8]);
-    iid[0] &= 0b1111_1101; // clear U/L bit (bit 1)
+    iid[0] &= 0b1111_1101;
     iid
 }
 
@@ -125,8 +114,7 @@ mod tests {
     fn iid_u_l_bit_cleared() {
         let pubkey = PublicKey::new([0u8; 32]);
         let iid = iid_from_pubkey(&pubkey);
-        // Matches node-addresses.json all-zero-pubkey IID (SHA256[:8] + U/L cleared).
-        let expected = [0x64, 0x68, 0x7a, 0xad, 0xf8, 0x62, 0xbd, 0x77];
+        let expected = [0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0x86];
         assert_eq!(iid, expected);
         assert_eq!(iid[0] & 0x02, 0, "U/L bit must be cleared");
     }
@@ -184,10 +172,10 @@ mod tests {
     #[test]
     fn human_address_from_pubkey_matches_test_vectors() {
         let pk0 = PublicKey::new([0u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk0), *b"68T3-TNQW-65FBQ");
+        assert_eq!(human_address_from_pubkey(&pk0), *b"50HN-DR7D-TGE46");
         let pk1 = PublicKey::new([1u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk1), *b"71KB-EGGH-C81ZV");
+        assert_eq!(human_address_from_pubkey(&pk1), *b"5ST3-EZDT-ZMKHC");
         let pk4 = PublicKey::new([4u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk4), *b"9TKX-PHWZ-1VB42");
+        assert_eq!(human_address_from_pubkey(&pk4), *b"4JFH-W2HE-QWT0A");
     }
 }
