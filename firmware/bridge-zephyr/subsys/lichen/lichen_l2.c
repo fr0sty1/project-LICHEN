@@ -1003,7 +1003,8 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	 * addressing (e.g., certain RPL modes, energy optimization), extend
 	 * this to pass a non-NULL dst_eui64 based on routing decisions.
 	 */
-	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len, NULL,
+	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len,
+			     NULL,  /* dst_eui64: NULL = broadcast */
 			     tx_frame_buf, &frame_len);
 	if (ret < 0) {
 		LOG_ERR("lichen_l2: TX frame build failed: %s (%d)",
