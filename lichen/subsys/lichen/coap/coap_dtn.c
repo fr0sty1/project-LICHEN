@@ -38,7 +38,7 @@ static uint8_t hash_from_iid(const uint8_t iid[8])
 	       (uint8_t)(h >> 8) ^ (uint8_t)h;
 }
 
-static struct k_mutex s_rate_mutex;
+static K_MUTEX_DEFINE(s_rate_mutex);
 
 static bool parse_recipient(const uint8_t *payload, size_t len,
 			    uint8_t dest_iid[8])
@@ -496,7 +496,6 @@ int lichen_coap_dtn_init(void)
 	if (r < 0) return r;
 	r = lichen_coap_client_init();
 	if (r < 0) return r;
-	k_mutex_init(&s_rate_mutex);
 	return 0;
 }
 
