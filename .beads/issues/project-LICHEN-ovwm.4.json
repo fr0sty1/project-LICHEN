@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ovwm.4",
   "title": "Codereview pass 2: project-LICHEN-ovwm logistics plan",
   "description": "Independent pass 2. Findings: P4 - Add explicit step to verify current Section 301 tariff exclusions for HS 8517.62 electronics from China via USTR site before PO. P3 - Consider quoting both DDP and EXW Incoterms from LilyGO. No blocking issues found. All planning in Beads, no MD files. Acceptance met.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "chore",
   "created_at": "2026-07-22T14:47:08.463399119Z",

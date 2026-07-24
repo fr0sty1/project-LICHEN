@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bo37",
   "title": "[codereview-P2] spec/02-physical-link.md DAD note should specify exact hash_32 primitive (crc32_ieee with key=0x4c494348454e)",
   "description": "Updated DAD note in 02-physical-link.md:215 to pin crc32_ieee(key=0x4c494348454e). Also check 02a-coordinated-capacity.md, 04-network.md for consistency per original bead. Discovered-from b6zw. File codereview tagged beads for all review passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

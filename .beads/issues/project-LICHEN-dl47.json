@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dl47",
   "title": "Add detailed tx_start logging with system state",
   "description": "Modify _do_start_transmission method in python/src/lichen/sim/simulation.py to include detailed debug logging with: node_id, tx_id, payload_len, start_us, end_us, node_state, queue_size, active_txs when debug is enabled.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

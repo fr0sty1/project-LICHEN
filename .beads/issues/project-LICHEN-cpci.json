@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cpci",
   "title": "[codereview-P0] Incorrect expected_channel in hash_based_peer_rendezvous vector",
   "description": "Computed hash_32(12345, 0xaabbccddeeff0011) %7 +1 =7 but vector has 4. Violates test integrity and independent oracle. Must fix to match external oracle. da2q rendezvous must be bit-exact.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

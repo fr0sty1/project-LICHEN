@@ -2,7 +2,7 @@
   "id": "project-LICHEN-85uf",
   "title": "coap_status.c: map_count type change reveals function signature mismatch in cbor_put_map_header",
   "description": "After changing map_count to uint16_t, the call to cbor_put_map_header(\u0026ctx, map_count) where param is uint8_t will cause implicit conversion. Also update cbor_put_array_header for consistency. Per CCP-17 bounds check. Tag as codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:06:25.427016656Z",

@@ -3,7 +3,7 @@
   "title": "Trace app_identity canary corruption",
   "description": "Reproduce app_identity on ARM64 and x86_64 Native64 with stack protection enabled. Set watchpoints or equivalent instrumentation on the idle-thread canary and surrounding stack, capture the first corrupting write with task/call-stack context, and distinguish application memory corruption from native_sim/Zephyr instrumentation behavior.",
   "acceptance_criteria": "Retain exact build/run commands, source/artifact hashes, both architecture logs, watchpoint trace naming the first writer or a minimal discriminating experiment, and proof that increasing stack size is not used as a workaround.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

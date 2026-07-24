@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-pmg3",
   "title": "P0: coap_dtn.c handlers do not compile - coap_respond undefined, wrong service name lichen_coap vs lichen_coap_server, missing include for COAP_RESPONSE_CODE_*, provider callbacks not integrated with DTN/SenML per spec",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "EDHOC: build_sig_structure ext_aad buffer too small for large credentials",
   "description": "CORRECTNESS: build_sig_structure uses fixed 96-byte buffer for ext_aad which could overflow with larger credentials.\n\nLocation: lichen/subsys/lichen/edhoc/edhoc.c:229\n\nuint8_t ext_aad[96];  // Fixed size\nzcbor_bstr_encode_ptr(zse_ext, th, 32);      // 32 + ~3 = 35 bytes\nzcbor_bstr_encode_ptr(zse_ext, cred, cred_len);  // cred_len + ~3 bytes\n\nCurrent usage with 32-byte raw pubkeys as cred:\n- TH: 32 bytes + 2 byte CBOR header = 34\n- CRED: 32 bytes + 2 byte CBOR header = 34\n- Total: ~68 bytes, fits in 96\n\nIf credentials are larger (e.g., full X.509 certs per RFC 9528):\n- Typical X.509 cert: 500-2000 bytes\n- Would overflow 96-byte buffer\n\nThe function doesn't validate cred_len against buffer capacity.\n\nImpact: Stack buffer overflow if function is used with larger credentials.\n\nFix: Either validate cred_len \u003c= (96 - 35) or use dynamic/larger buffer.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:229",
   "notes": "Commit: 8e1ff44eb",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
