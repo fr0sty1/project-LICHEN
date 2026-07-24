@@ -16,7 +16,7 @@ pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
 pub const MAX_ACK_REQUESTS: u32 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 
-pub const TILE_SIZE: usize = 32;
+pub const TILE_SIZE: usize = 187;
 pub const WINDOW_SIZE: usize = 63;
 pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
 pub const MAX_PACKET_SIZE: usize = SCHC_MAX_DECOMPRESSED;

@@ -218,6 +218,8 @@ pub struct PendingMessage3 {
     id_cred: IdCred,
     /// The full decrypted plaintext of message_3.
     plaintext: heapless::Vec<u8, 128>,
+    /// The original CIPHERTEXT_3 from the wire (needed for TH_4 = H(TH_3, CIPHERTEXT_3)).
+    ciphertext_3: heapless::Vec<u8, 128>,
     /// Byte offset in plaintext where the signature begins.
     signature_offset: usize,
     /// TH_3 binding used to verify state.
@@ -1602,6 +1604,7 @@ impl EdhocResponder {
             Ok(PendingMessage3 {
                 id_cred: id_cred_i,
                 plaintext,
+                ciphertext_3,
                 signature_offset: id_len,
                 transcript_binding: self.state.th_3,
             })
@@ -1661,7 +1664,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext_3)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
