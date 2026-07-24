@@ -1805,7 +1805,8 @@ lichen_meshtastic_adapter_get_stats(
 bool lichen_meshtastic_adapter_disconnected(
 	const struct lichen_meshtastic_adapter *adapter)
 {
-	return adapter != NULL && adapter->disconnected;
+	__ASSERT_NO_MSG(adapter != NULL);
+	return adapter->disconnected;
 }
 
 size_t lichen_meshtastic_adapter_unsupported_operations(
