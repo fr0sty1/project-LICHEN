@@ -58,11 +58,6 @@ extern "C" {
 /** Maximum CBOR payload size for responses */
 #define LICHEN_COAP_SERVER_MAX_PAYLOAD 512
 
-/** SenML+CBOR content-format (IANA 112, RFC 8428) for /sensors/location
- * and /deaddrop resources.
- */
-#define SENML_CBOR_CONTENT_FORMAT 112
-
 /**
  * @brief Node status provider callback
  *
