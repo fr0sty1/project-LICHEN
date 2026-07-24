@@ -213,6 +213,9 @@ class FragmentSender:
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:
+        # max(len(payload), 1) ensures at least one tile for empty payloads
+        # per RFC 8724 §8.1.1 (empty datagram support). An empty payload
+        # produces a 6-byte fragment: header + MIC.
         tiles = [
             self.payload[i : i + self.tile_size]
             for i in range(0, max(len(self.payload), 1), self.tile_size)
