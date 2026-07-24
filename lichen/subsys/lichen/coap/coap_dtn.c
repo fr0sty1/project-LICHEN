@@ -152,13 +152,15 @@ static int internal_retrieve(uint8_t *buf, size_t buf_len, const char *node)
 	if (buf == NULL || buf_len == 0) {
 		return -EINVAL;
 	}
-	/* Find newest valid entry — first-come-first-serve per recipient.
-	 * If node is non-NULL, match against stored dest_iid; otherwise
-	 * return any entry (admin dump). */
+	uint32_t now = deaddrop_unix_time();
+	/* Find newest valid, non-expired entry — first-come-first-serve
+	 * per recipient.  If node is non-NULL, match against stored
+	 * dest_iid; otherwise return any entry (admin dump). */
 	int best = -1;
 	uint32_t best_time = 0;
 	for (int i = 0; i < CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE; i++) {
-		if (!s_entries[i].valid) {
+		if (!s_entries[i].valid ||
+		    s_entries[i].expiry_unix <= now) {
 			continue;
 		}
 		/* If node specifies an IID, only match that */
