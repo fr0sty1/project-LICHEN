@@ -10,6 +10,7 @@
 #include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
+#include <lichen_util.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -670,6 +671,35 @@ uint8_t lichen_select_channel(const uint8_t eui64[8], uint32_t epoch,
 	uint8_t n = (n_channels < 3) ? 3 : n_channels;
 
 	return (uint8_t)(1 + (h % n));
+}
+
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
+					   uint8_t ygg_addr[16])
+{
+	int ret;
+	uint8_t hash512[64];
+	uint8_t iid[8];
+
+	if (pubkey == NULL || ygg_addr == NULL) {
+		return -EINVAL;
+	}
+
+	crypto_sha512(hash512, pubkey, 32);
+
+	ret = lichen_sha256(pubkey, 32, iid);
+	if (ret != 0) {
+		memset(ygg_addr, 0, 16);
+		return ret;
+	}
+
+	iid[0] &= 0xfd;
+
+	ygg_addr[0] = 0x02;
+	memcpy(&ygg_addr[1], hash512, 7);
+	memcpy(&ygg_addr[8], iid, 8);
+
+	memset(hash512, 0, sizeof(hash512));
+	return 0;
 }
 
 uint8_t lichen_adaptive_sf_select(uint8_t assigned_sf, int8_t snr_ema,
