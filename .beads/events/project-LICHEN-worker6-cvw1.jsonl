@@ -1,1 +1,2 @@
 {"id":"019f95a1-fef6-7831-befd-254f86f721cf","issue_id":"project-LICHEN-worker6-cvw1","event_type":"created","actor":"AI Agent","old_value":"","new_value":"","created_at":"2026-07-24T19:37:29.590537404Z"}
+{"id":"019f95a2-2c54-7c53-ba22-ed6eeb56727d","issue_id":"project-LICHEN-worker6-cvw1","event_type":"closed","actor":"AI Agent","old_value":"","new_value":"Fixed: wrapped traffic_class, flow_label in tuple at headers.rs:994","created_at":"2026-07-24T19:37:41.204809064Z"}
