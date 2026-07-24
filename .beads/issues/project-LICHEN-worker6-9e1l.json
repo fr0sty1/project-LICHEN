@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-9e1l",
   "title": "[review] project-LICHEN-worker6-wa51: Rust EDHOC transcript_4 uses ciphertext_3 instead of plaintext_3",
   "description": "rust/lichen-oscore/src/edhoc.rs:396 transcript_4 function and its call sites (lines 908, 1407) pass CIPHERTEXT_3 where RFC 9528 Section 3.5 specifies PLAINTEXT_3. TH_4 should be H(CBOR(TH_3) || CBOR(PLAINTEXT_3) || CBOR(CRED_I)). The Python edhoc.py was fixed in this commit to use plaintext_3; the Rust implementation has the same bug and was not fixed. This also means the Rust test vectors at line 2113 (th_3) and line 2132 (th_4) in edhoc.rs will need updating after the fix.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:46:10.54690648Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:46:30.303052857Z",
-  "started_at": "2026-07-24T19:46:30.303052857Z",
-  "lease_expires_at": "2026-07-24T19:51:30.303052857Z",
-  "heartbeat_at": "2026-07-24T19:46:30.303052857Z"
+  "updated_at": "2026-07-24T20:21:30.870778345Z",
+  "started_at": "2026-07-24T19:46:30.303052857Z"
 }
