@@ -583,6 +583,42 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #endif
 }
 
+int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
+			       uint32_t epoch,
+			       uint8_t density,
+			       uint8_t num_channels,
+			       uint8_t *channel)
+{
+	uint8_t data[12];
+	uint32_t hash;
+	uint8_t n;
+
+	if (eui64 == NULL || channel == NULL) {
+		return -EINVAL;
+	}
+
+	/* spec/02a-coordinated-capacity.md:121 — Density > 8 returns control channel 0 */
+	if (density > 8) {
+		*channel = 0;
+		return 0;
+	}
+
+	/* spec/02a-coordinated-capacity.md:122 — Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes) */
+	memcpy(&data[0], eui64, LICHEN_EUI64_LEN);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+
+	/* spec/02a-coordinated-capacity.md:123 — Hash = FNV1A32(Data) basis 0x811c9dc5 */
+	hash = lichen_hash_32(data, sizeof(data));
+
+	/* spec/02a-coordinated-capacity.md:124-125 — N = MAX(NChannels, 3); RETURN 1 + (Hash MOD N) */
+	n = (num_channels < 3) ? 3 : num_channels;
+	*channel = 1 + (uint8_t)(hash % n);
+	return 0;
+}
+
 int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {
 	if (num_slots == 0) num_slots = 8;

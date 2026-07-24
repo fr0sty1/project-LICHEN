@@ -338,6 +338,30 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
 uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
 
+/**
+ * @brief Select a LoRa channel per CCP-12 synchronized hopping.
+ *
+ * Implements the SelectChannel pseudocode from spec/02a-coordinated-capacity.md:120.
+ * Uses FNV-1a32 hash over (EUI-64 || epoch) with the epoch providing the PHY time
+ * sync link — the epoch counter is derived from the link-layer time synchronization
+ * state (see lichen_link_next_tx and lichen_link_set_epoch). Both sender and receiver
+ * compute identical channels for the same (eui64, epoch) pair, enabling deterministic
+ * synchronized frequency hopping without explicit channel negotiation.
+ *
+ * @param[in]  eui64       8-byte EUI-64 address (big-endian)
+ * @param[in]  epoch       Current epoch (PHY time sync value from link context)
+ * @param[in]  density     Neighbor density count (0-8 normal; >8 forces channel 0)
+ * @param[in]  num_channels Number of available channels (clamped to min 3)
+ * @param[out] channel     Selected channel (0 = control channel, or 1..num_channels)
+ *
+ * @return 0 on success, -EINVAL if eui64 or channel is NULL
+ */
+int lichen_link_channel_select(const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN],
+			       uint32_t epoch,
+			       uint8_t density,
+			       uint8_t num_channels,
+			       uint8_t *_Nonnull channel);
+
 #ifdef __cplusplus
 }
 #endif
