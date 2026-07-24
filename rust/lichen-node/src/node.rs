@@ -1467,13 +1467,19 @@ mod tests {
         assert_eq!(RplEvent::DisReceived, RplEvent::DisReceived);
 
         let dio_inc = RplEvent::DioReceived { inconsistent: true };
-        let dio_cons = RplEvent::DioReceived { inconsistent: false };
+        let dio_cons = RplEvent::DioReceived {
+            inconsistent: false,
+        };
         assert_eq!(dio_inc, dio_inc);
         assert_ne!(dio_inc, dio_cons);
         assert_ne!(dio_inc, RplEvent::None);
 
-        let dao_up = RplEvent::DaoReceived { route_updated: true };
-        let dao_no = RplEvent::DaoReceived { route_updated: false };
+        let dao_up = RplEvent::DaoReceived {
+            route_updated: true,
+        };
+        let dao_no = RplEvent::DaoReceived {
+            route_updated: false,
+        };
         assert_eq!(dao_up, dao_up);
         assert_ne!(dao_up, dao_no);
 

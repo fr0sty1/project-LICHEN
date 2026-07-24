@@ -225,11 +225,11 @@ mod tests {
         let packet = &packet[..n];
 
         let mut gw = test_gateway();
-        let schc = gw.upstream_to_mesh(packet).expect("compress failed");
+        let schc = gw.upstream_to_mesh(packet).unwrap();
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2 (ICMPv6 echo link-local)");
 
-        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
+        let recovered = gw.mesh_to_upstream(&schc).unwrap();
 
         // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
@@ -252,11 +252,11 @@ mod tests {
         let packet = &packet[..n];
 
         let mut gw = test_gateway();
-        let schc = gw.upstream_to_mesh(packet).expect("compress failed");
+        let schc = gw.upstream_to_mesh(packet).unwrap();
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2");
 
-        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
+        let recovered = gw.mesh_to_upstream(&schc).unwrap();
         assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type should be 129");
         assert_eq!(&recovered[8..24], &src.0, "src mismatch");
         assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");

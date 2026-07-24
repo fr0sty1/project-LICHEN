@@ -13,7 +13,6 @@ const SLOT_HEADER_LEN: usize = 20;
 const SLOT_TRAILER_LEN: usize = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum RedundantOpenError<E> {
     Missing,
     Corrupt,
@@ -29,14 +28,12 @@ pub struct RedundantValue {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum RedundantProvisionError<E> {
     Exists,
     Storage(E),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum RedundantUpdateError<E> {
     Storage(E),
     Stale,
@@ -79,10 +76,7 @@ fn read_raw<'a, S: NonVolatile>(
     key: &str,
     buf: &'a mut [u8],
 ) -> Result<Option<&'a [u8]>, RedundantOpenError<S::Error>> {
-    let Some(len) = storage
-        .read(key, buf)
-        .map_err(RedundantOpenError::Storage)?
-    else {
+    let Some(len) = storage.read(key, buf) else {
         return Ok(None);
     };
     if len > buf.len() {
@@ -96,17 +90,14 @@ fn read_parsed_update<S: NonVolatile>(
     key: &str,
     buf: &mut [u8],
     magic: [u8; 4],
-) -> Result<(Option<(u64, usize)>, bool), RedundantUpdateError<S::Error>> {
-    let raw = read_raw(storage, key, buf).map_err(|error| match error {
-        RedundantOpenError::Storage(error) => RedundantUpdateError::Storage(error),
+) -> Result<Option<(u64, usize)>, RedundantUpdateError<S::Error>> {
+    let raw = read_raw(storage, key, buf).map_err(|e| match e {
+        RedundantOpenError::Storage(e) => RedundantUpdateError::Storage(e),
         _ => RedundantUpdateError::Corrupt,
     })?;
-    let present = raw.is_some();
-    Ok((
-        raw.and_then(|raw| parse_slot(raw, &magic))
-            .map(|(generation, payload)| (generation, payload.len())),
-        present,
-    ))
+    Ok(raw
+        .and_then(|raw| parse_slot(raw, &magic))
+        .map(|(generation, payload)| (generation, payload.len())))
 }
 
 /// Open the newest valid value from two alternating slots.
@@ -170,12 +161,8 @@ pub fn provision_redundant<S: NonVolatile>(
     record: &mut [u8],
 ) -> Result<(), RedundantProvisionError<S::Error>> {
     let mut present = [0u8; 1];
-    let a = storage
-        .read(keys[0], &mut present)
-        .map_err(RedundantProvisionError::Storage)?;
-    let b = storage
-        .read(keys[1], &mut present)
-        .map_err(RedundantProvisionError::Storage)?;
+    let a = storage.read(keys[0], &mut present);
+    let b = storage.read(keys[1], &mut present);
     if a.is_some() || b.is_some() {
         return Err(RedundantProvisionError::Exists);
     }
@@ -194,8 +181,10 @@ pub fn update_redundant<S: NonVolatile>(
     payload: &[u8],
     record: &mut [u8],
 ) -> Result<RedundantValue, RedundantUpdateError<S::Error>> {
-    let (parsed_a, a_present) = read_parsed_update(storage, keys[0], record, magic)?;
-    let (parsed_b, b_present) = read_parsed_update(storage, keys[1], record, magic)?;
+    let parsed_a = read_parsed_update(storage, keys[0], record, magic)?;
+    let parsed_b = read_parsed_update(storage, keys[1], record, magic)?;
+    let a_present = parsed_a.is_some();
+    let b_present = parsed_b.is_some();
     let latest = match (parsed_a, parsed_b) {
         (Some(a), Some(b)) if b.0 > a.0 => RedundantValue {
             generation: b.0,
@@ -281,7 +270,7 @@ pub fn peer_key(index: usize) -> heapless::String<16> {
 /// Returns `Some(seed)` if found and valid, `None` otherwise.
 pub fn load_seed<S: NonVolatile>(storage: &S) -> Result<Option<Seed>, S::Error> {
     let mut buf = [0u8; 32];
-    let Some(n) = storage.read(keys::IDENTITY_SEED, &mut buf)? else {
+    let Some(n) = storage.read(keys::IDENTITY_SEED, &mut buf) else {
         return Ok(None);
     };
     Ok(if n == 32 { Some(Seed::new(buf)) } else { None })
@@ -295,7 +284,7 @@ pub fn save_seed<S: NonVolatile>(storage: &mut S, seed: &Seed) -> Result<(), S::
 /// Load link layer epoch from storage.
 pub fn load_epoch<S: NonVolatile>(storage: &S) -> Result<Option<u8>, S::Error> {
     let mut buf = [0u8; 1];
-    let Some(n) = storage.read(keys::EPOCH, &mut buf)? else {
+    let Some(n) = storage.read(keys::EPOCH, &mut buf) else {
         return Ok(None);
     };
     Ok(if n == 1 { Some(buf[0]) } else { None })
@@ -309,7 +298,7 @@ pub fn save_epoch<S: NonVolatile>(storage: &mut S, epoch: u8) -> Result<(), S::E
 /// Load link layer sequence number from storage.
 pub fn load_seqnum<S: NonVolatile>(storage: &S) -> Result<Option<u16>, S::Error> {
     let mut buf = [0u8; 2];
-    let Some(n) = storage.read(keys::SEQNUM, &mut buf)? else {
+    let Some(n) = storage.read(keys::SEQNUM, &mut buf) else {
         return Ok(None);
     };
     Ok(if n == 2 {
@@ -327,7 +316,7 @@ pub fn save_seqnum<S: NonVolatile>(storage: &mut S, seqnum: u16) -> Result<(), S
 /// Load peer count from storage.
 pub fn load_peer_count<S: NonVolatile>(storage: &S) -> Result<usize, S::Error> {
     let mut buf = [0u8; 1];
-    Ok(storage.read(keys::PEER_COUNT, &mut buf)?.map_or(0, |n| {
+    Ok(storage.read(keys::PEER_COUNT, &mut buf).map_or(0, |n| {
         if n == 1 {
             buf[0] as usize
         } else {
@@ -343,7 +332,7 @@ pub fn load_peer<S: NonVolatile>(storage: &S, index: usize) -> Result<Option<Pub
     }
     let key = peer_key(index);
     let mut buf = [0u8; 32];
-    let Some(n) = storage.read(&key, &mut buf)? else {
+    let Some(n) = storage.read(&key, &mut buf) else {
         return Ok(None);
     };
     Ok(if n == 32 {
@@ -427,18 +416,12 @@ pub mod mem {
     impl NonVolatile for MemStorage {
         type Error = MemStorageError;
 
-        fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
-            if self.fail_next_read.replace(false) {
-                return Err(MemStorageError);
-            }
-            let data = match self.data.get(key) {
-                Some(d) => d,
-                None => return Ok(None),
-            };
+        fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
+            let data = self.data.get(key)?;
             let stored = data.len();
             let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Ok(Some(stored))
+            Some(stored)
         }
 
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
@@ -488,17 +471,16 @@ pub mod fs {
 
     impl NonVolatile for FileStorage {
         type Error = io::Error;
-        fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
             let p = self.key_path(key);
             let data = match fs::read(&p) {
                 Ok(d) => d,
-                Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
-                Err(e) => return Err(e),
+                Err(_) => return None,
             };
             let stored = data.len();
             let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Ok(Some(stored))
+            Some(stored)
         }
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
             let t = self.tmp_path(key);
@@ -524,7 +506,6 @@ pub mod fs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "std")]
     use fs::FileStorage;
     use mem::MemStorage;
 
@@ -715,7 +696,6 @@ mod tests {
         assert_eq!(storage.raw(keys[1]), Some(before_b.as_slice()));
     }
 
-    #[cfg(feature = "std")]
     #[test]
     fn file_storage_durable_and_preserves_on_failure() {
         let d = std::path::Path::new("/tmp/lichen-nv-test");
@@ -724,11 +704,11 @@ mod tests {
         let mut s = FileStorage::new(d).unwrap();
         let seed = Seed::new([0x22u8; 32]);
         save_seed(&mut s, &seed).unwrap();
-        assert_eq!(load_seed(&s).unwrap(), Some(seed.clone()));
+        assert_eq!(load_seed(&s), Some(seed.clone()));
         let s2 = FileStorage::new(d).unwrap();
-        assert_eq!(load_seed(&s2).unwrap(), Some(seed));
+        assert_eq!(load_seed(&s2), Some(seed));
         save_epoch(&mut s, 42).unwrap();
-        assert_eq!(load_epoch(&s).unwrap(), Some(42));
+        assert_eq!(load_epoch(&s), Some(42));
         let _ = std::fs::remove_dir_all(d);
     }
 }
