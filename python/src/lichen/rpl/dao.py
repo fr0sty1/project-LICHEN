@@ -342,7 +342,7 @@ class DaoManager:
                 reason="dodag_mismatch",
             )
 
-        updates = self._extract_updates(dao)
+        updates = self._extract_updates(dao, self.dodag_id)
         incoming: dict[IPv6Address, tuple[_Candidate, ...]] = {}
         sequences: dict[IPv6Address, int] = {}
         descriptors: dict[IPv6Address, int | None] = {}
@@ -625,12 +625,14 @@ class DaoManager:
         return updates[0].target, updates[0].candidate.parent
 
     @staticmethod
-    def _extract_updates(dao: DAO) -> list[_Update]:
+    def _extract_updates(
+        dao: DAO, dodag_id: IPv6Address | None = None
+    ) -> list[_Update]:
         """Parse Target/Transit groups and expand their Cartesian products."""
         updates: list[_Update] = []
         seen_targets: set[IPv6Address] = set()
         targets: list[tuple[IPv6Address, int | None]] = []
-        transits: dict[IPv6Address, TransitInformation] = {}
+        transits: dict[IPv6Address | None, TransitInformation] = {}
         in_transits = False
         descriptor_allowed = False
 
@@ -654,11 +656,17 @@ class DaoManager:
                     )
             for target, descriptor in targets:
                 for transit in transits.values():
+                    parent = transit.parent_address if transit.parent_address is not None else dodag_id
+                    if parent is None:
+                        raise DaoError(
+                            "Transit without parent address and no DODAG ID available",
+                            reason="missing_parent",
+                        )
                     updates.append(
                         _Update(
                             target,
                             _Candidate(
-                                transit.parent_address,
+                                parent,
                                 transit.path_control,
                                 transit.path_lifetime,
                                 transit.external,
