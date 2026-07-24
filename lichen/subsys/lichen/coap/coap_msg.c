@@ -33,23 +33,31 @@ LOG_MODULE_REGISTER(lichen_coap_msg, CONFIG_LICHEN_COAP_MSG_LOG_LEVEL);
 #define MSG_LOCATION_PATH_MAX 16
 
 /* CBOR encoding helpers - local copies to avoid cross-module deps */
-static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
+static void cbor_put_map_header(uint8_t *buf, size_t *off, size_t count)
 {
 	if (count < 24U) {
-		buf[(*off)++] = 0xa0U | count;
-	} else {
+		buf[(*off)++] = 0xa0U | (uint8_t)count;
+	} else if (count <= UINT8_MAX) {
 		buf[(*off)++] = 0xb8;
-		buf[(*off)++] = count;
+		buf[(*off)++] = (uint8_t)count;
+	} else {
+		buf[(*off)++] = 0xb9;
+		buf[(*off)++] = (uint8_t)(count >> 8);
+		buf[(*off)++] = (uint8_t)(count & 0xffU);
 	}
 }
 
-static void cbor_put_array_header(uint8_t *buf, size_t *off, uint8_t count)
+static void cbor_put_array_header(uint8_t *buf, size_t *off, size_t count)
 {
 	if (count < 24U) {
-		buf[(*off)++] = 0x80U | count;
-	} else {
+		buf[(*off)++] = 0x80U | (uint8_t)count;
+	} else if (count <= UINT8_MAX) {
 		buf[(*off)++] = 0x98;
-		buf[(*off)++] = count;
+		buf[(*off)++] = (uint8_t)count;
+	} else {
+		buf[(*off)++] = 0x99;
+		buf[(*off)++] = (uint8_t)(count >> 8);
+		buf[(*off)++] = (uint8_t)(count & 0xffU);
 	}
 }
 
@@ -651,7 +659,7 @@ static size_t encode_inbox_cbor(uint8_t *buf, size_t buf_size)
 	/* {"messages": [...]} */
 	cbor_put_map_header(buf, &off, 1);
 	cbor_put_key(buf, &off, "messages");
-	cbor_put_array_header(buf, &off, (uint8_t)count);
+	cbor_put_array_header(buf, &off, count);
 
 	for (size_t i = 0; i < count && off + 100 < buf_size; i++) {
 		const struct lichen_msg *msg = &s_inbox[i];

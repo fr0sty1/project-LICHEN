@@ -77,13 +77,17 @@ static K_MUTEX_DEFINE(s_mutex);
  * CBOR helpers (string-keyed encoding per spec)
  * -------------------------------------------------------------------------- */
 
-static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
+static void cbor_put_map_header(uint8_t *buf, size_t *off, size_t count)
 {
 	if (count < 24U) {
-		buf[(*off)++] = 0xa0U | count;
-	} else {
+		buf[(*off)++] = 0xa0U | (uint8_t)count;
+	} else if (count <= UINT8_MAX) {
 		buf[(*off)++] = 0xb8;
-		buf[(*off)++] = count;
+		buf[(*off)++] = (uint8_t)count;
+	} else {
+		buf[(*off)++] = 0xb9;
+		buf[(*off)++] = (uint8_t)(count >> 8);
+		buf[(*off)++] = (uint8_t)(count & 0xffU);
 	}
 }
 
@@ -706,10 +710,12 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
-	/* Reserve a fixed-width definite array header; patch its count after
-	 * bounded entries are encoded so truncation always remains valid CBOR. */
-	buf[off++] = 0x98;
-	size_t count_offset = off++;
+	/* Reserve a definite array header; patch its count after bounded
+	 * entries are encoded so truncation always remains valid CBOR.
+	 * Always reserve 2 bytes for the count (covers up to 65535 entries). */
+	buf[off++] = 0x99;
+	size_t count_offset = off;
+	off += 2;
 
 	for (size_t i = 0; i < n; i++) {
 		uint8_t entry[KEY_LIST_ENTRY_CBOR_MAX_SIZE];
@@ -750,7 +756,8 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 		encoded++;
 	}
 
-	buf[count_offset] = (uint8_t)encoded;
+	buf[count_offset] = (uint8_t)(encoded >> 8);
+	buf[count_offset + 1] = (uint8_t)(encoded & 0xffU);
 	return off;
 }
 
