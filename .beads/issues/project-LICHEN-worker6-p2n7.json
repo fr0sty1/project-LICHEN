@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-p2n7",
+  "title": "[review] project-LICHEN-636h.3: TriggerTxLoopback writes rxLen/rxRssi/rxSnr outside stateLock (P2)",
+  "description": "File: .extraction/renode-lora-peripherals/peripherals/sx126x/SX1262.cs:469-471\n\nTriggerTxLoopback writes rxLen, rxRssi, and rxSnr at lines 469-471 without holding stateLock, then acquires stateLock at line 473 for the irqFlags update. The comment block at lines 896-905 claims \"ALL rxMode/rxOneShot/irqFlags/rxLen/etc accesses use lock(stateLock)\" — but these three fields are written outside the lock.\n\nIn loopback mode the SPI thread is the sole actor (no reader thread), so no actual data race exists. However, the comment is misleading and the inconsistency makes future refactoring error-prone.\n\nFix: Either move the writes inside the stateLock block, or update the comment to note that loopback-mode writes are intentionally lock-free because they run on the single SPI thread.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:00:18.08080758Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:00:18.08080758Z"
+}
