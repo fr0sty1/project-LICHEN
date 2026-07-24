@@ -80,7 +80,7 @@ class OscoreContextParameters:
     id_context: bytes | None
 
 
-class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
+class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):  # type: ignore[misc]  # aiocoap lacks py.typed
     """In-memory OSCORE security context for aiocoap.
 
     Unlike FilesystemSecurityContext, this stores all state in memory. Suitable

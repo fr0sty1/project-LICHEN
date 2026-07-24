@@ -510,7 +510,7 @@ class InMemoryChannel(DatagramChannel):
         self._receiver = None
 
 
-class LichenRemote(interfaces.EndpointAddress):
+class LichenRemote(interfaces.EndpointAddress):  # type: ignore[misc]  # aiocoap lacks py.typed
     """An aiocoap endpoint address identified by a LICHEN host string."""
 
     scheme = "coap"
@@ -569,7 +569,7 @@ class LichenRemote(interfaces.EndpointAddress):
         return f"<LichenRemote {self.hostinfo}>"
 
 
-class LichenTransport(interfaces.MessageInterface):
+class LichenTransport(interfaces.MessageInterface):  # type: ignore[misc]  # aiocoap lacks py.typed
     """A CoAP MessageInterface that carries datagrams over a DatagramChannel."""
 
     def __init__(
