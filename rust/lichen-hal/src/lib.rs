@@ -222,7 +222,12 @@ pub trait NonVolatile {
 // Device UI traits removed (dead code; superseded by ratatui in lichen-tui and
 // not wired to any HAL impl post-CCP-9/15/epic l3j5).
 
-/// Concentrator interface for RAK2287/SX130x multi-channel (reset, SPI, IRQ, PPS).
+/// Concentrator interface for RAK2287/SX130x multi-channel (reset, SPI, IRQ, PPS, RX).
+///
+/// Extends the base hardware control methods (`reset`, `spi_transfer`, `irq_status`,
+/// `pps_timestamp`) with lifecycle (`start`, `stop`) and packet I/O (`transmit`, `receive`).
+/// This is the trait that border-router (mesh-gateway) code consumes; each variant
+/// (Linux SPI, sim, SLIP loopback) provides its own impl.
 pub trait Concentrator {
     type Error;
     fn reset(&mut self) -> impl core::future::Future<Output = Result<(), Self::Error>>;
@@ -240,6 +245,25 @@ pub trait Concentrator {
     fn transmit(
         &mut self,
         payload: &[u8],
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    /// Receive a packet from the concentrator hardware.
+    ///
+    /// Writes the received frame into `buf` and returns the number of bytes written
+    /// together with metadata (RSSI, SNR, timestamp). Returns `None` if no packet
+    /// is available (non-blocking or timeout).
+    fn receive(
+        &mut self,
+        buf: &mut [u8],
+    ) -> impl core::future::Future<Output = Result<Option<RxPacket>, Self::Error>>;
+    /// Start the concentrator (enable RX path, lock PLL, allocate internal buffers).
+    /// Calling `start` on an already-started concentrator is a no-op.
+    fn start(
+        &mut self,
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    /// Stop the concentrator (disable RX path, release internal buffers).
+    /// Calling `stop` on an already-stopped concentrator is a no-op.
+    fn stop(
+        &mut self,
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 }
 
@@ -271,6 +295,18 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn receive(&mut self, _buf: &mut [u8]) -> Result<Option<RxPacket>, Self::Error> {
+        Ok(None)
+    }
+
+    async fn start(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn stop(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
