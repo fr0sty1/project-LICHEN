@@ -156,10 +156,9 @@ mod tests {
 
     #[test]
     fn basic_operations() {
-        let seq = OscoreSeqNum::new(0).unwrap();
+        let mut seq = OscoreSeqNum::new(0).unwrap();
         assert_eq!(seq.get(), 0);
         assert_eq!(seq.increment().unwrap().get(), 1);
-    }
 
         let old = seq.fetch_increment().expect("should not overflow from 0");
         assert_eq!(old.get(), 0);

@@ -250,11 +250,7 @@ impl Concentrator for Sx1302Concentrator {
         Ok(())
     }
 
-    async fn spi_transfer(
-        &mut self,
-        _write: &[u8],
-        _read: &mut [u8],
-    ) -> Result<(), Self::Error> {
+    async fn spi_transfer(&mut self, _write: &[u8], _read: &mut [u8]) -> Result<(), Self::Error> {
         Ok(())
     }
 

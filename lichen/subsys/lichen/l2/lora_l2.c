@@ -1152,10 +1152,6 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
             LOG_WRN("lora_l2: ch%u freq config failed (%d)", effective_channel, cfg_ret);
         }
     }
-#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    uint32_t dur = 80U + (uint32_t)len * 6U;
-    if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), dur)) return -EBUSY;
-#endif
 
     /*
      * Check state atomically without mutex. The lora_send() call below blocks
@@ -1246,6 +1242,13 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         k_mutex_unlock(&tx_buf_mutex);
         return ret;
     }
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    uint32_t dur = 80U + (uint32_t)pop_len * 6U;
+    if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), dur)) {
+        k_mutex_unlock(&tx_buf_mutex);
+        return -EBUSY;
+    }
+#endif
 
     /*
      * lora_send() follows the same error semantics as lora_config():
@@ -1305,7 +1308,6 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
     k_mutex_unlock(&modem_mutex);
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    uint32_t dur = 80U + (uint32_t)pop_len * 6U;
     if (ret >= 0) lichen_duty_cycle_record_tx(&lora_data.duty, k_uptime_get(), dur);
 #endif
 

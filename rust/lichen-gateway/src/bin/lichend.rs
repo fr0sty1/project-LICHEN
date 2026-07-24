@@ -75,7 +75,6 @@ static START_TIME: OnceLock<Instant> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
-
     let args = Args::parse();
     fmt().with_env_filter(EnvFilter::new(&args.log)).init();
 
