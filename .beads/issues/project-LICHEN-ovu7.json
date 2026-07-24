@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ovu7",
   "title": "[codereview-pass3-robustness] coap_dtn.c: local inited and s_senml_pack init missing",
   "description": "coap_dtn.c:29,47,104,121 static inited per-function not shared; s_senml_pack declared but local pack used instead; no senml_pack_init for s_senml_pack. P2 robustness. codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:44:25.476711121Z",

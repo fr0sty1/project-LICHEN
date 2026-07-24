@@ -3,7 +3,7 @@
   "title": "Kconfig LICHEN_OSCORE_REPLAY_WINDOW range inconsistent with code limit",
   "description": "File: lichen/subsys/lichen/oscore/Kconfig line 32\nFile: lichen/subsys/lichen/oscore/oscore.c lines 163-165\n\nKconfig allows LICHEN_OSCORE_REPLAY_WINDOW range 16-128, but oscore.c has:\n\n```c\n#if CONFIG_LICHEN_OSCORE_REPLAY_WINDOW \u003e 32\n#error \"CONFIG_LICHEN_OSCORE_REPLAY_WINDOW exceeds 32-bit bitmap capacity\"\n#endif\n```\n\nThe replay window uses a uint32_t bitmap, so max is 32.\n\nImpact: Build fails with confusing error if user sets value 33-128 per Kconfig UI.\n\nFix: Change Kconfig range from `range 16 128` to `range 16 32` to match code capability.",
   "notes": "Commit: b338f1295",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -3,7 +3,7 @@
   "title": "Build Rust bridge target rows",
   "description": "Scope under project-LICHEN-2auf.31: build the complete declared Rust bridge applications/libraries for ESP32, nRF52840, and STM32WL target triples and feature sets from a fresh clean EBS worktree. This child owns final target/toolchain/feature build rows only; it must not repeat the focused bridge-esp32, bridge-rust, or bridge-stm32wl link-migration checks in .35.6. Use profile personal, AWS account 210337117346, region us-west-2, an owned Project=LICHEN builder in us-west-2c, and only EBS vol-0a95eee8d1d8461eb. Record base/applied commit and binary-patch hashes, Cargo.lock/rust-toolchain and target/tool versions, exact cargo/build wrapper commands, target/features/environment, UTC exits/logs, binary/map hashes and size deltas. Missing target components, host fallback, silently reduced features, ignored warnings/errors, stale binaries, nonzero exit, or dirty worktree fails closed. Preserve evidence before sync, unmount, ownership-checked detach, wait-available, and owned-instance cleanup.",
   "acceptance_criteria": "Every declared ESP32, nRF52840, and STM32WL Rust bridge target/feature row builds with its pinned toolchain and no host fallback or feature reduction; focused link gates from .35.6 are not duplicated. Source/patch/lock/toolchain/command/exit/log/artifact/size provenance is complete and hashed; no skip is accepted; clean-worktree and exact account/AZ/volume checks pass; logs are retained before explicit EBS unmount, detach, wait-volume-available, and ownership-checked instance termination.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

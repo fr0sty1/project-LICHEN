@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9rot",
   "title": "codereview-pass1: CCP-15.8.3 pseudocode still references outdated fnv1a32 in some cross-refs; ensure all point to crc32_ieee and add line ref to schc.c:90",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

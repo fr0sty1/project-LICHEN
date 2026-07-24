@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m0rr",
   "title": "CoAP codec parser has missing error variant for InvalidPayloadMarker",
   "description": "Recent commits to rust/lichen-coap/src/codec.rs (6983d8f35, accfd6ee7 etc.) removed CoapError::InvalidPayloadMarker from enum and test but left reference in from_bytes() at line 132: return Err(CoapError::InvalidPayloadMarker); and in Display? No, removed from Display too. This causes compile failure. Per RFC 7252 Section 4.1, payload marker without following payload bytes MUST be rejected as malformed. The lichend.rs commits were minor (TUN error logging, u64 cast). Spec/07-transport-app.md table has swapped SenML content-format (110 vs 112); code and appendix-senml.md use correct 112 per RFC 8428. Flag as P1 for protocol correctness. Use git show on those commits confirmed the changes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

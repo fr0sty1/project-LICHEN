@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2op3",
   "title": "Fix or remove dead code in lichen_coap_status_notify and neighbors_notify",
   "description": "The public notify functions in coap_status.c:849 and 863 only log DBG and have comments explaining why they can't trigger observers due to const resources. Either implement using coap_resource_notify (requires removing const from resource defs) or remove if not needed. Scope limited to coap_status.c per task. Follow 3x codereview after every edit chunk. Part of project-LICHEN-dadv codereview-pass3.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",
