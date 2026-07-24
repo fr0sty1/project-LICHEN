@@ -4,6 +4,18 @@
   "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
   "vectors": [
     {
+      "name": "canonical_crc32",
+      "description": "Canonical CRC-32/ISO-HDLC oracle from external source (RFC 3720 \u00a7B.2.1).",
+      "mic": "00c49e49"
+    },
+    {
+      "name": "7tiles",
+      "description": "7 tiles with tile_size=1, window_size=3, rule_id=0x2a, payload=bytes(range(7)).",
+      "rule_id": 42,
+      "packet": "00010203040506",
+      "mic": "16cefd3c"
+    },
+    {
       "name": "single_fragment",
       "description": "Single All-1 with MIC (RFC 8.2).",
       "rule_id": 120,
@@ -57,6 +69,24 @@
           0
         ]
       }
+    },
+    {
+      "name": "window_boundary",
+      "description": "7 regular tiles in window 0 then All-1 in window 1 (window bit 0->1).",
+      "rule_id": 120,
+      "packet": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+      "fragments": [
+        "780d4b4b4b4a",
+        "780b4b4b4b4a",
+        "78094b4b4b4a",
+        "78074b4b4b4a",
+        "78054b4b4b4a",
+        "78034b4b4b4a",
+        "78014b4b4b4a",
+        "78ff680101214a"
+      ],
+      "mode": "no_ack",
+      "mic": "b4008090"
     }
   ]
 }

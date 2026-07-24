@@ -18,7 +18,7 @@ from lichen.schc.fragment import (
     FragmentSender,
 )
 
-VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
+VECTORS_DIR = Path(__file__).resolve().parents[3] / "test" / "vectors"
 VECTORS = json.loads((VECTORS_DIR / "schc_fragment.json").read_text())["vectors"]
 
 
