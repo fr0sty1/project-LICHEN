@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-sncf",
+  "title": "[review] project-LICHEN-worker6-rpj4: edhoc test match mismatch in test_invalid_method_is_rejected_before_dh",
+  "description": "The test at tests/crypto/test_edhoc.py:454 uses match=\"METHOD_CORR\" but process_message_1 raises \"Method mismatch: initiator sent method=1, responder expects method=0\" after validating method_corr=4. The commit correctly changed the test's _sequence value from 0 (valid method) to 4 (invalid method), but did not update the match string to match the actual error message. Should be match=\"Method mismatch\" or similar. Note: this test also has a pre-existing NameError (edhoc_module not defined at line 451) which is a separate pre-existing issue.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:14:32.618764123Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:14:32.618764123Z"
+}
