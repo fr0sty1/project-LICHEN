@@ -98,7 +98,7 @@ delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json and ccp_tdma.json MUST cover this and similar boundaries.
 
-A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
+A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard (slot_adjust_ticks=8 for predictive wakeup scheduling per `test/vectors/ccp_load_balancing.json`). The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
 
 ## CCP-4. Regional Channel Plans
 
