@@ -205,9 +205,12 @@ Custom peripherals are written in C# and loaded by Renode at runtime.
 
 ```
 lichen/boards/renode/peripherals/
-├── SX1262.cs     # LoRa radio (bridges to lichen-sim)
-├── BLE.cs        # BLE peripheral (stub)
-└── GPS.cs        # GPS peripheral (stub)
+├── SX1262.cs     # LoRa radio SPI bridge (TCP to lichen-sim)
+├── SX127x.cs     # SX127x LoRa radio SPI bridge (TCP to lichen-sim)
+├── LR1110.cs     # LR1110 LoRa+GNSS SPI bridge (TCP to lichen-sim)
+├── BLE.cs        # nRF52840 RADIO + GATT MMIO for BLE LCI
+├── USBD.cs       # nRF52840 USBD (USB device controller for CDC/SMP)
+├── GPS.cs        # Deterministic NMEA sentence generator (UART)
 ```
 
 ### C# Patterns
@@ -513,12 +516,21 @@ Capture useful debug artifacts:
 
 | Path | Description |
 |------|-------------|
-| `lichen/boards/renode/peripherals/SX1262.cs` | SX1262 LoRa radio peripheral |
+| `lichen/boards/renode/peripherals/SX1262.cs` | SX1262 LoRa radio SPI bridge (TCP to lichen-sim) |
+| `lichen/boards/renode/peripherals/SX127x.cs` | SX127x LoRa radio SPI bridge (TCP to lichen-sim) |
+| `lichen/boards/renode/peripherals/LR1110.cs` | LR1110 LoRa+GNSS SPI bridge (TCP to lichen-sim) |
+| `lichen/boards/renode/peripherals/BLE.cs` | nRF52840 BLE RADIO + GATT MMIO for LCI |
+| `lichen/boards/renode/peripherals/USBD.cs` | nRF52840 USBD for USB CDC/SMP |
+| `lichen/boards/renode/peripherals/GPS.cs` | Deterministic NMEA GPS/GNSS peripheral |
 | `lichen/boards/renode/t_echo/support/t_echo.resc` | T-Echo Renode script |
 | `lichen/boards/renode/t_echo/support/t_echo.repl` | T-Echo platform definition |
+| `lichen/boards/renode/t1000_e/support/t1000_e.resc` | T1000-E Renode script (LR1110 + GPS + BLE + USBD) |
+| `lichen/boards/renode/t1000_e/support/t1000_e.repl` | T1000-E platform definition |
 | `lichen/boards/renode/nrf52840_lichen/run_multi_node.py` | Multi-node launcher |
 | `lichen/boards/renode/nrf52840_lichen/test_mesh.py` | Pytest mesh tests |
 | `python/src/lichen/sim/renode_server.py` | TCP server for Renode bridge |
+| `python/tests/sim/test_renode_peripheral_models.py` | Renode integration tests for BLE/USBD/GPS/LR1110 models |
+| `python/tests/sim/test_two_node_dio1_rx_renode.py` | Renode integration tests for SX1262 bridge + 2-node |
 
 ## See Also
 

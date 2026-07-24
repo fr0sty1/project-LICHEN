@@ -313,13 +313,20 @@ class EdhocInitiator:
 
     @classmethod
     def create(
-        cls, identity: Identity, c_i: bytes | None = None, method: Method = Method.SIGN_SIGN
+        cls,
+        identity: Identity,
+        c_i: bytes | None = None,
+        method: Method = Method.SIGN_SIGN,
+        eph_sk: bytes | None = None,
     ) -> EdhocInitiator:
         if method is not Method.SIGN_SIGN:
             raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_i is None:
             c_i = os.urandom(1)
-        eph_sk, eph_pk = _x25519_keypair()
+        if eph_sk is not None:
+            eph_pk = crypto_scalarmult_base(eph_sk)
+        else:
+            eph_sk, eph_pk = _x25519_keypair()
         return cls(
             identity=identity,
             c_i=c_i,
@@ -538,13 +545,20 @@ class EdhocResponder:
 
     @classmethod
     def create(
-        cls, identity: Identity, c_r: bytes | None = None, method: Method = Method.SIGN_SIGN
+        cls,
+        identity: Identity,
+        c_r: bytes | None = None,
+        method: Method = Method.SIGN_SIGN,
+        eph_sk: bytes | None = None,
     ) -> EdhocResponder:
         if method is not Method.SIGN_SIGN:
             raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_r is None:
             c_r = os.urandom(1)
-        eph_sk, eph_pk = _x25519_keypair()
+        if eph_sk is not None:
+            eph_pk = crypto_scalarmult_base(eph_sk)
+        else:
+            eph_sk, eph_pk = _x25519_keypair()
         return cls(
             identity=identity,
             c_r=c_r,

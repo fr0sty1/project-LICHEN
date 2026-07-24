@@ -2176,37 +2176,56 @@ def main() -> None:
 
 
 def edhoc_vectors() -> list[dict]:
-    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds, records PRK, OscoreContext, TH, messages, keys (oscore/schnorr48 pattern). Python reference oracle only."""
-    import os
+    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds and deterministic ephemeral keys, records PRK, OscoreContext, TH, messages, keys. Python reference oracle only."""
+    from hashlib import sha256
     from lichen.crypto.identity import Identity
     from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
-    old = os.urandom
-    os.urandom = lambda n: bytes([0x42] * n)
-    try:
-        i = Identity.from_seed(bytes(range(32)))
-        r = Identity.from_seed(bytes(range(32, 64)))
-        init = EdhocInitiator.create(i, c_i=b"\x00")
-        resp = EdhocResponder.create(r, c_r=b"\x01")
-        m1 = init.create_message_1()
-        m2 = resp.process_message_1(m1, i.pubkey)
-        m3 = init.process_message_2(m2, r.pubkey)
-        resp.process_message_3(m3, i.pubkey)
-        ctx = init.export_oscore()
-        return [{
-            "name": "fixed_seed_sign_sign",
-            "seed_i": bytes(range(32)).hex(),
-            "seed_r": bytes(range(32, 64)).hex(),
-            "msg1": m1.hex(),
-            "msg2": m2.hex(),
-            "msg3": m3.hex(),
-            "prk_2e": "42" * 64,  # recorded from state
-            "th_2": "42" * 64,
-            "oscore_master_secret": ctx.master_secret.hex(),
-            "oscore_master_salt": ctx.master_salt.hex(),
-            "oscore_sender_id": ctx.sender_id.hex(),
-        }]
-    finally:
-        os.urandom = old
+    from nacl.bindings import crypto_scalarmult_base
+
+    # Deterministic ephemeral X25519 keys derived from known seeds.
+    # Both sides get DIFFERENT keys (unlike os.urandom monkeypatch approach)
+    # so the DH shared secret is a real key agreement, not a self-DH.
+    i_eph_sk = sha256(b"initiator-ephemeral-seed").digest()[:32]
+    r_eph_sk = sha256(b"responder-ephemeral-seed").digest()[:32]
+
+    i = Identity.from_seed(bytes(range(32)))
+    r = Identity.from_seed(bytes(range(32, 64)))
+    init = EdhocInitiator.create(i, c_i=b"\x00", eph_sk=i_eph_sk)
+    resp = EdhocResponder.create(r, c_r=b"\x01", eph_sk=r_eph_sk)
+
+    m1 = init.create_message_1()
+    m2 = resp.process_message_1(m1, i.pubkey)
+    m3 = init.process_message_2(m2, r.pubkey)
+    resp.process_message_3(m3, i.pubkey)
+
+    # Capture intermediate values BEFORE export clears them
+    prk_2e = init._prk_2e.hex()
+    prk_3e2m = init._prk_3e2m.hex()
+    prk_4e3m = init._prk_4e3m.hex()
+    th_2 = init._th_2.hex()
+    th_3 = init._th_3.hex()
+    th_4 = init._th_4.hex()
+
+    ctx = init.export_oscore()
+    return [{
+        "name": "fixed_seed_sign_sign",
+        "seed_i": bytes(range(32)).hex(),
+        "seed_r": bytes(range(32, 64)).hex(),
+        "eph_sk_i": i_eph_sk.hex(),
+        "eph_sk_r": r_eph_sk.hex(),
+        "msg1": m1.hex(),
+        "msg2": m2.hex(),
+        "msg3": m3.hex(),
+        "prk_2e": prk_2e,
+        "prk_3e2m": prk_3e2m,
+        "prk_4e3m": prk_4e3m,
+        "th_2": th_2,
+        "th_3": th_3,
+        "th_4": th_4,
+        "oscore_master_secret": ctx.master_secret.hex(),
+        "oscore_master_salt": ctx.master_salt.hex(),
+        "oscore_sender_id": ctx.sender_id.hex(),
+    }]
 
 
 if __name__ == "__main__":
