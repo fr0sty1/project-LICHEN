@@ -102,38 +102,15 @@ pub struct RplMaintenanceOutcome {
     pub topology_changed: bool,
 }
 
-/// Trickle-aware neighbor liveness policy.
-///
-/// Scales the effective timeout by the Trickle suppression level.
-/// `k` is the redundancy constant from the Trickle timer. The `heard_consistent`
-/// value passed to `is_alive` (from the Trickle counter) determines the scale:
-/// - `heard_consistent >= k` (full suppression): 3x base timeout
-/// - `heard_consistent == 0` (no consistency): 1x base timeout
-/// Prevents premature eviction of neighbors during Trickle suppression.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct TrickleAwareNeighborLiveness {
-    pub k: u32,
+#[cfg(feature = "std")]
+pub trait TrickleSafeLivenessPolicy {
+    fn confirmation(&self, now_ms: u64, last_seen_ms: u64, max_age_ms: u64) -> bool;
 }
 
-impl TrickleAwareNeighborLiveness {
-    pub fn new(k: u32) -> Self {
-        Self { k }
-    }
-}
-
-impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, heard_consistent: u32) -> bool {
-        let age = now.saturating_sub(last_seen);
-        if age <= timeout {
-            return true;
-        }
-        let k = u64::from(self.k);
-        if k == 0 {
-            return false;
-        }
-        let c = u64::from(heard_consistent.min(self.k));
-        let scale = 1 + (2 * c / k);
-        age <= timeout * scale
+#[cfg(feature = "std")]
+impl TrickleSafeLivenessPolicy for () {
+    fn confirmation(&self, _now_ms: u64, _last_seen_ms: u64, _max_age_ms: u64) -> bool {
+        true
     }
 }
 
@@ -194,7 +171,7 @@ pub type LinkEtx = f32;
 pub type GeoCoords = (f64, f64);
 
 pub trait TrickleSafeLivenessPolicy {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
         now.saturating_sub(last_seen) <= timeout
     }
 }
@@ -336,7 +313,8 @@ impl NeighborTable {
     }
 
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        self.prune_with_removed(&(), now_ms, max_age_ms, 0, |_| {});
+        let policy = TrickleAwareNeighborLiveness::default();
+        self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
     }
 
     #[cfg(feature = "std")]
@@ -347,6 +325,7 @@ impl NeighborTable {
         max_age_ms: u64,
         heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
+        policy: &P,
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
@@ -732,8 +711,6 @@ impl Router {
         self.dodag = staged_dodag;
         self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
-        self.dodag
-            .set_gateway_centric(self.dodag_config.gateway_centric);
 
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
@@ -988,12 +965,6 @@ impl Router {
         self.lookup_route(dst)
     }
 
-    /// Seed a route for testing.
-    #[cfg(test)]
-    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
-        self.dao_manager.add_test_route(target, path)
-    }
-
     /// Check trickle timer and return pending event.
     pub fn poll_trickle(&self) -> TrickleEvent {
         self.trickle.next_event()
@@ -1035,27 +1006,12 @@ impl Router {
         self.dodag.is_joined()
     }
 
-    pub fn is_gateway_centric(&self) -> bool {
-        self.dodag.is_gateway_centric
-    }
-
     pub fn rank(&self) -> u16 {
         self.dodag.rank
     }
 
     pub fn preferred_parent(&self) -> Option<[u8; 16]> {
         self.dodag.preferred_parent
-    }
-
-    /// Set the gateway-centric flag on this DODAG.
-    /// The next DIO transmission will advertise this flag via the DODAG Config option.
-    /// Any caller (e.g. scheduler integration) should also update the announce interval.
-    pub fn set_gateway_centric(&mut self, gc: bool) -> bool {
-        let changed = self.dodag.set_gateway_centric(gc);
-        if changed {
-            self.dodag_config.gateway_centric = gc;
-        }
-        changed
     }
 
     pub fn dodag(&self) -> &DodagState {
@@ -1085,9 +1041,9 @@ impl Router {
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         let now_ms = self.observe_now(now_ms);
         let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
-        let policy = TrickleAwareNeighborLiveness::new(self.trickle.k);
+        let policy = TrickleAwareNeighborLiveness::default();
         let (neighbors_pruned, topology_changed) =
-            self.prune_neighbors_at(now_ms, neighbor_timeout_ms, &policy);
+            self.prune_neighbors_at(now_ms, neighbor_timeout_ms, policy);
         RplMaintenanceOutcome {
             routes_expired,
             neighbors_pruned,
@@ -1107,11 +1063,17 @@ impl Router {
         let heard_consistent = self.trickle.counter;
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
-        self.neighbors
-            .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
+        self.neighbors.prune_with_removed(
+            policy,
+            now_ms,
+            max_age_ms,
+            heard_consistent,
+            |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
-            });
+            },
+            policy,
+        );
         if removed_len != 0 {
             self.dodag.remove_parents(&removed[..removed_len]);
         }
@@ -2103,6 +2065,23 @@ mod tests {
     }
 
     #[test]
+    fn lookup_route_delegates_to_routing_table_and_guards_non_root() {
+        let root_addr = link_local(1);
+        let target = test_origin(2);
+
+        let non_root = Router::new(link_local(3), root_addr);
+        assert!(non_root.lookup_route(&target).is_none());
+
+        let mut root = Router::new_root(root_addr);
+        assert!(root.lookup_route(&target).is_none());
+
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao(root_addr);
+        assert!(root.process_dao_at_ms(&dao, target, target, 0));
+        assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
+    }
+
+    #[test]
     fn aggregated_dao_uses_parent_for_packet_source_group() {
         let root_addr = ula(1);
         let first_target = ula(2);
@@ -2208,14 +2187,14 @@ mod tests {
         let trickle = root.poll_trickle();
 
         assert_eq!(
-            root.maintain(1_999, 10_000),
+            root.maintain(1_999, 10_000, &()),
             RplMaintenanceOutcome::default()
         );
         assert!(root.lookup_route(&target).is_some());
         assert_eq!(root.poll_trickle(), trickle);
 
         assert_eq!(
-            root.maintain(2_000, 10_000),
+            root.maintain(2_000, 10_000, &()),
             RplMaintenanceOutcome {
                 routes_expired: true,
                 neighbors_pruned: false,
@@ -2509,8 +2488,7 @@ mod tests {
         assert!(router.trickle_transmit());
         router.trickle_expire(WRAP + 100, 0);
 
-        let policy = TrickleAwareNeighborLiveness::new(router.trickle.k);
-        assert!(router.prune_neighbors(50, 5, &policy));
+        assert!(router.prune_neighbors(50, 5, &()));
         assert_eq!(router.neighbors.get_etx(&stale_parent), None);
         assert_eq!(router.neighbors.count(), 0);
         assert_eq!(router.dodag.parent_count(), 0);
@@ -2523,14 +2501,14 @@ mod tests {
     fn maintenance_clamps_backward_clock_and_prunes_only_after_timeout() {
         let mut router = Router::new(link_local(2), link_local(1));
         let neighbor = link_local(3);
-        router.maintain(5_000, 10_000);
+        router.maintain(5_000, 10_000, &());
         router.neighbors.update(&neighbor, 1.0, -40, 5_000);
 
-        assert!(!router.maintain(4_000, 0).neighbors_pruned);
+        assert!(!router.maintain(4_000, 0, &()).neighbors_pruned);
         assert_eq!(router.neighbors.count(), 1);
-        assert!(!router.maintain(15_000, 10_000).neighbors_pruned);
+        assert!(!router.maintain(15_000, 10_000, &()).neighbors_pruned);
         assert_eq!(router.neighbors.count(), 1);
-        assert!(router.maintain(15_001, 10_000).neighbors_pruned);
+        assert!(router.maintain(15_001, 10_000, &()).neighbors_pruned);
         assert_eq!(router.neighbors.count(), 0);
     }
 
