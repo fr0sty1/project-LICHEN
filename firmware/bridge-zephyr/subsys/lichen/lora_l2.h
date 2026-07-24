@@ -189,7 +189,8 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len);
  * @brief Set the RX callback
  *
  * @param cb Callback function (NULL to disable)
- * @param user_data Context passed to callback
+ * @param user_data Context passed to callback; caller retains ownership --
+ *                  this module stores but never frees the pointer
  * @return 0 on success, -ENODEV if not initialized
  */
 int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data);
