@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-rv90",
+  "title": "[review] project-LICHEN-n8c6: KEY_CHANGE detection test removed from test_link_layer",
+  "description": "A test block in test_tx_queue_integration (around test_radio_false_preserves_packet_for_retry) verifying key-change detection (ReceiveError.KEY_CHANGE path at link_layer.py:570) was deleted. The test overwrote pinned_keys to simulate key-change scenario and asserted ReceiveError.KEY_CHANGE result. Replacement peer_ll2 LinkLayer instance was also removed. KEY_CHANGE code is still present in link_layer.py:570 and consumed by node.py:396 and kiss/bridge.py:340, but is now untested in the link layer test suite.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:44:30.787288397Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:44:30.787288397Z"
+}
