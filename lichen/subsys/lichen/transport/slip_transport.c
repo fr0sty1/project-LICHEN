@@ -152,6 +152,26 @@ static int validate_ipv6_packet(const uint8_t *pkt, size_t len)
 		return -EINVAL;
 	}
 
+	/* RFC 4291 §2.7: Source address MUST NOT be multicast. */
+	if (pkt[8] == 0xff) {
+		LOG_WRN("SLIP RX: multicast source dropped");
+		return -EINVAL;
+	}
+	/* RFC 4443 §2.2: Unspecified source not valid for upper-layer protocols. */
+	{
+		bool all_zero = true;
+		for (int i = 8; i < 24; i++) {
+			if (pkt[i] != 0) {
+				all_zero = false;
+				break;
+			}
+		}
+		if (all_zero) {
+			LOG_WRN("SLIP RX: unspecified source dropped");
+			return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 

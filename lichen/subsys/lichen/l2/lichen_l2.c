@@ -2629,6 +2629,32 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		return;
 	}
 
+	/* RFC 4291 §2.7: Source address MUST NOT be multicast. */
+	/* RFC 4443 §2.2: Unspecified source not valid for upper-layer protocols. */
+	if (rx_ipv6_buf[8] == 0xff) {
+		LOG_WRN("lichen_l2: RX multicast source dropped");
+		L2RX_STAT_INC(rejected);
+		secure_zero(rx_link_key, sizeof(rx_link_key));
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+	{
+		bool all_zero = true;
+		for (int i = 8; i < 24; i++) {
+			if (rx_ipv6_buf[i] != 0) {
+				all_zero = false;
+				break;
+			}
+		}
+		if (all_zero) {
+			LOG_WRN("lichen_l2: RX unspecified source dropped");
+			L2RX_STAT_INC(rejected);
+			secure_zero(rx_link_key, sizeof(rx_link_key));
+			k_mutex_unlock(&rx_mutex);
+			return;
+		}
+	}
+
 	/*
 	 * SECURITY: Logging full EUI-64 at DEBUG level is acceptable because:
 	 * 1. DEBUG logging requires explicit CONFIG_LICHEN_L2_LOG_LEVEL=4, not
