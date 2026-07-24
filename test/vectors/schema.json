@@ -1001,7 +1001,7 @@
     "ccp_vector": {
       "type": "object",
       "required": ["name", "description"],
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
@@ -1077,13 +1077,90 @@
         "current_sfn": {"type": "integer"},
         "last_sfn": {"type": "integer"},
         "sfn": {"type": "integer"},
-        "expected": {"type": "string"},
+        "expected": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "object"}
+          ]
+        },
         "version": {"type": "integer"},
         "alternate_version": {"type": "integer"},
         "drift_ppm": {"type": "integer"},
         "guard_ppm": {"type": "integer"},
         "superframe_ms": {"type": "integer"},
-        "slot_adjust_ticks": {"type": "integer"}
+        "slot_adjust_ticks": {"type": "integer"},
+        "action": {"type": "string"},
+        "assigned_channel": {"type": "integer"},
+        "assigned_slot": {"type": "integer"},
+        "beacon_nominal_ms": {"type": "integer"},
+        "can_transmit": {"type": "boolean"},
+        "can_transmit_100ms": {"type": "boolean"},
+        "channel": {"type": "integer"},
+        "control_fallback": {"type": "boolean"},
+        "current_ms": {"type": "integer"},
+        "density": {"type": "integer", "minimum": 0},
+        "duration_ms": {"type": "integer"},
+        "ema": {"type": "number"},
+        "encoded": {"type": "string"},
+        "epoch": {"type": "integer"},
+        "etx": {"type": "number", "minimum": 0},
+        "eui64_hex": {"$ref": "#/definitions/hex"},
+        "expected_beacon_ms": {"type": "integer"},
+        "expected_channel": {"type": "integer", "minimum": 0},
+        "expected_correction_ms": {"type": "integer"},
+        "expected_flags": {"type": "integer"},
+        "expected_in_guard": {"type": "boolean"},
+        "expected_ppm": {"type": "integer"},
+        "expected_slot": {"type": "integer"},
+        "expected_tx_window_start": {"type": "integer"},
+        "guard_ms": {"type": "integer"},
+        "hash_method": {"type": "string"},
+        "hash_output": {"type": "string"},
+        "l2_dispatch": {"type": "integer"},
+        "limit_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "load_factor": {"type": "number"},
+        "local_beacon_rx_ms": {"type": "integer"},
+        "mechanism": {
+          "type": "string",
+          "enum": ["hash_based", "announce_driven", "fallback"]
+        },
+        "n_channels": {"type": "integer", "minimum": 1},
+        "n_slots": {"type": "integer", "minimum": 1},
+        "next_available_ms": {"type": "integer"},
+        "next_rendezvous_us": {"type": "integer"},
+        "now_ms": {"type": "integer"},
+        "num_channels": {"type": "integer", "minimum": 1},
+        "num_slots": {"type": "integer", "minimum": 1},
+        "observed_ms": {
+          "type": "array",
+          "items": {"type": "integer"}
+        },
+        "peer_eui64": {"$ref": "#/definitions/hex"},
+        "peer_known": {"type": "boolean"},
+        "queue_peak": {"type": "integer", "minimum": 0},
+        "remaining_ms": {"type": "integer"},
+        "rx_channel": {"type": "integer"},
+        "score": {"type": "number"},
+        "seed": {"type": "integer"},
+        "sf": {"type": "integer", "minimum": 7, "maximum": 12},
+        "slot_duration_ms": {"type": "integer"},
+        "slot_ms": {"type": "integer"},
+        "slot_start_ms": {"type": "integer"},
+        "t": {"type": "integer"},
+        "txs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ts": {"type": "integer"},
+              "dur": {"type": "integer"}
+            }
+          }
+        },
+        "usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "uses_sync_hop": {"type": "boolean"},
+        "util": {"type": "number", "minimum": 0, "maximum": 1},
+        "window_ms": {"type": "integer"}
       },
       "allOf": [
         {
