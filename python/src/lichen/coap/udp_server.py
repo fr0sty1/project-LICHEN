@@ -42,7 +42,8 @@ async def bind_coap_udp(
     Returns:
         An aiocoap.Context that must be shutdown() when done.
     """
-    site = build_site(node, allow_config_write=allow_config_write)
+    site = build_site(node, allow_config_write=allow_config_write,
+                      sos_resource=getattr(node, 'sos_resource', None))
     # ponytail: aiocoap wants explicit address, not "::"
     context = await aiocoap.Context.create_server_context(site, bind=(bind, port))
     return context
