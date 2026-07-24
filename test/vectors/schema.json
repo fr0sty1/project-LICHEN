@@ -42,7 +42,8 @@
               {"$ref": "#/definitions/schnorr48_vector"},
               {"$ref": "#/definitions/hash_32_vector"},
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
-              {"$ref": "#/definitions/ipv6_malformed_vector"}
+              {"$ref": "#/definitions/ipv6_malformed_vector"},
+              {"$ref": "#/definitions/lci_auth_vector"}
             ]
           }
         }
@@ -98,7 +99,8 @@
           {"$ref": "#/definitions/compact_cot_vector"},
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
-          {"$ref": "#/definitions/ccp_load_balancing_vector"}
+          {"$ref": "#/definitions/ccp_load_balancing_vector"},
+          {"$ref": "#/definitions/lci_auth_vector"}
         ]
       },
       "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
@@ -1167,6 +1169,23 @@
         "valid": {"type": "boolean"}
       }
     },
+    "lci_auth_vector": {
+      "type": "object",
+      "required": ["name", "type", "resource", "method", "source_addr_type", "expected_code"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "type": {"type": "string", "enum": ["is_local_admin", "oscore_peer", "unauthorized"]},
+        "resource": {"type": "string", "enum": ["/config", "/keys/{iid}", "/msg/inbox", "/msg/sent", "/msg/ack", "/sensors/location", "/deaddrop"]},
+        "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"]},
+        "source_addr_type": {"type": "string", "enum": ["loopback", "link_local_slip", "link_local_mesh", "global", "null"]},
+        "source_addr": {"oneOf": [{"$ref": "#/definitions/hex"}, {"type": "null"}], "description": "Hex-encoded 16-byte IPv6 address, or null for null-addr tests."},
+        "scope_id_iface_name": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "Name of the network interface for scope_id, or null if not applicable."},
+        "expected_code": {"type": "integer"},
+        "expected_is_admin": {"type": "boolean"}
+      }
+    },
     "rpl_route_state_vector": {
       "type": "object",
       "additionalProperties": false,
@@ -1238,6 +1257,18 @@
             }
           },
           "additionalProperties": false
+        }
+      ]
+    },
+    "lci_auth_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/lci_auth_vector"}
+            }
+          }
         }
       ]
     },
