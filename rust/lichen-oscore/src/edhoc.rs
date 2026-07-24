@@ -1335,10 +1335,13 @@ impl EdhocResponder {
 
             let mut plaintext = heapless::Vec::new();
             plaintext.extend_err(&plaintext_3)?;
+            let mut ciphertext = heapless::Vec::new();
+            ciphertext.extend_err(ciphertext_3)?;
             self.state.lifecycle = Lifecycle::PendingMessage3;
             Ok(PendingMessage3 {
                 id_cred: id_cred_i,
                 plaintext,
+                ciphertext,
                 signature_offset: id_len,
                 transcript_binding: self.state.th_3,
             })
@@ -1400,7 +1403,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1461,6 +1464,8 @@ pub struct PendingMessage3 {
     id_cred: IdCred,
     /// Decrypted plaintext of Message 3.
     plaintext: heapless::Vec<u8, 128>,
+    /// Original CIPHERTEXT_3 (wire format) for transcript_4 computation.
+    ciphertext: heapless::Vec<u8, 128>,
     /// Byte offset where the signature begins.
     signature_offset: usize,
     /// Transcript binding at time of parsing.
@@ -2123,9 +2128,9 @@ mod tests {
         let credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
-        let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
+        let th_4 = hex!("1d0423d738645307f97a8934a330a2c898f591df3acb8273d207a6def2df0ca8");
         assert_eq!(
-            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
+            transcript_4(&th_3, &ciphertext_3, &credential_i).unwrap(),
             th_4
         );
 
