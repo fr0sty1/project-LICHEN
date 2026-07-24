@@ -1162,11 +1162,15 @@ mod std_ext {
             }
         }
 
-        fn window_bitmap(&self, abs_window: usize) -> Vec<bool> {
+        fn window_bitmap(&self, abs_window: usize) -> u64 {
             let base = abs_window * self.window_size;
-            (0..self.window_size)
-                .map(|p| self.tiles.contains_key(&(base + p)))
-                .collect()
+            let mut bitmap = 0u64;
+            for p in 0..self.window_size {
+                if self.tiles.contains_key(&(base + p)) {
+                    bitmap |= 1u64 << (self.window_size - 1 - p);
+                }
+            }
+            bitmap
         }
 
         fn window_full(&self, abs_window: usize) -> bool {
@@ -1238,7 +1242,7 @@ mod std_ext {
                     ack: Some(Ack::new(
                         self.rule_id,
                         (abs_window % 2) as u8,
-                        &bitmap,
+                        bitmap,
                         false,
                     )),
                     reassembled: None,
@@ -1254,7 +1258,7 @@ mod std_ext {
 
         fn finalize(&mut self) -> ReceiverResult {
             let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, &bitmap, false);
+            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, bitmap, false);
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).
@@ -1281,7 +1285,7 @@ mod std_ext {
                     ack: Some(Ack::new(
                         self.rule_id,
                         (self.all1_window % 2) as u8,
-                        &bitmap,
+                        bitmap,
                         true,
                     )),
                     reassembled: Some(data),
