@@ -332,10 +332,9 @@ static struct lichen_link_ctx link_ctx;
  * SECURITY (replay.h:100-120): Replay windows are only allocated AFTER peer
  * authentication succeeds. This prevents a poisoning attack where an attacker
  * floods spoofed source addresses to evict legitimate peers' replay windows
- * via LRU eviction. Currently, signature verification is not yet implemented
- * (peer_pubkey=NULL), so this table will accept windows for any source. Once
- * peer authentication is wired up (project-LICHEN-j70n), replay_get() should
- * only be called for authenticated peers.
+ * via LRU eviction. Replay windows are only allocated after peer
+ * authentication succeeds (peer_try_all_pubkeys checks signatures before
+ * calling replay_get()).
  */
 static struct lichen_replay_table replay_table;
 
