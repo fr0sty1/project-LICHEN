@@ -199,7 +199,8 @@ Response:
 </msg/inbox>;rt="msg.inbox";ct=60;obs,
 </msg/sent>;rt="msg.sent";ct=60,
 </msg/ack>;rt="msg.ack";ct=60,
-</deaddrop>;rt="deaddrop";ct=112;obs
+</deaddrop>;rt="deaddrop";ct=112;obs,
+</confessions>;rt="confessions";ct=112;obs
 ```
 
 #### 17.5.2. Configuration Resources
@@ -640,6 +641,54 @@ Content-Format: application/senml+cbor
 ```
 
 Returns array of available drops (filtered by access). Rate limits, OSCORE rules, SenML details, SCHC handling, and full client UI guidance (Observe, templates, rate indicators, privacy toggles) are authoritative in 12-apps.md:18.9. LCI clients implement the CoAP contract exactly as specified there.
+
+#### 17.5.9. Confessions
+
+The `/confessions` resource provides an anonymous, ephemeral messaging board for
+peer communication without sender attribution. RAM-only storage; no flash writes
+for confessions data. Cleared on reboot.
+
+**Access and Protection:**
+
+- All writes (POST) SHOULD use SenML + CBOR (Content-Format 112)
+- OSCORE is OPTIONAL for confessions (anonymous postings gain from no attribution)
+- Reads (GET) are public and do not require OSCORE
+- Rate limits are the tightest in LICHEN: 1 POST per 30 s, 12 per hour per source IID
+- No-log guarantee: implementations MUST NOT persist confessions to flash
+
+**Example Usage:**
+
+```
+POST coap://[fe80::1]/confessions
+Content-Format: application/senml+cbor
+
+[
+  {"bn":"urn:dev:mac:0011223344556677:","bt":1721654321},
+  {"n":"type","vs":"confession"},
+  {"n":"content","vs":"Left the base unlocked at 0200."},
+  {"n":"anonymous","v":1}
+]
+```
+
+Response: `2.01 Created` with `Location-Path: /confessions/8a4f2b`
+
+```
+GET coap://[fe80::1]/confessions?count=5
+Content-Format: application/cbor
+
+{
+  "count": 1,
+  "confessions": [
+    {"id": "8a4f2b", "ts": 1721654321, "age_s": 900}
+  ],
+  "rate_remaining": 11,
+  "rate_reset_s": 29
+}
+```
+
+Rate limits, OSCORE considerations, no-log guarantee, eviction policy, e-ink UI
+flow, and test vectors are authoritative in 12-apps.md:18.10. LCI clients
+implement the CoAP contract exactly as specified there.
 
 ### 17.6. Security
 

@@ -1294,19 +1294,145 @@ Or `GET /deaddrop/7f3a9c` for specific. Supports query params like `?type=messag
 
 Implementations MUST produce identical SenML output for test vectors (see test/vectors/).
 
-### 18.10. Resource Summary
+### 18.10. Confessions
+
+Anonymous, ephemeral messaging board with strong privacy guarantees. No sender identity is permanently logged -- the system is designed for honest use in organizational and peer settings. All storage is RAM-only (no flash writes for confessions data) and cleared on reboot.
+
+**Relevant Standards:**
+- SenML (RFC 8428, Content-Format 112; see Appendix F) for payload format
+- OSCORE (RFC 8613) for optional end-to-end encryption of confessions content
+- CoAP Observe (RFC 7641) for live feed updates
+- No-log patterns from operational security practices (forensic deniability)
+
+#### 18.10.1. Payload Format
+
+```cbor
+[
+  {"bn": "urn:dev:mac:0011223344556677:", "bt": 1721654321},
+  {"n": "type", "vs": "confession"},
+  {"n": "content", "vs": "Left the forward operating base unlocked at 0200. Nobody noticed."},
+  {"n": "lat", "u": "lat", "v": 37.7749},
+  {"n": "lon", "u": "lon", "v": -122.4194},
+  {"n": "anonymous", "v": 1},
+  {"n": "ttl", "v": 43200},
+  {"n": "signature", "vs": "base64-truncated-schnorr-optional"}
+]
+```
+
+The `anonymous` flag (boolean, default true) indicates whether the sender's identity is revealed. `anonymous: false` confessions carry an additional `sender` field with the node's IID. Implementations MAY choose to reject non-anonymous posts, accept both, or require operator privilege for non-anonymous posts.
+
+#### 18.10.2. Resources
+
+```
+POST coap://[node]/confessions
+Content-Format: application/senml+cbor
+OSCORE: <pairwise or group, optional>
+
+[SenML payload as above]
+
+Response: 2.01 Created
+Location-Path: /confessions/8a4f2b
+Max-Age: 43200
+```
+
+```
+GET coap://[node]/confessions
+Observe: 0
+Content-Format: application/senml+cbor
+
+[ array of current confessions, each wrapped with metadata ]
+```
+
+Or `GET /confessions/8a4f2b` for a specific entry. Supports query params such as `?type=confession&after=17216...`.
+
+#### 18.10.3. Rate Limiting (REQUIRED)
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| POSTs per node per 30 s | 1 | Prevents spam; tightest LICHEN rate limit |
+| POSTs per node per hour | 12 | Ceiling on sustained abuse |
+| Max confession size | 768 B | Shorter than deaddrop -- text-only use case |
+| Total storage | 2 KB (leaf), 8 KB (BR) | RAM-only; smaller than deaddrop budget |
+| Default retention | 12 h (max 48 h) | Ephemeral by design |
+
+Rate limiting uses per-node IID (not OSCORE context, since anonymous posts may skip OSCORE). Enforced via monotonic uptime (not wall-clock) to prevent clock-spoof bypass.
+
+Exceeding limits returns `4.29 Too Many Requests` with `Retry-After` header.
+
+**Storage overrun:** When total storage is full, oldest confessions are evicted (FIFO, not per-node fairness). Unlike dead drop, there is no back-pressure signaling for storage -- old confessions silently vanish.
+
+#### 18.10.4. No-Log Guarantee
+
+- Confessions data is held in **RAM only** (no flash writes, no NVS, no filesystem persistence)
+- Cleared on **any reboot** (warm or cold, intentional or crash)
+- Nodes MUST NOT log confessions to `/sos/log`, `/msg/sent`, or any persistent store
+- Nodes MUST NOT include confessions in periodic beacon payloads
+- Forwarded confessions are held in the forwarding buffer for the SCHC fragmentation window only, then discarded
+
+**Forensic notice:** RAM-only storage does not defeat cold-boot attacks, JTAG readout, or SCHC-over-air capture. Implementers deploying in high-sensitivity environments SHOULD document these residual risks. The no-log guarantee is a protocol design property, not a security proof.
+
+**Operator override:** An operator with physical access to the node MAY choose to enable flash persistence via a hidden CoAP resource (e.g., `PUT /config/confessions/persist`), but MUST accept that this voids the no-log guarantee. Such nodes MUST NOT be marketed as "no-log" and SHOULD surface a `logging: true` flag in the `/confessions` GET response metadata.
+
+#### 18.10.5. OSCORE Considerations
+
+- **Writes (POST):** OSCORE is OPTIONAL for confessions (anonymous postings benefit from lack of sender attribution). If OSCORE is used with a pairwise context, the receiver learns the sender's identity -- which may be undesirable in a confessions context.
+- **Reads (GET):** Public. No OSCORE required for reading. The board is intentionally open to all mesh participants.
+- **Group OSCORE context:** When available, a group context provides sender unlinkability among group members (the receiver knows the sender is in the group, but not which member). This is the RECOMMENDED OSCORE mode for confessions.
+- Nodes MUST NOT persist OSCORE context information (sender IID, key ID) alongside confessions content.
+
+#### 18.10.6. E-Ink / Low-Power UI Flow
+
+On nodes with e-ink displays (e.g., T-Echo, T1000-E):
+
+1. **Idle:** Display shows count: "Confessions: 3 new"
+2. **Wake to view:** User selects confessions module; device wakes radio, fetches latest confessions via CoAP GET (observe or one-shot), renders first N (fits screen)
+3. **Navigation:** Scroll through confessions with hardware buttons (up/down/select)
+4. **Submit:** "New Confession" soft button opens text entry (using canned phrases or on-device keyboard); SenML-packed and POSTed
+5. **Notification flash:** When a new Observe notification arrives, briefly invert screen area or show a badge; do NOT wake speaker/buzzer (privacy)
+6. **Auto-clear:** Confessions page clears from display after 5 minutes of inactivity; unread count persists on idle screen
+
+#### 18.10.7. Query and Display API
+
+```
+GET coap://[node]/confessions?count=5&since=1721650000
+Content-Format: application/cbor
+
+{
+  "count": 3,
+  "confessions": [
+    {"id": "8a4f2b", "content": "...", "ts": 1721654321, "age_s": 900},
+    {"id": "3c1d9e", "content": "...", "ts": 1721654000, "age_s": 1200}
+  ],
+  "rate_remaining": 8,
+  "rate_reset_s": 1800,
+  "storage_used_kb": 1.2,
+  "storage_max_kb": 2
+}
+```
+
+The `rate_remaining` and `rate_reset_s` fields allow clients to display rate-limit status. `storage_used_kb` / `storage_max_kb` communicate memory pressure.
+
+#### 18.10.8. Test Vectors
+
+Implementations MUST produce identical SenML output for test vectors (see `test/vectors/confessions.json`). Vectors cover:
+1. Anonymous confession (default)
+2. OSCORE-protected group confession
+3. Rate-limit boundary (12th POST in rolling hour)
+4. Storage-full eviction (oldest FIFO)
+5. Reboot clear (empty GET after restart)
+
+### 18.11. Resource Summary
 
 | Resource | Methods | Observable | Description |
 |----------|---------|------------|-------------|
 | /msg/inbox | GET, POST | Yes | Message inbox |
 | /msg/sent | GET | No | Sent messages |
 | /deaddrop | POST, GET | Yes | Encrypted store-forward DTN dead drop (OSCORE E2E, pickup/push, TTL, e-ink notification) |
-| /confessions | POST, GET | Yes | Anonymous confessions board (rate limit 1/30s per node, no-log RAM-only, SenML feed, e-ink UI) |
+| /confessions | POST, GET | Yes | Anonymous confessions board (rate limit 1/30s per node, no-log RAM-only, SenML/CBOR feed, e-ink UI) |
 | /diag/rangetest | GET, POST | Yes | Range testing |
 | /diag/traceroute | GET | No | Path discovery |
-| /deaddrop | GET, POST | Yes | Rate-limited SenML dead drop storage |
 
-### 18.11. Content-Format Summary
+### 18.12. Content-Format Summary
 
 | Content-Format | ID | Usage |
 |----------------|-----|-------|
