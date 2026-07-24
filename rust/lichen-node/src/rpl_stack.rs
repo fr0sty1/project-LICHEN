@@ -9,6 +9,7 @@ use std::vec::Vec;
 
 use lichen_core::addr::NodeId;
 use lichen_core::announce::Announce;
+use lichen_core::error::BufferTooSmall;
 use lichen_core::constants::RPL_ICMPV6_TYPE;
 use lichen_core::icmpv6::hdr_field;
 use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
@@ -682,13 +683,13 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     /// Send a non-CoAP IPv6 diagnostic through the selected RPL/gradient next hop.
     pub async fn send_ipv6(&mut self, ipv6: &[u8], now_ms: u64) -> Result<(), TxError> {
-        let header = Ipv6Header::from_bytes(ipv6).map_err(|_| TxError::BufferTooSmall)?;
+        let header = Ipv6Header::from_bytes(ipv6).map_err(|_| TxError::BufferTooSmall(BufferTooSmall::new(IPV6_HEADER_LEN, ipv6.len())))?;
         if !valid_ipv6_envelope(ipv6) {
-            return Err(TxError::BufferTooSmall);
+            return Err(TxError::BufferTooSmall(BufferTooSmall::new(IPV6_HEADER_LEN, ipv6.len())));
         }
         if header.next_header == next_header::UDP {
             let udp = lichen_ipv6::UdpHeader::from_bytes(&ipv6[IPV6_HEADER_LEN..])
-                .map_err(|_| TxError::BufferTooSmall)?;
+                .map_err(|_| TxError::BufferTooSmall(BufferTooSmall::new(UDP_HEADER_LEN, ipv6.len().saturating_sub(IPV6_HEADER_LEN))))?;
             if udp.src_port == lichen_core::constants::PORT_COAP
                 || udp.dst_port == lichen_core::constants::PORT_COAP
             {
@@ -864,7 +865,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let mut body = [0u8; 64];
         let len = self.rpl.build_dio(&mut body);
         if len == 0 {
-            return Err(TxError::BufferTooSmall);
+            return Err(TxError::BufferTooSmall(BufferTooSmall::new(1, body.len())));
         }
         let packet = rpl_ipv6_packet(
             self.local_rpl_addr,
@@ -872,7 +873,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             rpl_code::DIO,
             &body[..len],
         )
-        .ok_or(TxError::BufferTooSmall)?;
+        .ok_or(TxError::BufferTooSmall(BufferTooSmall::new(IPV6_HEADER_LEN + len, IPV6_HEADER_LEN)))?;
         let l2_destination = ipv6_l2_destination(destination);
         self.stack
             .send_ipv6_to(
@@ -884,7 +885,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     pub async fn send_dis(&mut self, destination: [u8; 16]) -> Result<(), TxError> {
         let packet = rpl_ipv6_packet(self.local_rpl_addr, destination, rpl_code::DIS, &[0, 0])
-            .ok_or(TxError::BufferTooSmall)?;
+            .ok_or(TxError::BufferTooSmall(BufferTooSmall::new(IPV6_HEADER_LEN + 2, IPV6_HEADER_LEN)))?;
         let l2_destination = ipv6_l2_destination(destination);
         self.stack
             .send_ipv6_to(

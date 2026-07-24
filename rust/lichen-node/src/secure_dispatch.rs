@@ -89,7 +89,7 @@ async fn dispatch_encrypted<R: Radio, S: SenderStateStore>(
         .send_secure_response(&source, &peer_iid, &request, response_data, store)
         .await
         .map_err(|e| match e {
-            SecureError::Tx(TxError::Radio(_)) => SecureError::DecryptFailed,
+            SecureError::Tx(TxError::RadioTx) => SecureError::DecryptFailed,
             other => other,
         })?;
 
