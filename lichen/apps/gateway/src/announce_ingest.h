@@ -17,7 +17,6 @@
 #define GATEWAY_ANNOUNCE_SIGNATURE_LEN LICHEN_ANNOUNCE_SIGNATURE_LEN
 
 struct gateway_announce_view {
-	uint8_t flags;
 	uint8_t hop_count;
 	uint8_t rx_channel;
 	uint16_t seq_num;

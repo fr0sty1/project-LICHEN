@@ -336,3 +336,18 @@ class AnnounceScheduler:
     def is_running(self) -> bool:
         """Whether the scheduler is currently running."""
         return self._running
+
+    def get_rx_channel(self) -> int:
+        """Get the current rx_channel announced in scheduler's announces (CCP-9).
+
+        Queried by LCI to expose the value through the Local Client Interface.
+        """
+        return self.rx_channel
+
+    def set_rx_channel(self, channel: int) -> None:
+        """Set the rx_channel for future announces (CCP-9 rendezvous).
+
+        Changes take effect on the next announce transmission.
+        Values >= 8 are clamped to 0.
+        """
+        self.rx_channel = channel if 0 <= channel < 8 else 0
