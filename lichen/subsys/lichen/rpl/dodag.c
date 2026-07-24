@@ -156,6 +156,7 @@ static void adopt_version(struct lichen_rpl_dodag *d,
 	d->rank = LICHEN_RPL_INFINITE_RANK;
 	d->lowest_rank = LICHEN_RPL_INFINITE_RANK;
 	d->role = LICHEN_RPL_UNJOINED;
+	d->gateway_centric = false;
 }
 
 /* ── Public API ────────────────────────────────────────────────────────────── */
@@ -274,6 +275,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const struct lichen_rpl_dio *dio,
+				  const struct lichen_rpl_dodag_config *config,
 				  const uint8_t *neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
@@ -285,6 +287,11 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 
 	if (d->role == LICHEN_RPL_ROOT) {
 		return 0;
+	}
+
+	/* Propagate gateway_centric flag from DODAG Configuration option */
+	if (config != NULL) {
+		d->gateway_centric = config->gateway_centric;
 	}
 
 	if (dio->mode_of_operation != 1 || !dio->grounded) {

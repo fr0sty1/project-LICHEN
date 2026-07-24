@@ -105,6 +105,9 @@ struct lichen_rpl_dodag {
 	/* Parent candidates */
 	struct lichen_rpl_parent parents[CONFIG_LICHEN_RPL_MAX_PARENTS];
 
+	/* Gateway-centric mode (from DODAG Configuration option) */
+	bool gateway_centric;
+
 	/* Lowest rank ever achieved (for MaxRankIncrease check) */
 	uint16_t lowest_rank;
 };
@@ -158,6 +161,7 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  */
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
+				  const struct lichen_rpl_dodag_config *_Nullable config,
 				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,

@@ -221,6 +221,20 @@ int lichen_announce_sched_send_now(void);
 int lichen_announce_sched_set_app_data(const uint8_t *_Nullable app_data,
 				       size_t app_data_len);
 
+/**
+ * @brief Set DODAG join state for dynamic announce interval selection.
+ *
+ * When joined to a gateway-centric DODAG, the scheduler uses
+ * CONFIG_LICHEN_ANNOUNCE_INTERVAL_GATEWAY instead of
+ * CONFIG_LICHEN_ANNOUNCE_INTERVAL_NORMAL.
+ * On DODAG loss, the interval reverts to NORMAL after
+ * CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT seconds.
+ *
+ * @param joined          true if node is joined to a DODAG
+ * @param gateway_centric true if the DODAG has the gateway_centric flag
+ */
+void lichen_announce_sched_set_dodag_state(bool joined, bool gateway_centric);
+
 #endif /* CONFIG_LICHEN_ANNOUNCE_SCHEDULER */
 
 #ifdef __cplusplus
