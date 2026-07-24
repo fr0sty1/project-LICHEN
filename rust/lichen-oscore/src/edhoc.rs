@@ -537,7 +537,22 @@ fn encode_identifier<const N: usize>(
     buf: &mut heapless::Vec<u8, N>,
     id: &ConnectionId,
 ) -> Result<(), EdhocError> {
-    encode_bstr(buf, id.as_bytes())
+    let bytes = id.as_bytes();
+    if bytes.is_empty() {
+        buf.push_err(0x40)?;
+    } else if bytes.len() == 1 {
+        let b = bytes[0];
+        // Compact CBOR integer: uint 0-23 (0x00-0x17) or negative int -1 to -24 (0x20-0x37)
+        if b <= 0x17 || (0x20..=0x37).contains(&b) {
+            buf.push_err(b)?;
+        } else {
+            buf.push_err(0x41)?;
+            buf.push_err(b)?;
+        }
+    } else {
+        encode_bstr(buf, bytes)?;
+    }
+    Ok(())
 }
 
 /// Build a raw key credential (CCS) from a public key.
@@ -561,7 +576,7 @@ fn parse_bstr(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
         return Err(EdhocError::InvalidMessage);
     }
     let first = data[0];
-    let (len, header) = if first <= 0x17 {
+    let (len, header) = if first >= 0x40 && first <= 0x57 {
         ((first & 0x1f) as usize, 1)
     } else if first == 0x58 {
         if data.len() < 2 {
@@ -583,21 +598,90 @@ fn parse_bstr(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
     Ok((&data[header..total], total))
 }
 
-/// Parse a connection identifier from CBOR bstr.
+/// Parse a connection identifier from CBOR integer or bstr (RFC 9528 Section 3.5).
 fn parse_identifier(data: &[u8]) -> Result<(ConnectionId, usize), EdhocError> {
+    // Handle compact CBOR integer encoding: uint 0-23 (0x00-0x17) or negative int -1 to -24 (0x20-0x37)
+    if !data.is_empty() {
+        let b = data[0];
+        if b <= 0x17 {
+            return Ok((ConnectionId::from(b), 1));
+        }
+        if (0x20..=0x37).contains(&b) {
+            return Ok((ConnectionId::from(b), 1));
+        }
+        // Reject bstr encoding when compact integer would suffice
+        if b == 0x41 && data.len() > 1 && (data[1] <= 0x17 || (0x20..=0x37).contains(&data[1])) {
+            return Err(EdhocError::InvalidMessage);
+        }
+    }
     let (raw, consumed) = parse_bstr(data)?;
     let id = ConnectionId::new(raw)?;
     Ok((id, consumed))
 }
 
-/// Parse an ID_CRED map from CBOR.
+/// Parse an ID_CRED from CBOR.
+///
+/// Accepts compact kid references (bare integer or bstr) and full map form `{4: kid}`
+/// per RFC 9528 Section 3.5.2.
 fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
     if data.is_empty() {
         return Err(EdhocError::InvalidMessage);
     }
     let first = data[0];
+
+    // Compact kid: bare integer (0x00-0x17 or 0x20-0x37) 
+    if first <= 0x17 || (0x20..=0x37).contains(&first) {
+        let total = 1;
+        let mut encoded = heapless::Vec::new();
+        encoded.push_err(0xa1)?;
+        encoded.push_err(0x04)?;
+        encoded.push_err(0x41)?;
+        encoded.push_err(first)?;
+        let mut kid_vec = heapless::Vec::new();
+        kid_vec.push(first).ok();
+        return Ok((IdCred { encoded, reference: IdCredReference::Kid(kid_vec) }, total));
+    }
+
+    // Compact kid reference: bare bstr
+    if first >= 0x40 && first <= 0x57 {
+        // bstr of length 0-23 — compact kid
+        let kid_len = (first & 0x1f) as usize;
+        let total = 1 + kid_len;
+        if data.len() < total {
+            return Err(EdhocError::InvalidMessage);
+        }
+        if total > ID_CRED_MAX_LEN {
+            return Err(EdhocError::BufferTooSmall);
+        }
+        let mut encoded = heapless::Vec::new();
+        // Canonicalize to {4: kid}
+        encoded.push_err(0xa1)?;
+        encoded.push_err(0x04)?;
+        encoded.extend_from_slice(&data[..total]).map_err(|_| EdhocError::BufferTooSmall)?;
+        let mut kid_vec = heapless::Vec::new();
+        kid_vec.extend_from_slice(&data[1..total]).ok();
+        return Ok((IdCred { encoded, reference: IdCredReference::Kid(kid_vec) }, total));
+    }
+    if first == 0x58 && data.len() > 1 {
+        // bstr of length 24-255 — compact kid
+        let kid_len = data[1] as usize;
+        let total = 2 + kid_len;
+        if data.len() < total {
+            return Err(EdhocError::InvalidMessage);
+        }
+        if total > ID_CRED_MAX_LEN {
+            return Err(EdhocError::BufferTooSmall);
+        }
+        let mut encoded = heapless::Vec::new();
+        encoded.push_err(0xa1)?;
+        encoded.push_err(0x04)?;
+        encoded.extend_from_slice(&data[..total]).map_err(|_| EdhocError::BufferTooSmall)?;
+        let mut kid_vec = heapless::Vec::new();
+        kid_vec.extend_from_slice(&data[2..total]).ok();
+        return Ok((IdCred { encoded, reference: IdCredReference::Kid(kid_vec) }, total));
+    }
+
     if !(0xa0..=0xbf).contains(&first) && first != 0xd8 {
-        // Reject non-map start bytes (or COSE tag 0xd8 for CWT references)
         return Err(EdhocError::InvalidMessage);
     }
 
@@ -638,36 +722,38 @@ fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
         return Err(EdhocError::InvalidMessage);
     }
 
-    // Walk the map to find the end.
-    let mut remaining = &data[consumed..];
+    // Walk the map to find the end. Track consumed position from start of data.
+    let mut consumed_offset = consumed;
     let mut items = 0;
     let max_items = 8;
-    while !remaining.is_empty() && items < max_items {
+    while consumed_offset < data.len() && items < max_items {
+        let remaining = &data[consumed_offset..];
+
         // Skip key
         if remaining[0] <= 0x17 {
-            remaining = &remaining[1..];
+            consumed_offset += 1;
         } else if remaining[0] == 0x18 && remaining.len() > 1 {
-            remaining = &remaining[2..];
+            consumed_offset += 2;
         } else if remaining[0] == 0x19 && remaining.len() > 2 {
-            remaining = &remaining[3..];
+            consumed_offset += 3;
         } else if remaining[0] == 0x1a && remaining.len() > 4 {
-            remaining = &remaining[5..];
+            consumed_offset += 5;
         } else if remaining[0] == 0x20 {
-            remaining = &remaining[1..];
+            consumed_offset += 1;
         } else if remaining[0] == 0x38 && remaining.len() > 1 {
-            remaining = &remaining[2..];
+            consumed_offset += 2;
         } else {
             return Err(EdhocError::InvalidMessage);
         }
 
         // Skip value (handle bstr of any length)
-        let (_, value_consumed) = parse_bstr(remaining)?;
-        remaining = &remaining[value_consumed..];
+        let (_, value_consumed) = parse_bstr(&data[consumed_offset..])?;
+        consumed_offset += value_consumed;
         items += 1;
     }
 
-    if remaining.is_empty() && items > 0 {
-        let total = data.len();
+    if items > 0 {
+        let total = consumed_offset;
         // Verify total length doesn't exceed ID_CRED_MAX_LEN
         if total > ID_CRED_MAX_LEN {
             return Err(EdhocError::BufferTooSmall);
@@ -1214,7 +1300,7 @@ impl EdhocInitiator {
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
             let signature_3 = self.signing_key.sign(&m_3);
             let mut ciphertext_3 = SecretVec::<128>::new();
-            encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
+            encode_bstr(&mut ciphertext_3, &id_cred_i)?;
             encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
 
             // K_3 and IV_3 for AEAD
@@ -1433,7 +1519,7 @@ impl EdhocResponder {
             return Err(EdhocError::InvalidMessage);
         }
 
-        if msg1[0] != 1 {
+        if msg1[0] != 0 {
             return Err(EdhocError::InvalidMessage);
         }
 
@@ -1461,10 +1547,12 @@ impl EdhocResponder {
         };
         self.state.g_x = g_x;
 
-        // Parse C_I
+        // Parse C_I (CBOR integer or bstr per RFC 9528 Section 3.5)
         let rest = &msg1[g_x_start + 2 + 32..];
         let c_i = if !rest.is_empty() {
-            if rest[0] <= 23 {
+            if rest[0] <= 0x17 {
+                rest[0]
+            } else if (0x20..=0x37).contains(&rest[0]) {
                 rest[0]
             } else if rest[0] == 0x41 && rest.len() > 1 {
                 rest[1]
@@ -1525,7 +1613,7 @@ impl EdhocResponder {
 
             let mut plaintext_2 = SecretVec::<128>::new();
             encode_identifier(&mut plaintext_2, &self.c_r)?;
-            encode_bstr(&mut plaintext_2, self.pubkey.as_bytes())?;
+            encode_bstr(&mut plaintext_2, &id_cred_r)?;
             encode_bstr(&mut plaintext_2, &signature_2.to_bytes())?;
 
             // Encrypt with KEYSTREAM_2
@@ -1935,7 +2023,7 @@ mod tests {
         assert_eq!(msg1[2], 0x58); // bstr marker
         assert_eq!(msg1[3], 32); // G_X length
                                  // msg1[4..36] is G_X
-        assert_eq!(&msg1[36..38], &[0x41, 5]); // C_I as bstr
+        assert_eq!(msg1[36], 5); // C_I as compact CBOR integer
     }
 
     #[test]

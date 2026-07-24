@@ -517,7 +517,13 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         if self.router.is_root() {
-                            return (0, RplEvent::DaoReceived);
+                            let route_updated = self.router.process_dao_at_ms(
+                                dao_bytes,
+                                sender_addr,
+                                sender_addr,
+                                now_ms,
+                            );
+                            return (0, RplEvent::DaoReceived { route_updated });
                         }
                         let Some(advertised_parents) =
                             crate::routing::dao_parents_for_source(dao_bytes, &sender_addr)

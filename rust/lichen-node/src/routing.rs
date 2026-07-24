@@ -805,8 +805,12 @@ impl Router {
         }
         #[cfg(not(test))]
         {
-            let _ = (expire_seconds, lifetime_start_seconds);
-            false
+            self.dao_manager.process_dao_at(
+                dao_bytes,
+                packet_source,
+                lifetime_start_seconds,
+                u64::from(self.dodag_config.lifetime_unit),
+            )
         }
     }
 
@@ -859,7 +863,6 @@ impl Router {
         Ok(outcome)
     }
 
-    #[cfg(test)]
     pub(crate) fn process_dao_at_ms(
         &mut self,
         dao_bytes: &[u8],

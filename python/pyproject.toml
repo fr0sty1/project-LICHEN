@@ -117,3 +117,8 @@ module = [
     "lichen.coap.secure",
 ]
 disable_error_code = ["misc"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

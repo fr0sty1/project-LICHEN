@@ -963,8 +963,6 @@ pub const MAX_PATH_SEQUENCES: usize = 256;
 /// LICHEN's fixed RPL profile activates all eight Path Control bits (PCS=7).
 #[cfg(feature = "std")]
 pub const PATH_CONTROL_SIZE: u8 = 7;
-#[cfg(all(feature = "std", test))]
-const DEFAULT_LIFETIME_UNIT_SECONDS: u64 = 60;
 
 
 
@@ -1869,17 +1867,6 @@ impl DaoManager {
     /// does not advance. Receivers that know the packet origin must use [`Self::process_dao_at`].
     #[cfg(feature = "std")]
     pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
-        cfg_if::cfg_if! {
-            if #[cfg(test)] {
-                self.process_dao_inner_test(dao_bytes)
-            } else {
-                false
-            }
-        }
-    }
-
-    #[cfg(test)]
-    fn process_dao_inner_test(&mut self, dao_bytes: &[u8]) -> bool {
         let Ok(dao) = Dao::from_bytes(dao_bytes) else {
             return false;
         };
@@ -1902,7 +1889,7 @@ impl DaoManager {
             false,
             DaoProcessTiming {
                 now_seconds: 0,
-                lifetime_unit_seconds: DEFAULT_LIFETIME_UNIT_SECONDS,
+                lifetime_unit_seconds: 60,
                 max_deadline_seconds: u64::MAX,
             },
             DaoStateLimits::PRODUCTION,
@@ -1914,8 +1901,8 @@ impl DaoManager {
     ///
     /// Finite Path Lifetimes are measured in `lifetime_unit_seconds`. The caller
     /// should pass the active DODAG Configuration Lifetime Unit. A zero unit fails closed.
-    #[cfg(test)]
-    fn process_dao_at(
+    #[cfg(feature = "std")]
+    pub fn process_dao_at(
         &mut self,
         dao_bytes: &[u8],
         origin: [u8; 16],

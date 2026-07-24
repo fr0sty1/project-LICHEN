@@ -564,6 +564,7 @@ where
     let _ = conc.configure(&RadioConfig::default()).await;
     let mut tun_buf = vec![0u8; 1500];
     let mut tx_queue: VecDeque<Vec<u8>> = VecDeque::new();
+    let mut maintenance = interval(Duration::from_millis(1000));
     loop {
         tokio::select! {
             _ = maintenance.tick() => {
