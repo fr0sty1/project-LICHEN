@@ -148,3 +148,7 @@ class SimNode:
         if self.hop_schedule and len(self.hop_schedule) > 0:
             return self.hop_schedule[sfn % len(self.hop_schedule)]
         return self.current_channel
+
+    def synchronized_hop_channel(self, sfn: int | None = None) -> int:
+        """Alias for get_hop_channel, used by simulation.py for CCP-12 rendezvous."""
+        return self.get_hop_channel(sfn)
