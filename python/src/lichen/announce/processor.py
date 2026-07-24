@@ -48,7 +48,6 @@ class AnnounceRejectReason(Enum):
     STALE_SEQNUM = auto()
     HOP_LIMIT_EXCEEDED = auto()
     MALFORMED = auto()
-    KEY_CHANGE_DETECTED = auto()
 
 
 @dataclass
@@ -100,20 +99,6 @@ class AnnounceProcessor:
                 accepted=False,
                 should_relay=False,
                 reject_reason=AnnounceRejectReason.INVALID_SIGNATURE,
-            )
-
-        pinned_pubkey = self._pinned_keys.get(iid)
-        if pinned_pubkey is not None and pinned_pubkey != announce.pubkey:
-            logger.error(
-                "KEY CHANGE DETECTED for IID %s: pinned=%s got=%s — rejecting",
-                iid.hex(),
-                pinned_pubkey.hex()[:16],
-                announce.pubkey.hex()[:16],
-            )
-            return AnnounceResult(
-                accepted=False,
-                should_relay=False,
-                reject_reason=AnnounceRejectReason.KEY_CHANGE_DETECTED,
             )
 
         existing_seq = self._seen.get(iid)
@@ -188,12 +173,6 @@ class AnnounceProcessor:
         if not announce.should_relay():
             return None
         return announce.with_incremented_hop_count()
-
-    def reset_seen(self, iid: bytes) -> None:
-        self._seen.pop(iid, None)
-
-    def unpin(self, iid: bytes) -> None:
-        self._pinned_keys.pop(iid, None)
 
     def pinned_pubkey_for(self, iid: bytes) -> bytes | None:
         return self._pinned_keys.get(iid)
