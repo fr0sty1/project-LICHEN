@@ -28,6 +28,7 @@ extern "C" {
 #define LICHEN_ANNOUNCE_TYPE 0x01U
 #define LICHEN_ANNOUNCE_MIN_LEN 93U
 #define LICHEN_ANNOUNCE_MAX_HOPS 15U
+#define LICHEN_ANNOUNCE_DEFAULT_CHANNEL 0U
 #define LICHEN_ANNOUNCE_IID_LEN 8U
 #define LICHEN_ANNOUNCE_PUBKEY_LEN 32U
 #define LICHEN_ANNOUNCE_SIGNATURE_LEN 48U
@@ -197,6 +198,16 @@ void lichen_announce_sched_set_seq(uint16_t seq_num);
  * @return Current sequence number
  */
 uint16_t lichen_announce_sched_get_seq(void);
+
+/**
+ * @brief Get the current RX channel announced for rendezvous (CCP-9).
+ *
+ * LCI and processor query this to know what channel we're advertising
+ * as our preferred RX for announce-driven rendezvous pinning.
+ *
+ * @return Current RX channel (0-15)
+ */
+uint8_t lichen_announce_sched_get_channel(void);
 
 /**
  * @brief Trigger an immediate announce transmission.

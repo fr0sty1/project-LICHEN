@@ -37,6 +37,9 @@ pub const DEFAULT_INTERVAL_MS: u64 = 300_000;
 /// Default maximum jitter in milliseconds (spec 9.4: 0-30 seconds).
 pub const DEFAULT_JITTER_MS: u64 = 30_000;
 
+/// Default RX channel announced for rendezvous (CCP-9).
+pub const DEFAULT_CHANNEL: u8 = 0;
+
 /// Announce scheduler configuration.
 #[derive(Debug, Clone)]
 pub struct SchedulerConfig {
@@ -184,6 +187,15 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     /// Set optional application data to include in announces.
     pub fn set_app_data(&mut self, data: Vec<u8>) {
         self.app_data = data;
+    }
+
+    /// Get the current RX channel announced for rendezvous (CCP-9).
+    ///
+    /// Why exposed: LCI and processor query this to know what channel
+    /// we're advertising as our preferred RX for announce-driven
+    /// rendezvous pinning.
+    pub fn current_channel(&self) -> u8 {
+        self.config.rx_channel
     }
 
     /// Whether the scheduler is currently running.

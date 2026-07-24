@@ -217,6 +217,15 @@ config LICHEN_ANNOUNCE_JITTER_MS
 	  0-30 seconds (30000 ms). Jitter prevents collision when multiple nodes
 	  power on simultaneously.
 
+config LICHEN_ANNOUNCE_DEFAULT_CHANNEL
+	int "Default announce RX channel (CCP-9)"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 0
+	range 0 15
+	help
+	  Default RX channel announced for rendezvous (CCP-9). The scheduler
+	  uses this when no explicit channel is configured. Range 0-15.
+
 config LICHEN_ANNOUNCE_INITIAL_DELAY_MS
 	int "Initial delay before first announce"
 	depends on LICHEN_ANNOUNCE_SCHEDULER

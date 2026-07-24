@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INTERVAL_MS = 300_000
 DEFAULT_JITTER_MS = 30_000
+DEFAULT_CHANNEL = 0
 
 
 class AnnounceTransmitter(Protocol):
@@ -38,6 +39,7 @@ class SchedulerConfig:
     interval_ms: int = DEFAULT_INTERVAL_MS
     jitter_ms: int = DEFAULT_JITTER_MS
     initial_delay_ms: int = 0
+    rx_channel: int = DEFAULT_CHANNEL
 
     def __post_init__(self) -> None:
         if self.interval_ms <= 0:
@@ -46,6 +48,8 @@ class SchedulerConfig:
             raise ValueError(f"jitter_ms must be >= 0, got {self.jitter_ms}")
         if self.initial_delay_ms < 0:
             raise ValueError(f"initial_delay_ms must be >= 0, got {self.initial_delay_ms}")
+        if not 0 <= self.rx_channel <= 15:
+            raise ValueError(f"rx_channel must be 0-15, got {self.rx_channel}")
 
 
 @dataclass
@@ -79,6 +83,19 @@ class AnnounceScheduler:
     _on_seq_change: Callable[[int], None] | None = field(
         default=None, init=False, repr=False
     )
+
+    @property
+    def current_channel(self) -> int:
+        """Get the current RX channel announced for rendezvous (CCP-9).
+
+        Why exposed: LCI and processor query this to know what channel
+        we're advertising as our preferred RX for announce-driven
+        rendezvous pinning.
+
+        Returns:
+            The channel number (0-15) used in announce messages.
+        """
+        return self.config.rx_channel
 
     def set_seq_num(self, seq_num: int) -> None:
         """Set the sequence number (for persistence restore).
@@ -149,7 +166,7 @@ class AnnounceScheduler:
             pubkey=self.identity.pubkey,
             seq_num=seq,
             hop_count=0,
-            rx_channel=0,
+            rx_channel=self.config.rx_channel,
             app_data=self.app_data,
         )
         signature = sign(
@@ -183,6 +200,7 @@ class AnnounceScheduler:
             interval_ms=self.config.interval_ms,
             jitter_ms=self.config.jitter_ms,
             initial_delay_ms=self.config.initial_delay_ms,
+            rx_channel=self.config.rx_channel,
         )
 
         self._task = asyncio.create_task(
