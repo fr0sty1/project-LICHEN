@@ -8,8 +8,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T14:17:45.11841369Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:04:19.473343149Z",
-  "started_at": "2026-07-24T16:04:07.758917836Z",
+  "updated_at": "2026-07-23T14:17:45.11841369Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-zlt3",
