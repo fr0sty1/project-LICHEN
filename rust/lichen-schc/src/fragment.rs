@@ -148,7 +148,8 @@ impl<'a> Fragment<'a> {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
+        out[1] = ((self.window & 1) << 7) | ((self.fcn & ((1 << FRAGMENT_N) - 1)) << 1);
+        let mut index = 0;
         if self.is_all_1() {
             for byte in self.mic {
                 out[1 + index] |= byte >> 7;
@@ -164,53 +165,23 @@ impl<'a> Fragment<'a> {
         Ok(needed)
     }
 
-    pub fn from_bytes(data: &'a [u8]) -> Result<Self, FragmentError> {
+    pub fn from_bytes(data: &[u8], out: &'a mut [u8]) -> Result<Self, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
         let rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let fcn = data[1] & ((1 << FRAGMENT_N) - 1);
-        let rest = &data[2..];
-        if fcn == ALL_1_FCN {
-            if rest.len() < MIC_LENGTH {
-                return Err(TooShort::new(2 + MIC_LENGTH, data.len()).into());
-            }
-            let mut mic = [0u8; MIC_LENGTH];
-            mic.copy_from_slice(&rest[..MIC_LENGTH]);
-            Ok(Fragment {
-                rule_id,
-                window,
-                fcn,
-                payload: &rest[MIC_LENGTH..],
-                mic,
-            })
-        } else {
-            Ok(Fragment {
-                rule_id,
-                window,
-                fcn,
-                payload: rest,
-                mic: [0u8; MIC_LENGTH],
-            })
-        }
-        let window = data[1] >> 7;
-        let fcn = (data[1] >> 1) & 0x3f;
+        let window = (data[1] >> 7) & 1;
+        let fcn = (data[1] >> 1) & ((1 << FRAGMENT_N) - 1);
         let content_len = data.len() - 2;
         let content_offset = if fcn == ALL_1_FCN { MIC_LENGTH } else { 0 };
+        let payload_len = content_len - content_offset;
         if fcn == ALL_1_FCN {
             if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&content_len) {
                 return Err(FragmentError::InvalidTileLength);
             }
-        } else {
-            if data.len() != TILE_SIZE + 2 {
-                return Err(FragmentError::InvalidTileLength);
-            }
-            if window == 1 && fcn == 0 {
-                return Err(FragmentError::InvalidFcn);
-            }
+        } else if data.len() != TILE_SIZE + 2 || (window == 1 && fcn == 0) {
+            return Err(FragmentError::InvalidTileLength);
         }
-        let payload_len = content_len - content_offset;
         if out.len() < payload_len {
             return Err(BufferTooSmall::new(payload_len, out.len()).into());
         }
@@ -224,8 +195,8 @@ impl<'a> Fragment<'a> {
                 mic[i] = (data[1 + i] << 7) | (data[2 + i] >> 1);
             }
         }
-        Ok(Self {
-            rule_id: data[0],
+        Ok(Fragment {
+            rule_id,
             window,
             fcn,
             payload: &out[..payload_len],
