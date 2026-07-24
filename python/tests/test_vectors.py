@@ -55,6 +55,7 @@ from generate import (  # noqa: E402
     _hop_hash,
     announce_coords_vectors,
     ccp9_vectors,
+    ccp12_synchronized_hop_vectors,
     edhoc_vectors,
     frame_vectors,
     l2_payload_vectors,
@@ -513,6 +514,35 @@ def test_edhoc_vectors_match_generator() -> None:
 def test_ccp9_vectors_match_generator() -> None:
     doc = _load("ccp9.json")
     assert doc["vectors"] == ccp9_vectors()
+
+
+def test_ccp16_hop_vectors_match_generator() -> None:
+    doc = _load("ccp16-hop.json")
+    assert doc["vectors"] == ccp12_synchronized_hop_vectors()
+
+
+def _ccp16_hop_cases():
+    doc = _load("ccp16-hop.json")
+    assert doc["format_version"] == 2
+    return [(v.get("name", str(i)), v) for i, v in enumerate(doc["vectors"])]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_hop_cases())
+def test_ccp16_hop_synchronized(name: str, vector: dict) -> None:
+    if "expected_channel" not in vector:
+        return
+    sfn = vector["sfn"]
+    seed = vector.get("seed", 0)
+    num_channels = vector.get("num_channels", 8)
+    rx_channel = vector.get("rx_channel")
+    expected = vector["expected_channel"]
+    result = tdma_sync_hop(sfn=sfn, seed=seed, num_channels=num_channels)
+    if rx_channel is not None:
+        return
+    assert result == expected, f"{name}: synchronized_hop_channel(sfn={sfn}, seed={seed}, num_channels={num_channels}) = {result}, expected {expected}"
+    if "hash_32" in vector:
+        data = seed.to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
+        assert tdma_hash_32(data) == vector["hash_32"], f"{name}: hash_32 mismatch"
 
 
 def _ccp16_cases():

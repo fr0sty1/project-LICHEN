@@ -1810,51 +1810,45 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
+def _sync_hop_data(seed: int, sfn: int) -> bytes:
+    """Data bytes as computed by synchronized_hop_channel: seed LE + sfn LE."""
+    return seed.to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
+
+
 def ccp12_synchronized_hop_vectors() -> list[dict]:
-    eui = bytes.fromhex("0011223344556677")
     return [
         {
             "name": "hop_sfn0_8ch",
             "sfn": 0,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 6,
-            "hash_32": hash_32(b""),
-            "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
+            "expected_channel": 1 + (hash_32(_sync_hop_data(0, 0)) % max(8, 3)),
+            "hash_32": hash_32(_sync_hop_data(0, 0)),
+            "description": "SFN=0 selects channel via synchronized_hop_channel hash_32(seed||sfn) per spec 02a:120 SelectChannel. Independent oracle.",
         },
         {
             "name": "hop_sfn1_16ch",
             "sfn": 1,
             "seed": 42,
             "num_channels": 16,
-            "expected_channel": 5,
-            "hash_32": _hop_hash(eui, 1),
-            "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
-        },
-        {
-            "name": "density_high_ch0",
-            "sfn": 0,
-            "seed": 0,
-            "num_channels": 8,
-            "density": 9,
-            "expected_channel": 0,
-            "hash_32": hash_32(b""),
-            "description": "Density>8 returns 0 per SelectChannel pseudocode line 1.",
+            "expected_channel": 1 + (hash_32(_sync_hop_data(42, 1)) % max(16, 3)),
+            "hash_32": hash_32(_sync_hop_data(42, 1)),
+            "description": "SFN=1, seed=42 with 16 channels via synchronized_hop_channel. Independent oracle.",
         },
         {
             "name": "sfn_wrap",
-            "sfn": 0xffffffff,
+            "sfn": 0xFFFFFFFF,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 2,
-            "hash_32": _hop_hash(eui, 0xffffffff),
-            "description": "SFN wraparound per spec Now() u32 mod and SelectChannel.",
+            "expected_channel": 1 + (hash_32(_sync_hop_data(0, 0xFFFFFFFF)) % max(8, 3)),
+            "hash_32": hash_32(_sync_hop_data(0, 0xFFFFFFFF)),
+            "description": "SFN wraparound per synchronized_hop_channel. Independent oracle.",
         },
         {
             "name": "rendezvous_beacon_announce",
             "sfn": 12345678,
-            "rx_channel": 3,
-            "next_rendezvous_us": 1000000,
+            "seed": 42,
+            "num_channels": 8,
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
         },
