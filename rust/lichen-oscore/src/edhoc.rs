@@ -520,11 +520,9 @@ fn encode_tstr<const N: usize>(
 /// TH_2 = H(G_Y || H(message_1)) per RFC 9528 / test vectors.
 fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 64>::new();
-    buf.extend_err(g_y)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    buf.extend_err(&h_msg1)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
+    let mut buf = heapless::Vec::<u8, 256>::new();
+    encode_bstr(&mut buf, g_y)?;
+    encode_bstr(&mut buf, &h_msg1)?;
     Ok(compute_th(&buf))
 }
 
@@ -1870,12 +1868,12 @@ mod tests {
         assert_eq!(initiator.create_message_1().unwrap().as_slice(), message_1);
 
         let g_y = hex!("dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c");
-        let th_2 = hex!("c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4");
+        let th_2 = hex!("c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d");
         assert_eq!(transcript_2(&g_y, &message_1).unwrap(), th_2);
 
-        let prk_2e = hex!("e998b69d67c5856ceb6812f20590d0cd55ab25e24bf53348f35915883e94b694");
+        let prk_2e = hex!("d584ac2e5dad5a77d14b53ebe72ef1d5ddaa8860d399373bf2c240afa7ba804da");
         let keystream_2 = hex!(
-            "c8419a8f1cae45674cf4c7ba021a110538c7fa2639ae70f316e8c3c34a0faf5dbf68cf835ec76f8f532fda302c647b303f02397f72710d072bd962118e35c6fe6d3f0a46a4160fba02a12eeec59e54135c3d"
+            "bbcacc62ed972f736871540c7ec7885ec4c1f20b2f8d354631c26b355306f8545bdc6a9c52b6b11a40bf8f464e78cc1e57def5ea7a941e430fce2716b3bf404d07c506955548ad688e37924b054c8535ae1f"
         );
         assert_eq!(
             edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82)
@@ -1897,7 +1895,7 @@ mod tests {
         let credential_r = hex!(
             "58f13081ee3081a1a003020102020462319ec4300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323433365a170d3239313233313233303030305a30223120301e06035504030c174544484f4320526573706f6e6465722045643235353139302a300506032b6570032100a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359300506032b6570034100b723bc01eab0928e8b2b6c98de19cc3823d46e7d6987b032478fecfaf14537a1af14cc8be829c6b73044101837eb4abc949565d86dce51cfae52ab82c152cb02"
         );
-        let th_3 = hex!("093c4bed6f1f679d7ef8c6dada0f631b75cf19d8a6eea88b2a5ac1a9fb9e5986");
+        let th_3 = hex!("cf726a925b31bee0c453041d90af477b9c0b6358203b0f9cc3f2d5afce66ab7e");
         assert_eq!(
             transcript_3(&th_2, &plaintext_2, &credential_r).unwrap(),
             th_3
@@ -1916,7 +1914,7 @@ mod tests {
         let credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
-        let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
+        let th_4 = hex!("343bd5227f4c4331c33628846430a0e5db4a45b8a638745ac594d95aca122f7b");
         assert_eq!(
             transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
             th_4
@@ -1944,19 +1942,19 @@ mod tests {
         // Export labels use integer encoding (uint) per RFC 9528 Section 4.1.2.
         // PRK_out = EDHOC-KDF(PRK_4e3m, TH_4, 7, TH_4, 32)
         let prk_out = edhoc_kdf_int(&prk_2e, &th_4, 7, &th_4, 32).unwrap();
-        assert_eq!(hex::encode(&prk_out), "1659d0f94c436648b2cb79c91b8cbfaca9579055a26d1df777831bba16b28f51");
+        assert_eq!(hex::encode(&prk_out), "4794a0245e3abffdaee91be2a29420723313bc8ca05cc30e2dbaef3bff631c10");
         // PRK_exporter = EDHOC-KDF(PRK_out, TH_4, 10, '', 32)
         let prk_exporter =
             edhoc_kdf_int(&prk_out[..].try_into().unwrap(), &th_4, 10, b"", 32).unwrap();
-        assert_eq!(hex::encode(&prk_exporter), "b01c06e05aab56939e6a7adc7669253d0be6c0706cd6482175e7ce12b8804f70");
+        assert_eq!(hex::encode(&prk_exporter), "6c80d923ca91a14421b075de3cb8a675b074fb5d61b9f6fa6bb728fa9e86881c");
         // master_secret = EDHOC-KDF(PRK_exporter, TH_4, 0, '', 16)
         let master_secret =
             edhoc_kdf_int(&prk_exporter[..].try_into().unwrap(), &th_4, 0, b"", 16).unwrap();
-        assert_eq!(hex::encode(&master_secret), "fa4cc000d2f87bf49cbca77243e66c56");
+        assert_eq!(hex::encode(&master_secret), "ec30da9e83b13ad9b4a0e9c14347a00b");
         // master_salt = EDHOC-KDF(PRK_exporter, TH_4, 1, '', 8)
         let master_salt =
             edhoc_kdf_int(&prk_exporter[..].try_into().unwrap(), &th_4, 1, b"", 8).unwrap();
-        assert_eq!(hex::encode(&master_salt), "337ac289a203cb5a");
+        assert_eq!(hex::encode(&master_salt), "018d51e5e41d951f");
 
         let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
         assert_eq!(context.sender_id(), &[0x18]);
