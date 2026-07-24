@@ -406,10 +406,16 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *_Nonnull 
  * The caller MUST authenticate and authorize the DAO as described for
  * lichen_rpl_dao_manager_process_dao(). This blocking API is thread-context
  * only and MUST NOT be called from an ISR.
+ *
+ * If ack_buf is non-NULL and ack_buf_len >= 20, and the DAO has the ACK
+ * request (K) flag set and was accepted (not rejected), a DAO-ACK with
+ * status 0 (OK) is written into ack_buf. The caller should send the DAO-ACK
+ * back to the DAO's source as an RPL DAO-ACK message.
  */
 enum lichen_rpl_dao_process_result lichen_rpl_dao_manager_process_dao_ex(
 	struct lichen_rpl_dao_manager *_Nonnull dm,
-	const uint8_t *_Nonnull dao_bytes, size_t len, uint32_t now);
+	const uint8_t *_Nonnull dao_bytes, size_t len, uint32_t now,
+	uint8_t *_Nullable ack_buf, size_t ack_buf_len);
 
 /**
  * @brief Expire stale parent edges and routes.

@@ -152,7 +152,7 @@ static enum lichen_rpl_dao_process_result process_one(
 
 	add_target(dao, &len, target);
 	add_transit(dao, &len, parent, 0x40, path_sequence, 255);
-	return lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, now);
+	return lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, now, NULL, 0);
 }
 
 static void before(void *fixture)
@@ -364,7 +364,7 @@ ZTEST(rpl_routing, test_root_requires_bound_state)
 	len = dao_begin(dao, 1);
 	add_target(dao, &len, 2);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "unbound root processed DAO");
 	uint8_t target[16];
 	struct lichen_rpl_route route;
@@ -535,7 +535,7 @@ ZTEST(rpl_routing, test_descriptor_grammar)
 	add_descriptor(dao, &len, 4);
 	dao[len - 1] = 9;
 	add_transit(dao, &len, 1, 0x40, 1, 255);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 2),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 2, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED,
 		      "equal Path Sequence descriptor mutation was accepted");
 	snapshot = find_snapshot(&manager, target2);
@@ -546,7 +546,7 @@ ZTEST(rpl_routing, test_descriptor_grammar)
 	add_target(dao, &len, 3);
 	add_descriptor(dao, &len, 3);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 2),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 2, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "bad descriptor length accepted");
 
 	len = dao_begin(dao, 3);
@@ -554,21 +554,21 @@ ZTEST(rpl_routing, test_descriptor_grammar)
 	add_descriptor(dao, &len, 4);
 	add_descriptor(dao, &len, 4);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 3),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 3, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "repeated descriptor accepted");
 
 	len = dao_begin(dao, 4);
 	add_target(dao, &len, 3);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
 	add_descriptor(dao, &len, 4);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 4),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 4, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "post-Transit descriptor accepted");
 
 	len = dao_begin(dao, 5);
 	add_descriptor(dao, &len, 4);
 	add_target(dao, &len, 3);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 5),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 5, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "descriptor without Target accepted");
 }
 
@@ -580,25 +580,25 @@ ZTEST(rpl_routing, test_dao_base_and_options_are_exact)
 	add_target(dao, &len, 2);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
 	dao[1] |= 0x01;
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "reserved DAO flag accepted");
 	dao[1] &= ~0x01;
 	dao[2] = 1;
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "reserved DAO byte accepted");
 	dao[2] = 0;
 
 	memmove(&dao[22], &dao[20], len - 20);
 	dao[20] = 0xee;
 	dao[21] = 0;
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len + 2, 1),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len + 2, 1, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "leading unsupported option accepted");
 	len = dao_begin(dao, 1);
 	add_target(dao, &len, 2);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
 	dao[len++] = 0xee;
 	dao[len++] = 0;
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 1, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "trailing unsupported option accepted");
 }
 
@@ -624,14 +624,14 @@ ZTEST(rpl_routing, test_path_control_same_subfield_and_validation)
 	len = dao_begin(dao, 3);
 	add_target(dao, &len, 5);
 	add_transit(dao, &len, 1, 0, 1, 255);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 3),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 3, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "empty Path Control accepted");
 	len = dao_begin(dao, 4);
 	add_target(dao, &len, 5);
 	size_t transit_offset = len;
 	add_transit(dao, &len, 1, 0x40, 1, 255);
 	dao[transit_offset + 2] = 0x01;
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 4),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 4, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "reserved Transit flag accepted");
 }
 
@@ -733,7 +733,7 @@ ZTEST(rpl_routing, test_overlong_target_is_atomic)
 	add_transit(dao, &len, 1, 0x40, 2, 20);
 	add_overlong_target(dao, &len, 3);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
-	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 20),
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(&manager, dao, len, 20, NULL, 0),
 		      LICHEN_RPL_DAO_REJECTED, "overlong Target accepted");
 	zassert_mem_equal(find_snapshot(&manager, target2), &saved_snapshot,
 			  sizeof(saved_snapshot), "overlong Target partially updated snapshot");
@@ -941,7 +941,8 @@ ZTEST(rpl_routing, test_canonical_route_state_vectors)
 		} else {
 			enum lichen_rpl_dao_process_result result =
 				lichen_rpl_dao_manager_process_dao_ex(
-					&manager, vector->dao, vector->dao_len, vector->now);
+					&manager, vector->dao, vector->dao_len, vector->now,
+					NULL, 0);
 
 			accepted = result != LICHEN_RPL_DAO_REJECTED;
 			changed = result == LICHEN_RPL_DAO_APPLIED;

@@ -1335,6 +1335,27 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     &mut self.storage,
                     now_ms,
                 );
+                if outcome == DaoHandlingOutcome::Applied {
+                    if let Ok(parsed) = lichen_rpl::message::Dao::from_bytes(dao) {
+                        if parsed.ack_requested {
+                            let dodag_id = self.rpl.router.dodag_id();
+                            let mut ack_body = [0u8; 20];
+                            ack_body[0] = parsed.rpl_instance_id;
+                            ack_body[1] = 0x80;
+                            ack_body[2] = parsed.dao_sequence;
+                            ack_body[3] = 0;
+                            ack_body[4..20].copy_from_slice(&dodag_id);
+                            if let Some(ack_packet) = rpl_ipv6_packet(
+                                dodag_id, source, rpl_code::DAO_ACK, &ack_body,
+                            ) {
+                                let _ = self
+                                    .stack
+                                    .send_ipv6_to(&ack_packet, &ipv6_eui64(source))
+                                    .await;
+                            }
+                        }
+                    }
+                }
                 Ok(RplReceiveOutcome::Dao(outcome))
             }
             RplEvent::DaoForwarded { next_hop } => {

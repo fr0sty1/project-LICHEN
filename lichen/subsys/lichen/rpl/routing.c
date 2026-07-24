@@ -804,7 +804,8 @@ static void rebuild_routes(struct lichen_rpl_dao_manager *dm)
  */
 static enum lichen_rpl_dao_process_result process_dao(
 	struct lichen_rpl_dao_manager *dm, const uint8_t *dao_bytes, size_t len,
-	uint32_t now, bool *route_installed)
+	uint32_t now, bool *route_installed, bool *ack_requested,
+	uint8_t *dao_sequence)
 {
 	struct lichen_rpl_dao_stage *staged;
 	bool claimed[CONFIG_LICHEN_RPL_MAX_ROUTES] = { false };
@@ -831,6 +832,12 @@ static enum lichen_rpl_dao_process_result process_dao(
 	if (dao.rpl_instance_id != dm->rpl_instance_id ||
 	    (d_flag && memcmp(dao.dodag_id, dm->dodag_id, 16) != 0)) {
 		return LICHEN_RPL_DAO_REJECTED;
+	}
+	if (ack_requested != NULL) {
+		*ack_requested = dao.ack_requested;
+	}
+	if (dao_sequence != NULL) {
+		*dao_sequence = dao.dao_sequence;
 	}
 	if (!extract_updates(dao_bytes, len, &root->workspace, &staged_count)) {
 		return LICHEN_RPL_DAO_REJECTED;
@@ -926,20 +933,27 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 		return false;
 	}
 	k_mutex_lock(&dm->lock, K_FOREVER);
-	(void)process_dao(dm, dao_bytes, len, now, &installed);
+	(void)process_dao(dm, dao_bytes, len, now, &installed, NULL, NULL);
 	k_mutex_unlock(&dm->lock);
 	return installed;
 }
 
 enum lichen_rpl_dao_process_result lichen_rpl_dao_manager_process_dao_ex(
 	struct lichen_rpl_dao_manager *dm, const uint8_t *dao_bytes, size_t len,
-	uint32_t now)
+	uint32_t now, uint8_t *ack_buf, size_t ack_buf_len)
 {
 	if (dm == NULL) {
 		return LICHEN_RPL_DAO_REJECTED;
 	}
 	k_mutex_lock(&dm->lock, K_FOREVER);
-	enum lichen_rpl_dao_process_result result = process_dao(dm, dao_bytes, len, now, NULL);
+	bool ack_requested = false;
+	uint8_t dao_sequence = 0;
+	enum lichen_rpl_dao_process_result result = process_dao(dm, dao_bytes, len, now, NULL,
+								&ack_requested, &dao_sequence);
+	if (result != LICHEN_RPL_DAO_REJECTED && ack_requested && ack_buf != NULL &&
+	    ack_buf_len >= 20) {
+		(void)lichen_rpl_dao_manager_build_dao_ack(dm, dao_sequence, 0, ack_buf, ack_buf_len);
+	}
 	k_mutex_unlock(&dm->lock);
 	return result;
 }
