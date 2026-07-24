@@ -546,7 +546,10 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 match process_result {
                     Ok(outcome) => Some(outcome),
                     Err(e) => {
-                        let _ = runtime.complete_receive(&mut self.rpl, action, post_await_ms);
+                        let (now_ms, _maintenance) = runtime
+                            .complete_receive(&mut self.rpl, action, post_await_ms)
+                            .map_err(RplRuntimeReceiveError::Action)?;
+                        self.routing_now_ms = self.routing_now_ms.max(now_ms);
                         return Err(e);
                     }
                 }
