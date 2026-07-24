@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import TYPE_CHECKING
 
-from aiocoap.oscore import (
+from aiocoap.oscore import (  # type: ignore[import-untyped]  # no official stubs
     DEFAULT_ALGORITHM,
     DEFAULT_HASHFUNCTION,
     DEFAULT_WINDOWSIZE,

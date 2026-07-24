@@ -14,7 +14,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-import serial
+import serial  # type: ignore[import-untyped]  # no official stubs
 
 from .framing import KissReader
 from .handler import DefaultKissConfig, KissHandler

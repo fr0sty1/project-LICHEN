@@ -23,7 +23,7 @@ from typing import Any
 
 import cbor2
 import uvicorn
-from aiocoap import GET, Context, Message
+from aiocoap import GET, Context, Message  # type: ignore[import-untyped]  # no official stubs
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse

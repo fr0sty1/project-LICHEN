@@ -46,11 +46,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, TypeGuard, TypeVar, cast, runtime_checkable
 
-import aiocoap
+import aiocoap  # type: ignore[import-untyped]  # no official stubs
 from aiocoap import Message
-from aiocoap.numbers.codes import EMPTY, POST
-from aiocoap.numbers.types import ACK, CON, RST
-from aiocoap.oscore import Direction
+from aiocoap.numbers.codes import EMPTY, POST  # type: ignore[import-untyped]
+from aiocoap.numbers.types import ACK, CON, RST  # type: ignore[import-untyped]
+from aiocoap.oscore import Direction  # type: ignore[import-untyped]
 
 from lichen.crypto.edhoc import EdhocInitiator, OscoreContext
 from lichen.crypto.oscore import (

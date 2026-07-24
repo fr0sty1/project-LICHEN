@@ -32,11 +32,11 @@ from ipaddress import IPv6Address, ip_address
 from typing import Any
 from urllib.parse import quote, unquote
 
-import aiocoap
+import aiocoap  # type: ignore[import-untyped]  # no official stubs
 from aiocoap import Message, error, interfaces
-from aiocoap.numbers import constants
-from aiocoap.numbers.codes import EMPTY
-from aiocoap.numbers.types import ACK
+from aiocoap.numbers import constants  # type: ignore[import-untyped]
+from aiocoap.numbers.codes import EMPTY  # type: ignore[import-untyped]
+from aiocoap.numbers.types import ACK  # type: ignore[import-untyped]
 
 ReceiveCallback = Callable[[bytes, str], None]
 DEFAULT_COAP_PORT = 5683

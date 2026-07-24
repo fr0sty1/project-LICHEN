@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlparse
 
-import aiocoap
+import aiocoap  # type: ignore[import-untyped]  # no official stubs
 import cbor2
 from aiocoap import (
     BAD_GATEWAY,
@@ -63,7 +63,7 @@ from aiocoap import (
     Message,
     resource,
 )
-from aiocoap.numbers import ContentFormat, constants
+from aiocoap.numbers import ContentFormat, constants  # type: ignore[import-untyped]
 
 from lichen.coap.transport import EndpointPolicy
 
