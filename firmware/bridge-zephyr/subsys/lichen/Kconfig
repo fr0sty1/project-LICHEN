@@ -12,6 +12,14 @@ menuconfig LICHEN
 
 if LICHEN
 
+config LICHEN_UTIL_LOG_LEVEL
+	int "LICHEN utility functions log level"
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN shared utility functions (SHA-256, etc.).
+	  0 = Off, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug
+
 config LICHEN_TIME_BUILD_EPOCH_UNIX
 	int "Deterministic firmware build epoch floor"
 	default 1700000000
