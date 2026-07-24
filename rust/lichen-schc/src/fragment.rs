@@ -176,6 +176,7 @@ impl<'a> Fragment<'a> {
             return Err(BufferTooSmall::new(content_len, out.len()).into());
         }
         let rule_id = data[0];
+        check_rule(rule_id)?;
         let window = data[1] >> 7;
         let fcn = (data[1] >> 1) & 0x3f;
         if window == 1 && fcn == 0 {
@@ -289,6 +290,7 @@ impl Ack {
             return Err(TooShort::new(2, data.len()).into());
         }
         let rule_id = data[0];
+        check_rule(rule_id)?;
         let window = data[1] >> 7;
         let complete = (data[1] & 0x40) != 0;
         let bit_count = (data.len() - 1) * 8 - 2;
