@@ -188,6 +188,10 @@ class LichenFrame:
         try:
             mic_length = MicLength(mic_field)
         except ValueError:
+            # SECURITY: A malicious frame could set the signature bit (bit 5)
+            # while using a reserved MIC-length value to claim no signature
+            # bytes follow, causing the receiver to parse signature bytes as
+            # payload.  Rejecting reserved values closes this vector.
             raise FrameError(f"reserved MIC-length value: {mic_field}") from None
 
         epoch = body[1]
