@@ -2,7 +2,7 @@
   "id": "project-LICHEN-313y",
   "title": "info_firmware_version returns pointer to info-\u003efirmware_version which may be freed",
   "description": "File: lichen/subsys/lichen/meshtastic/codec.c:477-511\n\n  static const char *info_firmware_version(\n      const struct lichen_meshtastic_local_info *info)\n  {\n      const char *version = (info != NULL) ? info-\u003efirmware_version : NULL;\n      ...\n      return info-\u003efirmware_version;  // Returns the pointer from caller's struct\n  }\n\nThe function returns either a static string literal (the default) or info-\u003efirmware_version directly.\n\nIf the caller's info struct or its firmware_version string is freed/modified after this function returns but before the returned pointer is used, this leads to use-after-free or data corruption.\n\nThe encoding functions that call this (lichen_meshtastic_encode_metadata_payload at line 870) encode immediately, so this is likely safe in current usage.\n\nSECURITY: Document that returned pointer is only valid while info struct and its strings are valid.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

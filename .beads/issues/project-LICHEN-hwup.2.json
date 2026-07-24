@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hwup.2",
   "title": "Add SCHC recompression after SRH insertion in gateway downward path",
   "description": "After inserting SourceRoutingHeader, packet size changes so must recompress with SCHC rules. Ensure no fragmentation issues. See schc crate and gateway packet processing.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

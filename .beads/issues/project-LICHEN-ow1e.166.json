@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.166",
   "title": "Identity.__del__ can reference partially constructed objects",
   "description": "**Location:** python/src/lichen/crypto/identity.py:121-131\n\n**Bug:** The `__del__` method checks `hasattr(self, '_wiped')` before accessing `_seed` and `_privkey`. However, during exception handling in `__init__`, `__del__` may be called before `__post_init__` completes, when some fields exist but others don't.\n\n**Trigger:** Pass invalid input to `Identity.__init__` that causes `__post_init__` to raise (e.g., wrong-length seed).\n\n**Bad behavior:** If `_seed` exists but `_wiped` doesn't (dataclass construction order), the hasattr check fails and zeroing is skipped. More subtly, if `_wiped` exists but `_privkey` doesn't, `_zero_bytearray(self._privkey)` raises AttributeError.\n\n**Note:** The code does have guards (lines 127-130), but the construction order of dataclass fields vs.  (a field with default) may vary.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

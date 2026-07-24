@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-8rn9",
   "title": "codereview pass 2 chunk2: adaptive_sf_select uses Rust syntax (let mut, core::cmp) while select_mitigation and select_channel use Python-like; standardize to pseudocode",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

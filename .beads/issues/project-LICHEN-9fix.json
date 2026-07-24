@@ -3,7 +3,7 @@
   "title": "ThinkNode M7: identify pin mapping and PoE controller",
   "description": "Before board definition: (1) Get pin mapping from ELECROW/Meshtastic, (2) Identify PoE controller chip (for power monitoring?), (3) Verify LR1110 SPI pins, (4) Check if Ethernet PHY or just PoE power injection. Blocks board definition.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

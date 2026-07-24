@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vts4",
   "title": "codereview-pass1-t6ic-toc: new 2a.7 TOC entry lacks matching section header",
   "description": "TOC updated but no corresponding ## 2a.7 header with anchor. The select_channel/now chunk needs integration with adaptive_sf_select (full function already in doc) + explicit SNR EMA + per-SF table reference (from adaptive section). discovered-from:project-LICHEN-t6ic",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T16:51:42.986693976Z",

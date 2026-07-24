@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.83",
   "title": "AnnounceProcessor key rotation detection blocks legitimate rotation",
   "description": "**Location:** python/src/lichen/announce/processor.py:159-172\n\n**Bug:** When a node legitimately rotates its key (new pubkey for same IID), the processor rejects all announces as 'KEY CHANGE DETECTED'. There is an `unpin()` method but no documented way for a node to signal it's rotating keys.\n\n**Trigger:** A node rotates its cryptographic key (e.g., after compromise, or periodic rotation policy).\n\n**Bad behavior:** All other nodes reject the rotated node's announces with ERROR-level logs. The mesh effectively quarantines the rotated node until every other node manually calls `unpin()`.\n\n**Note:** This is defense-in-depth that's arguably correct (reject unknown key changes), but the lack of a key rotation protocol means legitimate rotations are indistinguishable from attacks.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

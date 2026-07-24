@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2j8r.2.2",
   "title": "coap_dtn.c: make confessions_post OSCORE path consistent with deaddrop_post",
   "description": "confessions_post uses mixed direct oscore_unprotect_request and duplicate ctx checks in else branch. Align with deaddrop_post's is_protected + coap_oscore_unprotect_request + protected error handling to preserve both worker8/main OSCORE changes. --json",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

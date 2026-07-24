@@ -2,7 +2,7 @@
   "id": "project-LICHEN-o6pb",
   "title": "task",
   "description": "Zephyr lichen/subsys/lichen/coap/ only has coap_client.c. Python has full server (udp_server.py, resources.py), Rust has client.rs. Nodes need to respond to CoAP requests for sensor data, firmware updates, etc. Add server-side CoAP handling.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

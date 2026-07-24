@@ -3,7 +3,7 @@
   "title": "RenodeServer: handle RX_ENTER and RX_EXIT messages",
   "description": "Add handlers for RX_ENTER and RX_EXIT in renode_server.py:\n\n```python\nasync def _handle_connection(self, reader, writer):\n    ...\n    if msg_type == MSG_RX_ENTER:\n        await self._handle_rx_enter(data)\n    elif msg_type == MSG_RX_EXIT:\n        await self._handle_rx_exit()\n    ...\n\nasync def _handle_rx_enter(self, data: bytes) -\u003e None:\n    \"\"\"Handle RX_ENTER - firmware entered RX mode.\"\"\"\n    timeout_us = decode_rx_enter(get_message_payload(data))\n    logger.debug(\"Renode RX_ENTER: timeout %d us\", timeout_us)\n    \n    self._simulation.enter_rx_mode(\n        self._node_id,\n        timeout_us,\n        on_packet=self._on_rx_packet,\n        on_timeout=self._on_rx_timeout,\n    )\n\nasync def _handle_rx_exit(self) -\u003e None:\n    \"\"\"Handle RX_EXIT - firmware left RX mode.\"\"\"\n    logger.debug(\"Renode RX_EXIT\")\n    self._simulation.exit_rx_mode(self._node_id)\n```\n\nRemove or deprecate _handle_rx_poll() (full removal in separate bead).",
   "acceptance_criteria": "RX_ENTER puts node in RX_WAIT; RX_EXIT cancels; integration test shows time advances in BARRIER_SYNC",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

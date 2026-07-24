@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2lzz",
   "title": "codereview-P2: ccp15 test in test_vectors.py should validate new density_estimate_high fields",
   "description": "python/tests/test_vectors.py:719 The _ccp15_cases and test_ccp15_vector only checks expected_sf, load_factor, snr_ema. New vectors use density, per_percent, expected_density so add assertions for them to prevent regression. Correctness pass. Tagged codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

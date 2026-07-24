@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1cjx",
   "title": "BLE disconnect callback not registered for custom client factories",
   "description": "File: python/src/lichen/client/ble.py, lines 249-262\n\nIn BlePacketTransport._build_client(), when a custom client_factory is provided, the disconnected_callback is never registered:\n\n```python\ndef _build_client(self) -\u003e BleClientLike:\n    if self._client_factory is not None:\n        return self._client_factory(self.address)  # No disconnect callback!\n    ...\n    return cast(\n        BleClientLike,\n        client_cls(self.address, disconnected_callback=self._on_disconnect),\n    )\n```\n\nImpact: If the BLE device disconnects unexpectedly when using a custom client:\n1. _connected stays True incorrectly\n2. _on_disconnect is never called\n3. packets() iterator hangs forever waiting for data that will never arrive\n4. No sentinel (None) is put in the queue to terminate iteration\n\nFix: Provide a way for custom clients to register the disconnect callback, or document that custom clients MUST call a public disconnect notification method.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

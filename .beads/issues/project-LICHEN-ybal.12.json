@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.12",
   "title": "EUI-64 generation uses hardware ID directly - collision risk across device families",
   "description": "File: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:67-90\n\ngenerate_eui64() takes the first 8 bytes of hwinfo_get_device_id() directly. Different MCU families return different formats:\n- nRF52: 8-byte unique ID\n- STM32: 12-byte UID where bytes 0-3 are lot/wafer (shared across chips)\n- ESP32: 6-byte MAC\n\nTaking bytes [0:8] from STM32 UID means bytes 4-7 come from wafer coordinates, which may repeat across production lots.\n\nTrigger: Deploy multiple STM32 nodes from the same production batch.\n\nBad behavior: EUI-64 collision causes IPv6 address collision. Two nodes respond to same link-local, breaking IPv6 ND and causing intermittent connectivity.\n\nFix: Hash the full hwid (or at minimum document which MCUs are safe). The comment already notes future: derive from Ed25519 key - prioritize this.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

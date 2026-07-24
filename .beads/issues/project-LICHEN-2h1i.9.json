@@ -8,10 +8,10 @@
   "assignee": "ec2-user",
   "created_at": "2026-07-22T15:03:08.535002258Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:04:58.710352909Z",
+  "updated_at": "2026-07-24T04:07:58.9586875Z",
   "started_at": "2026-07-22T15:04:04.534858396Z",
-  "closed_at": "2026-07-22T15:04:58.710352909Z",
-  "close_reason": "Sales playbook developed with scripts/docs, 3 codereview passes completed and fixed, inventory script tested and working, epic updated with executable steps. Sales chunk clean.",
+  "closed_at": "2026-07-24T04:07:58.9586875Z",
+  "close_reason": "VERIFIED_FIXED",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2h1i.9",

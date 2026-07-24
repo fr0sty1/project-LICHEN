@@ -3,7 +3,7 @@
   "title": "[merge-conflict] worker8: hybrid.rs",
   "description": "Resolve merge conflict in rust/lichen-node/src/hybrid.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "labels": ["defer-boardconfig"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

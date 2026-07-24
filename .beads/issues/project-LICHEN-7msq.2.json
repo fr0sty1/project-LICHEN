@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-7msq.2",
   "title": "Update all s_provider reads in deaddrop_post/get to use new getter under lock",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

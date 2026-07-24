@@ -3,7 +3,7 @@
   "title": "Dead Drop CoAP resource (/deaddrop)",
   "description": "Define CoAP resource for store-forward dead drop with OSCORE protection. Include SenML support where applicable. Align with spec/12-apps.md and test/vectors/.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

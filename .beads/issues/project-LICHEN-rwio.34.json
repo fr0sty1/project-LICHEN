@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.34",
   "title": "lichen_lora_l2_tx takes non-const data pointer",
   "description": "lichen_lora_l2_tx() takes uint8_t *data instead of const uint8_t *data, even though the function does not modify the buffer.\n\nLocation:\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.h:114\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.c:313\n\nSignature: int lichen_lora_l2_tx(uint8_t *data, size_t len);\n\nThe doc comment says 'may be mutated by driver' which explains the non-const, but this is propagating Zephyr's lora_send() signature which also takes non-const. The LICHEN code itself does not mutate the buffer.\n\nWhat goes wrong: Callers with const data must cast away const to call this function, which is a code smell. The lichen_l2.c caller (line 203, 206) uses non-const tx_frame_buf and tx_ipv6_buf so this works, but it's an unnecessary constraint.\n\nIf the Zephyr lora_send() API changes to const in the future, this should be updated. For now, the doc comment is accurate - the driver may mutate. Consider tracking this as tech debt.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

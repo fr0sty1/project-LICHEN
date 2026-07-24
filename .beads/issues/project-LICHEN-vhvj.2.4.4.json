@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.2.4.4",
   "title": "Update test_medium.py and protocol tests to cover CCP-12 hop rendezvous and vectors",
   "description": "Add or update tests for synchronized hop channel computation, rendezvous in get_rx_candidates/detect_activity using SFN/EUI, reference ccp16-hop.json and ccp9_rendezvous.json. Ensure all vectors pass. Update test_protocol.py if channel decoding affected.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

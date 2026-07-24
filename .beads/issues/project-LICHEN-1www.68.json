@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.68",
   "title": "LICHEN_LORA_FRAME_OVERHEAD magic number 55 not fully derived from constants",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.h:56 \n\nLICHEN_LORA_FRAME_OVERHEAD = 55 is defined as a magic number with a comment explaining the derivation:\n  Max LoRa payload at SF10/BW125:     255 bytes\n  LICHEN frame overhead:               ~10 bytes \n  Schnorr-48 signature:                 48 bytes\n  Margin for SCHC rule ID:               ~2 bytes\n  = ~60 overhead, but constant is 55\n\nRisk: \n1. The derivation in the comment does not match 55 (10+48+2 = 60, not 55)\n2. BUILD_ASSERTs in lichen_l2.c verify LICHEN_SIG_LEN == 48 and base overhead == 9, but do not verify the complete 55\n3. If any component changes, manual recalculation is required\n\nPattern contributors may copy incorrectly: Changing LICHEN_SIG_LEN but not updating this constant, or vice versa.\n\nSuggested fix: Define LICHEN_LORA_FRAME_OVERHEAD as an expression:\n#define LICHEN_LORA_FRAME_OVERHEAD (LICHEN_FRAME_BASE_OVERHEAD + LICHEN_SIG_LEN - margin)\nOr add a BUILD_ASSERT that validates the relationship.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

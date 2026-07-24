@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b7dh",
   "title": "[codereview-P2] schema.json must support array root for v2 before ccp16-desync.json can validate",
   "description": "Update schema oneOf for array root with ccp_vector items to support v2 bare array files like the referenced ccp16-desync.json. Compare to existing object envelope. File as codereview tag. Parent project-LICHEN-pgzj.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

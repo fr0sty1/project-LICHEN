@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.1.8",
   "title": "Validate full single-owner RPL runtime with updated tests, no-std, clippy, and reviews",
   "description": "Run lichen-node tests (target 199+), no-std checks, full Clippy, update fake-clock tests for all new behaviors (exact timeout boundaries, idle expiry, bounded latency, monotonic clamping, Trickle preservation). Prepare for three review passes.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

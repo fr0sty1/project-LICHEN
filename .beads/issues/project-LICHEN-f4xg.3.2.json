@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-f4xg.3.2",
   "title": "Replace magic number 112 with SENML_CBOR_CONTENT_FORMAT in coap_dtn.c and related CoAP SenML responses",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

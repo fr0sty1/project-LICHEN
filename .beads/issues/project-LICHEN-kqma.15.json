@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.15",
   "title": "Add null argument validation to SCHC public APIs",
   "description": "Trigger: lichen_schc_compress() receives packet == NULL with pkt_len \u003e= 40, or out == NULL with enough out_len; lichen_schc_decompress() receives NULL data/out. lichen/subsys/lichen/schc/schc.c dereferences these public API arguments around lines 1083 and 1165 without null checks. Impact: malformed API input can crash the node instead of returning SCHC_ERR_INVALID_PACKET or SCHC_ERR_BUFFER_TOO_SMALL. Add explicit null validation at public entry points and tests for NULL inputs.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

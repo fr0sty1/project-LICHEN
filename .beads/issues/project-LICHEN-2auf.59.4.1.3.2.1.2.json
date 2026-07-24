@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.1.2",
   "title": "Implement MeshCore BLE ingress test builds in clean worktree for native_sim and 64-bit targets",
   "description": "After clean worktree setup, add or update tests for BLE ingress and non-link MeshCore in lichen/tests/ or appropriate location. Ensure builds use -DZEPHYR_EXTRA_MODULES. Capture SHA256 and logs.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

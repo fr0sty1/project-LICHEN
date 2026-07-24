@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ojzg",
   "title": "Validate the complete vector corpus",
   "description": "Python schema tests hardcode a subset and omit compact_cot.json and schnorr48.json, both of which fail the shared schema. Discover all vector documents and add explicit schemas for omitted families.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

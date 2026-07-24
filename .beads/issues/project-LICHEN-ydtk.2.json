@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ydtk.2",
   "title": "Refactor forward_mesh_to_upstream for proper RPL vs TUN preference",
   "description": "Modify the forward_mesh_to_upstream helper in lichend.rs to use the updated router preference logic before unconditionally sending to TUN. Handle Yggdrasil cross-mesh cases correctly. Update tests accordingly.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

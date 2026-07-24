@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9h7p.3",
   "title": "[codereview-P3] Missing update to SimNode docstring and test_simulation.py for new fields",
   "description": "Class docstring updated but tests in test_simulation.py and test_node.py need to verify hopping fields and synchronized behavior per test integrity rule. Add test for get_channel_for_time or similar. discovered-from:project-LICHEN-9h7p",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T17:07:05.457024712Z",

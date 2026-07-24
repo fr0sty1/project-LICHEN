@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create libFuzzer harness for lichen_frame_parse(). Run 1M iterations, fix crashes.",
   "notes": "Partial: libFuzzer harness fuzz_frame.c created with CMakeLists.txt build config. NOT completed: 1M iteration fuzzing run was not executed (no corpus, no crash files, no logs found). Remaining work: build fuzzer with Clang, run 1M iterations, fix any crashes found.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

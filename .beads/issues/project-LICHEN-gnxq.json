@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gnxq",
   "title": "codereview: signed_data() docstring not updated for current_channel inclusion",
   "description": "The signed_data method still references old rx_channel in implementation (even if comment updated). P1 correctness - must include in signature to prevent tampering of rendezvous channel per parent bead project-LICHEN-3i18. Must fix immediately. Tagged codereview. discovered-from:project-LICHEN-3i18.1",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

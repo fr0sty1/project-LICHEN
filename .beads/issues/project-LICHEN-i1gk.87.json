@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.87",
   "title": "[lichen_util.c:27-29] tc_sha256 error path sets ret=-EIO but state may be partially valid",
   "description": "Completeness: Error state clarity category.\n\nAt lines 27-29 in lichen_sha256():\n\n\nThe short-circuit evaluation means:\n1. If init fails: state is undefined, output untouched\n2. If update fails: state is partially populated, output untouched  \n3. If final fails: state is fully populated, output may be partially written\n\nLine 32 always runs secure_zero(\u0026state, sizeof(state)), which is correct.\n\nBut the output buffer state on error is undefined:\n- Caller may see partial/garbage data if final() partially wrote\n- Comment at line 26 says callers only need pass/fail\n\nThe function signature at lichen_util.h:122 says output must be \u003e= 32 bytes but doesn't document output state on error.\n\nAdd to documentation: 'On error, output buffer contents are undefined; caller should not read it.'",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "doc",
   "assignee": "Mark Atwood",

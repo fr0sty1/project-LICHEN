@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.12",
   "title": "Consider consolidating duplicate MTU definitions",
   "description": "LICHEN_L2_MTU (lichen_l2.h:45) and LICHEN_LORA_MTU (lora_l2.h:54) are both 200. Having two names for the same value invites drift. Consider defining once and aliasing, or documenting why they might differ in the future.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

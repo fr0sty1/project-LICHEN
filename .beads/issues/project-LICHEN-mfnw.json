@@ -3,7 +3,7 @@
   "title": "Missing EPROTONOSUPPORT errno definition",
   "description": "File: lichen/subsys/lichen/link/include/lichen/errno.h\nReference: lichen/subsys/lichen/link/lichen_link_rx.c line 417\n\nlichen_link_rx() returns -EPROTONOSUPPORT at line 417:\n\n```c\nif (lichen_l2_payload_classify(l2_payload, l2_payload_len) !=\n    LICHEN_L2_PAYLOAD_SCHC) {\n    ret = -EPROTONOSUPPORT;\n    goto cleanup;\n}\n```\n\nBut EPROTONOSUPPORT is not defined in lichen/errno.h for non-Zephyr builds. While it may be available via system headers on some platforms, this creates a portability issue.\n\nImpact: Compilation failure on non-Zephyr builds that lack EPROTONOSUPPORT definition.\n\nFix: Add EPROTONOSUPPORT to lichen/errno.h:\n```c\n#ifndef EPROTONOSUPPORT\n#define EPROTONOSUPPORT 93\n#endif\n```",
   "notes": "Commit: adba2ed15",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

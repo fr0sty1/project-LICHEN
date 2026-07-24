@@ -3,7 +3,7 @@
   "title": "Zephyr: Kconfig for multi-channel, extend LoRa driver and link layer",
   "description": "Implement da2q.2 for Zephyr: add CONFIG_LICHEN_MULTI_CHANNEL_ENABLED and N_CHANNELS. Extend lichen_lora API with channel param, add coordination/scheduler in link/lora_l2.c using announce rx_channel and synchronized_hop. Update init, tests, T1000E config.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "AI Agent",

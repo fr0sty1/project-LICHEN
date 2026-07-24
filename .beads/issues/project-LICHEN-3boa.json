@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3boa",
   "title": "lichen-sim: Protocol desync when recv_msg rejects oversized message",
   "description": "file: rust/lichen-sim/src/client.rs:229-240\n\nWhen recv_msg() receives a message with length \u003e MAX_MSG_LEN, it returns an error but leaves the connection in a desynced state:\n\n```rust\nasync fn recv_msg(\u0026mut self) -\u003e Result\u003cVec\u003cu8\u003e, SimError\u003e {\n    let mut len_bytes = [0u8; 4];\n    self.reader.read_exact(\u0026mut len_bytes).await?;\n    let len = u32::from_le_bytes(len_bytes) as usize;\n    if len \u003e MAX_MSG_LEN {\n        return Err(SimError::Protocol(\"message too large\"));  // BUG: 4-byte header consumed, body not\n    }\n    // ...\n}\n```\n\nThe 4-byte length header has been consumed, but the message body is left unread in the stream. The next call to recv_msg() will interpret body bytes as the length header, causing garbage parsing.\n\nCompare to Python sim_client.py which closes the stream on protocol errors (lines 363-376).\n\nFix: Either consume/discard the message body before returning error, or close the connection to prevent further use.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

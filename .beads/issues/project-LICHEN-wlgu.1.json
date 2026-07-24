@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wlgu.1",
   "title": "Reconcile hash_32/FNV-1a implementation in test/vectors/generate.py between main and worker23",
   "description": "The hash_32 function differs slightly between worktrees. Standardize on the canonical version and ensure all vector tests using it (including any new CCP/synchronized hopping vectors) pass.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.195",
   "title": "Codereview pass 2: MockRng SAFETY - consider AtomicU64 as safer alternative",
   "description": "Location: rust/lichen-embassy/src/mock.rs:144-157\n\nThe static mut + unsafe block could be replaced with AtomicU64 using Relaxed ordering, eliminating the unsafe block entirely while having identical performance on x86/ARM:\n\n```rust\nuse std::sync::atomic::{AtomicU64, Ordering};\nstatic SEED: AtomicU64 = AtomicU64::new(0xDEADBEEF);\n\nfn fill_bytes(\u0026mut self, buf: \u0026mut [u8]) {\n    for byte in buf.iter_mut() {\n        let mut s = SEED.load(Ordering::Relaxed);\n        s ^= s \u003c\u003c 13;\n        s ^= s \u003e\u003e 7;\n        s ^= s \u003c\u003c 17;\n        SEED.store(s, Ordering::Relaxed);\n        *byte = s as u8;\n    }\n}\n```\n\nThis removes the SAFETY comment requirement entirely. The ponytail comment says 'simple xorshift instead of pulling in rand crate' - AtomicU64 is stdlib, no new dep.\n\nPriority: P3 - Cleanup, not correctness. Current code works but sets a pattern of justifying unsafe when safe alternatives exist.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2h1i.2.6",
   "title": "Implement CoAP resources (/position, /confessions, /deaddrop, /metrics) with proper Content-Formats and OSCORE protection where needed",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

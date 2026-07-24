@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.15",
   "title": "[ipv6_addr.c:269] lichen_log_link_local_from_eui64 partial state on error",
   "description": "Contract: lichen_log_link_local_from_eui64 should either fully succeed or leave ll_addr_out unchanged.\nViolation: On error paths (lines 279, 289, 299), ll_addr_out is zeroed with memset. This modifies output even on failure. Some callers may prefer unmodified output on error (fail-fast pattern) vs zeroed output (fail-safe pattern).\nImpact: Low - zeroing is arguably safer (no stale data) but inconsistent with typical contract pattern where output is untouched on error. Currently only called from lichen_l2_iface_init() with NULL ll_addr_out, so dead code path.\nMitigation: Document that ll_addr_out is zeroed on error, or change to not touch output on error.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

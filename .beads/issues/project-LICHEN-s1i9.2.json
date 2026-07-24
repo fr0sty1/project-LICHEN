@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-s1i9.2",
   "title": "Align Rule 2 description and Rule 7 MQTT-SN section across draft-lichen-schc-lora-00.md, 03-adaptation.md, appendix-schc.md to eliminate ICMP vs MQTT-SN mismatch",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

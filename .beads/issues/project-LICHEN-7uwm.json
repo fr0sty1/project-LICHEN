@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7uwm",
   "title": "gradient.c: Unused variable oldest_time in find_lru",
   "description": "File: lichen/subsys/lichen/routing/gradient.c\nLines: 82-104\n\nIn find_lru():\n\n    static struct lichen_gradient_entry *find_lru(struct lichen_gradient_table *table)\n    {\n        struct lichen_gradient_entry *lru = NULL;\n        uint32_t oldest_time = 0xFFFFFFFF;  // \u003c-- initialized but never read\n\n        for (size_t i = 0; i \u003c CONFIG_LICHEN_ROUTING_GRADIENT_MAX_ENTRIES; i++) {\n            ...\n            if (lru == NULL || (int32_t)(e-\u003elast_used_ms - lru-\u003elast_used_ms) \u003c 0) {\n                lru = e;\n                oldest_time = e-\u003elast_used_ms;  // \u003c-- assigned but never used\n            }\n        }\n        return lru;\n    }\n\nThe variable oldest_time is assigned but never read. The comparison correctly uses lru-\u003elast_used_ms directly. This is dead code that should be removed for clarity.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

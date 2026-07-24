@@ -2,7 +2,7 @@
   "id": "project-LICHEN-417k",
   "title": "codereview-pass1: missing cross-reference to RPL version change handling",
   "description": "In the SFN modulo section of spec/02a-coordinated-capacity.md, the RPL version change cross-ref is mentioned but not linked to the exact section in 05-routing.md. Also add explicit 'MUST reset SFN on version change'. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

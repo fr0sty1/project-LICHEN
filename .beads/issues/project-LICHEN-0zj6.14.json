@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.14",
   "title": "main.c goto usage is correct but unusual for Zephyr",
   "description": "main.c:108-126 uses goto main_loop for error handling. This is valid C but Zephyr style typically uses early returns or nested ifs. The current code is correct - all variables are declared before the gotos (lines 98-101 comment explains why). Consider adding a one-line comment: '// Error handling converges at main_loop' at the first goto to signal intent.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

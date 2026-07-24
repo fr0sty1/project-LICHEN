@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.36",
   "title": "src_eui64 logged via LOG_DBG in lichen_l2_input()",
   "description": "In lichen_l2.c:501-504, the full 8-byte source EUI-64 from received frames is logged via LOG_DBG:\nLOG_DBG(\"Decompressed %zu bytes from %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\", ...)\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:501-504\n\nWhile LOG_DBG is typically compiled out in production, if debug logging is enabled, every received frame's sender identity is logged. This creates a log-based traffic analysis vector.\n\nImpact: When debug logging is enabled, device identities of all communicating peers are logged. Lower priority since LOG_DBG is off by default.\n\nRecommendation: Consider truncating to last 4 bytes or using a hash for debugging purposes while preserving debuggability.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

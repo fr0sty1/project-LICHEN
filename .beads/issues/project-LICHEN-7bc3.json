@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7bc3",
   "title": "[codereview-p2 pass1] select_channel_timing description update matches pseudocode but missing explicit test cases for all branches (blacklist, dwell, switch interval)",
   "description": "File: test/vectors/generate.py:1638. The updated description references the pseudocode but the single test case does not provide inputs for blacklist_until[], last_used[], last_switch_ts, full per-channel SNR/PER to exercise score := (1-busy)*success*20 + hysteresis and IF dwell \u003c MIN_DWELL_MS. Add 6-8 dedicated vectors for full branch coverage before closing hw6w. discovered-from:project-LICHEN-stvs",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

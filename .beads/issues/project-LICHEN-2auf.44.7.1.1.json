@@ -3,7 +3,7 @@
   "title": "Gate root DAO origins by explicit admission",
   "description": "Add bounded explicit admission of currently pinned Announce identities before a new DAO origin can consume durable high-water capacity. Existing persisted high-water origins remain admitted on open; no silent eviction or destructive retirement API.",
   "acceptance_criteria": "256 unadmitted churn identities consume no durable slots; admitted pinned identity applies; persisted high-water admission survives reopen; typed rejection/error exists; capacity fails closed.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

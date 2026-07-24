@@ -2,7 +2,7 @@
   "id": "project-LICHEN-esla",
   "title": "[cross-impl] outdated current_channel refs in vectors after rx_channel rename",
   "description": "ccp9-rendezvous.json and related test vectors/docs still reference scheduler current_channel / last_announce.current_channel. Python/Rust/Zephyr structs and code now consistently use rx_channel (CCP-9). Update oracle descriptions and any sim code for consistency. Same algorithm (rendezvous scheduling) risks different behavior if field names drift further.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

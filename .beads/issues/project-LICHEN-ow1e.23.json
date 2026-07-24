@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.23",
   "title": "MIC verification is completely disabled (stub always returns True)",
   "description": "**Location:** python/src/lichen/link/link_layer.py:60-80\n\n**Bug:** The `_verify_mic_stub()` function always returns True regardless of MIC value. The MIC (Message Integrity Code) is never verified, meaning any attacker who can inject radio traffic can forge frames.\n\n**Trigger:** Any attacker within radio range sends a frame with arbitrary MIC bytes.\n\n**Bad behavior:** Forged frames are accepted as valid. Combined with signature verification, the impact is somewhat mitigated, but frames with valid signatures but corrupted payloads (bit flips) would be accepted when they should be rejected by MIC.\n\n**Current state:** The code logs a warning once per process (line 77-79) but this may be missed in production logs. The TODO on line 408 acknowledges this needs implementation.\n\n**Risk:** Corruption goes undetected; attacker with radio access can replay bits of old legitimate frames (after signature, before MIC) that would otherwise be caught.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

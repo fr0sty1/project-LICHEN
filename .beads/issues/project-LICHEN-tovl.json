@@ -3,7 +3,7 @@
   "title": "[kimi-review] 7e34aa1: [SEVERITY: high] **The claimed fix is not in this commit.** ",
   "description": "Commit: 7e34aa1a0\nMessage: fix(node): add bounds check for OSCORE PIV extraction\n\nFinding: [SEVERITY: high] **The claimed fix is not in this commit.** The commit message says \"add bounds check for OSCORE PIV extraction\" and references `secure.rs:194`, but the diff only touches an issue-tracker JSON file. No change to `secure.rs` (or any source file) is included. If the bounds check is not already present in the code, the slice panic on malformed OSCORE options (a remotely triggerable DoS via a crafted CoAP message) remains unfixed while the issue is marked closed.",
   "notes": "Commit: 2370ebaa8",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

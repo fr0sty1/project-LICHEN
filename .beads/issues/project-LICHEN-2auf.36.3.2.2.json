@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2auf.36.3.2.2",
   "title": "Simplify redundant jq install steps in interop-status job",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-8b8u.4.4",
   "title": "Interop: add cross-language (Python/Rust/C) validation test for node_address functions using FFI or subprocess against same vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

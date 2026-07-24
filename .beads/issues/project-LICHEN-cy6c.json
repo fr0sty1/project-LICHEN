@@ -3,7 +3,7 @@
   "title": "Fix ESP32-S3 Renode app execution",
   "description": "Discovered by project-LICHEN-m5m1.8. Heltec V3 and T-Deck bridge/gateway plus Heltec puck produce linked ESP32-S3 ELFs, but the skeletal Renode model loads low-address segments into unmapped ranges and never reaches UART or protocol oracles. Replace or correct address mapping and required peripheral/radio modeling so canonical application ELFs execute faithfully. Also ensure the ARM builder has the packaging dependency needed after linking.",
   "acceptance_criteria": "1. Canonical Heltec V3 and T-Deck bridge/gateway ELFs load without unmapped segment failures and reach app-specific late runtime plus independent protocol/radio oracles. 2. Heltec puck reaches beacon/TX oracle. 3. ESP image packaging completes without missing intelhex. 4. Exact commands, hashes, and logs are retained; skeletal surrogate behavior is not presented as faithful evidence.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

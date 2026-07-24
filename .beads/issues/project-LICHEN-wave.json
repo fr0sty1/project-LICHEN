@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wave",
   "title": "Compliance: firmware/bridge-rust/src/main.rs polling",
   "description": "Policy: No-polling. Status: VIOLATION. Has RX polling loop. Fix: use SX1262 DIO1 interrupt instead of polling (u79t).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

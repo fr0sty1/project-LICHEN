@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-8cwj",
   "title": "codereview-pass1: coap_status.c capacity and comments",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

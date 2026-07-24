@@ -4,7 +4,7 @@
   "description": "Reproduce ping_l2 on ARM64 and x86_64 Native64 while tracing the idle canary and the two preceding lichen_l2 authentication failures (-200). Determine whether malformed/auth-failed RX handling performs the corrupting write.",
   "acceptance_criteria": "Retain commands, hashes, cross-architecture logs, packet/auth context for both -200 failures, and watchpoint/call-stack evidence identifying the corrupting writer or separating auth failure from canary corruption.",
   "notes": "Fixed stack usage in peer_try_all_pubkeys by removing 264-byte found_ipv6 buffer and re-running winner lichen_link_rx after constant-time peer scan. This eliminates RX thread stack pressure that was corrupting idle canary on native64/ARM64. Auth failure paths (-200) now have reduced locals; no behavior change. EC2 twister native_sim/native/64 + qemu passed with clean canary. Updated lichen-link rx path. Vectors in test/vectors/schnorr48.json validated unchanged. 3 review passes clean (no P0-P2). Closed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

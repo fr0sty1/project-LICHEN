@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.28",
   "title": "main.c: standalone LoRa RX handler does not consume packet data",
   "description": "## Location\nfirmware/bridge-zephyr/src/main.c:69-76\n\n## Issue\nThe lora_rx_handler() in standalone mode logs received packets but does not process them:\n\n```c\nstatic void lora_rx_handler(const uint8_t *data, size_t len,\n                            int16_t rssi, int8_t snr, void *user_data)\n{\n    ARG_UNUSED(user_data);\n\n    LOG_INF(\"RX: %zu bytes (standalone mode - not processed)\", len);\n    LOG_INF(\"  RSSI=%d dBm, SNR=%d dB\", rssi, snr);\n}\n```\n\nThe (standalone mode - not processed) message explains this is intentional, but:\n1. No diagnostic hex dump of received data for debugging\n2. No counter of packets received for health monitoring\n3. A tester may not realize packets are being silently dropped\n\n## What goes wrong\n- Debugging interop issues is harder without seeing packet contents\n- No way to verify frames are being received correctly without adding debug code\n- Pattern may be copied to production code without the not processed comment\n\n## Fix\nConsider adding:\n1. LOG_HEXDUMP_DBG(data, MIN(len, 32), \"RX payload\") for debug builds\n2. A static counter logged periodically (e.g., every 10 packets)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

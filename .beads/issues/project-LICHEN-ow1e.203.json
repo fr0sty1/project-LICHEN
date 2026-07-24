@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.203",
   "title": "Codereview pass 1: Add test for replay window poisoning defense",
   "description": "The OSCORE replay window fix split check_replay() into is_replay_candidate() + update_replay_window(), but there's no test that verifies the security property.\n\nAdd a test that:\n1. Creates sender/recipient contexts\n2. Protects a message with seq=5\n3. Corrupts the ciphertext (invalid MAC)\n4. Attempts unprotect_request() - should fail with DecryptFailed\n5. Protects a new message with seq=5 (same sequence)\n6. Attempts unprotect_request() - should SUCCEED (window not poisoned)\n\nThis proves that failed decryption doesn't mark the sequence as 'seen'.\n\nLocation: rust/lichen-oscore/src/lib.rs, add to mod tests",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

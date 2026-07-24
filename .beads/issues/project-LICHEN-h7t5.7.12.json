@@ -2,7 +2,7 @@
   "id": "project-LICHEN-h7t5.7.12",
   "title": "Document LilyGO target support status and limitations",
   "description": "Why this exists: contributors and users need to know what exact LilyGO device works, what is experimental, and how to reproduce builds and flashes. What needs to be done: document selected board, hardware revision, supported peripherals, unsupported peripherals, build/flash commands, host prerequisites, smoke-test steps, known issues, and relationship to R1/R1 Neo product target. Acceptance criteria: support status is recorded in project docs or Beads design fields; limitations are explicit; hardware uncertainties and missing tests are represented as Beads; partner/contributor handoff is clear.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

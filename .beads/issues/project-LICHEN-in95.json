@@ -2,7 +2,7 @@
   "id": "project-LICHEN-in95",
   "title": "[spec-compliance] routing.rs TrickleSafeLiveness hardcoded timeout differs from RPL trickle Imin in constants.toml and draft-lichen-rpl-lora",
   "description": "The TrickleSafeLiveness uses fixed 10000ms grace period (added in 6596ea225 and 830bf061f). Spec appendix-rpl.md and constants.toml[rpl.trickle].imin_ms=4000, RFC 6206 §4.2 and LICHEN RPL draft require liveness tied to Imin/Imax/k without arbitrary 10s constant. This risks inconsistent neighbor pruning vs spec MUST for Trickle suppression handling. See version_cmp also has custom (0,127) case not explicitly in RFC6550 §7.2.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.13",
   "title": "lichen_lora_l2_get_eui64 returns pointer to mutable static without const enforcement",
   "description": "lichen_lora_l2_get_eui64() returns 'const uint8_t *' to lora_state.eui64, but the caller could cast away const and mutate the EUI-64. More critically: the EUI-64 is read without synchronization with initialization.\n\nLocation:\n- lora_l2.c:322-329 (lichen_lora_l2_get_eui64)\n- lora_l2.h:129 (declaration)\n\nWhat goes wrong: The initialized check at line 324 uses atomic_get(), but the subsequent return of the pointer creates a TOCTOU window. A concurrent lichen_lora_l2_init() call could be modifying eui64[] while the caller reads it. In practice the init is idempotent after first call, but the code pattern is fragile.\n\nAdditionally, if multiple threads call get_eui64() while one is in init(), they could see partially-written EUI-64 bytes (though this is unlikely given how init is typically called early).\n\nFix: Either document single-threaded init requirement, or return a copy of the EUI-64 into caller-provided buffer under the mutex, or keep current pattern but add memory barrier comment.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

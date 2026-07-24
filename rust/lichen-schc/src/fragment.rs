@@ -88,7 +88,7 @@ impl From<BufferTooSmall> for FragmentError {
 }
 
 fn check_rule(rule_id: u8) -> Result<(), FragmentError> {
-    if rule_id == RULE_ID_A_TO_B || rule_id == RULE_ID_B_TO_A {
+    if rule_id < 128 {
         Ok(())
     } else {
         Err(FragmentError::UnsupportedRule)
@@ -276,6 +276,20 @@ impl Ack {
     pub fn from_bytes_for(data: &[u8], assigned: Option<u64>) -> Result<Self, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
+        }
+        if data.len() == 2 {
+            if data[1] & 0x40 == 0 {
+                return Err(TooShort::new(3, data.len()).into());
+            }
+            let rule_id = data[0];
+            let window = (data[1] >> 7) & 1;
+            let ack = Self::new(rule_id, window, 0, true);
+            let mut canonical = [0u8; 2];
+            let length = ack.write_to(&mut canonical)?;
+            if &canonical[..length] != data {
+                return Err(FragmentError::NonCanonicalAck);
+            }
+            return Ok(ack);
         }
         let _rule_id = data[0];
         let window = (data[1] >> FRAGMENT_N) & 1;

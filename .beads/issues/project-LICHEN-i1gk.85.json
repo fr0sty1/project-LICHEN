@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.85",
   "title": "[lichen_l2.c:114] MAX_LORA_FRAME hardcoded 255 should use LICHEN_LORA_MAX_PHY_PAYLOAD",
   "description": "Completeness: Constant coupling category.\n\nAt line 114:\n\n\nBut lora_l2.h:73 defines:\n\n\nThese are the same value but defined separately. If LICHEN_LORA_MAX_PHY_PAYLOAD ever changed (e.g., for a different radio type), MAX_LORA_FRAME would drift.\n\nMAX_LORA_FRAME is used at:\n- Line 264: tx_frame_buf[MAX_LORA_FRAME]\n- Line 1497-1499: len validation\n\nLICHEN_LORA_MAX_PHY_PAYLOAD is used at:\n- lora_l2.c:187: tx_buf sizing\n- lora_l2.c:319: rx_buf sizing\n- lora_l2.c:814: len validation\n\nFix: In lichen_l2.c, #include lora_l2.h (already included at line 13) and use LICHEN_LORA_MAX_PHY_PAYLOAD instead of MAX_LORA_FRAME, or add BUILD_ASSERT(MAX_LORA_FRAME == LICHEN_LORA_MAX_PHY_PAYLOAD).",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jbvi",
   "title": "Compliance: coap_oscore.c OSCORE",
   "description": "Policy: 06-security.md §8.7. File: lichen/subsys/lichen/oscore/coap_oscore.c. Status: COMPLIANT. CoAP-OSCORE integration middleware provides coap_oscore_unprotect_request and coap_oscore_protect_response for Zephyr CoAP server integration.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

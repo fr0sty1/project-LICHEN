@@ -3,7 +3,7 @@
   "title": "Make BLE secure mode negotiate security",
   "description": "Discovered during project-LICHEN-m5m1 review. BLE IPSP secure mode can require secure state but does not select SMP or request BT_SECURITY_L4. When SMP/Classic is absent the security callback is correctly unavailable and secure traffic fails closed, but production secure mode never becomes operational. Define Kconfig dependencies and initiate/verify LE Secure Connections before protected access.",
   "acceptance_criteria": "1. Enabling required secure mode selects or depends on necessary Bluetooth SMP configuration. 2. Connections request the specified security level. 3. Protected access remains fail-closed until successful security_changed callback. 4. Secure and intentionally insecure test configurations both compile and have independent runtime tests. 5. Three independent security review passes complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

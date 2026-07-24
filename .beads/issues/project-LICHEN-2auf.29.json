@@ -6,7 +6,7 @@
   "acceptance_criteria": "A newly tagged ami-0764d1b512e22671f child receives the exact recorded source/patch/tool bundle and firmware ELF within explicit bounded time; local and remote SHA-256 values match; remote file type/architecture and executable invocation succeed; every command, timeout, exit, instance ID, RunId and UTC log hash is retained. No fallback, partial transfer, ignored failure, reduced artifact, or unbounded poll passes. Cleanup is account/tag/RunId ownership checked and waits for termination; fleet never uses vol-0a95eee8d1d8461eb, and any accidental attachment is unmounted, detached, and waited available before cleanup can pass.",
   "notes": "Preserved original objective: verify SSH key injection, SCP transfer, explicit timeout/failure behavior, and successful ELF upload to temporary Zephyr/Renode fleet instances.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

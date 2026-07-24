@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.1",
   "title": "Recover ICMPv6/UDP ingress validation and checksum bounds",
   "description": "Ensure malformed IPv6 sources, bad UDP checksums, invalid ICMPv6 types/codes, and out-of-bounds fields are dropped on ingress in Python stack. Add focused test vectors. Update acceptance to cover drop behavior.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

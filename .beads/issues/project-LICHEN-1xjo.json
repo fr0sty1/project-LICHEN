@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1xjo",
   "title": "CborError: enc_head returns NotImplemented for values \u003e 255 but callers may not expect it",
   "description": "In rust/lichen-senml/src/cbor.rs enc_head(), when n \u003e 255 the function returns CborError::NotImplemented instead of BufferTooSmall. This is semantically more correct (it's a feature limitation, not a buffer size issue), but callers wrapping CborError may not handle NotImplemented if they only expect BufferTooSmall. Verify that all callers handle both error variants appropriately.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

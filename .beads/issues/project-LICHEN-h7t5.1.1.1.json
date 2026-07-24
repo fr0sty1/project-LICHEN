@@ -2,7 +2,7 @@
   "id": "project-LICHEN-h7t5.1.1.1",
   "title": "Add HAL retained crash and watchdog diagnostics records",
   "description": "Why this exists: project-LICHEN-h7t5.1.1 adds reset-cause/reboot boundaries, but retained crash records, watchdog breadcrumbs, and diagnostic dump storage require a separate retention/settings design and target-specific validation. What needs to be done: design and implement no-hardware HAL retained diagnostic records for crash reason, watchdog/reset breadcrumbs, validity/clear semantics, redaction policy, and native_sim/qemu tests; split physical retained-memory/register validation separately if hardware evidence is required.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

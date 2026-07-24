@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fob0",
   "title": "codereview: procurement.md HTS update pass 3 (completeness)",
   "description": "Independent pass 3: completeness review. All required elements covered: DHL rates, customs docs, landed cost model, PRFAQ footer, explicit webfetch+CBP CROSS mention for T-Echo HTS verification, update to 10-digit code. No gaps identified. 3 clean passes complete. Tagged codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "chore",
   "created_at": "2026-07-22T14:50:33.898009576Z",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-e2o5.3",
   "title": "coap_dtn.c: add OSCORE protection to deaddrop_get responses and improve node query parsing per LCI 17.5.8",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.2",
   "title": "ipv6_addr.h struct in6_addr fallback may conflict with system headers",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/ipv6_addr.h:76-78\n\n## Finding\nThe fallback definition of `struct in6_addr` relies on a complex cascade of preprocessor checks to detect whether the system already provides this struct. The heuristics (checking for `IN6ADDR_ANY_INIT`, header guards like `_NETINET_IN_H`, `__APPLE__` signals) are fragile.\n\n## What goes wrong\nIf a platform provides `struct in6_addr` via a header that none of the checked macros detect, the fallback definition triggers a \"redefinition of struct\" compile error. This is a maintenance burden as new platforms are added.\n\n## Mitigation already present\nThe code documents this and provides `LICHEN_HAVE_IN6_ADDR` as an escape hatch. The current heuristics cover common targets (POSIX, Zephyr, macOS).\n\n## Recommendation\nLow priority - the existing documentation and escape hatch are adequate. Consider adding a comment pointing to the specific platforms tested (e.g., \"verified on: Zephyr 3.x, Linux glibc, macOS 14\").",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

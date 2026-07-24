@@ -143,7 +143,7 @@ fn write_response(response: ReceiverResponse) -> Vec<u8> {
 #[test]
 fn shared_vectors_drive_production_implementations() {
     let document: Document = serde_json::from_str(VECTORS_JSON).expect("invalid vector JSON");
-    assert_eq!(document.format_version, 1);
+    assert_eq!(document.format_version, 2);
     assert!(!document.description.is_empty());
     let mut categories = BTreeSet::new();
 

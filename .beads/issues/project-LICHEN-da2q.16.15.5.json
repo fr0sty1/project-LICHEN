@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16.15.5",
   "title": "codereview-pass2: define exact density metric and SNR table in CCP-16",
   "description": "local_density needs precise definition (e.g. unique IIDs heard in last 5min via announce). Add full SNR-to-SF table. Update test vectors for adaptive SF cases. P2.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:24:32.674244533Z",

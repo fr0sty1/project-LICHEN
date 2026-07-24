@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.20",
   "title": "build_signable panics on oversized inputs (\u003e253B dst_addr+payload)",
   "description": "# Problem\nIn `rust/lichen-link/src/schnorr.rs:170-185`, the `build_signable` function writes to a 256-byte buffer without bounds checking:\n\n```rust\nfn build_signable\u003c'a\u003e(\n    buf: \u0026'a mut [u8; 256],\n    epoch: u8,\n    seqnum: LinkSeqNum,\n    dst_addr: \u0026[u8],\n    inner_payload: \u0026[u8],\n) -\u003e \u0026'a [u8] {\n    buf[0] = epoch;\n    buf[1..3].copy_from_slice(\u0026seqnum.to_be_bytes());\n    let mut off = 3;\n    buf[off..off + dst_addr.len()].copy_from_slice(dst_addr);  // can panic\n    off += dst_addr.len();\n    buf[off..off + inner_payload.len()].copy_from_slice(inner_payload);  // can panic\n    off += inner_payload.len();\n    \u0026buf[..off]\n}\n```\n\n## What goes wrong\nIf `3 + dst_addr.len() + inner_payload.len() \u003e 256`, this panics in debug or corrupts memory in release.\n\nThe comment says \"max 202 bytes for LoRa\" but:\n1. This is not enforced at compile time or runtime\n2. The function is `pub` (can be called from outside the module)\n3. A contributor copying this pattern will assume the 256-byte buffer is always sufficient\n\n## Trigger\nCall `sign_frame` or `verify_frame` with `dst_addr.len() + inner_payload.len() \u003e 253`.\n\n## Fix\nReturn `Result\u003c\u0026'a [u8], SigningError\u003e` and check bounds before copying.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "[merge-conflict] worker8: adapter.c",
   "description": "Resolve merge conflict in lichen/subsys/lichen/meshtastic/adapter.c between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "labels": ["defer-boardconfig"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

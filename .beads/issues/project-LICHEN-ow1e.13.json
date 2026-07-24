@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.13",
   "title": "link_layer: O(n) peer scan on every frame receive",
   "description": "In link_layer.rs:receive_frame(), every known peer is tried via O(n) signature verification scan (line 349-367). For a mesh with many neighbors, this becomes expensive - signature verification is cryptographically intensive (scalar multiplication). Consider: index peers by IID derived from source address field (if present in frame), or maintain a small LRU cache of recently-verified senders to check first.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

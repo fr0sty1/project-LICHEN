@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.101",
   "title": "[lora_l2.c:127-180] generate_eui64 hwid buffer is 32 bytes but hwinfo_get_device_id may return more",
   "description": "Category not checked: Buffer sizing vs hardware variation\n\nBug found: hwid buffer is 32 bytes (line 130), and there's a check at lines 141-144:\n  if ((size_t)hwid_len \u003e sizeof(hwid))\n\nBut this check is AFTER the call to hwinfo_get_device_id() - the damage is already done if the driver writes more than 32 bytes. The Zephyr hwinfo API documentation says 'The function will write to the buffer until either the entire device ID has been written or the buffer is full.'\n\nSo the driver SHOULD stop at sizeof(hwid), but this relies on the driver respecting the length parameter. A buggy driver could still overflow.\n\nLooking at the call: hwinfo_get_device_id(hwid, sizeof(hwid))\n\nThe second parameter IS sizeof(hwid), so the driver is told the max. The check at 141-144 is defensive against a buggy driver that returns a length \u003e size we passed. This is actually correct defensive coding.\n\nWithdrawing - the code is correct.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

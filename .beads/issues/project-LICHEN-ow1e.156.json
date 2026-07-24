@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.156",
   "title": "lichen-ipv6 BufferTooSmall uses needed/available while lichen-core uses required/provided",
   "description": "Two different field naming conventions for the same concept:\n\nlichen-ipv6/src/lib.rs Ipv6Error:\n  BufferTooSmall { needed: usize, available: usize }\n\nlichen-core/src/error.rs BufferTooSmall:\n  pub struct BufferTooSmall {\n      pub required: usize,\n      pub provided: usize,\n  }\n\nlichen-core/src/ipv6.rs uses:\n  BufferTooSmall(BufferTooSmall)  // wraps the struct\n\nWhat goes wrong: Code handling buffer errors must use different field names depending on which crate's error type it receives. If these are ever unified, one set of callers must update their field access.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
