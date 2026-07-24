@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cs4q",
   "title": "TUI refresh_radio has unsafe type conversion from untrusted dict",
   "description": "File: python/src/lichen/tui/native.py\nLines: 2187-2202\n\nThe refresh_radio method performs unsafe type conversions on data from radio_info dict:\n\n    duty_usage = float(radio_info.get(\"duty_cycle_usage_pct\", 0.0))\n    duty_remaining = int(radio_info.get(\"duty_cycle_remaining_ms\", 36000))\n    ...\n    depth_by_priority = tuple(\n        (int(k), int(v))\n        for k, v in sorted(queue_info.get(\"depth_by_priority\", {}).items())\n    )\n\nIf the remote device returns unexpected types (strings, None, nested objects), these conversions will raise ValueError or TypeError.\n\nWhile the broad exception handler catches this, it provides poor error messages and sets the entire radio state to error mode rather than handling gracefully.\n\nImpact: Brittle handling of malformed/unexpected device responses, poor error reporting.\n\nFix: Add explicit type validation with informative error messages, or use safe conversion helpers:\n    def safe_int(val, default=0):\n        try: return int(val)\n        except (TypeError, ValueError): return default",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
