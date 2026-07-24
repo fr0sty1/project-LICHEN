@@ -114,6 +114,49 @@ int coap_oscore_send_unauthorized(struct coap_resource *_Nonnull resource,
 				  struct coap_packet *_Nonnull request,
 				  struct sockaddr *_Nonnull addr, socklen_t addr_len);
 
+/**
+ * @brief Result of a mutating LCI operation authorization via OSCORE.
+ *
+ * Holds the OSCORE context, PIV, and decrypted payload after successful
+ * authorization. Core fields (ctx, payload, payload_len) are always valid
+ * on success; piv/piv_len are valid for building OSCORE-protected responses.
+ */
+struct coap_oscore_auth_result {
+	struct oscore_ctx *_Nonnull ctx;
+	const uint8_t *_Nonnull payload;
+	size_t payload_len;
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
+	size_t piv_len;
+};
+
+/**
+ * @brief Authorize a mutating LCI CoAP operation.
+ *
+ * Common helper for LCI resources accepting mutating requests (POST, PUT,
+ * DELETE) from both OSCORE-protected mesh peers and local admin clients.
+ *
+ * When the request carries an OSCORE option, this function looks up the
+ * peer's OSCORE context (by EUI-64 extracted from the source IPv6
+ * link-local IID), unprotects the request, and returns the decrypted
+ * payload and context needed for an OSCORE-protected response.
+ *
+ * When the request is unprotected, it falls back to the local admin check
+ * and reads the raw payload.
+ *
+ * @param[in]     resource     CoAP resource (for sending error responses)
+ * @param[in]     request      CoAP request packet
+ * @param[in]     addr         Client address
+ * @param[in]     addr_len     Address length
+ * @param[in]     expected_method  Expected CoAP method code (e.g. COAP_METHOD_POST)
+ * @param[out]    result       Authorization result with ctx, payload, piv
+ * @return 0 on success, negative CoAP response code on failure
+ */
+int coap_oscore_auth_mutating(struct coap_resource *_Nonnull resource,
+			      struct coap_packet *_Nonnull request,
+			      struct sockaddr *_Nonnull addr, socklen_t addr_len,
+			      uint8_t expected_method,
+			      struct coap_oscore_auth_result *_Nonnull result);
+
 #ifdef __cplusplus
 }
 #endif

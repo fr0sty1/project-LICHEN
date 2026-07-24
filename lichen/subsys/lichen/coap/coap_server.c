@@ -32,9 +32,7 @@
 #include <zephyr/net/net_ip.h>
 #include <lichen/coap_server.h>
 #include <lichen/senml.h>
-#include <lichen/oscore.h>
 #include <lichen/coap_oscore.h>
-#include <lichen/l2/ipv6_addr.h>
 #include <lichen/transport/slip_transport.h>
 
 LOG_MODULE_REGISTER(lichen_coap_server, CONFIG_LICHEN_COAP_SERVER_LOG_LEVEL);
@@ -117,6 +115,11 @@ static int send_ack(struct coap_resource *resource,
 }
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+/*
+ * Send an empty ACK (2.01 Created / 2.04 Changed) via OSCORE-protected
+ * response. Reuses the same response path that deaddrop and confessions
+ * use. The static buffer is sized per server config.
+ */
 static int msg_inbox_oscore_respond(struct coap_resource *resource,
 				    struct coap_packet *request,
 				    struct sockaddr *addr, socklen_t addr_len,
@@ -321,80 +324,44 @@ static int msg_inbox_post(struct coap_resource *resource,
 			  struct coap_packet *request,
 			  struct sockaddr *addr, socklen_t addr_len)
 {
-	const uint8_t *payload;
-	uint16_t payload_len;
 	uint32_t msg_id = 0;
 	int ret;
-	uint8_t peer_eui64[8] = {0};
-	uint8_t plain[LICHEN_COAP_SERVER_MAX_PAYLOAD];
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	struct oscore_ctx *ctx = NULL;
-	uint8_t piv[OSCORE_PIV_MAX_LEN];
-	size_t piv_len = 0;
-	bool is_protected = false;
-#endif
+	struct coap_oscore_auth_result auth;
 
-	/* Extract peer EUI64/IID from sockaddr for oscore_ctx_get_by_eui64()
-	 * (similar to deaddrop_post/confessions_post). Allows OSCORE mesh peers
-	 * in addition to local_admin for /msg/inbox POST per LCI spec. */
-	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
-		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
-		lichen_eui64_to_iid(peer_eui64, peer_eui64);
+	ret = coap_oscore_auth_mutating(resource, request, addr, addr_len,
+					COAP_METHOD_POST, &auth);
+	if (ret < 0) {
+		return -ret;
 	}
-
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	is_protected = coap_oscore_is_protected(request);
-	if (is_protected) {
-		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
-			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
-		}
-		uint8_t orig_code;
-		uint8_t opts[32];
-		size_t opt_len = sizeof(opts);
-		size_t plain_len = sizeof(plain);
-		piv_len = sizeof(piv);
-		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len,
-						      plain, &plain_len, piv, &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
-		if (orig_code != COAP_METHOD_POST) {
-			return COAP_RESPONSE_CODE_NOT_ALLOWED;
-		}
-		payload = plain;
-		payload_len = (uint16_t)plain_len;
-	} else {
-#endif
-		if (!lichen_coap_is_local_admin(addr, addr_len)) {
-			return lichen_coap_respond(resource, request, addr, addr_len,
-						   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
-		}
-		payload = coap_packet_get_payload(request, &payload_len);
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	}
-#endif
 
 	if (s_handlers.msg_post == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
-	if (payload == NULL || payload_len == 0) {
+	if (auth.payload == NULL || auth.payload_len == 0) {
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 
-	ret = s_handlers.msg_post(payload, payload_len, &msg_id);
+	ret = s_handlers.msg_post(auth.payload, auth.payload_len, &msg_id);
 	if (ret < 0) {
 		LOG_ERR("Message POST callback failed: %d", ret);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-		if (is_protected && ctx != NULL && piv_len > 0) {
-			return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		if (auth.ctx != NULL && auth.piv_len > 0) {
+			return msg_inbox_oscore_respond(resource, request, addr,
+							addr_len, auth.ctx,
+							auth.piv, auth.piv_len,
+							COAP_RESPONSE_CODE_BAD_REQUEST);
 		}
 #endif
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	if (is_protected && ctx != NULL && piv_len > 0) {
-		return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_CREATED);
+	if (auth.ctx != NULL && auth.piv_len > 0) {
+		return msg_inbox_oscore_respond(resource, request, addr,
+						addr_len, auth.ctx,
+						auth.piv, auth.piv_len,
+						COAP_RESPONSE_CODE_CREATED);
 	}
 #endif
 
