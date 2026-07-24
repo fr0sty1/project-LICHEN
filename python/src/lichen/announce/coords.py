@@ -283,5 +283,3 @@ def opportunistic_wait_time_ms(rank: int) -> int:
     if rank < 0:
         raise ValueError("rank must be non-negative")
     return rank * OPPORTUNISTIC_SLOT_TIME_MS
-
-

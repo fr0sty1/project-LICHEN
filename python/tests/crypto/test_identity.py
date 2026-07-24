@@ -84,6 +84,7 @@ class TestIdentityConstruction:
         with pytest.raises(ValueError, match="seed must be 32 bytes"):
             Identity.from_seed(b"")
 
+
 class TestIdentityRepr:
     """Tests for Identity string representation."""
 

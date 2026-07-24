@@ -489,10 +489,7 @@ def _is_sensitive_display_name(name: str) -> bool:
     leaf = lowered.rsplit(".", maxsplit=1)[-1]
     if leaf == "frame":
         return True
-    return (
-        any(part in lowered for part in SENSITIVE_FIELD_PARTS)
-        and "fingerprint" not in lowered
-    )
+    return any(part in lowered for part in SENSITIVE_FIELD_PARTS) and "fingerprint" not in lowered
 
 
 def status_rows(state: DashboardState, width: int = 76) -> tuple[str, ...]:
@@ -700,9 +697,7 @@ def diagnostics_rows(state: DiagnosticsState, width: int = 76) -> tuple[Diagnost
         )
     rows = list(state.rows)
     if state.raw_available is not None:
-        rows.append(
-            DiagnosticRow("raw.admin", "enabled" if state.admin_enabled else "required")
-        )
+        rows.append(DiagnosticRow("raw.admin", "enabled" if state.admin_enabled else "required"))
         rows.append(
             DiagnosticRow("raw.resources", "available" if state.raw_available else "unsupported")
         )
@@ -1598,9 +1593,7 @@ class NativeClientApp(App[None]):
         self._raw_rx_task: asyncio.Task[None] | None = None
         self.raw_diagnostics_admin_enabled = False
         self.mode_index = (
-            ModeNav.MODES.index(self.status.context)
-            if self.status.context in ModeNav.MODES
-            else 0
+            ModeNav.MODES.index(self.status.context) if self.status.context in ModeNav.MODES else 0
         )
         self.prompt_mode: str | None = None
 
@@ -2238,8 +2231,7 @@ class NativeClientApp(App[None]):
             # Extract TX queue info if available
             queue_info = radio_info.get("tx_queue", {})
             depth_by_priority = tuple(
-                (int(k), int(v))
-                for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
+                (int(k), int(v)) for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
             )
             total_bytes = int(queue_info.get("total_bytes", 0))
             drain_time = int(queue_info.get("drain_time_ms", 0))

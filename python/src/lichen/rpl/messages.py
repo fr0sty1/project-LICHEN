@@ -128,9 +128,7 @@ class DIS:
         reserved = data[1]
         if reserved != 0:
             raise RplError(f"DIS reserved field must be zero per RFC 6550 §6.2, got {reserved}")
-        return cls(
-            flags=data[0], reserved=reserved, options=_parse_options(data[2:])
-        )
+        return cls(flags=data[0], reserved=reserved, options=_parse_options(data[2:]))
 
 
 @dataclass
@@ -151,9 +149,7 @@ class DIO:
 
     def __post_init__(self) -> None:
         self.dodag_id = (
-            self.dodag_id
-            if isinstance(self.dodag_id, IPv6Address)
-            else IPv6Address(self.dodag_id)
+            self.dodag_id if isinstance(self.dodag_id, IPv6Address) else IPv6Address(self.dodag_id)
         )
 
     def to_bytes(self) -> bytes:
@@ -173,11 +169,7 @@ class DIO:
             raise RplError(f"flags out of range: {self.flags}")
         if not 0 <= self.reserved <= 0xFF:
             raise RplError(f"reserved out of range: {self.reserved}")
-        gmop_prf = (
-            (int(self.grounded) << 7)
-            | (self.mode_of_operation << 3)
-            | self.preference
-        )
+        gmop_prf = (int(self.grounded) << 7) | (self.mode_of_operation << 3) | self.preference
         return (
             bytes([self.rpl_instance_id, self.version])
             + self.rank.to_bytes(2, "big")
@@ -237,11 +229,7 @@ class DAO:
             if not 0 <= val <= 255:
                 raise RplError(f"{name} out of range: {val}")
         d_flag = self.dodag_id is not None
-        kd = (
-            (int(self.ack_requested) << 7)
-            | (int(d_flag) << 6)
-            | (self.flags & 0x3F)
-        )
+        kd = (int(self.ack_requested) << 7) | (int(d_flag) << 6) | (self.flags & 0x3F)
         out = bytes([self.rpl_instance_id, kd, self.reserved, self.dao_sequence])
         if self.dodag_id is not None:
             out += self.dodag_id.packed
@@ -298,9 +286,7 @@ class DAOAck:
                 raise RplError(f"{name} out of range: {val}")
         d_flag = self.dodag_id is not None
         d_byte = (int(d_flag) << 7) | (self.flags & 0x7F)
-        out = bytes(
-            [self.rpl_instance_id, d_byte, self.dao_sequence, self.status]
-        )
+        out = bytes([self.rpl_instance_id, d_byte, self.dao_sequence, self.status])
         if self.dodag_id is not None:
             out += self.dodag_id.packed
         return out + _options_to_bytes(self.options)

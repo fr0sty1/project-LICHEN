@@ -1,6 +1,5 @@
 """Tests for KISS command handler."""
 
-
 from lichen.interface.kiss import (
     DefaultKissConfig,
     KissCommand,

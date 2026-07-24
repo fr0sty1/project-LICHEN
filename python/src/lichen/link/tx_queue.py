@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 TX_QUEUE_CAPACITY = 4
 
 # Default deadlines in milliseconds (spec/appendix-bufferbloat.md)
-DEADLINE_ROUTING_MS = 5000   # Routing control (DIO/DAO)
-DEADLINE_ACK_MS = 10000      # Link-layer ACKs
-DEADLINE_APP_MS = 60000      # Application data
+DEADLINE_ROUTING_MS = 5000  # Routing control (DIO/DAO)
+DEADLINE_ACK_MS = 10000  # Link-layer ACKs
+DEADLINE_APP_MS = 60000  # Application data
 
 
 class Priority(IntEnum):
@@ -44,9 +44,9 @@ class Priority(IntEnum):
     """
 
     ROUTING = 0  # RPL DIO/DAO, network control
-    ACK = 1      # Link-layer acknowledgments
-    URGENT = 2   # Time-sensitive app messages
-    BULK = 3     # Regular data, can tolerate delay
+    ACK = 1  # Link-layer acknowledgments
+    URGENT = 2  # Time-sensitive app messages
+    BULK = 3  # Regular data, can tolerate delay
 
 
 def _default_deadline_for(priority: Priority) -> int:
@@ -78,9 +78,7 @@ class TxReservation:
     the absolute deadline rather than computing a fresh one.
     """
 
-    _future: Future[bool] = field(
-        default_factory=lambda: asyncio.Future(), repr=False
-    )
+    _future: Future[bool] = field(default_factory=lambda: asyncio.Future(), repr=False)
 
     async def wait(self) -> bool:
         """Await transmission outcome. Returns True if transmitted."""
@@ -418,8 +416,7 @@ class TxQueue:
                 if latency > self.stats.max_latency_ms:
                     self.stats.max_latency_ms = latency
                 self._avg_latency_ema = (
-                    self._EMA_ALPHA * latency
-                    + (1 - self._EMA_ALPHA) * self._avg_latency_ema
+                    self._EMA_ALPHA * latency + (1 - self._EMA_ALPHA) * self._avg_latency_ema
                 )
                 self.stats.avg_latency_ms = int(self._avg_latency_ema)
                 self.stats.packets_transmitted += 1

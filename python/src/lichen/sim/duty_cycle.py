@@ -34,9 +34,7 @@ class DutyCycleTracker:
             window_seconds: Duration of sliding window in seconds.
         """
         if limit_percent <= 0.0:
-            raise ValueError(
-                f"limit_percent must be positive, got {limit_percent}"
-            )
+            raise ValueError(f"limit_percent must be positive, got {limit_percent}")
         self.limit_percent = limit_percent
         self.window_seconds = window_seconds
         if limit_percent <= 0:
@@ -53,9 +51,7 @@ class DutyCycleTracker:
         """
         cutoff = time_us - self._window_us
         # Keep TXs where end time (t + d) > cutoff
-        self._transmissions = [
-            (t, d) for t, d in self._transmissions if t + d > cutoff
-        ]
+        self._transmissions = [(t, d) for t, d in self._transmissions if t + d > cutoff]
 
     def _airtime_in_window(self, time_us: int) -> int:
         """Calculate total airtime within the current window.

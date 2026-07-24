@@ -330,8 +330,13 @@ class TestExpandCotToXml:
     def test_pli_hostile_type(self, fixed_time: datetime) -> None:
         """Hostile PLI has correct CoT type."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0, alt_dm=0,
-            course_cdeg=0, speed_cm_s=0, team=2, role=1,
+            lat_microdeg=0,
+            lon_microdeg=0,
+            alt_dm=0,
+            course_cdeg=0,
+            speed_cm_s=0,
+            team=2,
+            role=1,
         )
         cot = CompactCot(subtype=CompactCotType.HOSTILE_PLI, payload=pli)
 
@@ -343,8 +348,13 @@ class TestExpandCotToXml:
     def test_pli_neutral_type(self, fixed_time: datetime) -> None:
         """Neutral PLI has correct CoT type."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0, alt_dm=0,
-            course_cdeg=0, speed_cm_s=0, team=3, role=1,
+            lat_microdeg=0,
+            lon_microdeg=0,
+            alt_dm=0,
+            course_cdeg=0,
+            speed_cm_s=0,
+            team=3,
+            role=1,
         )
         cot = CompactCot(subtype=CompactCotType.NEUTRAL_PLI, payload=pli)
 
@@ -356,8 +366,13 @@ class TestExpandCotToXml:
     def test_pli_unknown_type(self, fixed_time: datetime) -> None:
         """Unknown PLI has correct CoT type."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0, alt_dm=0,
-            course_cdeg=0, speed_cm_s=0, team=9, role=1,
+            lat_microdeg=0,
+            lon_microdeg=0,
+            alt_dm=0,
+            course_cdeg=0,
+            speed_cm_s=0,
+            team=9,
+            role=1,
         )
         cot = CompactCot(subtype=CompactCotType.UNKNOWN_PLI, payload=pli)
 
@@ -454,8 +469,13 @@ class TestExpandCotToXml:
     def test_stale_time(self, fixed_time: datetime) -> None:
         """Stale time is set correctly."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0, alt_dm=0,
-            course_cdeg=0, speed_cm_s=0, team=1, role=1,
+            lat_microdeg=0,
+            lon_microdeg=0,
+            alt_dm=0,
+            course_cdeg=0,
+            speed_cm_s=0,
+            team=1,
+            role=1,
         )
         cot = CompactCot(subtype=CompactCotType.FRIENDLY_PLI, payload=pli)
 
@@ -509,7 +529,11 @@ class TestPliConversions:
         pli = PliPayload(
             lat_microdeg=51507400,
             lon_microdeg=-127800,
-            alt_dm=0, course_cdeg=0, speed_cm_s=0, team=1, role=1,
+            alt_dm=0,
+            course_cdeg=0,
+            speed_cm_s=0,
+            team=1,
+            role=1,
         )
         assert pli.lat_deg == pytest.approx(51.5074, rel=1e-6)
         assert pli.lon_deg == pytest.approx(-0.1278, rel=1e-6)
@@ -517,37 +541,52 @@ class TestPliConversions:
     def test_altitude_conversion(self) -> None:
         """Decimeters convert to meters correctly."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0,
+            lat_microdeg=0,
+            lon_microdeg=0,
             alt_dm=1234,
-            course_cdeg=0, speed_cm_s=0, team=1, role=1,
+            course_cdeg=0,
+            speed_cm_s=0,
+            team=1,
+            role=1,
         )
         assert pli.alt_m == pytest.approx(123.4, rel=1e-6)
 
     def test_negative_altitude(self) -> None:
         """Negative altitude (below sea level) converts correctly."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0,
+            lat_microdeg=0,
+            lon_microdeg=0,
             alt_dm=-100,
-            course_cdeg=0, speed_cm_s=0, team=1, role=1,
+            course_cdeg=0,
+            speed_cm_s=0,
+            team=1,
+            role=1,
         )
         assert pli.alt_m == pytest.approx(-10.0, rel=1e-6)
 
     def test_course_conversion(self) -> None:
         """Centidegrees convert to degrees correctly."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0, alt_dm=0,
+            lat_microdeg=0,
+            lon_microdeg=0,
+            alt_dm=0,
             course_cdeg=27000,
-            speed_cm_s=0, team=1, role=1,
+            speed_cm_s=0,
+            team=1,
+            role=1,
         )
         assert pli.course_deg == pytest.approx(270.0, rel=1e-6)
 
     def test_speed_conversion(self) -> None:
         """cm/s converts to m/s correctly."""
         pli = PliPayload(
-            lat_microdeg=0, lon_microdeg=0, alt_dm=0,
+            lat_microdeg=0,
+            lon_microdeg=0,
+            alt_dm=0,
             course_cdeg=0,
             speed_cm_s=500,
-            team=1, role=1,
+            team=1,
+            role=1,
         )
         assert pli.speed_m_s == pytest.approx(5.0, rel=1e-6)
 

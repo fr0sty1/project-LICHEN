@@ -145,7 +145,7 @@ class TestTwoNodeDIO1Rx:
             )
 
             # Node A transmits
-            test_frame = b"\xDE\xAD\xBE\xEF" + b"LICHEN_FRAME_DATA"
+            test_frame = b"\xde\xad\xbe\xef" + b"LICHEN_FRAME_DATA"
             sim.start_transmission("node-a", test_frame)
 
             # Run simulation to deliver packet
@@ -222,11 +222,11 @@ class TestTwoNodeDIO1Rx:
             # All zeros
             b"\x00" * 64,
             # All ones
-            b"\xFF" * 64,
+            b"\xff" * 64,
             # Counter pattern
             bytes(range(256)),
             # Typical LICHEN frame with header
-            b"\x01\x00\x0A" + b"\xDE\xAD\xBE\xEF" * 4 + b"\x12\x34\x56\x78",
+            b"\x01\x00\x0a" + b"\xde\xad\xbe\xef" * 4 + b"\x12\x34\x56\x78",
             # Binary data with embedded nulls
             b"LICHEN\x00\x00FRAME\x00DATA",
         ]
@@ -237,6 +237,7 @@ class TestTwoNodeDIO1Rx:
             def make_on_rx(results: list[bytes]):
                 def on_rx(payload: bytes, rssi: int, snr: int) -> None:
                     results.append(payload)
+
                 return on_rx
 
             def on_timeout() -> None:
@@ -260,9 +261,7 @@ class TestTwoNodeDIO1Rx:
 
             assert len(rx_results) == 1, f"No RX for frame: {test_frame.hex()}"
             assert rx_results[0] == test_frame, (
-                f"Frame mismatch:\n"
-                f"  TX: {test_frame.hex()}\n"
-                f"  RX: {rx_results[0].hex()}"
+                f"Frame mismatch:\n  TX: {test_frame.hex()}\n  RX: {rx_results[0].hex()}"
             )
 
     @pytest.mark.asyncio

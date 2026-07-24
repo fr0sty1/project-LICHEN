@@ -26,6 +26,7 @@ from enum import Enum
 
 class AprsPacketType(Enum):
     """APRS packet types we handle."""
+
     MESSAGE = "message"
     ACK = "ack"
     REJ = "rej"
@@ -79,17 +80,11 @@ class AprsRej:
 
 # Regex patterns for parsing
 # Message: :ADDRESSEE:text{id or :ADDRESSEE:text
-_MSG_PATTERN = re.compile(
-    rb"^:(.{9}):(.+?)(?:\{([A-Za-z0-9]{1,5}))?$"
-)
+_MSG_PATTERN = re.compile(rb"^:(.{9}):(.+?)(?:\{([A-Za-z0-9]{1,5}))?$")
 # Ack: :ADDRESSEE:ackXXXXX
-_ACK_PATTERN = re.compile(
-    rb"^:(.{9}):ack([A-Za-z0-9]{1,5})$"
-)
+_ACK_PATTERN = re.compile(rb"^:(.{9}):ack([A-Za-z0-9]{1,5})$")
 # Reject: :ADDRESSEE:rejXXXXX
-_REJ_PATTERN = re.compile(
-    rb"^:(.{9}):rej([A-Za-z0-9]{1,5})$"
-)
+_REJ_PATTERN = re.compile(rb"^:(.{9}):rej([A-Za-z0-9]{1,5})$")
 
 
 def parse_aprs_packet(data: bytes) -> AprsMessage | AprsAck | AprsRej | None:

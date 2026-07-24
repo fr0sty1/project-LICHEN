@@ -130,10 +130,10 @@ async def test_coap_get_via_relay() -> None:
 
     # Directed radio topology: A--B--C
     radio_a, radio_b, radio_c = DirectedRadio(), DirectedRadio(), DirectedRadio()
-    radio_a.connect(radio_b)       # A → B
-    radio_b.connect(radio_a)       # B → A (response path)
-    radio_b.connect(radio_c)       # B → C (forward path)
-    radio_c.connect(radio_b)       # C → B (response path)
+    radio_a.connect(radio_b)  # A → B
+    radio_b.connect(radio_a)  # B → A (response path)
+    radio_b.connect(radio_c)  # B → C (forward path)
+    radio_c.connect(radio_b)  # C → B (response path)
 
     node_a = _make_node(id_a, radio_a)
     node_b = _make_node(id_b, radio_b)

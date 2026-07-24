@@ -231,9 +231,7 @@ def _scan_cbor_item(
             chunk = payload[offset]
             if chunk >> 5 != major or chunk & 0x1F == 31:
                 raise ValueError("invalid indefinite CBOR string chunk")
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
 
     if major == 4:
         if indefinite:
@@ -246,16 +244,12 @@ def _scan_cbor_item(
                 count += 1
                 if count > _CBOR_MAX_ARRAY_ENTRIES:
                     raise ValueError("CBOR array exceeds mutation limit")
-                offset = _scan_cbor_item(
-                    payload, offset, depth=depth + 1, budget=budget
-                )
+                offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
         length, offset = _cbor_argument(payload, offset, additional)
         if length > _CBOR_MAX_ARRAY_ENTRIES:
             raise ValueError("CBOR array exceeds mutation limit")
         for _ in range(length):
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
         return offset
 
     if major == 5:
@@ -275,17 +269,13 @@ def _scan_cbor_item(
             if count > _CBOR_MAX_MAP_ENTRIES:
                 raise ValueError("CBOR map exceeds mutation limit")
             key_start = offset
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
             key_raw = payload[key_start:offset]
             key = cbor2.loads(key_raw)
             if any(_same_cbor_key(key, old, key_raw, old_raw) for old, old_raw in keys):
                 raise ValueError("duplicate CBOR map key")
             keys.append((key, key_raw))
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
         return offset
 
     if major == 6:
@@ -466,6 +456,7 @@ class SenMLSensorsResource(resource.ObservableResource):
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._records: list[Any] = []
         self._payload: bytes = pack([])
 
@@ -502,6 +493,7 @@ class SenMLLocationResource(resource.ObservableResource):
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._payload: bytes = pack([])
 
     def update(self, lat: float, lon: float, alt: float | None = None) -> None:
@@ -536,6 +528,7 @@ class SenMLMetricsResource(resource.ObservableResource):
         """Initialize with empty SenML pack."""
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._payload: bytes = pack([])
 
     def update(
@@ -549,6 +542,7 @@ class SenMLMetricsResource(resource.ObservableResource):
         """Update telemetry+battery readings and notify all observers."""
         from lichen.senml.codec import pack  # noqa: PLC0415
         from lichen.senml.profiles import metrics  # noqa: PLC0415
+
         self._payload = pack(
             metrics(
                 rssi=rssi,
@@ -869,7 +863,7 @@ class MessagesResource(resource.ObservableResource):
         """
         self._inbox.append(message)
         if len(self._inbox) > self._max_messages:
-            self._inbox = self._inbox[-self._max_messages:]
+            self._inbox = self._inbox[-self._max_messages :]
         self.updated_state()
         for alias in self._legacy_aliases:
             alias.updated_state()
@@ -913,9 +907,7 @@ class MessagesResource(resource.ObservableResource):
         if not (isinstance(body.get("body"), str) or isinstance(body.get("text"), str)):
             return Message(code=aiocoap.BAD_REQUEST)
         if "id" in body and (
-            type(body["id"]) is not int
-            or body["id"] < 0
-            or body["id"] > _MESSAGE_ID_MAX
+            type(body["id"]) is not int or body["id"] < 0 or body["id"] > _MESSAGE_ID_MAX
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         body = dict(body)
@@ -982,10 +974,12 @@ class SentMessageDetailsResource(resource.Resource, resource.PathCapable):
         return _cbor_response(dict(message))
 
     def get_resources_as_linkheader(self) -> Any:
-        return resource.LinkFormat([
-            resource.Link(f"/{msg_id}", ct=str(int(CBOR)))
-            for msg_id in self._messages._sent_order
-        ])
+        return resource.LinkFormat(
+            [
+                resource.Link(f"/{msg_id}", ct=str(int(CBOR)))
+                for msg_id in self._messages._sent_order
+            ]
+        )
 
 
 class MessageReceiptsResource(resource.Resource):
@@ -1123,9 +1117,7 @@ class ResourceDirectoryResource(resource.Resource):
     ) -> None:
         super().__init__()
         self._site = site
-        self._route_remover = route_remover or (
-            lambda reg_id: site.remove_resource(["rd", reg_id])
-        )
+        self._route_remover = route_remover or (lambda reg_id: site.remove_resource(["rd", reg_id]))
         self._entries: dict[str, _RdEntry] = {}  # keyed by reg_id
 
     def _lookup(self, ep: str | None = None) -> list[dict[str, Any]]:
@@ -1197,11 +1189,7 @@ class ResourceDirectoryResource(resource.Resource):
                 ep = q[3:]
             elif q.startswith("lt="):
                 raw_lifetime = q[3:]
-                if (
-                    not raw_lifetime
-                    or not raw_lifetime.isascii()
-                    or not raw_lifetime.isdecimal()
-                ):
+                if not raw_lifetime or not raw_lifetime.isascii() or not raw_lifetime.isdecimal():
                     return Message(code=BAD_REQUEST)
                 lt = int(raw_lifetime)
                 if not 1 <= lt <= (1 << 32) - 1:
@@ -1382,9 +1370,7 @@ class EdhocResource(resource.Resource):
         if publications:
             await asyncio.gather(*publications, return_exceptions=True)
         if completing:
-            await asyncio.gather(
-                *(session["finalized_event"].wait() for session in completing)
-            )
+            await asyncio.gather(*(session["finalized_event"].wait() for session in completing))
 
     def __del__(self) -> None:
         with contextlib.suppress(Exception):
@@ -1426,9 +1412,7 @@ class EdhocResource(resource.Resource):
         except ValueError:
             return None
 
-    def _peer_session(
-        self, peer_host: str
-    ) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
+    def _peer_session(self, peer_host: str) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
         for key, session in self._sessions.items():
             if key[0] == peer_host:
                 return key, session
@@ -1600,6 +1584,7 @@ class EdhocResource(resource.Resource):
 
         publication: asyncio.Task[None] | None = None
         try:
+
             async def publish() -> None:
                 await self._peer_resolver.ensure_bound()
                 await self._context_store.put(
@@ -1632,9 +1617,7 @@ class EdhocResource(resource.Resource):
                 await asyncio.gather(*pending_tasks, return_exceptions=True)
             self._finalize_completion(session_key, session)
 
-    def _schedule_expiry(
-        self, session_key: tuple[str, bytes], session: dict[str, Any]
-    ) -> None:
+    def _schedule_expiry(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
         delay = max(0.0, session["deadline"] - self._monotonic())
         scheduler = self._call_later or asyncio.get_running_loop().call_later
         resource_ref = weakref.ref(self)
@@ -1650,9 +1633,7 @@ class EdhocResource(resource.Resource):
         else:
             handle.cancel()
 
-    def _expire_session(
-        self, session_key: tuple[str, bytes], session: dict[str, Any]
-    ) -> None:
+    def _expire_session(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
         if self._sessions.get(session_key) is not session:
             return
         if self._monotonic() < session["deadline"]:
@@ -1695,9 +1676,7 @@ class EdhocResource(resource.Resource):
         self._completing[session_key] = session
         return True
 
-    def _finalize_completion(
-        self, session_key: tuple[str, bytes], session: dict[str, Any]
-    ) -> None:
+    def _finalize_completion(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
         if self._completing.get(session_key) is session:
             del self._completing[session_key]
         session["publication_task"] = None
@@ -1715,9 +1694,7 @@ class EdhocResource(resource.Resource):
         """Synchronously catch deadlines before request processing."""
         now = self._monotonic()
         expired = [
-            (key, session)
-            for key, session in self._sessions.items()
-            if now >= session["deadline"]
+            (key, session) for key, session in self._sessions.items() if now >= session["deadline"]
         ]
         for key, session in expired:
             self._remove_session(key, session, abort=True)
@@ -1787,6 +1764,7 @@ def build_site(
     if rollcall_resource is not None:
         site.add_resource(["rollcall"], rollcall_resource)
     if resource_directory:
+
         def remove_rd_registration(reg_id: str) -> None:
             site.remove_resource(["rd", reg_id])
 

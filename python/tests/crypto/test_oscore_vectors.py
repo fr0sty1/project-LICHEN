@@ -34,16 +34,10 @@ class TestKeyDerivation:
     def test_key_derivation(self, vector: dict[str, Any]) -> None:
         """Verify key derivation matches RFC 8613 expected values."""
         master_secret = bytes.fromhex(vector["master_secret"])
-        master_salt = (
-            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
-        )
+        master_salt = bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
         sender_id = bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
-        recipient_id = (
-            bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
-        )
-        id_context = (
-            bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None
-        )
+        recipient_id = bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
+        id_context = bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None
 
         # Create context - this derives keys
         ctx = MemorySecurityContext(
@@ -77,13 +71,9 @@ class TestRoundtrip:
     def test_roundtrip(self, vector: dict[str, Any]) -> None:
         """Verify protect followed by unprotect recovers original plaintext."""
         master_secret = bytes.fromhex(vector["master_secret"])
-        master_salt = (
-            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
-        )
+        master_salt = bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
         sender_id = bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
-        recipient_id = (
-            bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
-        )
+        recipient_id = bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
 
         # Create sender and recipient contexts (symmetric, swapped IDs)
         sender_ctx = MemorySecurityContext(

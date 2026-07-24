@@ -597,11 +597,10 @@ class TestDtnPendingAdvertisement:
             assert iid == pending_iids[i], f"IID {i} must match"
 
         # Transmit and receive
-        async with SimRadio(
-            "127.0.0.1", node_port, "dtn-test", "tx-node", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "dtn-test", "rx-node", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "dtn-test", "tx-node", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "dtn-test", "rx-node", (50.0, 0.0, 0.0)) as radio_rx,
+        ):
             tx_success = await radio_tx.transmit(announce.to_bytes())
             assert tx_success, "transmit must succeed"
 
@@ -696,11 +695,10 @@ class TestDtnSimulationIntegration:
         pos_a = (0.0, 0.0, 0.0)
         pos_b = (50.0, 0.0, 0.0)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "dtn-test", "node-a-int", pos_a
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "dtn-test", "node-b-int", pos_b
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "dtn-test", "node-a-int", pos_a) as radio_a,
+            SimRadio("127.0.0.1", node_port, "dtn-test", "node-b-int", pos_b) as radio_b,
+        ):
             # A announces
             tx_success = await radio_a.transmit(announce_a.to_bytes())
             assert tx_success, "A must transmit"

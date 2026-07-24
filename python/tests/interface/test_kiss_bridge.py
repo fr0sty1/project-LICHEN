@@ -26,9 +26,7 @@ class MockIdentity:
     """Mock identity for testing."""
 
     iid: bytes = field(
-        default_factory=lambda: bytes(
-            [0xFE, 0x80, 0x00, 0x00, 0x00, 0x11, 0x22, 0x33]
-        )
+        default_factory=lambda: bytes([0xFE, 0x80, 0x00, 0x00, 0x00, 0x11, 0x22, 0x33])
     )
     pubkey: bytes = field(default_factory=lambda: b"x" * 32)
     privkey: bytes = field(default_factory=lambda: b"p" * 32)
@@ -264,9 +262,7 @@ class TestBridgeRx:
         bridge.on_send_kiss = sent.append
         bridge._msg_tracker.handle_rej = MagicMock()
         rx = MockRxFrame(
-            frame=MockLichenFrame(
-                payload=bytes([L2_DISPATCH_ROUTING, 0x01, 0x00, 0x00])
-            ),
+            frame=MockLichenFrame(payload=bytes([L2_DISPATCH_ROUTING, 0x01, 0x00, 0x00])),
             sender=mock_peer,
         )
 
@@ -316,9 +312,7 @@ class TestBridgeRx:
 
         assert b":rej" not in ax25.payload
 
-    def test_encode_rx_non_announce_routing_dispatch_is_not_rej(
-        self, bridge, mock_peer
-    ):
+    def test_encode_rx_non_announce_routing_dispatch_is_not_rej(self, bridge, mock_peer):
         rx = MockRxFrame(
             frame=MockLichenFrame(payload=bytes([L2_DISPATCH_ROUTING, 0x02, 0])),
             sender=mock_peer,
@@ -400,6 +394,7 @@ class TestBridgeAprsTx:
 
         # Build APRS message inside AX.25
         from lichen.interface.kiss.aprs import create_message
+
         aprs_msg = create_message(dst_call, "Hello from app", "42")
         ax25_frame = ax25_encode("LSRC", dst_call, aprs_msg.encode())
 
@@ -419,6 +414,7 @@ class TestBridgeAprsTx:
         dst_call = iid_to_callsign(mock_peer.iid)
 
         from lichen.interface.kiss.aprs import create_message
+
         aprs_msg = create_message(dst_call, "Track me", "99")
         ax25_frame = ax25_encode("LSRC", dst_call, aprs_msg.encode())
 
@@ -429,14 +425,13 @@ class TestBridgeAprsTx:
         assert bridge._msg_tracker.pending_count() == 1
 
     @pytest.mark.asyncio
-    async def test_aprs_message_without_msg_id_sends_raw(
-        self, bridge, mock_link_layer, mock_peer
-    ):
+    async def test_aprs_message_without_msg_id_sends_raw(self, bridge, mock_link_layer, mock_peer):
         # Message without msg_id sends raw text (no prefix)
         bridge.add_peer(mock_peer)
         dst_call = iid_to_callsign(mock_peer.iid)
 
         from lichen.interface.kiss.aprs import create_message
+
         aprs_msg = create_message(dst_call, "No tracking", msg_id=None)
         ax25_frame = ax25_encode("LSRC", dst_call, aprs_msg.encode())
 
@@ -452,6 +447,7 @@ class TestBridgeAprsTx:
     @pytest.mark.asyncio
     async def test_aprs_broadcast_to_cq(self, bridge, mock_link_layer):
         from lichen.interface.kiss.aprs import create_message
+
         aprs_msg = create_message("CQ", "Broadcast message")
         ax25_frame = ax25_encode("LSRC", "CQ", aprs_msg.encode())
 
@@ -544,6 +540,7 @@ class TestBridgeAprsAckFlow:
 
         # Send message with ID
         from lichen.interface.kiss.aprs import create_message
+
         aprs_msg = create_message(dst_call, "Ack me", "77")
         ax25_frame = ax25_encode("LSRC", dst_call, aprs_msg.encode())
         bridge.handler.on_tx_frame(PORT_AX25, ax25_frame)

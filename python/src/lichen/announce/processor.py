@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Announce message processing (spec section 9.3).
-"""
+"""Announce message processing (spec section 9.3)."""
 
 from __future__ import annotations
 
@@ -64,9 +63,7 @@ class AnnounceProcessor:
     gradient_table: GradientTable
     address_builder: Callable[[bytes], IPv6Address]
     _seen: OrderedDict[bytes, int] = field(default_factory=OrderedDict, repr=False)
-    _pinned_keys: OrderedDict[bytes, bytes] = field(
-        default_factory=OrderedDict, repr=False
-    )
+    _pinned_keys: OrderedDict[bytes, bytes] = field(default_factory=OrderedDict, repr=False)
 
     def process(
         self,

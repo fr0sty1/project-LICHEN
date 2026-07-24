@@ -105,11 +105,13 @@ def test_lock_metadata_matches_key_pyproject_ranges() -> None:
     assert isinstance(project, dict)
     lock = tomllib.loads((PROJECT_ROOT / "uv.lock").read_text(encoding="utf-8"))
     package = next(pkg for pkg in lock["package"] if pkg["name"] == "lichen")
-    locked = _requirements([
-        item["name"] + item.get("specifier", "")
-        for item in package["metadata"]["requires-dist"]
-        if "marker" not in item
-    ])
+    locked = _requirements(
+        [
+            item["name"] + item.get("specifier", "")
+            for item in package["metadata"]["requires-dist"]
+            if "marker" not in item
+        ]
+    )
     pyproject_requirements = _requirements(project["dependencies"])
 
     for name in ("aiocoap", "starlette", "textual", "rich", "uvicorn", "cbor2"):

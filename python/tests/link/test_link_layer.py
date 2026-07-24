@@ -66,9 +66,7 @@ class MockRadio:
             if self.transmit_release is not None:
                 await self.transmit_release.wait()
             result = (
-                self.transmit_results.pop(0)
-                if self.transmit_results
-                else self.transmit_returns
+                self.transmit_results.pop(0) if self.transmit_results else self.transmit_returns
             )
             if result:
                 self.tx_history.append(payload)
@@ -195,9 +193,7 @@ class TestLinkLayerTx:
         payload = bytes.fromhex("0a0b")
 
         with_address = link_layer._build_signable_data(0, 0, address, payload, 62, 0x22)
-        without_address = link_layer._build_signable_data(
-            0, 0, b"", address + payload, 62, 0x20
-        )
+        without_address = link_layer._build_signable_data(0, 0, b"", address + payload, 62, 0x20)
 
         assert with_address == b">\x22\x00\x00\x00\x08" + address + payload
         assert without_address == b">\x20\x00\x00\x00\x00" + (address + payload)
@@ -481,6 +477,7 @@ class TestLinkLayerRoundTrip:
         node_identity: Identity,
     ):
         """Node can receive its own signed frames (loopback)."""
+
         # Create link layer that knows about itself
         def self_lookup(hint: bytes) -> PeerIdentity | None:
             return PeerIdentity.from_pubkey(node_identity.pubkey)
@@ -511,6 +508,7 @@ class TestLinkLayerRoundTrip:
         peer_identity: Identity,
     ):
         """Frame from peer is accepted with valid signature."""
+
         # Create peer's link layer
         def no_lookup(hint: bytes) -> PeerIdentity | None:
             return None
@@ -603,6 +601,7 @@ class TestSequenceManagement:
 
         assert link_layer.get_sequence() == (0, 1)
 
+
 class TestLinkLayerConstruction:
     """Tests for LinkLayer construction and validation."""
 
@@ -678,9 +677,7 @@ class TestTxQueueIntegration:
         assert len(mock_radio.tx_history) == 2
 
     @pytest.mark.asyncio
-    async def test_priority_ordering_on_drain(
-        self, mock_radio: MockRadio, node_identity: Identity
-    ):
+    async def test_priority_ordering_on_drain(self, mock_radio: MockRadio, node_identity: Identity):
         """Higher priority packets are transmitted first."""
 
         def no_lookup(hint: bytes) -> PeerIdentity | None:
@@ -708,9 +705,7 @@ class TestTxQueueIntegration:
         assert len(mock_radio.tx_history) == 3
 
     @pytest.mark.asyncio
-    async def test_queue_full_raises_error(
-        self, mock_radio: MockRadio, node_identity: Identity
-    ):
+    async def test_queue_full_raises_error(self, mock_radio: MockRadio, node_identity: Identity):
         """QueueFullError raised when queue is full and can't preempt."""
 
         def no_lookup(hint: bytes) -> PeerIdentity | None:
@@ -792,9 +787,7 @@ class TestTxQueueIntegration:
         assert len(ll.tx_queue) == 1
 
     @pytest.mark.asyncio
-    async def test_high_priority_preempts_low(
-        self, mock_radio: MockRadio, node_identity: Identity
-    ):
+    async def test_high_priority_preempts_low(self, mock_radio: MockRadio, node_identity: Identity):
         """High priority packet preempts low priority when full."""
 
         def no_lookup(hint: bytes) -> PeerIdentity | None:

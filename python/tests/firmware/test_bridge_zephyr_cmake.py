@@ -47,7 +47,6 @@ def _non_comment_cmake_lines() -> list[str]:
     ]
 
 
-
 def test_bridge_zephyr_does_not_compile_vendored_lichen_sources() -> None:
     cmake = BRIDGE_CMAKE.read_text(encoding="utf-8")
     cmake_lines = "\n".join(_non_comment_cmake_lines())
@@ -131,14 +130,11 @@ def test_bridge_zephyr_qemu_smoke_uses_module_owned_l2_sources(tmp_path: Path) -
     assert "CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX=1717777777" in config
     assert "CONFIG_LICHEN_TIME_BUILD_EPOCH_SOURCE_DATE_EPOCH=y" in config
 
-    compile_commands = json.loads(
-        (build_dir / "compile_commands.json").read_text(encoding="utf-8")
-    )
+    compile_commands = json.loads((build_dir / "compile_commands.json").read_text(encoding="utf-8"))
     l2_common_sources = {
         Path(entry["file"]).name: Path(entry["file"])
         for entry in compile_commands
-        if Path(entry["file"]).name
-        in {"crash_info.c", "lichen_util.c", "ipv6_addr.c"}
+        if Path(entry["file"]).name in {"crash_info.c", "lichen_util.c", "ipv6_addr.c"}
     }
 
     assert set(l2_common_sources) == {
@@ -231,9 +227,7 @@ def test_bridge_zephyr_native_sim_lora_loopback_enables_full_l2(
     assert "CONFIG_LICHEN_LINK=y" in config
     assert "CONFIG_LICHEN_L2=y" in config
 
-    compile_commands = json.loads(
-        (build_dir / "compile_commands.json").read_text(encoding="utf-8")
-    )
+    compile_commands = json.loads((build_dir / "compile_commands.json").read_text(encoding="utf-8"))
     l2_sources = {
         Path(entry["file"]).name: Path(entry["file"])
         for entry in compile_commands
@@ -302,9 +296,7 @@ def test_bridge_zephyr_heltec_target_auto_merges_lora_board_files(
     assert "CONFIG_LICHEN_LINK=y" in config
     assert "CONFIG_LICHEN_L2=y" in config
 
-    compile_commands = json.loads(
-        (build_dir / "compile_commands.json").read_text(encoding="utf-8")
-    )
+    compile_commands = json.loads((build_dir / "compile_commands.json").read_text(encoding="utf-8"))
     l2_sources = {
         Path(entry["file"]).name: Path(entry["file"])
         for entry in compile_commands

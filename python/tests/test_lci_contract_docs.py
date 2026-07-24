@@ -56,7 +56,7 @@ def test_lci_messaging_paths_use_msg_inbox_contract() -> None:
 
     assert "POST /msg/inbox" in lci
     assert "GET /msg/inbox" in lci
-    assert "</msg/ack>;rt=\"msg.ack\";ct=60" in lci
+    assert '</msg/ack>;rt="msg.ack";ct=60' in lci
     assert "POST coap://[destination]/msg/inbox" in apps
     assert "GET coap://[node]/msg/inbox" in apps
     assert "POST coap://[sender]/msg/ack" in apps

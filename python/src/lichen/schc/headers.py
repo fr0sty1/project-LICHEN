@@ -63,8 +63,8 @@ def _is_global(addr: int) -> bool:
     # Primary: 02xx::/7 (Yggdrasil, first byte 0x02/0x03 per spec/04-network,
     # 06-security). Also standard GUA 2000::/3 (optional BR upstream). Matches
     # current deployment while avoiding some deprecated sub-prefixes.
-    first_byte = (addr >> 120) & 0xff
-    return (first_byte & 0xfe == 0x02) or (addr >> 125 == 0b001)
+    first_byte = (addr >> 120) & 0xFF
+    return (first_byte & 0xFE == 0x02) or (addr >> 125 == 0b001)
 
 
 def _is_ula(addr: int) -> bool:
@@ -591,9 +591,7 @@ def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT
             raw = profile.build(fields, tail)
             if not profile.matches(raw):
                 raise SchcError(f"rule {rule_id} residue does not reconstruct its packet profile")
-            if isinstance(profile, _CoapUdpProfile) and not isinstance(
-                profile, _OscoreUdpProfile
-            ):
+            if isinstance(profile, _CoapUdpProfile) and not isinstance(profile, _OscoreUdpProfile):
                 header = IPv6Header.from_bytes(raw)
                 udp = UdpDatagram.from_bytes(
                     raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]

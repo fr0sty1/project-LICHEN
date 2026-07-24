@@ -103,9 +103,11 @@ class TestCoordsDecoding:
     )
     def test_decode_rejects_out_of_range_raw_e7(self, lat_e7: int, lon_e7: int):
         """Malformed raw e7 values outside valid coordinate bounds return None."""
-        app_data = bytes([APP_DATA_TYPE_COORDS]) + lat_e7.to_bytes(
-            4, "big", signed=True
-        ) + lon_e7.to_bytes(4, "big", signed=True)
+        app_data = (
+            bytes([APP_DATA_TYPE_COORDS])
+            + lat_e7.to_bytes(4, "big", signed=True)
+            + lon_e7.to_bytes(4, "big", signed=True)
+        )
         assert decode_coords(app_data) is None
 
 

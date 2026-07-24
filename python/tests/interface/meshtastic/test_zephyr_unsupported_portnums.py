@@ -63,11 +63,7 @@ def test_zephyr_unsupported_portnums_match_pinned_meshtastic_proto() -> None:
     portnums = _parse_proto_portnums()
     catalog_supported = {TEXT_MESSAGE_APP_PORTNUM, POSITION_APP_PORTNUM}
     runtime_supported = {POSITION_APP_PORTNUM, ADMIN_APP_PORTNUM}
-    catalog_expected = {
-        value
-        for value in portnums.values()
-        if value not in catalog_supported
-    }
+    catalog_expected = {value for value in portnums.values() if value not in catalog_supported}
     runtime_unsupported_expected = catalog_expected - runtime_supported
 
     assert portnums["TEXT_MESSAGE_APP"] == TEXT_MESSAGE_APP_PORTNUM

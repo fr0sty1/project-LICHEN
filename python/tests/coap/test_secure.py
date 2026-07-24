@@ -202,11 +202,14 @@ class TestSecureDatagramChannel:
 
         # Send plaintext (raw CoAP) - no OSCORE option
         # This is a minimal CoAP GET with no options
-        plaintext_coap = bytes([
-            0x40,  # Ver=1, T=CON, TKL=0
-            0x01,  # Code=GET
-            0x00, 0x01,  # Message ID
-        ])
+        plaintext_coap = bytes(
+            [
+                0x40,  # Ver=1, T=CON, TKL=0
+                0x01,  # Code=GET
+                0x00,
+                0x01,  # Message ID
+            ]
+        )
         alice_channel.send_datagram(plaintext_coap, "bob")
 
         # Give event loop time to process
@@ -225,22 +228,21 @@ class TestSecureDatagramChannel:
         alice_channel = net.channel("alice")
         bob_channel = net.channel("bob")
 
-        create_secure_channel(
-            alice_channel, alice_id, require_oscore=False
-        )
-        bob_secure = create_secure_channel(
-            bob_channel, bob_id, require_oscore=False
-        )
+        create_secure_channel(alice_channel, alice_id, require_oscore=False)
+        bob_secure = create_secure_channel(bob_channel, bob_id, require_oscore=False)
 
         received = []
         bob_secure.set_receiver(lambda data, src: received.append((data, src)))
 
         # Send plaintext CoAP
-        plaintext_coap = bytes([
-            0x40,  # Ver=1, T=CON, TKL=0
-            0x01,  # Code=GET
-            0x00, 0x01,  # Message ID
-        ])
+        plaintext_coap = bytes(
+            [
+                0x40,  # Ver=1, T=CON, TKL=0
+                0x01,  # Code=GET
+                0x00,
+                0x01,  # Message ID
+            ]
+        )
         alice_channel.send_datagram(plaintext_coap, "bob")
 
         # Give event loop time to process
@@ -261,9 +263,14 @@ class TestSecureDatagramChannel:
         secure = create_secure_channel(alice_channel, alice_id)
 
         # Try to send - should fail to establish context
-        plaintext_coap = bytes([
-            0x40, 0x01, 0x00, 0x01,  # CON GET
-        ])
+        plaintext_coap = bytes(
+            [
+                0x40,
+                0x01,
+                0x00,
+                0x01,  # CON GET
+            ]
+        )
         secure.send_datagram(plaintext_coap, "unknown_peer")
 
         # Give time for async processing
@@ -426,9 +433,7 @@ class TestNodeChannelOscoreIntegration:
 
         alice_secure = create_secure_channel(alice_channel, alice_id)
         # Bob has no context for alice, and require_oscore=True (default)
-        bob_secure = create_secure_channel(
-            bob_channel, Identity.generate(), require_oscore=True
-        )
+        bob_secure = create_secure_channel(bob_channel, Identity.generate(), require_oscore=True)
 
         received: list[tuple[bytes, str]] = []
         bob_secure.set_receiver(lambda data, src: received.append((data, src)))

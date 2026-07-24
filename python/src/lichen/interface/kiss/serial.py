@@ -159,6 +159,7 @@ class KissSerialConnection:
 
         ser = self._serial
         if ser is not None:
+
             def _close():
                 with contextlib.suppress(Exception):
                     ser.close()

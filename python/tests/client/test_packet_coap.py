@@ -163,8 +163,7 @@ def test_packet_config_formats_peer_and_local_endpoints() -> None:
     assert PacketCoapConfig(peer_host="node.example").base_uri == "coap://node.example"
     assert PacketCoapConfig(peer_host="192.0.2.1").base_uri == "coap://192.0.2.1"
     assert (
-        PacketCoapConfig(peer_host="192.0.2.1", dst_port=61616).base_uri
-        == "coap://192.0.2.1:61616"
+        PacketCoapConfig(peer_host="192.0.2.1", dst_port=61616).base_uri == "coap://192.0.2.1:61616"
     )
     assert alternate.base_uri == "coap://[2001:db8::1]:61616"
     assert alternate.local_endpoint == "[2001:db8::2]:61617"
@@ -239,9 +238,7 @@ async def test_plain_aiocoap_request_matches_over_scoped_packet_channels() -> No
     hello = _Hello()
     site = resource.Site()
     site.add_resource(["hello"], hello)
-    server = await create_lichen_context(
-        server_channel, "[fe80::1%ble0]", site=site
-    )
+    server = await create_lichen_context(server_channel, "[fe80::1%ble0]", site=site)
     client = await create_lichen_context(client_channel, "[fe80::2%ble0]")
     try:
         response = await client.request(
@@ -251,9 +248,7 @@ async def test_plain_aiocoap_request_matches_over_scoped_packet_channels() -> No
         assert response.payload == b"hello"
         assert hello.peer == "[fe80::2%ble0]"
 
-        response = await client.request(
-            Message(code=GET, uri="coap://[fe80::1]/hello")
-        ).response
+        response = await client.request(Message(code=GET, uri="coap://[fe80::1]/hello")).response
         assert response.payload == b"hello"
     finally:
         await client.shutdown()
@@ -267,15 +262,9 @@ async def test_interface_scope_normalization_and_mismatch_rejection() -> None:
     packet_transport = FakePacketTransport()
     channel = PacketDatagramChannel(packet_transport, "fe80::2%ble0")
 
-    assert channel.normalize_endpoint("fe80::1") == channel.normalize_endpoint(
-        "[fe80::1%ble0]"
-    )
-    assert channel.normalize_endpoint("[fe80::1]:61616").authority == (
-        "[fe80::1%ble0]:61616"
-    )
-    assert channel.normalize_endpoint("fe80::1") != channel.normalize_endpoint(
-        "[fe80::1]:61616"
-    )
+    assert channel.normalize_endpoint("fe80::1") == channel.normalize_endpoint("[fe80::1%ble0]")
+    assert channel.normalize_endpoint("[fe80::1]:61616").authority == ("[fe80::1%ble0]:61616")
+    assert channel.normalize_endpoint("fe80::1") != channel.normalize_endpoint("[fe80::1]:61616")
     with pytest.raises(ValueError, match="does not match"):
         channel.send_datagram(_coap_request(), "[fe80::1%ble1]")
     assert packet_transport.sent_packets == []
@@ -554,8 +543,7 @@ async def test_packet_connect_failure_rolls_back_from_every_stage(
     assert transport._channel is None
     assert transport._resource_transport is None
     assert not any(
-        "PacketDatagramChannel._read_packets" in repr(task.get_coro())
-        and not task.done()
+        "PacketDatagramChannel._read_packets" in repr(task.get_coro()) and not task.done()
         for task in asyncio.all_tasks()
     )
 
@@ -731,9 +719,7 @@ def test_packet_channel_drops_packets_for_other_ipv6_destinations() -> None:
     channel.set_receiver(lambda data, source: received.append((data, source)))
 
     channel._handle_packet(
-        wrap_coap(
-            IPv6Address("fe80::1"), IPv6Address("fe80::3"), _coap_request()
-        )
+        wrap_coap(IPv6Address("fe80::1"), IPv6Address("fe80::3"), _coap_request())
     )
 
     assert received == []
@@ -761,11 +747,7 @@ def test_packet_channel_drops_packets_with_bad_udp_checksum() -> None:
     channel = PacketDatagramChannel(FakePacketTransport(), "fe80::2")
     received: list[tuple[bytes, str]] = []
     channel.set_receiver(lambda data, source: received.append((data, source)))
-    packet = bytearray(
-        wrap_coap(
-            IPv6Address("fe80::1"), IPv6Address("fe80::2"), _coap_request()
-        )
-    )
+    packet = bytearray(wrap_coap(IPv6Address("fe80::1"), IPv6Address("fe80::2"), _coap_request()))
     packet[-1] ^= 0xFF
 
     channel._handle_packet(bytes(packet))
@@ -779,9 +761,7 @@ def test_packet_channel_accepts_packets_for_local_coap_port() -> None:
     channel.set_receiver(lambda data, source: received.append((data, source)))
 
     channel._handle_packet(
-        wrap_coap(
-            IPv6Address("fe80::1"), IPv6Address("fe80::2"), _coap_request()
-        )
+        wrap_coap(IPv6Address("fe80::1"), IPv6Address("fe80::2"), _coap_request())
     )
 
     assert received == [(_coap_request(), "[fe80::1]")]
@@ -806,9 +786,7 @@ async def test_packet_channel_scoped_addresses_use_unscoped_wire_bytes() -> None
     packet_transport = FakePacketTransport()
     channel = PacketDatagramChannel(packet_transport, "fe80::2%ble0")
 
-    channel.send_datagram(
-        _coap_request(), "[FE80:0:0:0:0:0:0:1%ble0]:61616"
-    )
+    channel.send_datagram(_coap_request(), "[FE80:0:0:0:0:0:0:1%ble0]:61616")
     await asyncio.gather(*tuple(channel._send_tasks))
 
     packet = IPv6Packet.from_bytes(packet_transport.sent_packets[0])
@@ -841,9 +819,7 @@ def test_packet_channel_scoped_local_accepts_unscoped_wire_destination() -> None
     channel.set_receiver(lambda data, source: received.append((data, source)))
 
     channel._handle_packet(
-        wrap_coap(
-            IPv6Address("fe80::1"), IPv6Address("fe80::2"), _coap_request()
-        )
+        wrap_coap(IPv6Address("fe80::1"), IPv6Address("fe80::2"), _coap_request())
     )
 
     assert received == [(_coap_request(), "[fe80::1%ble0]")]

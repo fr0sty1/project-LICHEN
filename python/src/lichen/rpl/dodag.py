@@ -150,9 +150,7 @@ class DodagState:
     def get_rank(self) -> int:
         return self.rank
 
-    def process_dio(
-        self, dio: DIO, neighbor_id: IPv6Address | str, link_etx: float = 1.0
-    ) -> None:
+    def process_dio(self, dio: DIO, neighbor_id: IPv6Address | str, link_etx: float = 1.0) -> None:
         """Process a received DIO from ``neighbor_id`` and re-select a parent.
 
         Newer DODAG versions trigger a rejoin (parents cleared); older versions

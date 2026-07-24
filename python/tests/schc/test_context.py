@@ -54,9 +54,7 @@ def test_rule_matches_rejects_undeclared_fields() -> None:
 def test_rule_matches_msb() -> None:
     rule = Rule(
         rule_id=12,
-        fields=(
-            FieldDescriptor("P", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),
-        ),
+        fields=(FieldDescriptor("P", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),),
     )
     assert rule_matches(rule, {"P": 5683}) is True
     assert rule_matches(rule, {"P": 5680}) is True  # same top 12 bits

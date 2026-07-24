@@ -103,6 +103,6 @@ def test_reject_low_order_pubkeys():
     fake_sig = bytes(16) + bytes([1] + [0] * 31)  # e=0, s=1
 
     for low_order_point in LOW_ORDER_POINTS:
-        assert not verify(
-            low_order_point, b"test message", fake_sig
-        ), f"Should reject low-order point: {low_order_point.hex()}"
+        assert not verify(low_order_point, b"test message", fake_sig), (
+            f"Should reject low-order point: {low_order_point.hex()}"
+        )

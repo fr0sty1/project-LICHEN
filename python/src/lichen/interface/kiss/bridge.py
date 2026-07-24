@@ -337,7 +337,11 @@ class KissBridge:
                 if rx is not None and not isinstance(rx, ReceiveError):
                     await self._on_link_rx(rx)
                 elif isinstance(rx, ReceiveError):
-                    if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):
+                    if rx in (
+                        ReceiveError.KEY_CHANGE,
+                        ReceiveError.REPLAY,
+                        ReceiveError.MIC_FAILED,
+                    ):
                         log.warning("link RX security event: %s", rx)
                     else:
                         log.debug("link RX rejected: %s", rx)
@@ -375,6 +379,7 @@ class KissBridge:
                 aprs_ack = create_ack(own_call, msg_id)
             else:
                 from .aprs import AprsRej
+
                 aprs_ack = AprsRej(addressee=own_call, msg_id=msg_id)
             aprs_payload = aprs_ack.encode()
         else:

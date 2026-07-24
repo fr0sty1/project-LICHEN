@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for announce scheduler.
-"""
+"""Tests for announce scheduler."""
 
 import asyncio
 
@@ -73,6 +72,7 @@ class TestSchedulerConfig:
         with pytest.raises(ValueError, match="initial_delay_ms must be >= 0"):
             SchedulerConfig(initial_delay_ms=-1)
 
+
 class TestSchedulerLifecycle:
     """Tests for scheduler start/stop lifecycle."""
 
@@ -81,9 +81,7 @@ class TestSchedulerLifecycle:
         assert scheduler.is_running is False
 
     @pytest.mark.asyncio
-    async def test_start_revalidates_runtime_config(
-        self, scheduler: AnnounceScheduler
-    ):
+    async def test_start_revalidates_runtime_config(self, scheduler: AnnounceScheduler):
         scheduler.config.interval_ms = 0
 
         with pytest.raises(ValueError, match="interval_ms must be > 0"):
@@ -93,9 +91,7 @@ class TestSchedulerLifecycle:
         assert scheduler._task is None
 
     @pytest.mark.asyncio
-    async def test_runtime_config_error_does_not_wedge_stop(
-        self, scheduler: AnnounceScheduler
-    ):
+    async def test_runtime_config_error_does_not_wedge_stop(self, scheduler: AnnounceScheduler):
         await scheduler.start()
         scheduler.config.interval_ms = 0
         await asyncio.sleep(0)
@@ -195,9 +191,7 @@ class TestSequenceNumber:
 class TestAnnounceBuild:
     """Tests for announce message building."""
 
-    def test_build_returns_signed_message(
-        self, scheduler: AnnounceScheduler, identity: Identity
-    ):
+    def test_build_returns_signed_message(self, scheduler: AnnounceScheduler, identity: Identity):
         """build_announce() returns a properly signed message."""
         announce = scheduler.build_announce()
 
@@ -205,9 +199,7 @@ class TestAnnounceBuild:
         assert announce.originator_iid == identity.iid
         assert announce.pubkey == identity.pubkey
 
-    def test_signature_is_valid(
-        self, scheduler: AnnounceScheduler, identity: Identity
-    ):
+    def test_signature_is_valid(self, scheduler: AnnounceScheduler, identity: Identity):
         """Signature verifies correctly."""
         # Why test: Invalid signatures would be rejected by receivers.
         announce = scheduler.build_announce()
@@ -295,9 +287,7 @@ class TestTransmission:
         assert len(transmitter.transmitted) == 0
 
     @pytest.mark.asyncio
-    async def test_transmit_failure_continues_loop(
-        self, identity: Identity
-    ):
+    async def test_transmit_failure_continues_loop(self, identity: Identity):
         """Transmit failure doesn't stop the scheduler."""
         # Why test: Network issues shouldn't halt announcing.
         failing_transmitter = MockTransmitter(success=False)
@@ -358,9 +348,7 @@ class TestTiming:
 class TestPersistence:
     """Tests for sequence number persistence support."""
 
-    def test_restore_seq_num_on_startup(
-        self, identity: Identity, transmitter: MockTransmitter
-    ):
+    def test_restore_seq_num_on_startup(self, identity: Identity, transmitter: MockTransmitter):
         """Can restore seq_num before starting."""
         # Why test: Persistence across reboots requires restoring seq_num.
         scheduler = AnnounceScheduler(

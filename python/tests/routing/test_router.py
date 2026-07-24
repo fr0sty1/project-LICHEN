@@ -129,14 +129,16 @@ class TestMeshLocalRouting:
         dst = IPv6Address("fd00::beef")
         next_hop = IPv6Address("fe80::1")
 
-        gradient_table.update(GradientEntry(
-            destination=dst,
-            next_hop=next_hop,
-            hop_count=3,
-            seq_num=1,
-            source=GradientSource.ANNOUNCE,
-            expires=10000,
-        ))
+        gradient_table.update(
+            GradientEntry(
+                destination=dst,
+                next_hop=next_hop,
+                hop_count=3,
+                seq_num=1,
+                source=GradientSource.ANNOUNCE,
+                expires=10000,
+            )
+        )
 
         packet = make_packet("fd00::beef")
         decision, result_hop = router.route(packet, now_ms=0)
@@ -149,14 +151,16 @@ class TestMeshLocalRouting:
         # Why test: Stale routes should not be used; need rediscovery.
         dst = IPv6Address("fd00::beef")
 
-        gradient_table.update(GradientEntry(
-            destination=dst,
-            next_hop=IPv6Address("fe80::1"),
-            hop_count=3,
-            seq_num=1,
-            source=GradientSource.ANNOUNCE,
-            expires=100,  # Already expired at now=1000
-        ))
+        gradient_table.update(
+            GradientEntry(
+                destination=dst,
+                next_hop=IPv6Address("fe80::1"),
+                hop_count=3,
+                seq_num=1,
+                source=GradientSource.ANNOUNCE,
+                expires=100,  # Already expired at now=1000
+            )
+        )
 
         # Without LOADng, should drop
         packet = make_packet("fd00::beef")
@@ -648,6 +652,7 @@ class TestDtnBuffer:
     def test_buffer_message(self, router: Router):
         """dtn_buffer_message adds message to buffer."""
         import time
+
         packet = make_packet("fd00::100")
         iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
         expiry = int(time.time()) + 3600  # 1 hour from now
@@ -661,6 +666,7 @@ class TestDtnBuffer:
     def test_buffer_rejects_expired(self, router: Router):
         """dtn_buffer_message rejects already-expired messages."""
         import time
+
         packet = make_packet("fd00::100")
         iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
         expiry = int(time.time()) - 100  # already expired
@@ -673,6 +679,7 @@ class TestDtnBuffer:
     def test_get_pending_iids(self, router: Router):
         """dtn_get_pending_iids returns unique IIDs."""
         import time
+
         expiry = int(time.time()) + 3600
         iid1 = b"\x01" * 8
         iid2 = b"\x02" * 8
@@ -690,6 +697,7 @@ class TestDtnBuffer:
     def test_retrieve_for(self, router: Router):
         """dtn_retrieve_for removes and returns matching messages."""
         import time
+
         expiry = int(time.time()) + 3600
         iid1 = b"\x01" * 8
         iid2 = b"\x02" * 8
@@ -707,6 +715,7 @@ class TestDtnBuffer:
     def test_eviction_oldest_first(self, router: Router):
         """Buffer evicts oldest messages when full."""
         import time
+
         expiry = int(time.time()) + 3600
         router.dtn_buffer_max_bytes = 300  # small buffer
 
@@ -864,9 +873,7 @@ class TestForwardingBuffer:
         source_iid = b"\x01" * 8
         packet = make_packet("fd00::1")
 
-        router.forwarding_buffer.try_buffer(
-            packet, source_iid, now_ms=0, deadline_ms=10000
-        )
+        router.forwarding_buffer.try_buffer(packet, source_iid, now_ms=0, deadline_ms=10000)
 
         entry = router.forwarding_buffer.peek(source_iid)
         assert entry is not None

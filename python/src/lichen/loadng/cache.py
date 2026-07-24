@@ -91,9 +91,7 @@ class RouteCache:
         while len(self._entries) > self.max_entries:
             self._entries.popitem(last=False)
 
-    def lookup(
-        self, destination: IPv6Address | str, now: int | None = None
-    ) -> RouteEntry | None:
+    def lookup(self, destination: IPv6Address | str, now: int | None = None) -> RouteEntry | None:
         """Return the route (None if absent or expired); marks it recently used."""
         dest = to_ipv6(destination)
         entry = self._entries.get(dest)

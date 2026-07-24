@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for announce message codec.
-"""
+"""Tests for announce message codec."""
 
 from pathlib import Path
 
@@ -132,12 +131,7 @@ class TestSignedData:
             rx_channel=5,
         )
         signed = msg.signed_data()
-        expected = (
-            b"\x01\x02\x03\x04\x05\x06\x07\x08"
-            + b"\x00" * 32
-            + b"\x12\x34"
-            + b"\x05"
-        )
+        expected = b"\x01\x02\x03\x04\x05\x06\x07\x08" + b"\x00" * 32 + b"\x12\x34" + b"\x05"
         assert signed == expected
         assert signed[42] == 5
 

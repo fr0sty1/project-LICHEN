@@ -68,11 +68,7 @@ class _FailAfterWrite(SqliteStoreHooks):
         self.enabled = False
 
     def transaction_step(self, operation: str, step: str) -> None:
-        if (
-            self.enabled
-            and operation in {"put", "replay_cas", "migrate"}
-            and step == "after_write"
-        ):
+        if self.enabled and operation in {"put", "replay_cas", "migrate"} and step == "after_write":
             raise OSError("injected write failure")
 
 
@@ -206,13 +202,9 @@ def _stored_host_keys(store: TransactionalOscoreContextStore) -> set[str]:
         return {str(row[0]) for row in connection.execute("SELECT host FROM oscore_hosts")}
 
 
-def _insert_legacy_pins(
-    store: SqliteOscoreContextStore, rows: list[tuple[str, bytes]]
-) -> None:
+def _insert_legacy_pins(store: SqliteOscoreContextStore, rows: list[tuple[str, bytes]]) -> None:
     with sqlite3.connect(store._path) as connection:
-        connection.executemany(
-            "INSERT INTO oscore_hosts (host, peer_pubkey) VALUES (?, ?)", rows
-        )
+        connection.executemany("INSERT INTO oscore_hosts (host, peer_pubkey) VALUES (?, ?)", rows)
 
 
 def _mark_sqlite_as_legacy(*stores: SqliteOscoreContextStore) -> None:
@@ -340,9 +332,7 @@ async def test_store_contract_conformance(
     assert published.generation == 1
     with pytest.raises(ContextGenerationError):
         await store.put("endpoint-a:61616", context, b"peer-key", expected_generation=0)
-    idempotent = await store.put(
-        "endpoint-a:61616", context, b"peer-key", expected_generation=1
-    )
+    idempotent = await store.put("endpoint-a:61616", context, b"peer-key", expected_generation=1)
     assert idempotent is published
     assert idempotent.generation == 1
     first = await store.reserve_sender_sequences("endpoint-a:61616", 1, 4)
@@ -351,9 +341,7 @@ async def test_store_contract_conformance(
     assert (second.start, second.end) == (4, 8)
 
     recipient_identity = published.oscore.recipient_cryptographic_identity()
-    await store.compare_and_set_replay_window(
-        "endpoint-a:61616", 1, recipient_identity, 0, 0, 0, 1
-    )
+    await store.compare_and_set_replay_window("endpoint-a:61616", 1, recipient_identity, 0, 0, 0, 1)
     with pytest.raises(ReplayWindowConflictError) as conflict:
         await store.compare_and_set_replay_window(
             "endpoint-a:61616", 1, recipient_identity, 0, 0, 0, 2
@@ -517,9 +505,7 @@ async def test_context_alias_conflict_migration_rolls_back(
     conforming_store: TransactionalOscoreContextStore,
 ) -> None:
     unscoped = await conforming_store.put("fe80::1", _context(b"a" * 16), b"peer-key")
-    scoped = await conforming_store.put(
-        "[fe80::1%ble0]", _context(b"b" * 16), b"peer-key"
-    )
+    scoped = await conforming_store.put("[fe80::1%ble0]", _context(b"b" * 16), b"peer-key")
     if isinstance(conforming_store, SqliteOscoreContextStore):
         _mark_sqlite_as_legacy(conforming_store)
 
@@ -668,8 +654,7 @@ async def test_sqlite_unknown_policy_fails_closed_before_insert(tmp_path: Path) 
     with sqlite3.connect(store._path) as connection:
         connection.execute(
             "INSERT INTO oscore_metadata (key, value) VALUES ('endpoint_policy', ?)",
-            ('{"ipv6_only":true,"link_local_scope":null,"scope_mode":"owning",'
-             '"version":2}',),
+            ('{"ipv6_only":true,"link_local_scope":null,"scope_mode":"owning","version":2}',),
         )
 
     with pytest.raises(ValueError, match="unsupported endpoint policy"):
