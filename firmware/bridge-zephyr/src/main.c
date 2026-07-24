@@ -59,19 +59,15 @@ static inline void led_set(int value)
 
 int main(void)
 {
-#if defined(HAS_LED) || defined(CONFIG_USB_DEVICE_STACK)
-    int ret = 0;
-#endif
-
     LOG_INF("main: starting");
     crash_info_check_and_clear();
 
 #if defined(HAS_LED)
     /* LED pattern: solid on during init = startup in progress */
     if (gpio_is_ready_dt(&led)) {
-        ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-        if (ret < 0) {
-            LOG_ERR("main: LED GPIO configure failed (%d)", ret);
+        int led_ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+        if (led_ret < 0) {
+            LOG_ERR("main: LED GPIO configure failed (%d)", led_ret);
         } else {
             led_configured = true;
             led_set(1);
@@ -80,9 +76,9 @@ int main(void)
 #endif
 
 #if defined(CONFIG_USB_DEVICE_STACK)
-    ret = usb_enable(NULL);
-    if (ret != 0) {
-        LOG_ERR("main: USB enable failed (%d)", ret);
+    int usb_ret = usb_enable(NULL);
+    if (usb_ret != 0) {
+        LOG_ERR("main: USB enable failed (%d)", usb_ret);
         /*
          * USB CDC failure means console output may not be visible.
          * Provide visual feedback via LED if available.
