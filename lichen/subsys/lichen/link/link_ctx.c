@@ -23,6 +23,7 @@
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 #include "monocypher.h"
 #include "monocypher-ed25519.h"
+#include <tinycrypt/sha256.h>
 #endif
 
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
@@ -592,3 +593,46 @@ uint32_t lichen_hash_32(const uint8_t *data, size_t len)
 	}
 	return hash;
 }
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t pubkey[32],
+					  uint8_t ygg_addr[16])
+{
+	uint8_t hash512[64];
+	uint8_t iid[8];
+	struct tc_sha256_state_struct sha_state;
+
+	if (pubkey == NULL || ygg_addr == NULL) {
+		return -EINVAL;
+	}
+
+	crypto_sha512(hash512, pubkey, 32);
+
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(iid, &sha_state) != TC_CRYPTO_SUCCESS) {
+		secure_zero(hash512, sizeof(hash512));
+		secure_zero(&sha_state, sizeof(sha_state));
+		return -EIO;
+	}
+
+	iid[0] &= 0b11111101u;
+
+	ygg_addr[0] = 0x02;
+	memcpy(&ygg_addr[1], hash512, 7);
+	memcpy(&ygg_addr[8], iid, 8);
+
+	secure_zero(hash512, sizeof(hash512));
+	secure_zero(iid, sizeof(iid));
+	secure_zero(&sha_state, sizeof(sha_state));
+	return 0;
+}
+#else
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
+					  uint8_t ygg_addr[16])
+{
+	(void)pubkey;
+	(void)ygg_addr;
+	return -EPROTONOSUPPORT;
+}
+#endif
