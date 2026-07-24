@@ -414,7 +414,7 @@ class EdhocInitiator:
                 mac_2,
             ])
             VerifyKey(peer_pubkey).verify(m_2, signature_2)
-            th_3_input = cbor2.dumps([self._th_2, ciphertext_2, id_cred_r])
+            th_3_input = cbor2.dumps([self._th_2, plaintext_2, cred_r])
             self._th_3 = _compute_th(th_3_input)
             self._prk_4e3m = self._prk_3e2m
             id_cred_i = _validate_bytes(
@@ -612,7 +612,7 @@ class EdhocResponder:
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
             )
             ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
-            th_3_input = cbor2.dumps([self._th_2, ciphertext_2, id_cred_r])
+            th_3_input = cbor2.dumps([self._th_2, plaintext_2, cred_r])
             self._th_3 = _compute_th(th_3_input)
             g_y_ciphertext_2 = self._eph_pk + ciphertext_2
             msg2 = cbor2.dumps(g_y_ciphertext_2) + _encode_connection_id(self.c_r)
