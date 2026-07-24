@@ -220,6 +220,20 @@ int lichen_loadng_cache_add(const struct lichen_loadng_route *route)
 	size_t idx;
 
 	if (existing != NULL) {
+		/* RFC 1982 freshness check: reject if new seq_num is stale
+		 * or if equal seq_num with worse-or-equal metric.
+		 */
+		if (lichen_loadng_seq_is_fresher(route->seq_num, existing->seq_num)) {
+			/* New seq_num is actually older than existing */
+			k_mutex_unlock(&cache_mutex);
+			return 0;
+		}
+		if (route->seq_num == existing->seq_num &&
+		    route->metric >= existing->metric) {
+			/* Same seq_num but metric is not better */
+			k_mutex_unlock(&cache_mutex);
+			return 0;
+		}
 		idx = existing - route_cache;
 	} else {
 		idx = find_lru_slot_locked();
