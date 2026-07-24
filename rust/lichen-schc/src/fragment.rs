@@ -271,8 +271,6 @@ impl Ack {
         } else {
             (WINDOW_SIZE, 0, 7)
         };
-        let n = kept;
-        let _body_bytes = kept.div_ceil(8);
         let total_bits = 2 + kept + restored + padding;
         let needed = 1 + total_bits / 8;
         if out.len() < needed {
@@ -281,7 +279,6 @@ impl Ack {
         out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = (self.window & 1) << 7;
-        out[2] = n as u8;
         for position in 0..kept {
             if self.bitmap & (1u64 << (WINDOW_SIZE - 1 - position)) != 0 {
                 set_bit(&mut out[1..needed], 2 + position, true);
@@ -302,19 +299,13 @@ impl Ack {
             return Err(TooShort::new(2, data.len()).into());
         }
         let _rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let _complete = (data[1] & 0x01) != 0;
-        let n = data[2] as usize;
-        let body_bytes = n.div_ceil(8);
-        let required = 3 + body_bytes;
-        if data.len() < required {
-            return Err(TooShort::new(required, data.len()).into());
-        }
-        let body = &data[3..];
-        let mut bitmap = [false; MAX_WINDOW_SIZE];
-        for i in 0..n.min(MAX_WINDOW_SIZE) {
-            let byte = body[i / 8];
-            bitmap[i] = (byte >> (7 - (i % 8))) & 1 != 0;
+        let window = (data[1] >> 7) & 1;
+        let complete = (data[1] & 0x40) != 0;
+        if complete {
+            if data.len() != 2 {
+                return Err(FragmentError::MalformedAck);
+            }
+            return Ok(Self::new(data[0], window, 0, true));
         }
         let bit_count = (data.len() - 1) * 8 - 2;
         let mut bitmap = 0u64;
