@@ -23,7 +23,6 @@ from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
 from lichen.link.frame import AddrMode, LichenFrame
 from lichen.link.link_layer import (
-    PLACEHOLDER_MIC,
     ReceiveError,
     RxFrame,
     SIGNATURE_LENGTH,

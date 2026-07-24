@@ -9,9 +9,9 @@ Why this exists: The link layer is the boundary between:
 This module provides:
 1. Frame construction with proper sequencing
 2. Schnorr signature generation on TX
-3. Signature verification on RX
+3. Signature verification on RX (integrity + authentication)
 4. Replay detection using per-sender sliding windows
-5. MIC handling: unsigned frames have no MIC; signed frames carry Schnorr-48
+5. Key pinning (TOFU) for change detection
 
 Threading model: Concurrent send() via per-entry TxReservations; TX serialized by _tx_lock.
 """
@@ -51,78 +51,10 @@ logger = logging.getLogger(__name__)
 # A signed frame puts the full Schnorr-48 value in the MIC field.
 SIGNATURE_LENGTH = 48
 
-# Placeholder MIC for unsigned development frames.
-PLACEHOLDER_MIC = b""
-
-# Track whether we've warned about MIC verification being disabled.
-# Why module-level: Log the warning once per process, not per frame.
-_mic_verify_warned = False
-
-# Track whether we've warned about key pinning being disabled.
-# Why disabled: Key pinning without MIC verification is insecure.
-# See _pin_key_stub() for details.
-_key_pin_warned = False
-
 # Track whether we've warned about encrypted frames being rejected.
 # Why reject: Encryption is not implemented. Frames claiming to be encrypted
 # cannot be decrypted, so accepting them would misinterpret the payload.
 _encrypted_frame_warned = False
-
-
-def _verify_mic_stub(frame: LichenFrame) -> bool:
-    """Stub MIC verification - accepts all frames but warns once.
-
-    SECURITY WARNING: MIC verification is not implemented. All frames are
-    accepted regardless of MIC value. This allows frame forgery by any
-    attacker who can inject radio traffic.
-
-    Encrypted-frame MIC computation is unsupported. Signed frames use:
-    (LLSec || epoch || seqnum || dst_addr || payload)
-
-    Returns:
-        Always True (accepts all frames).
-    """
-    global _mic_verify_warned
-    if not _mic_verify_warned:
-        logger.warning(
-            "MIC verification DISABLED (stub) - accepting unverified frames. "
-            "This is a security risk: frames can be forged."
-        )
-        _mic_verify_warned = True
-    return True
-
-
-def _should_pin_key() -> bool:
-    """Check if key pinning should be performed.
-
-    SECURITY WARNING: Key pinning is DISABLED while MIC verification is a stub.
-
-    Why disabled: Key pinning provides TOFU (Trust On First Use) protection,
-    where the first key seen for an IID is remembered and changes are rejected.
-    However, this protection is only meaningful when combined with MIC verification.
-
-    Without MIC verification, an attacker could potentially:
-    1. Inject a frame that passes signature verification (using a valid key pair)
-    2. Have that frame's identity associated with a victim's IID
-    3. Get the attacker's key pinned for the victim's IID
-    4. Cause the real peer's frames to be rejected as 'KEY CHANGE DETECTED'
-
-    The SECURITY comment claiming "key pinning happens after MIC verification"
-    was misleading since MIC verification always returns True. Rather than
-    provide a false sense of security, key pinning is disabled until MIC
-    verification is properly implemented.
-
-    Returns:
-        False while MIC verification is a stub.
-    """
-    global _key_pin_warned
-    if not _key_pin_warned:
-        logger.warning(
-            "Key pinning DISABLED - MIC verification is a stub. "
-            "TOFU protection not available until MIC is implemented."
-        )
-        _key_pin_warned = True
-    return False
 
 
 @dataclass
@@ -484,8 +416,9 @@ class LinkLayer:
         1. Parse frame structure
         2. Extract signature from mic field (when signature_present)
         3. Look up sender by IID (reject if unknown)
-        4. Verify signature (reject if invalid)
-        5. Check replay protection (reject if replay)
+        4. Verify signature (reject if invalid) — signature covers frame integrity
+        5. Pin sender key (TOFU) after successful signature verification
+        6. Check replay protection (reject if replay)
 
         Args:
             timeout_ms: Maximum time to wait for a frame, in milliseconds.
@@ -554,9 +487,8 @@ class LinkLayer:
         # Step 4 happened inside _find_sender (signature verification)
 
         # Step 4.5: Key pinning check — TOFU anchor + change detection.
-        # SECURITY: Key pinning is disabled while MIC verification is a stub.
-        # This check still runs for any previously pinned keys (from before
-        # the stub was introduced, or after MIC is implemented).
+        # Why verify: The signature in _find_sender already authenticated the
+        # sender's pubkey. Key pinning detects key changes for the same IID.
         pinned_pk = self._pinned_keys.get(sender.iid)
         if pinned_pk is not None and pinned_pk != sender.pubkey:
             logger.error(
@@ -567,23 +499,15 @@ class LinkLayer:
             )
             return ReceiveError.KEY_CHANGE
 
-        # Step 4.6: Verify MIC (stub - logs warning, always accepts)
-        # Encrypted-frame processing is unsupported by the current profile.
-        # The MIC covers: LLSec || epoch || seqnum || dst_addr || payload
-        if not _verify_mic_stub(frame):
-            logger.warning("MIC verification failed for frame from %s", sender.iid.hex())
-            return ReceiveError.MIC_FAILED
-
-        # Step 4.7: Pin key after MIC verification succeeds.
-        # SECURITY: Key pinning is disabled while MIC verification is a stub.
-        # Once MIC is implemented, uncomment this to enable TOFU protection.
-        # The pinning must happen AFTER MIC verification to prevent attackers
-        # from pinning forged keys before the MIC check rejects them.
-        if _should_pin_key():
-            self._pinned_keys[sender.iid] = sender.pubkey
-            self._pinned_keys.move_to_end(sender.iid)
-            while len(self._pinned_keys) > MAX_ENTRIES:
-                self._pinned_keys.popitem(last=False)
+        # Step 4.6: Pin key after signature verification succeeds.
+        # Why after signature: The Schnorr signature covers the payload and
+        # metadata (LLSec || epoch || seqnum || dst_addr || payload), so
+        # successful verification already provides integrity. Pinning after
+        # verification prevents attackers from injecting forged keys.
+        self._pinned_keys[sender.iid] = sender.pubkey
+        self._pinned_keys.move_to_end(sender.iid)
+        while len(self._pinned_keys) > MAX_ENTRIES:
+            self._pinned_keys.popitem(last=False)
 
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.

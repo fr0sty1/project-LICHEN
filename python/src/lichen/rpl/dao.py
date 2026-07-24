@@ -477,7 +477,8 @@ class DaoManager:
         if self._contains_cycle(parents):
             raise DaoError("candidate graph contains a cycle", reason="cycle")
 
-        routes = self._build_routes(parents, candidates)
+        host_routes = self._build_routes(parents, candidates)
+        routes = self._merge_prefix_routes(host_routes)
         if len(routes) > self.max_routes:
             raise DaoError("route capacity exceeded", reason="capacity")
 
@@ -485,7 +486,7 @@ class DaoManager:
             bool(changed)
             or parents != self._parent_map
             or expiry != self._edge_expiry
-            or routes != self.routing_table.routes()
+            or host_routes != self._existing_host_routes()
         )
 
         self._parent_map = parents
@@ -498,6 +499,18 @@ class DaoManager:
         self.routing_table.replace_routes(routes)
         return DaoOutcome(True, state_changed, False, reason)
 
+    def _existing_host_routes(self) -> dict[IPv6Address, list[IPv6Address]]:
+        return self.routing_table.routes()
+
+    def _merge_prefix_routes(
+        self, host_routes: dict[IPv6Address, list[IPv6Address]]
+    ) -> dict[IPv6Address, list[IPv6Address]]:
+        merged = dict(host_routes)
+        for rt, entry in self.routing_table._routes.items():
+            if rt.prefix_len < 128 and entry.is_usable():
+                merged[rt.prefix] = list(entry.path)
+        return merged
+
     def expire_routes(self, now_seconds: float | None = None) -> bool:
         """Remove expired active edges and routes while retaining snapshot tombstones."""
         now = self.clock() if now_seconds is None else now_seconds
@@ -507,7 +520,8 @@ class DaoManager:
             for edge, deadline in self._edge_expiry.items()
             if deadline is None or deadline > now
         }
-        routes = self._build_routes(parents, self._candidate_map)
+        host_routes = self._build_routes(parents, self._candidate_map)
+        routes = self._merge_prefix_routes(host_routes)
         changed = (
             parents != self._parent_map
             or expiry != self._edge_expiry
@@ -528,7 +542,8 @@ class DaoManager:
         self._edge_expiry = {
             edge: deadline for edge, deadline in self._edge_expiry.items() if edge[0] != target
         }
-        routes = self._build_routes(self._parent_map, self._candidate_map)
+        host_routes = self._build_routes(self._parent_map, self._candidate_map)
+        routes = self._merge_prefix_routes(host_routes)
         self.routing_table.replace_routes(routes)
         current = self._freshness.get(target)
         if current is not None:
