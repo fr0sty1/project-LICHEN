@@ -425,7 +425,7 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 			 * further TX until key rotation clears the flag.
 			 */
 			ctx->nonce_exhausted = true;
-			LOG_WRN("CRITICAL: nonce exhausted after 16M frames, TX blocked until key rotation\n");
+			LOG_WRN("nonce exhausted after 16M frames, TX blocked until key rotation\n");
 		} else {
 			LOG_WRN("tx_seq wrapped - epoch incremented to %u (was %u)\n",
 				ctx->epoch, old_epoch);

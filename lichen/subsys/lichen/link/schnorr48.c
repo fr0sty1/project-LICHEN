@@ -221,7 +221,7 @@ __attribute__((noreturn))
 #endif
 static void schnorr48_stub_abort(const char *func)
 {
-	LOG_WRN("FATAL: %s called without Monocypher - aborting\n", func);
+	LOG_WRN("%s called without Monocypher - aborting\n", func);
 	abort();
 }
 
