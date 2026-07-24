@@ -13,6 +13,7 @@
 
 #include <lichen/rpl_dodag.h>
 #include <lichen/rpl_addr.h>
+#include <lichen/rpl_messages.h>
 #include <string.h>
 
 /**
@@ -277,7 +278,8 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const uint8_t *neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
-				  uint32_t now)
+				  uint32_t now,
+				  const struct lichen_rpl_dodag_config *config)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
 		return 0;
@@ -308,6 +310,11 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	if (dio->dtsn != d->dtsn) {
 		d->dtsn = dio->dtsn;
 		ret = 1;
+	}
+
+	/* Propagate gateway-centric flag from DODAG config */
+	if (config != NULL) {
+		d->gateway_centric = config->gateway_centric;
 	}
 
 	/* Poisoned route? Drop this candidate. */

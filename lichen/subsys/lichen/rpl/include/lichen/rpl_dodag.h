@@ -107,6 +107,9 @@ struct lichen_rpl_dodag {
 
 	/* Lowest rank ever achieved (for MaxRankIncrease check) */
 	uint16_t lowest_rank;
+
+	/* Gateway-centric flag propagated from DODAG config */
+	bool gateway_centric;
 };
 
 /* ── Functions ─────────────────────────────────────────────────────────────── */
@@ -155,13 +158,15 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
  * @param now          Current timestamp for lifetime tracking
+ * @param config       DODAG config from DIO options (may be NULL)
  */
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
 				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
-				  uint32_t now);
+				  uint32_t now,
+				  const struct lichen_rpl_dodag_config *_Nullable config);
 
 /**
  * @brief Drop a neighbor (e.g., link failure) and re-select parent.
