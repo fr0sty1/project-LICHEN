@@ -17,6 +17,7 @@ pub const WINDOW_SIZE: usize = 63;
 pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
 pub const MAX_PACKET_SIZE: usize = 23562;
 pub const MAX_SCHC_PACKET: usize = 1281;
+pub const DEFAULT_RECEIVER_LIMIT: usize = MAX_SCHC_PACKET;
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
 
