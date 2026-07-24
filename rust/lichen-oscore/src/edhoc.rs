@@ -1199,11 +1199,11 @@ impl EdhocInitiator {
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
             let signature_3 = self.signing_key.sign(&m_3);
             let mut ciphertext_3 = SecretVec::<128>::new();
-            encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
+            ciphertext_3.extend_err(&id_cred_i)?;
             encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
 
             self.state.th_4 =
-                transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
+                transcript_4(&self.state.th_3, &ciphertext_3, &credential_i)?;
 
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
