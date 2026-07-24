@@ -61,6 +61,7 @@
 		led2      = &led2;
 		sw0       = &button0;
 		lora0     = &lora;
+		gnss0     = &uart1;
 		watchdog0 = &wdt0;
 	};
 };

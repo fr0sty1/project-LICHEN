@@ -20,6 +20,7 @@
 		lichen,native-uart = &cdc_acm_uart0;
 		zephyr,uart-mcumgr = &cdc_acm_uart2;
 		zephyr,display     = &eink0;
+		zephyr,gnss        = &uart1;
 	};
 };
 
@@ -45,5 +46,9 @@
 	cdc_acm_uart2: cdc_acm_uart2 {
 		compatible = "zephyr,cdc-acm-uart";
 	};
+};
+
+&uart1 {
+	status = "okay";
 };
 
