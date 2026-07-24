@@ -13,6 +13,7 @@ use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
 
+use hex;
 use sha2::{Digest, Sha256};
 
 /// Metrics collected during node operation.
@@ -101,7 +102,8 @@ fn main() {
                 peer_id: Option<String>,
                 rssi: Option<i32>,
                 snr: Option<i32>| {
-        let hash = format!("{:x}", Sha256::digest(payload));
+        let hash = Sha256::digest(payload);
+        let hash_hex = hex::encode(&hash[..16]);
         println!(
             "TELEMETRY {}",
             serde_json::json!({
@@ -110,8 +112,8 @@ fn main() {
                 "ts_us": ts_us,
                 "node_id": format!("rust-{}", node_id),
                 "impl": "rust",
-                "tx_id": hash[..16].to_string(),
-                "packet_hash": hash[..16].to_string(),
+                "tx_id": hash_hex,
+                "packet_hash": hash_hex,
                 "direction": if event.starts_with("tx") { "tx" } else { "rx" },
                 "peer_id": peer_id,
                 "payload_len": payload.len(),
