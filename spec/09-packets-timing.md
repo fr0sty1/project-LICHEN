@@ -245,7 +245,7 @@ Border routers with internet connectivity SHOULD:
 ### 14.7. TDMA Superframe Number (SFN)
 
 All nodes in a DODAG MUST compute TDMA slot assignments using identical hash
-function and modulo semantics as defined in 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01 (see also
+function and modulo semantics as defined in 02a-coordinated-capacity.md §2a.2.3 (see also
 Section 4.5 of this document for hash-based self-assignment precedent using
 hash_32). Nodes MUST NOT use implementation-specific variations. Slot index
 is computed as `slot = (hash_32(eui64 bytes, 8) + sfn) mod num_slots`
@@ -273,7 +273,7 @@ from stale or bogus time.
 
 **Desynchronization Recovery FSM:**
 
-The recovery mechanism is a finite state machine (see 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01 and project-LICHEN-i9r0.1 for full normative definition, timing parameters, and test vectors). States and transitions:
+The recovery mechanism is a finite state machine (see 02a-coordinated-capacity.md §2a.2.1 through §2a.2.3 for SFN definition and slot/hash assignment, and §2a.5 for desync recovery FSM) for full normative definition, timing parameters, and test vectors. States and transitions:
 
 | Current State | Event | Next State | Action |
 |---------------|-------|------------|--------|

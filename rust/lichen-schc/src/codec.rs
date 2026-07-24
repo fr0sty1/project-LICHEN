@@ -454,7 +454,7 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let rpl = &packet[44..];
     let instance = rpl[0];
     let kd_flags = rpl[1];
-    if kd_flags & 0x40 == 0 {
+    if (kd_flags & 0x40) == 0 {
         return Err(SchcError::NoMatchingRule);
     }
     // reserved (rpl[2]) is NOT_SENT

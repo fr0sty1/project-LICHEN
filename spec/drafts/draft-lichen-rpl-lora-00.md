@@ -646,6 +646,40 @@ Advertises node congestion for routing decisions (0-3 scale).
 
 **Adaptive SF and RF Metrics Option (CCP-16):** The DAG Metric Container MUST include current SF per-neighbor EMA-derived recommendation, density, utilization, and metrics per CCP-16 in spec/02a-coordinated-capacity.md (sections 4.1-4.2). Nodes MUST compute TX_SF and adaptive_sf_select via the normative pseudocode there. Thresholds, EMA (alpha 0.1-0.25), and load_factor integration are normative. DIOs on CH0 provide announcements; RX scanning on control channel REQUIRED. Test vectors in test/vectors/ccp16*.json, ccp_load_balancing.json and ccp16-desync.json are the independent oracles; all implementations MUST match exactly for interop. Cross-reference capability DIO option and section 4.2 in spec/02a-coordinated-capacity.md for thresholds and EMA update.
 
+**Root Conflict Resolution Option:**
+
+When multiple roots advertise conflicting DODAG versions on the same RPLInstanceID,
+nodes MUST detect the conflict and choose the authoritative root. This option
+signals root identity for conflict resolution:
+
+```
++--------+--------+--------+--------+--------+--------+--------+--------+
+| Type   | Length |  Flags |  Root Priority  |        Reserved       |
++--------+--------+--------+--------+--------+--------+--------+--------+
+|                     Root Public Key Fingerprint (8 bytes)               |
++--------+--------+--------+--------+--------+--------+--------+--------+
+```
+
+Fields:
+- **Type:** TBD (DIO option type for root conflict)
+- **Length:** 10 (fixed)
+- **Flags:** Bit 0 = authoritative (set by DODAG root), bits 1-7 reserved (zero)
+- **Root Priority:** u8; lower value wins (0 = highest priority root)
+- **Root Public Key Fingerprint:** First 8 bytes of SHA-512(root public key)
+
+Nodes receiving conflicting DIOs with this option MUST:
+1. Compare Root Priority; lower wins. Equal priority breaks tie by comparing
+   Root Public Key Fingerprint as a big-endian unsigned integer.
+2. Adopt the winning root's DODAG version and SFN.
+3. Drop the losing root as a parent candidate.
+4. Trigger desynchronization recovery (see 02a-coordinated-capacity.md §2a.5)
+   if the node was previously synchronized to the losing root.
+
+This option is OPTIONAL in DIO. Absence implies priority 128 and no
+fingerprint verification (legacy fallback). See spec/02a-coordinated-capacity.md
+§2a.2.3 for slot re-assignment after root change and test/vectors/ccp16.json,
+ccp_tdma.json for conflict scenarios.
+
 ### 9.3. Prefix Information Option
 
 When DODAG root advertises prefix:
