@@ -7,8 +7,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:21:13.73043072Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:04:01.148215585Z",
-  "started_at": "2026-07-24T16:03:50.413238902Z",
+  "updated_at": "2026-07-23T05:21:13.73043072Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.2",
