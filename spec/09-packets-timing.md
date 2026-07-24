@@ -248,7 +248,7 @@ All nodes in a DODAG MUST compute TDMA slot assignments using identical hash
 function and modulo semantics as defined in 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01 (see also
 Section 4.5 of this document for hash-based self-assignment precedent using
 hash_32). Nodes MUST NOT use implementation-specific variations. Slot index
-is computed as `slot = (hash_32(eui64 bytes, 8) + sfn) mod num_slots`
+is computed as `slot = (hash_32(eui64) + sfn) mod num_slots`
 (exact per is_assigned_slot pseudocode and ccp_load_balancing.json).
 
 **Time-Provider Interaction on SFN Wrap:**

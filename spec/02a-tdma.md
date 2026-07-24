@@ -35,7 +35,7 @@ Beacon uses distinct sync word (0x34 per spec) or LLSec flag. Old nodes MUST ign
 
 Priority order (per lichen_coordination_mechanism in link.h:106):
 1. SCHEDULED: gateway-assigned slot from beacon/DIO (preferred for TDMA)
-2. HASH_BASED: slot = hash_32(EUI64, SFN) % n_slots (lichen_hash_32, FNV-1a32 basis 0x811c9dc5; see ccp_tdma.json)
+2. HASH_BASED: slot = hash_32(EUI64 + SFN.to_bytes(4, "little")) % n_slots (lichen_hash_32, FNV-1a32 basis 0x811c9dc5; see ccp_tdma.json)
 3. ANNOUNCE_DRIVEN: rx_channel from Announce (CCP-9, ccp9*.json)
 4. FALLBACK: CH0 contention
 
