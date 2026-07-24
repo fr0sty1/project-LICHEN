@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-cuto",
+  "title": "[review] project-LICHEN-iaui.3: Responder new() returns Ok but sig is Self (compile error)",
+  "description": "Bug in rust/lichen-oscore/src/edhoc.rs:1042. EdhocResponder::new at line 1034 has return type \"-\u003e Self\" (not Result). The Zeroizing edit at line 1035 wrapped the seed, then line 1042 returns Ok(Self { ... }) instead of Self { ... }. Type mismatch -\u003e compile fail. Initiator line 687 is correct (Self { ... } without Ok). Fix: remove Ok() wrapper.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:58:28.554911734Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:58:28.554911734Z"
+}
