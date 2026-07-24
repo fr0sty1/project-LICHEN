@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-3ce2",
+  "title": "[review] project-LICHEN-worker6-69p2: Ack complete flag lost in from_bytes parsing",
+  "description": "`Ack::write_to` stores the `self.complete` flag in bit 0 of byte 1 (`((self.window \u0026 1) \u003c\u003c FRAGMENT_N) | (if self.complete { 1 } else { 0 })`). However, `Ack::from_bytes_for` never extracts this bit - it always calls `Ack::new(data[0], window, bitmap, false)` with `complete=false`. The complete flag cannot round-trip, and a complete ACK (C=1) is silently parsed as an incomplete ACK.\n\nAdditionally, there is no explicit handling of the C=1 case for complete ACK encoding (the old code returned 2 bytes for C=1, the new code always emits 3+ bytes).\n\nAffected file: `rust/lichen-schc/src/fragment.rs` lines ~235-300.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:55:39.541261144Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:55:39.541261144Z"
+}
