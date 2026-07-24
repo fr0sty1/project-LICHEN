@@ -69,7 +69,14 @@ extern "C" {
  *   - If compressed payload + rule ID exceeds 200 bytes, TX will fail at
  *     the size check in lichen_l2_send()
  *
- *   Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
+ * Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
+ *
+ * When to use each constant:
+ * - LICHEN_LORA_MTU: Use at the LoRa driver layer (lora_l2.c). This is the
+ *   payload capacity after LoRa framing overhead is subtracted.
+ * - LICHEN_L2_MTU: Use at the Zephyr network stack layer (lichen_l2.h, net_if,
+ *   net_pkt). Identical value, but defined separately to avoid coupling
+ *   consumers of lora_l2.h to Zephyr network stack headers.
  *
  * If frame format or signature size changes, update these constants.
  */
