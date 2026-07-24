@@ -605,7 +605,7 @@ class EdhocResponder:
             corr = method_corr % 4
             if received_method != self.method:
                 raise ValueError(
-                    f"Method mismatch: initiator sent method={received_method}, "
+                    f"METHOD_CORR mismatch: initiator sent method={received_method}, "
                     f"responder expects method={self.method}"
                 )
             if corr not in (0, 1, 2, 3):
