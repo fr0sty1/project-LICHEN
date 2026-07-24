@@ -48,6 +48,42 @@ ZTEST(lichen_util, test_sha256_rejects_null_output)
 		      "sha256 rejects NULL output");
 }
 
+ZTEST(lichen_util, test_iid_to_human_address_matches_node_address_vectors)
+{
+	static const struct {
+		uint8_t iid[8];
+		const char *expected;
+	} vectors[] = {
+		{{0x64, 0x68, 0x7a, 0xad, 0xf8, 0x62, 0xbd, 0x77}, "68T3-TNQW-65FBQ"},
+		{{0x70, 0xcd, 0x6e, 0x84, 0x22, 0xc4, 0x07, 0xfb}, "71KB-EGGH-C81ZV"},
+		{{0x75, 0x87, 0x7b, 0xb4, 0x1d, 0x39, 0x3b, 0x5f}, "7B1V-VPGE-KJETZ"},
+		{{0x64, 0x8a, 0xa5, 0xc5, 0x79, 0xfb, 0x30, 0xf3}, "692N-5RNW-ZPC7K"},
+		{{0x9d, 0x4f, 0xb6, 0x8f, 0x3e, 0x1d, 0xac, 0x82}, "9TKX-PHWZ-1VB42"},
+		{{0xf8, 0x49, 0xd6, 0x73, 0x25, 0xfa, 0xcf, 0x04}, "FGJE-PECJ-ZNKR4"},
+		{{0xe8, 0x02, 0x08, 0x6a, 0xd6, 0xa1, 0xe1, 0x6b}, "EG0G-8DBB-A3RBB"},
+		{{0x49, 0xb0, 0x6f, 0x8e, 0x4e, 0x3a, 0x77, 0x15}, "4KC3-FHS7-3MXRN"},
+		{{0x25, 0x78, 0xcc, 0xf8, 0x64, 0x5b, 0x2d, 0x1d}, "2AY6-CZ1J-5PB8X"},
+		{{0x8c, 0x0c, 0xc1, 0x7a, 0x04, 0x94, 0x2c, 0xc4}, "8R36-1F82-98B64"},
+	};
+	char buf[16];
+
+	for (size_t i = 0; i < ARRAY_SIZE(vectors); i++) {
+		int ret = lichen_iid_to_human_address(vectors[i].iid, buf, sizeof(buf));
+		zassert_equal(ret, 0, "vector %zu failed: %d", i, ret);
+		zassert_equal(strcmp(buf, vectors[i].expected), 0,
+			      "vector %zu: expected %s, got %s", i, vectors[i].expected, buf);
+	}
+
+	int ret = lichen_iid_to_human_address(NULL, buf, sizeof(buf));
+	zassert_equal(ret, -EINVAL, "NULL iid should return -EINVAL");
+
+	ret = lichen_iid_to_human_address(vectors[0].iid, NULL, sizeof(buf));
+	zassert_equal(ret, -EINVAL, "NULL buf should return -EINVAL");
+
+	ret = lichen_iid_to_human_address(vectors[0].iid, buf, 10);
+	zassert_equal(ret, -EINVAL, "small buffer should return -EINVAL");
+}
+
 ZTEST(lichen_util, test_lichen_hash_32)
 {
 	static const uint8_t test_data[] = { 't', 'e', 's', 't' };
