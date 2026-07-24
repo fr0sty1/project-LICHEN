@@ -10,12 +10,12 @@
   "assignee": "AI Agent",
   "created_at": "2026-07-21T00:53:11.088851977Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-24T16:09:23.684882782Z",
+  "updated_at": "2026-07-24T16:09:17.824939684Z",
   "started_at": "2026-07-21T04:10:05.757056404Z",
   "closed_at": "2026-07-23T04:42:57.819467517Z",
   "close_reason": "Validation and audit completed per acceptance criteria; gates passed; reviews converged; Beads reconciled; merge boundary prepared with commit 6858c37e0",
-  "lease_expires_at": "2026-07-24T16:14:23.684882782Z",
-  "heartbeat_at": "2026-07-24T16:09:23.684882782Z",
+  "lease_expires_at": "2026-07-24T16:14:17.824939684Z",
+  "heartbeat_at": "2026-07-24T16:09:17.824939684Z",
   "labels": [
     "defer-external"
   ],
