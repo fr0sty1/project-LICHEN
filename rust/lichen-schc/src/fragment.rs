@@ -249,22 +249,37 @@ impl Ack {
         }
 
         let trailing = (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
-        let n = (WINDOW_SIZE - trailing) as u8;
-        let body_bytes = n as usize / 8 + usize::from(n as usize % 8 != 0);
-        let needed = 3 + body_bytes;
+        let n = WINDOW_SIZE - trailing;
+        let remaining = if n <= 6 { 0 } else { n - 6 };
+        let body_bytes = remaining.div_ceil(8);
+        let needed = 2 + body_bytes;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
-        out[2] = n;
-        for bit in 0..n as usize {
-            let bm_bit = WINDOW_SIZE - 1 - bit;
-            let val = ((self.bitmap >> bm_bit) & 1) as u8;
-            let byte_idx = 3 + bit / 8;
-            let bit_idx = 7 - (bit % 8);
-            out[byte_idx] |= val << bit_idx;
+        let first_byte_bits = n.min(6) as usize;
+        for i in 0..first_byte_bits {
+            if self.bitmap & (1u64 << (62 - i)) != 0 {
+                out[1] |= 1 << (5 - i);
+            }
+        }
+        for i in first_byte_bits..6 {
+            out[1] |= 1 << (5 - i);
+        }
+        for i in 0..remaining {
+            if self.bitmap & (1u64 << (56 - i)) != 0 {
+                let byte_idx = 2 + i / 8;
+                let bit_idx = 7 - (i % 8);
+                out[byte_idx] |= 1 << bit_idx;
+            }
+        }
+        let last_byte_pad = remaining % 8;
+        if last_byte_pad != 0 {
+            let last_idx = 2 + remaining / 8;
+            for j in last_byte_pad..8 {
+                out[last_idx] |= 1 << (7 - j);
+            }
         }
         Ok(needed)
     }
@@ -291,42 +306,39 @@ impl Ack {
             }
             return Ok(ack);
         }
-        let _rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let _complete = (data[1] & 0x01) != 0;
-        let n = data[2] as usize;
-        let body_bytes = n.div_ceil(8);
-        let required = 3 + body_bytes;
-        if data.len() < required {
-            return Err(TooShort::new(required, data.len()).into());
+        let rule_id = data[0];
+        let window = (data[1] >> 7) & 1;
+        let total_bits = 6 + (data.len() - 2) * 8;
+        let mut bitmap = 0u64;
+        for i in 0..total_bits.min(63) {
+            let val = if i < 6 {
+                (data[1] >> (5 - i)) & 1
+            } else {
+                let byte_idx = 2 + (i - 6) / 8;
+                let bit_idx = 7 - ((i - 6) % 8);
+                (data[byte_idx] >> bit_idx) & 1
+            };
+            if val != 0 {
+                bitmap |= 1u64 << (62 - i);
+            }
         }
-        let body = &data[3..];
+        if total_bits < 63 {
+            let mask = (1u64 << (63 - total_bits)) - 1;
+            bitmap |= mask;
+        }
+        bitmap &= BITMAP_MASK;
+        let trailing = (bitmap & BITMAP_MASK).trailing_ones() as usize;
+        let n = WINDOW_SIZE - trailing;
         if n > MAX_WINDOW_SIZE {
             return Err(FragmentError::MalformedAck);
         }
-        let bit_count = n;
-        let mut bitmap = 0u64;
-        if bit_count >= WINDOW_SIZE {
-            let padding = bit_count - WINDOW_SIZE;
-            if padding > 7 || (0..padding).any(|i| get_bit(body, WINDOW_SIZE + i)) {
-                return Err(FragmentError::MalformedAck);
-            }
-            for position in 0..WINDOW_SIZE {
-                if get_bit(body, position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-        } else {
-            for position in 0..bit_count {
-                if get_bit(body, position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-            for position in bit_count..WINDOW_SIZE {
-                bitmap |= 1u64 << (62 - position);
-            }
+        let remaining = if n <= 6 { 0 } else { n - 6 };
+        let body_bytes = remaining.div_ceil(8);
+        let expected_len = 2 + body_bytes;
+        if expected_len != data.len() {
+            return Err(FragmentError::NonCanonicalAck);
         }
-        let ack = Self::new(data[0], window, bitmap, false);
+        let ack = Self::new(rule_id, window, bitmap, false);
         let mut canonical = [0u8; 10];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {

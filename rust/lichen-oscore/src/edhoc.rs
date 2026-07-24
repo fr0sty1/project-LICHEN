@@ -454,12 +454,12 @@ fn encode_tstr<const N: usize>(
     Ok(())
 }
 
-/// TH_2 = H(CBOR(G_Y) || CBOR(H(message_1))) per RFC 9529 Section 2.2.
+/// TH_2 = H(G_Y || H(message_1)) per RFC 9528 Section 4.1.1.
 fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 68>::new();
-    encode_bstr(&mut buf, g_y)?;
-    encode_bstr(&mut buf, &h_msg1)?;
+    let mut buf = heapless::Vec::<u8, 64>::new();
+    buf.extend_err(g_y)?;
+    buf.extend_err(&h_msg1)?;
     Ok(compute_th(&buf))
 }
 
@@ -474,24 +474,29 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext_3: &[u8],
+    cred_i: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext_3)?;
+    encode_bstr(&mut buf, cred_i)?;
     Ok(compute_th(&buf))
 }
 
-fn build_context_2(_c_r: &ConnectionId, id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+fn build_context_2(c_r: &ConnectionId, id_cred: &[u8], th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut buf = heapless::Vec::<u8, 128>::new();
+    encode_identifier(&mut buf, c_r)?;
     encode_bstr(&mut buf, id_cred)?;
+    encode_bstr(&mut buf, th)?;
     encode_bstr(&mut buf, cred)?;
     Ok(buf)
 }
 
-fn build_context_3(id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+fn build_context_3(id_cred: &[u8], th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut buf = heapless::Vec::<u8, 128>::new();
     encode_bstr(&mut buf, id_cred)?;
+    encode_bstr(&mut buf, th)?;
     encode_bstr(&mut buf, cred)?;
     Ok(buf)
 }
@@ -1017,8 +1022,7 @@ impl EdhocInitiator {
         msg1.push_err(0)?; // METHOD = 0 (signature/signature)
         msg1.push_err(SUITE_0)?;
         encode_bstr(&mut msg1, self.eph_public.as_bytes())?;
-        let c_id = ConnectionId::new(&[self.c_i]).map_err(|_| EdhocError::BufferTooSmall)?;
-        encode_identifier(&mut msg1, &c_id)?;
+        msg1.push_err(self.c_i)?;
 
         self.state.msg1 = msg1.clone();
         self.state.lifecycle = Lifecycle::Message1Created;
@@ -1198,6 +1202,9 @@ impl EdhocInitiator {
             encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
             encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
 
+            self.state.th_4 =
+                transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
+
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
             let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
@@ -1218,8 +1225,6 @@ impl EdhocInitiator {
                 .encrypt_in_place_detached((&*nonce).into(), &a_3, &mut ciphertext_3)
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
-
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1662,7 +1667,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext_3)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -2316,7 +2321,7 @@ mod tests {
         let responder_key = responder.pubkey.to_bytes();
         let message_1 = initiator.create_message_1().unwrap();
         let message_2 = responder.process_message_1(&message_1).unwrap();
-        initiator.c_i = ConnectionId::from(0);
+        initiator.c_i = 0;
         assert_eq!(
             initiator.process_message_2(&message_2, &responder_key),
             Err(EdhocError::InvalidMessage)
@@ -2367,9 +2372,9 @@ mod tests {
 
     #[test]
     fn rfc9528_suites_i_literals() {
-        assert_eq!(parse_suites_i(&[0x00, 0xff]), Ok((0, 1, false)));
-        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00, 0xff]), Ok((0, 3, false)));
-        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x00]), Ok((0, 3, true)));
+        assert_eq!(parse_suites_i(&[0x00, 0xff]), Ok((0, 1)));
+        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00, 0xff]), Ok((0, 3)));
+        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x00]), Ok((0, 3)));
 
         assert_eq!(
             parse_suites_i(&[0x81, 0x00]),
@@ -2402,7 +2407,7 @@ mod tests {
             0x00, 0x01, 0x00, 0x00, 0x3b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
             0xff,
         ];
-        assert_eq!(parse_suites_i(&suites), Ok((0, suites.len() - 1, false)));
+        assert_eq!(parse_suites_i(&suites), Ok((0, suites.len() - 1)));
     }
 
     #[test]
