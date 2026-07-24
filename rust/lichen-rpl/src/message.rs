@@ -185,9 +185,9 @@ impl Dao {
         }
         let dodag_id = if d_flag == 1 {
             // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
-            data[4..20].try_into().unwrap()
+            Some(data[4..20].try_into().unwrap())
         } else {
-            [0u8; 16] // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
+            None // D=0 elides DODAGID per RFC 6550 §6.4.2
         };
         Ok(Self {
             rpl_instance_id: data[0],
@@ -203,9 +203,9 @@ impl Dao {
             return Err(RplError::InvalidOption);
         }
         let base_len = if self.dodag_id.is_some() {
-            Self::DODAG_BASE_LEN
+            Self::BASE_LEN
         } else {
-            Self::MIN_BASE_LEN
+            Self::BASE_LEN
         };
         if out.len() < base_len {
             return Err(BufferTooSmall::new(base_len, out.len()).into());
@@ -230,11 +230,6 @@ impl Dao {
         let kd = data[1];
         let d_flag = (kd >> 6) & 1;
         let base_len = if d_flag == 1 { 20 } else { 4 };
-        if data.len() > base_len {
-            &data[base_len..]
-        } else {
-            Self::MIN_BASE_LEN
-        };
         data.get(base_len..).unwrap_or_default()
     }
 }
@@ -308,7 +303,7 @@ impl<'a> SignedDaoEnvelope<'a> {
         if dao.flags != 0 || data[2] != 0 {
             return Err(DaoEnvelopeError::Rpl(RplError::InvalidOption));
         }
-        let base_len = data.len() - dao.options_tail(data).len();
+        let base_len = data.len() - Dao::options_tail(data).len();
         let mut pos = base_len;
         let mut found = None;
         while pos < data.len() {

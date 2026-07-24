@@ -2154,6 +2154,74 @@ impl DaoManager {
         route_state_changed
     }
 
+    /// Rebuild the routing table from the current parent_map and candidate_map.
+    ///
+    /// For each target in `parent_map`, the full root-to-target path is assembled
+    /// via `assemble_path_checked` and installed as a host route.  Managed prefix
+    /// routes whose egress node is in `parent_map` are updated to use the egress's
+    /// assembled path; managed prefix routes whose egress is absent are expired.
+    /// Unmanaged prefix and host routes (static routes) are preserved unchanged.
+    ///
+    /// Returns `None` on capacity overflow or path assembly failure (deep cycle).
+    fn rebuilt_routes(
+        root: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+        current_table: &RoutingTable,
+        changed_targets: &HashSet<[u8; 16]>,
+    ) -> Option<RoutingTable> {
+        let mut table = current_table.clone();
+
+        for target in changed_targets {
+            if !parent_map.contains_key(target) {
+                table.remove_route(target);
+            }
+        }
+
+        for target in parent_map.keys() {
+            match Self::assemble_path_checked(root, parent_map, candidate_map, *target) {
+                Ok(Some(path)) => {
+                    if !table.add_route(*target, &path) {
+                        return None;
+                    }
+                }
+                Ok(None) => {
+                    table.routes.get_mut(&RouteTarget::host(*target))?.state =
+                        RouteEntryState::Expired;
+                }
+                Err(()) => return None,
+            }
+        }
+
+        let has_parent: HashSet<[u8; 16]> = parent_map.keys().copied().collect();
+        let managed_prefixes: Vec<(RouteTarget, [u8; 16])> = table
+            .rpl_managed_prefixes
+            .iter()
+            .map(|(t, e)| (*t, *e))
+            .collect();
+        for (prefix, egress) in &managed_prefixes {
+            if has_parent.contains(egress) {
+                match Self::assemble_path_checked(root, parent_map, candidate_map, *egress) {
+                    Ok(Some(path)) => {
+                        if !table.add_prefix_route(*prefix, *egress, &path) {
+                            return None;
+                        }
+                    }
+                    Ok(None) => {
+                        if let Some(entry) = table.routes.get_mut(prefix) {
+                            entry.state = RouteEntryState::Expired;
+                        }
+                        table.unavailable_managed_prefixes.insert(*prefix);
+                        table.rpl_managed_prefixes.remove(prefix);
+                    }
+                    Err(()) => return None,
+                }
+            }
+        }
+
+        Some(table)
+    }
+
     fn is_active(deadline: Option<u64>, now_seconds: u64) -> bool {
         deadline.is_none_or(|deadline| deadline > now_seconds)
     }
