@@ -140,7 +140,7 @@ fn test_schc_compression_vectors() {
         println!(
             "Vector '{}' ({}; rule {}): {} -> {} bytes ({}% reduction)",
             vector.name,
-            vector.description,
+            vector.name,
             vector.rule_id,
             packet.len(),
             compressed.len(),
