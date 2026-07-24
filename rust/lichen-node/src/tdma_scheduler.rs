@@ -1,4 +1,7 @@
-use lichen_core::{constants::{TDMA_GUARD_MS, TDMA_SLOT_MS}, lichen_hash_32};
+use lichen_core::{
+    constants::{TDMA_GUARD_MS, TDMA_SLOT_MS},
+    lichen_hash_32,
+};
 
 fn xor_epoch(data: &[u8; 8], epoch: u32) -> [u8; 8] {
     let mut buf = *data;

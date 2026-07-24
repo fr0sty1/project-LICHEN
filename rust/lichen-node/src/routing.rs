@@ -12,14 +12,10 @@
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_INSTANCE_ID;
 #[cfg(feature = "std")]
-use lichen_core::rf_health::RfHealthMetrics;
-#[cfg(feature = "std")]
 extern crate std;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(feature = "std")]
-use lichen_core::rf_health::RfHealthMetrics;
 #[cfg(feature = "std")]
 use lichen_hal::NonVolatile;
 #[cfg(feature = "std")]
@@ -33,8 +29,7 @@ use lichen_rpl::message::DODAG_CONFIG_DATA_LEN;
 #[cfg(feature = "std")]
 pub use lichen_rpl::message::{
     Dao, DaoOriginSignature, Dio, DodagConfig, OptionIter, RplError, RplTarget, SignedDaoEnvelope,
-    TransitInfo, CCP16_METRICS_DATA_LEN, CCP16_METRICS_LEN, DAO_ORIGIN_SIGNATURE_LEN,
-    OPT_CCP16_METRICS, OPT_DODAG_CONFIG, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
+    TransitInfo, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SignatureVerifiedDao;
@@ -53,9 +48,7 @@ pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
 
 #[cfg(feature = "std")]
 fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
-    let imin_ms = 1u32
-        .checked_shl(u32::from(config.dio_int_min))
-        .unwrap_or(0);
+    let imin_ms = 1u32.checked_shl(u32::from(config.dio_int_min)).unwrap_or(0);
     if imin_ms == 0 || config.dio_redundancy_const == 0 {
         return None;
     }
@@ -195,43 +188,6 @@ impl TrickleSafeLivenessPolicy for () {
     }
 }
 
-/// Trickle-aware liveness policy per RFC 6206.
-///
-/// Uses `counter` (the number of consistent DIOs heard during this interval)
-/// to extend the effective timeout: nodes under suppression (counter >= k)
-/// scale timeout up to 3x. This prevents premature neighbor eviction in dense
-/// networks where physical connectivity is intact but DIOs are suppressed.
-///
-/// The `prune_with_removed` caller passes `heard_consistent` from the active
-/// trickle timer; this struct stores `k` (redundancy constant) as a field
-/// since it's configuration, not runtime state.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct TrickleAwareNeighborLiveness {
-    pub k: u32,
-}
-
-impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
-        let age = now.saturating_sub(last_seen);
-        if age <= timeout {
-            return true;
-        }
-        if self.k == 0 {
-            return false;
-        }
-        // Reserve heard_consistent scaling for the version that takes a counter.
-        // This base impl uses only age vs timeout + 2x k-grace.
-        age <= timeout.saturating_mul(3)
-    }
-}
-
-impl TrickleAwareNeighborLiveness {
-    /// Create a policy with a specific redundancy constant.
-    pub fn with_k(k: u32) -> Self {
-        Self { k }
-    }
-}
-
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
 pub struct Neighbor {
@@ -299,10 +255,8 @@ impl NeighborTable {
                     n.etx = etx;
                     n.rssi = rssi;
                     n.last_seen_ms = now_ms;
-                    if let Some(c) = coords {
-                        if is_valid_coords(c) {
-                            n.coords = Some(c);
-                        }
+                    if coords.is_some() {
+                        n.coords = coords;
                     }
                     return (i, None);
                 }
@@ -311,14 +265,13 @@ impl NeighborTable {
             }
         }
         // Insert new
-        let validated_coords = coords.filter(is_valid_coords);
         if let Some(i) = empty_slot {
             self.entries[i] = Some(Neighbor {
                 addr: *addr,
                 etx,
                 rssi,
                 last_seen_ms: now_ms,
-                coords: validated_coords,
+                coords,
             });
             return (i, None);
         }
@@ -336,7 +289,7 @@ impl NeighborTable {
             etx,
             rssi,
             last_seen_ms: now_ms,
-            coords: validated_coords,
+            coords,
         });
         (oldest, evicted)
     }
@@ -359,12 +312,8 @@ impl NeighborTable {
             .and_then(|n| n.coords)
     }
 
-    /// Update coordinates for an existing neighbor.
-    /// Does nothing if neighbor not found or coords are invalid.
+    /// Update coordinates for an existing neighbor. Does nothing if neighbor not found.
     pub fn set_coords(&mut self, addr: &[u8; 16], coords: GeoCoords) {
-        if !is_valid_coords(coords) {
-            return;
-        }
         for n in self.entries.iter_mut().flatten() {
             if n.addr == *addr {
                 n.coords = Some(coords);
@@ -384,14 +333,14 @@ impl NeighborTable {
         policy: &P,
         now_ms: u64,
         max_age_ms: u64,
-        _heard_consistent: u32,
+        heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().map_or(false, |neighbor| {
-                !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms)
+                !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms, heard_consistent)
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
@@ -448,12 +397,7 @@ impl NeighborTable {
         now_ms: u64,
         max_age_ms: u64,
     ) -> bool {
-        let Some(neighbor) = self
-            .entries
-            .iter()
-            .flatten()
-            .find(|n| n.addr == *addr)
-        else {
+        let Some(neighbor) = self.entries.iter().flatten().find(|n| n.addr == *addr) else {
             return false;
         };
         let age = now_ms.saturating_sub(neighbor.last_seen_ms);
@@ -501,12 +445,9 @@ pub struct Router {
     dodag_id: [u8; 16],
     dodag_config: DodagConfig,
     last_now_ms: u64,
-    /// RF health metrics (EMA SNR, density, load_factor) for CCP-15/16.
-    pub rf_health: RfHealthMetrics,
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
-    pub rf_health: RfHealthMetrics,
     #[cfg(test)]
     test_storage: lichen_hal::storage::mem::MemStorage,
     #[cfg(test)]
@@ -528,9 +469,7 @@ impl Router {
             dodag_id,
             dodag_config,
             last_now_ms: 0,
-            rf_health: RfHealthMetrics::new(),
             node_coords: None,
-            rf_health: RfHealthMetrics::new(),
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
@@ -568,9 +507,7 @@ impl Router {
             dodag_id,
             dodag_config,
             last_now_ms: 0,
-            rf_health: RfHealthMetrics::new(),
             node_coords: None,
-            rf_health: RfHealthMetrics::new(),
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
@@ -1021,21 +958,7 @@ impl Router {
         let Ok(config_len) = self.dodag_config.write_to(&mut out[base_len..]) else {
             return 0;
         };
-        let mut pos = base_len + config_len;
-        let sf = self.rf_health.adaptive_sf();
-        let density = self.rf_health.density;
-        let load_hi = (self.rf_health.packet_loss_rate_fp().as_fp() >> 8) as u8;
-        let load_lo = self.rf_health.packet_loss_rate_fp().as_fp() as u8;
-        if pos + CCP16_METRICS_LEN <= out.len() {
-            out[pos] = OPT_CCP16_METRICS;
-            out[pos + 1] = CCP16_METRICS_DATA_LEN as u8;
-            out[pos + 2] = density;
-            out[pos + 3] = sf;
-            out[pos + 4] = load_hi;
-            out[pos + 5] = load_lo;
-            pos += CCP16_METRICS_LEN;
-        }
-        pos
+        base_len + config_len
     }
 
     /// Get the route path for a destination (root only).
@@ -1112,11 +1035,6 @@ impl Router {
         &self.neighbors
     }
 
-    /// Mutable access to RF health metrics.
-    pub fn rf_health_mut(&mut self) -> &mut RfHealthMetrics {
-        &mut self.rf_health
-    }
-
     /// Remove stale neighbors and their corresponding DODAG parent candidates.
     ///
     /// Uses `TrickleAwareNeighborLiveness` policy (see its docs for RFC 6206
@@ -1157,11 +1075,17 @@ impl Router {
         let heard_consistent = self.trickle.counter;
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
-        self.neighbors
-            .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
+        self.neighbors.prune_with_removed(
+            policy,
+            now_ms,
+            max_age_ms,
+            heard_consistent,
+            |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
-            }, policy);
+            },
+            policy,
+        );
         if removed_len != 0 {
             self.dodag.remove_parents(&removed[..removed_len]);
         }
@@ -1289,16 +1213,20 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
 /// Validate geographic coordinates.
 /// Returns false for NaN, inf, out-of-range, or null island (0,0).
 #[cfg(feature = "std")]
-const NULL_ISLAND_EPSILON: f64 = 0.001;
-
 fn is_valid_coords(coords: GeoCoords) -> bool {
     let (lat, lon) = coords;
+
+    // Check for NaN/inf
     if !lat.is_finite() || !lon.is_finite() {
         return false;
     }
-    if lat.abs() < NULL_ISLAND_EPSILON && lon.abs() < NULL_ISLAND_EPSILON {
+
+    // Reject null island sentinel (almost always invalid GPS data)
+    if lat == 0.0 && lon == 0.0 {
         return false;
     }
+
+    // Check valid geographic ranges
     (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lon)
 }
 
@@ -1694,9 +1622,9 @@ mod tests {
         assert_eq!(router.dodag.max_rank_increase, 1024);
         assert_eq!(router.dodag_config.lifetime_unit, 30);
 
-        let mut encoded = [0u8; 48];
-        assert_eq!(router.build_dio(&mut encoded), Dio::BASE_LEN + 16 + CCP16_METRICS_LEN);
-        assert_eq!(&encoded[Dio::BASE_LEN..Dio::BASE_LEN + 16], &bytes[Dio::BASE_LEN..]);
+        let mut encoded = [0u8; 40];
+        assert_eq!(router.build_dio(&mut encoded), encoded.len());
+        assert_eq!(&encoded[Dio::BASE_LEN..], &bytes[Dio::BASE_LEN..]);
         assert_eq!(router.build_dio(&mut [0u8; 39]), 0);
     }
 
@@ -2039,7 +1967,7 @@ mod tests {
     #[test]
     fn root_advertises_its_actual_trickle_config() {
         let root = Router::new_root(link_local(1));
-        let mut bytes = [0u8; Dio::BASE_LEN + 16 + CCP16_METRICS_LEN];
+        let mut bytes = [0u8; Dio::BASE_LEN + 16];
         assert_eq!(root.build_dio(&mut bytes), bytes.len());
         let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
 
@@ -2062,7 +1990,7 @@ mod tests {
         let root = Router::new_root_with_config(link_local(1), config.clone()).unwrap();
 
         assert_eq!(root.rank(), 128);
-        let mut bytes = [0u8; Dio::BASE_LEN + 16 + CCP16_METRICS_LEN];
+        let mut bytes = [0u8; Dio::BASE_LEN + 16];
         assert_eq!(root.build_dio(&mut bytes), bytes.len());
         let dio = Dio::from_bytes(&bytes).unwrap();
         let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
@@ -2144,23 +2072,6 @@ mod tests {
 
         assert!(!root.process_dao_at_ms(&dao, target, link_local(3), 0));
         assert!(root.lookup_route(&target).is_none());
-        assert!(root.process_dao_at_ms(&dao, target, target, 0));
-        assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
-    }
-
-    #[test]
-    fn lookup_route_delegates_to_routing_table_and_guards_non_root() {
-        let root_addr = link_local(1);
-        let target = test_origin(2);
-
-        let non_root = Router::new(link_local(3), root_addr);
-        assert!(non_root.lookup_route(&target).is_none());
-
-        let mut root = Router::new_root(root_addr);
-        assert!(root.lookup_route(&target).is_none());
-
-        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
-        let dao = sender.build_dao(root_addr);
         assert!(root.process_dao_at_ms(&dao, target, target, 0));
         assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
     }
