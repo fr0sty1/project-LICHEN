@@ -350,14 +350,14 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
-				     pk_a);
+				     SCHNORR48_SIG_LEN, pk_a);
 	zassert_equal(ret, 1, "verify with derived pubkey failed: %d", ret);
 
 	/* B's key must NOT verify A's signature */
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
-				     pk_b);
+				     SCHNORR48_SIG_LEN, pk_b);
 	zassert_equal(ret, 0, "wrong pubkey must not verify");
 }
 
