@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-byfh",
   "title": "[review] project-LICHEN-worker6-p6n9: lichen_tdma_init header/impl signature mismatch — won't compile",
   "description": "## Bug\n\n`lichen/subsys/lichen/link/include/lichen/link.h` changed the declaration:\n\n```c\nint lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, const struct lichen_link_ctx *_Nonnull ctx);\n```\n\nBut the implementation in `lichen/subsys/lichen/link/link_ctx.c:586` still has:\n\n```c\nint lichen_tdma_init(struct lichen_tdma_slot *_Nonnull s)\n{\n    if (s == NULL) return -EINVAL;\n    s-\u003eid = 0;\n    s-\u003eassigned = 0;\n    s-\u003enext = 0;\n    return 0;\n}\n```\n\nThe declaration was changed to match the documented init ordering in AGENTS.md but the implementation was not updated. This will not compile.\n\nAlso, the GPL license applies to code; CC-BY-4.0 applies to docs/specs only.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:29:14.81835889Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:34:58.858890877Z",
-  "started_at": "2026-07-24T19:43:49.79073554Z",
-  "lease_expires_at": "2026-07-24T20:39:58.858890877Z",
-  "heartbeat_at": "2026-07-24T20:34:58.858890877Z"
+  "updated_at": "2026-07-24T20:35:54.407711213Z",
+  "started_at": "2026-07-24T19:43:49.79073554Z"
 }
