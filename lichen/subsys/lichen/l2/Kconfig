@@ -82,9 +82,11 @@ config LICHEN_LORA_L2_RX_PRIORITY
 	int "LICHEN LoRa L2 RX thread priority"
 	depends on LICHEN_LORA_L2
 	default 7
+	range 0 NUM_PREEMPT_PRIORITIES
 	help
 	  Priority for the LoRa L2 RX thread. Lower numbers have higher
-	  priority in Zephyr.
+	  priority in Zephyr. Validated against NUM_PREEMPT_PRIORITIES
+	  at build time. (project-LICHEN-dq6n.26)
 
 config LICHEN_LORA_L2_RX_TIMEOUT_MS
 	int "LoRa RX timeout in milliseconds"
