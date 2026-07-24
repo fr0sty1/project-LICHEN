@@ -1608,6 +1608,13 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * only receives a pointer to our static tx_frame_buf/tx_ipv6_buf,
 	 * not the net_pkt itself. The packet was linearized into that buffer
 	 * earlier via net_pkt_read(), so the pkt structure is untouched by TX.
+	 *
+	 * KNOWN LIMITATION (project-LICHEN-d7ub.40): If this thread is forcibly
+	 * aborted (k_thread_abort()) between the successful TX at line 1460 and
+	 * this net_pkt_unref(), the packet leaks. This window has no yield point
+	 * in normal operation, so it only occurs on thread abort. A memory pool
+	 * exhaustion would follow. Fixing this would require atomic packet
+	 * ownership tracking, which is disproportionate for an abort-only race.
 	 */
 	net_pkt_unref(pkt);
 	return (int)pkt_len;
