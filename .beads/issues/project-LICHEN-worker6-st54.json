@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-st54",
   "title": "[review] lora_ipv6_mesh-mkk4: SCHC fragment decode reads payload from shifted wire data for ALL_1_FCN",
   "description": "`rust/lichen-schc/src/fragment.rs:255` — `Fragment::from_bytes()` for `ALL_1_FCN` fragments reads the payload from the shifted wire buffer `data` instead of the unshifted `body` buffer:\n\n```rust\npayload: \u0026data[2 + MIC_LENGTH..data.len() - 1],\n```\n\nShould be:\n```rust\npayload: \u0026body[2 + MIC_LENGTH..2 + content_len],\n```\n\nThe MIC is correctly read from `body` (unshifted, line 250), but payload is read from `data` (shifted). This causes data corruption on ALL_1_FCN fragments — the last fragment of every SCHC message, so all reassembled payloads from wire format would be corrupt. The non-ALL_1_FCN path uses `body` correctly at line 263.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:07:57.112717625Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:52:24.252956437Z",
-  "started_at": "2026-07-24T19:19:26.665369518Z",
-  "lease_expires_at": "2026-07-24T20:57:24.252956437Z",
-  "heartbeat_at": "2026-07-24T20:52:24.252956437Z"
+  "updated_at": "2026-07-24T21:04:09.791242441Z",
+  "started_at": "2026-07-24T19:19:26.665369518Z"
 }
