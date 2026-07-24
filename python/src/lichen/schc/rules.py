@@ -264,8 +264,8 @@ def _ipv6_header_fields(next_header: int, *, link_local: bool) -> tuple[FieldDes
 
 def _udp_fields() -> tuple[FieldDescriptor, ...]:
     return (
-        FieldDescriptor("UDP.src_port", 16, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("UDP.dst_port", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("UDP.src_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),
+        FieldDescriptor("UDP.dst_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),
         FieldDescriptor("UDP.length", 16, MO.IGNORE, CDA.COMPUTE),
         FieldDescriptor("UDP.checksum", 16, MO.IGNORE, CDA.COMPUTE),
     )
