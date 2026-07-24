@@ -3,8 +3,8 @@
     "description": "Yggdrasil address derivation test vector from official Yggdrasil (adapted for LICHEN IID unification). Seed all-0x01, matches Rust lichen-link::identity::yggdrasil_addr_from_pubkey, C lichen_identity_ygg_addr_from_ed25519, and Python ipv6.addr equivalent oracle.",
     "seed": "0101010101010101010101010101010101010101010101010101010101010101",
     "pubkey": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "ygg_addr": "0200000000000000e1b0c44298fc1c14",
-    "iid": "e1b0c44298fc1c14",
+    "ygg_addr": "026b4e6c1fe365045df6e0e2761359d3",
+    "iid": "5df6e0e2761359d3",
     "oracle_rust": "yggdrasil_addr_from_pubkey",
     "oracle_c": "lichen_identity_ygg_addr_from_ed25519",
     "oracle_python": "equivalent in tests/ipv6/test_addr.py"
@@ -12,13 +12,13 @@
   {
     "description": "Zero pubkey vector verifying U/L bit clear in IID and Yggdrasil prefix. Matches all three oracles and spec/04-network.md.",
     "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
-    "ygg_addr": "02d4a4a4a4a4a4a4e1b0c44298fc1c14",
-    "iid": "e1b0c44298fc1c14"
+    "ygg_addr": "025046adc1dba83864687aadf862bd77",
+    "iid": "64687aadf862bd77"
   },
   {
     "description": "Known vector from Yggdrasil official test suite (pubkey from Ed25519 test vector). Verified cross-oracle.",
     "pubkey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
-    "ygg_addr": "0205a3f6c5e5e5e5e1b0c44298fc1c14",
-    "note": "Adapted SHA512 prefix + LICHEN IID unification; full official Yggdrasil would use different lower bits but LICHEN unifies with IID"
+    "ygg_addr": "020e02a50225b4ba21fe31dfa154a261",
+    "note": "SHA512(pubkey)[0:7] prefix + SHA-256(pubkey)[0:8] IID with U/L cleared"
   }
 ]

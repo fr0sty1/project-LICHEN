@@ -25,6 +25,10 @@
 #include "monocypher-ed25519.h"
 #endif
 
+/* SHA-256 for IID derivation in Yggdrasil address computation */
+#include <tinycrypt/sha256.h>
+#include <tinycrypt/constants.h>
+
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
 #ifdef __ZEPHYR__
@@ -651,4 +655,48 @@ uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t
 	}
 	uint32_t h = lichen_hash_32(buf, 8);
 	return (uint8_t)(h % num_slots);
+}
+
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
+					  uint8_t ygg_addr[16])
+{
+	if (pubkey == NULL || ygg_addr == NULL) {
+		return -EINVAL;
+	}
+
+	/* SHA-512(pubkey)[0:7] → bytes 1-7 of Yggdrasil address */
+	uint8_t hash512[64];
+	uint8_t iid_hash[TC_SHA256_DIGEST_SIZE];
+	struct tc_sha256_state_struct sha_state;
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	crypto_sha512(hash512, pubkey, 32);
+#else
+	/* Non-Monocypher fallback: use SHA-256 twice (not identical to SHA-512
+	 * but sufficient for stub/test builds where cross-implementation
+	 * alignment is less critical). */
+	memset(hash512, 0, sizeof(hash512));
+	uint8_t stub_hash[32];
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(stub_hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	memcpy(hash512, stub_hash, 7);
+	memset(stub_hash, 0, sizeof(stub_hash));
+#endif
+
+	/* SHA-256(pubkey)[0:8] with U/L bit cleared → bytes 8-15 (IID) */
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(iid_hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+
+	ygg_addr[0] = 0x02;
+	memcpy(ygg_addr + 1, hash512, 7);
+	memcpy(ygg_addr + 8, iid_hash, 8);
+	ygg_addr[8] &= ~0x02U; /* Clear U/L bit per RFC 4291 */
+
+	return 0;
 }
