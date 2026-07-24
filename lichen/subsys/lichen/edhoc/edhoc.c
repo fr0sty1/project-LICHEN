@@ -1006,7 +1006,7 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	 * (PRK_out label=7 with context=TH_4, PRK_exporter label=10,
 	 * master_secret label=0, master_salt label=1) per uk36.4.1.3.
 	 * ID assignment: sender_id=c_i, recipient_id=c_r for initiator.
-	 * PRK wipe sequence: only on success path after derivation.
+	 * PRK and seed wipe sequence: only on success path after derivation.
 	 */
 	ret = edhoc_kdf_int(ctx->prk_4e3m, ctx->th_4, 7,
 			    ctx->th_4, 32, prk_out, 32);
@@ -1039,6 +1039,7 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 
 	ctx->state = EDHOC_STATE_EXPORTED;
 
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
@@ -1050,6 +1051,7 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	return 0;
 
 wipe:
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 	crypto_wipe(oscore, sizeof(*oscore));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
@@ -1519,7 +1521,7 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	/* Exact match to Python EdhocResponder.export_oscore() derivation
 	 * (same PRK_out=7/PRK_exporter=10/master=0/salt=1 chain) and
 	 * ID assignment (sender_id=c_r, recipient_id=c_i for responder).
-	 * PRK wipe sequence matches Python exactly; oscore wiped on error.
+	 * PRK and seed wipe sequence matches Python exactly; oscore wiped on error.
 	 */
 	ret = edhoc_kdf_int(ctx->prk_4e3m, ctx->th_4, 7,
 			    ctx->th_4, 32, prk_out, 32);
@@ -1552,6 +1554,7 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 
 	ctx->state = EDHOC_STATE_EXPORTED;
 
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
@@ -1563,6 +1566,7 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	return 0;
 
 wipe:
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 	crypto_wipe(oscore, sizeof(*oscore));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
