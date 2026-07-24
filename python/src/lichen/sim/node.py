@@ -55,7 +55,6 @@ class SimNode:
     current_channel: int = 0
     seed: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
-    seed: int = 0
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
@@ -74,7 +73,6 @@ class SimNode:
         seed: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
-        seed: int = 0,
         sfn: int = 0,
         num_channels: int = 8,
     ) -> None:
@@ -88,7 +86,6 @@ class SimNode:
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.seed = seed
         self.current_channel = current_channel
-        self.seed = seed
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
@@ -142,12 +139,12 @@ class SimNode:
         """
         return self.connected
 
-    def get_hop_channel(self, sfn: int | None = None) -> int:
-        """Derive hop channel from hop_schedule+SFN (CCP-12) or current_channel.
-        Matches spec/02a-coordinated-capacity.md:120, ccp16-hop.json:7.
-        """
+    def synchronized_hop_channel(self, sfn: int | None = None) -> int:
         if sfn is None:
             sfn = self.tdma_scheduler.clock.sfn
         if self.hop_schedule and len(self.hop_schedule) > 0:
             return self.hop_schedule[sfn % len(self.hop_schedule)]
         return self.current_channel
+
+    def get_hop_channel(self, sfn: int | None = None) -> int:
+        return self.synchronized_hop_channel(sfn)
