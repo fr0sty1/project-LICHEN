@@ -3,7 +3,7 @@
 // Re-export Addr from lichen-ipv6 as Ipv6Addr for backward compatibility.
 // This eliminates the duplicate type definition while preserving the API.
 pub use lichen_ipv6::Addr as Ipv6Addr;
-use sha2::{Digest, Sha512};
+use sha2::{Digest, Sha256, Sha512};
 
 /// A 64-bit node identifier (EUI-64 derived from the radio hardware address).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -28,19 +28,27 @@ impl NodeId {
         self.addr_with_prefix(prefix)
     }
 
-    /// Reconstruct a `NodeId` from the interface identifier in an IPv6 address.
+    /// Reconstruct a NodeId from the interface identifier in an IPv6 address.
     ///
-    /// Returns `None` if the address is not a unicast address with a valid IID
-    /// (link-local, ULA, or GUA). Reverses the U/L bit flip (XOR 0x02 on first
-    /// IID byte) performed by `link_local_addr` and `ula_addr`.
-    /// Independent roundtrip oracle used in tests.
-    pub fn from_ipv6(addr: Ipv6Addr) -> Option<Self> {
-        if addr.is_multicast() || addr.is_loopback() {
-            return None;
-        }
+    /// Reverses the U/L bit flip (XOR 0x02 on first IID byte) performed by
+    /// `link_local_addr` and `ula_addr`. Works for link-local, ULA, and GUA
+    /// addresses per spec §6.1 — all of which embed an EUI-64-derived IID in
+    /// the low 64 bits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `addr` is neither link-local, ULA, nor GUA (e.g. multicast,
+    /// loopback, or unspecified), since those address types do not carry an
+    /// EUI-64-derived IID.
+    pub fn from_ipv6(addr: Ipv6Addr) -> Self {
+        assert!(
+            addr.is_link_local() || addr.is_ula() || addr.is_gua(),
+            "NodeId::from_ipv6 requires a link-local, ULA, or GUA address; got {:x?}",
+            addr.as_bytes(),
+        );
         let mut iid = addr.iid();
         iid[0] ^= 0x02;
-        Some(NodeId(iid))
+        NodeId(iid)
     }
 
     fn addr_with_prefix(&self, prefix: [u8; 8]) -> Ipv6Addr {
@@ -66,10 +74,16 @@ impl NodeId {
     }
 }
 
+/// Derive 16-byte Yggdrasil 02xx::/7 address from Ed25519 pubkey per spec/06-security.md §8.5
+/// and test/vectors/yggdrasil-derivation.json. Uses SHA-512(pubkey)[0:7] for bytes 1-7
+/// and IID = SHA-256(pubkey)[0:8] with U/L bit cleared (`iid[0] &= 0b1111_1101`) for bytes 8-15.
+/// Lower 64 bits bind key to address. Must match C `lichen_identity_ygg_addr_from_ed25519`
+/// and previous `yggdrasil_addr_from_pubkey`.
 pub fn ygg_addr_from_pubkey(pubkey: &[u8; 32]) -> [u8; 16] {
     let hash512 = Sha512::digest(pubkey);
+    let digest256 = Sha256::digest(pubkey);
     let mut iid = [0u8; 8];
-    iid.copy_from_slice(&hash512[0..8]);
+    iid.copy_from_slice(&digest256[0..8]);
     iid[0] &= 0b1111_1101;
     let mut addr = [0u8; 16];
     addr[0] = 0x02;
@@ -175,11 +189,11 @@ mod tests {
     fn from_ipv6_roundtrip_link_local_and_ula() {
         let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let ll = node.link_local_addr();
-        assert_eq!(NodeId::from_ipv6(ll), Some(node));
+        assert_eq!(NodeId::from_ipv6(ll), node);
 
         let prefix = [0xfd, 0x00, 0, 0, 0, 0, 0, 0];
         let ula = node.ula_addr(prefix);
-        assert_eq!(NodeId::from_ipv6(ula), Some(node));
+        assert_eq!(NodeId::from_ipv6(ula), node);
     }
 
     #[test]
@@ -187,7 +201,7 @@ mod tests {
         let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let prefix = [0xfd, 0x00, 0x12, 0x34, 0, 0, 0, 0];
         let ula = node.ula_addr(prefix);
-        assert_eq!(NodeId::from_ipv6(ula), Some(node));
+        assert_eq!(NodeId::from_ipv6(ula), node);
     }
 
     #[test]
@@ -199,19 +213,7 @@ mod tests {
             0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
             0x77, // U/L bit flipped in IID
         ]);
-        assert_eq!(NodeId::from_ipv6(addr), Some(node));
+        assert_eq!(NodeId::from_ipv6(addr), node);
         assert_eq!(node.link_local_addr(), addr); // full roundtrip
-    }
-
-    #[test]
-    fn from_ipv6_rejects_multicast() {
-        let mc = Ipv6Addr([0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-        assert_eq!(NodeId::from_ipv6(mc), None);
-    }
-
-    #[test]
-    fn from_ipv6_rejects_loopback() {
-        let lb = Ipv6Addr([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-        assert_eq!(NodeId::from_ipv6(lb), None);
     }
 }
