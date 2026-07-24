@@ -252,16 +252,17 @@ fn test_response_protection_vectors() {
             ctx.protect_request(1, &[], &[]).unwrap();
         }
 
-        let (ciphertext, oscore_opt) = ctx
-            .protect_response(
-                pt.code,
-                &options,
-                &payload,
-                &request_kid,
-                &request_piv,
-                include_piv,
-            )
-            .unwrap_or_else(|_| panic!("protect_response failed for {}", v.name));
+        let (ciphertext, oscore_opt) = if include_piv {
+            let current_seq = ctx.sender_sequence_state().next_sequence;
+            let mut store = TestStore::existing(current_seq);
+            ctx.reserve_sender(&mut store)
+                .unwrap()
+                .protect_response_with_piv(pt.code, &options, &payload, &request_kid, &request_piv)
+                .unwrap_or_else(|_| panic!("protect_response_with_piv failed for {}", v.name))
+        } else {
+            ctx.protect_response(pt.code, &options, &payload, &request_kid, &request_piv)
+                .unwrap_or_else(|_| panic!("protect_response failed for {}", v.name))
+        };
 
         assert_eq!(
             oscore_opt.as_slice(),

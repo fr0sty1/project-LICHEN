@@ -2330,14 +2330,7 @@ mod tests {
         let resp_payload: &[u8] = b"hello from responder";
 
         let (resp_ciphertext, resp_oscore_opt) = responder_ctx
-            .protect_response(
-                resp_code,
-                resp_options,
-                resp_payload,
-                request_kid,
-                request_piv,
-                false,
-            )
+            .protect_response(resp_code, resp_options, resp_payload, request_kid, request_piv)
             .expect("responder protect_response failed");
 
         let (recv_resp_code, recv_resp_options, recv_resp_payload) = initiator_ctx
