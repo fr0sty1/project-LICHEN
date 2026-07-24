@@ -184,44 +184,55 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
             // Zeroize seed bytes now that we have the hex representation
             seed.zeroize();
 
-            match out_path {
-                Some(path) => {
-                    // Write key to file with secure permissions (Unix 0600)
-                    #[cfg(unix)]
-                    {
-                        use std::fs::OpenOptions;
-                        use std::io::Write;
-                        use std::os::unix::fs::OpenOptionsExt;
+            if let Some(path) = out_path {
+                // Write key to file with secure permissions (Unix 0600)
+                #[cfg(unix)]
+                {
+                    use std::fs::OpenOptions;
+                    use std::io::Write;
+                    use std::os::unix::fs::OpenOptionsExt;
 
-                        let mut file = OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .mode(0o600)
-                            .open(&path)?;
-                        writeln!(file, "{}", *seed_hex)?;
-                    }
-                    #[cfg(not(unix))]
-                    {
-                        use std::fs::File;
-                        use std::io::Write;
-
-                        // SECURITY: Use writeln! instead of format! to avoid creating
-                        // a temporary String that would leak seed material in memory
-                        let mut file = File::create(&path)?;
-                        writeln!(file, "{}", *seed_hex)?;
-                        eprintln!(
-                            "warning: could not set secure file permissions on non-Unix platform"
-                        );
-                    }
-                    output::print_kv("private_key", path.display().to_string().as_str(), fmt);
+                    let mut file = OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .truncate(true)
+                        .mode(0o600)
+                        .open(&path)?;
+                    writeln!(file, "{}", *seed_hex)?;
                 }
-                None => {
-                    return Err(
-                        "refusing to print private key to stdout. Use --output <FILE> to write to a file with secure permissions."
-                            .into(),
+                #[cfg(windows)]
+                {
+                    use std::fs::OpenOptions;
+                    use std::io::Write;
+                    use std::os::windows::fs::OpenOptionsExt;
+
+                    // Restrict access: owner-only read/write, no sharing
+                    // Windows DACL manipulation requires FFI beyond OpenOptionsExt
+                    // but share_mode(0) prevents concurrent readers
+                    let mut file = OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .truncate(true)
+                        .share_mode(0)
+                        .open(&path)?;
+                    writeln!(file, "{}", *seed_hex)?;
+                }
+                #[cfg(not(any(unix, windows)))]
+                {
+                    use std::fs::File;
+                    use std::io::Write;
+
+                    let mut file = File::create(&path)?;
+                    writeln!(file, "{}", *seed_hex)?;
+                    eprintln!(
+                        "warning: could not set secure file permissions on non-Unix platform"
                     );
                 }
+                output::print_kv("private_key", path.display().to_string().as_str(), fmt);
+            } else {
+                eprintln!("warning: private key will be printed to stdout");
+                eprintln!("         ensure terminal history and logs do not capture this output");
+                output::print_kv("private_key", &seed_hex, fmt);
             }
             output::print_kv("iid", &iid_hex, fmt);
             // seed_hex auto-zeroized on drop via Zeroizing wrapper
