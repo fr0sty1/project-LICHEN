@@ -8,8 +8,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T04:55:04Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-24T16:13:50.020279815Z",
-  "started_at": "2026-07-24T16:13:30.025659456Z",
+  "updated_at": "2026-05-27T05:23:20Z",
   "closed_at": "2026-05-27T05:23:20Z",
   "close_reason": "Resolved: Use Schnorr (e₁₂₈, s) variant - 48 bytes, well-known construction, 128-bit security. Added relay-mutable vs signed field separation and signature caching. Updated spec/06-security.md."
 }
