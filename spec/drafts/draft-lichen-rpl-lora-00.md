@@ -178,7 +178,7 @@ Step = MinHopRankIncrease × (1 + ETX_factor × ETX + Latency_factor × RTT)
 | ETX_factor | 0.5 | Reduce ETX sensitivity |
 | Latency_factor | 0.1 | Mild preference for lower latency |
 | PARENT_SWITCH_THRESHOLD | 192 | 0.75 × MinHopRankIncrease hysteresis |
-| MAX_RANK_INCREASE | 1024 | Limit rank inflation |
+| MAX_RANK_INCREASE | 2048 | Limit rank inflation |
 
 ### 5.2. Link Metrics
 
