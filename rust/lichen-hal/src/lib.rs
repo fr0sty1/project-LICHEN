@@ -148,8 +148,115 @@ pub trait Radio {
     }
 }
 
-/// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).
-pub type ChannelPlan = u8;
+/// Operating class identifier for regional channel plans (CCP-3/CCP-4).
+///
+/// Each variant maps to a set of radio parameters (frequency, SF, BW, CR, power)
+/// and regulatory rules (duty cycle region). New classes can be added as the
+/// protocol expands to additional regulatory domains.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum OperatingClass {
+    /// US/CA 915 MHz ISM band (903.9 MHz CH0, 1 W max, no duty cycle limit).
+    UsCa = 0,
+    /// EU 868 MHz band (868.1 MHz CH0, 14 dBm typical, 1% duty cycle).
+    Eu = 1,
+    /// AU/NZ 915 MHz ISM band (916.8 MHz CH0, 30 dBm max, <5% duty cycle).
+    AuNz = 2,
+}
+
+impl OperatingClass {
+    /// All known operating classes.
+    pub const ALL: &'static [Self] = &[Self::UsCa, Self::Eu, Self::AuNz];
+
+    pub fn from_u8(v: u8) -> Option<Self> {
+        match v {
+            0 => Some(Self::UsCa),
+            1 => Some(Self::Eu),
+            2 => Some(Self::AuNz),
+            _ => None,
+        }
+    }
+
+    pub const fn default() -> Self {
+        Self::UsCa
+    }
+}
+
+impl From<OperatingClass> for u8 {
+    fn from(c: OperatingClass) -> Self {
+        c as u8
+    }
+}
+
+/// Radio parameters associated with a single operating class.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OperatingClassParams {
+    pub class_id: u8,
+    pub label: &'static str,
+    pub frequency_hz: u32,
+    pub spreading_factor: u8,
+    pub bandwidth_hz: u32,
+    pub coding_rate: u8,
+    pub tx_power_dbm: i8,
+    pub duty_region: u8,
+    pub duty_permille: u16,
+}
+
+/// Operating class lookup table (CCP-3/CCP-4).
+///
+/// Provisioned at compile time; over-the-air messages MUST NOT expand the
+/// local plan per spec/02a-coordinated-capacity.md §CCP-4.
+pub static OPERATING_CLASS_TABLE: &[OperatingClassParams] = &[
+    OperatingClassParams {
+        class_id: 0,
+        label: "US/CA",
+        frequency_hz: 903_900_000,
+        spreading_factor: 10,
+        bandwidth_hz: 125_000,
+        coding_rate: 5,
+        tx_power_dbm: 20,
+        duty_region: 1,
+        duty_permille: 1000,
+    },
+    OperatingClassParams {
+        class_id: 1,
+        label: "EU",
+        frequency_hz: 868_100_000,
+        spreading_factor: 10,
+        bandwidth_hz: 125_000,
+        coding_rate: 5,
+        tx_power_dbm: 14,
+        duty_region: 0,
+        duty_permille: 10,
+    },
+    OperatingClassParams {
+        class_id: 2,
+        label: "AU/NZ",
+        frequency_hz: 916_800_000,
+        spreading_factor: 10,
+        bandwidth_hz: 125_000,
+        coding_rate: 5,
+        tx_power_dbm: 30,
+        duty_region: 0,
+        duty_permille: 50,
+    },
+];
+
+pub fn lookup_operating_class(class_id: u8) -> Option<&'static OperatingClassParams> {
+    OPERATING_CLASS_TABLE.iter().find(|p| p.class_id == class_id)
+}
+
+impl RadioConfig {
+    pub fn from_operating_class(params: &OperatingClassParams) -> Self {
+        Self {
+            spreading_factor: params.spreading_factor,
+            bandwidth: params.bandwidth_hz,
+            coding_rate: params.coding_rate,
+            tx_power: params.tx_power_dbm,
+            frequency: params.frequency_hz,
+        }
+    }
+}
 
 /// Monotonic clock source.
 pub trait Clock {
@@ -285,5 +392,76 @@ mod tests {
         assert_eq!(cfg.spreading_factor, 10);
         assert_eq!(cfg.bandwidth, 125_000);
         assert_eq!(cfg.coding_rate, 5);
+    }
+
+    #[test]
+    fn operating_class_from_u8() {
+        assert_eq!(OperatingClass::from_u8(0), Some(OperatingClass::UsCa));
+        assert_eq!(OperatingClass::from_u8(1), Some(OperatingClass::Eu));
+        assert_eq!(OperatingClass::from_u8(2), Some(OperatingClass::AuNz));
+        assert_eq!(OperatingClass::from_u8(3), None);
+        assert_eq!(OperatingClass::from_u8(255), None);
+    }
+
+    #[test]
+    fn operating_class_to_u8() {
+        assert_eq!(u8::from(OperatingClass::UsCa), 0);
+        assert_eq!(u8::from(OperatingClass::Eu), 1);
+        assert_eq!(u8::from(OperatingClass::AuNz), 2);
+    }
+
+    #[test]
+    fn operating_class_default() {
+        assert_eq!(OperatingClass::default(), OperatingClass::UsCa);
+    }
+
+    #[test]
+    fn lookup_known_operating_class() {
+        let params = lookup_operating_class(0).expect("US/CA should exist");
+        assert_eq!(params.class_id, 0);
+        assert_eq!(params.frequency_hz, 903_900_000);
+        assert_eq!(params.spreading_factor, 10);
+        assert_eq!(params.duty_permille, 1000);
+
+        let params = lookup_operating_class(1).expect("EU should exist");
+        assert_eq!(params.class_id, 1);
+        assert_eq!(params.frequency_hz, 868_100_000);
+        assert_eq!(params.duty_permille, 10);
+
+        let params = lookup_operating_class(2).expect("AU/NZ should exist");
+        assert_eq!(params.class_id, 2);
+        assert_eq!(params.frequency_hz, 916_800_000);
+        assert_eq!(params.duty_permille, 50);
+
+        assert!(lookup_operating_class(3).is_none());
+        assert!(lookup_operating_class(255).is_none());
+    }
+
+    #[test]
+    fn all_operating_classes_have_labels() {
+        for &oc in OperatingClass::ALL {
+            let params = lookup_operating_class(oc as u8).expect("all classes in table");
+            assert!(!params.label.is_empty(), "label must not be empty");
+            assert!(params.bandwidth_hz > 0);
+            assert!(params.spreading_factor >= 7 && params.spreading_factor <= 12);
+        }
+    }
+
+    #[test]
+    fn radio_config_from_operating_class() {
+        let params = lookup_operating_class(1).expect("EU class");
+        let cfg = RadioConfig::from_operating_class(params);
+        assert_eq!(cfg.frequency, 868_100_000);
+        assert_eq!(cfg.spreading_factor, 10);
+        assert_eq!(cfg.bandwidth, 125_000);
+        assert_eq!(cfg.tx_power, 14);
+    }
+
+    #[test]
+    fn table_entries_match_constants() {
+        for &oc in OperatingClass::ALL {
+            let params = lookup_operating_class(oc as u8).expect("table entry");
+            assert_eq!(params.class_id, oc as u8);
+        }
     }
 }
