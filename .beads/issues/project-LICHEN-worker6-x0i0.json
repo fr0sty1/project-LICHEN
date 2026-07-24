@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-x0i0",
   "title": "[review] project-LICHEN-worker6-4n5v: merge conflict markers committed in fragment.rs",
   "description": "## Severity: P0 (build break)\n\n`rust/lichen-schc/src/fragment.rs` contains 15 unresolved merge conflict markers (`\u003c\u003c\u003c\u003c\u003c\u003c\u003c Updated upstream`, `=======`, `\u003e\u003e\u003e\u003e\u003e\u003e\u003e Stashed changes`) committed at lines 175-179, 187-209, 226-248, 305-324, 846-852. The file will not compile.\n\nAdditionally, the \"Stashed changes\" branch references undefined constants `_W_SHIFT` and `_FCN_MASK` at lines 206-207. The \"Stashed changes\" branch of `from_bytes` also uses different variable names and logic than the \"Updated upstream\" branch, creating broken control flow (e.g. `payload_len` used at line 217 is only set in the \"Updated upstream\" branch).\n\n**Fix:** Re-resolve all 5 merge conflicts correctly. The \"Updated upstream\" branch appears to be the intended resolution path for most conflicts.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:56:24.854619839Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:31:06.515992437Z",
-  "closed_at": "2026-07-24T18:31:06.515992437Z",
-  "close_reason": "Closed"
+  "updated_at": "2026-07-24T18:05:23.274483561Z",
+  "started_at": "2026-07-24T18:05:23.274483561Z",
+  "lease_expires_at": "2026-07-24T18:10:23.274483561Z",
+  "heartbeat_at": "2026-07-24T18:05:23.274483561Z"
 }

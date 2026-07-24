@@ -1,11 +1,7 @@
 {
   "id": "project-LICHEN-rcku",
   "title": "coap_dtn.c: placeholder GET returns location instead of DTN pending",
-<<<<<<< HEAD
   "status": "in_progress",
-=======
-  "status": "open",
->>>>>>> worker-2-20260724
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

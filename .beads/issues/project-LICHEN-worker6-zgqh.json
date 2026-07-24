@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-zgqh",
   "title": "[review] project-LICHEN-worker6-mbm7: lichen-schc fragment.rs missing required constants (TILE_SIZE, WINDOW_SIZE, BITMAP_MASK, MAX_PACKET_SIZE, RULE_ID_A_TO_B, RULE_ID_B_TO_A)",
   "description": "## Issue\n\n`rust/lichen-schc/src/fragment.rs` references six constants that are not defined anywhere in the crate:\n- `TILE_SIZE` — used for tile/fragment sizing\n- `WINDOW_SIZE` — used for window calculations\n- `BITMAP_MASK` — used for bitmap operations\n- `MAX_PACKET_SIZE` — used for receiver limit validation\n- `RULE_ID_A_TO_B`, `RULE_ID_B_TO_A` — used for rule ID validation in `check_rule()`\n\nThe file defines `DEFAULT_WINDOW_SIZE` and `MAX_WINDOW_SIZE` but not the constants above.\n\n## Severity\n\nP0 — `cargo build -p lichen-schc --lib` produces 54 errors. The crate is uncompilable.\n\n## Notes\n\nThis is pre-existing (not introduced by worker6-mbm7 commit). The constants were referenced but never defined when `fragment.rs` was created. Likely they were intended to live in `context.rs`, `rules.rs`, or a `constants.rs` module.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:24:53.406090057Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:12:30.974685079Z",
-  "started_at": "2026-07-24T18:25:03.32324567Z"
+  "updated_at": "2026-07-24T18:25:03.32324567Z",
+  "started_at": "2026-07-24T18:25:03.32324567Z",
+  "lease_expires_at": "2026-07-24T18:30:03.32324567Z",
+  "heartbeat_at": "2026-07-24T18:25:03.32324567Z"
 }

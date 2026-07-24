@@ -1,11 +1,7 @@
 {
   "id": "project-LICHEN-hnyw.1.1",
   "title": "Add #![forbid(unsafe_code)] to lichen-core/lib.rs; remove stray #![no_std] from announce.rs",
-<<<<<<< HEAD
   "status": "in_progress",
-=======
-  "status": "open",
->>>>>>> worker-2-20260724
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
