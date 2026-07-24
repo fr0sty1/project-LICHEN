@@ -785,7 +785,7 @@ int lichen_lora_l2_start(void)
         return ret;
     }
 
-    if (lora_transition(LORA_RUNNING) != 0) {
+    if (lora_transition_from(LORA_STOPPED, LORA_RUNNING) != 0) {
         k_mutex_unlock(&lora_mutex);
         return -EIO;
     }
