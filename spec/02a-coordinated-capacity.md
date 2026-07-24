@@ -24,7 +24,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 7. 2a.6. Regional Channel Plans and CH0 Rules
 8. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
 9. Implementation Status
-10. References
+10. CCP-11. Core Pseudocode: now(), select_channel
+11. References
 
 ## Overview
 
@@ -111,18 +112,7 @@ Remote capability and schedule messages MAY reduce the locally permitted interse
 
 CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous. Data channels selected via select_channel() or hash. All implementations MUST produce identical results to test vectors in ccp16.json, ccp9*.json, ccp_load_balancing.json.
 
-### 2a.3.1. Pure Pseudocode Definitions (IETF-style, language agnostic)
-
-Procedure Now():
-   1. RETURN current SFN value.
-   2. All subtractions, comparisons, and MOD operations MUST use unsigned 32-bit modular arithmetic (modulo 2^32) to handle wraparound correctly per test vectors.
-
-Procedure SelectChannel(EUI64, Epoch, Density, NChannels):
-   1. IF Density > 8 THEN RETURN 0
-   2. Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes)
-   3. Hash = FNV1A32(Data)  // basis 0x811c9dc5; matches hash_32.json and ccp16.json vectors
-   4. N = MAX(NChannels, 3)
-   5. RETURN 1 + (Hash MOD N)
+Pure pseudocode definitions for `now()` and `select_channel()` are in Section CCP-11.
 
 ## 2a.4. Time Synchronization
 
@@ -241,6 +231,25 @@ All timers MUST be reset on every state transition. Multi-root and version-chang
 - Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
 - Adaptive SF, desync FSM, channel plans, Multi-RX gateway support implemented and tested.
 - All codereview passes closed. Capacity gains verified in simulation per independent oracles.
+
+## CCP-11. Core Pseudocode: now(), select_channel
+
+This section defines pure pseudocode procedures used by sections 2a.2 (hash-based slot selection), 2a.3 (channel agility), and 2a.7 (adaptive SF). All procedures SHALL use unsigned 32-bit modular arithmetic (modulo 2^32) for wraparound-correct behavior.
+
+### CCP-11.1. now()
+
+Procedure Now():
+   1. RETURN current SFN value as a u32.
+   2. All subtractions, comparisons, and MOD operations MUST use unsigned 32-bit modular arithmetic (modulo 2^32) to handle wraparound correctly per test vectors.
+
+### CCP-11.2. select_channel()
+
+Procedure SelectChannel(EUI64, Epoch, Density, NChannels):
+   1. IF Density > 8 THEN RETURN 0
+   2. Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes)
+   3. Hash = FNV1A32(Data)  // basis 0x811c9dc5; matches hash_32.json and ccp16.json vectors
+   4. N = MAX(NChannels, 3)
+   5. RETURN 1 + (Hash MOD N)
 
 ## References
 
