@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-uaev",
   "title": "[review] project-LICHEN-worker6-tkjl: write_to/from_bytes bit-interleaving asymmetry",
   "description": "P0 correctness bug: `write_to` interleaves payload bits (MSB of each byte shifted into previous wire byte, producing `content_len + 3` output bytes from the 2-byte header region), but `from_bytes` treats wire bytes at positions 2+ as literal payload without reversing the interleaving. Round-trip `write_to(f) -\u003e from_bytes(bytes)` produces incorrect payload content. This is a data corruption bug for any wire-encoded SCHC fragments with non-zero payload data.\n\nEvidence:\n1. `write_to` at fragment.rs:147-168 does bit interleaving: for each payload byte, `out[1+index] |= byte \u003e\u003e 7` and `out[2+index] = byte \u003c\u003c 1`, producing interleaved output requiring `content_len + 3` bytes total.\n2. `from_bytes` at fragment.rs:171-201 slices payload directly from `data[2..]` (non-All-1 path) or `data[2+MIC_LENGTH..]` (All-1 path) with no deinterleaving.\n3. Both `FragmentReceiver` implementations consume `fragment.payload` as raw bytes via `copy_from_slice` — no deinterleaving happens downstream.\n4. The `fragmentation_vectors` test FAILS at line 204 comparing `write_fragment` output to JSON vector wires: expected old-format `[120, 124, ...]` but got new-format `[120, 62, ...]`.\n5. The old `from_bytes` (now removed) had a `\u0026mut [u8]` tile buffer parameter for deinterleaving output — the current single-arg version dropped the buffer without implementing inline deinterleaving.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:09:35.216800723Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:09:35.216800723Z"
+  "updated_at": "2026-07-24T19:16:51.361682445Z",
+  "started_at": "2026-07-24T19:16:51.361682445Z",
+  "lease_expires_at": "2026-07-24T19:21:51.361682445Z",
+  "heartbeat_at": "2026-07-24T19:16:51.361682445Z"
 }
