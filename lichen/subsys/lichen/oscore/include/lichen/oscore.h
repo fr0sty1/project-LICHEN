@@ -549,6 +549,13 @@ int oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
 /**
  * @brief Protect a CoAP response with OSCORE.
  *
+ * May include a fresh Partial IV in the OSCORE option when:
+ * - The context was restored from persisted state (prevents replay)
+ * - The same request PIV has already been used for an ordinary response
+ *
+ * Ordinary responses (no PIV) reuse the request nonce per RFC 8613 Section 8.4.
+ * Fresh-PIV responses use the responder's sender key and sequence number.
+ *
  * @param[in]     ctx          Security context
  * @param[in]     request_piv  Partial IV from request
  * @param[in]     request_piv_len Request PIV length

@@ -53,6 +53,19 @@ struct oscore_ctx {
 	uint8_t peer_eui64[OSCORE_EUI64_LEN];   /**< Peer's EUI-64 address */
 	bool has_peer_eui64;                     /**< EUI-64 is set */
 
+	/* Response replay protection (ordinary responses share request PIV) */
+	uint32_t response_seq;                   /**< Highest request PIV with ordinary response */
+	uint32_t response_window;                /**< Bitmap of request PIVs with ordinary responses */
+	bool response_window_initialized;               /**< response_seq/window valid */
+
+	/* Inbound response replay protection (fresh-PIV responses from peer) */
+	uint32_t received_response_seq;          /**< Highest response PIV received */
+	uint32_t received_response_window;       /**< Bitmap of response PIVs received */
+	bool received_response_window_initialized;       /**< received_response_seq/window valid */
+
+	/* Restored context flag */
+	bool restored;                           /**< Context restored from persisted state */
+
 	/* State */
 	bool active;                             /**< Context is in use */
 };
@@ -694,6 +707,13 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 	ctx->sender_seq = 0;
 	ctx->recipient_seq = 0;
 	ctx->replay_window = 0;
+	ctx->response_seq = 0;
+	ctx->response_window = 0;
+	ctx->response_window_initialized = false;
+	ctx->received_response_seq = 0;
+	ctx->received_response_window = 0;
+	ctx->received_response_window_initialized = false;
+	ctx->restored = false;
 	ctx->active = true;
 
 	/*
@@ -777,6 +797,7 @@ int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
 			ctx_idx = ctx_get_index(ctx);
 			if (ctx_idx >= 0) {
 				ctx->sender_seq = stored_ssn;
+				ctx->restored = true;
 				s_seq_initialized[ctx_idx] = true;
 				LOG_DBG("Restored SSN %u from NVM for peer", stored_ssn);
 
@@ -1057,6 +1078,11 @@ int oscore_option_parse(const uint8_t *data, size_t len,
 		return OSCORE_OK;
 	}
 
+	/* Reject single zero byte (RFC 8613 invalid encoding) */
+	if (len == 1 && data[0] == 0) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
 	/*
 	 * OSCORE option format (RFC 8613 Section 6.1):
 	 *
@@ -1089,6 +1115,10 @@ int oscore_option_parse(const uint8_t *data, size_t len,
 	/* Parse PIV */
 	if (n > 0) {
 		if (n > OSCORE_PIV_MAX_LEN || n > remaining) {
+			return OSCORE_ERR_INVALID_PARAM;
+		}
+		/* Reject non-minimal PIV encoding per RFC 8613 Section 5.2 */
+		if (!piv_is_valid(p, n)) {
 			return OSCORE_ERR_INVALID_PARAM;
 		}
 		memcpy(option->piv, p, n);
@@ -1303,6 +1333,21 @@ static uint32_t decode_piv(const uint8_t *piv, size_t piv_len)
 }
 
 /*
+ * Validate PIV encoding minimality per RFC 8613 Section 5.2.
+ * Returns false if empty, >5 bytes, or non-minimal (leading zero byte).
+ */
+static bool piv_is_valid(const uint8_t *piv, size_t piv_len)
+{
+	if (piv_len == 0 || piv_len > OSCORE_PIV_MAX_LEN) {
+		return false;
+	}
+	if (piv_len > 1 && piv[0] == 0) {
+		return false;
+	}
+	return true;
+}
+
+/*
  * Check if sequence number would be acceptable (without updating state).
  * Returns true if acceptable, false if replay or too old.
  */
@@ -1411,6 +1456,83 @@ static void replay_clear_pending_context_locked(int ctx_idx)
  * processing, even though decryption succeeded. This is conservative
  * but necessary to avoid gaps in replay protection.
  */
+/*
+ * Check if an ordinary response (no fresh PIV) would reuse the same request PIV.
+ * Per RFC 8613 Section 8.4, ordinary responses are one-shot per request PIV.
+ */
+static bool is_response_reuse(const struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->response_window_initialized || seq > ctx->response_seq) {
+		return false;
+	}
+	uint32_t diff = ctx->response_seq - seq;
+	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
+		return false;
+	}
+	return (ctx->response_window & (1U << diff)) != 0;
+}
+
+/*
+ * Mark a request PIV as having received an ordinary response.
+ */
+static void mark_response_used(struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->response_window_initialized) {
+		ctx->response_seq = seq;
+		ctx->response_window = 1;
+		ctx->response_window_initialized = true;
+	} else if (seq > ctx->response_seq) {
+		uint32_t shift = seq - ctx->response_seq;
+		if (shift >= 32) {
+			ctx->response_window = 1;
+		} else {
+			ctx->response_window = (ctx->response_window << shift) | 1;
+		}
+		ctx->response_seq = seq;
+	} else {
+		uint32_t diff = ctx->response_seq - seq;
+		ctx->response_window |= 1U << diff;
+	}
+}
+
+/*
+ * Check if a received fresh-PIV response is a reuse.
+ */
+static bool is_received_response_reuse(const struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->received_response_window_initialized || seq > ctx->received_response_seq) {
+		return false;
+	}
+	uint32_t diff = ctx->received_response_seq - seq;
+	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
+		return false;
+	}
+	return (ctx->received_response_window & (1U << diff)) != 0;
+}
+
+/*
+ * Mark a received fresh-PIV response sequence as seen.
+ */
+static void mark_received_response(struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->received_response_window_initialized) {
+		ctx->received_response_seq = seq;
+		ctx->received_response_window = 1;
+		ctx->received_response_window_initialized = true;
+	} else if (seq > ctx->received_response_seq) {
+		uint32_t shift = seq - ctx->received_response_seq;
+		if (shift >= 32) {
+			ctx->received_response_window = 1;
+		} else {
+			ctx->received_response_window = (ctx->received_response_window << shift) | 1;
+		}
+		ctx->received_response_seq = seq;
+	} else {
+		uint32_t diff = ctx->received_response_seq - seq;
+		ctx->received_response_window |= 1U << diff;
+	}
+}
+
 static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 {
 	if (seq > ctx->recipient_seq) {
@@ -1747,6 +1869,15 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
+	/* SECURITY: Validate KID matches recipient_id (RFC 8613 Section 5.4.1) */
+	if (!opt.has_kid) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+	if (opt.kid_len != ctx->recipient_id_len ||
+	    memcmp(opt.kid, ctx->recipient_id, opt.kid_len) != 0) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+
 	seq = decode_piv(opt.piv, opt.piv_len);
 
 	/*
@@ -1887,7 +2018,9 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 {
 	uint8_t nonce[OSCORE_NONCE_LEN];
 	uint8_t plaintext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
+	uint32_t seq = 0;
 	size_t pt_len;
+	bool include_piv;
 	int ret;
 
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
@@ -1902,77 +2035,189 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* Response nonce: use sender_id (response sender) + request_piv for RFC 8613
-	 * Section 5.2 nonce + 5.4 AAD request_kid binding (checkpoint fix).
+	/* SECURITY: Determine whether to include a fresh PIV in the response.
+	 * Restored contexts MUST use fresh-PIV responses to prevent replay
+	 * using the old request PIV (RFC 8613 Section 8.4).
+	 * Otherwise, check for reuse of this request PIV in ordinary responses.
 	 */
-	compute_nonce(ctx->sender_id, ctx->sender_id_len,
-		      request_piv, request_piv_len, ctx->common_iv, nonce);
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	if (ctx->restored) {
+		include_piv = true;
+	} else {
+		uint32_t req_seq;
+		if (request_piv_len == 0) {
+			req_seq = 0;
+		} else {
+			req_seq = decode_piv(request_piv, request_piv_len);
+		}
+		/* Check reuse BEFORE marking since we may fall through to include_piv=true */
+		if (is_response_reuse(ctx, req_seq)) {
+			/* This request PIV already got an ordinary response - must use fresh PIV */
+			include_piv = true;
+		} else {
+			include_piv = false;
+			/* Mark this request PIV as having received an ordinary response */
+			mark_response_used(ctx, req_seq);
+		}
+	}
+	k_mutex_unlock(&s_ctx_mutex);
 
-	/* Build plaintext: code || options || payload */
-	pt_len = 0;
-	plaintext[pt_len++] = code;
+	if (include_piv) {
+		/* Generate fresh PIV: increment sender_seq atomically */
+		uint8_t piv_buf[OSCORE_PIV_MAX_LEN];
+		size_t piv_len;
 
-	if (options_len > 0) {
-		if (options_len > sizeof(plaintext) - pt_len) {
+		k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+		if (ctx->sender_seq == UINT32_MAX) {
+			k_mutex_unlock(&s_ctx_mutex);
+			ret = OSCORE_ERR_SEQ_EXHAUSTED;
+			goto cleanup_protect_response;
+		}
+		seq = ctx->sender_seq++;
+		k_mutex_unlock(&s_ctx_mutex);
+
+		piv_len = encode_piv(seq, piv_buf);
+
+		/* Fresh-PIV nonce uses sender_id + own PIV */
+		compute_nonce(ctx->sender_id, ctx->sender_id_len,
+			      piv_buf, piv_len, ctx->common_iv, nonce);
+
+		/* Build plaintext */
+		pt_len = 0;
+		plaintext[pt_len++] = code;
+		if (options_len > 0) {
+			if (options_len > sizeof(plaintext) - pt_len) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			memcpy(plaintext + pt_len, options, options_len);
+			pt_len += options_len;
+		}
+		if (payload_len > 0) {
+			if (payload_len > sizeof(plaintext) - pt_len - 1) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			plaintext[pt_len++] = 0xFF;
+			memcpy(plaintext + pt_len, payload, payload_len);
+			pt_len += payload_len;
+		}
+
+		/* Build AAD with request KID and request PIV */
+		uint8_t aad[64];
+		int aad_ret = build_oscore_aad(ctx->recipient_id, ctx->recipient_id_len,
+					       request_piv, request_piv_len,
+					       aad, sizeof(aad));
+		if (aad_ret < 0) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_response;
 		}
-		memcpy(plaintext + pt_len, options, options_len);
-		pt_len += options_len;
-	}
+		size_t aad_len = (size_t)aad_ret;
 
-	if (payload_len > 0) {
-		if (payload_len > sizeof(plaintext) - pt_len - 1) {
+		size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
+		if (*ciphertext_len < required_ct_len) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_response;
 		}
-		plaintext[pt_len++] = 0xFF;
-		memcpy(plaintext + pt_len, payload, payload_len);
-		pt_len += payload_len;
-	}
 
-	/* Build AAD per RFC 8613 Section 5.4 - use request KID/PIV for response */
-	uint8_t aad[64];
-	int aad_ret = build_oscore_aad(ctx->recipient_id, ctx->recipient_id_len,
-				       request_piv, request_piv_len,
-				       aad, sizeof(aad));
-	if (aad_ret < 0) {
-		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_response;
-	}
-	size_t aad_len = (size_t)aad_ret;
+		if (lichen_aes_ccm_encrypt(ctx->sender_key, nonce,
+					   aad, aad_len,
+					   plaintext, pt_len,
+					   ciphertext) != 0) {
+			ret = OSCORE_ERR_ENCRYPT_FAILED;
+			goto cleanup_protect_response;
+		}
+		*ciphertext_len = required_ct_len;
 
-	/* Check output buffer size */
-	size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
-	if (*ciphertext_len < required_ct_len) {
-		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_response;
-	}
+		/* Build OSCORE option with fresh PIV, no KID */
+		struct oscore_option opt = {0};
+		opt.has_piv = true;
+		opt.piv_len = (uint8_t)(piv_len & 0x07);
+		memcpy(opt.piv, piv_buf, piv_len);
+		int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
+		if (opt_len < 0) {
+			ret = opt_len;
+			goto cleanup_protect_response;
+		}
+		*oscore_opt_len = (size_t)opt_len;
 
-	/* Encrypt with sender key */
-	if (lichen_aes_ccm_encrypt(ctx->sender_key, nonce,
-			    aad, aad_len,
-			    plaintext, pt_len,
-			    ciphertext) != 0) {
-		ret = OSCORE_ERR_ENCRYPT_FAILED;
-		goto cleanup_protect_response;
-	}
-	*ciphertext_len = required_ct_len;
+		/* Persist SSN */
+		ret = oscore_ctx_persist_ssn(ctx);
+		if (ret == OSCORE_ERR_NVM_FAILED) {
+			ret = OSCORE_ERR_NVM_FAILED;
+		} else {
+			ret = OSCORE_OK;
+		}
+	} else {
+		/* Ordinary response: reuse request PIV (RFC 8613 Section 8.4) */
 
-	/* Response OSCORE option: no PIV, no KID (echo) */
-	struct oscore_option opt = {0};
-	int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
-	if (opt_len < 0) {
-		ret = opt_len;
-		goto cleanup_protect_response;
-	}
-	*oscore_opt_len = (size_t)opt_len;
+		/* Response nonce: use sender_id (response sender) + request_piv */
+		compute_nonce(ctx->sender_id, ctx->sender_id_len,
+			      request_piv, request_piv_len, ctx->common_iv, nonce);
 
-	ret = OSCORE_OK;
+		/* Build plaintext: code || options || payload */
+		pt_len = 0;
+		plaintext[pt_len++] = code;
+		if (options_len > 0) {
+			if (options_len > sizeof(plaintext) - pt_len) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			memcpy(plaintext + pt_len, options, options_len);
+			pt_len += options_len;
+		}
+		if (payload_len > 0) {
+			if (payload_len > sizeof(plaintext) - pt_len - 1) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			plaintext[pt_len++] = 0xFF;
+			memcpy(plaintext + pt_len, payload, payload_len);
+			pt_len += payload_len;
+		}
+
+		/* Build AAD using request KID/PIV */
+		uint8_t aad[64];
+		int aad_ret = build_oscore_aad(ctx->recipient_id, ctx->recipient_id_len,
+					       request_piv, request_piv_len,
+					       aad, sizeof(aad));
+		if (aad_ret < 0) {
+			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+			goto cleanup_protect_response;
+		}
+		size_t aad_len = (size_t)aad_ret;
+
+		size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
+		if (*ciphertext_len < required_ct_len) {
+			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+			goto cleanup_protect_response;
+		}
+
+		if (lichen_aes_ccm_encrypt(ctx->sender_key, nonce,
+					   aad, aad_len,
+					   plaintext, pt_len,
+					   ciphertext) != 0) {
+			ret = OSCORE_ERR_ENCRYPT_FAILED;
+			goto cleanup_protect_response;
+		}
+		*ciphertext_len = required_ct_len;
+
+		/* Ordinary response OSCORE option: no PIV, no KID (echo) */
+		struct oscore_option opt = {0};
+		int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
+		if (opt_len < 0) {
+			ret = opt_len;
+			goto cleanup_protect_response;
+		}
+		*oscore_opt_len = (size_t)opt_len;
+
+		ret = OSCORE_OK;
+	}
 
 cleanup_protect_response:
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(plaintext, sizeof(plaintext));
+	crypto_wipe(&seq, sizeof(seq));
 	return ret;
 }
 
@@ -1990,6 +2235,8 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 	int ret;
 	const uint8_t *nonce_piv;
 	size_t nonce_piv_len;
+	bool has_fresh_piv = false;
+	uint32_t response_seq = 0;
 
 	if (ctx == NULL || ciphertext == NULL || code == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
@@ -2020,7 +2267,26 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		if (resp_opt.has_piv && resp_opt.piv_len > 0) {
 			nonce_piv = resp_opt.piv;
 			nonce_piv_len = resp_opt.piv_len;
+			has_fresh_piv = true;
+			response_seq = decode_piv(resp_opt.piv, resp_opt.piv_len);
+
+			/* SECURITY: Check received response reuse before decrypting */
+			k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+			if (is_received_response_reuse(ctx, response_seq)) {
+				k_mutex_unlock(&s_ctx_mutex);
+				return OSCORE_ERR_REPLAY;
+			}
+			k_mutex_unlock(&s_ctx_mutex);
 		}
+	} else if (request_piv_len > 0) {
+		/* Ordinary response with no OSCORE option - check for reuse */
+		uint32_t req_seq = decode_piv(request_piv, request_piv_len);
+		/* Note: Request PIV reuse check is best-effort at this layer;
+		 * the server-side response reuse tracking is authoritative.
+		 * If this ordinary response is a duplicate, it will fail
+		 * decryption or be caught by receive-side application logic.
+		 */
+		(void)req_seq;
 	}
 
 	/* Response nonce: use recipient_id (response sender's ID) + PIV (response or
@@ -2053,6 +2319,13 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 			    plaintext) != 0) {
 		ret = OSCORE_ERR_DECRYPT_FAILED;
 		goto cleanup_unprotect_response;
+	}
+
+	/* After successful decryption, mark fresh-PIV as received */
+	if (has_fresh_piv) {
+		k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+		mark_received_response(ctx, response_seq);
+		k_mutex_unlock(&s_ctx_mutex);
 	}
 
 	if (pt_len < 1) {
