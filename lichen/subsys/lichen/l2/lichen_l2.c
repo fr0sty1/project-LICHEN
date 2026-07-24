@@ -24,6 +24,7 @@
 
 #include <lichen/hal.h>
 #include <lichen/routing/gradient.h>
+#include <lichen/routing/announce.h>
 #include <monocypher.h>
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 #include <lichen/app_identity/app_identity.h>
@@ -463,7 +464,7 @@ BUILD_ASSERT(0, "LICHEN L2 requires single-core: atomic_t usage lacks memory bar
 #endif
 static atomic_t link_ctx_initialized;
 
-#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED) || defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
 static struct lichen_gradient_table *sf_gradient_table;
 #endif
 
@@ -945,7 +946,7 @@ int lichen_l2_publish_app_identity(const char *display_name,
 #endif
 }
 
-#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED) || defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
 void lichen_l2_set_gradient_table(struct lichen_gradient_table *table)
 {
 	sf_gradient_table = table;
@@ -1442,8 +1443,33 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 
 	LOG_DBG("lichen_l2: TX frame %zu bytes", frame_len);
 
+	/*
+	 * Select TX channel: use peer's announced rx_channel if known,
+	 * fall back to CH0 for broadcast or unknown destinations (CCP-9).
+	 */
+	uint8_t tx_channel = 0U;
+#if defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
+	{
+		/*
+		 * Extract destination IID from IPv6 header (bytes 24-39 = dst addr,
+		 * last 8 bytes = IID). Broadcast/multicast starts with ff, skip.
+		 */
+		if (pkt_len >= 40U && tx_ipv6_buf[24] != 0xffU) {
+			const uint8_t *dst_iid = &tx_ipv6_buf[32];
+			struct lichen_gradient_entry *entry = NULL;
+			if (sf_gradient_table != NULL) {
+				entry = lichen_gradient_lookup(sf_gradient_table,
+							      dst_iid,
+							      k_uptime_get_32());
+			}
+			if (entry != NULL && entry->rx_channel > 0) {
+				tx_channel = entry->rx_channel;
+			}
+		}
+	}
+#endif
 	/* Send via LoRa */
-	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len, 0U); /* CH0 control/fallback per CCP-9 */
+	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len, tx_channel);
 #else
 	/* No LICHEN link layer - send raw IPv6 (for testing) */
 	ret = lichen_lora_l2_tx(tx_ipv6_buf, pkt_len, 0U);
@@ -1951,6 +1977,29 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  *
  * @param iface The network interface being initialized (from NET_DEVICE_INIT)
  */
+#if defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
+static int l2_announce_rx_channel_observer(
+	const struct lichen_announce_view *announce,
+	const struct lichen_announce_rx_meta *meta,
+	void *user_data)
+{
+	ARG_UNUSED(meta);
+	ARG_UNUSED(user_data);
+
+	if (announce == NULL) {
+		return -EINVAL;
+	}
+
+	if (sf_gradient_table != NULL) {
+		lichen_gradient_set_rx_channel(sf_gradient_table,
+					      announce->originator_iid,
+					      announce->rx_channel);
+	}
+
+	return 0;
+}
+#endif
+
 void lichen_l2_iface_init(struct net_if *iface)
 {
 	/* iface guaranteed non-NULL by Zephyr NET_DEVICE_INIT */
@@ -2156,6 +2205,12 @@ void lichen_l2_iface_init(struct net_if *iface)
 	(void)STATS_INIT_AND_REG(lichen_l2rx_stats, STATS_SIZE_32, "l2rx");
 #endif
 	LOG_INF("lichen_l2: initialized (full framing)");
+
+#if defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
+	(void)lichen_announce_register_app_data_observer(
+		l2_announce_rx_channel_observer, NULL);
+#endif
+
 #else
 	LOG_WRN("lichen_l2: initialized (RAW MODE - no framing/crypto)");
 #endif

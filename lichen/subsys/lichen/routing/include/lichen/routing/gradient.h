@@ -67,6 +67,9 @@ struct lichen_gradient_entry {
 	int32_t lon_e7;             /**< Longitude (1e-7 degrees), 0 if unknown */
 	bool coords_valid;          /**< True if lat/lon are valid */
 	bool valid;                 /**< Slot in use */
+#if defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
+	uint8_t rx_channel;         /**< Peer's announced RX channel (CCP-9) */
+#endif
 #if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
 	struct {
 		uint8_t current_sf;     /**< SF7-SF12 for this neighbor */
@@ -159,6 +162,24 @@ int lichen_gradient_expire(struct lichen_gradient_table *table, uint32_t now_ms)
  * @return true if a is newer than b.
  */
 bool lichen_seq_newer(uint16_t a, uint16_t b);
+
+#if defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
+/**
+ * @brief Set a peer's announced RX channel in the gradient table.
+ *
+ * Updates the rx_channel field for the gradient entry matching the given
+ * destination IID. Used by the announce observer to record the channel a
+ * peer listens on (CCP-9 rendezvous). If no entry exists, this is a no-op
+ * (the entry will be populated by the routing layer on next update).
+ *
+ * @param table       Gradient table.
+ * @param dst_iid     8-byte IID of the destination peer.
+ * @param channel     RX channel the peer announced.
+ */
+void lichen_gradient_set_rx_channel(struct lichen_gradient_table *table,
+				    const uint8_t dst_iid[8],
+				    uint8_t channel);
+#endif
 
 #if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
 /**

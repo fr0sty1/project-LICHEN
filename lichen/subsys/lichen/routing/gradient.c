@@ -239,6 +239,24 @@ int lichen_gradient_remove_via(struct lichen_gradient_table *table,
 	return removed;
 }
 
+#if defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
+void lichen_gradient_set_rx_channel(struct lichen_gradient_table *table,
+				    const uint8_t dst_iid[8],
+				    uint8_t channel)
+{
+	if (table == NULL || dst_iid == NULL) {
+		return;
+	}
+
+	struct lichen_gradient_entry *entry = find_entry(table, dst_iid);
+	if (entry == NULL) {
+		return;
+	}
+
+	entry->rx_channel = channel;
+}
+#endif
+
 #if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
 void lichen_gradient_sf_update(struct lichen_gradient_table *table,
 			       const uint8_t neighbor_iid[8],
