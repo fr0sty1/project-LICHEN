@@ -950,6 +950,12 @@ impl Context {
                 let len = seq.encode_piv(&mut piv);
                 (piv, len, Some(len))
             } else {
+                if !self.allow_no_piv_response
+                    || request_kid.len() > NONCE_ID_LEN
+                    || request_kid != self.recipient_id()
+                {
+                    return Err(OscoreError::InvalidParam);
+                }
                 // Reuse the request nonce (no new sequence generated).
                 if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
                     return Err(OscoreError::InvalidParam);
