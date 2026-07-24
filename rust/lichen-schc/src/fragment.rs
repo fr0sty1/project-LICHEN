@@ -81,7 +81,7 @@ impl From<BufferTooSmall> for FragmentError {
 }
 
 fn check_rule(rule_id: u8) -> Result<(), FragmentError> {
-    if matches!(rule_id, RULE_ID_A_TO_B | RULE_ID_B_TO_A) {
+    if rule_id == RULE_ID_A_TO_B || rule_id == RULE_ID_B_TO_A {
         Ok(())
     } else {
         Err(FragmentError::UnsupportedRule)
