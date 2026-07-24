@@ -902,12 +902,13 @@ impl EdhocInitiator {
             let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
             let mut nonce = Zeroizing::new([0u8; NONCE_LEN]);
             nonce.copy_from_slice(&iv_3);
+            let plaintext_3_for_th4 = ciphertext_3.0.clone();
             let tag = cipher
                 .encrypt_in_place_detached((&*nonce).into(), &a_3, &mut ciphertext_3)
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3_for_th4, peer.credential)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
