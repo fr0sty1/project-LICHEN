@@ -585,19 +585,6 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	}
 }
 
-int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
-{
-	if (num_slots == 0) num_slots = 8;
-	uint8_t data[8];
-	memcpy(data, eui64, 8);
-	uint32_t e = epoch;
-	for (size_t i = 0; i < 4; i++) {
-		data[i] ^= (uint8_t)(e & 0xff);
-		e >>= 8;
-	}
-	uint32_t h = lichen_hash_32(data, 8);
-	return (uint8_t)(h % num_slots);
-}
 int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)
 {
 	if (tdma == NULL || ctx == NULL) return -EINVAL;
@@ -654,3 +641,12 @@ uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t
 	uint32_t h = lichen_hash_32(buf, 8);
 	return (uint8_t)(h % num_slots);
 }
+
+#ifdef CONFIG_LICHEN_LINK_COORDINATION
+int lichen_coordination_negotiate(struct lichen_link_ctx *_Nonnull ctx)
+{
+	if (ctx == NULL) return -EINVAL;
+	if (!ctx->has_key) return -ENOKEY;
+	return LICHEN_COORD_HASH_BASED;
+}
+#endif /* CONFIG_LICHEN_LINK_COORDINATION */

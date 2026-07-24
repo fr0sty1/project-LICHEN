@@ -327,7 +327,9 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
 int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
 					  uint8_t ygg_addr[16]);
 
+#ifdef CONFIG_LICHEN_LINK_COORDINATION
 int lichen_coordination_negotiate(struct lichen_link_ctx *_Nonnull ctx);
+#endif /* CONFIG_LICHEN_LINK_COORDINATION */
 
 #ifdef __cplusplus
 }
