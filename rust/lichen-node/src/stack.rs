@@ -147,8 +147,8 @@ impl From<LinkRxError> for RxError {
 pub struct ReceivedIpv6 {
     /// Decompressed IPv6 packet.
     pub ipv6: Vec<u8>,
-    /// Sender IID (from authenticated link-layer identity).
-    pub sender_iid: [u8; 8],
+    /// Sender IID (from authenticated link-layer identity), as a `NodeId`.
+    pub sender_iid: NodeId,
     /// RSSI in dBm (if radio provides it).
     pub rssi: Option<i16>,
     /// SNR in dB (if radio provides it).
@@ -417,7 +417,7 @@ impl<R: Radio> Stack<R> {
 
         Ok(Some(ReceivedIpv6 {
             ipv6,
-            sender_iid: l2.sender.iid,
+            sender_iid: NodeId(l2.sender.iid),
             rssi: pkt.rssi,
             snr: pkt.snr,
         }))

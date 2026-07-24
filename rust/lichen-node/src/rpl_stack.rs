@@ -7,6 +7,7 @@ use std::collections::{HashSet, VecDeque};
 use std::vec;
 use std::vec::Vec;
 
+use lichen_core::addr::NodeId;
 use lichen_core::announce::Announce;
 use lichen_core::constants::RPL_ICMPV6_TYPE;
 use lichen_core::icmpv6::hdr_field;
@@ -1040,7 +1041,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 }
                 let received = ReceivedIpv6 {
                     ipv6,
-                    sender_iid: frame.sender.iid,
+                    sender_iid: NodeId(frame.sender.iid),
                     rssi: packet.rssi,
                     snr: packet.snr,
                 };
@@ -1305,7 +1306,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let mut output = [0u8; 260];
         let (output_len, event) =
             self.rpl
-                .handle_frame_rpl(&l2_payload, received.sender_iid, &mut output, now_ms);
+                .handle_frame_rpl(&l2_payload, received.sender_iid.0, &mut output, now_ms);
         match event {
             RplEvent::DaoReceived => {
                 let Some((source, dao)) = dao_parts(&received.ipv6) else {
@@ -1329,7 +1330,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 let outcome = self.rpl.handle_dao(
                     dao,
                     source,
-                    received.sender_iid,
+                    received.sender_iid.0,
                     &self.announces,
                     rx,
                     &mut self.storage,
