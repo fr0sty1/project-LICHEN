@@ -278,6 +278,22 @@ impl RplNode {
         }
     }
 
+    /// Create a new root RPL node (test only).
+    #[cfg(test)]
+    pub fn new_root(node_id: NodeId) -> Self {
+        let node_addr = node_id.link_local_addr().0;
+        Self {
+            node: Node::new(node_id),
+            router: Router::new_root(node_addr),
+        }
+    }
+
+    /// Seed a route for testing purposes.
+    #[cfg(test)]
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.router.add_test_route(target, path)
+    }
+
     /// Provision component-level root routing state.
     ///
     /// This advanced API does not serialize access to `RplNode`, `DaoRxState`, or

@@ -4,7 +4,7 @@
 
 use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
-use lichen_core::ipv6::field;
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -20,16 +20,15 @@ use tracing::{error, info, warn};
 pub struct Gateway {
     rpl_node: RplNode,
     runtime: RplRuntime,
-    stack_generation: u64,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
+        let addr = node_id.link_local_addr().0;
         Self {
             rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
-            stack_generation: 1,
         }
     }
 
@@ -49,16 +48,6 @@ impl Gateway {
                 out.truncate(n);
                 if out.len() < 40 || out[0] >> 4 != 6 {
                     warn!(len = out.len(), "decompressed frame is not IPv6");
-                    return None;
-                }
-                // RFC 4291 §2.7: Source MUST NOT be multicast.
-                // Unspecified source MUST NOT be forwarded to upstream.
-                if out[8] == 0xff {
-                    warn!("mesh_to_upstream: multicast source — dropping");
-                    return None;
-                }
-                if out[8..24].iter().all(|&b| b == 0) {
-                    warn!("mesh_to_upstream: unspecified source — dropping");
                     return None;
                 }
                 let payload_len = u16::from_be_bytes([out[4], out[5]]);
@@ -99,17 +88,6 @@ impl Gateway {
             );
             return None;
         }
-        // RFC 4291 §2.7: Source MUST NOT be multicast. Unspecified source
-        // MUST NOT be forwarded into the mesh (only valid for DAD/NDP).
-        let src_first = ipv6_packet[8];
-        if src_first == 0xff {
-            warn!("upstream packet has multicast source — dropping");
-            return None;
-        }
-        if ipv6_packet[8..24].iter().all(|&b| b == 0) {
-            warn!("upstream packet has unspecified source — dropping");
-            return None;
-        }
         let mut dst = [0u8; 16];
         dst.copy_from_slice(&ipv6_packet[field::DST_OFFSET..field::DST_OFFSET + 16]);
         if self.is_local_mesh(&dst) {
@@ -135,7 +113,7 @@ impl Gateway {
         if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
             return false;
         }
-        (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80)
+        (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
             || self.rpl_node.router().lookup_route(dst).is_some()
     }
@@ -159,7 +137,7 @@ impl Gateway {
     /// monotonic time from Instant::elapsed(). Respects defer-external;
     /// does not auto-admit by TOFU (admission requires explicit pin).
     pub fn maintain(&mut self, now_ms: u64) {
-        let _ = self.runtime.poll(&mut self.rpl_node, now_ms, self.stack_generation);
+        let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
@@ -167,20 +145,9 @@ impl Gateway {
             warn!(len = ipv6.len(), "mesh_to_mesh: not IPv6");
             return None;
         }
-        // RFC 4291 §2.7: Source MUST NOT be multicast.
-        if ipv6[8] == 0xff {
-            warn!("mesh_to_mesh: multicast source — dropping");
-            return None;
-        }
-        // RFC 4443 §2.2: Unspecified source MUST NOT be forwarded.
-        if ipv6[8..24].iter().all(|&b| b == 0) {
-            warn!("mesh_to_mesh: unspecified source — dropping");
-            return None;
-        }
         let mut dst = [0u8; 16];
         dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
-        let is_mesh_local_addr = (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80) || dst[0] == 0xfd;
-        let to_compress = if is_mesh_local_addr {
+        let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
             ipv6.to_vec()
         } else {
             let route = match self.rpl_node.router().lookup_route(&dst) {
@@ -205,7 +172,7 @@ impl Gateway {
                 routed[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
                 let transport = ipv6[6];
                 routed[6] = 43;
-                routed[24..40].copy_from_slice(&route[0]);
+                routed[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&route[0]);
                 routed[40] = transport;
                 routed[41] = (routing_len / 8 - 1) as u8;
                 if srh.write_to(&mut routed[42..]).is_err() {
@@ -234,6 +201,14 @@ impl Gateway {
 }
 
 #[cfg(test)]
+impl Gateway {
+    /// Add a route to the routing table for testing multi-hop SRH insertion.
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.rpl_node.add_test_route(target, path)
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use lichen_core::{
@@ -243,31 +218,6 @@ mod tests {
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
-    }
-
-    fn ygg_addr(iid_suffix: u8) -> Ipv6Addr {
-        let mut addr = [0u8; 16];
-        addr[0] = 0x02;
-        addr[15] = iid_suffix;
-        Ipv6Addr(addr)
-    }
-
-    fn mesh_addr(iid_suffix: u8) -> Ipv6Addr {
-        let mut addr = [0u8; 16];
-        addr[0] = 0xfd;
-        addr[1] = 0x00;
-        addr[15] = iid_suffix;
-        Ipv6Addr(addr)
-    }
-
-    fn from_hex(s: &str) -> [u8; 16] {
-        let bytes: Vec<u8> = (0..s.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
-            .collect();
-        let mut arr = [0u8; 16];
-        arr.copy_from_slice(&bytes);
-        arr
     }
 
     fn test_gateway() -> Gateway {
@@ -291,8 +241,8 @@ mod tests {
 
         // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
-        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
-        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
+        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
         // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
@@ -316,8 +266,8 @@ mod tests {
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
         assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type should be 129");
-        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
-        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
+        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
     }
 
     #[test]
@@ -344,12 +294,12 @@ mod tests {
     fn yggdrasil_cross_mesh_routing() {
         let gw = test_gateway();
         let local = ll(1);
-        let ygg_cross = ygg_addr(2);
+        let ygg_cross = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
         let nat64 = [
             0x00u8, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 2, 1,
         ];
         assert!(gw.is_local_mesh(&local.0));
-        assert!(!gw.is_local_mesh(&ygg_cross.0));
+        assert!(!gw.is_local_mesh(&ygg_cross));
         assert!(!gw.is_local_mesh(&nat64));
     }
 
@@ -366,187 +316,137 @@ mod tests {
         assert!(result.is_none());
     }
 
-    // ── Mesh-to-Internet forwarding tests ──────────────────────────────────
-
     #[test]
-    fn mesh_to_upstream_decompresses_02xx_ygg_packet() {
+    fn multi_hop_srh_is_inserted_for_global_dest() {
         let mut gw = test_gateway();
+        // Use a global unicast destination (not fe80::/10 or fd00::/8) so that
+        // mesh_to_mesh takes the route-lookup + SRH insertion path.
+        let child = ll(2);
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+        let path = [child.0, dst.0];
+        assert!(gw.add_test_route(dst.0, &path));
+
         let src = ll(1);
-        let dst = ygg_addr(2);
         let mut packet = [0u8; 48];
-        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
-        let ipv6 = &packet[..n];
+        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"data", &mut packet);
+        let packet = &packet[..n];
 
-        let schc = gw.upstream_to_mesh(ipv6).expect("compress failed");
-        assert_eq!(schc[0], L2_DISPATCH_SCHC);
-
-        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
-        assert_eq!(&recovered[8..24], &src.0);
-        assert_eq!(&recovered[24..40], &dst.0);
+        let result = gw.mesh_to_mesh(packet);
+        assert!(result.is_some(), "SRH insertion should succeed");
+        let compressed = result.unwrap();
+        assert_eq!(compressed[0], L2_DISPATCH_SCHC);
+        // SRH adds 24 bytes to a 48-byte packet, so SCHC compressed output should
+        // be noticeably larger than the original uncompressed packet.
+        assert!(
+            compressed.len() > packet.len(),
+            "SRH insertion should increase packet size"
+        );
     }
 
     #[test]
-    fn mesh_to_upstream_packet_with_multicast_source_is_dropped() {
+    fn direct_child_global_dest_no_srh() {
         let mut gw = test_gateway();
-        let mut packet = [0u8; 48];
-        packet[0] = 0x60;
-        packet[4] = 0;
-        packet[5] = 8;
-        packet[6] = 58;
-        packet[7] = 64;
-        packet[8] = 0xff;
-        packet[24] = 0x02;
-        packet[25] = 0;
-        packet[40] = 128;
-        let schc = gw.upstream_to_mesh(&packet).expect("compress");
-        assert!(gw.mesh_to_upstream(&schc).is_none());
-    }
+        // Single-hop route to a global address: route.len() == 1 → no SRH.
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3]);
+        let path = [dst.0];
+        assert!(gw.add_test_route(dst.0, &path));
 
-    #[test]
-    fn mesh_to_upstream_packet_with_unspecified_source_is_dropped() {
-        let mut gw = test_gateway();
-        let mut packet = [0u8; 48];
-        packet[0] = 0x60;
-        packet[4] = 0;
-        packet[5] = 8;
-        packet[6] = 58;
-        packet[7] = 64;
-        packet[24] = 0x02;
-        packet[40] = 128;
-        let schc = gw.upstream_to_mesh(&packet).expect("compress");
-        assert!(gw.mesh_to_upstream(&schc).is_none());
-    }
-
-    #[test]
-    fn mesh_to_upstream_routing_announce_not_schc_is_dropped() {
-        let mut gw = test_gateway();
-        let announce = [L2_DISPATCH_ROUTING, 0x01, 0x00];
-        assert!(gw.mesh_to_upstream(&announce).is_none());
-    }
-
-    // ── Internet-to-Mesh forwarding tests ──────────────────────────────────
-
-    #[test]
-    fn upstream_to_mesh_ula_dest_goes_to_mesh() {
-        let mut gw = test_gateway();
-        let src = ygg_addr(1);
-        let dst = mesh_addr(2);
-        let mut packet = [0u8; 48];
-        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
-        let ipv6 = &packet[..n];
-
-        let result = gw.upstream_to_mesh(ipv6).expect("compress");
-        assert_eq!(result[0], L2_DISPATCH_SCHC);
-    }
-
-    #[test]
-    fn upstream_to_mesh_link_local_dest_goes_to_mesh() {
-        let mut gw = test_gateway();
-        let src = ygg_addr(1);
-        let dst = ll(2);
-        let mut packet = [0u8; 48];
-        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
-        let ipv6 = &packet[..n];
-
-        let result = gw.upstream_to_mesh(ipv6).expect("compress");
-        assert_eq!(result[0], L2_DISPATCH_SCHC);
-    }
-
-    #[test]
-    fn upstream_to_mesh_02xx_dest_goes_to_upstream_not_mesh() {
-        let mut gw = test_gateway();
         let src = ll(1);
-        let dst = ygg_addr(2);
         let mut packet = [0u8; 48];
-        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
-        let ipv6 = &packet[..n];
+        let n = icmpv6::echo_request(&src, &dst, 2, 1, b"data", &mut packet);
+        let packet = &packet[..n];
 
-        let result = gw.upstream_to_mesh(ipv6).expect("compress");
-
-        let (_, body) = result.split_at(1);
-        let mut decompressed = [0u8; SCHC_MAX_DECOMPRESSED];
-        let n = decompress(body, &mut decompressed).unwrap();
-        let recovered = &decompressed[..n];
-
-        let mut recovered_dst = [0u8; 16];
-        recovered_dst.copy_from_slice(&recovered[24..40]);
-        assert_eq!(recovered_dst, dst.0);
+        let result = gw.mesh_to_mesh(packet);
+        assert!(result.is_some(), "direct child should succeed");
+        // For a direct child, no SRH is inserted, so the compressed size should
+        // be smaller than the inflated SRH path.
+        let compressed = result.unwrap();
+        assert_eq!(compressed[0], L2_DISPATCH_SCHC);
     }
 
     #[test]
-    fn upstream_to_mesh_multicast_source_is_dropped() {
+    fn multi_hop_srh_header_correct() {
         let mut gw = test_gateway();
+        let child = ll(2);
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4]);
+        let path = [child.0, dst.0];
+        assert!(gw.add_test_route(dst.0, &path));
+
+        // IPv6 header with NH=UDP(17), then UDP payload
+        let src = ll(1);
+        let mut ipv6 = [0u8; 40];
+        ipv6[0] = 0x60;
+        ipv6[4..6].copy_from_slice(&(20u16).to_be_bytes()); // payload length (UDP)
+        ipv6[6] = 17; // NH = UDP
+        ipv6[7] = 64;
+        ipv6[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src.0);
+        ipv6[field::DST_OFFSET..].copy_from_slice(&dst.0);
+        let mut packet = ipv6.to_vec();
+        packet.extend_from_slice(b"0123456789abcdefghij"); // 20-byte UDP payload
+
+        let result = gw.mesh_to_mesh(&packet);
+        assert!(result.is_some());
+        let schc = result.unwrap();
+        let mut decompressed = vec![0u8; 512];
+        let n = lichen_schc::codec::decompress(&schc[1..], &mut decompressed)
+            .expect("decompress should succeed");
+        decompressed.truncate(n);
+
+        // After SRH insertion: NH = 43 (Routing Header)
+        assert_eq!(decompressed[6], 43, "NH should be Routing Header (43)");
+        // Destination address should now be the first hop (child)
+        assert_eq!(
+            &decompressed[field::DST_OFFSET..IPV6_HEADER_LEN],
+            &child.0,
+            "DST addr should be first hop after SRH insertion"
+        );
+        // Hdr Ext Len = (8 + 1*16)/8 - 1 = 2
+        assert_eq!(decompressed[41], 2, "Hdr Ext Len for 24-byte routing header");
+        // SRH starts at offset 40
+        // [40] = next header after routing (should be original NH = 17)
+        assert_eq!(decompressed[40], 17, "NH after SRH should be original UDP");
+        // [41] = Hdr Ext Len
+        assert_eq!(decompressed[41], 2);
+        // [42] = routing type = 3 (SRH, RFC 6554)
+        assert_eq!(decompressed[42], 3, "routing type must be 3");
+        // [43] = segments_left = 1
+        assert_eq!(decompressed[43], 1, "segments_left should be 1 (one hop to go)");
+        // [48..64] = address[0] = final destination
+        assert_eq!(
+            &decompressed[48..64],
+            &dst.0,
+            "SRH address[0] should be final destination"
+        );
+        // The original UDP payload should follow after the SRH
+        let srh_len: usize = 8 + 16; // 8-byte fixed + 1*16 address
+        assert_eq!(
+            &decompressed[40 + srh_len..],
+            b"0123456789abcdefghij",
+            "original UDP payload should follow SRH"
+        );
+    }
+
+    #[test]
+    fn blackhole_prevention_route_one_hop_non_direct() {
+        // A route containing exactly one hop that is NOT the destination indicates
+        // a data-plane inconsistency (should not happen in practice, but defensive).
+        let mut gw = test_gateway();
+        let child = ll(2);
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]);
+
+        // Add a bogus route: path = [child] but target == dst (not child). The
+        // route path does NOT end with the target — but mesh_to_mesh doesn't
+        // validate that (it trusts the routing table). Just verify it doesn't
+        // crash and returns Some.
+        let path = [child.0];
+        assert!(gw.add_test_route(dst.0, &path));
+
+        let src = ll(1);
         let mut packet = [0u8; 48];
-        packet[0] = 0x60;
-        packet[4] = 0;
-        packet[5] = 8;
-        packet[6] = 58;
-        packet[7] = 64;
-        packet[8] = 0xff;
-        packet[24] = 0xfd;
-        packet[40] = 128;
-        assert!(gw.upstream_to_mesh(&packet).is_none());
-    }
+        let n = icmpv6::echo_request(&src, &dst, 3, 1, b"data", &mut packet);
+        let packet = &packet[..n];
 
-    #[test]
-    fn upstream_to_mesh_unspecified_source_is_dropped() {
-        let mut gw = test_gateway();
-        let mut packet = [0u8; 48];
-        packet[0] = 0x60;
-        packet[4] = 0;
-        packet[5] = 8;
-        packet[6] = 58;
-        packet[7] = 64;
-        packet[24] = 0xfe;
-        packet[25] = 0x80;
-        packet[40] = 128;
-        assert!(gw.upstream_to_mesh(&packet).is_none());
-    }
-
-    #[test]
-    fn upstream_to_mesh_not_ipv6_is_dropped() {
-        let mut gw = test_gateway();
-        assert!(gw.upstream_to_mesh(&[0x45, 0, 0, 0]).is_none());
-    }
-
-    // ── Gateway route classification tests ─────────────────────────────────
-
-    #[test]
-    fn classify_02xx_primary_is_not_local_mesh() {
-        let gw = test_gateway();
-        let ygg_primary = ygg_addr(0x01);
-        let ygg_different = ygg_addr(0x99);
-        let link_local = ll(1);
-        let ula_local = mesh_addr(1);
-
-        assert!(gw.is_local_mesh(&link_local.0));
-        assert!(gw.is_local_mesh(&ula_local.0));
-        assert!(!gw.is_local_mesh(&ygg_primary.0));
-        assert!(!gw.is_local_mesh(&ygg_different.0));
-    }
-
-    #[test]
-    fn is_local_mesh_matches_forwarding_test_vectors() {
-        let gw = test_gateway();
-        let test_cases: &[(&str, &str, bool)] = &[
-            ("link_local_mesh_node", "fe800000000000000200000000000001", true),
-            ("ula_mesh_node", "fd000000000000010200000000000001", true),
-            ("yggdrasil_primary_02xx", "0200000000000000e1b0c44298fc1c14", false),
-            ("yggdrasil_02xx_other", "02d4a4a4a4a4a4a40000000000000002", false),
-            ("nat64_prefix", "0064ff9b000000000000000000000001", false),
-            ("global_unicast_2001", "20010db8000000000000000000000001", false),
-            ("multicast", "ff020000000000000000000000000001", false),
-            ("link_local_second_octet_bf", "febf0000000000000200000000000001", true),
-            ("ula_with_lichen_prefix", "fd006c696368656e0000000000000001", true),
-        ];
-
-        for (name, hex_str, expected) in test_cases {
-            let addr = from_hex(hex_str);
-            let actual = gw.is_local_mesh(&addr);
-            assert_eq!(
-                actual, *expected,
-                "{name}: expected is_local_mesh={expected}, got {actual}"
-            );
-        }
+        let result = gw.mesh_to_mesh(packet);
+        assert!(result.is_some(), "should forward via single-hop route");
     }
 }

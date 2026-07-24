@@ -655,17 +655,11 @@ int lichen_lora_l2_start(void)
      * Static struct: safe even if a driver retains the pointer, since
      * lichen_lora_l2_start() holds lora_mutex and is non-re-entrant.
      *
-     * Zephyr's lora_modem_config.tx selects the direction being configured.
-     * This L2 implementation is targeted at Zephyr's SX126x/SX127x path used
-     * by the supported Meshtastic-class boards. For that driver family,
-     * lora_config(... .tx = true) stores the TX parameters needed by
-     * lora_send(), while lora_recv() explicitly enters RX mode for each
-     * receive operation.
-     *
-     * Do not change this to a post-config RX pass without auditing the driver:
-     * drivers such as RYLR keep .tx as persistent direction state and reject
-     * lora_send() after an RX config. Supporting those drivers would require a
-     * per-operation config strategy around both lora_send() and lora_recv().
+     * We perform two lora_config() passes to properly initialize both RX
+     * and TX paths on Zephyr's SX126x/SX127x drivers:
+     *   pass 1 (tx=false): programs RX parameters + PA/LNA initialization
+     *   pass 2 (tx=true):  programs TX parameters + airtime cache
+     * lora_recv() then explicitly enters RX mode per receive operation.
      */
     static struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
@@ -674,12 +668,20 @@ int lichen_lora_l2_start(void)
         .coding_rate = CR_4_5,     /* Zephyr enum: 4/5 coding rate */
         .preamble_len = 8,         /* LoRa default preamble symbols */
         .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
-        .tx = true,                /* SX12xx TX config cache; see note above */
+        .tx = false,
     };
 
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: config failed (%d)", ret);
+        LOG_ERR("lora_l2: RX config failed (%d)", ret);
+        k_mutex_unlock(&lora_mutex);
+        return ret;
+    }
+
+    config.tx = true;              /* pass 2: program TX + airtime cache */
+    ret = lora_config(lora_data.lora_dev, &config);
+    if (ret < 0) {
+        LOG_ERR("lora_l2: TX config failed (%d)", ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }

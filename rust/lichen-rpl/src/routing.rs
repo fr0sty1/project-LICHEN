@@ -1620,6 +1620,12 @@ impl DaoManager {
         &self.routing_table
     }
 
+    /// Insert a route for testing purposes only.
+    #[cfg(test)]
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.routing_table.add_route(target, path)
+    }
+
     #[doc(hidden)]
     pub fn diagnostic_root(
         node_address: Ipv6Addr,
