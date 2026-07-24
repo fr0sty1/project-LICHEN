@@ -283,7 +283,7 @@ impl Ack {
                 if pos >= n {
                     break;
                 }
-                if self.bitmap & (1u64 << (62 - pos)) != 0 {
+                if self.bitmap & (1u64 << (WINDOW_SIZE - 1 - pos)) != 0 {
                     byte |= 1 << (7 - bit);
                 }
             }
@@ -322,11 +322,11 @@ impl Ack {
         for i in 0..n {
             let byte = data[3 + i / 8];
             if (byte >> (7 - i % 8)) & 1 != 0 {
-                bitmap |= 1u64 << (62 - i);
+                bitmap |= 1u64 << (WINDOW_SIZE - 1 - i);
             }
         }
         for i in n..WINDOW_SIZE {
-            bitmap |= 1u64 << (62 - i);
+            bitmap |= 1u64 << (WINDOW_SIZE - 1 - i);
         }
         let ack = Self::new(rule_id, window, bitmap, false);
         let mut canonical = [0u8; 11];
@@ -637,7 +637,7 @@ impl<'a> FragmentSender<'a> {
                 }
                 let mut current = *position;
                 while usize::from(current) < WINDOW_SIZE {
-                    if *missing & (1u64 << (62 - current)) == 0 {
+                    if *missing & (1u64 << (WINDOW_SIZE - 1 - usize::from(current))) == 0 {
                         current += 1;
                         continue;
                     }
