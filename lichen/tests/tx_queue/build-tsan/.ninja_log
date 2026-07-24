@@ -1,4 +1,4 @@
-# ninja log v7
-1	35	1784697572349731248	CMakeFiles/tx_queue_test.dir/mnt/lichen-zephyr/work/project-LICHEN-worker2/lichen/subsys/lichen/link/tx_queue.c.o	6dfebb362caeb4df
-1	50	1784697572349731248	CMakeFiles/tx_queue_test.dir/main.c.o	a1930c45407c5369
-50	104	1784697572399730282	tx_queue_test	aec3cca85e4f71de
+# ninja log v5
+0	41	1784870514403456176	CMakeFiles/tx_queue_test.dir/mnt/lichen-zephyr/work/project-LICHEN-worker9/lichen/subsys/lichen/link/tx_queue.c.o	a6fb5eaebe780af4
+0	55	1784870514413455906	CMakeFiles/tx_queue_test.dir/main.c.o	d88ab50b99f470ca
+55	100	1784870514453454824	tx_queue_test	1d1f1b2a12a2ce2f
