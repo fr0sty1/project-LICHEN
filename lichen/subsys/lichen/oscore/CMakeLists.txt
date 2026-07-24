@@ -16,3 +16,4 @@ zephyr_library_sources_ifdef(CONFIG_COAP_SERVER
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../crypto)
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../coap/include)
