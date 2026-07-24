@@ -639,15 +639,15 @@ mod tests {
     // Per spec section 8.7, all CoAP traffic MUST use OSCORE encryption.
     // The plaintext Stack is only for ICMPv6 and diagnostics.
 
-    fn test_stack(epoch: u8) -> Stack<LoopbackRadio> {
+    fn test_stack(epoch: u8, seq: u16) -> Stack<LoopbackRadio> {
         let identity = Identity::from_seed(Seed::new([0x01; 32]));
         let (radio, _) = LoopbackRadio::pair();
-        Stack::new(radio, identity, epoch)
+        Stack::new(radio, identity, epoch, seq)
     }
 
     #[test]
     fn link_tuple_rollover_advances_epoch() {
-        let mut stack = test_stack(128);
+        let mut stack = test_stack(128, 0);
         stack.seqnum = LinkSeqNum::new(u16::MAX);
 
         assert_eq!(
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     fn terminal_link_tuple_is_allocated_once() {
-        let mut stack = test_stack(u8::MAX);
+        let mut stack = test_stack(u8::MAX, 0);
         stack.seqnum = LinkSeqNum::new(u16::MAX);
 
         assert_eq!(
@@ -722,7 +722,7 @@ mod tests {
 
     #[tokio::test]
     async fn raw_coap_rejects_payload_beyond_ipv6_buffer() {
-        let mut stack = test_stack(128);
+        let mut stack = test_stack(128, 0);
         let dst = stack.local_addr();
         let coap = [0u8; 209];
 

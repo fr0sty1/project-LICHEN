@@ -1917,7 +1917,7 @@ mod tests {
         let identity = identity(254);
         let root_addr = address(&identity, 1);
         let state = Arc::new(Mutex::new(RuntimeRadioState::default()));
-        let stack = Stack::new_default_epoch(RuntimeRadio(Arc::clone(&state)), identity);
+        let stack = Stack::new(RuntimeRadio(Arc::clone(&state)), identity, 128, 0);
         (
             RplStack::provision_root(
                 stack,
@@ -2084,10 +2084,10 @@ mod tests {
         let receiver_identity = identity(52);
         let receiver_addr = address(&receiver_identity, 1);
 
-        let mut sender = Stack::new_default_epoch(sender_radio, sender_identity.clone());
+        let mut sender = Stack::new(sender_radio, sender_identity.clone(), 128, 0);
         sender.add_peer(PeerIdentity::from_pubkey(receiver_identity.pubkey));
         let mut receiver =
-            SecureStack::new(Stack::new_default_epoch(receiver_radio, receiver_identity));
+            SecureStack::new(Stack::new(receiver_radio, receiver_identity, 128, 0));
         receiver.add_peer(PeerIdentity::from_pubkey(sender_identity.pubkey));
         let mut owner = RplStack::provision_leaf(
             receiver,
@@ -2250,8 +2250,8 @@ mod tests {
         let peer_identity = identity(2);
         let root_addr = address(&root_identity, 1);
         let (peer_radio, root_radio) = LoopbackRadio::pair();
-        let mut peer = Stack::new_default_epoch(peer_radio, peer_identity.clone());
-        let root_stack = Stack::new_default_epoch(root_radio, root_identity);
+        let mut peer = Stack::new(peer_radio, peer_identity.clone(), 128, 0);
+        let root_stack = Stack::new(root_radio, root_identity, 128, 0);
         let prefix = root_addr[..8].try_into().unwrap();
         let mut root = RplStack::provision_root(
             root_stack,
@@ -2317,7 +2317,7 @@ mod tests {
         before.sort_unstable();
         let (radio, _receiver) = LoopbackRadio::pair();
         let mut stack = RplStack::provision_leaf(
-            Stack::new_default_epoch(radio, local.clone()),
+            Stack::new(radio, local.clone(), 128, 0),
             local_addr,
             local_addr,
             remote,
@@ -2345,13 +2345,15 @@ mod tests {
         let peer_identity = identity(252);
         let root_addr = address(&root_identity, 1);
         let (peer_radio, root_radio) = LoopbackRadio::pair();
-        let mut peer = Stack::new_default_epoch(peer_radio, peer_identity.clone());
-        let root_stack = Stack::new_default_epoch(
+        let mut peer = Stack::new(peer_radio, peer_identity.clone(), 128, 0);
+        let root_stack = Stack::new(
             FailOnceRadio {
                 inner: root_radio,
                 fail_next: false,
             },
             root_identity,
+            128,
+            0,
         );
         let mut root = RplStack::provision_root(
             root_stack,
@@ -2395,7 +2397,7 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let (mut transmitter, root_radio) = LoopbackRadio::pair();
         let mut root = RplStack::provision_root(
-            Stack::new_default_epoch(root_radio, root_identity),
+            Stack::new(root_radio, root_identity, 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -2472,8 +2474,8 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let leaf_addr = address(&leaf_identity, 1);
         let (root_radio, leaf_radio) = LoopbackRadio::pair();
-        let mut root = Stack::new_default_epoch(root_radio, root_identity.clone());
-        let leaf_stack = Stack::new_default_epoch(leaf_radio, leaf_identity);
+        let mut root = Stack::new(root_radio, root_identity.clone(), 128, 0);
+        let leaf_stack = Stack::new(leaf_radio, leaf_identity, 128, 0);
         let prefix = root_addr[..8].try_into().unwrap();
         let mut leaf = RplStack::provision_leaf(
             leaf_stack,
@@ -2543,7 +2545,7 @@ mod tests {
         let multicast = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
         let (root_radio, mut observer) = LoopbackRadio::pair();
         let mut root = RplStack::provision_root(
-            Stack::new_default_epoch(root_radio, root_identity),
+            Stack::new(root_radio, root_identity, 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -2579,9 +2581,9 @@ mod tests {
         let leaf_addr = address(&leaf_identity, 1);
         let multicast = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
         let (root_radio, leaf_radio) = LoopbackRadio::pair();
-        let mut root_stack = Stack::new_default_epoch(root_radio, root_identity.clone());
+        let mut root_stack = Stack::new(root_radio, root_identity.clone(), 128, 0);
         root_stack.add_peer(PeerIdentity::from_pubkey(leaf_identity.pubkey));
-        let mut leaf_stack = Stack::new_default_epoch(leaf_radio, leaf_identity.clone());
+        let mut leaf_stack = Stack::new(leaf_radio, leaf_identity.clone(), 128, 0);
         leaf_stack.add_peer(PeerIdentity::from_pubkey(root_identity.pubkey));
         let prefix = root_addr[..8].try_into().unwrap();
         let mut root = RplStack::provision_root(
@@ -2647,9 +2649,9 @@ mod tests {
         let second_addr = address(&second_identity, 1);
         let (mut first_tx, first_radio) = LoopbackRadio::pair();
         let (mut second_tx, second_radio) = LoopbackRadio::pair();
-        let mut first_stack = Stack::new_default_epoch(first_radio, first_identity);
+        let mut first_stack = Stack::new(first_radio, first_identity, 128, 0);
         first_stack.add_peer(PeerIdentity::from_pubkey(sender.pubkey));
-        let mut second_stack = Stack::new_default_epoch(second_radio, second_identity);
+        let mut second_stack = Stack::new(second_radio, second_identity, 128, 0);
         second_stack.add_peer(PeerIdentity::from_pubkey(sender.pubkey));
         let mut first = RplStack::provision_root(
             first_stack,
@@ -2706,7 +2708,7 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let leaf_addr = address(&leaf_identity, 1);
         let (mut sender_radio, leaf_radio) = LoopbackRadio::pair();
-        let mut leaf_stack = Stack::new_default_epoch(leaf_radio, leaf_identity);
+        let mut leaf_stack = Stack::new(leaf_radio, leaf_identity, 128, 0);
         leaf_stack.add_peer(PeerIdentity::from_pubkey(root_identity.pubkey));
         let mut leaf = RplStack::provision_leaf(
             leaf_stack,
@@ -2754,9 +2756,9 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let (mut leaf_tx, leaf_radio) = LoopbackRadio::pair();
         let (mut root_tx, root_radio) = LoopbackRadio::pair();
-        let mut leaf_stack = Stack::new_default_epoch(leaf_radio, leaf_identity);
+        let mut leaf_stack = Stack::new(leaf_radio, leaf_identity, 128, 0);
         leaf_stack.add_peer(PeerIdentity::from_pubkey(sender.pubkey));
-        let mut root_stack = Stack::new_default_epoch(root_radio, root_identity);
+        let mut root_stack = Stack::new(root_radio, root_identity, 128, 0);
         root_stack.add_peer(PeerIdentity::from_pubkey(sender.pubkey));
         let mut leaf = RplStack::provision_leaf(
             leaf_stack,
@@ -2839,8 +2841,8 @@ mod tests {
         let other_addr = address(&other_identity, 1);
         let (intended_tx, intended_rx) = LoopbackRadio::pair();
         let (other_tx, other_rx) = LoopbackRadio::pair();
-        let intended_stack = Stack::new_default_epoch(intended_rx, intended_identity.clone());
-        let other_stack = Stack::new_default_epoch(other_rx, other_identity.clone());
+        let intended_stack = Stack::new(intended_rx, intended_identity.clone(), 128, 0);
+        let other_stack = Stack::new(other_rx, other_identity.clone(), 128, 0);
         let mut intended = RplStack::provision_root(
             intended_stack,
             intended_addr,
@@ -2898,9 +2900,9 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let leaf_addr = address(&leaf_identity, 1);
         let (root_radio, leaf_radio) = LoopbackRadio::pair();
-        let mut root_sender = Stack::new_default_epoch(root_radio, root_identity.clone());
+        let mut root_sender = Stack::new(root_radio, root_identity.clone(), 128, 0);
         root_sender.add_peer(PeerIdentity::from_pubkey(leaf_identity.pubkey));
-        let leaf_stack = Stack::new_default_epoch(leaf_radio, leaf_identity.clone());
+        let leaf_stack = Stack::new(leaf_radio, leaf_identity.clone(), 128, 0);
         let prefix = root_addr[..8].try_into().unwrap();
         let mut leaf = RplStack::provision_leaf(
             leaf_stack,
@@ -2980,14 +2982,16 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let leaf_addr = address(&leaf_identity, 1);
         let (root_radio, leaf_radio) = LoopbackRadio::pair();
-        let mut root = Stack::new_default_epoch(root_radio, root_identity.clone());
+        let mut root = Stack::new(root_radio, root_identity.clone(), 128, 0);
         root.add_peer(PeerIdentity::from_pubkey(leaf_identity.pubkey));
-        let leaf_stack = Stack::new_default_epoch(
+        let leaf_stack = Stack::new(
             FailOnceRadio {
                 inner: leaf_radio,
                 fail_next: false,
             },
             leaf_identity,
+            128,
+            0,
         );
         let mut leaf = RplStack::provision_leaf(
             leaf_stack,
@@ -3020,9 +3024,9 @@ mod tests {
         let relay_addr = address(&relay_identity, 1);
         let leaf_addr = address(&leaf_identity, 1);
         let (root_radio, relay_radio) = LoopbackRadio::pair();
-        let mut root = Stack::new_default_epoch(root_radio, root_identity.clone());
+        let mut root = Stack::new(root_radio, root_identity.clone(), 128, 0);
         root.add_peer(PeerIdentity::from_pubkey(relay_identity.pubkey));
-        let relay_stack = Stack::new_default_epoch(relay_radio, relay_identity.clone());
+        let relay_stack = Stack::new(relay_radio, relay_identity.clone(), 128, 0);
         let prefix = root_addr[..8].try_into().unwrap();
         let mut relay = RplStack::provision_leaf(
             relay_stack,
@@ -3114,7 +3118,7 @@ mod tests {
             MeshHarness::new([root_eui64, relay_eui64, leaf_eui64]);
         let prefix = root_addr[..8].try_into().unwrap();
         let mut root = RplStack::provision_root(
-            Stack::new(root_radio, root_identity.clone(), 128),
+            Stack::new(root_radio, root_identity.clone(), 128, 0),
             root_addr,
             root_addr,
             announces(prefix),
@@ -3341,9 +3345,9 @@ mod tests {
         let leaf_addr = address(&leaf_identity, 1);
         let unknown_addr = address(&unknown_identity, 1);
         let (leaf_radio, root_radio) = LoopbackRadio::pair();
-        let mut leaf = Stack::new_default_epoch(leaf_radio, leaf_identity.clone());
+        let mut leaf = Stack::new(leaf_radio, leaf_identity.clone(), 128, 0);
         leaf.add_peer(PeerIdentity::from_pubkey(root_identity.pubkey));
-        let root_stack = Stack::new_default_epoch(root_radio, root_identity.clone());
+        let root_stack = Stack::new(root_radio, root_identity.clone(), 128, 0);
         let prefix = root_addr[..8].try_into().unwrap();
         let mut root = RplStack::provision_root(
             root_stack,
@@ -3567,8 +3571,8 @@ mod tests {
 
         let persisted = root.storage().clone();
         let (leaf_radio, root_radio) = LoopbackRadio::pair();
-        let mut leaf = Stack::new(leaf_radio, leaf_identity.clone(), 129);
-        let root_stack = Stack::new(root_radio, root_identity, 129);
+        let mut leaf = Stack::new(leaf_radio, leaf_identity.clone(), 129, 0);
+        let root_stack = Stack::new(root_radio, root_identity, 129, 0);
         let mut reopened = RplStack::open_root(
             root_stack,
             root_addr,
@@ -3637,7 +3641,7 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let (_peer_radio, root_radio) = LoopbackRadio::pair();
         let mut root = RplStack::provision_root(
-            Stack::new_default_epoch(root_radio, root_identity),
+            Stack::new(root_radio, root_identity, 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -3661,7 +3665,7 @@ mod tests {
         let root_addr = address(&root_identity, 1);
         let (_peer_radio, root_radio) = LoopbackRadio::pair();
         let mut root = RplStack::provision_root(
-            Stack::new_default_epoch(root_radio, root_identity),
+            Stack::new(root_radio, root_identity, 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -3703,7 +3707,7 @@ mod tests {
         let admitted = identity(203);
         let (_peer_radio, root_radio) = LoopbackRadio::pair();
         let mut root = RplStack::provision_root(
-            Stack::new_default_epoch(root_radio, root_identity.clone()),
+            Stack::new(root_radio, root_identity.clone(), 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -3717,7 +3721,7 @@ mod tests {
         let storage = root.storage().clone();
         let (_peer_radio, reopened_radio) = LoopbackRadio::pair();
         let reopened = RplStack::open_root(
-            Stack::new_default_epoch(reopened_radio, root_identity),
+            Stack::new(reopened_radio, root_identity, 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -3738,7 +3742,7 @@ mod tests {
         let admitted = identity(205);
         let (_peer_radio, root_radio) = LoopbackRadio::pair();
         let mut root = RplStack::provision_root(
-            Stack::new_default_epoch(root_radio, root_identity.clone()),
+            Stack::new(root_radio, root_identity.clone(), 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -3759,7 +3763,7 @@ mod tests {
         let storage = root.storage().clone();
         let (_peer_radio, reopened_radio) = LoopbackRadio::pair();
         let reopened = RplStack::open_root(
-            Stack::new_default_epoch(reopened_radio, root_identity),
+            Stack::new(reopened_radio, root_identity, 128, 0),
             root_addr,
             root_addr,
             announces(root_addr[..8].try_into().unwrap()),
@@ -3822,7 +3826,7 @@ mod tests {
         let (_peer, radio) = LoopbackRadio::pair();
         assert!(matches!(
             RplStack::open_root(
-                Stack::new_default_epoch(radio, root_identity.clone()),
+                Stack::new(radio, root_identity.clone(), 128, 0),
                 root_addr,
                 root_addr,
                 announces(root_addr[..8].try_into().unwrap()),
@@ -3838,7 +3842,7 @@ mod tests {
         let (_peer, radio) = LoopbackRadio::pair();
         assert!(matches!(
             RplStack::open_root(
-                Stack::new_default_epoch(radio, root_identity),
+                Stack::new(radio, root_identity, 128, 0),
                 root_addr,
                 root_addr,
                 announces(root_addr[..8].try_into().unwrap()),
