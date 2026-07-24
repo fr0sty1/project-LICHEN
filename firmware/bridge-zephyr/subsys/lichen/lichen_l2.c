@@ -1865,13 +1865,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * - MIC verification (AES-CCM-64 or CRC32)
 	 * - SCHC decompression
 	 *
-	 * SECURITY: Copy link_key into a local buffer rather than capturing a
-	 * pointer to link_ctx.link_key. This ensures rx_ctx remains valid even
-	 * if a future refactor moves lichen_link_cleanup() outside the rx_mutex.
-	 * The current code is safe (cleanup holds both mutexes), but copying
-	 * eliminates a subtle lifetime dependency that could cause use-after-free
-	 * if cleanup timing changes. 16-byte copy is cheap. (project-LICHEN-ybal.7)
-	 *
 	 * INVARIANT: has_link_key is only set by key provisioning functions that
 	 * also write valid key material to link_key. If this invariant is violated,
 	 * MIC verification will fail (not silently accept).
@@ -1884,13 +1877,11 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * This is expected during unauthenticated bootstrap before key exchange.
 	 * Once EDHOC handshake completes, has_link_key becomes true and frames
 	 * require cryptographic MIC verification.
+	 *
+	 * The rx_mutex is held for the entire RX path, so link_ctx.link_key cannot
+	 * be modified concurrently by lichen_link_cleanup() (which acquires rx_mutex).
 	 */
-	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
-	const uint8_t *rx_link_key_ptr = NULL;
-	if (link_ctx.has_link_key) {
-		memcpy(rx_link_key, link_ctx.link_key, LICHEN_LINK_KEY_LEN);
-		rx_link_key_ptr = rx_link_key;
-	}
+	const uint8_t *rx_link_key_ptr = link_ctx.has_link_key ? link_ctx.link_key : NULL;
 
 	/*
 	 * SECURITY: Peer-authenticated frame acceptance
@@ -1933,7 +1924,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	if (ret < 0) {
 		LOG_WRN("lichen_l2: RX failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
-		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
@@ -1942,13 +1932,11 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	if (ipv6_len > sizeof(rx_ipv6_buf)) {
 		LOG_ERR("lichen_l2: RX returned oversized packet (%zu bytes)", ipv6_len);
 		crash_info_store(CRASH_STATE_CORRUPTION, __LINE__, (uint32_t)ipv6_len);
-		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
 	if (ipv6_len < IPV6_BASE_HDR_LEN) {
 		LOG_WRN("lichen_l2: RX packet too small for IPv6 (%zu bytes)", ipv6_len);
-		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
@@ -1966,9 +1954,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 */
 	LOG_DBG("lichen_l2: RX decompressed %zu bytes from ..%02x:%02x",
 		ipv6_len, src_eui64[6], src_eui64[7]);
-
-	/* SECURITY: Zero local key copy before any exit (project-LICHEN-1ojj.28) */
-	secure_zero(rx_link_key, sizeof(rx_link_key));
 #else
 	/* No LICHEN link layer - treat as raw IPv6 */
 	if (len > sizeof(rx_ipv6_buf)) {
