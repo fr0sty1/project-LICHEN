@@ -382,7 +382,9 @@ impl RplNode {
     /// `sender_iid` is the identity established by link-layer signature verification.
     ///
     /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
-    /// the output bytes to `next_hop`; otherwise a nonzero output is a reply.
+    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the root
+    /// processed a DAO; for [`RplEvent::DisReceived`], send a DIO; otherwise a
+    /// nonzero output is a reply.
     pub fn handle_frame_rpl(
         &mut self,
         l2_payload: &[u8],
@@ -395,6 +397,9 @@ impl RplNode {
 
     /// Process an authenticated SCHC payload with measured link quality.
     /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
+    ///
+    /// Returns `(output_len, rpl_event)`. See [`handle_frame_rpl`] for variant
+    /// descriptions.
     pub fn handle_frame_rpl_with_link(
         &mut self,
         l2_payload: &[u8],
