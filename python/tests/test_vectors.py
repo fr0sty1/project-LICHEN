@@ -104,6 +104,7 @@ def test_vectors_directory_exists() -> None:
     "filename",
     [
         "ccp9.json",
+        "ccp9-rendezvous.json",
         "l2_payload.json",
         "ipv6_malformed.json",
         "propagation.json",
