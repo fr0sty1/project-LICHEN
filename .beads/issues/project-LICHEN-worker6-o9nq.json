@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-o9nq",
   "title": "[review] project-LICHEN-worker6-wa51: test/vectors/edhoc.json stale after TH computation fix",
   "description": "The EDHOC TH computation fix in python/src/lichen/crypto/edhoc.py changed TH_3 and TH_4 to use plaintext instead of ciphertext (per RFC 9528 Section 3.5), but test/vectors/edhoc.json was not regenerated. The stored TH_3, TH_4, and responder TH values are now stale and will cause test_edhoc_vectors_match_generator to fail. Regenerate with: PYTHONPATH=python/src python3 test/vectors/generate.py",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:46:07.742446228Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:47:00.641397031Z",
-  "started_at": "2026-07-24T19:47:00.641397031Z",
-  "lease_expires_at": "2026-07-24T19:52:00.641397031Z",
-  "heartbeat_at": "2026-07-24T19:47:00.641397031Z"
+  "updated_at": "2026-07-24T20:21:42.081674646Z",
+  "started_at": "2026-07-24T19:47:00.641397031Z"
 }
