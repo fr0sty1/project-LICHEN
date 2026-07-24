@@ -18,10 +18,11 @@
 //! The verb choice signals that SCHC requires matching rules on both ends.
 
 use lichen_core::constants::{
-    PORT_COAP, PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
-    RULE_MQTT_SN, RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
+    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
+    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 
 /// IPv6 link-local prefix (fe80::/64) as a u128 with the prefix in the high 64 bits.
 /// To reconstruct a full link-local address, OR this with a 64-bit Interface Identifier (IID).
@@ -155,7 +156,6 @@ fn is_link_local(addr: &[u8]) -> bool {
     addr.len() == 16 && addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80
 }
 
-#[allow(dead_code)]
 fn is_global(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] >> 5) == 0b001
 }
@@ -263,8 +263,8 @@ fn write_ipv6_header(
     out[5] = payload_len as u8;
     out[6] = next_header;
     out[7] = hop_limit;
-    out[8..24].copy_from_slice(src);
-    out[24..40].copy_from_slice(dst);
+    out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(src);
+    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(dst);
 }
 
 // ─── per-rule compress ────────────────────────────────────────────────────────
@@ -285,105 +285,13 @@ fn write_ipv6_header(
 // RPL body starts at offset 44 (after IPv6 + ICMPv6 header).
 
 fn ensure_ipv6(packet: &[u8]) -> Result<(), SchcError> {
-    if packet.len() < 40 || packet[0] >> 4 != 6 {
+    if packet.len() < IPV6_HEADER_LEN || packet[0] >> 4 != 6 {
         return Err(SchcError::NoMatchingRule);
     }
     Ok(())
 }
 
 /// Rule 0 (link-local) and Rule 1 (global): IPv6 + UDP + CoAP.
-/// Write SCHC-compressed address fields into `w`.
-///
-/// Encodes one bit of address mode (0 = link-local IID, 1 = full 128-bit),
-/// then the address(es). Rule 0 (link-local CoAP) is implicitly link-local;
-/// Rule 1 (global CoAP) uses a mode bit to cover both cases.
-fn write_compressed_addrs(
-    w: &mut BitWriter,
-    rule_id: u8,
-    src: &[u8; 16],
-    dst: &[u8; 16],
-) -> Result<(), SchcError> {
-    if rule_id == RULE_LINK_LOCAL_COAP {
-        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
-        w.write(src_iid as u128, 64)?;
-        w.write(dst_iid as u128, 64)?;
-    } else {
-        let src_int = u128::from_be_bytes(*src);
-        let dst_int = u128::from_be_bytes(*dst);
-        w.write(src_int, 128)?;
-        w.write(dst_int, 128)?;
-    }
-    Ok(())
-}
-
-/// Write SCHC-compressed address fields with a leading address-mode bit.
-///
-/// Writes 1-bit mode (0 = link-local IID, 1 = full 128-bit), then the addresses.
-fn write_compressed_addrs_with_mode(
-    w: &mut BitWriter,
-    src: &[u8; 16],
-    dst: &[u8; 16],
-) -> Result<(), SchcError> {
-    if is_link_local(src) && is_link_local(dst) {
-        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
-        w.write(0, 1)?;
-        w.write(src_iid as u128, 64)?;
-        w.write(dst_iid as u128, 64)?;
-    } else {
-        let src_int = u128::from_be_bytes(*src);
-        let dst_int = u128::from_be_bytes(*dst);
-        w.write(1, 1)?;
-        w.write(src_int, 128)?;
-        w.write(dst_int, 128)?;
-    }
-    Ok(())
-}
-
-/// Read SCHC-compressed address fields, returning `(src, dst)` as 16-byte arrays.
-///
-/// `rule_id` determines whether addresses are link-local (IID only) or full 128-bit.
-fn read_compressed_addrs(
-    r: &mut BitReader,
-    rule_id: u8,
-) -> Result<([u8; 16], [u8; 16]), SchcError> {
-    if rule_id == RULE_LINK_LOCAL_COAP {
-        let src_iid = r.read(64)?;
-        let dst_iid = r.read(64)?;
-        Ok((
-            (LINK_LOCAL_PREFIX | src_iid).to_be_bytes(),
-            (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
-        ))
-    } else {
-        let src_int = r.read(128)?;
-        let dst_int = r.read(128)?;
-        Ok((src_int.to_be_bytes(), dst_int.to_be_bytes()))
-    }
-}
-
-/// Read SCHC-compressed address fields prefixed by a 1-bit address-mode, returning
-/// `(src, dst)` as 16-byte arrays.
-fn read_compressed_addrs_with_mode(r: &mut BitReader) -> Result<([u8; 16], [u8; 16]), SchcError> {
-    let addr_mode = r.read(1)? as u8;
-    let (src, dst) = if addr_mode == 0 {
-        let src_iid = r.read(64)?;
-        let dst_iid = r.read(64)?;
-        (
-            (LINK_LOCAL_PREFIX | src_iid).to_be_bytes(),
-            (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
-        )
-    } else {
-        let src_int = r.read(128)?;
-        let dst_int = r.read(128)?;
-        (src_int.to_be_bytes(), dst_int.to_be_bytes())
-    };
-    if (addr_mode == 0) != (is_link_local(&src) && is_link_local(&dst)) {
-        return Err(SchcError::NoMatchingRule);
-    }
-    Ok((src, dst))
-}
-
 fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
     ensure_ipv6(packet)?;
     if packet.len() < 40 + 8 + 4 {
@@ -391,10 +299,10 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src: &[u8; 16] = packet[8..24].try_into().unwrap();
-    let dst: &[u8; 16] = packet[24..40].try_into().unwrap();
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // UDP header starts immediately after IPv6
-    let udp = &packet[40..];
+    let udp = &packet[IPV6_HEADER_LEN..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
     let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
     let coap = &udp[8..];
@@ -404,14 +312,6 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let coap_mid = u16::from_be_bytes([coap[2], coap[3]]);
     let tail = &coap[4..];
 
-    // Validate ports are in the CoAP range (MSB 12 bits match 5683)
-    const COAP_MSB_MASK: u16 = 0xFFF0;
-    if (src_port & COAP_MSB_MASK) != (PORT_COAP & COAP_MSB_MASK)
-        || (dst_port & COAP_MSB_MASK) != (PORT_COAP & COAP_MSB_MASK)
-    {
-        return Err(SchcError::NoMatchingRule);
-    }
-
     if out.is_empty() {
         return Err(BufferTooSmall::new(1, 0).into());
     }
@@ -419,11 +319,21 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-    write_compressed_addrs(&mut w, rule_id, src, dst)?;
 
-    // MSB(12)/LSB(4) port compression: only the low nibble travels
-    w.write((src_port & 0xF) as u128, 4)?;
-    w.write((dst_port & 0xF) as u128, 4)?;
+    if rule_id == RULE_LINK_LOCAL_COAP {
+        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
+        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+        w.write(src_iid as u128, 64)?;
+        w.write(dst_iid as u128, 64)?;
+    } else {
+        let src_int = u128::from_be_bytes(src.try_into().unwrap());
+        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
+        w.write(src_int, 128)?;
+        w.write(dst_int, 128)?;
+    }
+
+    w.write(src_port as u128, 16)?;
+    w.write(dst_port as u128, 16)?;
     w.write(coap_type as u128, 2)?;
     w.write(coap_tkl as u128, 4)?;
     w.write(coap_code as u128, 8)?;
@@ -448,10 +358,10 @@ fn compress_icmpv6_echo(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // ICMPv6 header starts at offset 40
-    let icmp = &packet[40..];
+    let icmp = &packet[IPV6_HEADER_LEN..];
     let icmp_type = icmp[0];
     let icmp_id = u16::from_be_bytes([icmp[4], icmp[5]]);
     let icmp_seq = u16::from_be_bytes([icmp[6], icmp[7]]);
@@ -490,8 +400,8 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // RPL body starts at offset 44: skip 40-byte IPv6 + 4-byte ICMPv6 header (type/code/checksum)
     let rpl = &packet[44..];
     let instance = rpl[0];
@@ -522,64 +432,7 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let residue_len = w.byte_len();
     let tail_start = 1 + residue_len;
-    let mut needed = tail_start + tail.len();
-
-    // Detect PIO (type=3, len=30) in tail and compress it
-    if tail.len() >= 32 && tail[0] == 3 && tail[1] == 30 {
-        // Compress RPL.Option.Type with MatchMapping → 3-bit mapping-sent (PIO=index 1)
-        let pio_mapped = 1u8; // type=3 → index 1 in mapping
-        let lifetime = u32::from_be_bytes([tail[4], tail[5], tail[6], tail[7]]);
-        let prefix_iid = u64::from_be_bytes(tail[20..28].try_into().unwrap());
-        // Pad1 (type=0) uses equal/not-sent, so we just emit remaining options as tail
-        // PIO options after the first one go as raw tail
-        let remaining = if tail.len() > 32 { &tail[32..] } else { &[] };
-
-        let mut opt_buf = [0u8; 24];
-        let opt_buf_len: usize;
-        {
-            let mut ow = BitWriter::new(&mut opt_buf);
-            // mapping-sent: 3-bit index for PIO type (=1)
-            ow.write(pio_mapped as u128, 3)?;
-            // value-sent: 32-bit lifetime
-            ow.write(lifetime as u128, 32)?;
-            // lsb(64): lower 64 bits of prefix (IID)
-            ow.write(prefix_iid as u128, 64)?;
-            opt_buf_len = ow.byte_len();
-        }
-
-        let opt_len = opt_buf_len + remaining.len();
-
-        // We need more space: base residue + compressed options + remaining raw tail
-        needed = tail_start + opt_len;
-        if needed > out.len() {
-            // Fall through to verbatim tail if buffer too small
-        } else {
-            // Write compressed PIO + remaining tail as suffix
-            out[tail_start..tail_start + opt_buf_len].copy_from_slice(&opt_buf[..opt_buf_len]);
-            if !remaining.is_empty() {
-                out[tail_start + opt_buf_len..tail_start + opt_len].copy_from_slice(remaining);
-            }
-            // Update needed to reflect new smaller size
-            needed = tail_start + opt_len;
-            return Ok(needed);
-        }
-    } else {
-        // Check tail for Pad1 options (type=0, no length byte) and strip them
-        // Pad1 is Equal/NotSent → omitted from residue entirely
-        let mut pad_stripped = 0usize;
-        while pad_stripped < tail.len() && tail[pad_stripped] == 0 {
-            pad_stripped += 1;
-        }
-        if pad_stripped > 0 {
-            needed = tail_start + (tail.len() - pad_stripped);
-            if needed <= out.len() {
-                out[tail_start..needed].copy_from_slice(&tail[pad_stripped..]);
-                return Ok(needed);
-            }
-        }
-    }
-
-    // Fallback: write tail verbatim
+    let needed = tail_start + tail.len();
     if needed > out.len() {
         return Err(BufferTooSmall::new(needed, out.len()).into());
     }
@@ -596,15 +449,12 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // RPL body starts at offset 44: skip 40-byte IPv6 + 4-byte ICMPv6 header (type/code/checksum)
     let rpl = &packet[44..];
     let instance = rpl[0];
     let kd_flags = rpl[1];
-    if (kd_flags & 0x40) == 0 {
-        return Err(SchcError::NoMatchingRule);
-    }
     // reserved (rpl[2]) is NOT_SENT
     let seq = rpl[3];
     let dodagid = u128::from_be_bytes(rpl[4..20].try_into().unwrap());
@@ -648,10 +498,10 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields
     let hop_limit = packet[7];
-    let src: &[u8; 16] = packet[8..24].try_into().unwrap();
-    let dst: &[u8; 16] = packet[24..40].try_into().unwrap();
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // UDP header starts immediately after IPv6
-    let udp = &packet[40..];
+    let udp = &packet[IPV6_HEADER_LEN..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
     let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
 
@@ -678,7 +528,21 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-    write_compressed_addrs_with_mode(&mut w, src, dst)?;
+
+    // Address compression: same logic as CoAP rules
+    if is_link_local(src) && is_link_local(dst) {
+        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
+        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+        w.write(0, 1)?; // Address mode: 0 = link-local
+        w.write(src_iid as u128, 64)?;
+        w.write(dst_iid as u128, 64)?;
+    } else {
+        let src_int = u128::from_be_bytes(src.try_into().unwrap());
+        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
+        w.write(1, 1)?; // Address mode: 1 = full
+        w.write(src_int, 128)?;
+        w.write(dst_int, 128)?;
+    }
 
     // Direction bit and other port
     w.write(direction as u128, 1)?;
@@ -700,14 +564,17 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
-    let (src, dst) = read_compressed_addrs(&mut r, rule_id)?;
 
-    // MSB(12)/LSB(4) port decompression: reconstruct from 4-bit LSB + target_value MSB
-    const COAP_MSB_MASK: u16 = 0xFFF0;
-    let src_port_lsb = r.read(4)? as u16;
-    let dst_port_lsb = r.read(4)? as u16;
-    let src_port = (PORT_COAP & COAP_MSB_MASK) | src_port_lsb;
-    let dst_port = (PORT_COAP & COAP_MSB_MASK) | dst_port_lsb;
+    let (src_int, dst_int) = if rule_id == RULE_LINK_LOCAL_COAP {
+        let src_iid = r.read(64)?;
+        let dst_iid = r.read(64)?;
+        (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
+    } else {
+        (r.read(128)?, r.read(128)?)
+    };
+
+    let src_port = r.read(16)? as u16;
+    let dst_port = r.read(16)? as u16;
     let coap_type = r.read(2)? as u8;
     let coap_tkl = r.read(4)? as u8;
     let coap_code = r.read(8)? as u8;
@@ -715,6 +582,8 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let tail = &data[1 + r.residue_byte_end()..];
 
+    let src = src_int.to_be_bytes();
+    let dst = dst_int.to_be_bytes();
     let coap_b0 = (1u8 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F);
     let coap_len = 4 + tail.len();
     let total_udp = 8usize.saturating_add(coap_len);
@@ -822,69 +691,12 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dtsn = r.read(8)? as u8;
     let dodagid = r.read(128)?;
 
-    let residue_end = r.residue_byte_end();
-    let tail = &data[1 + residue_end..];
+    let tail = &data[1 + r.residue_byte_end()..];
 
     let src = (LINK_LOCAL_PREFIX | src_iid).to_be_bytes();
     let dst = (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes();
 
-    // Try to decompress PIO from compressed tail (3-bit mapping-sent + 32-bit lifetime + 64-bit lsb prefix)
-    if !tail.is_empty() && tail.len() >= 13 {
-        let mut peek = BitReader::new(tail);
-        if let Ok(opt_idx) = peek.read(3) {
-            if opt_idx == 1 {
-                let mut pr = BitReader::new(tail);
-                let _ = pr.read(3)?;
-                let lifetime = pr.read(32)? as u32;
-                let prefix_iid = pr.read(64)?;
-                let compressed_bytes = pr.residue_byte_end();
-                let remaining = &tail[compressed_bytes..];
-
-                let mut pio = [0u8; 32];
-                pio[0] = 3; // PIO type
-                pio[1] = 30; // length
-                pio[2] = 64; // prefix length
-                pio[3] = 0xC0; // LA flags
-                pio[4..8].copy_from_slice(&lifetime.to_be_bytes()); // valid lifetime
-                pio[8..12].copy_from_slice(&lifetime.to_be_bytes()); // preferred lifetime = same
-                                                                     // Reconstruct full /64 prefix
-                let prefix = LINK_LOCAL_PREFIX | prefix_iid;
-                pio[12..28].copy_from_slice(&prefix.to_be_bytes()[0..16]);
-                // Reserved at 28..32 stays as 0
-
-                let total_rpl = 24 + 32 + remaining.len();
-                let total_icmp = 4 + total_rpl;
-                let total_pkt = 40 + total_icmp;
-
-                let mut ib = [0u8; 512];
-                ib[0] = 155;
-                ib[1] = 1;
-                ib[2] = 0;
-                ib[3] = 0;
-                ib[4] = instance;
-                ib[5] = version;
-                ib[6] = (rank >> 8) as u8;
-                ib[7] = rank as u8;
-                ib[8] = gmop;
-                ib[9] = dtsn;
-                ib[10] = 0;
-                ib[11] = 0;
-                ib[12..28].copy_from_slice(&dodagid.to_be_bytes());
-                ib[28..60].copy_from_slice(&pio);
-                if !remaining.is_empty() {
-                    ib[60..60 + remaining.len()].copy_from_slice(remaining);
-                }
-
-                let cksum = icmpv6_checksum(&src, &dst, &ib[..total_icmp]);
-                write_ipv6_header(out, total_icmp as u16, 58, hop_limit, &src, &dst);
-                out[40..40 + total_icmp].copy_from_slice(&ib[..total_icmp]);
-                out[42] = (cksum >> 8) as u8;
-                out[43] = cksum as u8;
-                return Ok(total_pkt);
-            }
-        }
-    }
-
+    // RPL DIO base (24 bytes) + tail
     let rpl_body_len = 24 + tail.len();
     let icmp_len = 4 + rpl_body_len; // type+code+cksum + body
     let total = 40 + icmp_len;
@@ -980,7 +792,24 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize,
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
-    let (src, dst) = read_compressed_addrs_with_mode(&mut r)?;
+    let addr_mode = r.read(1)? as u8;
+
+    let (src, dst) = if addr_mode == 0 {
+        let src_iid = r.read(64)?;
+        let dst_iid = r.read(64)?;
+        (
+            (LINK_LOCAL_PREFIX | src_iid).to_be_bytes(),
+            (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
+        )
+    } else {
+        let src_int = r.read(128)?;
+        let dst_int = r.read(128)?;
+        (src_int.to_be_bytes(), dst_int.to_be_bytes())
+    };
+
+    if (addr_mode == 0) != (is_link_local(&src) && is_link_local(&dst)) {
+        return Err(SchcError::NoMatchingRule);
+    }
 
     let direction = r.read(1)? as u8;
     let other_port = r.read(16)? as u16;
@@ -1037,8 +866,8 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
 
     let nh = packet[6];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
 
     if nh == 17 {
         // UDP — try MQTT-SN (rule 5) first if port matches, then CoAP (rules 0/1)
@@ -1172,7 +1001,7 @@ mod tests {
             "6000000000131140fe800000000000000000000000000001\
              fe80000000000000000000000000000216331633001328dd\
              40011234ff737461747573",
-            "00400000000000000001000000000000000233000448d0\
+            "00400000000000000001000000000000000216331633000448d0\
              ff737461747573",
             0,
         );
@@ -1185,7 +1014,7 @@ mod tests {
              20010db800000000000000000000000216331633001\
              3ca6c40011234ff737461747573",
             "014020010db800000000000000000000000120010db8000000\
-             00000000000000000233000448d0ff737461747573",
+             00000000000000000216331633000448d0ff737461747573",
             1,
         );
     }
@@ -1249,10 +1078,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17; // UDP
         packet[7] = 64; // Hop limit
-        packet[8..24].copy_from_slice(&src_addr);
-        packet[24..40].copy_from_slice(&dst_addr);
-        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
-        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
+        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
+        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
+        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..52].copy_from_slice(payload);
@@ -1289,10 +1118,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17;
         packet[7] = 64;
-        packet[8..24].copy_from_slice(&src_addr);
-        packet[24..40].copy_from_slice(&dst_addr);
-        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
-        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
+        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
+        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
+        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..55].copy_from_slice(payload);
@@ -1327,10 +1156,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17;
         packet[7] = 64;
-        packet[8..24].copy_from_slice(&src_addr);
-        packet[24..40].copy_from_slice(&dst_addr);
-        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
-        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
+        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
+        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
+        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..51].copy_from_slice(payload);

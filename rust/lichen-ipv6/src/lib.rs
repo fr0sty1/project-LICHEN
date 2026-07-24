@@ -139,6 +139,11 @@ impl core::error::Error for Ipv6Error {
 /// IPv6 header length (fixed, no extension headers for LICHEN).
 pub const IPV6_HEADER_LEN: usize = 40;
 
+pub mod field {
+    pub const SRC_OFFSET: usize = 8;
+    pub const DST_OFFSET: usize = 24;
+}
+
 /// UDP header length.
 pub const UDP_HEADER_LEN: usize = 8;
 
@@ -349,8 +354,8 @@ impl Ipv6Header {
         out[7] = self.hop_limit;
 
         // Addresses
-        out[8..24].copy_from_slice(&self.src.0);
-        out[24..40].copy_from_slice(&self.dst.0);
+        out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&self.src.0);
+        out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&self.dst.0);
 
         Ok(IPV6_HEADER_LEN)
     }
@@ -375,8 +380,8 @@ impl Ipv6Header {
 
         let mut src = [0u8; 16];
         let mut dst = [0u8; 16];
-        src.copy_from_slice(&buf[8..24]);
-        dst.copy_from_slice(&buf[24..40]);
+        src.copy_from_slice(&buf[field::SRC_OFFSET..field::DST_OFFSET]);
+        dst.copy_from_slice(&buf[field::DST_OFFSET..IPV6_HEADER_LEN]);
 
         Ok(Self {
             traffic_class,

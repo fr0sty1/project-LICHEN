@@ -4,16 +4,15 @@
 
 use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
-use lichen_core::ipv6::field;
-use lichen_core::rf_health::RfHealthMetrics;
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
 use lichen_node::{
     runtime::{RplRuntime, RplRuntimeConfig},
-    stack::add_rpl_source_route,
     RplEvent, RplNode,
 };
+use lichen_rpl::routing::SourceRoutingHeader;
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
@@ -21,7 +20,6 @@ use tracing::{error, info, warn};
 pub struct Gateway {
     rpl_node: RplNode,
     runtime: RplRuntime,
-    rf_health: RfHealthMetrics,
 }
 
 impl Gateway {
@@ -31,7 +29,6 @@ impl Gateway {
         Self {
             rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
-            rf_health: RfHealthMetrics::new(),
         }
     }
 
@@ -127,9 +124,6 @@ impl Gateway {
         let (reply_len, event) = self
             .rpl_node
             .handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
-        self.rf_health.record_rx(0);
-        self.rf_health
-            .record_density(self.rpl_node.router().neighbors().count() as u8);
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
             Some(reply)
@@ -146,22 +140,6 @@ impl Gateway {
         let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
     }
 
-    /// Route a packet for a destination that is part of the local RPL mesh.
-    ///
-    /// Implements RFC 6554 source routing for Non-Storing Mode with two paths:
-    ///
-    ///   **Root-originated /128 host route** — insert an SRH directly into the
-    ///   IPv6 header (swap destination with first hop, list remaining hops in
-    ///   the Routing header).
-    ///
-    ///   **Everything else** (upstream/internet-originated traffic, prefix
-    ///   routes shorter than /128) — IPv6-in-IPv6 encapsulation per
-    ///   `draft-lichen-rpl-lora-00` §7.4 / RFC 6554 §4.1: the original packet
-    ///   is preserved as an inner payload; an outer IPv6+SRH header routes to
-    ///   `E`, the last node in the path.
-    ///
-    /// Link-local and ULA destinations are forwarded verbatim without a route
-    /// lookup.
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
         if ipv6.len() < 40 || ipv6[0] >> 4 != 6 {
             warn!(len = ipv6.len(), "mesh_to_mesh: not IPv6");
@@ -176,47 +154,34 @@ impl Gateway {
                 Some(r) => r,
                 None => return None,
             };
-            if route.len() == 1 {
-                ipv6.to_vec()
-            } else {
-                let root_addr = self.rpl_node.node().node_id.link_local_addr().0;
-                let is_root_origin = ipv6[8..24] == root_addr;
-                let is_host_route = route.last() == Some(&dst);
-                if is_root_origin && is_host_route {
-                    let routing_len = 8 + 16 * (route.len() - 1);
-                    let total_len = ipv6.len() + routing_len;
-                    let mut routed = vec![0u8; total_len];
-                    if add_rpl_source_route(ipv6, route, &mut routed).is_err() {
-                        return None;
-                    }
-                    routed
-                } else {
-                    let num_addrs = route.len() - 1;
-                    let routing_len = 8 + 16 * num_addrs;
-                    let outer_payload = routing_len + ipv6.len();
-                    let outer_payload_u16 = u16::try_from(outer_payload).ok()?;
-                    let outer_hdr = 40 + routing_len;
-                    let mut outer = vec![0u8; outer_hdr];
-                    outer[0] = 0x60;
-                    outer[4..6].copy_from_slice(&outer_payload_u16.to_be_bytes());
-                    outer[6] = 43;
-                    outer[7] = 64;
-                    outer[8..24].copy_from_slice(&root_addr);
-                    outer[24..40].copy_from_slice(&route[0]);
-                    outer[40] = 41;
-                    outer[41] = (routing_len / 8 - 1) as u8;
-                    outer[42] = 3;
-                    outer[43] = num_addrs as u8;
-                    outer[44..48].fill(0);
-                    for (i, addr) in route[1..].iter().enumerate() {
-                        let start = 48 + i * 16;
-                        outer[start..start + 16].copy_from_slice(addr);
-                    }
-                    let mut encapsulated = Vec::with_capacity(outer_hdr + ipv6.len());
-                    encapsulated.extend_from_slice(&outer);
-                    encapsulated.extend_from_slice(ipv6);
-                    encapsulated
+            if route.len() > 1 {
+                let srh = match SourceRoutingHeader::from_route(route) {
+                    Ok(s) => s,
+                    Err(_) => return None,
+                };
+                let num_addrs = srh.addresses.len();
+                let routing_len = 8 + 16 * num_addrs;
+                let total_len = ipv6.len() + routing_len;
+                let mut routed = vec![0u8; total_len];
+                routed[..40].copy_from_slice(&ipv6[..40]);
+                let payload_len = u16::from_be_bytes([ipv6[4], ipv6[5]]) as usize + routing_len;
+                let routed_payload_len = match u16::try_from(payload_len) {
+                    Ok(p) => p,
+                    Err(_) => return None,
+                };
+                routed[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
+                let transport = ipv6[6];
+                routed[6] = 43;
+                routed[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&route[0]);
+                routed[40] = transport;
+                routed[41] = (routing_len / 8 - 1) as u8;
+                if srh.write_to(&mut routed[42..]).is_err() {
+                    return None;
                 }
+                routed[40 + routing_len..].copy_from_slice(&ipv6[40..]);
+                routed
+            } else {
+                ipv6.to_vec()
             }
         };
         let mut out = vec![0u8; to_compress.len() + 20];
@@ -260,16 +225,16 @@ mod tests {
         let packet = &packet[..n];
 
         let mut gw = test_gateway();
-        let schc = gw.upstream_to_mesh(packet).unwrap();
+        let schc = gw.upstream_to_mesh(packet).expect("compress failed");
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2 (ICMPv6 echo link-local)");
 
-        let recovered = gw.mesh_to_upstream(&schc).unwrap();
+        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
 
         // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
-        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
-        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
+        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
         // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
@@ -287,14 +252,14 @@ mod tests {
         let packet = &packet[..n];
 
         let mut gw = test_gateway();
-        let schc = gw.upstream_to_mesh(packet).unwrap();
+        let schc = gw.upstream_to_mesh(packet).expect("compress failed");
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2");
 
-        let recovered = gw.mesh_to_upstream(&schc).unwrap();
+        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
         assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type should be 129");
-        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
-        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
+        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
     }
 
     #[test]

@@ -15,6 +15,7 @@ use crate::address::{AddressMapper, MeshtasticNodeId};
 use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
 use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_core::rf_health::RfHealthMetrics;
 
 /// Maximum payload size for IPv6 tunnel packets.
@@ -230,10 +231,10 @@ impl MeshtasticBridge {
                     return Err(BridgeError::InvalidPacket);
                 }
 
-                let src_bytes: [u8; 16] = data.payload[8..24]
+                let src_bytes: [u8; 16] = data.payload[field::SRC_OFFSET..field::DST_OFFSET]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
-                let dst_bytes: [u8; 16] = data.payload[24..40]
+                let dst_bytes: [u8; 16] = data.payload[field::DST_OFFSET..IPV6_HEADER_LEN]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
 
@@ -322,7 +323,7 @@ impl MeshtasticBridge {
         if ipv6_data.len() < 40 || (ipv6_data[0] >> 4) != 6 {
             return Err(BridgeError::InvalidPacket);
         }
-        let dst_bytes: [u8; 16] = ipv6_data[24..40]
+        let dst_bytes: [u8; 16] = ipv6_data[field::DST_OFFSET..IPV6_HEADER_LEN]
             .try_into()
             .map_err(|_| BridgeError::InvalidPacket)?;
         let dst = Ipv6Addr(dst_bytes);
@@ -505,7 +506,7 @@ mod tests {
         let mut ipv6_data = [0u8; 48];
         ipv6_data[0] = 0x60; // Version 6, destination address set at offset 24 to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
-        ipv6_data[24..40].copy_from_slice(&dst_addr.0);
+        ipv6_data[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr.0);
 
         let result = bridge.encapsulate_ipv6(&ipv6_data);
         assert!(result.is_ok());
@@ -543,7 +544,7 @@ mod tests {
 
         let mut data = [0u8; 48];
         data[0] = 0x60;
-        data[24..40].copy_from_slice(&unknown_addr.0);
+        data[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&unknown_addr.0);
         let result = bridge.encapsulate_ipv6(&data);
         assert_eq!(result, Err(BridgeError::UnknownDestination));
     }
