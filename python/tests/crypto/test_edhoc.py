@@ -5,6 +5,7 @@
 import cbor2
 import pytest
 
+import lichen.crypto.edhoc as edhoc_module
 from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder, Method
 from lichen.crypto.identity import Identity
 
