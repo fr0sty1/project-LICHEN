@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-q192",
+  "title": "[review] lora_ipv6_mesh-mkk4: rust/target/ build artifacts committed",
+  "description": "Commit d83cbc5 includes build artifacts under rust/target/:\n- rust/target/debug/deps/lichen_gateway-f1ce66f1c4497e73.d (dep file)\n- rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh-working/dep-graph.part.bin (incremental compile artifact)\n- rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh.lock (incremental compile lock)\n\nThese are generated build artifacts that should never be committed to the repo. They can contain stale/personally identifiable paths and will cause merge conflicts as different machines produce different versions. The `rust/target/` directory likely needs to be in .gitignore or this is a CI/agent misconfiguration where the agent committed untracked files unintentionally.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:00:20.461619543Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:00:20.461619543Z"
+}
