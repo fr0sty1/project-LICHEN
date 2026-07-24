@@ -252,7 +252,7 @@ west zephyr-export
 pip install -r zephyr/scripts/requirements.txt
 
 # Build puck firmware for RAK4631
-west build -b rak4631_nrf52840 lichen/apps/puck
+west build -b rak4631/nrf52840 lichen/apps/puck
 ```
 
 Keep `.venv/bin` first on `PATH` when running `west twister`; CMake also uses

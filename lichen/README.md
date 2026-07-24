@@ -44,7 +44,7 @@ containing `zephyr/`, `lichen/`, etc. after `west init`).
 
 ```sh
 # RAK4631 — nRF52840 + SX1262
-west build -b rak4631_nrf52840 lichen/apps/puck
+west build -b rak4631/nrf52840 lichen/apps/puck
 
 # Heltec LoRa32 v3 — ESP32-S3 + SX1262
 west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/puck

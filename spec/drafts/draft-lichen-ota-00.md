@@ -87,7 +87,7 @@ Payload (CBOR map):
 | Key | Type | Description |
 |-----|------|-------------|
 | `v` | uint | Firmware version number (monotonically increasing) |
-| `board` | tstr | Board identifier string, e.g. `"rak4631_nrf52840"` |
+| `board` | tstr | Board identifier string, e.g. `"rak4631/nrf52840"` |
 | `size` | uint | Total image size in bytes |
 | `blocks` | uint | Number of blocks (block size fixed at 64 bytes for LoRa) |
 | `sha256` | bstr | SHA-256 hash of the complete image (32 bytes) |

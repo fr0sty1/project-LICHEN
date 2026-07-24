@@ -49,7 +49,7 @@ pip install -r zephyr/scripts/requirements.txt
 
 Build:
 ```bash
-west build -b rak4631_nrf52840 lichen/apps/puck    # nRF52840 puck
+west build -b rak4631/nrf52840 lichen/apps/puck     # nRF52840 puck
 west build -b native_sim       lichen/apps/gateway  # simulation target
 ```
 
