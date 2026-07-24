@@ -262,6 +262,21 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
 #define LICHEN_FRAME_BASE_OVERHEAD LICHEN_FRAME_FIXED_HEADER_LEN
 
 /*
+ * Assert: LICHEN_LORA_FRAME_OVERHEAD derives from frame format constants.
+ *
+ * Derivation: fixed header (5 bytes) + Schnorr-48 signature (48 bytes)
+ * = 53 bytes base signed overhead. The constant adds 2 bytes of headroom
+ * for SCHC rule ID and future address field expansion: 53 + 2 = 55.
+ *
+ * This assertion prevents silent drift when LICHEN_FRAME_FIXED_HEADER_LEN
+ * or LICHEN_SIG_LEN change without updating lora_l2.h.
+ * (project-LICHEN-gy7h.9)
+ */
+BUILD_ASSERT(LICHEN_LORA_FRAME_OVERHEAD ==
+	     LICHEN_FRAME_FIXED_HEADER_LEN + LICHEN_SIG_LEN + 2,
+	     "LICHEN_LORA_FRAME_OVERHEAD derivation stale - update lora_l2.h");
+
+/*
  * Assert: signature length has not changed.
  * LICHEN_LORA_FRAME_OVERHEAD was calculated assuming 48-byte signatures.
  * If this assertion fails, recalculate the overhead constant.
