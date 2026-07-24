@@ -445,12 +445,16 @@ fn encode_tstr<const N: usize>(
     Ok(())
 }
 
-/// TH_2 = H(G_Y || H(message_1)) per RFC 9528 / test vectors.
-fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
+/// TH_2 = H(G_Y || C_R || H(message_1)) per RFC 9528 Section 4.1.
+fn transcript_2(g_y: &[u8], c_r: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 64>::new();
+    let mut buf = heapless::Vec::<u8, 72>::new();
     buf.extend_err(g_y)
         .map_err(|_| EdhocError::BufferTooSmall)?;
+    if !c_r.is_empty() {
+        buf.extend_err(c_r)
+            .map_err(|_| EdhocError::BufferTooSmall)?;
+    }
     buf.extend_err(&h_msg1)
         .map_err(|_| EdhocError::BufferTooSmall)?;
     Ok(compute_th(&buf))
@@ -782,12 +786,18 @@ impl EdhocInitiator {
         }
 
         let (g_y_ct2, consumed) = parse_bstr(msg2)?;
-        if consumed != msg2.len() || g_y_ct2.len() < KEY_LEN_32 + 1 {
+        if g_y_ct2.len() < KEY_LEN_32 + 1 {
             return Err(EdhocError::InvalidMessage);
         }
         let mut g_y = [0u8; KEY_LEN_32];
         g_y.copy_from_slice(&g_y_ct2[..KEY_LEN_32]);
         let ciphertext_2 = &g_y_ct2[KEY_LEN_32..];
+
+        let remaining = &msg2[consumed..];
+        let (c_r, c_r_len) = parse_identifier(remaining)?;
+        if consumed + c_r_len != msg2.len() {
+            return Err(EdhocError::InvalidMessage);
+        }
 
         // Compute shared secret G_XY (ephemeral key consumed - single use only)
         let eph_secret = self.eph_secret.take().ok_or(EdhocError::InvalidState)?;
@@ -802,7 +812,7 @@ impl EdhocInitiator {
             if g_xy.as_bytes() == &[0; KEY_LEN_32] {
                 return Err(EdhocError::InvalidMessage);
             }
-            self.state.th_2 = transcript_2(&self.state.g_y, &self.state.msg1)?;
+            self.state.th_2 = transcript_2(&self.state.g_y, c_r.as_bytes(), &self.state.msg1)?;
 
             // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
             let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
@@ -822,12 +832,11 @@ impl EdhocInitiator {
             self.state.prk_3e2m = self.state.prk_2e;
 
             let pt2 = plaintext_2.as_slice();
-            let (c_r, c_r_len) = parse_identifier(pt2)?;
             if c_r == self.c_i {
                 return Err(EdhocError::InvalidMessage);
             }
-            let (id_cred_r, id_len) = parse_id_cred(&pt2[c_r_len..])?;
-            let sig_offset = c_r_len + id_len;
+            let (id_cred_r, id_len) = parse_id_cred(pt2)?;
+            let sig_offset = id_len;
             let (signature_bytes, sig_len) = parse_bstr(&pt2[sig_offset..])?;
             if signature_bytes.len() != SIG_LEN || sig_offset + sig_len != pt2.len() {
                 return Err(EdhocError::InvalidMessage);
@@ -1153,7 +1162,7 @@ impl EdhocResponder {
             if g_xy.as_bytes() == &[0; KEY_LEN_32] {
                 return Err(EdhocError::InvalidMessage);
             }
-            self.state.th_2 = transcript_2(self.eph_public.as_bytes(), msg1)?;
+            self.state.th_2 = transcript_2(self.eph_public.as_bytes(), self.c_r.as_bytes(), msg1)?;
 
             // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
             let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
@@ -1190,7 +1199,6 @@ impl EdhocResponder {
             let signature_2 = self.signing_key.sign(&m_2);
 
             let mut plaintext_2 = SecretVec::<128>::new();
-            encode_identifier(&mut plaintext_2, &self.c_r)?;
             encode_bstr(&mut plaintext_2, self.pubkey.as_bytes())?;
             encode_bstr(&mut plaintext_2, &signature_2.to_bytes())?;
 
@@ -1209,6 +1217,7 @@ impl EdhocResponder {
             g_y_ciphertext.extend_err(self.eph_public.as_bytes())?;
             g_y_ciphertext.extend_err(&ciphertext_2)?;
             encode_bstr(&mut msg2, &g_y_ciphertext)?;
+            encode_identifier(&mut msg2, &self.c_r)?;
 
             self.state.lifecycle = Lifecycle::AwaitingMessage3;
             Ok(msg2)
@@ -1829,7 +1838,7 @@ mod tests {
 
         let g_y = hex!("dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c");
         let th_2 = hex!("c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4");
-        assert_eq!(transcript_2(&g_y, &message_1).unwrap(), th_2);
+        assert_eq!(transcript_2(&g_y, b"", &message_1).unwrap(), th_2);
 
         let prk_2e = hex!("e998b69d67c5856ceb6812f20590d0cd55ab25e24bf53348f35915883e94b694");
         let keystream_2 = hex!(
