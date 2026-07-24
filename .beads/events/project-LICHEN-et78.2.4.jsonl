@@ -1,1 +1,2 @@
 {"id":"019f8d71-6360-7c1d-abdd-b3935e588825","issue_id":"project-LICHEN-et78.2.4","event_type":"created","actor":"AI Agent","old_value":"","new_value":"","created_at":"2026-07-23T05:27:26.304794586Z"}
+{"id":"019f929c-3dad-78f6-817f-4ce0a512c1d5","issue_id":"project-LICHEN-et78.2.4","event_type":"closed","actor":"AI Agent","old_value":"","new_value":"Added self-target rejection in process_dao (root rejects DAOs targeting itself), SRH already has max_hops=8, compression rejection, and segments_left validation","created_at":"2026-07-24T05:32:20.781588675Z"}
