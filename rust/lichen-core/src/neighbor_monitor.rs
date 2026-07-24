@@ -92,7 +92,6 @@ impl<const L: usize> RingBuf<L> {
         }
         cnt
     }
-
 }
 
 impl<const L: usize> Clone for RingBuf<L> {

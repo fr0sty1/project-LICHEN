@@ -210,7 +210,8 @@ fn exercise_transfer(vector: &Vector) {
             vector.name,
             expected.name
         );
-        let parsed = Fragment::from_bytes(&wire).unwrap();
+        let mut buf = vec![0u8; wire.len()];
+        let parsed = Fragment::from_bytes(&wire, &mut buf).unwrap();
         assert_eq!(parsed, fragment);
     }
 
@@ -236,7 +237,8 @@ fn exercise_transfer(vector: &Vector) {
 
     if let Some(retransmission) = &loss.retransmission {
         let wire = expand(retransmission);
-        let fragment = Fragment::from_bytes(&wire).unwrap();
+        let mut buf = vec![0u8; wire.len()];
+        let fragment = Fragment::from_bytes(&wire, &mut buf).unwrap();
         assert_eq!(receiver.receive(&fragment).response, None);
         let result = receiver.receive_bytes(&expand(&loss.ack_req)).unwrap();
         assert_eq!(
@@ -374,7 +376,10 @@ fn exercise_malformed(vector: &Vector) {
             assert!(Ack::from_bytes_for(&wire, Some(mask)).is_err());
         }
         _ => {
-            assert!(Fragment::from_bytes(&wire).is_err());
+            assert!({
+                let mut buf = vec![0u8; wire.len()];
+                Fragment::from_bytes(&wire, &mut buf).is_err()
+            });
         }
     }
 }

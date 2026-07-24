@@ -30,6 +30,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
@@ -315,6 +316,7 @@ fn edhoc_kdf(
     result
         .extend_from_slice(okm.as_slice())
         .map_err(|_| EdhocError::BufferTooSmall)?;
+    okm.as_mut_slice().zeroize();
     Ok(result)
 }
 
@@ -754,7 +756,7 @@ impl EdhocInitiator {
         // prevent cryptographic weakness from ephemeral key reuse (RFC 9528 freshness).
 
         let result = (|| {
-            if g_xy.as_bytes() == &[0; KEY_LEN_32] {
+            if bool::from(g_xy.as_bytes().ct_eq(&[0; KEY_LEN_32])) {
                 return Err(EdhocError::InvalidMessage);
             }
             self.state.th_2 = transcript_2(&self.state.g_y, &self.state.msg1)?;
@@ -818,7 +820,7 @@ impl EdhocInitiator {
         peer: PeerCredential<'_>,
     ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
         if self.state.lifecycle != Lifecycle::PendingMessage2
-            || pending.transcript_binding != self.state.th_2
+            || !bool::from(pending.transcript_binding.ct_eq(&self.state.th_2))
         {
             return Err(EdhocError::InvalidState);
         }
@@ -926,7 +928,7 @@ impl EdhocInitiator {
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_2` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        if !self.state.completed || self.state.prk_4e3m.iter().fold(0u8, |acc, &b| acc | b) == 0 {
+        if !self.state.completed || bool::from(self.state.prk_4e3m.ct_eq(&[0u8; 32])) {
             return Err(OscoreError::NoContext);
         }
         // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
@@ -1190,7 +1192,7 @@ impl EdhocResponder {
         // is called multiple times (e.g., due to retransmission handling bugs).
 
         let result = (|| {
-            if g_xy.as_bytes() == &[0; KEY_LEN_32] {
+            if bool::from(g_xy.as_bytes().ct_eq(&[0; KEY_LEN_32])) {
                 return Err(EdhocError::InvalidMessage);
             }
             self.state.th_2 = transcript_2(self.eph_public.as_bytes(), msg1)?;
@@ -1359,7 +1361,7 @@ impl EdhocResponder {
         peer: PeerCredential<'_>,
     ) -> Result<(), EdhocError> {
         if self.state.lifecycle != Lifecycle::PendingMessage3
-            || pending.transcript_binding != self.state.th_3
+            || !bool::from(pending.transcript_binding.ct_eq(&self.state.th_3))
         {
             return Err(EdhocError::InvalidState);
         }
@@ -1422,7 +1424,7 @@ impl EdhocResponder {
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_3` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        if !self.state.completed || self.state.prk_4e3m.iter().fold(0u8, |acc, &b| acc | b) == 0 {
+        if !self.state.completed || bool::from(self.state.prk_4e3m.ct_eq(&[0u8; 32])) {
             return Err(OscoreError::NoContext);
         }
         // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
@@ -1859,7 +1861,7 @@ fn validate_peer_credential(peer: PeerCredential<'_>) -> Result<(), EdhocError> 
     let x_start = 6;
     let (x_bytes, x_consumed) = parse_bstr(&data[x_start..])?;
     let _ = x_consumed;
-    if x_bytes.len() != 32 || x_bytes != peer.public_key {
+    if x_bytes.len() != 32 || !bool::from(x_bytes.ct_eq(peer.public_key)) {
         return Err(EdhocError::SignatureVerification);
     }
     Ok(())
@@ -2047,7 +2049,7 @@ mod tests {
         let seed = [0x01u8; 32];
         let mut rng = rand_core::OsRng;
         let initiator = EdhocInitiator::new(seed, 0x00, &mut rng);
-        assert_eq!(initiator.c_i, 0x00);
+        assert_eq!(initiator.c_i, 0x00.into());
     }
 
     #[test]
@@ -2055,7 +2057,7 @@ mod tests {
         let seed = [0x01u8; 32];
         let mut rng = rand_core::OsRng;
         let responder = EdhocResponder::new(seed, 0x01, &mut rng);
-        assert_eq!(responder.c_r, 0x01);
+        assert_eq!(responder.c_r, 0x01.into());
     }
 
     #[test]
@@ -2123,10 +2125,10 @@ mod tests {
         assert_eq!(consumed, message_3.len());
         assert_eq!(ciphertext_3.len(), 88);
 
-        let plaintext_3 = hex!(
+        let _plaintext_3 = hex!(
             "a11822822e48c24ab2fd7643c79f584096e1cd5fceadfac1b5af819443f70924f5719955957fd02655beb4775e1a73186a0d1d3ea683f08f8d03dcecb9cf154e1c6f555a1e12ca118ce42bdba6878907"
         );
-        let credential_i = hex!(
+        let _credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
         let th_4 = hex!("808f794ae0030729022128ba917eeee05fed6ce5c32b2f28f15494584af0a591");
