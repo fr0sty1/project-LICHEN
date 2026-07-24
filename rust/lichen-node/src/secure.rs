@@ -1543,7 +1543,7 @@ mod tests {
         ipv6[7] = 64;
         let received = ReceivedIpv6 {
             ipv6,
-            sender_iid: [0x11; 8],
+            sender_iid: NodeId([0x11; 8]),
             rssi: None,
             snr: None,
         };
@@ -1577,7 +1577,7 @@ mod tests {
         ipv6[IPV6_HEADER_LEN + UDP_HEADER_LEN..].copy_from_slice(&coap);
         let received = ReceivedIpv6 {
             ipv6,
-            sender_iid: [0x11; 8],
+            sender_iid: NodeId([0x11; 8]),
             rssi: None,
             snr: None,
         };
