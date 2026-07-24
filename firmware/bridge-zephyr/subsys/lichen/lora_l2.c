@@ -168,7 +168,7 @@ static inline enum lora_state lora_get_state(void)
  * LoRa device - aliased in devicetree.
  *
  * ARCHITECTURAL LIMITATION (project-LICHEN-tvfm.110): This module uses static
- * global state (rx_stack, rx_thread_data, lora_mutex, tx_buf, lora_data) and
+ * global state (rx_stack, rx_thread_data, lora_mutex, tx_buf_mutex, lora_data) and
  * supports only ONE LoRa radio instance per system. The LORA_DEV macro
  * hardcodes DT_ALIAS(lora0) with no lora1/lora2 support.
  *
@@ -194,17 +194,11 @@ static struct k_thread rx_thread_data;
 /* Mutex protecting state transitions and callback registration */
 static K_MUTEX_DEFINE(lora_mutex);
 
-/* Mutex protecting TX buffer access - serializes concurrent transmissions.
- * Separate from lora_mutex because TX may block for ~500ms at SF10/255 bytes;
- * holding lora_mutex that long would starve RX callback registration. */
+/* TX serialization mutex - serializes concurrent transmissions so deinit() can
+ * wait for any in-flight TX to complete. Separate from lora_mutex because TX
+ * may block for ~500ms at SF10/255 bytes; holding lora_mutex that long would
+ * starve RX callback registration. */
 static K_MUTEX_DEFINE(tx_buf_mutex);
-
-/*
- * Internal TX buffer - copied before lora_send() to protect caller's data.
- * Zephyr's lora_send() takes a non-const pointer because some radio drivers
- * may modify the buffer (e.g., for DMA alignment or in-place encryption).
- */
-static uint8_t tx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
 
 /*
  * Module data (not state - state is managed by current_state atomic).
@@ -842,7 +836,7 @@ int lichen_lora_l2_deinit(void)
      * Wait for any in-flight TX to complete before cleanup. TX holds tx_buf_mutex
      * for the entire lora_send() duration (~500ms at SF10/255 bytes). By acquiring
      * this mutex here, we ensure:
-     * 1. No TX is currently using tx_buf
+     * 1. No TX is currently in-flight
      * 2. No new TX will start (deinit state check in tx() will fail after we
      *    transitioned to DEINITING above)
      *
@@ -850,7 +844,7 @@ int lichen_lora_l2_deinit(void)
      * We wait forever here because refusing to deinit leaves worse state.
      */
     k_mutex_lock(&tx_buf_mutex, K_FOREVER);
-    /* tx_buf is now safe - no active TX. We'll reinitialize the mutex below. */
+    /* No active TX in-flight. We'll reinitialize the mutex below. */
     k_mutex_unlock(&tx_buf_mutex);
 
     /*
@@ -1014,7 +1008,7 @@ int lichen_lora_l2_deinit(void)
     return 0;
 }
 
-int lichen_lora_l2_tx(const uint8_t *data, size_t len)
+int lichen_lora_l2_tx(uint8_t *data, size_t len)
 {
     if (data == NULL) {
         LOG_ERR("lora_l2: TX data pointer is NULL");
@@ -1072,11 +1066,9 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     LOG_DBG("lora_l2: TX %zu bytes", len);
 
     /*
-     * Serialize TX operations with tx_buf_mutex. This protects the memcpy
-     * and lora_send() sequence from concurrent callers corrupting tx_buf.
-     * The mutex is held for the full TX duration (~500ms at SF10/255 bytes),
-     * which serializes concurrent transmissions - acceptable since the radio
-     * can only transmit one packet at a time anyway.
+     * Serialize TX operations with tx_buf_mutex. The caller holds tx_mutex
+     * already, but tx_buf_mutex serves a separate purpose: it prevents deinit()
+     * from proceeding while a TX is in-flight (deinit waits for tx_buf_mutex).
      *
      * This is separate from lora_mutex because TX blocking would starve RX
      * callback registration if we held lora_mutex here.
@@ -1091,15 +1083,14 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     }
 
     /*
-     * Copy into internal buffer before lora_send(). Zephyr's lora_send()
-     * takes a non-const pointer because some radio drivers may modify the
-     * buffer. Copying protects the caller's data.
-     */
-    memcpy(tx_buf, data, len);
-
-    /*
-     * lora_send() follows the same error semantics as lora_config():
-     * returns 0 on success, negative errno on failure. Common errors:
+     * Pass caller's buffer directly to lora_send(). No memcpy needed:
+     * the caller holds tx_mutex and guarantees the buffer is stable.
+     * Zephyr's lora_send() takes a non-const pointer because some radio
+     * drivers may modify the buffer (e.g., for DMA alignment). The caller
+     * accepts this trade-off.
+     *
+     * lora_send() returns 0 on success, negative errno on failure.
+     * Common errors:
      *   -EBUSY: radio busy (CAD or prior TX in progress)
      *   -EIO: SPI/hardware communication failure
      *   -EINVAL: invalid parameters
@@ -1115,17 +1106,7 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      */
     BUILD_ASSERT(sizeof(size_t) <= sizeof(uint32_t),
                  "size_t larger than uint32_t - review lora_send() cast");
-    int ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)len);
-
-    /*
-     * SECURITY: Zero tx_buf after use to prevent leaking previous payload
-     * data. While lora_send() only transmits `len` bytes, zeroing provides
-     * defense-in-depth against:
-     * - Driver bugs that read beyond len
-     * - Debug logging that dumps the full buffer
-     * - Future code changes that access stale data
-     */
-    secure_zero(tx_buf, sizeof(tx_buf));
+    int ret = lora_send(lora_data.lora_dev, data, (uint32_t)len);
 
     k_mutex_unlock(&tx_buf_mutex);
 

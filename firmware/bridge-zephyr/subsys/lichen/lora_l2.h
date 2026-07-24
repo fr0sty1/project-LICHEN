@@ -232,15 +232,16 @@ int lichen_lora_l2_deinit(void);
 /**
  * @brief Transmit a packet over LoRa
  *
- * Copies data into an internal buffer before transmission.
- * The caller's buffer is never modified.
+ * Passes the caller's buffer directly to lora_send() without copying.
+ * The caller must hold synchronization that prevents their buffer from
+ * being modified or freed during the call (blocks up to ~500ms at SF10).
  *
- * @param data Packet data to send
+ * @param data Packet data to send (must remain valid during the call)
  * @param len Length of data (max 255 bytes)
  *
  * @return 0 on success, negative errno on failure
  */
-int lichen_lora_l2_tx(const uint8_t *data, size_t len);
+int lichen_lora_l2_tx(uint8_t *data, size_t len);
 
 /**
  * @brief Set the RX callback

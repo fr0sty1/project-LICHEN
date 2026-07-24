@@ -101,7 +101,11 @@ extern "C" {
 /** EUI-64 address length for peer identification */
 #define OSCORE_EUI64_LEN 8
 
-/** Position of sender_id_len in nonce (NONCE_LEN - 7 per RFC 8613 Section 5.2) */
+/**
+ * @deprecated Position of sender_id_len in the nonce (value 6).
+ * No longer used by the current nonce computation (which places s at position 0
+ * per RFC 8613 Section 5.2 / aiocoap reference). Kept for API compatibility.
+ */
 #define OSCORE_NONCE_S_POS 6
 
 /**

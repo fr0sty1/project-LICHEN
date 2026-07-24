@@ -1273,37 +1273,52 @@ static void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,
 			  const uint8_t *common_iv,
 			  uint8_t nonce[OSCORE_NONCE_LEN])
 {
-	memset(nonce, 0, OSCORE_NONCE_LEN);
+	size_t off = 0;
+
 	if (sender_id == NULL) sender_id_len = 0;
 	if (piv == NULL) piv_len = 0;
 
 	/*
-	 * RFC 8613 Section 5.2: The nonce is constructed as:
-	 *   - First byte: left-pad zeros such that ID ends at byte NONCE_LEN-1
-	 *   - s (sender_id_len) is placed at byte (NONCE_LEN - 6 - 1) = byte 6
-	 *   - sender_id is right-aligned in the last 6 bytes (positions 7-12)
-	 *   - For sender_id_len == 7, the first byte of sender_id is XORed
-	 *     with the s field at position 6
+	 * RFC 8613 Section 5.2, aiocoap reference implementation:
+	 *
+	 * Nonce construction for 13-byte AEAD nonce (AES-CCM-16-64-128):
+	 *
+	 *   components = s(1) || pad_id(13-6-sender_id_len) || sender_id ||
+	 *                pad_piv(5-piv_len) || piv
+	 *
+	 *   nonce = common_IV XOR components
+	 *
+	 * Total = 1 + (13-6-sender_id_len) + sender_id_len + (5-piv_len) + piv_len
+	 *       = 1 + 7 + 0 + 5 + 0 = 13 bytes.
+	 *
+	 * Where:
+	 *   s = sender_id_len encoded as 1 byte
+	 *   pad_id = zeros to fill the 6-byte sender_id slot
+	 *   pad_piv = zeros to fill the 5-byte partial_iv slot
 	 */
 
-	/* Encode sender_id_len at position OSCORE_NONCE_S_POS per RFC 8613 */
-	nonce[OSCORE_NONCE_S_POS] = (uint8_t)sender_id_len;
+	/* s: sender_id_len */
+	nonce[off++] = (uint8_t)sender_id_len;
 
-	/* Place sender_id right-aligned in the last bytes, up to 7 bytes */
-	if (sender_id_len > 0 && sender_id_len <= 7) {
-		/* sender_id ends at position NONCE_LEN-1 (byte 12) */
-		size_t start = OSCORE_NONCE_LEN - sender_id_len;
-		for (size_t i = 0; i < sender_id_len; i++) {
-			nonce[start + i] ^= sender_id[i];
-		}
+	/* pad_id: zeros filling the 6-byte slot after s */
+	size_t pad_id_len = OSCORE_NONCE_LEN - 6 - sender_id_len;
+	memset(nonce + off, 0, pad_id_len);
+	off += pad_id_len;
+
+	/* sender_id */
+	if (sender_id_len > 0) {
+		memcpy(nonce + off, sender_id, sender_id_len);
+		off += sender_id_len;
 	}
 
-	/* Left-padded PIV in last 5 bytes (positions 8-12) */
-	if (piv_len > 0 && piv_len <= 5) {
-		size_t piv_start = OSCORE_NONCE_LEN - piv_len;
-		for (size_t i = 0; i < piv_len; i++) {
-			nonce[piv_start + i] ^= piv[i];
-		}
+	/* pad_piv: zeros before PIV */
+	size_t pad_piv_len = 5 - piv_len;
+	memset(nonce + off, 0, pad_piv_len);
+	off += pad_piv_len;
+
+	/* piv */
+	if (piv_len > 0) {
+		memcpy(nonce + off, piv, piv_len);
 	}
 
 	/* XOR with common IV */
