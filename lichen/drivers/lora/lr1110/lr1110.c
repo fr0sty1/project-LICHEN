@@ -629,17 +629,75 @@ static int lr1110_lora_recv_async(const struct device *dev, lora_recv_cb cb)
 static int lr1110_lora_cad(const struct device *dev, k_timeout_t timeout,
 			   bool *busy)
 {
-	ARG_UNUSED(dev);
-	ARG_UNUSED(timeout);
-
-	/* TODO: real LR1110 CAD using lr1110_radio_set_cad_params + lr1110_radio_cad
-	 * and poll IRQ or use DIO for completion. For now stub assumes clear channel
-	 * to unblock TX path. Update with full impl per spec and test vectors.
-	 */
-	if (busy != NULL) {
-		*busy = false;
+	if (busy == NULL) {
+		return -EINVAL;
 	}
-	LOG_DBG("lr1110: CAD stub (channel clear)");
+
+	/* Configure CAD params for the current LoRa config. Defaults match
+	 * typical SF10/BW125: 8 symbols, det_peak=0x32, det_min=0x0A.
+	 * Exit to standby after CAD so the radio doesn't auto-RX. */
+	lr1110_radio_cad_params_t cad_params = {
+		.symbol_num = 8,
+		.det_peak   = 0x32,
+		.det_min    = 0x0A,
+		.exit_mode  = LR1110_RADIO_CAD_EXIT_MODE_STANDBYRC,
+		.timeout    = 0,
+	};
+
+	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
+
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_cad_params(dev, &cad_params));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_system_set_dio_irq_params(
+			dev, LR1110_SYSTEM_IRQ_CADDONE_MASK |
+			     LR1110_SYSTEM_IRQ_CADDETECTED_MASK, 0));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_cad(dev));
+
+	/* Poll for CAD completion */
+	lr1110_system_stat1_t stat1;
+	lr1110_system_stat2_t stat2;
+	uint32_t irq = 0;
+	int64_t deadline = k_uptime_get() + k_ticks_to_ms_floor64(timeout.ticks);
+	do {
+		lichen_radio_progress();
+		k_sleep(K_MSEC(10));
+		lr1110_system_get_status(dev, &stat1, &stat2, &irq);
+		if (irq & (LR1110_SYSTEM_IRQ_CADDONE_MASK |
+			   LR1110_SYSTEM_IRQ_CADDETECTED_MASK)) {
+			break;
+		}
+	} while (k_uptime_get() < deadline);
+
+	lr1110_system_clear_irq(dev, irq);
+
+	int ret = lr1110_hal_get_last_error();
+	if (ret < 0) {
+		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC);
+		*busy = false;
+		return ret;
+	}
+
+	if (!(irq & (LR1110_SYSTEM_IRQ_CADDONE_MASK |
+		     LR1110_SYSTEM_IRQ_CADDETECTED_MASK))) {
+		/* Timed out — assume channel clear */
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
+		*busy = false;
+		return 0;
+	}
+
+	*busy = (irq & LR1110_SYSTEM_IRQ_CADDETECTED_MASK) != 0;
+
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
+
+	/* Restore IRQ mask for normal radio operations */
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_system_set_dio_irq_params(dev, LR1110_IRQ_RADIO, 0));
+
+	LOG_DBG("lr1110: CAD %s", *busy ? "busy" : "clear");
 	return 0;
 }
 
@@ -649,6 +707,7 @@ static const struct lora_driver_api lr1110_lora_api = {
 	.send_async = lr1110_lora_send_async,
 	.recv       = lr1110_lora_recv,
 	.recv_async = lr1110_lora_recv_async,
+	.test_cw    = NULL,
 	.cad        = lr1110_lora_cad,
 };
 

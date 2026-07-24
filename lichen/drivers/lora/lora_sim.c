@@ -401,11 +401,28 @@ static int lora_sim_cad(const struct device *dev, k_timeout_t timeout,
 	return 0;
 }
 
+static int lora_sim_send_async(const struct device *dev, uint8_t *data,
+			       uint32_t data_len, struct k_poll_signal *async)
+{
+	ARG_UNUSED(async);
+	return lora_sim_send(dev, data, data_len);
+}
+
+static int lora_sim_recv_async(const struct device *dev, lora_recv_cb cb)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(cb);
+	return -ENOTSUP;
+}
+
 static const struct lora_driver_api lora_sim_api = {
-	.config = lora_sim_config,
-	.send   = lora_sim_send,
-	.recv   = lora_sim_recv,
-	.cad    = lora_sim_cad,
+	.config     = lora_sim_config,
+	.send       = lora_sim_send,
+	.send_async = lora_sim_send_async,
+	.recv       = lora_sim_recv,
+	.recv_async = lora_sim_recv_async,
+	.test_cw    = NULL,
+	.cad        = lora_sim_cad,
 };
 
 #define LORA_SIM_DEFINE(inst)						\
