@@ -410,15 +410,13 @@ fn encode_tstr<const N: usize>(
     Ok(())
 }
 
-/// TH_2 = H(G_Y || H(message_1)) per RFC 9528 / test vectors.
-fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
+/// TH_2 = H(G_Y || H(message_1)) per RFC 9528 Section 3.2.
+fn transcript_2(g_y: &[u8; 32], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 64>::new();
-    buf.extend_err(g_y)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    buf.extend_err(&h_msg1)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    Ok(compute_th(&buf))
+    let mut input = heapless::Vec::<u8, 128>::new();
+    encode_bstr(&mut input, g_y)?;
+    encode_bstr(&mut input, &h_msg1)?;
+    Ok(compute_th(&input))
 }
 
 /// TH_3 = H(CBOR(TH_2) || CBOR(input) || CBOR(cred)).
@@ -430,20 +428,17 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
     Ok(compute_th(&buf))
 }
 
-/// TH_4 = H(CBOR(TH_3) || CBOR(plaintext) || CBOR(cred)) per RFC 9528 / test vectors.
 fn transcript_4(
     th_3: &[u8; 32],
-    plaintext: &[u8],
-    cred: &[u8],
+    ciphertext_3: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, plaintext)?;
-    encode_bstr(&mut buf, cred)?;
+    encode_bstr(&mut buf, ciphertext_3)?;
     Ok(compute_th(&buf))
 }
 
-fn build_context_2(_c_r: &ConnectionId, id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+fn build_context_2(id_cred: &[u8], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut buf = heapless::Vec::<u8, 128>::new();
     encode_bstr(&mut buf, id_cred)?;
     encode_bstr(&mut buf, cred)?;
@@ -813,7 +808,7 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_2(&pending.c_r, pending.id_cred.as_bytes(), &self.state.th_2, peer.credential)?;
+            let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
             let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 32)?;
             let m_2 = build_signature_structure(
                 pending.id_cred.as_bytes(),
@@ -852,9 +847,10 @@ impl EdhocInitiator {
             let m_3 =
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
             let signature_3 = self.signing_key.sign(&m_3);
-            let mut plaintext_3 = heapless::Vec::<u8, 80>::new();
-            encode_bstr(&mut plaintext_3, self.pubkey.as_bytes())?;
-            encode_bstr(&mut plaintext_3, &signature_3.to_bytes())?;
+            let mut ciphertext_3 = SecretVec::<128>::new();
+            encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
+            encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
+            let data_3 = ciphertext_3.clone();
 
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
@@ -869,8 +865,6 @@ impl EdhocInitiator {
             a_3.push_err(32)?;
             a_3.extend_err(&self.state.th_3)?;
 
-            let mut ciphertext_3 = SecretVec::<128>::new();
-            ciphertext_3.extend_err(&plaintext_3)?;
             let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
             let mut nonce = Zeroizing::new([0u8; NONCE_LEN]);
             nonce.copy_from_slice(&iv_3);
@@ -879,7 +873,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &data_3.0)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1118,12 +1112,7 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(
-                &ConnectionId::new(&[self.c_r]).map_err(|_| EdhocError::BufferTooSmall)?,
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-            )?;
+            let context_2 = build_context_2(&id_cred_r, &credential_r)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -1307,7 +1296,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1597,7 +1586,7 @@ mod tests {
         );
         let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
         assert_eq!(
-            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
+            transcript_4(&th_3, &plaintext_3).unwrap(),
             th_4
         );
 
@@ -2303,6 +2292,7 @@ mod tests {
                 resp_payload,
                 request_kid,
                 request_piv,
+                false,
             )
             .expect("responder protect_response failed");
 
