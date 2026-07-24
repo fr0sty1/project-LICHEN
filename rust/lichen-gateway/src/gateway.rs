@@ -2,34 +2,59 @@
 
 #![forbid(unsafe_code)]
 
+use std::fmt;
+
 use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
 use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
+use lichen_hal::loopback::LoopbackRadio;
+use lichen_hal::storage::mem::MemStorage;
+use lichen_link::identity::Identity;
+use lichen_link::keys::Seed;
 use lichen_node::{
-    runtime::{RplRuntime, RplRuntimeConfig},
+    announce::AnnounceProcessor,
+    gradient::GradientTable,
+    rpl_stack::RplStack,
+    secure::SecureStack,
     stack::add_rpl_source_route,
-    RplEvent, RplNode,
+    RplEvent,
 };
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
-#[derive(Debug)]
 pub struct Gateway {
-    rpl_node: RplNode,
-    runtime: RplRuntime,
+    rpl_stack: RplStack<LoopbackRadio, MemStorage>,
+}
+
+impl fmt::Debug for Gateway {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Gateway")
+            .field("node_id", &self.rpl_stack.rpl_node().node().node_id)
+            .finish()
+    }
 }
 
 impl Gateway {
+    /// Create a new root gateway with a deterministic test identity.
+    ///
+    /// Uses `Seed::new([0x01; 32])` as the node identity. The `node_id`
+    /// parameter is retained for backward compatibility; the root address
+    /// is derived from the identity's public key per spec.
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
-        let addr = node_id.link_local_addr().0;
-        Self {
-            rpl_node: RplNode::new_root(node_id),
-            runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
-        }
+        let identity = Identity::from_seed(Seed::new([0x01; 32]));
+        let root_addr = identity_pubkey_link_local(&identity);
+        let dodag_id = root_addr;
+        let (radio, _peer) = LoopbackRadio::pair();
+        let stack = SecureStack::from_radio(radio, identity, 128);
+        let announces = AnnounceProcessor::new(GradientTable::new(64), dodag_id[..8].try_into().unwrap());
+        let storage = MemStorage::new();
+        let rpl_stack = RplStack::provision_root(stack, root_addr, dodag_id, announces, storage)
+            .expect("gateway RPL root provision");
+        Self { rpl_stack }
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
@@ -115,14 +140,15 @@ impl Gateway {
         }
         (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
-            || self.rpl_node.router().lookup_route(dst).is_some()
+            || self.rpl_stack.rpl_node().router().lookup_route(dst).is_some()
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
         self.maintain(now_ms);
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self
-            .rpl_node
+            .rpl_stack
+            .rpl_node()
             .handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
@@ -137,7 +163,7 @@ impl Gateway {
     /// monotonic time from Instant::elapsed(). Respects defer-external;
     /// does not auto-admit by TOFU (admission requires explicit pin).
     pub fn maintain(&mut self, now_ms: u64) {
-        let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
+        self.rpl_stack.maintain(now_ms, 10_000, &());
     }
 
     /// Route a packet for a destination that is part of the local RPL mesh.
@@ -166,14 +192,14 @@ impl Gateway {
         let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
             ipv6.to_vec()
         } else {
-            let route = match self.rpl_node.router().lookup_route(&dst) {
+            let route = match self.rpl_stack.rpl_node().router().lookup_route(&dst) {
                 Some(r) => r,
                 None => return None,
             };
             if route.len() == 1 {
                 ipv6.to_vec()
             } else {
-                let root_addr = self.rpl_node.node().node_id.link_local_addr().0;
+                let root_addr = self.rpl_stack.rpl_node().node().node_id.link_local_addr().0;
                 let is_root_origin = ipv6[8..24] == root_addr;
                 let is_host_route = route.last() == Some(&dst);
                 if is_root_origin && is_host_route {
@@ -227,6 +253,15 @@ impl Gateway {
             }
         }
     }
+}
+
+/// Build a link-local IPv6 address from an identity's public-key-derived IID.
+fn identity_pubkey_link_local(identity: &Identity) -> [u8; 16] {
+    let mut addr = [0u8; 16];
+    addr[0] = 0xfe;
+    addr[1] = 0x80;
+    addr[8..].copy_from_slice(&identity.iid);
+    addr
 }
 
 #[cfg(test)]
