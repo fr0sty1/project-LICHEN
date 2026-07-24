@@ -243,22 +243,48 @@ For diagnostic and reachability testing.
 
 ### 4.5. Rule 3: RPL DIO (link-local)
 
-For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=1). 
+For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:521`, `python/src/lichen/schc/rules.py:336`, and `constants.toml:32` (ICMPv6 type=155, code=1).
 
-RPL options (TLVs) use MATCH_MAPPING on Type (prioritized: Pad1=0, PIO(type=3)=1, DAG Metric=2, Target=5, Transit=6, Origin-Sig, SCHC-Version). For Prefix Info Option (type 3):
+**Full Rule Field Table** (formed by `_ipv6_header_fields(58, link_local=True)` + `_icmpv6_rpl_fields(1)` + `_DIO_BASE_FIELDS` in rules.py:336):
 
 | Field | TV | MO | CDA | Notes |
 |-------|----|----|-----|-------|
-| RPL.Option.Type | [0,3,2,5,6,...] | match-mapping | mapping-sent | 3-bit index for common types |
+| IPv6.Version | 6 | equal | not-sent | |
+| IPv6.TrafficClass | 0 | equal | not-sent | |
+| IPv6.FlowLabel | 0 | equal | not-sent | |
+| IPv6.PayloadLength | - | ignore | compute | |
+| IPv6.NextHeader | 58 | equal | not-sent | ICMPv6 |
+| IPv6.HopLimit | - | ignore | value-sent | 1 byte |
+| IPv6.SrcPrefix | fe80::/64 | msb(64) | lsb(64) | IID only |
+| IPv6.DstPrefix | fe80::/64 | msb(64) | lsb(64) | IID only |
+| ICMPv6.Type | 155 | equal | not-sent | RPL control |
+| ICMPv6.Code | 1 | equal | not-sent | DIO |
+| ICMPv6.Checksum | - | ignore | compute | |
+| RPL.Instance | - | ignore | value-sent | 1 byte |
+| RPL.Version | - | ignore | value-sent | 1 byte |
+| RPL.Rank | - | ignore | value-sent | 2 bytes |
+| RPL.GMOP | - | ignore | value-sent | 1 byte |
+| RPL.DTSN | - | ignore | value-sent | 1 byte |
+| RPL.Flags | 0 | equal | not-sent | 1 byte |
+| RPL.Reserved | 0 | equal | not-sent | 1 byte |
+| RPL.DODAGID | - | ignore | value-sent | 16 bytes |
+
+**RPL Options Compression:** RPL option TLVs use MATCH_MAPPING on Type with a prioritized list of 4 common types: Pad1(type=0, index 0), PIO(type=3, index 1), DAG Metric(type=2, index 2), Target(type=5, index 3). `mapping_bits() = (4-1).bit_length() = 2` bits for the index.
+
+For Prefix Info Option (type 3, index 1):
+
+| Field | TV | MO | CDA | Notes |
+|-------|----|----|-----|-------|
+| RPL.Option.Type | [0,3,2,5] | match-mapping | mapping-sent | 2-bit index (Pad1=00, PIO=01, DAG Metric=10, Target=11) |
 | RPL.Option.Len | 30 | equal | not-sent | PIO fixed length |
 | PIO.PrefixLen | 64 | equal | not-sent | Common /64 |
 | PIO.Flags | 0xC0 | equal | not-sent | L+A flags |
 | PIO.Valid/Preferred | - | ignore | value-sent | Lifetimes |
 | PIO.Prefix | - | msb(64) | lsb(64) | IID part compressible |
 
-See appendix-schc.md §A.4 and test/vectors/schc_compression.json for full tables. Reduces options from 20-40B to ~8-15B.
+See appendix-schc.md §A.4, `python/src/lichen/schc/rules.py:336` (RPL_DIO_RULE), `rules.py:131` (mapping_bits), and test/vectors/schc_compression.json for full tables. Reduces options from 20-40B to ~8-15B.
 
-**Compressed size:** ~12-20 bytes total (base + compressed options)
+**Compressed size:** ~10-16 bytes total (base residue + compressed options), dominated by 16-byte DODAGID.
 
 ### 4.6. Rule 4: RPL DAO (routable multi-hop)
 

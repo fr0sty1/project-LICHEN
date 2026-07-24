@@ -181,9 +181,14 @@ class TestIndexCards:
 
     async def test_polling_targets_are_served_locally(self, client: AsyncClient) -> None:
         resp = await client.get("/")
+        # mesh-stats is brought in via an additional hx-get in the inline
+        # static HTML, not a re-route-able partial — skip it.
+        # mesh-stats is a pre-rendered mock partial (no CoAP fetch), so its
+        # shared _mock_fetch([]) fixture is fine for a 200 check.
         targets = sorted(set(re.findall(r'hx-get="([^"]+)"', resp.text)))
         assert targets == [
             "/partial/location",
+            "/partial/mesh-stats",
             "/partial/messages",
             "/partial/neighbors",
             "/partial/presence",
