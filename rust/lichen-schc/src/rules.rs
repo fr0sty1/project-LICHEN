@@ -407,6 +407,69 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
     },
 ];
 
+/// RPL DIO option field descriptors per appendix-schc.md A.4.
+/// RPL.Option.Type uses MATCH_MAPPING (prioritized: 0=Pad1,3=PIO,2=DagMetric,...).
+/// PIO-specific fields follow for type=3.
+/// Defined as a constant for documentation and future codec integration;
+/// currently options pass as tail verbatim, so this const is unused.
+#[allow(dead_code)]
+const RPL_DIO_OPTION_FIELDS: &[FieldDescriptor] = &[
+    FieldDescriptor {
+        field_id: "RPL.Option.Type",
+        length_bits: 8,
+        mo: Mo::MatchMapping,
+        cda: Cda::MappingSent,
+        target_value: 0,
+        mo_arg: None,
+        mapping: Some(&[0, 3, 2, 5, 6, 7]),
+    },
+    FieldDescriptor {
+        field_id: "RPL.Option.Len",
+        length_bits: 8,
+        mo: Mo::Equal,
+        cda: Cda::NotSent,
+        target_value: 30,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.PrefixLen",
+        length_bits: 8,
+        mo: Mo::Equal,
+        cda: Cda::NotSent,
+        target_value: 64,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.Flags",
+        length_bits: 8,
+        mo: Mo::Equal,
+        cda: Cda::NotSent,
+        target_value: 0xC0,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.ValidPreferred",
+        length_bits: 64,
+        mo: Mo::Ignore,
+        cda: Cda::ValueSent,
+        target_value: 0,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.Prefix",
+        length_bits: 128,
+        mo: Mo::Msb,
+        cda: Cda::Lsb,
+        target_value: 0xfe80_0000_0000_0000_0000_0000_0000_0000,
+        mo_arg: Some(64),
+        mapping: None,
+    },
+];
+
 const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
     FieldDescriptor {
         field_id: "RPL.instance",
