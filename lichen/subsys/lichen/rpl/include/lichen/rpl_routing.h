@@ -122,25 +122,56 @@ static inline uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses)
 /* ── Routing Table ─────────────────────────────────────────────────────────── */
 
 /**
- * @brief Single route entry: target address and path to reach it
+ * @brief Single route entry: target prefix and path to reach it
+ *
+ * For /128 (host) routes, target holds the full address and prefix_len=128,
+ * path ends with target. For shorter prefix routes, target holds the prefix,
+ * prefix_len < 128, and path ends at the egress node (not the prefix itself).
  */
 struct lichen_rpl_route {
 	uint8_t target[16];
-	uint8_t path[LICHEN_RPL_MAX_HOPS][16];  /**< [0]=first hop, ..., [n-1]=target */
+	uint8_t prefix_len;                        /**< Prefix length (1-128). /128 = host route */
+	uint8_t path[LICHEN_RPL_MAX_HOPS][16];     /**< [0]=first hop, ..., [n-1]=target or egress */
 	uint8_t path_len;
-	uint8_t path_lifetime;   /**< TTL in lifetime units (from Transit Info) */
-	uint32_t last_updated;   /**< Timestamp when route was last updated (caller-provided) */
+	uint8_t path_lifetime;                     /**< TTL in lifetime units (from Transit Info) */
+	uint32_t last_updated;                     /**< Timestamp when route was last updated */
 	bool valid;
+	bool is_prefix;                            /**< True when prefix_len < 128 (prefix route) */
 };
+
+/**
+ * @brief Bound capacity for managed-prefix tracking.
+ *
+ * Managed prefixes are non-/128 routes whose egress nodes are in
+ * rpl_managed_hosts. The bound prevents O(n) linear scans over the
+ * entire routing table when managing prefix egress reconciliation.
+ * The default constrains memory to a worst-case of 32 prefixes.
+ */
+#ifndef CONFIG_LICHEN_RPL_MAX_PREFIX_ROUTES
+#define CONFIG_LICHEN_RPL_MAX_PREFIX_ROUTES 32
+#endif
 
 /**
  * @brief Root-side routing table (non-storing mode)
  *
- * Maps target address to the ordered hop list [h1, ..., target].
- * First element is root's direct neighbor; last is the target.
+ * Maps target prefix to the ordered hop list [h1, ..., target/egress].
+ * First element is root's direct neighbor; last is the target (for /128
+ * host routes) or the egress node (for prefix routes).
+ *
+ * Prefix routes share the total route capacity but are tracked separately
+ * for longest-prefix-match lookup and managed-prefix lifecycle.
  */
 struct lichen_rpl_routing_table {
 	struct lichen_rpl_route routes[CONFIG_LICHEN_RPL_MAX_ROUTES];
+	uint8_t prefix_route_count;                             /**< Number of non-/128 prefix routes */
+	uint8_t rpl_managed_hosts[CONFIG_LICHEN_RPL_MAX_PREFIX_ROUTES][16]; /**< Egress nodes whose DAOs produce managed prefix routes */
+	uint8_t rpl_managed_host_count;
+	struct {
+		uint8_t prefix[16];
+		uint8_t prefix_len;
+		uint8_t egress[16];
+	} rpl_managed_prefixes[CONFIG_LICHEN_RPL_MAX_PREFIX_ROUTES];       /**< Managed prefix → egress */
+	uint8_t rpl_managed_prefix_count;
 };
 
 /**
@@ -188,6 +219,102 @@ lichen_rpl_routing_table_lookup(const struct lichen_rpl_routing_table *_Nullable
  * @brief Get number of valid routes.
  */
 int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *_Nullable rt);
+
+/**
+ * @brief Canonicalize a prefix: mask trailing bits, zero unused bytes.
+ *
+ * @param prefix     Prefix bytes to canonicalize (modified in place)
+ * @param prefix_len Prefix length (1-128). Returns false if > 128.
+ * @return true on success, false if prefix_len > 128
+ */
+bool lichen_rpl_prefix_canonicalize(uint8_t *_Nonnull prefix, uint8_t prefix_len);
+
+/**
+ * @brief Check whether a prefix covers an address (longest-prefix-match test).
+ *
+ * @param prefix      Canonical prefix bytes (16)
+ * @param prefix_len  Prefix length (1-128)
+ * @param address     Address to test (16 bytes)
+ * @return true if address falls within prefix
+ */
+bool lichen_rpl_prefix_contains(const uint8_t *_Nonnull prefix, uint8_t prefix_len,
+				const uint8_t *_Nonnull address);
+
+/**
+ * @brief Add a prefix route (non-/128) to its egress path.
+ *
+ * Validates that prefix_len < 128, the path ends at egress, and the path
+ * does not contain the canonical prefix address. Returns LICHEN_RPL_ERR_FULL
+ * if the table is at capacity.
+ *
+ * @param rt       Routing table
+ * @param prefix   Canonical prefix bytes (16)
+ * @param prefix_len Prefix length (1-127)
+ * @param egress   Egress node address (16 bytes)
+ * @param path     Array of hop addresses ending at egress
+ * @param path_len Number of hops
+ * @return 0 on success, negative error code on failure
+ */
+int lichen_rpl_routing_table_add_prefix(struct lichen_rpl_routing_table *_Nonnull rt,
+					const uint8_t *_Nonnull prefix,
+					uint8_t prefix_len,
+					const uint8_t *_Nonnull egress,
+					const uint8_t path[][16],
+					uint8_t path_len);
+
+/**
+ * @brief Remove a prefix route.
+ *
+ * No-op if no matching non-/128 prefix route exists.
+ */
+void lichen_rpl_routing_table_remove_prefix(struct lichen_rpl_routing_table *_Nullable rt,
+					    const uint8_t *_Nonnull prefix,
+					    uint8_t prefix_len);
+
+/**
+ * @brief Mark a prefix route as expired (state hidden but entry retained).
+ *
+ * @return true if found and marked, false if not found or prefix_len==128
+ */
+bool lichen_rpl_routing_table_mark_prefix_expired(struct lichen_rpl_routing_table *_Nullable rt,
+						  const uint8_t *_Nonnull prefix,
+						  uint8_t prefix_len);
+
+/**
+ * @brief Mark a host (/128) route as stale.
+ *
+ * @return true if found and marked, false if not found
+ */
+bool lichen_rpl_routing_table_mark_stale(struct lichen_rpl_routing_table *_Nullable rt,
+					 const uint8_t *_Nonnull target);
+
+/**
+ * @brief Mark a host (/128) route as expired (stale entry removed).
+ *
+ * @return true if found and marked, false if not found
+ */
+bool lichen_rpl_routing_table_mark_expired(struct lichen_rpl_routing_table *_Nullable rt,
+					   const uint8_t *_Nonnull target);
+
+/**
+ * @brief Add an egress to the managed-hosts set.
+ *
+ * @return 0 on success, LICHEN_RPL_ERR_FULL if at capacity
+ */
+int lichen_rpl_routing_table_add_managed_host(struct lichen_rpl_routing_table *_Nonnull rt,
+					      const uint8_t *_Nonnull egress);
+
+/**
+ * @brief Remove an egress from the managed-hosts set.
+ */
+void lichen_rpl_routing_table_remove_managed_host(struct lichen_rpl_routing_table *_Nullable rt,
+						  const uint8_t *_Nonnull egress);
+
+/**
+ * @brief Check whether an egress is a managed host.
+ */
+bool lichen_rpl_routing_table_is_managed_host(const struct lichen_rpl_routing_table *_Nullable rt,
+					      const uint8_t *_Nonnull egress);
 
 /**
  * @brief Expire stale routes.
@@ -387,6 +514,47 @@ enum lichen_rpl_sequence_relation lichen_rpl_sequence_compare(
 int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *_Nonnull dm,
 				     const uint8_t *_Nonnull parent_addr,
 				     uint8_t *_Nonnull buf, size_t len);
+
+/**
+ * @brief Build a DAO with a specific lifetime, advancing both sequences.
+ *
+ * Same as lichen_rpl_dao_manager_build_dao() but allows setting path_lifetime explicitly
+ * instead of using the default (255 = infinite). Advances both dao_sequence and
+ * path_sequence. Records the (parent, lifetime) pair for subsequent copy operations.
+ *
+ * @param dm             DAO manager
+ * @param parent_addr    Parent's IPv6 address (16 bytes)
+ * @param path_lifetime  Path lifetime (Transit Info field; must be 0-255; 255 = infinite)
+ * @param buf            Output buffer
+ * @param len            Buffer size (needs ~64 bytes)
+ * @return Number of bytes written, or negative error
+ */
+int lichen_rpl_dao_manager_build_dao_with_lifetime(struct lichen_rpl_dao_manager *_Nonnull dm,
+						   const uint8_t *_Nonnull parent_addr,
+						   uint8_t path_lifetime,
+						   uint8_t *_Nonnull buf, size_t len);
+
+/**
+ * @brief Build a DAO copy reusing the last logical update without advancing Path Sequence.
+ *
+ * Requires that the last successful build_dao_with_lifetime had exactly (parent_addr,
+ * path_lifetime). Advances only dao_sequence for root replay checks. Returns
+ * LICHEN_RPL_ERR_INVALID when the (parent, lifetime) pair does not match the last
+ * logical update, the last update was not a logical (path-advancing) build, or the
+ * last built update failed.
+ *
+ * @param dm             DAO manager
+ * @param parent_addr    Parent's IPv6 address (must match last logical update)
+ * @param path_lifetime  Path lifetime (must match last logical update)
+ * @param buf            Output buffer
+ * @param len            Buffer size (needs ~64 bytes)
+ * @return Number of bytes written, or negative error
+ */
+int lichen_rpl_dao_manager_build_dao_copy_with_lifetime(
+	struct lichen_rpl_dao_manager *_Nonnull dm,
+	const uint8_t *_Nonnull parent_addr,
+	uint8_t path_lifetime,
+	uint8_t *_Nonnull buf, size_t len);
 
 int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *_Nonnull dm,
 				     uint8_t dao_sequence, uint8_t status,
