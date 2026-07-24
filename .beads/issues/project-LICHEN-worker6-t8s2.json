@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-t8s2",
   "title": "[review] project-LICHEN-worker6-p6n9: lichen_tdma_init declaration/definition mismatch — header updated, .c body stale",
   "description": "link_ctx.c:586 still has old signature lichen_tdma_init(struct lichen_tdma_slot *s). Header at link.h:335 now declares lichen_tdma_init(struct lichen_tdma_ctx *tdma, const struct lichen_link_ctx *ctx). Declaration and definition mismatch = compile error. C body also only inits slot fields (id, assigned, next) not tdma_ctx fields. Must update .c to match new header.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:25:53.535224948Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:26:10.152612805Z",
-  "started_at": "2026-07-24T19:26:10.152612805Z",
-  "lease_expires_at": "2026-07-24T19:31:10.152612805Z",
-  "heartbeat_at": "2026-07-24T19:26:10.152612805Z"
+  "updated_at": "2026-07-24T20:21:44.111788571Z",
+  "started_at": "2026-07-24T19:26:10.152612805Z"
 }
