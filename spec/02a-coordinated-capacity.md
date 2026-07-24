@@ -148,7 +148,7 @@ Procedure AdaptiveSFSelect(AssignedSF, Neighbor, Density, Utilization, LoadFacto
          IF Utilization > 200 THEN RETURN (SF, false)  // tx not allowed
    6. RETURN (SF, true)
 
-EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neighbor state on every RX. Integrate with RPL DIO capability signaling. No dead code.
+EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2) (see rf_health.rs:148 for Q16.16 impl). Update per-neighbor state on every RX. Integrate with RPL DIO capability signaling. No dead code.
 
 (The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
