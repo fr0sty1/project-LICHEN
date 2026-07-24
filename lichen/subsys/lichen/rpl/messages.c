@@ -232,7 +232,7 @@ int lichen_rpl_dao_ack_write(const struct lichen_rpl_dao_ack *ack,
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
 
-	uint8_t d_byte = (d_flag ? 0x80 : 0) | (ack->flags & 0x7F);
+	uint8_t d_byte = (d_flag ? 0x40 : 0) | (ack->flags & 0x3F);
 
 	buf[0] = ack->rpl_instance_id;
 	buf[1] = d_byte;

@@ -69,6 +69,7 @@ class AnnounceScheduler:
     transmitter: AnnounceTransmitter
     config: SchedulerConfig = field(default_factory=SchedulerConfig)
     app_data: bytes = field(default=b"")
+    rx_channel: int = field(default=0)
 
     # Internal state
     _seq_num: int = field(default=0, init=False, repr=False)
@@ -149,7 +150,7 @@ class AnnounceScheduler:
             pubkey=self.identity.pubkey,
             seq_num=seq,
             hop_count=0,
-            rx_channel=0,
+            rx_channel=self.rx_channel,
             app_data=self.app_data,
         )
         signature = sign(
@@ -163,7 +164,7 @@ class AnnounceScheduler:
             pubkey=msg.pubkey,
             seq_num=msg.seq_num,
             hop_count=msg.hop_count,
-            rx_channel=msg.rx_channel,
+            rx_channel=self.rx_channel,
             signature=signature,
             app_data=msg.app_data,
         )
