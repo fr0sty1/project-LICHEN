@@ -9,10 +9,10 @@
   "owner": "mark.frost@gmail.com",
   "created_at": "2026-06-25T04:47:41Z",
   "created_by": "Mark Frost",
-  "updated_at": "2026-07-24T16:49:32.732744195Z",
+  "updated_at": "2026-07-24T16:13:56.772401216Z",
   "started_at": "2026-07-24T16:13:56.772401216Z",
   "closed_at": "2026-06-25T04:47:41Z",
   "close_reason": "SosResource with activate/cancel/retrigger + PUT/DELETE/observe; 14 tests passing",
-  "lease_expires_at": "2026-07-24T16:54:32.732744195Z",
-  "heartbeat_at": "2026-07-24T16:49:32.732744195Z"
+  "lease_expires_at": "2026-07-24T16:18:56.772401216Z",
+  "heartbeat_at": "2026-07-24T16:13:56.772401216Z"
 }
