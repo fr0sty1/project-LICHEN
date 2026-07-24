@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-y6zf",
+  "title": "[review] project-LICHEN-worker6-rpj4: test_invalid_method_is_rejected_before_dh uses valid METHOD_CORR after _validate_int fix",
+  "description": "Commit fa673ac added `_validate_int()` which correctly rejects bools masquerading as ints, and removed `_sequence(0, 0, b\"x\" * 32, b\"\\x00\")` from INVALID_MSG1 in `test_malformed_message_1_fails_without_commit` because METHOD_CORR=0 is valid for Method.SIGN_SIGN=0.\n\nBut `test_invalid_method_is_rejected_before_dh` (line 454) still uses `_sequence(0, 0, b\"x\" * 32, b\"\\x00\")` and expects `ValueError(match=\"METHOD_CORR\")`. With `_validate_int`, METHOD_CORR=0 passes validation: `0 // 4 = 0` equals `Method.SIGN_SIGN = 0`. The method check passes, so the monkeypatched DH (`unexpected_dh` → `AssertionError`) runs instead, and the test fails because `AssertionError` is not `ValueError`.\n\nFix: replace `_sequence(0, 0, ...)` with a genuinely invalid METHOD_CORR value (e.g., `_sequence(4, 0, ...)` for method=1 which differs from SIGN_SIGN=0).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:06:16.387665894Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:06:16.387665894Z"
+}
