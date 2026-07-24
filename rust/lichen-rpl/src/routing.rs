@@ -1066,7 +1066,7 @@ impl SourceRoutingHeader {
             .map(|chunk| Ipv6Addr(chunk.try_into().unwrap()))
             .collect();
         let segments_left = data[1];
-        if (segments_left as usize) > addresses.len() {
+        if (segments_left as usize) > addresses.len() || addresses.len() > MAX_ROUTE_HOPS {
             return Err(RplError::InvalidOption);
         }
         Ok(Self {
@@ -1077,10 +1077,10 @@ impl SourceRoutingHeader {
 
     pub fn from_route(route: &[Ipv6Addr]) -> Result<Self, RplError> {
         let remaining = route.len().checked_sub(1).ok_or(RplError::InvalidOption)?;
-        if remaining == 0 || remaining > u8::MAX as usize {
+        let addresses = route[1..].to_vec();
+        if remaining == 0 || remaining > u8::MAX as usize || route.len() > MAX_ROUTE_HOPS + 1 {
             return Err(RplError::InvalidOption);
         }
-        let addresses = route[1..].to_vec();
         Ok(Self {
             segments_left: remaining as u8,
             addresses,
@@ -1609,25 +1609,7 @@ impl DaoManager {
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         let sequence = verified.envelope.origin.origin_sequence;
 
-        let dao = verified.envelope.dao.clone();
-        if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
-            return Err(DaoProcessError::RouteRejected);
-        }
-        let Some((updates, update_count)) =
-            self.extract_updates(&dao, verified.envelope.unsigned_bytes)
-        else {
-            return Err(DaoProcessError::RouteRejected);
-        };
-        if !Self::sender_is_authorized(
-            &updates,
-            update_count,
-            verified.origin,
-            self.node_address,
-            authenticated_sender_iid,
-        ) {
-            return Err(DaoProcessError::RouteRejected);
-        }
-
+        // Step 6 (spec §7.5): replay classification BEFORE semantic parsing
         let mut duplicate = false;
         if let Some((hash, previous)) = self.origin_high_water.get(&verified.public_key) {
             if sequence < *previous
@@ -1639,6 +1621,26 @@ impl DaoManager {
                 duplicate = true;
             }
         } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
+            return Err(DaoProcessError::RouteRejected);
+        }
+
+        // Steps 7-8 (spec §7.5): semantic parsing and exact self /128 Target validation
+        let dao = verified.envelope.dao.clone();
+        let Some((updates, update_count)) =
+            self.extract_updates(&dao, verified.envelope.unsigned_bytes)
+        else {
+            return Err(DaoProcessError::RouteRejected);
+        };
+        if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
+            return Err(DaoProcessError::RouteRejected);
+        }
+        if !Self::sender_is_authorized(
+            &updates,
+            update_count,
+            verified.origin,
+            self.node_address,
+            authenticated_sender_iid,
+        ) {
             return Err(DaoProcessError::RouteRejected);
         }
         if duplicate
