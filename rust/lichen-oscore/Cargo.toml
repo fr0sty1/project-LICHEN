@@ -21,6 +21,7 @@ hkdf = { version = "0.13", default-features = false }
 hmac = { version = "0.13", default-features = false, features = ["zeroize"] }
 sha2 = { version = "0.11", default-features = false, features = ["zeroize"] }
 zeroize = { version = "1.8", default-features = false, features = ["derive"] }
+subtle = { version = "2.6", default-features = false }
 
 # EDHOC (RFC 9528) Suite 0 - feature-gated since it adds dependencies
 # ponytail: lakers only supports Suite 2 (P-256), not Suite 0 (X25519/Ed25519).

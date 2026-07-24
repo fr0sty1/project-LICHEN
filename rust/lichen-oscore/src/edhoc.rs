@@ -33,6 +33,7 @@ use lichen_link::schnorr;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey as XPublicKey, StaticSecret};
+use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// AES-CCM for Suite 0.
@@ -1045,7 +1046,7 @@ impl EdhocInitiator {
         // prevent cryptographic weakness from ephemeral key reuse (RFC 9528 freshness).
 
         let result = (|| {
-            if g_xy.as_bytes() == &[0; KEY_LEN_32] {
+            if g_xy.as_bytes().ct_eq(&[0u8; KEY_LEN_32]).into() {
                 return Err(EdhocError::InvalidMessage);
             }
             self.state.th_2 = transcript_2(&self.state.g_y, &self.state.msg1)?;
@@ -1424,7 +1425,7 @@ impl EdhocResponder {
         // is called multiple times (e.g., due to retransmission handling bugs).
 
         let result = (|| {
-            if g_xy.as_bytes() == &[0; KEY_LEN_32] {
+            if g_xy.as_bytes().ct_eq(&[0u8; KEY_LEN_32]).into() {
                 return Err(EdhocError::InvalidMessage);
             }
             self.state.th_2 = transcript_2(self.eph_public.as_bytes(), msg1)?;
