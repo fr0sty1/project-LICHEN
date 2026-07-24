@@ -168,6 +168,13 @@ static int test_seq_freshness(void)
 	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(5, 65530), "5->65530 is stale (> half space)");
 	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(0, 32768), "0->32768 at boundary -> not fresher");
 	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(0, 32767), "0->32767 within half, fresher");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(65535, 0), "65535->0 wrapped forward, fresher");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(65535, 1), "65535->1 wrapped forward 2 steps, fresher");
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(0, 65535), "0->65535 backward wrap, stale");
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(0x8000, 0), "32768->0 at half boundary, not fresher");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(0x8001, 0), "32769->0 wraps with diff=32767 < half, fresher");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(32767, 32768), "32767->32768 diff=1, fresher");
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(0, 0xFFFE), "0->65534 diff=65534 >= half, not fresher");
 	return 1;
 }
 
