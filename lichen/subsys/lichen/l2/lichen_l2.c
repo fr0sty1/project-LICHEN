@@ -2139,6 +2139,23 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 	lichen_iface = iface;
 
+#if HAVE_LICHEN_LINK
+	/*
+	 * Mark link_ctx as safe to access BEFORE registering the RX callback.
+	 * link_ctx was fully initialized at line ~2086 (lichen_link_init()) along
+	 * with replay_table and peer_table. Setting the flag before callback
+	 * registration eliminates a tiny window where a valid frame arriving
+	 * between callback registration and the flag being set would be dropped
+	 * by the atomic_get(&link_ctx_initialized) guard in lichen_l2_input().
+	 * (project-LICHEN-tvfm.69)
+	 *
+	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
+	 * On single-core Cortex-M, program order suffices since all prior
+	 * stores complete before this store executes.
+	 */
+	atomic_set(&link_ctx_initialized, 1);
+#endif
+
 	/* Register RX callback - must happen AFTER link_ctx is initialized */
 	ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 	if (ret != 0) {
@@ -2146,20 +2163,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
-
-#if HAVE_LICHEN_LINK
-	/*
-	 * Mark link_ctx as safe to access.
-	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
-	 * On single-core Cortex-M, program order suffices since all prior
-	 * stores complete before this store executes.
-	 *
-	 * Set AFTER RX callback registration so the flag truthfully indicates
-	 * that the full initialization sequence is complete.
-	 * (project-LICHEN-q3iy.24)
-	 */
-	atomic_set(&link_ctx_initialized, 1);
-#endif
 
 	/* Derive and log link-local address */
 	ret = lichen_log_link_local_from_eui64(eui64, NULL);
