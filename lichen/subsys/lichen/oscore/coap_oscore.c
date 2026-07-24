@@ -104,8 +104,7 @@ int coap_oscore_respond_resource(struct coap_resource *resource,
 						       &resp, buf, sizeof(buf));
 		if (ret < 0) {
 			return lichen_coap_respond(resource, request, addr, addr_len,
-						   COAP_RESPONSE_CODE_INTERNAL_ERROR,
-						   0, NULL, 0);
+						   resp_code, 0, NULL, 0);
 		}
 		return coap_resource_send(resource, &resp, addr, addr_len, NULL);
 	}
@@ -305,7 +304,7 @@ int coap_oscore_send_protected(struct coap_resource *resource,
 					       NULL, 0, &resp, buf, sizeof(buf));
 	if (ret < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+					   code, 0, NULL, 0);
 	}
 	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
 	return ret;
