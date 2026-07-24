@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-0pim",
+  "title": "[review] project-LICHEN-6mij.2.4: use-after-return in coap_oscore_auth_mutating (stack pointer dangles)",
+  "description": "P0 correctness bug. coap_oscore_auth_mutating at coap_oscore.c:249 allocates uint8_t plain[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX] on its own stack, stores result-\u003epayload = plain at line 283. After return, plain is reclaimed. Callers (deaddrop_post, msg_inbox_post) dereference auth.payload after return — UB.\n\nFix: Move plain buffer into struct coap_oscore_auth_result as inline array, or pass buffer from caller.\n\nAffected: coap_oscore.c:249,283 | coap_oscore.h:124-130 | coap_dtn.c:123,152,172 | coap_server.c:341,345",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:55:28.348598166Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:55:28.348598166Z"
+}
