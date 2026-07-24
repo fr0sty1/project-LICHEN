@@ -1510,7 +1510,12 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  */
 void lichen_l2_iface_init(struct net_if *iface)
 {
-	/* iface guaranteed non-NULL by Zephyr NET_DEVICE_INIT */
+	if (iface == NULL) {
+		LOG_ERR("lichen_l2: iface is NULL");
+		atomic_set(&iface_init_failed, 1);
+		return;
+	}
+
 	int ret;
 
 	LOG_INF("lichen_l2: initializing interface");
