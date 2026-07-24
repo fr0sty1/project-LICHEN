@@ -275,7 +275,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
         }
         KeyAction::Pin { peer } => {
             let iid = iid_from_ipv6(&peer)?;
-            let path = paths::keys_iid(&iid);
+            let path = paths::keys_iid(&iid)?;
             // Read the key the node already pinned (TOFU) for this peer.
             let resp = client::get(node, &path).await?;
             if !resp.is_success() {
@@ -306,7 +306,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
         }
         KeyAction::Unpin { peer } => {
             let iid = iid_from_ipv6(&peer)?;
-            let resp = client::delete(node, &paths::keys_iid(&iid)).await?;
+            let resp = client::delete(node, &paths::keys_iid(&iid)?).await?;
             if !resp.is_success() {
                 return Err(format!("unpin failed: {}", resp.code_str()).into());
             }
