@@ -230,4 +230,20 @@ config LICHEN_IPV6_ULA_PREFIX
 	  Runtime validation in lichen_make_ula() enforces the fd00::/8
 	  requirement and returns -EINVAL for invalid prefixes.
 
+config LICHEN_LORA_STRICT_RECOVERY
+	bool "Reboot on ABORT recovery instead of mutex reinit"
+	depends on LICHEN_LORA_L2
+	help
+	  When set, lichen_lora_l2_deinit() calls k_sys_reboot() instead of
+	  reinitializing a mutex that may be held by a dead thread. The reinit
+	  path (default) is UNDEFINED BEHAVIOR per POSIX and Zephyr semantics.
+
+	  Enable this for safety-critical or debug builds where corruption
+	  from mutex reinit is unacceptable. Disable (default) to allow
+	  module restart without full system reset, accepting the UB risk.
+
+	  Even with this disabled, k_sys_reboot() is the only truly safe
+	  recovery from RX thread abort. Applications requiring guaranteed
+	  correctness should enable this option.
+
 endif # LICHEN

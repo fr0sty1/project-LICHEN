@@ -887,6 +887,16 @@ int lichen_lora_l2_deinit(void)
      * - The system is already in a degraded state if we reached this path
      */
 
+    if (IS_ENABLED(CONFIG_LICHEN_LORA_STRICT_RECOVERY)) {
+        LOG_ERR("lora_l2: strict recovery enabled, rebooting");
+        k_sys_reboot();
+    }
+
+    if (state == LORA_ABORTED) {
+        LOG_WRN("lora_l2: abort recovery - mutex reinit is UB, "
+                "consider CONFIG_LICHEN_LORA_STRICT_RECOVERY for safe path");
+    }
+
     /*
      * SECURITY: Reinitializing a mutex that may still be held by a dead
      * thread is UNDEFINED BEHAVIOR per POSIX and Zephyr semantics. If the
