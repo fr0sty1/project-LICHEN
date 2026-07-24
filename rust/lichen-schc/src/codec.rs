@@ -19,7 +19,7 @@
 
 use lichen_core::constants::{
     PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
-    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
+    RULE_RPL_DAO, RULE_RPL_DIO, RULE_SRH, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
 use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
@@ -847,6 +847,45 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize,
     Ok(total)
 }
 
+/// Rule 8: Source Routing Header wrapper (NH=43).
+///
+/// Format: [rule_id] + [routing_header_bytes] + [inner_schc_residue]
+/// The inner residue is produced by stripping the SRH and compressing the
+/// inner transport payload with a synthetic IPv6 header.
+fn decompress_srh(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    if data.len() < 3 {
+        return Err(TooShort::new(3, data.len()).into());
+    }
+    let hdr_ext_len = data[2];
+    let routing_len = (usize::from(hdr_ext_len) + 1) * 8;
+    let inner_start = 1 + routing_len;
+    if data.len() <= inner_start {
+        return Err(TooShort::new(inner_start + 1, data.len()).into());
+    }
+    // Decompress the inner payload
+    let mut inner_decomp = [0u8; SCHC_MAX_DECOMPRESSED];
+    let inner_len = decompress(&data[inner_start..], &mut inner_decomp)?;
+    let inner = &inner_decomp[..inner_len];
+    if inner.len() < 40 || inner[0] >> 4 != 6 {
+        return Err(SchcError::NoMatchingRule);
+    }
+    let inner_payload_len = u16::from_be_bytes([inner[4], inner[5]]);
+    let total_payload_len = inner_payload_len
+        .checked_add(routing_len as u16)
+        .ok_or(SchcError::NoMatchingRule)?;
+    let total = 40usize + routing_len + inner_payload_len as usize;
+    if total > out.len() {
+        return Err(BufferTooSmall::new(total, out.len()).into());
+    }
+    // Build IPv6 header with NH=43 and adjusted payload length
+    write_ipv6_header(out, total_payload_len, 43, inner[7], &inner[8..24].try_into().unwrap(), &inner[24..40].try_into().unwrap());
+    // Copy routing header
+    out[40..40 + routing_len].copy_from_slice(&data[1..1 + routing_len]);
+    // Copy inner decompressed payload (transport headers + body)
+    out[40 + routing_len..total].copy_from_slice(&inner[40..]);
+    Ok(total)
+}
+
 // ─── public API ──────────────────────────────────────────────────────────────
 
 /// Compress a full IPv6 `packet` into `out` using the best matching SCHC rule.
@@ -887,6 +926,51 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         }
         if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
             return Ok(n);
+        }
+    } else if nh == 43 && packet.len() >= 48 {
+        // NH=43: Source Routing Header (RPL SRH, RFC 6554).
+        // Strip the routing header, compress the inner transport payload,
+        // then prepend the routing header bytes so decompress can reconstruct.
+        let inner_nh_byte = packet[40];
+        let hdr_ext_len = packet[41];
+        if hdr_ext_len < 2 {
+            return Err(SchcError::NoMatchingRule);
+        }
+        let routing_len = (usize::from(hdr_ext_len) + 1) * 8;
+        let inner_offset = 40usize + routing_len;
+        if packet.len() < inner_offset {
+            return Err(SchcError::NoMatchingRule);
+        }
+        let inner_payload_len = u16::from_be_bytes([packet[4], packet[5]])
+            .saturating_sub(routing_len as u16);
+        let inner_total = 40usize + (packet.len() - inner_offset);
+        if inner_total > SCHC_MAX_DECOMPRESSED {
+            return Err(SchcError::NoMatchingRule);
+        }
+        // Build synthetic inner IPv6 packet (same IPv6 header but without SRH)
+        let mut inner = [0u8; SCHC_MAX_DECOMPRESSED];
+        inner[..4].copy_from_slice(&packet[..4]);
+        inner[4..6].copy_from_slice(&inner_payload_len.to_be_bytes());
+        inner[6] = inner_nh_byte;
+        inner[7] = packet[7];
+        inner[8..40].copy_from_slice(&packet[8..40]);
+        inner[40..inner_total].copy_from_slice(&packet[inner_offset..]);
+        // Compress the inner packet
+        let inner_residue_start = 1 + routing_len;
+        let inner_out = &mut out[inner_residue_start..];
+        match compress(&inner[..inner_total], inner_out) {
+            Ok(n) => {
+                let total = inner_residue_start + n;
+                if total > out.len() {
+                    return Err(BufferTooSmall::new(total, out.len()).into());
+                }
+                out[0] = RULE_SRH;
+                out[1..1 + routing_len].copy_from_slice(&packet[40..40 + routing_len]);
+                return Ok(total);
+            }
+            Err(_) => {
+                // If inner compression fails, fall through to uncompressed
+            }
         }
     } else if nh == 58 && packet.len() >= 40 + 4 {
         // ICMPv6
@@ -945,6 +1029,7 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
         RULE_MQTT_SN => decompress_mqtt_sn(data, out, RULE_MQTT_SN),
+        RULE_SRH => decompress_srh(data, out),
         RULE_UNCOMPRESSED => {
             let payload = &data[1..];
             if out.len() < payload.len() {

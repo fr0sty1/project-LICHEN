@@ -19,12 +19,11 @@
 //! The variable trailer (CoAP token/options/payload, or RPL options) travels
 //! verbatim after the byte-aligned residue.
 
-use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
-
 use crate::context::FieldId;
 use crate::rules::Rule;
 
 // IPv6 constants
+const IPV6_HEADER_LEN: usize = 40;
 const UDP_HEADER_LEN: usize = 8;
 const COAP_FIXED_HEADER: usize = 4;
 const COAP_BUF_SIZE: usize = 256;
@@ -96,7 +95,6 @@ impl<'a> ParsedPacket<'a> {
 
 /// Error type for packet parsing/building.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum PacketError {
     /// Packet is too short.
     TooShort { expected: usize, actual: usize },
@@ -251,8 +249,8 @@ fn parse_ipv6_fields<'a>(raw: &'a [u8], parsed: &mut ParsedPacket<'a>) -> Result
     let payload_length = u16::from_be_bytes([raw[4], raw[5]]);
     let next_header = raw[6];
     let hop_limit = raw[7];
-    let src = addr_to_u128(&raw[field::SRC_OFFSET..field::DST_OFFSET]);
-    let dst = addr_to_u128(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]);
+    let src = addr_to_u128(&raw[8..24]);
+    let dst = addr_to_u128(&raw[24..40]);
 
     parsed.add_field("IPv6.version", 6);
     parsed.add_field("IPv6.traffic_class", traffic_class as u128);
@@ -285,8 +283,8 @@ fn write_ipv6_header(
     out[5] = payload_len as u8;
     out[6] = next_header;
     out[7] = hop_limit;
-    out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(src);
-    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(dst);
+    out[8..24].copy_from_slice(src);
+    out[24..40].copy_from_slice(dst);
 }
 
 // ============================================================================
@@ -355,7 +353,7 @@ fn coap_profile_matches<F: Fn(&[u8]) -> bool>(raw: &[u8], addr_check: F) -> bool
     if payload_length < UDP_HEADER_LEN + COAP_FIXED_HEADER {
         return false;
     }
-    addr_check(&raw[field::SRC_OFFSET..field::DST_OFFSET]) && addr_check(&raw[field::DST_OFFSET..IPV6_HEADER_LEN])
+    addr_check(&raw[8..24]) && addr_check(&raw[24..40])
 }
 
 fn parse_coap_udp<'a>(raw: &'a [u8]) -> Result<ParsedPacket<'a>, PacketError> {
@@ -464,23 +462,23 @@ fn build_coap_udp(
     let cksum = udp_checksum(&src, &dst, src_port, dst_port, &coap_buf[..coap_len]);
 
     // Write IPv6 header
-    write_ipv6_header(
-        out,
-        udp_len,
-        NEXT_HEADER_UDP,
-        hop_limit,
-        (traffic_class, flow_label),
-        &src,
-        &dst,
-    );
+        write_ipv6_header(
+            out,
+            udp_len,
+            NEXT_HEADER_UDP,
+            hop_limit,
+            (traffic_class, flow_label),
+            &src,
+            &dst,
+        );
 
-    // Write UDP header
-    out[40..42].copy_from_slice(&src_port.to_be_bytes());
-    out[42..44].copy_from_slice(&dst_port.to_be_bytes());
-    out[44..46].copy_from_slice(&udp_len.to_be_bytes());
-    out[46..48].copy_from_slice(&cksum.to_be_bytes());
+        // Write UDP header
+        out[40..42].copy_from_slice(&src_port.to_be_bytes());
+        out[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        out[44..46].copy_from_slice(&udp_len.to_be_bytes());
+        out[46..48].copy_from_slice(&cksum.to_be_bytes());
 
-    // Write CoAP
+        // Write CoAP
     out[48..48 + coap_len].copy_from_slice(&coap_buf[..coap_len]);
 
     Ok(total)
@@ -562,7 +560,7 @@ impl PacketProfile for Icmpv6EchoProfile {
         if payload_length < ICMPV6_ECHO_BASE {
             return false;
         }
-        if !is_link_local(&raw[field::SRC_OFFSET..field::DST_OFFSET]) || !is_link_local(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]) {
+        if !is_link_local(&raw[8..24]) || !is_link_local(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];
@@ -721,7 +719,7 @@ impl PacketProfile for RplDioProfile {
         if payload_length < ICMPV6_HEADER + DIO_BASE {
             return false;
         }
-        if !is_routable(&raw[field::SRC_OFFSET..field::DST_OFFSET]) || !is_routable(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]) {
+        if !is_routable(&raw[8..24]) || !is_routable(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];
@@ -769,22 +767,6 @@ impl PacketProfile for RplDioProfile {
         let dodagid = u128::from_be_bytes(rpl[8..24].try_into().unwrap());
         parsed.add_field("RPL.dodagid", dodagid);
 
-        // Parse RPL options from tail if present
-        if tail.len() >= 2 {
-            let opt_type = tail[0] as u128;
-            let opt_len = tail[1] as u128;
-            parsed.add_field("RPL.Option.Type", opt_type);
-            parsed.add_field("RPL.Option.Length", opt_len);
-            if opt_type == 3 && opt_len >= 30 && tail.len() >= 32 {
-                parsed.add_field("PIO.Prefix Length", tail[2] as u128);
-                parsed.add_field("PIO.Flags", tail[3] as u128);
-                let lifetime = u32::from_be_bytes([tail[4], tail[5], tail[6], tail[7]]);
-                parsed.add_field("PIO.Lifetime", lifetime as u128);
-                let prefix = u128::from_be_bytes(tail[8..24].try_into().unwrap());
-                parsed.add_field("PIO.Prefix", prefix);
-            }
-        }
-
         Ok(parsed)
     }
 
@@ -818,19 +800,7 @@ impl PacketProfile for RplDioProfile {
         let reserved = get("RPL.reserved").unwrap_or(0) as u8;
         let dodagid = get("RPL.dodagid")?;
 
-        let opt_type = get("RPL.Option.Type").ok();
-        let _opt_len = get("RPL.Option.Length").ok();
-        let pio_prefix_len = get("PIO.Prefix Length").ok();
-        let pio_flags = get("PIO.Flags").ok();
-        let pio_lifetime = get("PIO.Lifetime").ok();
-        let pio_prefix = get("PIO.Prefix").ok();
-
-        let pio_tail_len: usize = if opt_type.is_some() && opt_type == Some(3) {
-            32
-        } else {
-            tail.len()
-        };
-        let rpl_body_len = DIO_BASE + pio_tail_len;
+        let rpl_body_len = DIO_BASE + tail.len();
         let icmp_len = ICMPV6_HEADER + rpl_body_len;
         let total = IPV6_HEADER_LEN + icmp_len;
 
@@ -861,19 +831,7 @@ impl PacketProfile for RplDioProfile {
         icmp_buf[10] = flags;
         icmp_buf[11] = reserved;
         icmp_buf[12..28].copy_from_slice(&dodagid.to_be_bytes());
-
-        if pio_tail_len == 32 {
-            icmp_buf[28] = 3;
-            icmp_buf[29] = 30;
-            icmp_buf[30] = pio_prefix_len.unwrap_or(64) as u8;
-            icmp_buf[31] = pio_flags.unwrap_or(0xC0) as u8;
-            let lt = pio_lifetime.unwrap_or(0) as u32;
-            icmp_buf[32..36].copy_from_slice(&lt.to_be_bytes());
-            let pf = pio_prefix.unwrap_or(0);
-            icmp_buf[36..52].copy_from_slice(&pf.to_be_bytes());
-        } else {
-            icmp_buf[28..28 + tail.len()].copy_from_slice(tail);
-        }
+        icmp_buf[28..28 + tail.len()].copy_from_slice(tail);
 
         let cksum = icmpv6_checksum(&src, &dst, &icmp_buf[..icmp_len]);
 
@@ -918,7 +876,7 @@ impl PacketProfile for RplDaoProfile {
         if payload_length < ICMPV6_HEADER + DAO_BASE_WITH_DODAGID {
             return false;
         }
-        if !is_routable(&raw[field::SRC_OFFSET..field::DST_OFFSET]) || !is_routable(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]) {
+        if !is_routable(&raw[8..24]) || !is_routable(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];

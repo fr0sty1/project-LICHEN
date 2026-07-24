@@ -34,6 +34,7 @@ rpl_dao          = 4    # RPL DAO with DODAGID over link-local ICMPv6
 link_local_oscore = 5   # Link-local IPv6 + UDP + OSCORE-protected CoAP
 global_oscore    = 6    # Global IPv6 + UDP + OSCORE-protected CoAP
 mqtt_sn          = 7    # IPv6 + UDP + MQTT-SN (port 10883)
+srh              = 8    # Source Routing Header wrapper (NH=43)
 uncompressed     = 255  # No compression; full headers follow
 
 [l2.payload_dispatch]
