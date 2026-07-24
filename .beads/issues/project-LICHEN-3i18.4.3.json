@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3i18.4.3",
   "title": "Update LCI, scheduler, and processor for current_channel handling per new spec",
   "description": "Implement consistent current_channel in Local Client Interface, scheduler API (what to announce as RX channel for CCP-9), and packet processor. Include default value decision.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

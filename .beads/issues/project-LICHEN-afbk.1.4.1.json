@@ -2,7 +2,7 @@
   "id": "project-LICHEN-afbk.1.4.1",
   "title": "Implement concentrator RX path in run_hat_inner",
   "description": "Add polling or IRQ-driven receive from Sx1302Concentrator in the hat run loop, feed received L2 frames to Gateway::process_rpl and forward_mesh_to_upstream. Mirror sim/serial RX patterns.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
