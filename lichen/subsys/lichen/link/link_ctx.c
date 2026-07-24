@@ -466,6 +466,11 @@ int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
 
 	memcpy(new_link_key, link_key, sizeof(new_link_key));
 
+	if (seq_lock(ctx) != 0) {
+		secure_wipe(new_link_key, sizeof(new_link_key));
+		return -EIO;
+	}
+
 	if (ctx->has_link_key) {
 		secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 	}
@@ -473,6 +478,8 @@ int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
 	memcpy(ctx->link_key, new_link_key, LICHEN_LINK_KEY_LEN);
 	secure_wipe(new_link_key, sizeof(new_link_key));
 	ctx->has_link_key = true;
+
+	(void)seq_unlock(ctx);
 
 	return 0;
 }
