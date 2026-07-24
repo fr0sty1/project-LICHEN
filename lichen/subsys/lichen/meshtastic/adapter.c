@@ -1688,8 +1688,18 @@ int lichen_meshtastic_adapter_process_raw(
 		}
 		return LICHEN_MESHTASTIC_ADAPTER_DISPATCHED;
 	case LICHEN_MESHTASTIC_TO_RADIO_WANT_CONFIG_ID:
+	{
+		uint32_t now_ms = k_uptime_get_32();
+		uint32_t elapsed = now_ms - adapter->want_config_last_ms;
+
 		adapter->stats.want_config_count++;
+		if (elapsed < LICHEN_MESHTASTIC_WANT_CONFIG_RATE_LIMIT_MS) {
+			adapter->stats.want_config_rate_limited_count++;
+			return LICHEN_MESHTASTIC_ADAPTER_DISPATCHED;
+		}
+		adapter->want_config_last_ms = now_ms;
 		return dispatch_want_config(adapter, msg.value.want_config_id);
+	}
 	case LICHEN_MESHTASTIC_TO_RADIO_DISCONNECT:
 		if (msg.value.disconnect) {
 			adapter->stats.disconnect_count++;
