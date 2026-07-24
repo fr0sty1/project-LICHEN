@@ -545,7 +545,9 @@ fn encode_identifier<const N: usize>(
 /// Returns `(id_cred, credential)` as deterministic CBOR byte strings.
 /// - `id_cred` is `{4: kid}` where kid is the 32-byte public key as bstr.
 /// - `credential` is the CCS (COSE Key) for the public key.
-fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 64>, heapless::Vec<u8, 80>), EdhocError> {
+fn raw_key_credential(
+    pubkey: &[u8; 32],
+) -> Result<(heapless::Vec<u8, 64>, heapless::Vec<u8, 80>), EdhocError> {
     let mut id_cred = heapless::Vec::<u8, 64>::new();
     encode_id_cred(&mut id_cred, pubkey)?;
     let mut credential = heapless::Vec::<u8, 80>::new();
@@ -671,7 +673,8 @@ fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
             return Err(EdhocError::BufferTooSmall);
         }
         let mut encoded = heapless::Vec::new();
-        encoded.extend_from_slice(data[..total].as_ref())
+        encoded
+            .extend_from_slice(data[..total].as_ref())
             .map_err(|_| EdhocError::BufferTooSmall)?;
         // Determine reference type
         let reference = if data.len() > 2 && data.len() >= 3 && data[0] == 0xa1 && data[1] == 0x04 {
@@ -1160,7 +1163,12 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_2(&pending.c_r, pending.id_cred.as_bytes(), &self.state.th_2, peer.credential)?;
+            let context_2 = build_context_2(
+                &pending.c_r,
+                pending.id_cred.as_bytes(),
+                &self.state.th_2,
+                peer.credential,
+            )?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -1502,12 +1510,8 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(
-                &self.c_r,
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-            )?;
+            let context_2 =
+                build_context_2(&self.c_r, &id_cred_r, &self.state.th_2, &credential_r)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -1990,10 +1994,7 @@ mod tests {
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
         let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
-        assert_eq!(
-            transcript_4(&th_3, &ciphertext_3).unwrap(),
-            th_4
-        );
+        assert_eq!(transcript_4(&th_3, &ciphertext_3).unwrap(), th_4);
 
         let responder_public_key =
             hex!("a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359");
@@ -2747,7 +2748,10 @@ mod tests {
         // Array [0, 2] - prefer Suite 0, also supports Suite 2
         assert_eq!(parse_suites_i(&[0x82, 0x00, 0x02]).unwrap(), (0, 3, false));
         // Array [0, 2, 3] - three suites
-        assert_eq!(parse_suites_i(&[0x83, 0x00, 0x02, 0x03]).unwrap(), (0, 4, false));
+        assert_eq!(
+            parse_suites_i(&[0x83, 0x00, 0x02, 0x03]).unwrap(),
+            (0, 4, false)
+        );
         // Array [2, 0] - prefer Suite 2
         assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00]).unwrap(), (2, 3, false));
     }

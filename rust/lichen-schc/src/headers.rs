@@ -463,14 +463,14 @@ fn build_coap_udp(
 
     // Write IPv6 header
     write_ipv6_header(
-            out,
-            udp_len,
-            NEXT_HEADER_UDP,
-            hop_limit,
-            (traffic_class, flow_label),
-            &src,
-            &dst,
-        );
+        out,
+        udp_len,
+        NEXT_HEADER_UDP,
+        hop_limit,
+        (traffic_class, flow_label),
+        &src,
+        &dst,
+    );
 
     // Write UDP header
     out[40..42].copy_from_slice(&src_port.to_be_bytes());

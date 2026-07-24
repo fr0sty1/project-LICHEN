@@ -18,7 +18,8 @@ pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 pub const TILE_SIZE: usize = 8;
 pub const WINDOW_SIZE: usize = 64;
 pub const BITMAP_MASK: u64 = 0xFFFF_FFFF_FFFF_FFFF;
-pub const MAX_PACKET_SIZE: usize = 256;
+pub const MAX_PACKET_SIZE: usize = 1281;
+pub const DEFAULT_RECEIVER_LIMIT: usize = MAX_PACKET_SIZE;
 pub const RULE_ID_A_TO_B: u8 = 0;
 pub const RULE_ID_B_TO_A: u8 = 1;
 
@@ -151,7 +152,9 @@ impl<'a> Fragment<'a> {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << 7) | ((self.fcn & ((1 << FRAGMENT_N) - 1)) << 1) | if self.is_all_1() { 1 } else { 0 };
+        out[1] = ((self.window & 1) << 7)
+            | ((self.fcn & ((1 << FRAGMENT_N) - 1)) << 1)
+            | if self.is_all_1() { 1 } else { 0 };
         let mut idx = 0;
         if self.is_all_1() {
             for byte in self.mic {
@@ -221,7 +224,12 @@ impl Ack {
         }
     }
 
-    pub fn new_from_bool_vec(rule_id: u8, window: u8, bitmap_bool: &[bool], complete: bool) -> Self {
+    pub fn new_from_bool_vec(
+        rule_id: u8,
+        window: u8,
+        bitmap_bool: &[bool],
+        complete: bool,
+    ) -> Self {
         let mut bitmap = 0u64;
         for (i, &b) in bitmap_bool.iter().enumerate() {
             if b {
@@ -312,7 +320,7 @@ impl Ack {
                     bitmap |= 1u64 << (62 - position);
                 }
             }
-            for position in bit_count..WINDOW_SIZE {
+            for position in bit_count..WINDOW_SIZE.min(63) {
                 bitmap |= 1u64 << (62 - position);
             }
         }
@@ -622,8 +630,13 @@ impl<'a> FragmentSender<'a> {
                     return Ok(None);
                 }
                 let mut current = *position;
-                while usize::from(current) < WINDOW_SIZE {
-                    if *missing & (1u64 << (62 - current)) == 0 {
+                while usize::from(current) <= WINDOW_SIZE {
+                    let mask = if current >= 63 {
+                        if current == 63 { 1u64 << 0 } else { 0 }
+                    } else {
+                        1u64 << (62 - current)
+                    };
+                    if *missing & mask == 0 {
                         current += 1;
                         continue;
                     }
@@ -646,13 +659,13 @@ impl<'a> FragmentSender<'a> {
     }
 
     fn fragment_at_position(&self, window: u8, position: u8) -> Option<Fragment<'a>> {
+        if position == 63 {
+            return self.iter().find(|f| f.window == window && f.is_all_1());
+        }
         self.iter().find(|fragment| {
             fragment.window == window
-                && if fragment.is_all_1() {
-                    position == 62
-                } else {
-                    position == 62 - fragment.fcn
-                }
+                && !fragment.is_all_1()
+                && position == 62 - fragment.fcn
         })
     }
 }
@@ -1192,7 +1205,9 @@ mod std_ext {
             }
             let pos = self.window_size - 1 - frag.fcn as usize;
             let global_idx = abs_window * self.window_size + pos;
-            self.tiles.entry(global_idx).or_insert_with(|| frag.payload.to_vec());
+            self.tiles
+                .entry(global_idx)
+                .or_insert_with(|| frag.payload.to_vec());
 
             if self.all1_seen {
                 return self.finalize();
@@ -1224,7 +1239,12 @@ mod std_ext {
 
         fn finalize(&mut self) -> ReceiverResult {
             let bitmap_bool = self.window_bitmap(self.all1_window);
-            let nack = Ack::new_from_bool_vec(self.rule_id.unwrap_or(0), (self.all1_window % 2) as u8, &bitmap_bool, false);
+            let nack = Ack::new_from_bool_vec(
+                self.rule_id.unwrap_or(0),
+                (self.all1_window % 2) as u8,
+                &bitmap_bool,
+                false,
+            );
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).

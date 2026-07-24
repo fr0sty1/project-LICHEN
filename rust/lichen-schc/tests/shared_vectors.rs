@@ -7,7 +7,6 @@
 use std::fs;
 use std::path::Path;
 
-
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -236,5 +235,3 @@ fn test_schc_fragment_vectors() {
         vectors.len()
     );
 }
-
-

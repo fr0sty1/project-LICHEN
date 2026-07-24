@@ -467,8 +467,7 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
             // Write compressed PIO + remaining tail as suffix
             out[tail_start..tail_start + opt_buf_len].copy_from_slice(&opt_buf[..opt_buf_len]);
             if !remaining.is_empty() {
-                out[tail_start + opt_buf_len..tail_start + opt_len]
-                    .copy_from_slice(remaining);
+                out[tail_start + opt_buf_len..tail_start + opt_len].copy_from_slice(remaining);
             }
             // Update needed to reflect new smaller size
             needed = tail_start + opt_len;
@@ -768,13 +767,13 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
                 let remaining = &tail[compressed_bytes..];
 
                 let mut pio = [0u8; 32];
-                pio[0] = 3;     // PIO type
-                pio[1] = 30;    // length
-                pio[2] = 64;    // prefix length
-                pio[3] = 0xC0;  // LA flags
-                pio[4..8].copy_from_slice(&lifetime.to_be_bytes());     // valid lifetime
-                pio[8..12].copy_from_slice(&lifetime.to_be_bytes());    // preferred lifetime = same
-                // Reconstruct full /64 prefix
+                pio[0] = 3; // PIO type
+                pio[1] = 30; // length
+                pio[2] = 64; // prefix length
+                pio[3] = 0xC0; // LA flags
+                pio[4..8].copy_from_slice(&lifetime.to_be_bytes()); // valid lifetime
+                pio[8..12].copy_from_slice(&lifetime.to_be_bytes()); // preferred lifetime = same
+                                                                     // Reconstruct full /64 prefix
                 let prefix = LINK_LOCAL_PREFIX | prefix_iid;
                 pio[12..28].copy_from_slice(&prefix.to_be_bytes()[0..16]);
                 // Reserved at 28..32 stays as 0
