@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-lc85",
+  "title": "[rereview] project-LICHEN-a4n2.3: missing tx_queue_destroy in lichen_link_cleanup leaks POSIX mutex",
+  "description": "Commit 1a774fce5 adds tx_queue to struct lichen_link_ctx and calls tx_queue_init() in lichen_link_init() (link_ctx.c:186), but does NOT call tx_queue_destroy() in lichen_link_cleanup() (link_ctx.c:572-597).\n\nImpact:\n- On POSIX/Linux: pthread_mutex_t inside tx_queue is never destroyed, causing a mutex resource leak on every cleanup. Worse, if cleanup is followed by re-init (common in enable/disable cycles), tx_queue_init() re-initializes the mutex without destroying first, which is undefined behavior per POSIX.\n- On Zephyr: tx_queue_destroy is a no-op, so no issue.\n\nFix: Add tx_queue_destroy(\u0026ctx-\u003etx_queue) at the start of lichen_link_cleanup(), before the seq_lock destroy.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:15:23.99822448Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:15:23.99822448Z"
+}
