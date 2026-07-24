@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ur7d",
+  "title": "[rereview] project-LICHEN-a4n2.3: hardcoded pop_buf[256] instead of TX_QUEUE_MAX_PACKET_SIZE",
+  "description": "Commit 1a774fce5 adds a tx_queue_pop call in both lichen_l2_send_inner() (lichen_l2.c:1576) and the bridge-zephyr copy (firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:1078) that uses a stack buffer declared as 'uint8_t pop_buf[256]' instead of 'uint8_t pop_buf[TX_QUEUE_MAX_PACKET_SIZE]'.\n\nImpact:\n- If TX_QUEUE_MAX_PACKET_SIZE is ever changed to a value larger than 256, the pop_buf will be too small and tx_queue_pop will return -ENOMEM, silently discarding the queue entry without warning.\n- Maintenance hazard: the hardcoded constant is silently coupled to the #define.\n- TX_QUEUE_MAX_PACKET_SIZE is currently 256, so no runtime issue today.\n\nFix: Replace 'uint8_t pop_buf[256]' with 'uint8_t pop_buf[TX_QUEUE_MAX_PACKET_SIZE]' in both files.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:15:33.220869836Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:15:33.220869836Z"
+}
