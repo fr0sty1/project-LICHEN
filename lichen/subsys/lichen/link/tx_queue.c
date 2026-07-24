@@ -13,6 +13,7 @@
  */
 
 #include <lichen/tx_queue.h>
+#include <lichen/link.h>
 #include <lichen/errno.h>
 #include <string.h>
 
@@ -296,13 +297,13 @@ int tx_queue_push_default_deadline(struct tx_queue *queue,
 
 	switch (priority) {
 	case TX_PRIORITY_ROUTING:
-		deadline_ms = now_ms + TX_DEADLINE_ROUTING_MS;
+		deadline_ms = now_ms + 20 * SLOT_DURATION_MS;
 		break;
 	case TX_PRIORITY_ACK:
-		deadline_ms = now_ms + TX_DEADLINE_ACK_MS;
+		deadline_ms = now_ms + 40 * SLOT_DURATION_MS;
 		break;
 	default:
-		deadline_ms = now_ms + TX_DEADLINE_APP_MS;
+		deadline_ms = now_ms + 240 * SLOT_DURATION_MS;
 		break;
 	}
 
@@ -451,18 +452,4 @@ void tx_queue_clear(struct tx_queue *queue)
 	memset(&queue->stats, 0, sizeof(queue->stats));
 
 	unlock_queue(queue);
-}
-
-int tx_queue_destroy(struct tx_queue *queue)
-{
-	if (queue == NULL) {
-		return -EINVAL;
-	}
-
-#ifdef __ZEPHYR__
-	(void)queue;
-	return 0;
-#else
-	return -pthread_mutex_destroy(&queue->lock);
-#endif
 }
