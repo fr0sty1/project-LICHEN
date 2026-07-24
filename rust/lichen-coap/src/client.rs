@@ -186,6 +186,7 @@ fn request_sequence() -> &'static AtomicU64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::codec::{ACK_HEADER, PAYLOAD_MARKER};
     use std::collections::HashSet;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Arc;
