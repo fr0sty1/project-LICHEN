@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-xpfm",
+  "title": "[rereview] project-LICHEN-dk3c.5: LICHEN_DODAG_LOSS_RESUME_TIMEOUT=0 means interval never reverts after DODAG loss",
+  "description": "If CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT is set to 0 (announce.c:746-748), the dodag_loss_work timer is never started, so the announce interval stays at the GATEWAY interval forever after DODAG loss. The Kconfig default is 60, but someone could change it to 0 or it might accidentally be set to 0 in a board config. Consider adding a Kconfig range or min value of 1.\\n\\nFile: lichen/subsys/lichen/routing/announce.c:746-748\\nSeverity: P3",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:37:39.730722162Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:37:39.730722162Z"
+}
