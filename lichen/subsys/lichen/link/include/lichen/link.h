@@ -378,6 +378,15 @@ int lichen_link_channel_select(const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN],
 			       uint8_t num_channels,
 			       uint8_t *_Nonnull channel);
 
+#ifdef CONFIG_LICHEN_CCP_TIME_SYNC
+int lichen_time_sync_init(void);
+uint32_t lichen_time_sync_get_sfn(void);
+int lichen_time_sync_set_sfn(uint32_t sfn);
+bool lichen_time_sync_is_synced(void);
+void lichen_time_sync_advance_sfn(void);
+void lichen_time_sync_desync(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
