@@ -183,7 +183,7 @@ Most common case for intra-mesh traffic.
 
 ### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
-For traffic using ULA or GUA addresses.
+For traffic using 02xx primary addresses.
 
 **Rule Definition:** (aligned with appendix-schc.md:A.3, 03-adaptation.md:5.5, and GLOBAL_COAP_RULE)
 
@@ -262,7 +262,7 @@ See appendix-schc.md §A.4 and test/vectors/schc_compression.json for full table
 
 ### 4.6. Rule 4: RPL DAO (routable multi-hop)
 
-Uses ULA source (fd00::/8) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`. Options use same MATCH_MAPPING as DIO.
+Uses 02xx source (self-derived primary address) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`. Options use same MATCH_MAPPING as DIO.
 
 **Compressed size:** ~10-18 bytes total (base + compressed options)
 
