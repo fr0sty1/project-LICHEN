@@ -235,20 +235,33 @@ pub struct PendingResponse<'a> {
     context: &'a mut Context,
     request_seq: OscoreSeqNum,
     code: u8,
-    options: heapless::Vec<u8, 128>,
-    payload: heapless::Vec<u8, 128>,
+    options: [u8; 128],
+    options_len: usize,
+    payload: [u8; 128],
+    payload_len: usize,
 }
 
 impl PendingResponse<'_> {
-    /// Accept the request Partial IV exactly once and release the authenticated plaintext.
+    /// Accept the request Partial IV exactly once and copy the authenticated plaintext
+    /// into the provided output buffers.
     pub fn commit(
         self,
-    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        options_out: &mut [u8],
+        payload_out: &mut [u8],
+    ) -> Result<(u8, usize, usize), OscoreError> {
         if !matches!(self.code >> 5, 2..=5) {
             return Err(OscoreError::InvalidParam);
         }
+        if options_out.len() < self.options_len {
+            return Err(BufferTooSmall::new(self.options_len, options_out.len()).into());
+        }
+        if payload_out.len() < self.payload_len {
+            return Err(BufferTooSmall::new(self.payload_len, payload_out.len()).into());
+        }
         self.context.mark_received_response(self.request_seq);
-        Ok((self.code, self.options, self.payload))
+        options_out[..self.options_len].copy_from_slice(&self.options[..self.options_len]);
+        payload_out[..self.payload_len].copy_from_slice(&self.payload[..self.payload_len]);
+        Ok((self.code, self.options_len, self.payload_len))
     }
 }
 
@@ -738,7 +751,9 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+        ciphertext_out: &mut [u8],
+        option_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -755,9 +770,6 @@ impl Context {
         // ponytail: empty AAD for now, proper AAD structure in RFC 8613 Section 5.4
         let cipher =
             AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
-        const CT_CAP: usize = 280;
-        let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
-        // Calculate required size for error reporting
         let ct_required = 1
             + class_e_options.len()
             + if payload.is_empty() {
@@ -766,14 +778,19 @@ impl Context {
                 1 + payload.len()
             }
             + TAG_LEN;
-        let ct_err = || BufferTooSmall::new(ct_required, CT_CAP);
-        ct_out.push(code).map_err(|_| ct_err())?;
-        ct_out
-            .extend_from_slice(class_e_options)
-            .map_err(|_| ct_err())?;
+        if ciphertext_out.len() < ct_required {
+            return Err(BufferTooSmall::new(ct_required, ciphertext_out.len()).into());
+        }
+        let mut ct_pos = 0;
+        ciphertext_out[ct_pos] = code;
+        ct_pos += 1;
+        ciphertext_out[ct_pos..ct_pos + class_e_options.len()].copy_from_slice(class_e_options);
+        ct_pos += class_e_options.len();
         if !payload.is_empty() {
-            ct_out.push(0xFF).map_err(|_| ct_err())?;
-            ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
+            ciphertext_out[ct_pos] = 0xFF;
+            ct_pos += 1;
+            ciphertext_out[ct_pos..ct_pos + payload.len()].copy_from_slice(payload);
+            ct_pos += payload.len();
         }
 
         // Build AAD per RFC 8613 Section 5.4 using sender_id as request_kid
@@ -782,40 +799,55 @@ impl Context {
 
         // Encrypt in place using detached API (works with plain slices, no Buffer trait needed)
         let tag = cipher
-            .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
+            .encrypt_in_place_detached(
+                (&nonce).into(),
+                &aad_buf[..aad_len],
+                &mut ciphertext_out[..ct_pos],
+            )
             .map_err(|_| OscoreError::EncryptFailed)?;
-        ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
+        if ct_pos + TAG_LEN > ciphertext_out.len() {
+            return Err(BufferTooSmall::new(ct_pos + TAG_LEN, ciphertext_out.len()).into());
+        }
+        ciphertext_out[ct_pos..ct_pos + TAG_LEN].copy_from_slice(&tag);
+        let ct_len = ct_pos + TAG_LEN;
 
         // Build OSCORE option
-        const OPT_CAP: usize = OSCORE_OPTION_MAX_LEN;
-        let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
         let has_context = self.id_context_present;
         let flags = 0x08 | u8::from(has_context) << 4 | (piv_len as u8 & 0x07);
         let context_len = usize::from(has_context) * (1 + self.id_context_len as usize);
         let opt_required = 1 + piv_len + context_len + self.sender_id_len as usize;
-        let opt_err = || BufferTooSmall::new(opt_required, OPT_CAP);
-        opt.push(flags).map_err(|_| opt_err())?;
-        opt.extend_from_slice(&piv[..piv_len])
-            .map_err(|_| opt_err())?;
-        if has_context {
-            opt.push(self.id_context_len).map_err(|_| opt_err())?;
-            opt.extend_from_slice(&self.id_context[..self.id_context_len as usize])
-                .map_err(|_| opt_err())?;
+        if option_out.len() < opt_required {
+            return Err(BufferTooSmall::new(opt_required, option_out.len()).into());
         }
-        opt.extend_from_slice(self.sender_id())
-            .map_err(|_| opt_err())?;
+        let mut opt_pos = 0;
+        option_out[opt_pos] = flags;
+        opt_pos += 1;
+        option_out[opt_pos..opt_pos + piv_len].copy_from_slice(&piv[..piv_len]);
+        opt_pos += piv_len;
+        if has_context {
+            option_out[opt_pos] = self.id_context_len;
+            opt_pos += 1;
+            option_out[opt_pos..opt_pos + self.id_context_len as usize]
+                .copy_from_slice(&self.id_context[..self.id_context_len as usize]);
+            opt_pos += self.id_context_len as usize;
+        }
+        option_out[opt_pos..opt_pos + self.sender_id_len as usize]
+            .copy_from_slice(self.sender_id());
+        opt_pos += self.sender_id_len as usize;
 
-        Ok((ct_out, opt))
+        Ok((ct_len, opt_pos))
     }
 
     /// Unprotect (decrypt) an OSCORE-protected request.
     ///
-    /// Returns (code, class_e_options, payload).
+    /// Returns (code, options_len, payload_len).
     pub fn unprotect_request(
         &mut self,
         oscore_option: &[u8],
         ciphertext: &[u8],
-    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        options_out: &mut [u8],
+        payload_out: &mut [u8],
+    ) -> Result<(u8, usize, usize), OscoreError> {
         if ciphertext.len() < TAG_LEN + 1 {
             return Err(OscoreError::InvalidParam);
         }
@@ -866,23 +898,29 @@ impl Context {
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
         let cipher =
             AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
-        const PT_CAP: usize = 256;
-        let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
-        plaintext
-            .extend_from_slice(&ciphertext[..tag_start])
-            .map_err(|_| BufferTooSmall::new(tag_start, PT_CAP))?;
+        let pt_len = tag_start;
+        if pt_len > 256 {
+            return Err(BufferTooSmall::new(pt_len, 256).into());
+        }
+        let mut plaintext = [0u8; 256];
+        plaintext[..pt_len].copy_from_slice(&ciphertext[..tag_start]);
         cipher
-            .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
+            .decrypt_in_place_detached(
+                (&nonce).into(),
+                &aad_buf[..aad_len],
+                &mut plaintext[..pt_len],
+                tag,
+            )
             .map_err(|_| OscoreError::DecryptFailed)?;
 
         // Parse plaintext: code || options || 0xFF || payload
         // 0xFF is the CoAP payload marker (RFC 7252 Section 3).
-        if plaintext.is_empty() {
+        if pt_len == 0 {
             return Err(OscoreError::InvalidParam);
         }
 
         let code = plaintext[0];
-        let rest = &plaintext[1..];
+        let rest = &plaintext[1..pt_len];
 
         // Find payload marker using proper CoAP option parsing.
         // SECURITY: Cannot just search for 0xFF - it may appear in option values.
@@ -892,21 +930,20 @@ impl Context {
             None => (rest, &[][..]),
         };
 
-        const OUT_CAP: usize = 128;
-        let mut options = heapless::Vec::<u8, OUT_CAP>::new();
-        options
-            .extend_from_slice(options_slice)
-            .map_err(|_| BufferTooSmall::new(options_slice.len(), OUT_CAP))?;
+        if options_out.len() < options_slice.len() {
+            return Err(BufferTooSmall::new(options_slice.len(), options_out.len()).into());
+        }
+        options_out[..options_slice.len()].copy_from_slice(options_slice);
 
-        let mut payload = heapless::Vec::<u8, OUT_CAP>::new();
-        payload
-            .extend_from_slice(payload_slice)
-            .map_err(|_| BufferTooSmall::new(payload_slice.len(), OUT_CAP))?;
+        if payload_out.len() < payload_slice.len() {
+            return Err(BufferTooSmall::new(payload_slice.len(), payload_out.len()).into());
+        }
+        payload_out[..payload_slice.len()].copy_from_slice(payload_slice);
 
         // Commit only after every authenticated output fits its public bound.
         self.update_replay_window(seq);
 
-        Ok((code, options, payload))
+        Ok((code, options_slice.len(), payload_slice.len()))
     }
 
     /// Protect (encrypt) an OSCORE response.
@@ -920,7 +957,7 @@ impl Context {
     /// the responder's Sender ID and PIV. When omitting PIV, the response reuses
     /// the exact nonce from the original request.
     ///
-    /// Returns (ciphertext, oscore_option_value).
+    /// Returns (ciphertext_len, oscore_option_len).
     ///
     /// # Parameters
     /// - `code`: Response code (e.g., 0x45 for 2.05 Content)
@@ -928,6 +965,8 @@ impl Context {
     /// - `payload`: Response payload to encrypt
     /// - `request_kid`: The KID from the original request (requester's sender_id)
     /// - `request_piv`: The PIV from the original request
+    /// - `ciphertext_out`: Output buffer for encrypted data
+    /// - `option_out`: Output buffer for OSCORE option value
     pub fn protect_response(
         &mut self,
         code: u8,
@@ -936,7 +975,9 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+        ciphertext_out: &mut [u8],
+        option_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
         // Determine PIV for nonce: own sequence if including, else request's PIV
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
@@ -967,8 +1008,6 @@ impl Context {
         let nonce = compute_nonce(nonce_id, &nonce_piv[..piv_len], &self.common_iv);
 
         // Build plaintext: code || options || 0xFF || payload
-        const CT_CAP: usize = 280;
-        let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
         let ct_required = 1
             + class_e_options.len()
             + if payload.is_empty() {
@@ -977,14 +1016,19 @@ impl Context {
                 1 + payload.len()
             }
             + TAG_LEN;
-        let ct_err = || BufferTooSmall::new(ct_required, CT_CAP);
-        ct_out.push(code).map_err(|_| ct_err())?;
-        ct_out
-            .extend_from_slice(class_e_options)
-            .map_err(|_| ct_err())?;
+        if ciphertext_out.len() < ct_required {
+            return Err(BufferTooSmall::new(ct_required, ciphertext_out.len()).into());
+        }
+        let mut ct_pos = 0;
+        ciphertext_out[ct_pos] = code;
+        ct_pos += 1;
+        ciphertext_out[ct_pos..ct_pos + class_e_options.len()].copy_from_slice(class_e_options);
+        ct_pos += class_e_options.len();
         if !payload.is_empty() {
-            ct_out.push(0xFF).map_err(|_| ct_err())?;
-            ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
+            ciphertext_out[ct_pos] = 0xFF;
+            ct_pos += 1;
+            ciphertext_out[ct_pos..ct_pos + payload.len()].copy_from_slice(payload);
+            ct_pos += payload.len();
         }
 
         // Build AAD using ORIGINAL request's KID and PIV
@@ -995,24 +1039,29 @@ impl Context {
         let cipher =
             AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
         let tag = cipher
-            .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
+            .encrypt_in_place_detached(
+                (&nonce).into(),
+                &aad_buf[..aad_len],
+                &mut ciphertext_out[..ct_pos],
+            )
             .map_err(|_| OscoreError::EncryptFailed)?;
-        ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
+        if ct_pos + TAG_LEN > ciphertext_out.len() {
+            return Err(BufferTooSmall::new(ct_pos + TAG_LEN, ciphertext_out.len()).into());
+        }
+        ciphertext_out[ct_pos..ct_pos + TAG_LEN].copy_from_slice(&tag);
+        let ct_len = ct_pos + TAG_LEN;
 
         // Build OSCORE option
-        const OPT_CAP: usize = OSCORE_OPTION_MAX_LEN;
-        let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
-
         if let Some(len) = piv_for_option {
-            // Include PIV in option
-            let flags = len as u8 & 0x07;
-            opt.push(flags)
-                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-            opt.extend_from_slice(&nonce_piv[..len])
-                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
+            if option_out.len() < 1 + len {
+                return Err(BufferTooSmall::new(1 + len, option_out.len()).into());
+            }
+            option_out[0] = len as u8 & 0x07;
+            option_out[1..1 + len].copy_from_slice(&nonce_piv[..len]);
+            Ok((ct_len, 1 + len))
+        } else {
+            Ok((ct_len, 0))
         }
-
-        Ok((ct_out, opt))
     }
 
     fn protect_response_with_reserved_piv(
@@ -1023,13 +1072,9 @@ impl Context {
         payload: &[u8],
         request_kid: &[u8],
         request_piv: &[u8],
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+        ciphertext_out: &mut [u8],
+        option_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
         if request_kid.len() > NONCE_ID_LEN
             || OscoreSeqNum::from_piv(request_piv).is_none()
             || request_kid != self.recipient_id()
@@ -1046,6 +1091,8 @@ impl Context {
             request_kid,
             request_piv,
             &piv[..piv_len],
+            ciphertext_out,
+            option_out,
         )
     }
 
@@ -1057,50 +1104,49 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         response_piv: &[u8],
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+        ciphertext_out: &mut [u8],
+        option_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
         let nonce = compute_nonce(self.sender_id(), response_piv, &self.common_iv);
-        let mut ct_out = heapless::Vec::<u8, 280>::new();
         let required =
             1 + class_e_options.len() + usize::from(!payload.is_empty()) + payload.len() + TAG_LEN;
-        ct_out
-            .push(code)
-            .map_err(|_| BufferTooSmall::new(required, 280))?;
-        ct_out
-            .extend_from_slice(class_e_options)
-            .map_err(|_| BufferTooSmall::new(required, 280))?;
+        if ciphertext_out.len() < required {
+            return Err(BufferTooSmall::new(required, ciphertext_out.len()).into());
+        }
+        let mut ct_pos = 0;
+        ciphertext_out[ct_pos] = code;
+        ct_pos += 1;
+        ciphertext_out[ct_pos..ct_pos + class_e_options.len()].copy_from_slice(class_e_options);
+        ct_pos += class_e_options.len();
         if !payload.is_empty() {
-            ct_out
-                .push(0xff)
-                .map_err(|_| BufferTooSmall::new(required, 280))?;
-            ct_out
-                .extend_from_slice(payload)
-                .map_err(|_| BufferTooSmall::new(required, 280))?;
+            ciphertext_out[ct_pos] = 0xff;
+            ct_pos += 1;
+            ciphertext_out[ct_pos..ct_pos + payload.len()].copy_from_slice(payload);
+            ct_pos += payload.len();
         }
         let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(request_kid, request_piv, &mut aad_buf)?;
         let cipher =
             AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
         let tag = cipher
-            .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
+            .encrypt_in_place_detached(
+                (&nonce).into(),
+                &aad_buf[..aad_len],
+                &mut ciphertext_out[..ct_pos],
+            )
             .map_err(|_| OscoreError::EncryptFailed)?;
-        ct_out
-            .extend_from_slice(&tag)
-            .map_err(|_| BufferTooSmall::new(required, 280))?;
+        if ct_pos + TAG_LEN > ciphertext_out.len() {
+            return Err(BufferTooSmall::new(ct_pos + TAG_LEN, ciphertext_out.len()).into());
+        }
+        ciphertext_out[ct_pos..ct_pos + TAG_LEN].copy_from_slice(&tag);
+        let ct_len = ct_pos + TAG_LEN;
 
-        let mut option = heapless::Vec::<u8, OSCORE_OPTION_MAX_LEN>::new();
-        option
-            .push(response_piv.len() as u8 & 0x07)
-            .map_err(|_| BufferTooSmall::new(1 + response_piv.len(), OSCORE_OPTION_MAX_LEN))?;
-        option
-            .extend_from_slice(response_piv)
-            .map_err(|_| BufferTooSmall::new(1 + response_piv.len(), OSCORE_OPTION_MAX_LEN))?;
-        Ok((ct_out, option))
+        if option_out.len() < 1 + response_piv.len() {
+            return Err(BufferTooSmall::new(1 + response_piv.len(), option_out.len()).into());
+        }
+        option_out[0] = response_piv.len() as u8 & 0x07;
+        option_out[1..1 + response_piv.len()].copy_from_slice(response_piv);
+        Ok((ct_len, 1 + response_piv.len()))
     }
 
     /// Authenticate and parse an OSCORE-protected response without accepting its request PIV.
@@ -1176,20 +1222,26 @@ impl Context {
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
         let cipher =
             AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
-        const PT_CAP: usize = 256;
-        let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
-        plaintext
-            .extend_from_slice(&ciphertext[..tag_start])
-            .map_err(|_| BufferTooSmall::new(tag_start, PT_CAP))?;
+        let pt_len = tag_start;
+        if pt_len > 256 {
+            return Err(BufferTooSmall::new(pt_len, 256).into());
+        }
+        let mut plaintext = [0u8; 256];
+        plaintext[..pt_len].copy_from_slice(&ciphertext[..tag_start]);
         cipher
-            .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
+            .decrypt_in_place_detached(
+                (&nonce).into(),
+                &aad_buf[..aad_len],
+                &mut plaintext[..pt_len],
+                tag,
+            )
             .map_err(|_| OscoreError::DecryptFailed)?;
 
         if let Some(seq) = response_seq {
             self.update_replay_window(seq);
         }
 
-        if plaintext.is_empty() {
+        if pt_len == 0 {
             return Err(OscoreError::InvalidParam);
         }
 
@@ -1197,7 +1249,7 @@ impl Context {
         if !matches!(code >> 5, 2..=5) {
             return Err(OscoreError::InvalidParam);
         }
-        let rest = &plaintext[1..];
+        let rest = &plaintext[1..pt_len];
 
         // Find payload marker using proper CoAP option parsing.
         // SECURITY: Cannot just search for 0xFF - it may appear in option values.
@@ -1207,23 +1259,19 @@ impl Context {
             None => (rest, &[][..]),
         };
 
-        const OUT_CAP: usize = 128;
-        let mut options = heapless::Vec::<u8, OUT_CAP>::new();
-        options
-            .extend_from_slice(options_slice)
-            .map_err(|_| BufferTooSmall::new(options_slice.len(), OUT_CAP))?;
-
-        let mut payload = heapless::Vec::<u8, OUT_CAP>::new();
-        payload
-            .extend_from_slice(payload_slice)
-            .map_err(|_| BufferTooSmall::new(payload_slice.len(), OUT_CAP))?;
+        let mut options = [0u8; 128];
+        options[..options_slice.len()].copy_from_slice(options_slice);
+        let mut payload = [0u8; 128];
+        payload[..payload_slice.len()].copy_from_slice(payload_slice);
 
         Ok(PendingResponse {
             context: self,
             request_seq,
             code,
             options,
+            options_len: options_slice.len(),
             payload,
+            payload_len: payload_slice.len(),
         })
     }
 
@@ -1233,9 +1281,11 @@ impl Context {
         oscore_option: &[u8],
         ciphertext: &[u8],
         request_piv: &[u8],
-    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        options_out: &mut [u8],
+        payload_out: &mut [u8],
+    ) -> Result<(u8, usize, usize), OscoreError> {
         self.begin_unprotect_response(oscore_option, ciphertext, request_piv)?
-            .commit()
+            .commit(options_out, payload_out)
     }
 
     fn is_response_reuse(&self, seq: OscoreSeqNum) -> bool {
@@ -1342,27 +1392,71 @@ impl Context {
             }
         }
     }
+
+    /// Test-only convenience: auto-increment sender sequence and protect a request.
+    #[cfg(test)]
+    pub fn protect_request(
+        &mut self,
+        code: u8,
+        class_e_options: &[u8],
+        payload: &[u8],
+        ct_out: &mut [u8],
+        opt_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
+        let seq = self
+            .sender_seq
+            .fetch_increment()
+            .ok_or(OscoreError::SeqExhausted)?;
+        self.protect_request_reserved(seq, code, class_e_options, payload, ct_out, opt_out)
+    }
+
+    /// Test-only convenience: auto-increment sender sequence and protect a response with explicit PIV.
+    #[cfg(test)]
+    pub fn protect_response_with_piv(
+        &mut self,
+        code: u8,
+        class_e_options: &[u8],
+        payload: &[u8],
+        request_kid: &[u8],
+        request_piv: &[u8],
+        ct_out: &mut [u8],
+        opt_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
+        let seq = self
+            .sender_seq
+            .fetch_increment()
+            .ok_or(OscoreError::SeqExhausted)?;
+        self.protect_response_with_reserved_piv(
+            seq, code, class_e_options, payload, request_kid, request_piv, ct_out, opt_out,
+        )
+    }
 }
 
 impl ReservedSender<'_> {
     /// Protect a request using this durably reserved sender sequence.
+    ///
+    /// Returns (ciphertext_len, oscore_option_len).
     pub fn protect_request(
         self,
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
-        self.context
-            .protect_request_reserved(self.sequence, code, class_e_options, payload)
+        ciphertext_out: &mut [u8],
+        option_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
+        self.context.protect_request_reserved(
+            self.sequence,
+            code,
+            class_e_options,
+            payload,
+            ciphertext_out,
+            option_out,
+        )
     }
 
     /// Protect a response with a fresh, durably reserved sender PIV.
+    ///
+    /// Returns (ciphertext_len, oscore_option_len).
     pub fn protect_response_with_piv(
         self,
         code: u8,
@@ -1370,13 +1464,9 @@ impl ReservedSender<'_> {
         payload: &[u8],
         request_kid: &[u8],
         request_piv: &[u8],
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+        ciphertext_out: &mut [u8],
+        option_out: &mut [u8],
+    ) -> Result<(usize, usize), OscoreError> {
         self.context.protect_response_with_reserved_piv(
             self.sequence,
             code,
@@ -1384,6 +1474,8 @@ impl ReservedSender<'_> {
             payload,
             request_kid,
             request_piv,
+            ciphertext_out,
+            option_out,
         )
     }
 }
@@ -2012,20 +2104,25 @@ mod tests {
             };
             let salt = salt.as_deref().unwrap_or(&[]);
 
+            let id_context_opt = if id_context.is_empty() && !v["id_context"].is_string() {
+                None
+            } else {
+                Some(&id_context[..])
+            };
             assert_eq!(
-                derive_key(&secret, salt, &sender_id, &id_context)
+                derive_key(&secret, salt, &sender_id, id_context_opt)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["sender_key"])
             );
             assert_eq!(
-                derive_key(&secret, salt, &recipient_id, &id_context)
+                derive_key(&secret, salt, &recipient_id, id_context_opt)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["recipient_key"])
             );
             assert_eq!(
-                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
+                derive_iv(&secret, salt, id_context_opt).unwrap().as_slice(),
                 json_hex(&v["expected"]["common_iv"])
             );
         }
@@ -2045,11 +2142,11 @@ mod tests {
                 json_hex(&v["sender_id"])
             };
             let piv = if v["type"] == "request_protection" {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap()).unwrap()
             } else if v["include_piv"] == false {
                 OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
             } else {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap()).unwrap()
             };
             let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
             let salt = v["master_salt"]
@@ -2116,13 +2213,9 @@ mod tests {
             code: u8,
             options: &[u8],
             payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
+            ct_out: &mut [u8],
+            opt_out: &mut [u8],
+        ) -> Result<(usize, usize), OscoreError>;
 
         fn protect_response_with_piv(
             &mut self,
@@ -2131,161 +2224,9 @@ mod tests {
             payload: &[u8],
             request_kid: &[u8],
             request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
-    }
-
-    impl TestProtect for Context {
-        fn protect_request(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_request(code, options, payload)
-        }
-
-        fn protect_response_with_piv(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-            request_kid: &[u8],
-            request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_response_with_piv(code, options, payload, request_kid, request_piv)
-        }
-    }
-
-    struct TestStore {
-        context_id: ContextId,
-        state: SenderSequenceState,
-    }
-
-    impl TestStore {
-        fn for_context(context: &Context) -> Self {
-            Self {
-                context_id: context.context_id(),
-                state: context.sender_sequence_state(),
-            }
-        }
-    }
-
-    impl SenderStateStore for TestStore {
-        type Error = core::convert::Infallible;
-
-        fn load(
-            &mut self,
-            context_id: &ContextId,
-        ) -> Result<Option<SenderSequenceState>, Self::Error> {
-            Ok((*context_id == self.context_id).then_some(self.state))
-        }
-
-        fn compare_exchange(
-            &mut self,
-            context_id: &ContextId,
-            expected: Option<SenderSequenceState>,
-            next: SenderSequenceState,
-        ) -> Result<bool, Self::Error> {
-            if *context_id != self.context_id || expected != Some(self.state) {
-                return Ok(false);
-            }
-            self.state = next;
-            Ok(true)
-        }
-    }
-
-    trait TestProtect {
-        fn protect_request(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
-
-        fn protect_response_with_piv(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-            request_kid: &[u8],
-            request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
-    }
-
-    impl TestProtect for Context {
-        fn protect_request(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_request(code, options, payload)
-        }
-
-        fn protect_response_with_piv(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-            request_kid: &[u8],
-            request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_response_with_piv(code, options, payload, request_kid, request_piv)
-        }
+            ct_out: &mut [u8],
+            opt_out: &mut [u8],
+        ) -> Result<(usize, usize), OscoreError>;
     }
 
     #[test]
@@ -2353,13 +2294,15 @@ mod tests {
 
         present.active = true;
         let mut store = TestStore::for_context(&present);
-        let (_, option) = present
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; OSCORE_OPTION_MAX_LEN];
+        let (_ct_len, opt_len) = present
             .reserve_sender(&mut store)
             .unwrap()
-            .protect_request(0x01, &[], &[])
+            .protect_request(0x01, &[], &[], &mut ct_buf, &mut opt_buf)
             .unwrap();
-        assert_eq!(option.as_slice(), &hex!("19000000"));
-        let parsed = parse_option(&option).unwrap();
+        assert_eq!(&opt_buf[..opt_len], &hex!("19000000"));
+        let parsed = parse_option(&opt_buf[..opt_len]).unwrap();
         assert!(parsed.kid_context_present);
         assert_eq!(parsed.kid_context_len, 0);
     }
@@ -2379,23 +2322,27 @@ mod tests {
         let payload = b"Hello World!";
 
         let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
-        let (ciphertext, option) = c7
-            .protect_response(0x45, &[], payload, &[], &[0x14])
+        let mut ct7 = [0u8; 280];
+        let mut opt7 = [0u8; 32];
+        let (ct7_len, opt7_len) = c7
+            .protect_response(0x45, &[], payload, &[], &[0x14], false, &mut ct7, &mut opt7)
             .unwrap();
-        assert_eq!(option.as_slice(), b"");
+        assert_eq!(&opt7[..opt7_len], b"");
         assert_eq!(
-            ciphertext.as_slice(),
+            &ct7[..ct7_len],
             &hex!("dbaad1e9a7e7b2a813d3c31524378303cdafae119106")
         );
 
         let mut c8 =
             Context::restore(&master_secret, Some(&master_salt), &[1], &[], 0, false).unwrap();
-        let (ciphertext, option) = c8
-            .protect_response_with_piv(0x45, &[], payload, &[], &[0x14])
+        let mut ct8 = [0u8; 280];
+        let mut opt8 = [0u8; 32];
+        let (ct8_len, opt8_len) = c8
+            .protect_response_with_piv(0x45, &[], payload, &[], &[0x14], &mut ct8, &mut opt8)
             .unwrap();
-        assert_eq!(option.as_slice(), &hex!("0100"));
+        assert_eq!(&opt8[..opt8_len], &hex!("0100"));
         assert_eq!(
-            ciphertext.as_slice(),
+            &ct8[..ct8_len],
             &hex!("4d4c13669384b67354b2b6175ff4b8658c666a6cf88e")
         );
     }
@@ -2406,13 +2353,15 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[0], &[1], 0x0102, false).unwrap();
 
         let mut store = TestStore::for_context(&ctx);
-        let (_, option) = ctx
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; OSCORE_OPTION_MAX_LEN];
+        let (_ct_len, opt_len) = ctx
             .reserve_sender(&mut store)
             .unwrap()
-            .protect_request(0x01, &[], b"restored")
+            .protect_request(0x01, &[], b"restored", &mut ct_buf, &mut opt_buf)
             .unwrap();
 
-        assert_eq!(option.as_slice(), b"\x0a\x01\x02\x00");
+        assert_eq!(&opt_buf[..opt_len], b"\x0a\x01\x02\x00");
         assert_eq!(ctx.sender_seq().unwrap().get(), 0x0103);
         assert!(ctx.is_restored());
         assert_eq!(
@@ -2430,14 +2379,15 @@ mod tests {
         let mut first = Context::restore(&secret, None, &[0], &[1], 9, false).unwrap();
         let mut second = Context::restore(&secret, None, &[0], &[1], 9, false).unwrap();
         let mut store = TestStore::for_context(&first);
-
-        let (_, option) = first
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; OSCORE_OPTION_MAX_LEN];
+        let (_ct_len, opt_len) = first
             .reserve_sender(&mut store)
             .unwrap()
-            .protect_request(0x01, &[], b"winner")
+            .protect_request(0x01, &[], b"winner", &mut ct_buf, &mut opt_buf)
             .unwrap();
 
-        assert_eq!(option.as_slice(), b"\x09\x09\x00");
+        assert_eq!(&opt_buf[..opt_len], b"\x09\x09\x00");
         assert!(matches!(
             second.reserve_sender(&mut store),
             Err(ReservationError::Conflict)
@@ -2525,9 +2475,11 @@ mod tests {
 
         let secret = [0x4c; KEY_LEN];
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false, &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2535,7 +2487,7 @@ mod tests {
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
         assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3])
+            .protect_response(0x45, &[], b"response", &[0], &[3], false, &mut ct_buf, &mut opt_buf)
             .is_ok());
     }
 
@@ -2551,12 +2503,14 @@ mod tests {
             },
         };
         let mut context =
-            Context::load_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
+            Context::restore_existing(&mut store).unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false, &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2734,15 +2688,17 @@ mod tests {
         context.sender_seq = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
         let mut store = TestStore::for_context(&context);
 
-        let (_, option) = context
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; OSCORE_OPTION_MAX_LEN];
+        let (_ct_len, opt_len) = context
             .reserve_sender(&mut store)
             .unwrap()
-            .protect_request(0x01, &[], &[])
+            .protect_request(0x01, &[], &[], &mut ct_buf, &mut opt_buf)
             .unwrap();
 
-        assert_eq!(option.len(), OSCORE_OPTION_MAX_LEN);
+        assert_eq!(opt_len, OSCORE_OPTION_MAX_LEN);
         assert_eq!(
-            option.as_slice(),
+            &opt_buf[..opt_len],
             &hex!("1dffffffffff08101112131415161700010203040506")
         );
     }
@@ -2753,17 +2709,23 @@ mod tests {
         let mut oversized_sender = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
         let mut valid_sender = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
         let mut recipient = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
+        let mut oversized_ct = [0u8; 280];
+        let mut oversized_opt = [0u8; 32];
         let oversized = oversized_sender
-            .protect_request(0x02, &[], &[0x55; 129])
+            .protect_request(0x02, &[], &[0x55; 129], &mut oversized_ct, &mut oversized_opt)
             .unwrap();
-        let valid = valid_sender.protect_request(0x02, &[], b"valid").unwrap();
+        let mut valid_ct = [0u8; 280];
+        let mut valid_opt = [0u8; 32];
+        let valid = valid_sender.protect_request(0x02, &[], b"valid", &mut valid_ct, &mut valid_opt).unwrap();
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert!(matches!(
-            recipient.unprotect_request(&oversized.1, &oversized.0),
+            recipient.unprotect_request(&oversized_opt[..oversized.1], &oversized_ct[..oversized.0], &mut opt_out, &mut payload_out),
             Err(OscoreError::BufferTooSmall(_))
         ));
         assert_eq!(
-            recipient.unprotect_request(&valid.1, &valid.0).unwrap().2,
+            recipient.unprotect_request(&valid_opt[..valid.1], &valid_ct[..valid.0], &mut opt_out, &mut payload_out).unwrap().2,
             b"valid"
         );
     }
@@ -2774,22 +2736,30 @@ mod tests {
         let mut client = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
         let mut oversized_server = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
         let mut valid_server = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = client.protect_request(0x01, &[], &[]).unwrap();
-        let request_piv = &request_option[1..2];
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_, req_opt_len) = client.protect_request(0x01, &[], &[], &mut req_ct, &mut req_opt).unwrap();
+        let request_piv = &req_opt[1..2];
+        let mut oversized_ct = [0u8; 280];
+        let mut oversized_opt = [0u8; 32];
         let oversized = oversized_server
-            .protect_response_with_piv(0x45, &[], &[0x55; 129], &[0], request_piv)
+            .protect_response_with_piv(0x45, &[], &[0x55; 129], &[0], request_piv, &mut oversized_ct, &mut oversized_opt)
             .unwrap();
+        let mut valid_ct = [0u8; 280];
+        let mut valid_opt = [0u8; 32];
         let valid = valid_server
-            .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv)
+            .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv, &mut valid_ct, &mut valid_opt)
             .unwrap();
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert!(matches!(
-            client.unprotect_response(&oversized.1, &oversized.0, request_piv),
+            client.unprotect_response(&oversized_opt[..oversized.1], &oversized_ct[..oversized.0], request_piv, &mut opt_out, &mut payload_out),
             Err(OscoreError::BufferTooSmall(_))
         ));
         assert_eq!(
             client
-                .unprotect_response(&valid.1, &valid.0, request_piv)
+                .unprotect_response(&valid_opt[..valid.1], &valid_ct[..valid.0], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap()
                 .2,
             b"valid"
@@ -2815,13 +2785,15 @@ mod tests {
             store.state.exhausted,
         )
         .unwrap();
-        let (_, option) = restarted
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; OSCORE_OPTION_MAX_LEN];
+        let (_ct_len, opt_len) = restarted
             .reserve_sender(&mut store)
             .unwrap()
-            .protect_request(0x01, &[], b"after crash")
+            .protect_request(0x01, &[], b"after crash", &mut ct_buf, &mut opt_buf)
             .unwrap();
 
-        assert_eq!(option.as_slice(), b"\x09\x04\x00");
+        assert_eq!(&opt_buf[..opt_len], b"\x09\x04\x00");
         assert_eq!(store.state.next_sequence, 5);
     }
 
@@ -2829,9 +2801,11 @@ mod tests {
     fn restored_context_rejects_response_without_piv() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false, &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2953,14 +2927,20 @@ mod tests {
         let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         sender.sender_seq = seq(0x1_0000_0000);
 
-        let first = sender.protect_request(0x01, &[], b"first").unwrap();
-        let second = sender.protect_request(0x01, &[], b"second").unwrap();
-        assert_eq!(&first.1[1..6], b"\x01\x00\x00\x00\x00");
+        let mut ct1 = [0u8; 280];
+        let mut opt1 = [0u8; 32];
+        let first = sender.protect_request(0x01, &[], b"first", &mut ct1, &mut opt1).unwrap();
+        let mut ct2 = [0u8; 280];
+        let mut opt2 = [0u8; 32];
+        let second = sender.protect_request(0x01, &[], b"second", &mut ct2, &mut opt2).unwrap();
+        assert_eq!(&opt2[..second.1][1..6], b"\x01\x00\x00\x00\x00");
 
-        recipient.unprotect_request(&second.1, &second.0).unwrap();
-        recipient.unprotect_request(&first.1, &first.0).unwrap();
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
+        recipient.unprotect_request(&opt2[..second.1], &ct2[..second.0], &mut opt_out, &mut payload_out).unwrap();
+        recipient.unprotect_request(&opt1[..first.1], &ct1[..first.0], &mut opt_out, &mut payload_out).unwrap();
         assert_eq!(
-            recipient.unprotect_request(&first.1, &first.0).unwrap_err(),
+            recipient.unprotect_request(&opt1[..first.1], &ct1[..first.0], &mut opt_out, &mut payload_out).unwrap_err(),
             OscoreError::Replay
         );
     }
@@ -2976,14 +2956,18 @@ mod tests {
         let code = 0x01; // GET
         let payload = b"hello";
 
-        let (ciphertext, oscore_opt) = sender_ctx.protect_request(code, &[], payload).unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
+        let (ct_len, opt_len) = sender_ctx.protect_request(code, &[], payload, &mut ct_buf, &mut opt_buf).unwrap();
 
-        let (dec_code, _options, dec_payload) = recipient_ctx
-            .unprotect_request(&oscore_opt, &ciphertext)
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
+        let (dec_code, _opt_out_len, payload_len) = recipient_ctx
+            .unprotect_request(&opt_buf[..opt_len], &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
             .unwrap();
 
         assert_eq!(dec_code, code);
-        assert_eq!(dec_payload.as_slice(), payload);
+        assert_eq!(&payload_out[..payload_len], payload);
     }
 
     #[test]
@@ -2991,36 +2975,44 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut sender = Context::new_ephemeral(&master_secret, None, b"", b"\x01").unwrap();
         let mut recipient = Context::new_ephemeral(&master_secret, None, b"\x01", b"").unwrap();
-        let (ciphertext, option) = sender.protect_request(0x01, &[], b"request").unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
+        let (ct_len, opt_len) = sender.protect_request(0x01, &[], b"request", &mut ct_buf, &mut opt_buf).unwrap();
 
-        assert_eq!(option.as_slice(), b"\x09\x00");
+        assert_eq!(&opt_buf[..opt_len], b"\x09\x00");
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert_eq!(
             recipient
-                .unprotect_request(b"\x09\x00\x02", &ciphertext)
+                .unprotect_request(b"\x09\x00\x02", &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::NoContext
         );
         assert_eq!(
             recipient
-                .unprotect_request(b"\x01\x00", &ciphertext)
+                .unprotect_request(b"\x01\x00", &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
-        recipient.unprotect_request(&option, &ciphertext).unwrap();
+        recipient.unprotect_request(&opt_buf[..opt_len], &ct_buf[..ct_len], &mut opt_out, &mut payload_out).unwrap();
     }
 
     #[test]
     fn unprotect_request_compares_literal_id_context() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut sender = Context::new_ephemeral(&master_secret, None, b"\x00", b"\x01").unwrap();
-        let (ciphertext, _) = sender.protect_request(0x01, &[], b"request").unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
+        let (ct_len, _opt_len) = sender.protect_request(0x01, &[], b"request", &mut ct_buf, &mut opt_buf).unwrap();
         let mut matching = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
         matching.id_context[0] = 0xaa;
         matching.id_context_len = 1;
         matching.id_context_present = true;
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         matching
-            .unprotect_request(b"\x19\x00\x01\xaa\x00", &ciphertext)
+            .unprotect_request(b"\x19\x00\x01\xaa\x00", &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
             .unwrap();
 
         let mut tampered = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
@@ -3029,7 +3021,7 @@ mod tests {
         tampered.id_context_present = true;
         assert_eq!(
             tampered
-                .unprotect_request(b"\x19\x00\x01\xbb\x00", &ciphertext)
+                .unprotect_request(b"\x19\x00\x01\xbb\x00", &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::NoContext
         );
@@ -3042,15 +3034,17 @@ mod tests {
 
         ctx.sender_seq = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
 
-        let (_, option) = ctx.protect_request(0x01, &[], b"last").unwrap();
-        assert_eq!(option.as_slice(), b"\x0d\xff\xff\xff\xff\xff\x00");
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
+        let (_ct_len, opt_len) = ctx.protect_request(0x01, &[], b"last", &mut ct_buf, &mut opt_buf).unwrap();
+        assert_eq!(&opt_buf[..opt_len], b"\x0d\xff\xff\xff\xff\xff\x00");
         assert_eq!(ctx.sender_seq(), None);
         assert_eq!(
-            ctx.protect_request(0x01, &[], b"again").unwrap_err(),
+            ctx.protect_request(0x01, &[], b"again", &mut ct_buf, &mut opt_buf).unwrap_err(),
             OscoreError::SeqExhausted
         );
         assert_eq!(
-            ctx.protect_response_with_piv(0x45, &[], b"again", &[1], &[0])
+            ctx.protect_response_with_piv(0x45, &[], b"again", &[1], &[0], &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::SeqExhausted
         );
@@ -3093,15 +3087,19 @@ mod tests {
         let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         let options = [0x13, 0xaa, 0xff, 0xbb];
 
-        let (ciphertext, oscore_option) =
-            sender.protect_request(0x02, &options, b"payload").unwrap();
-        let (code, decoded_options, payload) = recipient
-            .unprotect_request(&oscore_option, &ciphertext)
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
+        let (ct_len, opt_len) =
+            sender.protect_request(0x02, &options, b"payload", &mut ct_buf, &mut opt_buf).unwrap();
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
+        let (code, decoded_options_len, payload_len) = recipient
+            .unprotect_request(&opt_buf[..opt_len], &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
             .unwrap();
 
         assert_eq!(code, 0x02);
-        assert_eq!(decoded_options.as_slice(), &options);
-        assert_eq!(payload.as_slice(), b"payload");
+        assert_eq!(&opt_out[..decoded_options_len], &options);
+        assert_eq!(&payload_out[..payload_len], b"payload");
     }
 
     #[test]
@@ -3122,11 +3120,15 @@ mod tests {
         for options in malformed {
             let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
             let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-            let (ciphertext, oscore_option) = sender.protect_request(0x02, options, &[]).unwrap();
+            let mut ct_buf = [0u8; 280];
+            let mut opt_buf = [0u8; 32];
+            let (ct_len, opt_len) = sender.protect_request(0x02, options, &[], &mut ct_buf, &mut opt_buf).unwrap();
 
+            let mut opt_out = [0u8; 128];
+            let mut payload_out = [0u8; 128];
             assert_eq!(
                 recipient
-                    .unprotect_request(&oscore_option, &ciphertext)
+                    .unprotect_request(&opt_buf[..opt_len], &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
                     .unwrap_err(),
                 OscoreError::InvalidParam,
                 "accepted malformed options: {options:02x?}"
@@ -3142,15 +3144,19 @@ mod tests {
         let mut bob_ctx = Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         // Alice sends request, save request_kid and request_piv
-        let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv_len = (request_opt[0] & 0x07) as usize;
-        let request_piv = &request_opt[1..1 + request_piv_len];
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_req_ct_len, req_opt_len) = alice_ctx.protect_request(0x01, &[], b"request", &mut req_ct, &mut req_opt).unwrap();
+        let request_piv_len = (req_opt[0] & 0x07) as usize;
+        let request_piv = &req_opt[1..1 + request_piv_len];
         // Request KID is Alice's sender_id
         let request_kid = alice_ctx.sender_id();
 
         // Bob sends response using protect_response (with proper AAD)
         let response_code = 0x45; // 2.05 Content
-        let (response_ciphertext, response_opt) = bob_ctx
+        let mut resp_ct = [0u8; 280];
+        let mut resp_opt = [0u8; 32];
+        let (resp_ct_len, resp_opt_len) = bob_ctx
             .protect_response(
                 response_code,
                 &[],
@@ -3158,29 +3164,35 @@ mod tests {
                 request_kid,
                 request_piv,
                 true,
+                &mut resp_ct,
+                &mut resp_opt,
             )
             .unwrap();
 
-        let mut forged = response_ciphertext.clone();
-        let last = forged.len() - 1;
+        let mut forged = [0u8; 280];
+        let forged_len = resp_ct_len;
+        forged[..forged_len].copy_from_slice(&resp_ct[..resp_ct_len]);
+        let last = forged_len - 1;
         forged[last] ^= 1;
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert_eq!(
             alice_ctx
-                .unprotect_response(&response_opt, &forged, request_piv)
+                .unprotect_response(&resp_opt[..resp_opt_len], &forged[..forged_len], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::DecryptFailed
         );
 
         // Alice decrypts response using unprotect_response.
-        let (dec_code, _options, dec_payload) = alice_ctx
-            .unprotect_response(&response_opt, &response_ciphertext, request_piv)
+        let (dec_code, _opt_len, payload_len) = alice_ctx
+            .unprotect_response(&resp_opt[..resp_opt_len], &resp_ct[..resp_ct_len], request_piv, &mut opt_out, &mut payload_out)
             .unwrap();
 
         assert_eq!(dec_code, response_code);
-        assert_eq!(dec_payload.as_slice(), b"response");
+        assert_eq!(&payload_out[..payload_len], b"response");
         assert_eq!(
             alice_ctx
-                .unprotect_response(&response_opt, &response_ciphertext, request_piv)
+                .unprotect_response(&resp_opt[..resp_opt_len], &resp_ct[..resp_ct_len], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3191,18 +3203,24 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv = &request_option[1..2];
-        let response = bob
-            .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv)
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_req_ct_len, req_opt_len) = alice.protect_request(0x01, &[], b"request", &mut req_ct, &mut req_opt).unwrap();
+        let request_piv = &req_opt[1..2];
+        let mut resp_ct = [0u8; 280];
+        let mut resp_opt = [0u8; 32];
+        let (resp_ct_len, resp_opt_len) = bob
+            .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv, &mut resp_ct, &mut resp_opt)
             .unwrap();
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         alice
-            .unprotect_response(&response.1, &response.0, request_piv)
+            .unprotect_response(&resp_opt[..resp_opt_len], &resp_ct[..resp_ct_len], request_piv, &mut opt_out, &mut payload_out)
             .unwrap();
         assert_eq!(
             alice
-                .unprotect_response(&response.1, &response.0, request_piv)
+                .unprotect_response(&resp_opt[..resp_opt_len], &resp_ct[..resp_ct_len], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3215,37 +3233,45 @@ mod tests {
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         let prior_piv = [0];
         let current_piv = [64];
-        let prior = bob
-            .protect_response_with_piv(0x45, &[], b"prior", &[0], &prior_piv)
+        let mut prior_ct = [0u8; 280];
+        let mut prior_opt = [0u8; 32];
+        let (prior_ct_len, prior_opt_len) = bob
+            .protect_response_with_piv(0x45, &[], b"prior", &[0], &prior_piv, &mut prior_ct, &mut prior_opt)
             .unwrap();
-        let current = bob
-            .protect_response_with_piv(0x45, &[], b"current", &[0], &current_piv)
+        let mut current_ct = [0u8; 280];
+        let mut current_opt = [0u8; 32];
+        let (current_ct_len, current_opt_len) = bob
+            .protect_response_with_piv(0x45, &[], b"current", &[0], &current_piv, &mut current_ct, &mut current_opt)
             .unwrap();
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         alice
-            .unprotect_response(&prior.1, &prior.0, &prior_piv)
+            .unprotect_response(&prior_opt[..prior_opt_len], &prior_ct[..prior_ct_len], &prior_piv, &mut opt_out, &mut payload_out)
             .unwrap();
         drop(
             alice
-                .begin_unprotect_response(&current.1, &current.0, &current_piv)
+                .begin_unprotect_response(&current_opt[..current_opt_len], &current_ct[..current_ct_len], &current_piv)
                 .unwrap(),
         );
 
         assert_eq!(
             alice
-                .unprotect_response(&prior.1, &prior.0, &prior_piv)
+                .unprotect_response(&prior_opt[..prior_opt_len], &prior_ct[..prior_ct_len], &prior_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::Replay
         );
-        let (_, _, payload) = alice
-            .begin_unprotect_response(&current.1, &current.0, &current_piv)
+        let mut commit_opt_out = [0u8; 128];
+        let mut commit_payload_out = [0u8; 128];
+        let (_, _, payload_len) = alice
+            .begin_unprotect_response(&current_opt[..current_opt_len], &current_ct[..current_ct_len], &current_piv)
             .unwrap()
-            .commit()
+            .commit(&mut commit_opt_out, &mut commit_payload_out)
             .unwrap();
-        assert_eq!(payload.as_slice(), b"current");
+        assert_eq!(&commit_payload_out[..payload_len], b"current");
         assert_eq!(
             alice
-                .unprotect_response(&current.1, &current.0, &current_piv)
+                .unprotect_response(&current_opt[..current_opt_len], &current_ct[..current_ct_len], &current_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3256,25 +3282,33 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv = &request_option[1..2];
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_req_ct_len, req_opt_len) = alice.protect_request(0x01, &[], b"request", &mut req_ct, &mut req_opt).unwrap();
+        let request_piv = &req_opt[1..2];
 
+        let mut invalid_ct = [0u8; 280];
+        let mut invalid_opt = [0u8; 32];
         for code in [0x01, 0xc1] {
             let invalid = bob
-                .protect_response_with_piv(code, &[], b"invalid", &[0], request_piv)
+                .protect_response_with_piv(code, &[], b"invalid", &[0], request_piv, &mut invalid_ct, &mut invalid_opt)
                 .unwrap();
             assert!(matches!(
-                alice.begin_unprotect_response(&invalid.1, &invalid.0, request_piv),
+                alice.begin_unprotect_response(&invalid_opt[..invalid.1], &invalid_ct[..invalid.0], request_piv),
                 Err(OscoreError::InvalidParam)
             ));
         }
 
-        let valid = bob
-            .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv)
+        let mut valid_ct = [0u8; 280];
+        let mut valid_opt = [0u8; 32];
+        let (valid_ct_len, valid_opt_len) = bob
+            .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv, &mut valid_ct, &mut valid_opt)
             .unwrap();
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert_eq!(
             alice
-                .unprotect_response(&valid.1, &valid.0, request_piv)
+                .unprotect_response(&valid_opt[..valid_opt_len], &valid_ct[..valid_ct_len], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap()
                 .2,
             b"valid"
@@ -3286,23 +3320,29 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv = &request_option[1..2];
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_req_ct_len, req_opt_len) = alice.protect_request(0x01, &[], b"request", &mut req_ct, &mut req_opt).unwrap();
+        let request_piv = &req_opt[1..2];
         bob.sender_seq = seq(0x1_0000_0000);
 
-        let delayed = bob
-            .protect_response_with_piv(0x45, &[], b"delayed", &[0], request_piv)
+        let mut delayed_ct = [0u8; 280];
+        let mut delayed_opt = [0u8; 32];
+        let (delayed_ct_len, delayed_opt_len) = bob
+            .protect_response_with_piv(0x45, &[], b"delayed", &[0], request_piv, &mut delayed_ct, &mut delayed_opt)
             .unwrap();
-        assert_eq!(delayed.1.as_slice(), b"\x05\x01\x00\x00\x00\x00");
+        assert_eq!(&delayed_opt[..delayed_opt_len], b"\x05\x01\x00\x00\x00\x00");
         alice.recipient_seq = seq(0x1_0000_0020);
         alice.replay_window = u32::MAX;
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         alice
-            .unprotect_response(&delayed.1, &delayed.0, request_piv)
+            .unprotect_response(&delayed_opt[..delayed_opt_len], &delayed_ct[..delayed_ct_len], request_piv, &mut opt_out, &mut payload_out)
             .unwrap();
         assert_eq!(
             alice
-                .unprotect_response(&delayed.1, &delayed.0, request_piv)
+                .unprotect_response(&delayed_opt[..delayed_opt_len], &delayed_ct[..delayed_ct_len], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3313,20 +3353,26 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv = &request_option[1..2];
-        let response = bob
-            .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv)
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_req_ct_len, req_opt_len) = alice.protect_request(0x01, &[], b"request", &mut req_ct, &mut req_opt).unwrap();
+        let request_piv = &req_opt[1..2];
+        let mut resp_ct = [0u8; 280];
+        let mut resp_opt = [0u8; 32];
+        let (resp_ct_len, resp_opt_len) = bob
+            .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv, &mut resp_ct, &mut resp_opt)
             .unwrap();
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert_eq!(
             alice
-                .unprotect_response(b"\x09\x00\x02", &response.0, request_piv)
+                .unprotect_response(b"\x09\x00\x02", &resp_ct[..resp_ct_len], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::NoContext
         );
         alice
-            .unprotect_response(&response.1, &response.0, request_piv)
+            .unprotect_response(&resp_opt[..resp_opt_len], &resp_ct[..resp_ct_len], request_piv, &mut opt_out, &mut payload_out)
             .unwrap();
     }
 
@@ -3335,18 +3381,24 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, b"\x00", b"\x01").unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv = &request_option[1..2];
-        let (ciphertext, _) = bob
-            .protect_response_with_piv(0x45, &[], b"response", b"\x00", request_piv)
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_req_ct_len, req_opt_len) = alice.protect_request(0x01, &[], b"request", &mut req_ct, &mut req_opt).unwrap();
+        let request_piv = &req_opt[1..2];
+        let mut resp_ct = [0u8; 280];
+        let mut resp_opt = [0u8; 32];
+        let (resp_ct_len, resp_opt_len) = bob
+            .protect_response_with_piv(0x45, &[], b"response", b"\x00", request_piv, &mut resp_ct, &mut resp_opt)
             .unwrap();
         alice.id_context[0] = 0xaa;
         alice.id_context_len = 1;
         alice.id_context_present = true;
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert_eq!(
             alice
-                .unprotect_response(b"\x11\x00\x01\xbb", &ciphertext, request_piv)
+                .unprotect_response(b"\x11\x00\x01\xbb", &resp_ct[..resp_ct_len], request_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::NoContext
         );
@@ -3356,15 +3408,17 @@ mod tests {
     fn response_without_piv_requires_requester_identity() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false, &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false, &mut ct_buf, &mut opt_buf)
             .unwrap();
     }
 
@@ -3381,9 +3435,11 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
         assert_eq!(
             responder
-                .protect_response_with_piv(0x45, &[], b"response", b"\x02", b"\x00")
+                .protect_response_with_piv(0x45, &[], b"response", b"\x02", b"\x00", &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -3393,23 +3449,25 @@ mod tests {
     fn response_without_piv_is_one_shot_per_request() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false, &mut ct_buf, &mut opt_buf)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false, &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false, &mut ct_buf, &mut opt_buf)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false, &mut ct_buf, &mut opt_buf)
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3420,11 +3478,15 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (ciphertext, _) = sender.protect_request(0x01, &[], b"request").unwrap();
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
+        let (ct_len, _opt_len) = sender.protect_request(0x01, &[], b"request", &mut ct_buf, &mut opt_buf).unwrap();
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         assert_eq!(
             recipient
-                .unprotect_request(b"\x0a\x00\x00\x00", &ciphertext)
+                .unprotect_request(b"\x0a\x00\x00\x00", &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -3438,15 +3500,19 @@ mod tests {
         let mut bob_ctx = Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         // Alice sends request, save request_kid and request_piv
-        let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv_len = (request_opt[0] & 0x07) as usize;
-        let request_piv = request_opt[1..1 + request_piv_len].to_vec();
+        let mut req_ct = [0u8; 280];
+        let mut req_opt = [0u8; 32];
+        let (_req_ct_len, req_opt_len) = alice_ctx.protect_request(0x01, &[], b"request", &mut req_ct, &mut req_opt).unwrap();
+        let request_piv_len = (req_opt[0] & 0x07) as usize;
+        let request_piv = req_opt[1..1 + request_piv_len].to_vec();
         let request_kid = alice_ctx.sender_id();
 
         // Bob sends response without PIV in OSCORE option (include_piv: false)
         let response_code = 0x45u8;
         let payload = b"response";
-        let (response_ciphertext, response_opt) = bob_ctx
+        let mut resp_ct = [0u8; 280];
+        let mut resp_opt = [0u8; 32];
+        let (resp_ct_len, resp_opt_len) = bob_ctx
             .protect_response(
                 response_code,
                 &[],
@@ -3454,22 +3520,26 @@ mod tests {
                 request_kid,
                 &request_piv,
                 false,
+                &mut resp_ct,
+                &mut resp_opt,
             )
             .unwrap();
 
         // No PIV, KID, or KID Context encodes as an empty option value.
-        assert!(response_opt.is_empty());
+        assert!(resp_opt_len == 0);
 
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
         // Alice decrypts using unprotect_response with request_piv
-        let (dec_code, _options, dec_payload) = alice_ctx
-            .unprotect_response(&response_opt, &response_ciphertext, &request_piv)
+        let (dec_code, _opt_len, pay_len) = alice_ctx
+            .unprotect_response(&resp_opt[..resp_opt_len], &resp_ct[..resp_ct_len], &request_piv, &mut opt_out, &mut payload_out)
             .unwrap();
 
         assert_eq!(dec_code, response_code);
-        assert_eq!(dec_payload.as_slice(), payload);
+        assert_eq!(&payload_out[..pay_len], payload);
         assert_eq!(
             alice_ctx
-                .unprotect_response(&response_opt, &response_ciphertext, &request_piv)
+                .unprotect_response(&resp_opt[..resp_opt_len], &resp_ct[..resp_ct_len], &request_piv, &mut opt_out, &mut payload_out)
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3547,16 +3617,20 @@ mod tests {
         let class_e_options = [0x12, 0xFF, 0x42];
         let payload = b"test payload";
 
-        let (ciphertext, oscore_opt) = sender_ctx
-            .protect_request(code, &class_e_options, payload)
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 32];
+        let (ct_len, opt_len) = sender_ctx
+            .protect_request(code, &class_e_options, payload, &mut ct_buf, &mut opt_buf)
             .unwrap();
 
-        let (dec_code, dec_options, dec_payload) = recipient_ctx
-            .unprotect_request(&oscore_opt, &ciphertext)
+        let mut opt_out = [0u8; 128];
+        let mut payload_out = [0u8; 128];
+        let (dec_code, decoded_options_len, payload_len) = recipient_ctx
+            .unprotect_request(&opt_buf[..opt_len], &ct_buf[..ct_len], &mut opt_out, &mut payload_out)
             .unwrap();
 
         assert_eq!(dec_code, code);
-        assert_eq!(dec_options.as_slice(), &class_e_options);
-        assert_eq!(dec_payload.as_slice(), payload);
+        assert_eq!(&opt_out[..decoded_options_len], &class_e_options);
+        assert_eq!(&payload_out[..payload_len], payload);
     }
 }
