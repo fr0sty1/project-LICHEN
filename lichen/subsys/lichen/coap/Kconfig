@@ -262,14 +262,14 @@ config LICHEN_COAP_DEADDROP
 	bool "LCI /deaddrop DTN store-forward resource"
 	depends on LICHEN_COAP_SERVER
 	depends on LICHEN_OSCORE
-	depends on LICHEN_DTN
+	depends on ZCBOR
 	select COAP_URI_WILDCARD
-	imply ZCBOR
 	help
 	  LCI /deaddrop (POST to store encrypted msg for recipient, GET?node=IID to pickup pending)
 	  and /confessions for anonymous rate-limited broadcast. Per spec 18.11 and 18.9,
 	  uses OSCORE E2E (after oscore_init() + lichen_coap_client_init() per AGENTS.md),
-	  SenML+CBOR (112), DTN storage, query param support via URI wildcard.
+	  SenML+CBOR (112), inline storage (no LICHEN_DTN dependency), query param support
+	  via URI wildcard.
 
 config LICHEN_COAP_DEADDROP_RATE_LIMIT_MS
 	int "Rate limit for deaddrop/confessions POSTs in ms"
@@ -289,12 +289,12 @@ config LICHEN_COAP_DEADDROP_MAX_STORAGE
 	help
 	  Maximum messages in DTN deaddrop buffer.
 
-config LICHEN_COAP_DEADDROP_LOG_LEVEL
-	int "CoAP deaddrop log level"
+config LICHEN_COAP_DTN_LOG_LEVEL
+	int "CoAP DTN (deaddrop) log level"
 	depends on LICHEN_COAP_DEADDROP
 	default 3
 	range 0 4
 	help
-	  Log level for LICHEN CoAP deaddrop handler: 0=off, 1=error, 2=warning, 3=info, 4=debug
+	  Log level for LICHEN CoAP DTN handler: 0=off, 1=error, 2=warning, 3=info, 4=debug
 
 endif # LICHEN_COAP
