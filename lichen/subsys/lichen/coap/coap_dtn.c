@@ -22,7 +22,7 @@ LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
-static struct k_mutex s_dtn_buf_mutex;
+static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[256] = {0};
 static uint32_t s_last_confession[256] = {0};
@@ -356,7 +356,6 @@ int lichen_coap_dtn_init(void)
 	if (r < 0) return r;
 	r = lichen_coap_client_init();
 	if (r < 0) return r;
-	k_mutex_init(&s_dtn_buf_mutex);
 	k_mutex_init(&s_rate_mutex);
 	return 0;
 }
