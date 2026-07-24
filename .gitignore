@@ -33,6 +33,7 @@ rust/target/
 *.dylib
 
 # Build artifacts
+*.rlib
 .cache/
 lichen/build/
 **/build*/
