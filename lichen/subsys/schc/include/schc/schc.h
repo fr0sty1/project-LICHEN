@@ -120,6 +120,8 @@ static inline int schc_rule_id(const uint8_t *data, size_t len)
 #define SCHC_FRAGMENT_DEFAULT_RECEIVER_LIMIT 1281u
 #define SCHC_FRAGMENT_MAX_ATTEMPTS 4u
 #define SCHC_FRAGMENT_MAX_MESSAGE_SIZE 193u
+#define SCHC_ALL_1 63u
+#define SCHC_BITMAP_MASK 0x7FFFFFFFFFFFFFFFull
 
 enum schc_fragment_control {
 	SCHC_CONTROL_ACK_REQUEST,
@@ -137,6 +139,15 @@ enum schc_sender_status {
 #define SCHC_MAX_PACKET 1281
 
 struct schc_fragmenter_config {
+	uint8_t rule_id;
+	uint8_t window;
+	uint8_t fcn;
+	uint8_t rcs[4];
+};
+
+struct schc_fragment {
+	const uint8_t *tile;
+	size_t tile_len;
 	uint8_t rule_id;
 	uint8_t window;
 	uint8_t fcn;

@@ -74,11 +74,6 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return -ENOMEM;
 	}
 
-	/* Link-layer encryption is reserved until all implementations support it. */
-	if (ctx->has_link_key) {
-		return -EPROTONOSUPPORT;
-	}
-
 	/* Step 1: Compress IPv6 packet with SCHC */
 	compressed_len = lichen_schc_compress(ipv6_pkt, ipv6_len,
 					      compressed, sizeof(compressed));
