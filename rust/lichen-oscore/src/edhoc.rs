@@ -1630,7 +1630,7 @@ mod tests {
         );
         let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
         assert_eq!(
-            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
+            transcript_4(&th_3, &ciphertext_3).unwrap(),
             th_4
         );
 
