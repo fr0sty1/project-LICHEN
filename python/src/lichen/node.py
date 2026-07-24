@@ -46,10 +46,15 @@ from lichen.l2_payload import (
     wrap_schc_payload,
 )
 from lichen.link.link_layer import LinkLayer, ReceiveError, RxFrame
+from lichen.link.tx_queue import Priority
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
 from lichen.state_machine import StateMachine
+
+# Lazy imports for optional CoAP resources used when node is bound to a CoAP server
+_SOS_BEACON_INTERVAL_S = 30.0
+_SOS_PRIORITY = Priority.SOS
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +141,8 @@ class Node:
         announce_processor: Processes incoming announces.
         peer_db: Known peers by IID (for signature verification).
         state: Current lifecycle state.
+        sos_resource: Observable SOS resource for emergency signaling.
+            Bound automatically; pass to build_site() for CoAP exposure.
     """
 
     identity: Identity
@@ -183,12 +190,38 @@ class Node:
         default=None, init=False, repr=False
     )
 
+    # SOS emergency resource and beacon loop
+    _sos_resource: object | None = field(default=None, init=False, repr=False)
+    _sos_beacon_task: asyncio.Task[None] | None = field(
+        default=None, init=False, repr=False
+    )
+
     def __post_init__(self) -> None:
         self._state_machine = StateMachine(
             initial=NodeState.STOPPED,
             transitions=NODE_STATE_TRANSITIONS,
             name=f"node[{self.identity.iid.hex()}]",
         )
+
+        from lichen.coap.resources import SosResource
+
+        sos = SosResource()
+        _orig_activate = sos.activate
+        _orig_cancel = sos.cancel
+
+        def _wrapped_activate(from_eui64: bytes, t: float) -> None:
+            _orig_activate(from_eui64, t)
+            self._start_sos_beacon()
+
+        def _wrapped_cancel() -> None:
+            was_active = sos._active
+            _orig_cancel()
+            if was_active:
+                self._stop_sos_beacon()
+
+        sos.activate = _wrapped_activate  # type: ignore[method-assign]
+        sos.cancel = _wrapped_cancel  # type: ignore[method-assign]
+        self._sos_resource = sos
 
         # Why initialize layers here: They depend on self.identity, self.radio.
         self.link = LinkLayer(
@@ -256,13 +289,56 @@ class Node:
         """Remove a peer from the database."""
         self.peer_db.pop(iid, None)
 
+    @property
+    def sos_resource(self) -> object:
+        """The observable :class:`~lichen.coap.resources.SosResource` for this node.
+
+        Pass to :func:`~lichen.coap.resources.build_site` to expose ``/sos``.
+        Calls to ``activate()`` / ``cancel()`` automatically manage the
+        30-second SOS beacon loop that pre-empts normal TX traffic.
+        """
+        return self._sos_resource
+
+    def _start_sos_beacon(self) -> None:
+        if self._sos_beacon_task is not None and not self._sos_beacon_task.done():
+            return
+        self._sos_beacon_task = asyncio.get_running_loop().create_task(
+            self._sos_beacon_loop(),
+            name=f"sos-beacon-{self.identity.iid.hex()[:8]}",
+        )
+        logger.info("SOS beacon started on node %s", self.identity.iid.hex()[:8])
+
+    async def _sos_beacon_loop(self) -> None:
+        sos = self._sos_resource
+        while sos is not None:
+            from lichen.coap.resources import SosResource
+
+            if not isinstance(sos, SosResource):
+                break
+            if not sos._active:
+                break
+            try:
+                await asyncio.sleep(_SOS_BEACON_INTERVAL_S)
+            except asyncio.CancelledError:
+                break
+            if not sos._active:
+                break
+            sos.retrigger()
+
+    def _stop_sos_beacon(self) -> None:
+        task = self._sos_beacon_task
+        self._sos_beacon_task = None
+        if task is not None and not task.done():
+            task.cancel()
+            logger.info("SOS beacon stopped on node %s", self.identity.iid.hex()[:8])
+
     async def transmit_announce(self, data: bytes) -> bool:
         """Transmit announce data via link layer (AnnounceTransmitter protocol).
 
         Why a method on Node: Node owns the link layer. Scheduler calls this
         to actually send the announce bytes over the air.
         """
-        return await self.link.send(wrap_routing_payload(data))
+        return await self.link.send(wrap_routing_payload(data), priority=Priority.ROUTING)
 
     def set_on_receive(self, callback: Callable[[bytes, PeerIdentity], None]) -> None:
         """Set callback for received application data.
@@ -332,6 +408,12 @@ class Node:
                 self._state_machine.transition(NodeState.STOPPED)
                 raise primary
             self._state_machine.transition(NodeState.RUNNING)
+            # Restart SOS beacon if SOS was active before shutdown
+            sos = self._sos_resource
+            if sos is not None:
+                from lichen.coap.resources import SosResource
+                if isinstance(sos, SosResource) and sos._active:
+                    self._start_sos_beacon()
             logger.info("node started")
 
     async def stop(self) -> None:
@@ -374,6 +456,7 @@ class Node:
             except BaseException as exc:
                 if error is None:
                     error = exc
+        self._stop_sos_beacon()
         task = self._receive_task
         self._receive_task = None
         if task is not None:
@@ -504,7 +587,7 @@ class Node:
         if relay is None:
             return
 
-        success = await self.link.send(wrap_routing_payload(relay.to_bytes()))
+        success = await self.link.send(wrap_routing_payload(relay.to_bytes()), priority=Priority.ROUTING)
         if success:
             logger.debug("relayed announce from %s", announce.originator_iid.hex())
 
@@ -516,7 +599,7 @@ class Node:
         """
         announce = self._scheduler.build_announce()
         data = wrap_routing_payload(announce.to_bytes())
-        success = await self.link.send(data)
+        success = await self.link.send(data, priority=Priority.ROUTING)
         if success:
             logger.info("sent announce seq=%d", announce.seq_num)
 
@@ -528,12 +611,13 @@ class Node:
         """
         return self._scheduler.get_seq_num()
 
-    async def send(self, ipv6_bytes: bytes) -> bool:
+    async def send(self, ipv6_bytes: bytes, priority: Priority = Priority.BULK) -> bool:
         """Send a raw IPv6 datagram through the SCHC + routing stack.
 
         Args:
             ipv6_bytes: A complete IPv6 datagram (e.g. IPv6 + UDP + CoAP).
                         Use coap.node_channel.NodeChannel to build this from CoAP.
+            priority: TX queue priority. SOS packets should use Priority.SOS.
 
         Returns:
             True if forwarded to the link layer, False if routed to drop.
@@ -557,7 +641,7 @@ class Node:
         decision, _next_hop = self.router.route(packet, now_ms)
 
         if decision == RouteDecision.FORWARD:
-            return await self.link.send(wrapped)
+            return await self.link.send(wrapped, priority=priority)
         if decision == RouteDecision.DELIVER_LOCAL:
             if self._on_receive:
                 self._on_receive(wrapped, PeerIdentity.from_pubkey(self.identity.pubkey))
