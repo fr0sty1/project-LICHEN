@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-ip9n",
   "title": "[codereview-pass3] project-LICHEN-worker6-tkjl: senml.h has duplicate senml_encode_location_full declaration",
   "description": "CORRECTNESS: senml_encode_location_full is declared twice in senml.h with identical signatures but different doc comments.\n\nLocation: lichen/subsys/lichen/senml/include/lichen/senml.h\n\n- First declaration: lines 234-258 (doc comment + declaration)\n- Second declaration: lines 260-283 (different doc comment + identical declaration)\n\nWhile C compilers accept compatible redeclarations, having two declarations is unintended and confusing. The second (more detailed) doc comment should exist on the sole declaration, not be a duplicate.\n\nFix: merge into a single declaration with the more detailed doc comment (the second one, which includes 'or NAN to omit' per-param notes). Remove the first one.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:59:03.298981995Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:15:44.679897555Z",
-  "started_at": "2026-07-24T20:14:25.930348734Z"
+  "updated_at": "2026-07-24T20:15:57.162285086Z",
+  "started_at": "2026-07-24T20:14:25.930348734Z",
+  "lease_expires_at": "2026-07-24T20:20:57.162285086Z",
+  "heartbeat_at": "2026-07-24T20:15:57.162285086Z"
 }
