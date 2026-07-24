@@ -557,6 +557,7 @@ class Router:
         packet: IPv6Packet,
         dst: IPv6Address,
         now_ms: int,
+        timeout_ms: int = 5000,
     ) -> None:
         """Queue a packet pending route discovery.
 
@@ -619,14 +620,16 @@ class Router:
             Number of packets expired.
         """
         expired_count = 0
-        cutoff = now_ms - timeout_ms
         empty_dests: list[IPv6Address] = []
 
         for dst in list(self.pending_queue.keys()):
             queue = self.pending_queue[dst]
             original_len = len(queue)
+            # deadline-based semantics consistent with expire_old (line 291).
+            # Keeps packets whose queued_at_ms + timeout_ms > now_ms,
+            # i.e., packets queued recently enough to still be alive.
             self.pending_queue[dst] = deque(
-                p for p in queue if p.queued_at_ms > cutoff
+                p for p in queue if p.queued_at_ms + timeout_ms > now_ms
             )
             queue = self.pending_queue[dst]
             expired_count += original_len - len(queue)
