@@ -835,12 +835,13 @@ class Simulation:
             channel = node.synchronized_hop_channel()
         else:
             channel = node.current_channel
+        rx_frequency_hz = 915_000_000 + channel * 200_000
         candidates = self._medium.get_rx_candidates(
             rx_node_id=node_id,
             rx_position=node.position,
             time_us=self._current_time_us,
             channel=channel,
-            rx_frequency_hz=None,
+            rx_frequency_hz=rx_frequency_hz,
         )
 
         # Apply chaos rules to filter/modify candidates
