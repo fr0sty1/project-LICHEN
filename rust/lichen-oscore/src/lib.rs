@@ -774,7 +774,7 @@ impl Context {
         // Build plaintext directly in ct_out: code || options || 0xFF || payload
         // 0xFF is the CoAP payload marker (RFC 7252 Section 3): it separates
         // the options from the payload and is only present when payload is non-empty.
-        // ponytail: empty AAD for now, proper AAD structure in RFC 8613 Section 5.4
+        // Build AAD per RFC 8613 Section 5.4
         let cipher =
             AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
         const CT_CAP: usize = 280;
