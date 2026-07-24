@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ored",
+  "title": "[rereview] project-LICHEN-dk3c.5: TOCTOU race in dodag_loss_resume_handler — interval decision and schedule not atomic",
+  "description": "dodag_loss_resume_handler (announce.c:701-717) reads sched.dodag_joined under the mutex (line 707) but releases the lock before calling schedule_next() (line 715). schedule_next() re-acquires the lock and re-reads dodag_joined. Between the unlock (line 712) and the re-lock (line 672), lichen_announce_sched_set_dodag_state() could fire from another context, setting dodag_joined back to true. The handler would then schedule the GATEWAY interval instead of the intended NORMAL interval.\\n\\nAdditionally, lichen_announce_sched_set_dodag_state (line 719) schedules the dodag_loss_work timer (line 748) outside the mutex — after the mutex has been unlocked at line 735 or 741. A concurrent call could interleave and change sched.dodag_joined between the unlock and the timer scheduling.\\n\\nFile: lichen/subsys/lichen/routing/announce.c:701-717, lines 744-752\\nSeverity: P2",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:37:34.198575538Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:37:34.198575538Z"
+}
