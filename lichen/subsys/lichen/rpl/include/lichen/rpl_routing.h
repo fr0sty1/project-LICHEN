@@ -377,6 +377,30 @@ int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *_Nonnull
 				     uint8_t *_Nonnull buf, size_t len);
 
 /**
+ * @brief Build and cache a DAO, advancing both DAOSequence and PathSequence.
+ *
+ * @param dm           DAO manager
+ * @param parent_addr  Parent's IPv6 address (16 bytes)
+ * @param path_lifetime Path Lifetime for Transit Info
+ * @param buf          Output buffer (needs ~64 bytes)
+ * @param len          Buffer size
+ * @return Number of bytes written, or negative error
+ */
+int lichen_rpl_dao_manager_build_dao_with_lifetime(
+	struct lichen_rpl_dao_manager *_Nonnull dm,
+	const uint8_t *_Nonnull parent_addr, uint8_t path_lifetime,
+	uint8_t *_Nonnull buf, size_t len);
+
+/**
+ * @brief Build another DAO copy with the same logical update (parent+lifetime),
+ * advancing only DAOSequence. Returns error if the cached update does not match.
+ */
+int lichen_rpl_dao_manager_build_dao_copy_with_lifetime(
+	struct lichen_rpl_dao_manager *_Nonnull dm,
+	const uint8_t *_Nonnull parent_addr, uint8_t path_lifetime,
+	uint8_t *_Nonnull buf, size_t len);
+
+/**
  * @brief Process a received DAO on the root.
  *
  * @warning This function does NOT authenticate DAO messages. The caller
