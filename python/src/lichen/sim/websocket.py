@@ -238,7 +238,11 @@ class WebSocketObserver:
             task = loop.create_task(
                 self._manager.broadcast_to_sim(self._sim_id, event_type, data)
             )
-            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+            task.add_done_callback(
+                lambda t: logger.warning(
+                    "Broadcast task failed: %s", t.exception()
+                ) if not t.cancelled() else None
+            )
         except RuntimeError:
             pass
 
