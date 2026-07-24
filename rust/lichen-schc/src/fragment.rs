@@ -288,9 +288,7 @@ impl Ack {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
-        let rule_id = data[0];
         let window = (data[1] >> FRAGMENT_N) & 1;
-        let complete = (data[1] & 0x01) != 0;
         let n = data[2] as usize;
         let body_bytes = n.div_ceil(8);
         let required = 3 + body_bytes;
@@ -440,12 +438,6 @@ impl<'a> FragmentSender<'a> {
         if payload.len() > SCHC_MAX_DECOMPRESSED {
             return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
         }
-        let mic = compute_mic(payload);
-        let count = if payload.is_empty() {
-            1
-        } else {
-            payload.len().div_ceil(TILE_SIZE)
-        };
         Ok(FragmentSender {
             payload,
             rule_id,
@@ -1047,18 +1039,13 @@ impl<'s, 'b> Iterator for RetransmitIter<'s, 'b> {
 // ─── std-only: all_fragments + FragmentReceiver ───────────────────────────────
 
 #[cfg(feature = "std")]
-pub use std_ext::*;
-
-#[cfg(feature = "std")]
 mod std_ext {
     extern crate std;
-    use std::collections::{HashMap, HashSet};
     use std::vec::Vec;
 
     use super::*;
 
     impl<'a> FragmentSender<'a> {
-        /// Collect all fragments into a Vec (convenience for tests and sim).
         pub fn all_fragments(&self) -> Vec<Fragment<'a>> {
             self.iter().collect()
         }
@@ -1068,222 +1055,6 @@ mod std_ext {
             self.iter()
                 .filter(|f| f.window == window)
                 .collect()
-        }
-    }
-
-    /// Reassembles a single datagram from ACK-on-Error fragments.
-    #[derive(Debug)]
-    pub struct FragmentReceiver {
-        window_size: usize,
-        rule_id: Option<u8>,
-        tiles: HashMap<usize, Vec<u8>>,
-        current_window: usize,
-        completed_windows: HashSet<usize>,
-        all1_seen: bool,
-        all1_window: usize,
-        all1_payload: Vec<u8>,
-        mic: [u8; MIC_LENGTH],
-        pub done: bool,
-        pub reassembled: Option<Vec<u8>>,
-    }
-
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct ReceiverResult {
-        pub ack: Option<Ack>,
-        pub reassembled: Option<Vec<u8>>,
-        pub mic_ok: Option<bool>,
-    }
-
-    impl FragmentReceiver {
-        pub fn new(window_size: usize) -> Self {
-            FragmentReceiver {
-                window_size,
-                rule_id: None,
-                tiles: HashMap::new(),
-                current_window: 0,
-                completed_windows: HashSet::new(),
-                all1_seen: false,
-                all1_window: 0,
-                all1_payload: Vec::new(),
-                mic: [0u8; MIC_LENGTH],
-                done: false,
-                reassembled: None,
-            }
-        }
-
-        fn abs_window(&self, frag: &Fragment<'_>) -> usize {
-            if !frag.is_all_1() {
-                let pos = self.window_size - 1 - frag.fcn as usize;
-                let parity = frag.window as usize;
-                let current_parity = self.current_window % 2;
-                let mut older = if parity == current_parity {
-                    if self.current_window >= 2 {
-                        self.current_window - 2
-                    } else {
-                        0
-                    }
-                } else {
-                    if self.current_window >= 1 {
-                        self.current_window - 1
-                    } else {
-                        0
-                    }
-                };
-                while older > 0 {
-                    if !self.completed_windows.contains(&older) {
-                        let older_idx = older * self.window_size + pos;
-                        if self.tiles.contains_key(&older_idx) {
-                            // duplicate or filled; continue to find gap or treat as current
-                        } else {
-                            // gap in incomplete older window: likely retransmission
-                            return older;
-                        }
-                    } else if self.tiles.contains_key(&(older * self.window_size + pos)) {
-                        return older;
-                    }
-                    older = older.saturating_sub(2);
-                }
-            }
-            if frag.window == (self.current_window % 2) as u8 {
-                self.current_window
-            } else {
-                self.current_window + 1
-            }
-        }
-
-        fn window_bitmap(&self, abs_window: usize) -> u64 {
-            let base = abs_window * self.window_size;
-            (0..self.window_size)
-                .enumerate()
-                .filter(|(_, p)| self.tiles.contains_key(&(base + p)))
-                .fold(0, |acc, (i, _)| acc | (1u64 << i))
-        }
-
-        fn window_full(&self, abs_window: usize) -> bool {
-            let base = abs_window * self.window_size;
-            (0..self.window_size).all(|p| self.tiles.contains_key(&(base + p)))
-        }
-
-        pub fn receive(&mut self, frag: &Fragment<'_>) -> ReceiverResult {
-            if self.done {
-                return ReceiverResult {
-                    ack: None,
-                    reassembled: None,
-                    mic_ok: None,
-                };
-            }
-            if self.rule_id.is_none() {
-                self.rule_id = Some(frag.rule_id);
-            } else if self.rule_id != Some(frag.rule_id) {
-                return ReceiverResult {
-                    ack: None,
-                    reassembled: None,
-                    mic_ok: None,
-                };
-            }
-            let abs_window = self.abs_window(frag);
-            if self.completed_windows.contains(&abs_window) {
-                return ReceiverResult {
-                    ack: None,
-                    reassembled: None,
-                    mic_ok: None,
-                };
-            }
-            if abs_window > self.current_window {
-                self.current_window = abs_window;
-            }
-
-            if frag.is_all_1() {
-                self.all1_seen = true;
-                self.all1_window = abs_window;
-                self.all1_payload = frag.payload.to_vec();
-                self.mic = frag.mic;
-                return self.finalize();
-            }
-
-            if frag.fcn as usize >= self.window_size {
-                return ReceiverResult {
-                    ack: None,
-                    reassembled: None,
-                    mic_ok: None,
-                };
-            }
-            let pos = self.window_size - 1 - frag.fcn as usize;
-            let global_idx = abs_window * self.window_size + pos;
-            if !self.tiles.contains_key(&global_idx) {
-                self.tiles.insert(global_idx, frag.payload.to_vec());
-            }
-
-            if self.all1_seen {
-                return self.finalize();
-            }
-
-            if frag.is_all_0() || self.window_full(abs_window) {
-                let bitmap = self.window_bitmap(abs_window);
-                if self.window_full(abs_window) {
-                    self.completed_windows.insert(abs_window);
-                    self.current_window = abs_window + 1;
-                }
-                return ReceiverResult {
-                    ack: Some(Ack::new(
-                        self.rule_id.unwrap_or(0),
-                        (abs_window % 2) as u8,
-                        bitmap,
-                        false,
-                    )),
-                    reassembled: None,
-                    mic_ok: None,
-                };
-            }
-            ReceiverResult {
-                ack: None,
-                reassembled: None,
-                mic_ok: None,
-            }
-        }
-
-        fn finalize(&mut self) -> ReceiverResult {
-            let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id.unwrap_or(0), (self.all1_window % 2) as u8, bitmap, false);
-
-            // O(n) contiguity check: if we have n tiles and max index is n-1,
-            // all indices 0..n must be present (HashMap keys are unique).
-            let n = self.tiles.len();
-            let contiguous = n > 0 && self.tiles.keys().max() == Some(&(n - 1));
-            if !contiguous {
-                return ReceiverResult {
-                    ack: Some(nack),
-                    reassembled: None,
-                    mic_ok: None,
-                };
-            }
-
-            let mut data: Vec<u8> = Vec::new();
-            for i in 0..n {
-                data.extend_from_slice(self.tiles[&i].as_slice());
-            }
-            data.extend_from_slice(&self.all1_payload);
-
-            if compute_mic(&data) == self.mic {
-                self.done = true;
-                self.reassembled = Some(data.clone());
-                ReceiverResult {
-                    ack: Some(Ack::new(
-                        self.rule_id.unwrap_or(0),
-                        (self.all1_window % 2) as u8,
-                        bitmap,
-                        true,
-                    )),
-                    reassembled: Some(data),
-                    mic_ok: Some(true),
-                }
-            } else {
-                ReceiverResult {
-                    ack: Some(nack),
-                    reassembled: None,
-                    mic_ok: Some(false),
-                }
-            }
         }
     }
 }
