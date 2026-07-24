@@ -18,7 +18,7 @@
 #include <lichen/senml.h>
 #include <lichen/l2/ipv6_addr.h>
 
-LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
+LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DTN_LOG_LEVEL);
 
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
