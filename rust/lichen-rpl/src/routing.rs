@@ -1203,9 +1203,8 @@ impl RoutingTable {
         }
         match self.routes.get_mut(&target) {
             Some(entry) if entry.state != RouteEntryState::Expired => {
-                entry
-                    .refresh(path)
-                    .expect("fresh or stale route entry can refresh");
+                let r = entry.refresh(path);
+                debug_assert!(r.is_ok(), "fresh or stale route entry can refresh");
             }
             _ => {
                 self.routes.insert(target, RouteEntry::fresh(path));

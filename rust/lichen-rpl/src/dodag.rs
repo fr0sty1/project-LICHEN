@@ -349,8 +349,8 @@ impl DodagState {
         self.preferred_parent = None;
         self.rank = INFINITE_RANK;
         self.lowest_rank = INFINITE_RANK;
-        self.set_role(DodagRole::Unjoined)
-            .expect("DODAG version adoption cannot demote a root");
+        let r = self.set_role(DodagRole::Unjoined);
+        debug_assert!(r.is_ok(), "DODAG version adoption cannot demote a root");
     }
 
     fn admissible(&self, candidate: &ParentCandidate) -> bool {
@@ -390,8 +390,8 @@ impl DodagState {
 
         let Some(best) = best else {
             if self.role != DodagRole::Root {
-                self.set_role(DodagRole::Unjoined)
-                    .expect("joined DODAG can return to unjoined");
+                let r = self.set_role(DodagRole::Unjoined);
+                debug_assert!(r.is_ok(), "joined DODAG can return to unjoined");
                 self.preferred_parent = None;
                 self.rank = INFINITE_RANK;
             }
@@ -417,8 +417,8 @@ impl DodagState {
 
         self.preferred_parent = Some(chosen_addr);
         self.rank = chosen_cost;
-        self.set_role(DodagRole::Joined)
-            .expect("non-root DODAG can join through a selected parent");
+        let r = self.set_role(DodagRole::Joined);
+        debug_assert!(r.is_ok(), "non-root DODAG can join through a selected parent");
         if chosen_cost < self.lowest_rank {
             self.lowest_rank = chosen_cost;
         }
