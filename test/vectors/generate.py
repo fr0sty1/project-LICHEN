@@ -1659,6 +1659,18 @@ def schc_fragment_vectors() -> list[dict]:
         }
 
     return [
+        {
+            "name": "canonical_crc32",
+            "description": "Canonical CRC-32/ISO-HDLC oracle from external source (RFC 3720 §B.2.1).",
+            "mic": "00c49e49",
+        },
+        {
+            "name": "7tiles",
+            "description": "7 tiles with tile_size=1, window_size=3, rule_id=0x2a, payload=bytes(range(7)).",
+            "rule_id": 0x2a,
+            "packet": "00010203040506",
+            "mic": "16cefd3c",
+        },
         _vector(
             "single_fragment",
             "10111213",
@@ -1686,6 +1698,12 @@ def schc_fragment_vectors() -> list[dict]:
             mode="ack_on_error",
             expect={"out_of_order": True, "retransmits": [0]},
             description="OOO + retransmit on NACK bitmap (RFC 8.4.2).",
+        ),
+        _vector(
+            "window_boundary",
+            "a5" * 29,
+            tile_size=4,
+            description="7 regular tiles in window 0 then All-1 in window 1 (window bit 0->1).",
         ),
     ]
 
