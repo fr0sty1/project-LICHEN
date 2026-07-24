@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fbss",
+  "title": "[review] project-LICHEN-worker6-ps69: SOS POST response code regression (CHANGED→CREATED breaks test, violates RFC 7252)",
+  "description": "git diff HEAD~1 HEAD changes `render_post` in `SosResource` from returning `aiocoap.CHANGED` to `aiocoap.CREATED`. Two problems:\n\n1. **Test failure**: `tests/coap/test_sos_resource.py:117` asserts `resp.code == aiocoap.CHANGED`. The test was not updated, so this change will cause it to fail.\n\n2. **RFC 7252 semantics incorrect**: `SosResource` is a singleton resource — POST activates/changes SOS state on the existing `/sos` resource. It does NOT create a new sub-resource (no `Location-Path` returned). Per RFC 7252 §5.8, 2.01 CREATED is only appropriate when a new resource is created; for an update to an existing resource, 2.04 CHANGED is correct.\n\nThe fix should either:\n- Revert to `aiocoap.CHANGED` (correct for current singleton model), OR\n- If switching to collection semantics, also update: test assertion, add `Location-Path` option, and create sub-resources under `/sos/\u003cid\u003e` per spec §18.4.5 which models SOS as a list of active alerts.\n\nChanged file: `python/src/lichen/coap/resources.py` line 745.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:12:24.498538268Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:12:24.498538268Z"
+}
