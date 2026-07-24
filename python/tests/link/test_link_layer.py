@@ -538,6 +538,37 @@ class TestLinkLayerRoundTrip:
         assert result.frame.payload == original_payload
         assert result.sender.pubkey == peer_identity.pubkey
 
+    @pytest.mark.asyncio
+    async def test_key_change_detection(
+        self,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+        peer_identity: Identity,
+    ):
+        """Frame from IID with mismatched pinned key returns KEY_CHANGE."""
+        no_lookup = lambda _: None
+        peer_ll = LinkLayer(
+            radio=MockRadio(),
+            identity=peer_identity,
+            peer_lookup=no_lookup,
+        )
+        await peer_ll.send(b"peer frame")
+        peer_frame_bytes = peer_ll.radio.tx_history[0]
+
+        peer_id = PeerIdentity.from_pubkey(peer_identity.pubkey)
+
+        node_ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: peer_id,
+        )
+
+        node_ll._pinned_keys[peer_id.iid] = bytes([0x99] * 32)
+
+        mock_radio.queue_rx(peer_frame_bytes)
+        result = await node_ll.receive(timeout_ms=100)
+        assert result == ReceiveError.KEY_CHANGE
+
 
 class TestSequenceManagement:
     """Tests for sequence number management."""
@@ -924,16 +955,6 @@ class TestTxQueueIntegration:
         assert priority == Priority.ACK
         assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
         assert ll.tx_queue.stats.packets_transmitted == 0
-
-        # Overwrite pin to simulate key-change scenario.
-        node_ll._pinned_keys[peer_peer.iid] = bytes([0x99] * 32)
-
-        # Second RX: same peer, same signature, but pin now says different key → dropped.
-        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll2.send(b"second")
-        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
-        result2 = await node_ll.receive(timeout_ms=100)
-        assert result2 == ReceiveError.KEY_CHANGE
 
     @pytest.mark.asyncio
     async def test_radio_exception_preserves_packet_for_retry(
