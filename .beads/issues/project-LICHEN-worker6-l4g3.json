@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-l4g3",
   "title": "[review] project-LICHEN-worker6-kd8m: 0xa2→0xa3 produces invalid CBOR in credential encoding",
   "description": "## Bug Summary\n\nThe commit changed `0xa2` (map of 2) to `0xa3` (map of 3) in two credential-encoding functions:\n- `raw_key_credential` (line 1493)\n- `encode_credential` (line 1504)\n\nBut the map body only encodes **2 key-value pairs**, not 3:\n\nEntry 1: key=0x01, value=0x06 → {1: 6}\nEntry 2: key=0x20, value=bstr(32, pubkey) → {-1: h'...'}\n\nWith `0xa3` declaring 3 entries, a CBOR parser expects a third key-value pair after the pubkey bytes and will error with \"map truncated\" or \"incomplete map\".\n\nThis is **invalid CBOR** and will be rejected by any standards-compliant parser.\n\n## Root Cause\n\nThe `raw_key_credential` function builds what appears to be a COSE_Key-like CCS but only includes kty (label 1) and a bstr pubkey — there is no crv (label -1) value of integer 6, and no x coordinate (label -2). The `0x20` byte is currently the key for pair 2, but the value is the raw pubkey bytes wrapped as bstr — this is wrong for a crv field (which should be integer 6 for Ed25519).\n\n## Fix Options\n\nEither:\n1. Revert to `0xa2` (the previous map header was correct for the current body content)\n2. Properly encode a 3-entry COSE_Key map: `a3 01 01 20 06 21 58 20 \u003cpubkey\u003e` (kty=OKP(1), crv=Ed25519(6), x=pubkey)\n\n## Additional Concern (Separate Issue)\n\nEven with `0xa2`, the credential encoding is non-standard: kty=6 is incorrect (should be 1 for OKP), and crv is a bstr wrapping the pubkey (should be integer 6). This may be an intentional proprietary format, but affects interop with other EDHOC implementations.\n\n## Verification\n\nThe existing tests pass because:\n1. Both sides of the handshake use the same credential encoding\n2. `validate_peer_credential` only checks the public key, not the credential CBOR structure\n3. The `ccs[2..]` slice in the multi-claim test happens to produce identical bytes regardless of 0xa2 vs 0xa3 (the slice starts at position 2, past the map header)",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:35:41.542749592Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:28:19.736032108Z",
-  "started_at": "2026-07-24T19:42:50.898443224Z"
+  "updated_at": "2026-07-24T20:28:21.095324394Z",
+  "started_at": "2026-07-24T19:42:50.898443224Z",
+  "lease_expires_at": "2026-07-24T20:33:21.095324394Z",
+  "heartbeat_at": "2026-07-24T20:28:21.095324394Z"
 }
