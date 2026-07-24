@@ -9,6 +9,7 @@ import asyncio
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, ClassVar, Protocol
 
@@ -393,7 +394,18 @@ def field_line(name: str, value: str, status: str = "", width: int = 80) -> str:
 def message_preview(record: MessageRecord, *, unread: bool = False) -> MessagePreview:
     """Convert a normalized LCI message record into a compact terminal row."""
     target = record.sender or record.recipient or "--"
-    age = str(record.received or record.timestamp or "--")
+    ts = record.received or record.timestamp
+    if isinstance(ts, datetime):
+        age = ts.strftime("%H:%M")
+    elif isinstance(ts, int | float):
+        age = datetime.fromtimestamp(ts).strftime("%H:%M")
+    elif isinstance(ts, str):
+        try:
+            age = datetime.fromisoformat(ts).strftime("%H:%M")
+        except (ValueError, TypeError):
+            age = ts
+    else:
+        age = "--"
     state = "inbox" if record.sender else "sent"
     return MessagePreview(
         target=target,
