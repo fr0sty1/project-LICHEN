@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-trau",
   "title": "[review] project-LICHEN-worker6-2729: protect_response missing request_kid identity validation",
   "description": "In `protect_response` (lib.rs:975), after removing the `include_piv` parameter, the function no longer validates that `request_kid == self.recipient_id()`. The parallel `protect_response_with_reserved_piv` (lib.rs:1050-1053) correctly checks:\n```rust\nif request_kid.len() \u003e NONCE_ID_LEN\n    || OscoreSeqNum::from_piv(request_piv).is_none()\n    || request_kid != self.recipient_id()\n{\n    return Err(OscoreError::InvalidParam);\n}\n```\n\nThe `protect_response` function (no-PIV path, RFC 8613 Section 5.2) should include the same validation. Passing a wrong `request_kid` silently produces a ciphertext that cannot be decrypted by the requester. Test `response_without_piv_requires_requester_identity` (lib.rs:3231) demonstrates this — it expected `InvalidParam` when `request_kid != sender_id`, but currently returns `Ok` because the check is missing.\n\nRFC 8613 Section 5.2: the no-PIV response reuses the request nonce, but must bind to the correct requester. The request_kid must match the responders recipient_id (the requesters sender_id).\n\nFix: add the same three-checks guard from `protect_response_with_reserved_piv` to the top of `protect_response`, replacing or preceding the current `allow_no_piv_response` check.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:34:49.095284404Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:34:49.095284404Z"
+  "updated_at": "2026-07-24T18:48:27.016202534Z",
+  "closed_at": "2026-07-24T18:48:27.016202534Z",
+  "close_reason": "Closed"
 }
