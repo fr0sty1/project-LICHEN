@@ -254,6 +254,18 @@ def _validate_bytes(value: object, name: str, length: int | None = None) -> byte
     return value
 
 
+def _ccs_encode_ed25519_key(pubkey: bytes) -> dict[int, int | bytes]:
+    """Encode Ed25519 pubkey as CCS COSE_Key (RFC 9053 OKP).
+
+    Produces a CBOR map: {1: 1, -1: 6, -2: pubkey}
+      - kty (1): OKP (1)
+      - crv (-1): Ed25519 (6)
+      - x (-2): raw public key bytes
+    """
+    _validate_bytes(pubkey, "public key", ED25519_SIG_LEN // 2)
+    return {1: 1, -1: 6, -2: pubkey}
+
+
 @dataclass
 class EdhocInitiator:
     """EDHOC Initiator role (RFC 9528).
@@ -412,7 +424,7 @@ class EdhocInitiator:
             signature_2 = _validate_bytes(pt2_items[1], "Signature_2", ED25519_SIG_LEN)
             if id_cred_r != peer_pubkey:
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
-            cred_r = peer_pubkey
+            cred_r = _ccs_encode_ed25519_key(peer_pubkey)
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
@@ -616,7 +628,7 @@ class EdhocResponder:
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
             self._prk_3e2m = self._prk_2e
             id_cred_r = self.identity.pubkey
-            cred_r = self.identity.pubkey
+            cred_r = _ccs_encode_ed25519_key(self.identity.pubkey)
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
