@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-e2o5.2",
   "title": "coap_dtn.c: wire lichen_deaddrop_provider dtn_buf and update register to set s_provider-\u003edtn_buf = \u0026s_dtn_buf",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
