@@ -219,7 +219,7 @@ For diagnostic and reachability testing (distinct from MQTT-SN Rule 7 per adapta
 
 For diagnostic and reachability testing.
 
-**Rule Definition:** (matches `ICMPV6_ECHO_RULE` in `rust/lichen-schc/src/rules.rs:503`; see appendix-schc.md and rules.rs:257 for full ICMPv6 echo fields. Distinct from Rule 7: MQTT-SN.)
+**Rule Definition:** (matches `ICMPV6_ECHO_RULE`; see appendix-schc.md for full ICMPv6 echo fields. Distinct from Rule 7: MQTT-SN.)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -243,7 +243,7 @@ For diagnostic and reachability testing.
 
 ### 4.5. Rule 3: RPL DIO (link-local)
 
-For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=1). 
+For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` and `constants.toml:32` (ICMPv6 type=155, code=1). 
 
 RPL options (TLVs) use MATCH_MAPPING on Type (prioritized: Pad1=0, PIO(type=3)=1, DAG Metric=2, Target=5, Transit=6, Origin-Sig, SCHC-Version). For Prefix Info Option (type 3):
 
