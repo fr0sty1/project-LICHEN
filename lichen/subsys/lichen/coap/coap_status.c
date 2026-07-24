@@ -304,7 +304,7 @@ ssize_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	uint16_t map_count = 5U + (status->battery_pct_valid ? 1U : 0U)
+	uint16_t map_count = 6U + (status->battery_pct_valid ? 1U : 0U)
 		    + (status->battery_mv_valid ? 1U : 0U);
 	cbor_put_map_header(&ctx, map_count);
 	cbor_put_key(&ctx, "uptime_s");
