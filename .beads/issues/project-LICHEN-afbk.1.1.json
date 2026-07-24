@@ -3,11 +3,7 @@
   "title": "RAK2287 research",
   "description": "Research",
   "notes": "Commit: 8f28f480a",
-<<<<<<< HEAD
   "status": "in_progress",
-=======
-  "status": "open",
->>>>>>> worker-2-20260724
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
