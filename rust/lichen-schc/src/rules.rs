@@ -418,7 +418,7 @@ const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
         mapping: None,
     },
     FieldDescriptor {
-        field_id: "RPL.flags",
+        field_id: "RPL.kd_flags",
         length_bits: 8,
         mo: Mo::Ignore,
         cda: Cda::ValueSent,
