@@ -2,12 +2,14 @@
   "id": "project-LICHEN-worker6-mbm7",
   "title": "[review] project-LICHEN-worker6-4n5v: Ack::from_bytes panics on 2-byte complete ACKs",
   "description": "Severity: P0 (crash/panic, DoS)\n\n`Ack::from_bytes` and `Ack::from_bytes_for` at `fragment.rs:340` access `data[2]` unconditionally after only checking `data.len() \u003c 2`. Complete ACKs are 2 bytes (`[rule_id, 0x40 | (window\u003c\u003c7)]`), so any 2-byte complete ACK causes an index-out-of-bounds panic.\n\nThis is reachable via the sender path: `FragmentSender::handle_ack_bytes` calls `Ack::from_bytes(data)` at line 583 without checking whether data is a complete ACK before calling the parser. A correct complete ACK (2 bytes) from a completed receiver would crash the sender.\n\nThe old code (before the rewrite) checked the complete bit BEFORE accessing `data[2]`. The new code reads `data[2]` unconditionally, then discards the complete bit (`let _complete = ...`).\n\n**Fix:** Check for 2-byte complete ACKs before reading `data[2]`. Alternatively, check `data.len()` against the expected minimum (3 for non-complete) and handle complete ACKs specially.\n\n**File:** `rust/lichen-schc/src/fragment.rs`, Ack::from_bytes_for, lines 333-348.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:59:24.891774037Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:20:57.376609036Z",
-  "started_at": "2026-07-24T17:59:55.913493036Z"
+  "updated_at": "2026-07-24T20:27:50.047552145Z",
+  "started_at": "2026-07-24T17:59:55.913493036Z",
+  "closed_at": "2026-07-24T20:27:50.047552145Z",
+  "close_reason": "Superseded by project-LICHEN-worker6-5u1l"
 }
