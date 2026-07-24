@@ -91,6 +91,7 @@ def test_vectors_directory_exists() -> None:
     "filename",
     [
         "ccp9.json",
+        "ccp16-desync.json",
         "l2_payload.json",
         "ipv6_malformed.json",
     ],
