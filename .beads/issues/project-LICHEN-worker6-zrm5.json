@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-zrm5",
   "title": "[review] edhoc transcript_4 missing CRED_I per RFC 9528",
   "description": "## Spec violation: `transcript_4` missing CRED_I parameter\n\n**File:** `rust/lichen-oscore/src/edhoc.rs:434-442`\n\n**RFC 9528 Section 4.1** defines:\n```\nTH_4 = H( TH_3, PLAINTEXT_3, CRED_I )\n```\n\nThe current `transcript_4` function (line 434) only hashes `TH_3 || plaintext_3` — missing `CRED_I` entirely:\n\n```rust\nfn transcript_4(\n    th_3: \u0026[u8; 32],\n    ciphertext_3: \u0026[u8],  // param misnamed — should be plaintext_3\n) -\u003e Result\u003c[u8; 32], EdhocError\u003e {\n    let mut buf = heapless::Vec::\u003cu8, 1024\u003e::new();\n    encode_bstr(\u0026mut buf, th_3)?;\n    encode_bstr(\u0026mut buf, ciphertext_3)?;\n    // MISSING: encode_bstr(\u0026mut buf, cred_i)?;\n    Ok(compute_th(\u0026buf))\n}\n```\n\nCompare with `transcript_3` (line 426) which correctly includes `cred` as a third parameter.\n\n**Evidence:** The commit under review (`project-LICHEN-worker6-l9ck`) partially addressed the bug by:\n1. Removing the 3-arg call `transcript_4(\u0026th_3, \u0026plaintext, peer.credential)` → 2-arg  \n2. Switching test from `ciphertext_3` → `plaintext_3`\n\nBut neither change adds `CRED_I` to the hash. This is equivalent to `trancript_3` being computed without `CRED_R` — a protocol-level deviation that breaks interop with any conforming EDHOC implementation.\n\n**Test vector concern:** The hardcoded `th_4` at line 1632 likely matches the buggy (CRED_I-less) implementation, violating test vector discipline (\"Never derive test vectors from the code under test\").\n\n**Also:** The parameter name `ciphertext_3` is misleading — the RFC uses `PLAINTEXT_3`. The commit renamed it at the call site but not in the function signature.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:08:10.143582538Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:08:10.143582538Z"
+  "updated_at": "2026-07-24T19:19:18.591146438Z",
+  "started_at": "2026-07-24T19:19:18.591146438Z",
+  "lease_expires_at": "2026-07-24T19:24:18.591146438Z",
+  "heartbeat_at": "2026-07-24T19:19:18.591146438Z"
 }

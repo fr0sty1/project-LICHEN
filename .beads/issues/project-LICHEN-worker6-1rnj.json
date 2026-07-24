@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-1rnj",
   "title": "[review] project-LICHEN-worker6-ojt7: Vec\u003cbool\u003e passed to Ack::new() which expects u64 bitmap",
   "description": "In rust/lichen-schc/src/fragment.rs (std_ext module, lines 1174, 1190, 1217):\nwindow_bitmap() returns Vec\u003cbool\u003e but Ack::new() expects a u64 bitmap.\nThe bitmap gets passed as \u0026bitmap (\u0026Vec\u003cbool\u003e) which doesn't match u64.\n\nFix: either convert Vec\u003cbool\u003e to u64 bitmask, or update Ack::new() to accept Vec\u003cbool\u003e, or change window_bitmap() to return u64 directly.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:32:57.233201594Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:19:13.626483559Z",
-  "started_at": "2026-07-24T19:19:13.626483559Z",
-  "lease_expires_at": "2026-07-24T19:24:13.626483559Z",
-  "heartbeat_at": "2026-07-24T19:19:13.626483559Z"
+  "updated_at": "2026-07-24T18:32:57.233201594Z"
 }

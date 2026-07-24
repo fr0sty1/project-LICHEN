@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-czzh",
   "title": "[review] project-LICHEN-worker6-mbm7: Binary .rlib build artifact committed to git",
   "description": "## Issue\n\n`rust/librust_out.rlib` (6562 bytes) was committed at the repo root level. This is a compiled Rust library binary artifact that must never be tracked in git.\n\n## Severity\n\nP0 — binary blobs in version control bloat the repo, break diff tools, and indicate a broken build workflow.\n\n## Required Fix\n\n1. Remove the file from the index: `git rm --cached rust/librust_out.rlib`\n2. Add `*.rlib` (or `rust/*.rlib`) to `.gitignore`\n3. Amend the commit to exclude it\n\n## Notes\n\nThe repo's `.gitignore` already has `rust/target/` but this `.rlib` was placed at `rust/librust_out.rlib` — outside the target directory. Either the build output was redirected, or it's a stale artifact from a previous build step.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:24:42.716303996Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:13:55.368950683Z",
-  "started_at": "2026-07-24T18:25:03.686275558Z"
+  "updated_at": "2026-07-24T19:19:17.48081665Z",
+  "started_at": "2026-07-24T18:25:03.686275558Z",
+  "lease_expires_at": "2026-07-24T19:24:17.48081665Z",
+  "heartbeat_at": "2026-07-24T19:19:17.48081665Z"
 }
