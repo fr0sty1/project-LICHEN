@@ -316,7 +316,8 @@ impl Ack {
                 bitmap |= 1u64 << (62 - position);
             }
         }
-        let ack = Self::new(data[0], window, bitmap, false);
+        let complete = (data[1] & 1) != 0;
+        let ack = Self::new(data[0], window, bitmap, complete);
         let mut canonical = [0u8; 10];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {
