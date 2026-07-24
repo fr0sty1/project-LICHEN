@@ -74,10 +74,14 @@ class AiocoapResourceTransport(ResourceTransport):
         async with self._lock:
             if self._context is not None:
                 return
-            if self._context_factory is not None:
-                self._context = await self._context_factory()
-            else:
-                self._context = await aiocoap.Context.create_client_context()
+            try:
+                if self._context_factory is not None:
+                    self._context = await self._context_factory()
+                else:
+                    self._context = await aiocoap.Context.create_client_context()
+            except BaseException:
+                self._context = None
+                raise
             self._owns_context = True
 
     async def close(self) -> None:
