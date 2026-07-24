@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-zg4h",
+  "title": "[review] project-LICHEN-worker6-ow6z: Fragment::from_bytes API change broke integration tests",
+  "description": "Commit 344c8fa1 simplified `Fragment::from_bytes` to take a single `\u0026[u8]` argument (removing the `\u0026mut [u8]` tile buffer parameter as the payload is now a borrowed slice). The fuzz target at `rust/lichen-schc/fuzz/fuzz_targets/fuzz_fragment.rs` was updated, but the integration tests still use the old two-argument signature with `\u0026mut tile`:\n\n- `rust/lichen-schc/tests/fragmentation_vectors.rs`: lines 214, 241, 379 — all call `Fragment::from_bytes(\u0026wire, \u0026mut tile)`\n- `rust/lichen-schc/tests/fragmentation.rs`: lines 123, 125, 236 — all call `Fragment::from_bytes(..., \u0026mut tile)`\n\n`cargo test --no-run` fails with compilation errors on these call sites. The `cargo build` (lib-only) accidentally passed because integration tests are separate targets.\n\nFix: remove the `\u0026mut tile` argument from all six call sites, and remove the unused `let mut tile = [0u8; TILE_SIZE];` declarations in both test files.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:44:44.563724346Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:44:44.563724346Z"
+}
