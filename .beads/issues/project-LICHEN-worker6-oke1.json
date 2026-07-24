@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-oke1",
   "title": "[review] project-LICHEN-worker6-mbm7: fuzz harness calls Fragment::from_bytes with wrong arity",
   "description": "In commit d82daa6bd3, `rust/lichen-schc/fuzz/fuzz_targets/fuzz_fragment.rs` was changed from `Fragment::from_bytes(data, \u0026mut tile)` to `Fragment::from_bytes(data)`, removing the required second argument. However, `Fragment::from_bytes` (at fragment.rs:175) still has signature `pub fn from_bytes(data: \u0026[u8], out: \u0026'a mut [u8]) -\u003e Result\u003cSelf, FragmentError\u003e` — it takes two arguments, not one. This will cause a compilation error in the fuzz target, breaking fuzz testing entirely. The function was confused with `Ack::from_bytes` which does take a single argument (fragment.rs:272). Fix: revert the line to pass a tile buffer, e.g., `let mut tile = [0u8; TILE_SIZE]; let _ = Fragment::from_bytes(data, \u0026mut tile);`.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:08:30.533452862Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:08:30.533452862Z"
+  "updated_at": "2026-07-24T18:17:59.917116939Z",
+  "started_at": "2026-07-24T18:17:59.917116939Z",
+  "lease_expires_at": "2026-07-24T18:22:59.917116939Z",
+  "heartbeat_at": "2026-07-24T18:17:59.917116939Z"
 }
