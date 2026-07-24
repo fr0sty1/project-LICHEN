@@ -855,7 +855,7 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_BOGUS(pending.id_cred.as_bytes(), peer.credential)?;
+            let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
