@@ -45,8 +45,8 @@ L2_DISPATCH_ROUTING = 0x15
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
-G_SRC = IPv6Address("2001:db8::1")
-G_DST = IPv6Address("2001:db8::2")
+G_SRC = IPv6Address("fd00::1")
+G_DST = IPv6Address("fd00::2")
 ULA_SRC = IPv6Address("fd00:db8::1")
 ULA_DST = IPv6Address("fd00:db8::2")
 COAP_PORT = 5683
@@ -2002,20 +2002,46 @@ def ccp13_vectors() -> list[dict]:
 
 
 def rpl_messages_vectors() -> list[dict]:
+    from lichen.rpl.messages import DIO, DAO
+    from ipaddress import IPv6Address
+    dio = DIO(
+        rpl_instance_id=0, version=1, rank=256, dtsn=0,
+        dodag_id=IPv6Address("fe80::1"), grounded=True
+    )
+    dao = DAO(
+        rpl_instance_id=0, dao_sequence=5,
+        dodag_id=IPv6Address("fe80::1")
+    )
     return [
         {
             "name": "dio_base",
             "type": "dio",
-            "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
-            "encoded": "01001e0001000000000000000000000000000000",
-            "fields": {"rpl_instance_id": 0, "version": 1, "rank": 256, "grounded": True},
+            "description": "Base RPL DIO (RFC 6550). Generated from Python reference implementation.",
+            "encoded": dio.to_bytes().hex(),
+            "fields": {
+                "rpl_instance_id": dio.rpl_instance_id,
+                "version": dio.version,
+                "rank": dio.rank,
+                "grounded": dio.grounded,
+                "mode_of_operation": dio.mode_of_operation,
+                "preference": dio.preference,
+                "dtsn": dio.dtsn,
+                "flags": dio.flags,
+                "dodag_id": str(dio.dodag_id),
+            },
         },
         {
             "name": "dao_base",
             "type": "dao",
-            "description": "Base RPL DAO with DODAGID (RFC 6550).",
-            "encoded": "0201050000000000000000000000000000000000",
-            "fields": {"rpl_instance_id": 0, "dao_sequence": 5},
+            "description": "Base RPL DAO with DODAGID (RFC 6550). Generated from Python reference implementation.",
+            "encoded": dao.to_bytes().hex(),
+            "fields": {
+                "rpl_instance_id": dao.rpl_instance_id,
+                "dao_sequence": dao.dao_sequence,
+                "ack_requested": dao.ack_requested,
+                "flags": dao.flags,
+                "dodag_id": str(dao.dodag_id),
+            },
         },
     ]
 
@@ -2033,7 +2059,10 @@ def ipv6_malformed_vectors() -> list[dict]:
     bad_t[40] = 0
     udp_good = _udp_ipv6(ll_src, ll_dst, b"data")
     bad_u = bytearray(udp_good)
-    bad_u[44] = 0
+    # Corrupt UDP length field (bytes 44-45) to mismatch actual payload
+    good_len = int.from_bytes(udp_good[44:46], "big")
+    bad_u[44] = (good_len - 1) >> 8
+    bad_u[45] = (good_len - 1) & 0xFF
     cases = [
         ("packet_version", bytes(bad_ver), "packet_version"),
         ("icmpv6_too_short", short, "icmpv6_too_short"),

@@ -382,7 +382,7 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
                         bytes.fromhex(vector["rcs"]) if final else b"",
                     )
                 )
-            receiver = FragmentReceiver() if len(packet) <= 1281 else FragmentReceiver(len(packet))
+            receiver = FragmentReceiver() if len(packet) <= 1281 else FragmentReceiver(max_size=len(packet))
             result = None
             for fragment in fragments:
                 result = receiver.receive(fragment)
@@ -392,7 +392,7 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
             assert result.reassembled == packet
         else:
             with pytest.raises(FragmentError):
-                FragmentSender(packet, receiver_limit=MAX_PACKET_SIZE)
+                FragmentSender(packet, receiver_limit=16384)
         return
 
     wire = _expand_vector_bytes(vector["wire"])

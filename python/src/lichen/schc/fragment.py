@@ -8,12 +8,12 @@ from dataclasses import dataclass, field
 
 N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1
-MAX_WINDOW_SIZE = ALL_1 - 1
+MAX_WINDOW_SIZE = ALL_1
 DEFAULT_WINDOW_SIZE = 63
 MIC_LENGTH = 4
 RULE_IDS = (0x2a, 0x78, 0x79)
 TILE_SIZE = 187
-MAX_PACKET_SIZE = 16384
+MAX_PACKET_SIZE = 65535
 DEFAULT_RECEIVER_LIMIT = 1281
 MAX_ACK_REQUESTS = 4
 WINDOW_SIZE = 63
@@ -253,6 +253,31 @@ class FragmentSender:
             bitmap = bitmap[:len(window_frags)]
         missing: list[Fragment] = []
         for pos, frag in enumerate(window_frags):
+            if frag.is_all_1:
+                continue
             if pos >= len(bitmap) or not bitmap[pos]:
                 missing.append(frag)
         return missing
+
+    def start(self) -> None:
+        self.status = "started"
+
+    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        ack = Ack.from_bytes(data)
+        if ack.complete:
+            return []
+        window = ack.window
+        missing = self.retransmit(window, ack.bitmap)
+        messages: list[bytes] = []
+        for frag in missing:
+            messages.append(frag.to_bytes())
+        all1_window = self._fragments[-1].window
+        messages.append(ack_request(self.rule_id, all1_window))
+        return messages
+
+    def timeout(self) -> bytes:
+        self.attempts += 1
+        if self.attempts >= MAX_ACK_REQUESTS:
+            self.status = "aborted"
+            return sender_abort(self.rule_id)
+        return ack_request(self.rule_id, 0)
