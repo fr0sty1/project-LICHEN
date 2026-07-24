@@ -1,7 +1,6 @@
 //! Rule Set Version 2 SCHC ACK-on-Error fragmentation (RFC 8724 section 8).
 
 use lichen_core::{
-    constants::SCHC_MAX_DECOMPRESSED,
     error::{BufferTooSmall, TooShort},
 };
 
@@ -431,8 +430,8 @@ impl<'a> FragmentSender<'a> {
         if payload.is_empty() {
             return Err(FragmentError::EmptyPacket);
         }
-        if payload.len() > SCHC_MAX_DECOMPRESSED {
-            return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
+        if payload.len() > MAX_PACKET_SIZE {
+            return Err(FragmentError::PacketTooLarge);
         }
         let mic = compute_mic(payload);
         Ok(FragmentSender {
@@ -528,7 +527,6 @@ impl<'a> FragmentSender<'a> {
         if ack.window > self.final_window() {
             return Ok(SenderOutput::None);
         }
-        let ack = Ack::from_bytes_for(data, Some(self.assigned_bitmap(ack.window)))?;
         Ok(self.handle_ack(ack))
     }
 
@@ -547,10 +545,8 @@ impl<'a> FragmentSender<'a> {
             return SenderOutput::None;
         }
         let assigned = self.assigned_bitmap(ack.window);
-        if ack.bitmap & !assigned & BITMAP_MASK != 0 {
-            return SenderOutput::None;
-        }
-        let missing = assigned & !ack.bitmap;
+        let effective = ack.bitmap & assigned;
+        let missing = assigned & !effective;
         if missing == 0 {
             if ack.window == self.final_window() {
                 return self.abort_output();

@@ -18,7 +18,7 @@
       ],
       "loss": {
         "drop_fragment": "tile_1",
-        "ack_failure": "78003e8000000000000000",
+        "ack_failure": "780000",
         "retransmission": {"parts": ["787a", {"repeat_byte": "22", "count": 187}]},
         "ack_req": "7800",
         "ack_success": "7840",
@@ -105,7 +105,7 @@
       ],
       "loss": {
         "drop_fragment": "fcn_31",
-        "ack_failure": "783fffffffbf",
+        "ack_failure": "780020fffffffe",
         "retransmission": {"parts": ["783f", {"repeat_byte": "4b", "count": 186}, "4a"]},
         "ack_req": "7880",
         "ack_success": "78c0"
