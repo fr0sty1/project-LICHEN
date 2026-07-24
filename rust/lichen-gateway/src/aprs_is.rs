@@ -434,6 +434,14 @@ fn read_line_bounded<R: BufRead>(reader: &mut R) -> Result<Option<String>, AprsE
         return Err(AprsError::UnterminatedLine);
     }
 
+    if !bytes.is_ascii() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "non-ASCII bytes in APRS line",
+        )
+        .into());
+    }
+
     String::from_utf8(bytes)
         .map(Some)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error).into())
