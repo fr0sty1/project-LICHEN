@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-akzj",
+  "title": "[review] project-LICHEN-worker6-69p2: ACK from_bytes OOB access on 2-byte input",
+  "description": "`Ack::from_bytes_for()` at line ~265 accesses `data[2]` before verifying the slice has at least 3 elements. The only bounds check is `data.len() \u003c 2`, so passing exactly 2 bytes will panic instead of returning `Err`.\n\nThis is accessible via both `Ack::from_bytes()` and `Ack::from_bytes_for()` (line 256-258 delegates to `from_bytes_for`). The fuzzer `fuzz_fragment.rs` calls `Ack::from_bytes(data)` which could hit this.\n\nFix: add a `data.len() \u003c 3` check before accessing `data[2]`.\n\nAffected file: `rust/lichen-schc/src/fragment.rs` line 265.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:55:36.74226691Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:55:36.74226691Z"
+}
