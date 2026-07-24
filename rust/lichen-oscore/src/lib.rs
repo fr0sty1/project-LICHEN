@@ -943,28 +943,42 @@ impl Context {
         {
             return Err(OscoreError::InvalidParam);
         }
+        if !self.active {
+            return Err(OscoreError::InvalidParam);
+        }
+        if !self.allow_no_piv_response {
+            return Err(OscoreError::InvalidParam);
+        }
 
         // Determine PIV for nonce: own sequence if including, else request's PIV
-        let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
-            if include_piv {
-                // Generate own PIV.
-                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
-                let seq = self
-                    .sender_seq
-                    .fetch_increment()
-                    .ok_or(OscoreError::SeqExhausted)?;
-                let mut piv = [0u8; PIV_MAX_LEN];
-                let len = seq.encode_piv(&mut piv);
-                (piv, len, Some(len))
-            } else {
-                // Reuse the request nonce (no new sequence generated).
-                if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                    return Err(OscoreError::InvalidParam);
-                }
-                let mut piv = [0u8; PIV_MAX_LEN];
-                piv[..request_piv.len()].copy_from_slice(request_piv);
-                (piv, request_piv.len(), None)
-            };
+        let (nonce_piv, piv_len, piv_for_option, resp_seq): (
+            [u8; PIV_MAX_LEN],
+            usize,
+            Option<usize>,
+            Option<OscoreSeqNum>,
+        ) = if include_piv {
+            // Generate own PIV.
+            // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
+            let seq = self
+                .sender_seq
+                .fetch_increment()
+                .ok_or(OscoreError::SeqExhausted)?;
+            let mut piv = [0u8; PIV_MAX_LEN];
+            let len = seq.encode_piv(&mut piv);
+            (piv, len, Some(len), None)
+        } else {
+            let seq = OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
+            if self.is_response_reuse(seq) {
+                return Err(OscoreError::Replay);
+            }
+            // Reuse the request nonce (no new sequence generated).
+            if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
+                return Err(OscoreError::InvalidParam);
+            }
+            let mut piv = [0u8; PIV_MAX_LEN];
+            piv[..request_piv.len()].copy_from_slice(request_piv);
+            (piv, request_piv.len(), None, Some(seq))
+        };
 
         let nonce_id = if include_piv {
             self.sender_id()
@@ -1017,6 +1031,10 @@ impl Context {
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
             opt.extend_from_slice(&nonce_piv[..len])
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
+        }
+
+        if let Some(seq) = resp_seq {
+            self.mark_response_used(seq);
         }
 
         Ok((ct_out, opt))
