@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qjgk",
+  "title": "[review] project-LICHEN-worker6-xy4c: fragments_in_window_vec fix correct but crate has 11 remaining compilation errors",
+  "description": "The commit fixes `fragments_in_window_vec` (replacing call to non-existent `fragments_in_window` with correct inline filter on `self.iter()`). The fix itself is correct.\n\nHowever, `cargo check -p lichen-schc --features std` still fails with 11 errors:\n- `fragment.rs:1104`: rule_id: 0 should be Option\u003cu8\u003e (FragmentReceiver::new)\n- `fragment.rs:1177-1179`: rule_id type mismatch in FragmentReceiver::ingest tests\n- `fragment.rs:1230,1249,1273`: Ack::new argument count mismatch (8 args supplied, function signature changed?)\n- `headers.rs:465,666,840,992`: write_ipv6_header takes 7 args but 8 supplied\n\nThese are pre-existing errors from the broader worker6 changes not addressed by this commit. The crate does not compile and tests cannot run.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:37:46.532946337Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:37:46.532946337Z"
+}
