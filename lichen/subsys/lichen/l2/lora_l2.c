@@ -754,12 +754,23 @@ int lichen_lora_l2_start(void)
      * Matches spec; preamble 8 default. New Kconfigs enable DIO/hash SF
      * assignment and gateway CAD for multi-SF (CONFIG_LICHEN_GATEWAY_MULTI_SF).
      *
+     * RADIO CAPABILITY NOTE: Different LoRa transceivers have different SF ranges:
+     *   - SX1261/62, SX1276/77/78/79: SF5-SF12 (SX126x), SF6-SF12 (SX127x)
+     *   - LLCC68:               SF5-SF11 only (no SF12)
+     *   - LR1110:               SF5-SF12
+     * The selected SF must be supported by the board's radio hardware.
+     * lora_config() at runtime validates this and returns -EINVAL if the
+     * radio cannot support the requested datarate. See BUILD_ASSERT below
+     * for compile-time range checking.
+     *
      * Stack-local struct is safe: lora_config() copies values.
      *
      * RX then TX pass programs both directions (RX config reused by recv).
      * CAD scan added in rx_thread under multi-SF config (lr1110 IRQ extended
      * for PREAMBLEDETECTED per ASSIGNED_SF in DIO).
      */
+    BUILD_ASSERT(CONFIG_LICHEN_DEFAULT_SF >= 6 && CONFIG_LICHEN_DEFAULT_SF <= 12,
+                 "LICHEN_DEFAULT_SF must be 6-12; note LLCC68 only supports SF5-SF11");
     struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
         .bandwidth = BW_125_KHZ,
@@ -772,7 +783,9 @@ int lichen_lora_l2_start(void)
 
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: RX config failed (%d)", ret);
+        LOG_ERR("lora_l2: RX config failed with freq=%u bw=%d sf=%d cr=%d power=%d (%d)",
+                config.frequency, config.bandwidth, config.datarate,
+                config.coding_rate, config.tx_power, ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
@@ -780,7 +793,9 @@ int lichen_lora_l2_start(void)
     config.tx = true;              /* pass 2: program TX + airtime cache */
     ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: TX config failed (%d)", ret);
+        LOG_ERR("lora_l2: TX config failed with freq=%u bw=%d sf=%d cr=%d power=%d (%d)",
+                config.frequency, config.bandwidth, config.datarate,
+                config.coding_rate, config.tx_power, ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
