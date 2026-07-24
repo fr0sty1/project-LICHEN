@@ -146,20 +146,13 @@ impl<'a> Fragment<'a> {
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
-        out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
         if self.is_all_1() {
-            for byte in self.mic {
-                out[1 + index] |= byte >> 7;
-                out[2 + index] = byte << 1;
-                index += 1;
-            }
-        }
-        for &byte in self.payload {
-            out[1 + index] |= byte >> 7;
-            out[2 + index] = byte << 1;
-            index += 1;
+            out[2..2 + MIC_LENGTH].copy_from_slice(&self.mic);
+            out[2 + MIC_LENGTH..needed].copy_from_slice(self.payload);
+        } else {
+            out[2..needed].copy_from_slice(self.payload);
         }
         Ok(needed)
     }
@@ -772,8 +765,7 @@ impl<'a> FragmentReceiver<'a> {
             }
             return self.receive_ack_request(rule_id);
         }
-        let mut tile = [0u8; TILE_SIZE];
-        match Fragment::from_bytes(data, &mut tile) {
+        match Fragment::from_bytes(data) {
             Ok(fragment) => {
                 if self.done {
                     self.reset();
