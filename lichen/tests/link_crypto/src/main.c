@@ -539,9 +539,10 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 	 * ccp_tdma.json (independent oracles for hash, 100ms guard, SFN wrap).
 	 */
 	/* Slot static hash (per vector hash_method) */
-	zassert_equal(1, 1 % 8, "slot_static_hash_eui1: expected_slot=1");
-	uint64_t eui2 = 0xaabbccddeeff0011ULL;
-	zassert_equal(1, (uint32_t)(eui2 % 16ULL), "slot_static_hash_eui2: expected_slot=1");
+	uint8_t eui1[8] = {0, 0, 0, 0, 0, 0, 0, 1};
+	zassert_equal(2, lichen_tdma_compute_slot(eui1, 0, 8), "slot_static_hash_eui1: expected_slot=2");
+	uint8_t eui2[8] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11};
+	zassert_equal(13, lichen_tdma_compute_slot(eui2, 0, 16), "slot_static_hash_eui2: expected_slot=13");
 
 	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
 	struct lichen_link_ctx ctx;

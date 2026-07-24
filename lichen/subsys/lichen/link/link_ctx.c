@@ -590,7 +590,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #endif
 }
 
-int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {
 	if (num_slots == 0) num_slots = 8;
 	uint8_t data[8];
@@ -610,7 +610,7 @@ int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)
 	tdma->slot = slot;
 	tdma->n_slots = 8;
 	tdma->superframe = 0;
-	tdma->slot_duration = LICHEN_TDMA_SLOT_MS;
+	tdma->slot_duration = SLOT_DURATION_MS;
 	tdma->synced = false;
 	return 0;
 }
@@ -623,7 +623,7 @@ int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *td
 	tdma->slot = slot_id;
 	tdma->n_slots = n_slots ? n_slots : 8;
 	tdma->superframe = sfn;
-	tdma->slot_duration = LICHEN_TDMA_SLOT_MS;
+	tdma->slot_duration = SLOT_DURATION_MS;
 	tdma->synced = true;
 	return 0;
 }
@@ -632,7 +632,7 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	if (tdma == NULL || !tdma->synced) return true;
 	uint32_t d = tdma->slot_duration;
 	uint32_t slot_start = tdma->superframe * (uint32_t)tdma->n_slots * d + (uint32_t)tdma->slot * d;
-	uint32_t g = LICHEN_TDMA_GUARD_MS;
+	uint32_t g = GUARD_TIME_MS;
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
 }
 
@@ -646,16 +646,3 @@ uint32_t lichen_hash_32(const uint8_t *data, size_t len)
 	return hash;
 }
 
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
-{
-	if (num_slots == 0) num_slots = 8;
-	uint8_t buf[8];
-	memcpy(buf, eui64, 8);
-	uint32_t e = epoch;
-	for (size_t i = 0; i < 8; i++) {
-		buf[i] ^= (uint8_t)e;
-		e >>= 8;
-	}
-	uint32_t h = lichen_hash_32(buf, 8);
-	return (uint8_t)(h % num_slots);
-}

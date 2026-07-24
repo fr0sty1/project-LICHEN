@@ -4,9 +4,14 @@ impl TdmaScheduler {
     pub fn new() -> Self {
         TdmaScheduler
     }
-    pub fn slot_for(eui: &[u8; 8]) -> u16 {
-        let h = lichen_hash_32(eui);
-        (h % 16) as u16
+    pub fn slot_for(eui: &[u8; 8], num_slots: u8, epoch: u32) -> u16 {
+        let mut data = *eui;
+        let e = epoch;
+        for i in 0..4 {
+            data[i] ^= (e >> (i * 8)) as u8;
+        }
+        let h = lichen_hash_32(&data);
+        (h % num_slots as u32) as u16
     }
     pub fn guard_ms() -> u32 {
         TDMA_GUARD_MS
@@ -31,6 +36,6 @@ mod tests {
         assert_eq!(TdmaScheduler::slot_ms(), 250);
 
         let eui1 = [0u8, 0, 0, 0, 0, 0, 0, 1];
-        assert_eq!(TdmaScheduler::slot_for(&eui1), 2);
+        assert_eq!(TdmaScheduler::slot_for(&eui1, 8, 0), 2);
     }
 }
