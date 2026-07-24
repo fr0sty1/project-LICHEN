@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-9hql",
   "title": "[review] project-LICHEN-worker6-tkjl: from_bytes returns packed wire data as payload, skipping decode",
   "description": "## Bug: from_bytes does not unpack wire-encoded payload\n\n**File:** `rust/lichen-schc/src/fragment.rs:171-199`\n\n**Severity:** P0 — data corruption\n\nThe `Fragment::from_bytes` method returns wire-packed data as the Fragment payload:\n\n```rust\n// Regular fragment: payload borrows raw wire bytes from position 2\npayload: rest,  // \u0026data[2..] — still in packed 7-bit format\n\n// All-1 fragment: payload borrows raw wire bytes after MIC  \npayload: \u0026rest[MIC_LENGTH..],  // still in packed format\n```\n\nThe wire format packs each 8-bit byte as: `out[n+2] = byte \u003c\u003c 1`, with bit 7 of each byte ORed into `out[n+1]`. `from_bytes` must reverse this encoding before returning the fragment.\n\n**Impact:** When a FragmentReceiver receives fragments parsed from wire, `copy_from_slice(fragment.payload)` stores packed data into the reassembly buffer. Fragments created by FragmentSender have original bytes — the receiver cannot distinguish between the two, leading to mixed packed/unpacked data in the final packet.\n\n**Evidence:** The shared test vector `recover_missing_regular_tile` expects wire format `0x787c` (header) + zeros, but our `write_to` produces `0x783e` — the FCN field is not shifted left by 1 to match the test vector wire encoding scheme where bit 0 of the header carries the first payload byte top bit.\n\nRelated: header bit layout (window at bit 7, FCN at bits 6-1) also needs to match test vectors.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:05:17.887557713Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:05:17.887557713Z"
+  "updated_at": "2026-07-24T19:09:08.731090627Z",
+  "started_at": "2026-07-24T19:09:08.731090627Z",
+  "lease_expires_at": "2026-07-24T19:14:08.731090627Z",
+  "heartbeat_at": "2026-07-24T19:09:08.731090627Z"
 }
