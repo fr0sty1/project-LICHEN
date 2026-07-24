@@ -1481,13 +1481,13 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
 	    oscore_opt == NULL || oscore_opt_len == NULL) {
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 
 	if ((options_len > 0 && options == NULL) ||
 	    (payload_len > 0 && payload == NULL)) {
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 
 	/*
@@ -1503,7 +1503,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE context not in storage array");
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 
 	/* Require sender_seq to be explicitly initialized before first use */
@@ -1511,7 +1511,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender_seq not initialized - call oscore_ctx_set_sender_seq()");
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 
 	/* Check for sender sequence number exhaustion before use */
@@ -1519,7 +1519,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender sequence exhausted - key rotation required");
 		ret = OSCORE_ERR_SEQ_EXHAUSTED;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 
 	/* Get and increment sender sequence number atomically */
@@ -1643,8 +1643,9 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* After common wipe in cleanup_protect_request, this dedicated
-	 * nvm_failed path locks mutex to safely handle sender_seq.
+	/* Dedicated path for post-transmittable NVM failure. Locks mutex to
+	 * safely handle sender_seq rollback. All early-exit and pre-transmission
+	 * error paths go to common_wipe directly.
 	 * SECURITY: SSN MUST NOT be left incremented on NVM failure -
 	 * would allow AES-CCM nonce reuse attack vector on reboot
 	 * (RFC 8613 7.2, oscore.c:1524). Rollback to pre-increment value
