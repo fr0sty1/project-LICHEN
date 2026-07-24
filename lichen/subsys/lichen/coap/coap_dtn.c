@@ -183,9 +183,25 @@ static int deaddrop_post(struct coap_resource *resource,
 	}
 	s_last_deaddrop[iid7] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
+	uint8_t senml_buf[512];
+	struct senml_pack pack;
+	senml_pack_init(&pack, NULL, dtn_get_unix_time());
+	int sr = senml_add_string(&pack, "message", (const char *)payload);
+	if (sr == 0) {
+		sr = senml_encode_cbor(&pack, senml_buf, sizeof(senml_buf));
+	}
+	const uint8_t *store_payload;
+	uint16_t store_len;
+	if (sr < 0) {
+		store_payload = payload;
+		store_len = payload_len;
+	} else {
+		store_payload = senml_buf;
+		store_len = (uint16_t)sr;
+	}
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	if (s_provider && s_provider->store) {
-		int r = s_provider->store(payload, payload_len);
+		int r = s_provider->store(store_payload, store_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
@@ -205,8 +221,9 @@ static int deaddrop_post(struct coap_resource *resource,
 	}
 	uint32_t now = dtn_get_unix_time();
 	uint32_t expiry = now + LICHEN_DTN_DEFAULT_TTL_SEC;
-	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len,
-					    dest_iid, expiry, now, now_ms);
+	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, store_payload,
+					    store_len, dest_iid, expiry, now,
+					    now_ms);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	uint8_t resp_code = ok ? COAP_RESPONSE_CODE_CHANGED
 			       : COAP_RESPONSE_CODE_BAD_REQUEST;
