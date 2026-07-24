@@ -46,6 +46,29 @@ BUILD_ASSERT((sizeof(unsigned long) & (sizeof(unsigned long) - 1)) == 0,
  * The volatile pointer forces each store to actually execute.
  * The memory barrier prevents LTO removal and ensures ordering.
  *
+ * PLATFORM ASSUMPTIONS:
+ * This implementation is designed for ARM Cortex-M targets (the primary
+ * LICHEN deployment platform). Cortex-M processors have no data cache
+ * to flush, no out-of-order execution for speculative-load concerns,
+ * and no virtual memory for swapping. On such targets the volatile
+ * stores + compiler_barrier() pattern is sufficient to ensure memory
+ * is actually cleared in bounded time.
+ *
+ * On more complex CPUs (Cortex-A, x86) additional mitigations would
+ * be needed: cache-line flushes (dcbf/dcivac), data memory barriers
+ * (dsb), and/or explicit_bzero() / memset_s() which use platform-
+ * specific instructions to prevent both compiler and hardware
+ * optimization of the clear. LICHEN does not target such platforms,
+ * so these are not implemented here.
+ *
+ * The code does NOT use explicit_bzero() because:
+ * 1. Zephyr does not expose it in the standard toolchain headers
+ * 2. Cortex-M targets have no cache to flush, so volatile + barrier
+ *    is equivalent in effect
+ * 3. The volatile approach is portable across all LICHEN targets
+ *    (nRF52840, ESP32-S3, STM32WL, RP2040) without conditional
+ *    compilation
+ *
  * Performance: Uses word-aligned writes for larger buffers (>= 32 bytes)
  * to reduce latency when clearing structures like lichen_link_ctx (~100 bytes)
  * while holding mutexes. (project-LICHEN-gy7h.18)
