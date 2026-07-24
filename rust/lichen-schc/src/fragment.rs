@@ -15,6 +15,8 @@ pub const ALL_1_FCN: u8 = (1 << FRAGMENT_N) - 1;
 pub const MIC_LENGTH: usize = 4;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
+pub const WINDOW_SIZE: usize = 63;
+pub const BITMAP_MASK: u64 = (1u64 << 63) - 1;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
 pub const MAX_ACK_REQUESTS: u32 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
@@ -230,14 +232,10 @@ impl Ack {
         }
 
         let trailing = (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
-        let (kept, restored, padding) = if trailing > 0 {
-            let kept = WINDOW_SIZE - trailing;
-            (kept, (8 - ((2 + kept) % 8)) % 8, 0)
-        } else {
-            (WINDOW_SIZE, 0, 7)
-        };
-        let total_bits = 2 + kept + restored + padding;
-        let needed = 1 + total_bits / 8;
+        let kept = WINDOW_SIZE - trailing;
+        let n = kept;
+        let body_bytes = n.div_ceil(8);
+        let needed = 3 + body_bytes;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
@@ -245,11 +243,10 @@ impl Ack {
         out[0] = self.rule_id;
         out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
         out[2] = n as u8;
-        for b in out[3..3 + body_bytes].iter_mut() {
-            *b = 0;
-        }
-        for position in 0..restored {
-            set_bit(&mut out[1..needed], 2 + kept + position, true);
+        for i in 0..n {
+            let bit = (self.bitmap >> (62 - i)) & 1;
+            let byte_idx = 3 + i / 8;
+            out[byte_idx] |= (bit as u8) << (7 - (i % 8));
         }
         Ok(needed)
     }
@@ -266,41 +263,33 @@ impl Ack {
         let window = (data[1] >> FRAGMENT_N) & 1;
         let complete = (data[1] & 0x01) != 0;
         let n = data[2] as usize;
+        if n > WINDOW_SIZE {
+            return Err(FragmentError::MalformedAck);
+        }
         let body_bytes = n.div_ceil(8);
         let required = 3 + body_bytes;
         if data.len() < required {
             return Err(TooShort::new(required, data.len()).into());
         }
         let body = &data[3..];
-        let mut bitmap = [false; MAX_WINDOW_SIZE];
-        for i in 0..n.min(MAX_WINDOW_SIZE) {
-            let byte = body[i / 8];
-            bitmap[i] = (byte >> (7 - (i % 8))) & 1 != 0;
-        }
-        let bit_count = (data.len() - 1) * 8 - 2;
         let mut bitmap = 0u64;
-        if bit_count >= WINDOW_SIZE {
-            let padding = bit_count - WINDOW_SIZE;
-            if padding > 7 || (0..padding).any(|i| get_bit(&data[1..], 2 + WINDOW_SIZE + i)) {
-                return Err(FragmentError::MalformedAck);
+        for i in 0..n {
+            let byte = body[i / 8];
+            if (byte >> (7 - (i % 8))) & 1 != 0 {
+                bitmap |= 1u64 << (62 - i);
             }
-            for position in 0..WINDOW_SIZE {
-                if get_bit(&data[1..], 2 + position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-        } else {
-            for position in 0..bit_count {
-                if get_bit(&data[1..], 2 + position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-            for position in bit_count..WINDOW_SIZE {
-                bitmap |= 1u64 << (62 - position);
+        }
+        for i in n..WINDOW_SIZE {
+            bitmap |= 1u64 << (62 - i);
+        }
+        if data.len() > required {
+            let extra = &data[required..];
+            if extra.iter().any(|&b| b != 0) {
+                return Err(FragmentError::NonZeroPadding);
             }
         }
         let ack = Self::new(data[0], window, bitmap, false);
-        let mut canonical = [0u8; 10];
+        let mut canonical = [0u8; 11];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {
             return Err(FragmentError::NonCanonicalAck);
@@ -310,16 +299,6 @@ impl Ack {
         }
         Ok(ack)
     }
-}
-
-fn set_bit(bytes: &mut [u8], bit: usize, value: bool) {
-    if value {
-        bytes[bit / 8] |= 1 << (7 - bit % 8);
-    }
-}
-
-fn get_bit(bytes: &[u8], bit: usize) -> bool {
-    bytes[bit / 8] & (1 << (7 - bit % 8)) != 0
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
