@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-54hx",
   "title": "[review] project-LICHEN-worker6-6lxk: schc_fragmentation.json wire bytes inconsistent with declared window/fcn",
   "description": "The test vectors in test/vectors/schc_fragmentation.json contain wire byte encodings that do not match the declared window and fcn fields. For \"recover_missing_regular_tile\" tile_0: declares window=0, fcn=62 but wire byte 0x7C encodes window=0, fcn=60. This causes the shared_vectors_drive_production_implementations test in fragmentation_vectors.rs to fail. All fragment wire bytes in the JSON encode FCN values 2 less than the declared FCN for each fragment. The test vectors need to be regenerated with correct wire encodings or the wire fields need to be fixed to match the declared window/fcn values.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:07:00.287823887Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:07:00.287823887Z"
+  "updated_at": "2026-07-24T19:16:49.39399282Z",
+  "started_at": "2026-07-24T19:16:49.39399282Z",
+  "lease_expires_at": "2026-07-24T19:21:49.39399282Z",
+  "heartbeat_at": "2026-07-24T19:16:49.39399282Z"
 }
