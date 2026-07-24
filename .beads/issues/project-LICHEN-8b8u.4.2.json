@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-8b8u.4.2",
   "title": "Rust: update lichen-link identity tests to load and validate all vectors from test/vectors/node_address.json",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

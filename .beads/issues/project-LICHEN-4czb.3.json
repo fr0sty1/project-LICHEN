@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4czb.3",
   "title": "Update all callers of schnorr48_verify and schnorr48_verify_frame for new sig_len param",
   "description": "Modify callsites in lichen_link_rx.c, edhoc.c, announce.c, tests/schnorr48/main.c, tests/link_crypto, fuzz tests to pass SCHNORR48_SIG_LEN. Update function pointers if any.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

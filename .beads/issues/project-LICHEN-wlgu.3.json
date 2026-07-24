@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wlgu.3",
   "title": "Ensure test vector generation consistency and update JSON outputs after generate.py merge",
   "description": "After reconciling generate.py changes, run the generator (PYTHONPATH=python/src python3 test/vectors/generate.py), verify no drift in committed JSON vectors, update test/vectors/*.json as needed, and confirm pytest python/tests/test_vectors.py passes.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iaui.2",
   "title": "Ensure complete secure zeroization on ALL error paths in link_ctx.c and lichen_link_cleanup()",
   "description": "link_ctx.c has incomplete wipes on error paths (some goto wipe: but not all). Use secure_wipe/crypto_wipe consistently. Update lichen_link_cleanup(). Matches incomplete zeroing. P0. Parent of project-LICHEN-iaui",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
