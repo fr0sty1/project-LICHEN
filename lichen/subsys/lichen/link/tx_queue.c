@@ -452,3 +452,26 @@ void tx_queue_clear(struct tx_queue *queue)
 
 	unlock_queue(queue);
 }
+
+int tx_queue_destroy(struct tx_queue *queue)
+{
+	if (queue == NULL) {
+		return -EINVAL;
+	}
+
+	lock_queue(queue);
+
+	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
+		queue->entries[i].valid = false;
+	}
+
+	memset(&queue->stats, 0, sizeof(queue->stats));
+
+	unlock_queue(queue);
+
+#ifndef __ZEPHYR__
+	return pthread_mutex_destroy(&queue->lock);
+#else
+	return 0;
+#endif
+}
