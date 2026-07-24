@@ -2121,6 +2121,23 @@ mod tests {
     }
 
     #[test]
+    fn lookup_route_delegates_to_routing_table_and_guards_non_root() {
+        let root_addr = link_local(1);
+        let target = test_origin(2);
+
+        let non_root = Router::new(link_local(3), root_addr);
+        assert!(non_root.lookup_route(&target).is_none());
+
+        let mut root = Router::new_root(root_addr);
+        assert!(root.lookup_route(&target).is_none());
+
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao(root_addr);
+        assert!(root.process_dao_at_ms(&dao, target, target, 0));
+        assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
+    }
+
+    #[test]
     fn aggregated_dao_uses_parent_for_packet_source_group() {
         let root_addr = ula(1);
         let first_target = ula(2);
