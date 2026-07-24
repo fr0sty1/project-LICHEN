@@ -2,12 +2,14 @@
   "id": "project-LICHEN-worker6-ldv2",
   "title": "[review] project-LICHEN-worker6-p19p: Python EDHOC transcript_2 diverges from RFC 9528 (breaks interop)",
   "description": "The Rust edhoc.rs fix correctly updates `transcript_2` to use `encode_bstr(G_Y) || encode_bstr(H(message_1))` per RFC 9528 Section 3.2. However, the Python EDHOC simulator at `python/src/lichen/crypto/edhoc.py:389` and `:598` still computes `th_2_input = g_y + h_msg1` (raw concatenation, no CBOR bstr encoding). This breaks interop between Rust and Python — they produce different TH_2 values for the same inputs. All implementations MUST produce identical output per project requirements (LICHEN-plan.md). Fix: apply the same `encode_bstr` wrapping in Python to match the Rust code and RFC 9528.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:33:09.614881937Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:20:56.355018454Z",
-  "started_at": "2026-07-24T19:43:10.295093371Z"
+  "updated_at": "2026-07-24T20:27:52.89799585Z",
+  "started_at": "2026-07-24T19:43:10.295093371Z",
+  "closed_at": "2026-07-24T20:27:52.89799585Z",
+  "close_reason": "Superseded by project-LICHEN-worker6-p0rc"
 }
