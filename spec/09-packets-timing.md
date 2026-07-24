@@ -337,10 +337,11 @@ All SFN edge cases including wraparound, desynchronization recovery FSM transiti
 | Current State | Event/Condition | Timer/Timeout | Action | Next State | Reference |
 |---------------|-----------------|---------------|--------|------------|-----------|
 | UNJOINED | Power-on / reset | - | `lichen_node_init(eui64, seed)` per AGENTS.md graph | ACQUIRING | `AGENTS.md:218`, `lichen_link_init():147` |
-| ACQUIRING | Valid beacon (higher stratum/version) | BEACON_TIMEOUT = 3×superframe | Sync SFN, adopt time, DAO confirm, load key | SYNCED | `lichen_rpl_dodag_init():162` |
+| ACQUIRING | Valid beacon (signature verified, higher stratum/version) | BEACON_TIMEOUT = 3×superframe | Sync SFN, adopt time, DAO confirm, load key | SYNCED | `lichen_rpl_dodag_init():162` |
 | SYNCED | Beacon rx in assigned slot | superframe_timer | TX in slot, update RPL | SYNCED | Guard 100 ms enforced per §2a.2 |
 | SYNCED | >3 missed beacons or RPL version increment | rejoin_timeout=10*superframe_len | Reset SFN, clear stale state | DRIFTING | desync recovery |
-| DRIFTING | Beacon rx or contention success | REJOIN_TIMEOUT | Re-init DODAG if needed, TOFU key pin | ACQUIRING | `oscore_init()` ordering |
+| DRIFTING | Valid beacon (signature verified, stratum >= current root stratum) | REJOIN_TIMEOUT | Re-init DODAG, TOFU key pin if new root | ACQUIRING | `oscore_init()` ordering; multi-root per 02a-tdma |
+| DRIFTING | Valid beacon (signature fail or stratum < current) | REJOIN_TIMEOUT | Silently discard; continue listen | DRIFTING | signature fail MUST be discarded |
 | REJOINING | DAO-ACK + slot assign | - | Enter assigned slot, report LCI status | SYNCED | `lichen_coap_client_init()` |
 
 MUST reset all timers on state transition. All transitions and multi-root cases produce identical test vector output. See `test/vectors/` (updated for FSM/multi-root) and full init graph in AGENTS.md (normative where referenced).

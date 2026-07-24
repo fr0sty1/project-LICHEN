@@ -98,9 +98,11 @@ Two options (both MUST be supported):
 Gateways claim slots via POST to `/.well-known/lichen-gw/slots` on peer gateways.
 
 ### 6.3. Conflict Resolution
-- If two gateways claim overlapping slot: lowest IID wins.
-- Loser selects next available slot and re-claims.
-- Broadcast updated schedule via CoAP to peers and LoRa announces.
+- If two gateways claim overlapping slot: lowest IID MUST win.
+- Loser MUST select next available slot and re-claim.
+- Loser MUST broadcast updated schedule via CoAP to peers and LoRa announces.
+- Gateways MUST verify the Schnorr signature on any slot-claim message from another gateway. Claims with invalid or missing signatures MUST be silently discarded.
+- Overlapping claims where both signatures verify MUST be resolved by lowest IID (above). Overlapping claims where one signature fails and the other succeeds: the valid claim MUST be accepted and the invalid one MUST be ignored.
 
 ### 6.4. CoAP Resources
 New resource: `/.well-known/lichen-gw`
