@@ -392,6 +392,13 @@ fn encode_uint<const N: usize>(
     Ok(())
 }
 
+fn encode_credential<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    key: &[u8],
+) -> Result<(), EdhocError> {
+    encode_bstr(buf, key)
+}
+
 fn encode_tstr<const N: usize>(
     buf: &mut heapless::Vec<u8, N>,
     s: &str,
@@ -414,7 +421,7 @@ fn encode_tstr<const N: usize>(
 /// TH_2 = H(bstr(G_Y) || bstr(H(message_1))) per RFC 9528 Section 3.2.
 fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 68>::new();
+    let mut buf = heapless::Vec::<u8, 128>::new();
     encode_bstr(&mut buf, g_y)?;
     encode_bstr(&mut buf, &h_msg1)?;
     Ok(compute_th(&buf))
@@ -432,12 +439,12 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 fn transcript_4(
     th_3: &[u8; 32],
     plaintext_3: &[u8],
-    cred_i: &[u8],
+    cred: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
     encode_bstr(&mut buf, plaintext_3)?;
-    encode_bstr(&mut buf, cred_i)?;
+    encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
 
@@ -685,6 +692,7 @@ impl EdhocInitiator {
     /// * `c_i` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
+        let seed = Zeroizing::new(seed);
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
@@ -890,6 +898,7 @@ impl EdhocInitiator {
             let mut ciphertext_3 = SecretVec::<128>::new();
             encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
             encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
+            let plaintext_3 = ciphertext_3.0.clone();
 
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
@@ -904,8 +913,6 @@ impl EdhocInitiator {
             a_3.push_err(32)?;
             a_3.extend_err(&self.state.th_3)?;
 
-            let plaintext_3 = ciphertext_3.0.clone();
-
             let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
             let mut nonce = Zeroizing::new([0u8; NONCE_LEN]);
             nonce.copy_from_slice(&iv_3);
@@ -914,7 +921,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1033,6 +1040,7 @@ impl EdhocResponder {
     /// * `c_r` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
+        let seed = Zeroizing::new(seed);
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
@@ -1342,9 +1350,8 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            let mut credential_r = heapless::Vec::<u8, 80>::new();
-            encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, &credential_r)?;
+            self.state.th_4 =
+                transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1586,12 +1593,12 @@ mod tests {
         assert_eq!(initiator.create_message_1().unwrap().as_slice(), message_1);
 
         let g_y = hex!("dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c");
-        let th_2 = hex!("147ec59c60b861b3ddee747ec0f711868110c19366991287f42ad4c5e1915e5c");
+        let th_2 = hex!("c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d");
         assert_eq!(transcript_2(&g_y, &message_1).unwrap(), th_2);
 
-        let prk_2e = hex!("d584ac2e5dad5a77d14b53ebe72ef1d5daa8860d399373bf2c240afa7ba804da");
+        let prk_2e = hex!("e998b69d67c5856ceb6812f20590d0cd55ab25e24bf53348f35915883e94b694");
         let keystream_2 = hex!(
-            "a405b90c5de9992f30a6fc4aec57bb6c314c1a9e143975770bbad933a20440b92d26ed309dbcd6dca945f246890722955a02e2b521a63eff1dabcbf0dd9b85e3c993f91caa426e9cf83fbd91d1975cb2a393"
+            "980ec0809061cb78fc48b4fc7a0bdbfefe1ddb8d14e5893f16adb48161c8c09bfb6b907eafd9689b3b50ccc2951659d625e1b292a0525af6eb8dd8da53fe0e9dbee89ddcfbda6ae4063e5050e6e98ca82818"
         );
         assert_eq!(
             edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82)
@@ -1601,7 +1608,7 @@ mod tests {
         );
 
         let message_2 = hex!(
-            "5872dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1cbc26dd270fe9c02c44ce3934794b1cc62ba22f05459f8d358c8d12275ac42c5f96ded5f13cc9084e5b201889a45e5a60a5562dc118619c3daa2fd9f4c9f4d6edad109dd4edf95962aafbaf9ab3f4a1f6b98f"
+            "5870dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1cd9166198b2e3e53085ba10e72b07c465a65d1838a9a158db5ca5e882b2661ed5e50781bbdd78fe17f8325792ca8e9f57456c8f8f47c18b32e5380587da52ff0bd4029aded092a72d9e4ebb94e59d6452"
         );
         let (g_y_ciphertext, consumed) = parse_bstr(&message_2).unwrap();
         assert_eq!(consumed, message_2.len());
@@ -1620,7 +1627,7 @@ mod tests {
         );
 
         let message_3 = hex!(
-            "585825c345884aaaeb22c527f9b1d2b6787207e0163c69b62a0d43928150427203c31674e4514ea6e383b566eb29763efeb0afa518776ae1c65f856d84bf32af3a7836970466dcb71f76745d39d3025e7703e0c032ebad51947c"
+            "585892732bfea1d458d4ab9a9692f1737e7a461ace994cac30cf42b581ff6de5fd5c2c4e38dad0a4117a59082be7e2cf952c568d4f877fef68d377f7f06d9dd435ec0930a636904be9b0eaf4a02b06e990b8d11669640d64575f"
         );
         let (ciphertext_3, consumed) = parse_bstr(&message_3).unwrap();
         assert_eq!(consumed, message_3.len());
@@ -1634,7 +1641,7 @@ mod tests {
         );
         let th_4 = hex!("ed23f6181a7f6cfea92aa9b24aa84a8ccc413217ad454fbf13bc2739537398f1");
         assert_eq!(
-            transcript_4(&th_3, &plaintext_3, &credential_r).unwrap(),
+            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
             th_4
         );
 
@@ -1657,23 +1664,23 @@ mod tests {
             "RFC 9529 Message 2 failed: {verified_message_3:?}"
         );
 
-        let prk_out = hex!("2cae3c9f5f771171121b02d48001f17b61add6df53f9abac7ca6511d32f82fb9");
+        let prk_out = hex!("99a837cbc76dcc12ca9756a70d9a2044e7097311828fcce9a20e678810186134");
         assert_eq!(
             edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap().as_slice(),
             prk_out
         );
-        let prk_exporter = hex!("30ab2285ea4d374b4abc166b1f0e274170c4c59c9e7ef6304b1dc85ae574e7c8");
+        let prk_exporter = hex!("f8ad34b1f865e09ac008dd4cc4155930ef2d705c46cab0be207ce32d7f377d41");
         assert_eq!(
             edhoc_kdf(&prk_out, &th_4, "10", &[], 32).unwrap().as_slice(),
             prk_exporter
         );
         assert_eq!(
             edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16).unwrap().as_slice(),
-            &hex!("ccae9f324bfd4330d2c26c4f7210fd1e")
+            &hex!("7ced998c60c324cd0936eea02c4584a4")
         );
         assert_eq!(
             edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8).unwrap().as_slice(),
-            &hex!("d99dbbddf07fcff4")
+            &hex!("307b26d9b44cfde9")
         );
 
         let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
