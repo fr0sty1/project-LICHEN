@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-mlx1",
   "title": "[review] project-LICHEN-worker6-243t: TH_3 uses CIPHERTEXT_2 instead of PLAINTEXT_2 per RFC 9528",
   "description": "## Bug: TH_3 hash input uses wrong data per RFC 9528\n\n### Location\n`lichen/subsys/lichen/edhoc/edhoc.c`, lines 834 (initiator) and 1230 (responder)\n\n### Current code\n```c\n// Initiator (after decrypting ciphertext_2 -\u003e plaintext_2):\nret = compute_th(ctx-\u003eth_3, ctx-\u003eth_2, 32, ciphertext_2, ct2_len,\n                 id_cred_r.value, id_cred_r.len);\n\n// Responder (after computing ciphertext_2 from plaintext_2):\nret = compute_th(ctx-\u003eth_3, ctx-\u003eth_2, 32, ciphertext_2, pt2_len,\n                 ctx-\u003eed_pubkey, 32);\n```\n\n### RFC 9528 requirement\nSection 5.3.2/5.4.2: \"Compute the transcript hash TH_3 = H(TH_2, PLAINTEXT_2, CRED_R)\"\n\n### Problem\nPLAINTEXT_2 is the **decrypted** content = (ID_CRED_R || Signature_or_MAC_2 || ? EAD_2).\nCIPHERTEXT_2 is the XOR-encrypted form on the wire = PLAINTEXT_2 XOR KEYSTREAM_2.\n\nThe code passes `ciphertext_2` (encrypted form) instead of `plaintext_2` (decrypted form). For SIGN_SIGN method 0 (XOR-only encryption, no AEAD), these produce different bytes and therefore different hash values.\n\nNote: `plaintext_2` is correctly computed at line 751 and is available for the hash.\n\n### Impact\nP0: Produces wrong TH_3 value. Cascades to PRK_4e3m, MAC_3, TH_4, PRK_out, PRK_exporter, and all application keys. Makes implementation non-interoperable with RFC 9528-conformant implementations.\n\n### Fix\nIn initiator path, change `ciphertext_2` to `plaintext_2`. In responder path (line 1230), the XOR result is written into ciphertext_2 in-place, so reorder: compute TH_3 over plaintext_2 BEFORE the XOR at line 1226-1228, or make a copy.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:33:21.361180588Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:33:21.361180588Z"
+  "updated_at": "2026-07-24T19:37:54.100935029Z",
+  "started_at": "2026-07-24T19:37:54.100935029Z",
+  "lease_expires_at": "2026-07-24T19:42:54.100935029Z",
+  "heartbeat_at": "2026-07-24T19:37:54.100935029Z"
 }
