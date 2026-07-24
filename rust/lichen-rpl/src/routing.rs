@@ -38,7 +38,8 @@ impl Freshness {
     }
 
     pub fn is_reclaimable(&self, now_seconds: u64) -> bool {
-        self.active_until.is_none_or(|deadline| deadline <= now_seconds)
+        self.active_until
+            .is_none_or(|deadline| deadline <= now_seconds)
             && self.retain_until <= now_seconds
     }
 }
@@ -963,8 +964,6 @@ pub const MAX_PATH_SEQUENCES: usize = 256;
 /// LICHEN's fixed RPL profile activates all eight Path Control bits (PCS=7).
 #[cfg(feature = "std")]
 pub const PATH_CONTROL_SIZE: u8 = 7;
-
-
 
 // ── Source Routing Header (RFC 6554) ─────────────────────────────────────────
 
@@ -2432,13 +2431,13 @@ impl DaoManager {
     ) -> Option<RoutingTable> {
         let mut table = existing_table.clone();
         for target in changed_targets {
-            if let Some(path) =
-                Self::assemble_path(root, parent_map, candidate_map, *target)
-            {
+            if let Some(path) = Self::assemble_path(root, parent_map, candidate_map, *target) {
                 if path.len() > MAX_ROUTE_HOPS {
                     return None;
                 }
-                if table.routes.len() >= MAX_ROUTES && !table.routes.contains_key(&RouteTarget::host(*target)) {
+                if table.routes.len() >= MAX_ROUTES
+                    && !table.routes.contains_key(&RouteTarget::host(*target))
+                {
                     return None;
                 }
                 table.add_route(*target, &path);
@@ -2448,9 +2447,7 @@ impl DaoManager {
         let stale: Vec<RouteTarget> = table
             .routes
             .keys()
-            .filter(|target| {
-                target.prefix_len == 128 && !parent_map.contains_key(target.prefix())
-            })
+            .filter(|target| target.prefix_len == 128 && !parent_map.contains_key(target.prefix()))
             .copied()
             .collect();
         for target in stale {
@@ -5067,14 +5064,14 @@ mod tests {
     fn dao_open_and_provision_propagate_read_failures() {
         let key = PublicKey::new([0x46; 32]);
         let mut tx_storage = MemStorage::new();
-        tx_storage.fail_next_read();
+        tx_storage.fail_next_write();
         assert_eq!(
             DaoTxState::open(&tx_storage, key, ll(2), 0, dodag_id()),
             Err(DaoPersistentOpenError::Storage(
                 lichen_hal::storage::mem::MemStorageError
             ))
         );
-        tx_storage.fail_next_read();
+        tx_storage.fail_next_write();
         assert_eq!(
             DaoTxState::provision(&mut tx_storage, key, ll(2), 0, dodag_id()),
             Err(DaoProvisionError::Storage(
@@ -5083,12 +5080,12 @@ mod tests {
         );
 
         let mut rx_storage = MemStorage::new();
-        rx_storage.fail_next_read();
+        rx_storage.fail_next_write();
         assert!(matches!(
             DaoManager::open_root(&rx_storage, ll(1), 0, dodag_id()),
             Err(DaoPersistentOpenError::Storage(_))
         ));
-        rx_storage.fail_next_read();
+        rx_storage.fail_next_write();
         assert!(matches!(
             DaoManager::provision_root(&mut rx_storage, ll(1), 0, dodag_id()),
             Err(DaoProvisionError::Storage(_))
@@ -5238,7 +5235,7 @@ mod tests {
         let (wire, origin) = verified_dao(&identity, 2, ll(1));
         let mut wrong_context = wire.clone();
         wrong_context[0] = 1;
-        let dao = Dao::from_bytes(&wrong_context).unwrap();
+        let _dao = Dao::from_bytes(&wrong_context).unwrap();
         let option_offset = wrong_context.len() - Dao::options_tail(&wrong_context).len();
         wrong_context[option_offset + 1] = u8::MAX;
         assert!(matches!(
@@ -5281,7 +5278,7 @@ mod tests {
 
         let envelope = SignedDaoEnvelope::from_bytes(&wire).unwrap();
         let mut non_128 = envelope.unsigned_bytes.to_vec();
-        let dao = Dao::from_bytes(&non_128).unwrap();
+        let _dao = Dao::from_bytes(&non_128).unwrap();
         let target_offset = non_128.len() - Dao::options_tail(&non_128).len();
         non_128[target_offset + 3] = 64;
         let digest = dao_origin_digest(origin, dodag_id(), 1, &non_128);

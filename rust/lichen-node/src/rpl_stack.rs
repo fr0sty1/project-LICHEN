@@ -42,7 +42,7 @@ use crate::secure::{
     SecureRequest, SecureResponse, SecureResponseData, SecureRoute, SecureStack,
 };
 use crate::stack::{ReceivedIpv6, RxError, TxError, MAX_FRAME_SIZE};
-use crate::RplMaintenanceOutcome;
+use crate::routing::RplMaintenanceOutcome;
 
 #[cfg(test)]
 use crate::stack::Stack;

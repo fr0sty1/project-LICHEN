@@ -656,7 +656,7 @@ fn source_matches_sender_iid(source: &[u8; 16], sender_iid: &[u8; 8]) -> bool {
 }
 
 #[cfg(feature = "std")]
-fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
+pub(crate) fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
     left[8..] == right[8..]
 }
 
@@ -725,6 +725,7 @@ fn wrap_compressed_reply(ipv6: &[u8], reply: &mut [u8]) -> usize {
 mod tests {
     use super::*;
     use crate::port_dispatch::{AppProtocol, UdpDispatchError};
+    use std::format;
 
     fn node(iid: u8) -> Node {
         Node::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, iid]))

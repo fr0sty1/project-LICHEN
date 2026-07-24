@@ -632,7 +632,11 @@ impl<'a> FragmentSender<'a> {
                 let mut current = *position;
                 while usize::from(current) <= WINDOW_SIZE {
                     let mask = if current >= 63 {
-                        if current == 63 { 1u64 << 0 } else { 0 }
+                        if current == 63 {
+                            1u64 << 0
+                        } else {
+                            0
+                        }
                     } else {
                         1u64 << (62 - current)
                     };
@@ -663,9 +667,7 @@ impl<'a> FragmentSender<'a> {
             return self.iter().find(|f| f.window == window && f.is_all_1());
         }
         self.iter().find(|fragment| {
-            fragment.window == window
-                && !fragment.is_all_1()
-                && position == 62 - fragment.fcn
+            fragment.window == window && !fragment.is_all_1() && position == 62 - fragment.fcn
         })
     }
 }

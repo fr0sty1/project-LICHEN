@@ -510,10 +510,10 @@ pub mod fs {
 #[cfg(test)]
 mod tests {
     extern crate std;
-    use super::*;
-    use super::mem::MemStorage;
     #[cfg(feature = "std")]
     use super::fs::FileStorage;
+    use super::mem::MemStorage;
+    use super::*;
 
     #[test]
     fn seed_round_trip() {

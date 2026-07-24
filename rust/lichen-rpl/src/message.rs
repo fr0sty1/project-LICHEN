@@ -716,7 +716,10 @@ mod tests {
         assert_eq!(dao.rpl_instance_id, 0);
         assert!(!dao.ack_requested);
         assert_eq!(dao.dao_sequence, 5);
-        assert_eq!(dao.dodag_id, Some([0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        assert_eq!(
+            dao.dodag_id,
+            Some([0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        );
     }
 
     #[test]

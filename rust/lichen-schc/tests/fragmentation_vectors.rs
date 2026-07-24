@@ -186,9 +186,9 @@ fn exercise_transfer(vector: &Vector) {
     let rule_id = vector.rule_id.unwrap();
     // The implementation uses a fixed TILE_SIZE=8; vectors with different tile
     // sizes produce different wire formats. Only validate headers for those.
-    let tile_size = packet.len().max(1);
+    let _tile_size = packet.len().max(1);
     let expected_count = vector.fragment_count.unwrap_or(1);
-    let expected_tile = (packet.len() + expected_count - 1) / expected_count;
+    let expected_tile = packet.len().div_ceil(expected_count);
     let variable_tile = expected_tile != TILE_SIZE;
     let sender = FragmentSender::new(&packet, rule_id, packet.len()).unwrap();
     if let Some(count) = vector.fragment_count {

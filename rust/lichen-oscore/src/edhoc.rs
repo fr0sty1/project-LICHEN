@@ -576,7 +576,7 @@ fn parse_bstr(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
         return Err(EdhocError::InvalidMessage);
     }
     let first = data[0];
-    let (len, header) = if first >= 0x40 && first <= 0x57 {
+    let (len, header) = if (0x40..=0x57).contains(&first) {
         ((first & 0x1f) as usize, 1)
     } else if first == 0x58 {
         if data.len() < 2 {
@@ -629,7 +629,7 @@ fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
     }
     let first = data[0];
 
-    // Compact kid: bare integer (0x00-0x17 or 0x20-0x37) 
+    // Compact kid: bare integer (0x00-0x17 or 0x20-0x37)
     if first <= 0x17 || (0x20..=0x37).contains(&first) {
         let total = 1;
         let mut encoded = heapless::Vec::new();
@@ -639,11 +639,17 @@ fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
         encoded.push_err(first)?;
         let mut kid_vec = heapless::Vec::new();
         kid_vec.push(first).ok();
-        return Ok((IdCred { encoded, reference: IdCredReference::Kid(kid_vec) }, total));
+        return Ok((
+            IdCred {
+                encoded,
+                reference: IdCredReference::Kid(kid_vec),
+            },
+            total,
+        ));
     }
 
     // Compact kid reference: bare bstr
-    if first >= 0x40 && first <= 0x57 {
+    if (0x40..=0x57).contains(&first) {
         // bstr of length 0-23 — compact kid
         let kid_len = (first & 0x1f) as usize;
         let total = 1 + kid_len;
@@ -657,10 +663,18 @@ fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
         // Canonicalize to {4: kid}
         encoded.push_err(0xa1)?;
         encoded.push_err(0x04)?;
-        encoded.extend_from_slice(&data[..total]).map_err(|_| EdhocError::BufferTooSmall)?;
+        encoded
+            .extend_from_slice(&data[..total])
+            .map_err(|_| EdhocError::BufferTooSmall)?;
         let mut kid_vec = heapless::Vec::new();
         kid_vec.extend_from_slice(&data[1..total]).ok();
-        return Ok((IdCred { encoded, reference: IdCredReference::Kid(kid_vec) }, total));
+        return Ok((
+            IdCred {
+                encoded,
+                reference: IdCredReference::Kid(kid_vec),
+            },
+            total,
+        ));
     }
     if first == 0x58 && data.len() > 1 {
         // bstr of length 24-255 — compact kid
@@ -675,10 +689,18 @@ fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
         let mut encoded = heapless::Vec::new();
         encoded.push_err(0xa1)?;
         encoded.push_err(0x04)?;
-        encoded.extend_from_slice(&data[..total]).map_err(|_| EdhocError::BufferTooSmall)?;
+        encoded
+            .extend_from_slice(&data[..total])
+            .map_err(|_| EdhocError::BufferTooSmall)?;
         let mut kid_vec = heapless::Vec::new();
         kid_vec.extend_from_slice(&data[2..total]).ok();
-        return Ok((IdCred { encoded, reference: IdCredReference::Kid(kid_vec) }, total));
+        return Ok((
+            IdCred {
+                encoded,
+                reference: IdCredReference::Kid(kid_vec),
+            },
+            total,
+        ));
     }
 
     if !(0xa0..=0xbf).contains(&first) && first != 0xd8 {
@@ -1550,9 +1572,7 @@ impl EdhocResponder {
         // Parse C_I (CBOR integer or bstr per RFC 9528 Section 3.5)
         let rest = &msg1[g_x_start + 2 + 32..];
         let c_i = if !rest.is_empty() {
-            if rest[0] <= 0x17 {
-                rest[0]
-            } else if (0x20..=0x37).contains(&rest[0]) {
+            if rest[0] <= 0x17 || (0x20..=0x37).contains(&rest[0]) {
                 rest[0]
             } else if rest[0] == 0x41 && rest.len() > 1 {
                 rest[1]
@@ -2075,14 +2095,14 @@ mod tests {
         assert_eq!(consumed, message_3.len());
         assert_eq!(ciphertext_3.len(), 88);
 
-        let plaintext_3 = hex!(
+        let _plaintext_3 = hex!(
             "a11822822e48c24ab2fd7643c79f584096e1cd5fceadfac1b5af819443f70924f5719955957fd02655beb4775e1a73186a0d1d3ea683f08f8d03dcecb9cf154e1c6f555a1e12ca118ce42bdba6878907"
         );
-        let credential_i = hex!(
+        let _credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
         let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
-        assert_eq!(transcript_4(&th_3, &ciphertext_3).unwrap(), th_4);
+        assert_eq!(transcript_4(&th_3, ciphertext_3).unwrap(), th_4);
 
         let responder_public_key =
             hex!("a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359");

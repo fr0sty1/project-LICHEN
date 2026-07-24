@@ -311,6 +311,45 @@ state, random initialization does not guarantee acceptance by receivers that
 retain replay state; key rotation is required when freshness cannot otherwise
 be established. No time synchronization is required.
 
+### 4.5. DAD Retry Strategy
+
+When Duplicate Address Detection (DAD) indicates a collision on a 16-bit short
+address derived via `hash_32(EUI-64)` (FNV-1a32 over the full 8-byte EUI-64;
+see `02a-coordinated-capacity.md:119` for `SelectChannel` and `link_ctx.c:632`
+for the C API), the node recomputes a candidate address using seed mixing
+rather than picking a random address, preserving deterministic derivation:
+
+```pseudocode
+fn derive_short_addr(eui64: [u8; 8]) -> u16
+    hash = fnv1a32(eui64, basis: 0x811C9DC5)
+    return hash & 0xFFFF
+
+fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
+    mixed: [u8; 8] = eui64
+    mixed[4..8] ^= seed.to_le_bytes()
+    hash = fnv1a32(mixed, basis: 0x811C9DC5)
+    return hash & 0xFFFF
+
+fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
+    addr = derive_short_addr(eui64)
+    if addr not in existing_addrs:
+        return addr
+    for seed in 1..=255:
+        addr = derive_short_addr_with_seed(eui64, seed)
+        if addr not in existing_addrs:
+            return addr
+    return None
+```
+
+The retry strategy above replaces any earlier `hash_32(EUI-64, N)` notation.
+All references to `hash_32` for short-address derivation MUST specify either the
+single-argument `fnv1a32(bytes)` form or the two-argument
+`fnv1a32(bytes, seed)` form with an explicit XOR-mixing convention.
+
+**Test vectors:** The FNV-1a32 hash used for short-address derivation is defined
+in `test/vectors/hash_32.json`. Implementations MUST produce identical
+`derive_short_addr` and `derive_short_addr_with_seed` outputs.
+
 ---
 
 [← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Adaptation Layer →](03-adaptation.md)

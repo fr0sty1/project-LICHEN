@@ -239,11 +239,15 @@ Node uses link-local for control + single primary 02xx for everything else. Cons
 (2 bytes vs 8).
 
 Assignment methods (no central authority required):
-1. **Derived from IID (Ed25519-derived):** Hash lower 16 bits of stable IID, check for collision
+1. **Derived from IID (Ed25519-derived):** Use `derive_short_addr(IID)` (FNV-1a32 over the full EUI-64, see `02-physical-link.md §4.5`), check for collision
 2. **Self-assigned + DAD:** Pick random, verify uniqueness via DAD
 3. **DODAG root assignment:** Root allocates from pool (optional optimization)
 
-Collision resolution: If DAD detects duplicate, regenerate and retry.
+Collision resolution: If DAD detects a duplicate, follow the retry-with-seed strategy
+in `02-physical-link.md §4.5` (`dad_retry` pseudocode: seed mixing from 1..=255
+via `derive_short_addr_with_seed(eui64, seed)` rather than picking a random
+address or incrementing a counter). The deterministic retry preserves
+collision-resistance across reboots without central coordination.
 
 Short addresses are mesh-local; they compress the IID for routing efficiency
 but the full key-derived IID remains the stable identifier for security (key binding per 06-security).
