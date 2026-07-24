@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-da2q.15.11",
   "title": "CCP-15.2: CCA before TX impl in lora_l2 + link layer (C/Rust)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

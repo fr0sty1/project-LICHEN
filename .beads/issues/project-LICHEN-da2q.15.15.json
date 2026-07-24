@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.15.15",
   "title": "codereview: Rust FNV1a implementation edge cases",
   "description": "Review for no_std compliance, wrapping mul, u32 mod",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:36:19.433114555Z",

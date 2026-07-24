@@ -2,7 +2,7 @@
   "id": "project-LICHEN-636h.1",
   "title": "Add SimHost property and mutable simHost field to extracted SX1262.cs",
   "description": "Add public SimHost property similar to SimPort. Make private simHost field settable via property with lock. Update constructor if needed. Child of project-LICHEN-636h. Preserve existing loopback.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

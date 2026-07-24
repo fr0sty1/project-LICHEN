@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ej3a",
   "title": "Add CONFIG_LICHEN_DUTY_CYCLE to Kconfig + integrate in lora_l2_tx",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -3,7 +3,7 @@
   "title": "encapsulate_ipv6 accepts arbitrary data without IPv6 header validation",
   "description": "File: rust/lichen-meshtastic/src/bridge.rs:272-322\n\nThe encapsulate_ipv6 function only validates payload size, not that it's actually a valid IPv6 packet:\n\n```rust\npub fn encapsulate_ipv6(\n    \u0026mut self,\n    ipv6_data: \u0026[u8],\n    dst: Ipv6Addr,\n) -\u003e Result\u003cMeshPacket, BridgeError\u003e {\n    if ipv6_data.len() \u003e MAX_TUNNEL_PAYLOAD {\n        return Err(BridgeError::PayloadTooLarge);\n    }\n    // No validation that ipv6_data is actually IPv6!\n    // dst parameter is used for routing, but the actual packet could have different addresses\n    ...\n}\n```\n\nIssues:\n1. The `dst` parameter is used for routing lookup, but the actual IPv6 packet at bytes 24-40 could have a different destination address\n2. Arbitrary data (not IPv6) can be encapsulated\n3. Inconsistency between `dst` parameter and actual packet destination could cause routing confusion\n\nIMPACT: Packets may be routed based on the `dst` parameter while the actual IPv6 header specifies a different destination.\n\nFIX OPTIONS:\n1. Extract destination from ipv6_data bytes 24-40 instead of passing separately\n2. Validate that ipv6_data[24..40] matches dst parameter\n3. Add minimum length check (40 bytes for IPv6 header)\n4. Check version field",
   "notes": "Commit: 9b380238e",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

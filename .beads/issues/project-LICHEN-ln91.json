@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ln91",
   "title": "codereview: coap_dtn.c still uses global rate limit after chunk 1; per-IID requires IID extraction from sockaddr_in6-\u003esin6_addr (P0)",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

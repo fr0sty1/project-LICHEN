@@ -3,7 +3,7 @@
   "title": "ExtensionHeader allows data too large for hdr_ext_len field",
   "description": "File: python/src/lichen/ipv6/packet.py:143-171\n\nThe ExtensionHeader class validates that (data length + 2) is a multiple of 8, but does not validate the maximum size. The hdr_ext_len field is only 8 bits, limiting total header size to (255+1)*8 = 2048 bytes.\n\nIn __post_init__ (lines 157-164):\n```python\nif (len(self.data) + 2) % 8 != 0:\n    raise PacketError(...)\n```\n\nBut in to_bytes (lines 166-171):\n```python\nhdr_ext_len = (len(self.data) + 2) // 8 - 1\nreturn bytes([next_header, hdr_ext_len]) + self.data\n```\n\nIf len(self.data) \u003e= 2046 (total \u003e= 2048), hdr_ext_len \u003e 255, causing:\n```\nValueError: bytes must be in range(0, 256)\n```\n\nImpact:\n1. Confusing error message (ValueError instead of PacketError)\n2. Error discovered late (at serialization, not construction)\n3. Could create truncated/malformed headers if error is caught and ignored\n\nFix: Add validation in __post_init__:\n```python\nmax_data_len = (256 * 8) - 2  # 2046 bytes\nif len(self.data) \u003e max_data_len:\n    raise PacketError(f'extension header data too large: {len(self.data)} \u003e {max_data_len}')\n```\n\nTags: correctness, ipv6",
   "notes": "Fixed in commit a73291b (project-LICHEN-k0dn); duplicate bead. Closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -3,7 +3,7 @@
   "title": "[kimi-review] 7f46d18: [SEVERITY: high] **Shutdown flag not atomic/volatile** — If ",
   "description": "Commit: 7f46d1898\nMessage: fix(kiss): stop RX thread in deinit with shutdown flag\n\nFinding: [SEVERITY: high] **Shutdown flag not atomic/volatile** — If the flag is a plain `bool`/int accessed from two threads without `atomic`, `_Atomic`, `volatile` (insufficient alone in C/C++), or mutex protection, the RX thread may never observe the change (data race / UB).",
   "notes": "Commit: abe10fce5",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

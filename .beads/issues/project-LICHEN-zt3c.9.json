@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.9",
   "title": "Implement mesh \u003c-\u003e Yggdrasil forwarding and routing logic",
   "description": "In gateway and node code, add logic: if destination in local RPL DODAG/mesh, use LoRa; else forward to Yggdrasil interface. Update lichen_rpl_dodag_process, IPv6 routing table. Handle Yggdrasil incoming packets and inject into mesh. Update SCHC/OSCORE as needed for global addresses. Add traceroute support across backbone.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",
