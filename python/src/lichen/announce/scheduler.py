@@ -48,8 +48,8 @@ class SchedulerConfig:
             raise ValueError(f"jitter_ms must be >= 0, got {self.jitter_ms}")
         if self.initial_delay_ms < 0:
             raise ValueError(f"initial_delay_ms must be >= 0, got {self.initial_delay_ms}")
-        if not 0 <= self.rx_channel <= 15:
-            raise ValueError(f"rx_channel must be 0-15, got {self.rx_channel}")
+        if not 0 <= self.rx_channel < 8:
+            raise ValueError(f"rx_channel must be 0-7, got {self.rx_channel}")
 
 
 @dataclass
@@ -93,9 +93,26 @@ class AnnounceScheduler:
         rendezvous pinning.
 
         Returns:
-            The channel number (0-15) used in announce messages.
+            The channel number (0-7) used in announce messages.
         """
         return self.config.rx_channel
+
+    def set_channel(self, channel: int) -> None:
+        """Set the RX channel to announce for rendezvous (CCP-9).
+
+        Why exposed: CCP channel-selection logic (density-aware, hash-based,
+        or gateway-assigned) and LCI updates this at runtime. The next
+        announce transmission will advertise the new channel.
+
+        Args:
+            channel: The channel number (0-7).
+
+        Raises:
+            ValueError: If channel is out of range.
+        """
+        if not 0 <= channel < 8:
+            raise ValueError(f"channel must be 0-7, got {channel}")
+        self.config.rx_channel = channel
 
     def set_seq_num(self, seq_num: int) -> None:
         """Set the sequence number (for persistence restore).
