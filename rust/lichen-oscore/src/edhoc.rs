@@ -142,6 +142,32 @@ impl<'a> PeerCredential<'a> {
     }
 }
 
+/// Pending Message 2: decrypted but unverified, awaiting credential selection.
+struct PendingMessage2 {
+    /// Parsed ID_CRED_R.
+    id_cred: IdCred,
+    /// Decrypted PLAINTEXT_2 bytes (C_R || ID_CRED_R || Signature/MAC_2).
+    plaintext: heapless::Vec<u8, 128>,
+    /// Responder connection identifier.
+    c_r: ConnectionId,
+    /// Offset in `plaintext` where the signature/MAC begins.
+    signature_offset: usize,
+    /// TH_2 at time of parsing (bind to transcript).
+    transcript_binding: [u8; 32],
+}
+
+/// Pending Message 3: decrypted but unverified, awaiting credential selection.
+struct PendingMessage3 {
+    /// Parsed ID_CRED_I.
+    id_cred: IdCred,
+    /// Decrypted PLAINTEXT_3 bytes (ID_CRED_I || Signature/MAC_3).
+    plaintext: heapless::Vec<u8, 128>,
+    /// Offset in `plaintext` where the signature/MAC begins.
+    signature_offset: usize,
+    /// TH_3 at time of parsing (bind to transcript).
+    transcript_binding: [u8; 32],
+}
+
 /// EDHOC error types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -431,13 +457,16 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
     Ok(compute_th(&buf))
 }
 
+/// TH_4 = H(CBOR(TH_3) || CBOR(plaintext) || CBOR(cred)) per RFC 9528 Section 5.4.2 and RFC 9529 test vectors.
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext: &[u8],
+    cred: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext)?;
+    encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
 
@@ -891,6 +920,8 @@ impl EdhocInitiator {
             let mut ciphertext_3 = SecretVec::<128>::new();
             encode_bstr(&mut ciphertext_3, &self.pubkey)?;
             encode_bstr(&mut ciphertext_3, &signature_3)?;
+            let plaintext_3 = heapless::Vec::<u8, 80>::from_slice(&ciphertext_3.0)
+                .map_err(|_| EdhocError::BufferTooSmall)?;
 
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
@@ -913,7 +944,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
