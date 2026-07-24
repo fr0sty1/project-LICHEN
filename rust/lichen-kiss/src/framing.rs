@@ -403,21 +403,22 @@ impl KissReader {
         self.len += to_copy;
 
         if to_copy < data.len() {
-            let last_fend = self.buffer[..self.len]
+            match self.buffer[..self.len]
                 .iter()
                 .rposition(|&b| b == FEND)
-                .unwrap_or(0);
-
-            if last_fend > 0 {
-                if last_fend > copy_start {
-                    let lost = (last_fend - copy_start).min(to_copy);
-                    self.discarded += lost;
+            {
+                Some(last_fend) => {
+                    if last_fend > copy_start {
+                        let lost = (last_fend - copy_start).min(to_copy);
+                        self.discarded += lost;
+                    }
+                    self.buffer.copy_within(last_fend..self.len, 0);
+                    self.len -= last_fend;
                 }
-                self.buffer.copy_within(last_fend..self.len, 0);
-                self.len -= last_fend;
-            } else {
-                self.discarded += to_copy;
-                self.len = 0;
+                None => {
+                    self.discarded += to_copy;
+                    self.len = 0;
+                }
             }
 
             let remaining = &data[to_copy..];
