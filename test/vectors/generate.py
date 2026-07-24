@@ -1964,6 +1964,16 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
+def cc_density_high(sf: int = 10, density: int = 15, utilization: int = 100) -> int:
+    return min(12, sf + 2) if density > 10 or utilization > 150 else sf
+
+
+def cc_density_low(sf: int, density: int, snr_ema: float) -> int:
+    if density < 5 and snr_ema > 8:
+        return max(7, sf - 1)
+    return sf
+
+
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1972,6 +1982,30 @@ def ccp15_vectors() -> list[dict]:
         ema = 0.1 * load_factor + 0.9 * 0.4
         sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
         v.append({"name": f"seed{seed}","sf":sf,"ema":round(ema,6),"load_factor":round(load_factor,6),"hash_32":f"{h:08x}"})
+    v.append({
+        "name": "density_estimate_high",
+        "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2→12 with density=15, utilization=100.",
+        "assigned_sf": 10,
+        "density": 15,
+        "utilization": 100,
+        "load_factor": 0.3,
+        "neighbor_snr_ema": 5,
+        "neighbor_loss": 0.05,
+        "expected_sf": cc_density_high(sf=10, density=15, utilization=100),
+        "tx_allowed": True,
+    })
+    v.append({
+        "name": "sf_selection_low_density_capacity",
+        "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1→9 with density=3, SNR_EMA=10.",
+        "assigned_sf": 10,
+        "density": 3,
+        "utilization": 50,
+        "load_factor": 0.2,
+        "neighbor_snr_ema": 10,
+        "neighbor_loss": 0.02,
+        "expected_sf": cc_density_low(sf=10, density=3, snr_ema=10),
+        "tx_allowed": True,
+    })
     return v
 
 
