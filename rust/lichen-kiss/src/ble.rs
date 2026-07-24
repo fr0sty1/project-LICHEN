@@ -66,11 +66,11 @@ pub struct AppFrame {
 /// }
 ///
 /// // Queue a frame received from radio to send to app
-/// tnc.queue_to_app(0, b"Hello from radio").unwrap();
+/// tnc.queue_to_app(0, b"Hello from radio", 1000).unwrap();
 ///
 /// // Get KISS-encoded frame to notify to app
 /// let mut notify_buf = [0u8; 256];
-/// if let Some(len) = tnc.try_get_rx_notify(&mut notify_buf) {
+/// if let Some(len) = tnc.try_get_rx_notify(&mut notify_buf, 1000) {
 ///     // Send notify_buf[..len] to RX characteristic
 /// }
 /// ```
@@ -129,25 +129,43 @@ impl KissBleTnc {
     /// Queue a frame to send to the app (via RX notify).
     ///
     /// The frame will be KISS-encoded and queued for notification.
-    pub fn queue_to_app(&mut self, port: u8, data: &[u8]) -> Result<(), KissError> {
-        self.writer.queue_frame(port, KissCommand::Data, data)
+    /// Uses `Priority::Bulk` and a 60-second deadline from `now_ms`.
+    pub fn queue_to_app(&mut self, port: u8, data: &[u8], now_ms: u64) -> Result<(), KissError> {
+        self.writer.queue_frame(
+            port,
+            KissCommand::Data,
+            data,
+            crate::framing::Priority::Bulk,
+            now_ms + 60_000,
+        )
     }
 
     /// Queue a frame with a specific command to send to the app.
+    ///
+    /// Uses `Priority::Bulk` and a 60-second deadline from `now_ms`.
     pub fn queue_to_app_cmd(
         &mut self,
         port: u8,
         cmd: KissCommand,
         data: &[u8],
+        now_ms: u64,
     ) -> Result<(), KissError> {
-        self.writer.queue_frame(port, cmd, data)
+        self.writer.queue_frame(
+            port,
+            cmd,
+            data,
+            crate::framing::Priority::Bulk,
+            now_ms + 60_000,
+        )
     }
 
     /// Try to get the next KISS-encoded frame to notify to the app.
     ///
-    /// Returns the number of bytes written to `out`, or `None` if queue is empty.
-    pub fn try_get_rx_notify(&mut self, out: &mut [u8]) -> Option<usize> {
-        self.writer.try_get_frame(out)
+    /// Returns the number of bytes written to `out`, or `None` if queue is empty
+    /// or the output buffer is too small. Expired frames are silently dropped.
+    /// `now_ms` is the current time in milliseconds.
+    pub fn try_get_rx_notify(&mut self, out: &mut [u8], now_ms: u64) -> Option<usize> {
+        self.writer.try_get_frame(out, now_ms)
     }
 
     /// Number of frames pending notification to app.
@@ -192,13 +210,14 @@ mod tests {
     fn queue_to_app() {
         let mut tnc = KissBleTnc::new();
         let mut buf = [0u8; 256];
+        let now_ms = 1000u64;
 
         // Queue frame for app
-        tnc.queue_to_app(0, b"Hello").unwrap();
+        tnc.queue_to_app(0, b"Hello", now_ms).unwrap();
         assert_eq!(tnc.rx_pending(), 1);
 
         // Get encoded frame
-        let len = tnc.try_get_rx_notify(&mut buf).unwrap();
+        let len = tnc.try_get_rx_notify(&mut buf, now_ms).unwrap();
         assert_eq!(
             &buf[..len],
             &[FEND, 0x00, b'H', b'e', b'l', b'l', b'o', FEND]

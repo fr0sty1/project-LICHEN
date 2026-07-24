@@ -52,7 +52,7 @@ pub mod bridge;
 #[cfg(feature = "kiss")]
 pub use framing::{
     kiss_decode, kiss_encode, kiss_escape, kiss_unescape, KissCommand, KissError, KissFrame,
-    KissReader, KissWriter, FEND, FESC, TFEND, TFESC,
+    KissReader, KissWriter, Priority, FEND, FESC, TFEND, TFESC,
 };
 
 // Re-export bridge types when bridge feature is enabled

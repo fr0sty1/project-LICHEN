@@ -88,7 +88,7 @@ impl From<FrameError> for BridgeError {
     fn from(e: FrameError) -> Self {
         match e {
             FrameError::FrameTooLarge => Self::PayloadTooLarge,
-            FrameError::BufferTooSmall => Self::BufferTooSmall,
+            FrameError::BufferTooSmall(_) => Self::BufferTooSmall,
             _ => Self::Frame(e),
         }
     }
