@@ -25,15 +25,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <zephyr/sys/util.h>
-
-/* BUILD_ASSERT for non-Zephyr test builds (Zephyr provides via util.h) */
-#ifndef BUILD_ASSERT
-#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
-#endif
 
 #ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
+#else
+/* BUILD_ASSERT for non-Zephyr test builds */
+#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
 #endif
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
