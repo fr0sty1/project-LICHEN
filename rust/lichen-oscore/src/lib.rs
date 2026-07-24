@@ -310,6 +310,7 @@ pub struct Context {
     received_response_window: u32,
     received_response_window_initialized: bool,
     allow_no_piv_response: bool,
+    no_piv_response_used: bool,
     context_id: ContextId,
 }
 
@@ -450,6 +451,7 @@ impl Context {
             received_response_window: 0,
             received_response_window_initialized: false,
             allow_no_piv_response,
+            no_piv_response_used: false,
             context_id,
         };
 
@@ -951,9 +953,16 @@ impl Context {
                 (piv, len, Some(len))
             } else {
                 // Reuse the request nonce (no new sequence generated).
+                if !self.allow_no_piv_response {
+                    return Err(OscoreError::InvalidParam);
+                }
+                if self.no_piv_response_used {
+                    return Err(OscoreError::InvalidParam);
+                }
                 if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
                     return Err(OscoreError::InvalidParam);
                 }
+                self.no_piv_response_used = true;
                 let mut piv = [0u8; PIV_MAX_LEN];
                 piv[..request_piv.len()].copy_from_slice(request_piv);
                 (piv, request_piv.len(), None)
