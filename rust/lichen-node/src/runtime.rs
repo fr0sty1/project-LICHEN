@@ -12,7 +12,6 @@ pub const DEFAULT_MAINTENANCE_INTERVAL_MS: u64 = 1_000;
 pub const DEFAULT_NEIGHBOR_TIMEOUT_MS: u64 = 10_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum RplRuntimeConfigError {
     ZeroMaintenanceInterval,
     ZeroNeighborTimeout,
@@ -61,7 +60,6 @@ pub enum RplRuntimeAction {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum RplRuntimeActionError {
     ExpectedReceive,
     ExpectedTrickleTransmit,
@@ -284,6 +282,7 @@ mod tests {
     use super::*;
     use lichen_core::addr::NodeId;
     use lichen_core::constants::RPL_INSTANCE_ID;
+    use lichen_core::rf_health::RfHealthMetrics;
     use lichen_link::{identity::Identity, keys::Seed};
     use lichen_rpl::message::Dio;
     use lichen_rpl::routing::DaoManager;
@@ -304,7 +303,7 @@ mod tests {
         RplNode {
             node: Node::new(node_id),
             router: Router::new_root(address),
-            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
+            rf_health: RfHealthMetrics::new(),
         }
     }
 

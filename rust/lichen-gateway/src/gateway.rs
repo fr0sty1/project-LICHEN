@@ -5,6 +5,7 @@
 use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
 use lichen_core::ipv6::field;
+use lichen_core::rf_health::RfHealthMetrics;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -20,6 +21,7 @@ use tracing::{error, info, warn};
 pub struct Gateway {
     rpl_node: RplNode,
     runtime: RplRuntime,
+    rf_health: RfHealthMetrics,
 }
 
 impl Gateway {
@@ -29,6 +31,7 @@ impl Gateway {
         Self {
             rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
+            rf_health: RfHealthMetrics::new(),
         }
     }
 
@@ -124,6 +127,9 @@ impl Gateway {
         let (reply_len, event) = self
             .rpl_node
             .handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
+        self.rf_health.record_rx(0);
+        self.rf_health
+            .record_density(self.rpl_node.router().neighbors().count() as u8);
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
             Some(reply)

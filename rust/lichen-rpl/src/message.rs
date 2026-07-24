@@ -74,6 +74,11 @@ pub const OPT_DAO_ORIGIN_SIGNATURE: u8 = 0x12;
 pub const DAO_ORIGIN_SIGNATURE_DATA_LEN: usize = 56;
 pub const DAO_ORIGIN_SIGNATURE_LEN: usize = 58;
 
+/// Provisional LICHEN CCP-16 RF metrics option (carried in DIO).
+pub const OPT_CCP16_METRICS: u8 = 0x13;
+pub const CCP16_METRICS_DATA_LEN: usize = 4;
+pub const CCP16_METRICS_LEN: usize = 6;
+
 // ── ICMPv6 code for each RPL message ─────────────────────────────────────────
 
 pub const CODE_DIS: u8 = 0;
