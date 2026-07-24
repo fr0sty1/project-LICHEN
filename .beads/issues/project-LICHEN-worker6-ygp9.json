@@ -2,12 +2,14 @@
   "id": "project-LICHEN-worker6-ygp9",
   "title": "[review] project-LICHEN-worker6-ghdn: Ack write_to/from_bytes_for has incompatible wire formats",
   "description": "The diff changed Ack::write_to to use bit-packed bitmap encoding via set_bit starting at out[1] bit 2, with out[2] = n as u8. For positions 8-15, set_bit writes to out[2], overwriting the N field byte that was just stored.\n\nMeanwhile, from_bytes_for still reads N from data[2] as a raw byte value and reads bitmap bytes from data[3..] (byte-aligned).\n\nThese two wire formats are incompatible:\n- Writer produces: [rule_id][window|bitmap_bits][n|bitmap_bits][more_bitmap]...\n- Reader expects: [rule_id][header][N][bitmap_bytes]...\n\nThe canonical check at line 342 (write_to → compare with original) will fail for any non-complete ACK with a non-zero bitmap, always returning NonCanonicalAck. This breaks the core ACK-on-Error retransmission mechanism.\n\nSeverity: P0 — wire compatibility bug, core ACK mechanism broken.\n\nFile: rust/lichen-schc/src/fragment.rs\nWriter (write_to): lines 283-293\nReader (from_bytes_for): lines 307-317",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:23:27.61822405Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:21:19.754873796Z",
-  "started_at": "2026-07-24T19:19:21.334339483Z"
+  "updated_at": "2026-07-24T20:27:45.959984254Z",
+  "started_at": "2026-07-24T19:19:21.334339483Z",
+  "closed_at": "2026-07-24T20:27:45.959984254Z",
+  "close_reason": "Superseded by project-LICHEN-worker6-2kbx"
 }
