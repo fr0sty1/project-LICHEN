@@ -104,7 +104,12 @@ warn_unused_configs = true
 # - Core protocol modules fixed for clean pass; no broad ignores or untyped-def disables.
 # - TUI/dashboard/tests excluded from CI gate (prototype code).
 [[tool.mypy.overrides]]
-module = ["aiocoap.*", "starlette.*"]
+module = [
+    "aiocoap.*",
+    "rich.*",
+    "starlette.*",
+    "textual.*",
+]
 ignore_missing_imports = true
 
 # Targeted override for aiocoap integration modules (explicitly decided scope per kpv0).

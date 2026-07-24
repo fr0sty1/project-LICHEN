@@ -8,7 +8,7 @@
 
 mod iv;
 
-use defmt::{error, info, warn};
+use defmt::{debug, error, info, warn};
 use embassy_executor::Spawner;
 use embassy_futures::select::{select, Either};
 use embassy_stm32::bind_interrupts;
@@ -266,7 +266,7 @@ async fn main(_spawner: Spawner) {
         {
             Either::First(tx_pkt) => {
                 // TX packet available - transmit it
-                info!("TX {} bytes", tx_pkt.len);
+                debug!("TX {} bytes", tx_pkt.len);
                 led.set_high();
 
                 // Create TX packet params (payload_length set to 0 initially, prepare_for_tx sets it)
@@ -293,7 +293,7 @@ async fn main(_spawner: Spawner) {
                         if let Err(e) = lora.tx().await {
                             error!("TX failed: {:?}", defmt::Debug2Format(&e));
                         } else {
-                            info!("TX complete");
+                            debug!("TX complete");
                         }
                     }
                     Err(e) => {
@@ -315,7 +315,7 @@ async fn main(_spawner: Spawner) {
                 // RX event
                 match rx_result {
                     Ok((len, rx_quality)) => {
-                        info!(
+                        debug!(
                             "RX {} bytes, RSSI={}, SNR={}",
                             len, rx_quality.rssi, rx_quality.snr
                         );

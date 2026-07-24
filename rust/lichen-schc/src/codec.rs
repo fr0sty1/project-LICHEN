@@ -18,11 +18,11 @@
 //! The verb choice signals that SCHC requires matching rules on both ends.
 
 use lichen_core::constants::{
-    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
-    RULE_RPL_DAO, RULE_RPL_DIO, RULE_SRH, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
+    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_GLOBAL_OSCORE, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
+    RULE_LINK_LOCAL_OSCORE, RULE_MQTT_SN, RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED,
+    SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
-use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 
 /// IPv6 link-local prefix (fe80::/64) as a u128 with the prefix in the high 64 bits.
 /// To reconstruct a full link-local address, OR this with a 64-bit Interface Identifier (IID).
@@ -164,6 +164,102 @@ fn is_global(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] >> 5) == 0b001
 }
 
+/// Check if a CoAP packet has a valid OSCORE option (option number 9).
+///
+/// Scans CoAP options looking for the Object-Security option (RFC 8613).
+/// Returns true if a valid OSCORE option is found. Returns false if no
+/// OSCORE option is present, or if the CoAP framing is malformed.
+fn coap_has_oscore_option(coap: &[u8]) -> bool {
+    if coap.len() < 4 || coap[0] >> 6 != 1 {
+        return false;
+    }
+    let tkl = (coap[0] & 0x0F) as usize;
+    if tkl > 8 {
+        return false;
+    }
+    let hdr_len = 4 + tkl;
+    if coap.len() < hdr_len {
+        return false;
+    }
+    let mut offset = hdr_len;
+    let mut option_number: u16 = 0;
+    let mut oscore_found = false;
+
+    while offset < coap.len() {
+        let byte = coap[offset];
+
+        // Payload marker
+        if byte == 0xFF {
+            return oscore_found && offset + 1 < coap.len();
+        }
+
+        // Parse option delta
+        let mut delta = (byte >> 4) as u16;
+        let mut length = (byte & 0x0F) as usize;
+        offset += 1;
+
+        if delta == 13 {
+            if offset >= coap.len() {
+                return false;
+            }
+            delta = coap[offset] as u16 + 13;
+            offset += 1;
+        } else if delta == 14 {
+            if offset + 2 > coap.len() {
+                return false;
+            }
+            delta = u16::from_be_bytes([coap[offset], coap[offset + 1]]) + 269;
+            offset += 2;
+        } else if delta == 15 {
+            return false;
+        }
+
+        if length == 13 {
+            if offset >= coap.len() {
+                return false;
+            }
+            length = coap[offset] as usize + 13;
+            offset += 1;
+        } else if length == 14 {
+            if offset + 2 > coap.len() {
+                return false;
+            }
+            length = u16::from_be_bytes([coap[offset], coap[offset + 1]]) as usize + 269;
+            offset += 2;
+        } else if length == 15 {
+            return false;
+        }
+
+        option_number += delta;
+
+        if offset + length > coap.len() {
+            return false;
+        }
+
+        if option_number == 9 {
+            if oscore_found || length > 255 {
+                return false;
+            }
+            // Validate OSCORE option value (RFC 8613 flags)
+            if length > 0 {
+                let flags = coap[offset];
+                let partial_iv_len = (flags & 0x07) as usize;
+                if flags & 0xE0 != 0 || partial_iv_len > 5 || flags == 0 {
+                    return false;
+                }
+                if partial_iv_len > 1 && coap.get(offset + 1) == Some(&0) {
+                    return false;
+                }
+            }
+            oscore_found = true;
+        }
+
+        offset += length;
+    }
+
+    oscore_found
+}
+
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
 
 fn oc_add(a: u32, b: u32) -> u32 {
@@ -267,8 +363,8 @@ fn write_ipv6_header(
     out[5] = payload_len as u8;
     out[6] = next_header;
     out[7] = hop_limit;
-    out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(src);
-    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(dst);
+    out[8..24].copy_from_slice(src);
+    out[24..40].copy_from_slice(dst);
 }
 
 // ─── per-rule compress ────────────────────────────────────────────────────────
@@ -289,7 +385,7 @@ fn write_ipv6_header(
 // RPL body starts at offset 44 (after IPv6 + ICMPv6 header).
 
 fn ensure_ipv6(packet: &[u8]) -> Result<(), SchcError> {
-    if packet.len() < IPV6_HEADER_LEN || packet[0] >> 4 != 6 {
+    if packet.len() < 40 || packet[0] >> 4 != 6 {
         return Err(SchcError::NoMatchingRule);
     }
     Ok(())
@@ -303,10 +399,10 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
-    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
     // UDP header starts immediately after IPv6
-    let udp = &packet[IPV6_HEADER_LEN..];
+    let udp = &packet[40..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
     let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
     let coap = &udp[8..];
@@ -355,10 +451,10 @@ fn compress_icmpv6_echo(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
-    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
     // ICMPv6 header starts at offset 40
-    let icmp = &packet[IPV6_HEADER_LEN..];
+    let icmp = &packet[40..];
     let icmp_type = icmp[0];
     let icmp_id = u16::from_be_bytes([icmp[4], icmp[5]]);
     let icmp_seq = u16::from_be_bytes([icmp[6], icmp[7]]);
@@ -397,8 +493,8 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
-    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
     // RPL body starts at offset 44: skip 40-byte IPv6 + 4-byte ICMPv6 header (type/code/checksum)
     let rpl = &packet[44..];
     let instance = rpl[0];
@@ -446,12 +542,15 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
-    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
     // RPL body starts at offset 44: skip 40-byte IPv6 + 4-byte ICMPv6 header (type/code/checksum)
     let rpl = &packet[44..];
     let instance = rpl[0];
     let kd_flags = rpl[1];
+    if (kd_flags & 0x40) == 0 {
+        return Err(SchcError::NoMatchingRule);
+    }
     // reserved (rpl[2]) is NOT_SENT
     let seq = rpl[3];
     let dodagid = u128::from_be_bytes(rpl[4..20].try_into().unwrap());
@@ -495,10 +594,10 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields
     let hop_limit = packet[7];
-    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
-    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
     // UDP header starts immediately after IPv6
-    let udp = &packet[IPV6_HEADER_LEN..];
+    let udp = &packet[40..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
     let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
 
@@ -564,7 +663,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let src_iid = r.read(64)?;
     let dst_iid = r.read(64)?;
-    let prefix = if rule_id == RULE_LINK_LOCAL_COAP {
+    let prefix = if rule_id == RULE_LINK_LOCAL_COAP || rule_id == RULE_LINK_LOCAL_OSCORE {
         LINK_LOCAL_PREFIX
     } else {
         GLOBAL_PREFIX
@@ -846,45 +945,6 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize,
     Ok(total)
 }
 
-/// Rule 8: Source Routing Header wrapper (NH=43).
-///
-/// Format: [rule_id] + [routing_header_bytes] + [inner_schc_residue]
-/// The inner residue is produced by stripping the SRH and compressing the
-/// inner transport payload with a synthetic IPv6 header.
-fn decompress_srh(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
-    if data.len() < 3 {
-        return Err(TooShort::new(3, data.len()).into());
-    }
-    let hdr_ext_len = data[2];
-    let routing_len = (usize::from(hdr_ext_len) + 1) * 8;
-    let inner_start = 1 + routing_len;
-    if data.len() <= inner_start {
-        return Err(TooShort::new(inner_start + 1, data.len()).into());
-    }
-    // Decompress the inner payload
-    let mut inner_decomp = [0u8; SCHC_MAX_DECOMPRESSED];
-    let inner_len = decompress(&data[inner_start..], &mut inner_decomp)?;
-    let inner = &inner_decomp[..inner_len];
-    if inner.len() < 40 || inner[0] >> 4 != 6 {
-        return Err(SchcError::NoMatchingRule);
-    }
-    let inner_payload_len = u16::from_be_bytes([inner[4], inner[5]]);
-    let total_payload_len = inner_payload_len
-        .checked_add(routing_len as u16)
-        .ok_or(SchcError::NoMatchingRule)?;
-    let total = 40usize + routing_len + inner_payload_len as usize;
-    if total > out.len() {
-        return Err(BufferTooSmall::new(total, out.len()).into());
-    }
-    // Build IPv6 header with NH=43 and adjusted payload length
-    write_ipv6_header(out, total_payload_len, 43, inner[7], &inner[8..24].try_into().unwrap(), &inner[24..40].try_into().unwrap());
-    // Copy routing header
-    out[40..40 + routing_len].copy_from_slice(&data[1..1 + routing_len]);
-    // Copy inner decompressed payload (transport headers + body)
-    out[40 + routing_len..total].copy_from_slice(&inner[40..]);
-    Ok(total)
-}
-
 // ─── public API ──────────────────────────────────────────────────────────────
 
 /// Compress a full IPv6 `packet` into `out` using the best matching SCHC rule.
@@ -904,11 +964,12 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
 
     let nh = packet[6];
-    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
-    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
 
     if nh == 17 {
-        // UDP — try MQTT-SN (rule 5) first if port matches, then CoAP (rules 0/1)
+        // UDP — try MQTT-SN (rule 7) first if port matches, then OSCORE (rules 5/6),
+        // then CoAP (rules 0/1)
         if packet.len() >= 40 + 8 {
             let src_port = u16::from_be_bytes([packet[40], packet[41]]);
             let dst_port = u16::from_be_bytes([packet[42], packet[43]]);
@@ -918,57 +979,21 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
                 }
             }
         }
-        if is_link_local(src) && is_link_local(dst) {
-            if let Ok(n) = compress_coap(packet, out, RULE_LINK_LOCAL_COAP) {
-                return Ok(n);
-            }
-        }
-        if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
-            return Ok(n);
-        }
-    } else if nh == 43 && packet.len() >= 48 {
-        // NH=43: Source Routing Header (RPL SRH, RFC 6554).
-        // Strip the routing header, compress the inner transport payload,
-        // then prepend the routing header bytes so decompress can reconstruct.
-        let inner_nh_byte = packet[40];
-        let hdr_ext_len = packet[41];
-        if hdr_ext_len < 2 {
-            return Err(SchcError::NoMatchingRule);
-        }
-        let routing_len = (usize::from(hdr_ext_len) + 1) * 8;
-        let inner_offset = 40usize + routing_len;
-        if packet.len() < inner_offset {
-            return Err(SchcError::NoMatchingRule);
-        }
-        let inner_payload_len = u16::from_be_bytes([packet[4], packet[5]])
-            .saturating_sub(routing_len as u16);
-        let inner_total = 40usize + (packet.len() - inner_offset);
-        if inner_total > SCHC_MAX_DECOMPRESSED {
-            return Err(SchcError::NoMatchingRule);
-        }
-        // Build synthetic inner IPv6 packet (same IPv6 header but without SRH)
-        let mut inner = [0u8; SCHC_MAX_DECOMPRESSED];
-        inner[..4].copy_from_slice(&packet[..4]);
-        inner[4..6].copy_from_slice(&inner_payload_len.to_be_bytes());
-        inner[6] = inner_nh_byte;
-        inner[7] = packet[7];
-        inner[8..40].copy_from_slice(&packet[8..40]);
-        inner[40..inner_total].copy_from_slice(&packet[inner_offset..]);
-        // Compress the inner packet
-        let inner_residue_start = 1 + routing_len;
-        let inner_out = &mut out[inner_residue_start..];
-        match compress(&inner[..inner_total], inner_out) {
-            Ok(n) => {
-                let total = inner_residue_start + n;
-                if total > out.len() {
-                    return Err(BufferTooSmall::new(total, out.len()).into());
+        // Check for OSCORE option before trying rules 0/1
+        if packet.len() >= 40 + 8 + 4 {
+            let coap = &packet[48..];
+            let has_oscore = coap_has_oscore_option(coap);
+            if is_link_local(src) && is_link_local(dst) {
+                let rule_id = if has_oscore { RULE_LINK_LOCAL_OSCORE } else { RULE_LINK_LOCAL_COAP };
+                if let Ok(n) = compress_coap(packet, out, rule_id) {
+                    return Ok(n);
                 }
-                out[0] = RULE_SRH;
-                out[1..1 + routing_len].copy_from_slice(&packet[40..40 + routing_len]);
-                return Ok(total);
             }
-            Err(_) => {
-                // If inner compression fails, fall through to uncompressed
+            if has_oscore || !(is_link_local(src) && is_link_local(dst)) {
+                let rule_id = if has_oscore { RULE_GLOBAL_OSCORE } else { RULE_GLOBAL_COAP };
+                if let Ok(n) = compress_coap(packet, out, rule_id) {
+                    return Ok(n);
+                }
             }
         }
     } else if nh == 58 && packet.len() >= 40 + 4 {
@@ -1024,11 +1049,12 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     match data[0] {
         RULE_LINK_LOCAL_COAP => decompress_coap(data, out, RULE_LINK_LOCAL_COAP),
         RULE_GLOBAL_COAP => decompress_coap(data, out, RULE_GLOBAL_COAP),
+        RULE_LINK_LOCAL_OSCORE => decompress_coap(data, out, RULE_LINK_LOCAL_OSCORE),
+        RULE_GLOBAL_OSCORE => decompress_coap(data, out, RULE_GLOBAL_OSCORE),
         RULE_ICMPV6_ECHO => decompress_icmpv6_echo(data, out),
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
         RULE_MQTT_SN => decompress_mqtt_sn(data, out, RULE_MQTT_SN),
-        RULE_SRH => decompress_srh(data, out),
         RULE_UNCOMPRESSED => {
             let payload = &data[1..];
             if out.len() < payload.len() {
@@ -1163,10 +1189,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17; // UDP
         packet[7] = 64; // Hop limit
-        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
-        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
-        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
-        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
+        packet[8..24].copy_from_slice(&src_addr);
+        packet[24..40].copy_from_slice(&dst_addr);
+        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
+        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..52].copy_from_slice(payload);
@@ -1203,10 +1229,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17;
         packet[7] = 64;
-        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
-        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
-        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
-        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
+        packet[8..24].copy_from_slice(&src_addr);
+        packet[24..40].copy_from_slice(&dst_addr);
+        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
+        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..55].copy_from_slice(payload);
@@ -1241,10 +1267,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17;
         packet[7] = 64;
-        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
-        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
-        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
-        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
+        packet[8..24].copy_from_slice(&src_addr);
+        packet[24..40].copy_from_slice(&dst_addr);
+        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
+        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..51].copy_from_slice(payload);

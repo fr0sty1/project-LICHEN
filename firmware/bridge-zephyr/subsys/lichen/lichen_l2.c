@@ -1738,6 +1738,21 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 
 #if HAVE_LICHEN_LINK
+	/* Warn if peer table is empty — node cannot receive authenticated
+	 * traffic until peers are provisioned via lichen_peer_add() or
+	 * CONFIG_LICHEN_L2_DEV_PROVISIONING. (project-LICHEN-i1gk.80) */
+	{
+		bool peer_table_empty = true;
+		for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
+			if (peer_table[i].active) {
+				peer_table_empty = false;
+				break;
+			}
+		}
+		if (peer_table_empty) {
+			LOG_WRN("lichen_l2: peer table empty — no authenticated RX until peers are provisioned");
+		}
+	}
 	LOG_INF("lichen_l2: initialized (full framing)");
 #else
 	LOG_WRN("lichen_l2: initialized (RAW MODE - no framing/crypto)");

@@ -52,7 +52,11 @@ impl Default for MockRadio {
 impl lichen_hal::Radio for MockRadio {
     type Error = RadioError<core::convert::Infallible>;
 
-    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+        let clear = self.cca(channel, -80).await?;
+        if !clear {
+            return Err(RadioError::ChannelBusy);
+        }
         self.tx_queue.lock().unwrap().push(payload.to_vec());
         Ok(())
     }

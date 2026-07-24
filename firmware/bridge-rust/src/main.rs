@@ -4,7 +4,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::{info, error, warn};
+use defmt::{debug, error, info, warn};
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_futures::select::{select, Either};
@@ -204,7 +204,7 @@ async fn main(spawner: Spawner) {
             loop {
                 match class.read_packet(&mut buf).await {
                     Ok(n) if n > 0 => {
-                        info!("USB rx {} bytes", n);
+                        debug!("USB rx {} bytes", n);
                         // Echo back with prefix
                         let _ = class.write_packet(b"# echo: ").await;
                         let _ = class.write_packet(&buf[..n]).await;
@@ -247,7 +247,7 @@ async fn radio_task() {
         match select(tx_receiver.receive(), Timer::after_millis(100)).await {
             Either::First(pkt) => {
                 // TX packet available
-                info!("radio TX {} bytes", pkt.len);
+                debug!("radio TX {} bytes", pkt.len);
                 // TODO: actual SX1262 transmit
                 Timer::after_millis(50).await; // Simulate TX time
             }

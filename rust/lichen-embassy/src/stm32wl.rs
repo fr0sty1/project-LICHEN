@@ -125,6 +125,11 @@ where
             )
             .map_err(|_| RadioError::Hardware)?;
 
+        let busy = self.lora.cad(&mdltn).await.map_err(|_| RadioError::Hardware)?;
+        if busy {
+            return Err(RadioError::ChannelBusy);
+        }
+
         let mut tx_params = self
             .lora
             .create_tx_packet_params(8, false, true, false, &mdltn)
@@ -141,7 +146,17 @@ where
     }
 
     async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
-        Ok(true)
+        let mdltn = self
+            .lora
+            .create_modulation_params(
+                self.spreading_factor(),
+                self.bandwidth(),
+                self.coding_rate(),
+                self.config.frequency,
+            )
+            .map_err(|_| RadioError::Hardware)?;
+        let busy = self.lora.cad(&mdltn).await.map_err(|_| RadioError::Hardware)?;
+        Ok(!busy)
     }
 
     async fn receive(
