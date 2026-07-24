@@ -139,6 +139,8 @@ Dynamic rule negotiation is NOT supported in this profile.
 
 ## 4. Compression Rules
 
+The tables in this section are the authoritative reference. They supersede prior versions in `spec/03-adaptation.md` §5.5 and `spec/appendix-schc.md` §A.1, and align with Appendix A.1 (ICMP Rule 2) and the adaptation-layer MQTT-SN rule. CoAP field compression follows Appendix A.2.
+
 ### 4.1. Rule ID Format
 
 Rule IDs are 8 bits (1 byte):
