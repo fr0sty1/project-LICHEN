@@ -319,25 +319,91 @@ fn edhoc_kdf(
     Ok(result)
 }
 
+/// EDHOC-KDF with unsigned integer label (exporter path, RFC 9528 §7.2.1).
+/// Python edhoc.py and Zephyr edhoc.c both encode exporter labels (7,10,0,1)
+/// as CBOR unsigned integers, not tstr.
+fn edhoc_kdf_uint(
+    prk: &[u8; 32],
+    th: &[u8; 32],
+    label: u32,
+    context: &[u8],
+    length: usize,
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut info = heapless::Vec::<u8, 128>::new();
+
+    if length <= 23 {
+        info.push_err(length as u8)?;
+    } else if length <= 0xff {
+        info.push_err(0x18)?;
+        info.push_err(length as u8)?;
+    } else if length <= 0xffff {
+        info.push_err(0x19)?;
+        info.push_err((length >> 8) as u8)?;
+        info.push_err((length & 0xff) as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
+    }
+
+    info.push_err(0x58)?;
+    info.push_err(32)?;
+    info.extend_err(th)?;
+
+    if label <= 23 {
+        info.push_err(label as u8)?;
+    } else if label <= 0xff {
+        info.push_err(0x18)?;
+        info.push_err(label as u8)?;
+    } else {
+        info.push_err(0x19)?;
+        info.push_err((label >> 8) as u8)?;
+        info.push_err((label & 0xff) as u8)?;
+    }
+
+    if context.is_empty() {
+        info.push_err(0x40)?;
+    } else if context.len() <= 23 {
+        info.push_err(0x40 | context.len() as u8)?;
+        info.extend_err(context)?;
+    } else if context.len() <= 255 {
+        info.push_err(0x58)?;
+        info.push_err(context.len() as u8)?;
+        info.extend_err(context)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
+    }
+
+    let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
+    let mut okm = heapless::Vec::<u8, 128>::new();
+    okm.resize(length, 0)
+        .map_err(|_| EdhocError::BufferTooSmall)?;
+    hk.expand(&info, &mut okm)
+        .map_err(|_| EdhocError::KeyDerivation)?;
+
+    let mut result = heapless::Vec::new();
+    result.extend_from_slice(okm.as_slice())
+        .map_err(|_| EdhocError::BufferTooSmall)?;
+    Ok(result)
+}
+
 fn export_context(
     prk: &[u8; 32],
     th: &[u8; 32],
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
-    let prk_out_vec = edhoc_kdf(prk, th, "7", th, 32)
+    let prk_out_vec = edhoc_kdf_uint(prk, th, 7, th, 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_out = Zeroizing::new([0u8; 32]);
     prk_out.copy_from_slice(&prk_out_vec[0..32]);
-    let prk_exporter_vec = edhoc_kdf(&prk_out, th, "10", b"", 32)
+    let prk_exporter_vec = edhoc_kdf_uint(&prk_out, th, 10, b"", 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_exporter = Zeroizing::new([0u8; 32]);
     prk_exporter.copy_from_slice(&prk_exporter_vec);
-    let master_secret_vec = edhoc_kdf(&prk_exporter, th, "0", b"", KEY_LEN)
+    let master_secret_vec = edhoc_kdf_uint(&prk_exporter, th, 0, b"", KEY_LEN)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
-    let master_salt_vec = edhoc_kdf(&prk_exporter, th, "1", b"", 8)
+    let master_salt_vec = edhoc_kdf_uint(&prk_exporter, th, 1, b"", 8)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
@@ -1653,23 +1719,23 @@ mod tests {
             "RFC 9529 Message 2 failed: {verified_message_3:?}"
         );
 
-        let prk_out = hex!("77da318df09d26aa4cc69be602930750c32b5551d7a053d52000265d3c180eac");
+        let prk_out = hex!("1659d0f94c436648b2cb79c91b8cbfaca9579055a26d1df777831bba16b28f51");
         assert_eq!(
-            edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap().as_slice(),
+            edhoc_kdf_uint(&prk_2e, &th_4, 7, &th_4, 32).unwrap().as_slice(),
             prk_out
         );
-        let prk_exporter = hex!("a0ef8465a68d81f448c85ea6118170d1f65fa03ef4277250b74a599b3353ab02");
+        let prk_exporter = hex!("b01c06e05aab56939e6a7adc7669253d0be6c0706cd6482175e7ce12b8804f70");
         assert_eq!(
-            edhoc_kdf(&prk_out, &th_4, "10", &[], 32).unwrap().as_slice(),
+            edhoc_kdf_uint(&prk_out, &th_4, 10, &[], 32).unwrap().as_slice(),
             prk_exporter
         );
         assert_eq!(
-            edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16).unwrap().as_slice(),
-            &hex!("240e728a7ef8fe1129c26da390ce9954")
+            edhoc_kdf_uint(&prk_exporter, &th_4, 0, &[], 16).unwrap().as_slice(),
+            &hex!("fa4cc000d2f87bf49cbca77243e66c56")
         );
         assert_eq!(
-            edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8).unwrap().as_slice(),
-            &hex!("32d1a820b919523a")
+            edhoc_kdf_uint(&prk_exporter, &th_4, 1, &[], 8).unwrap().as_slice(),
+            &hex!("337ac289a203cb5a")
         );
 
         let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
