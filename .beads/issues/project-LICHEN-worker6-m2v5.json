@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-m2v5",
+  "title": "[review] project-LICHEN-worker6-69p2: rule_id sentinel value 0 is fragile",
+  "description": "## Issue: `rule_id` uses 0 as sentinel for \"unset\"\n\n**Location:** `rust/lichen-schc/src/fragment.rs` (std_ext FragmentReceiver, ~line 1094-1098)\n\nThe `FragmentReceiver::new()` in the `std_ext` module changed `rule_id` from `Option\u003cu8\u003e` (`None` as unset sentinel) to bare `u8` with `0` as the sentinel:\n\n```rust\n// Old: Option\u003cu8\u003e with None meaning unset\nrule_id: None,\n\n// New: u8 with 0 meaning unset  \nrule_id: 0,\n```\n\nThe receiver check changed from:\n```rust\nif self.rule_id.is_none() {\n    self.rule_id = Some(frag.rule_id);\n} else if self.rule_id != Some(frag.rule_id) {\n```\nto:\n```rust\nif self.rule_id == 0 {\n    self.rule_id = frag.rule_id;\n} else if self.rule_id != frag.rule_id {\n```\n\nThis works currently because valid rule IDs are 120 and 121. However:\n- If a new rule ID = 0 is ever added, the receiver silently ignores the uninitialized state\n- There is no compile-time guarantee that 0 is reserved\n- The type system (`Option\u003cu8\u003e`) is the correct way to express \"maybe unset\"\n\nThis pattern also appears in other constructors that used `unwrap_or(RULE_ID_A_TO_B)` — now they use `self.rule_id` directly, which could be 0 (uninit) if no fragment was received yet.\n\n**Fix:** Restore `Option\u003cu8\u003e` type for `rule_id` in `FragmentReceiver` (both std_ext and no-std versions).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:54:05.445982729Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:54:05.445982729Z"
+}
