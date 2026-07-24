@@ -33,6 +33,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 LICHEN networks operate under severe bandwidth and duty-cycle constraints. CCP coordinates access to the shared medium using hash-derived TDMA slots synchronized to a network epoch, density-aware adaptive SF selection, multi-channel operation (CH0 dedicated to control per SCHC-compressed beacons and RPL DIOs), deterministic channel agility, time synchronization, signed rx_channel announcements for rendezvous, per-neighbor EMA for RF metrics, and load/density signaling. The root advertises epoch and num_slots. Nodes suppress transmission outside assigned slots. All algorithms are deterministic.
 
+SCHC Rule 0x08 (TDMA_BEACON) compresses beacon headers to a minimum, preserving airtime for the per-beacon Schnorr signature (48 bytes, see [draft-lichen-schnorr-00](drafts/draft-lichen-schnorr-00.md)). In multi-root scenarios a node may hear multiple beacons per superframe; the compressed header keeps signature verification latency bounded by keeping the total on-air beacon footprint small.
+
 ## TDMA Frame Structure, Slot Assignment, now(), and Desync Recovery
 
 ### 2a.2.1. Superframe Number (SFN) Definition
