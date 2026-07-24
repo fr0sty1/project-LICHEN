@@ -252,7 +252,12 @@ impl Ack {
         out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
-        out[2] = n as u8;
+        for position in 0..kept {
+            let bit_idx = WINDOW_SIZE - 1 - position;
+            if self.bitmap & (1u64 << bit_idx) != 0 {
+                set_bit(&mut out[1..needed], 2 + position, true);
+            }
+        }
         for position in 0..restored {
             set_bit(&mut out[1..needed], 2 + kept + position, true);
         }
@@ -264,6 +269,14 @@ impl Ack {
     }
 
     pub fn from_bytes_for(data: &[u8], assigned: Option<u64>) -> Result<Self, FragmentError> {
+        if data.len() == 2 && data[1] & 0x40 != 0 {
+            let window = (data[1] >> FRAGMENT_N) & 1;
+            if (data[1] & 0x3F) != 0 {
+                return Err(FragmentError::MalformedAck);
+            }
+            let ack = Self::new(data[0], window, 0, true);
+            return Ok(ack);
+        }
         if data.len() < 3 {
             return Err(TooShort::new(3, data.len()).into());
         }

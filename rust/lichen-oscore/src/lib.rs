@@ -228,6 +228,7 @@ pub enum ReservationError<E> {
 }
 
 /// Exclusive, one-use capability for sender-sequence encryption.
+#[derive(Debug)]
 pub struct ReservedSender<'a> {
     context: &'a mut Context,
     sequence: OscoreSeqNum,
@@ -959,6 +960,9 @@ impl Context {
         request_piv: &[u8],
         include_piv: bool,
     ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+        if !self.active {
+            return Err(OscoreError::InvalidParam);
+        }
         // Determine PIV for nonce: own sequence if including, else request's PIV
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
@@ -973,9 +977,21 @@ impl Context {
                 (piv, len, Some(len))
             } else {
                 // Reuse the request nonce (no new sequence generated).
+                if !self.allow_no_piv_response {
+                    return Err(OscoreError::InvalidParam);
+                }
                 if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
                     return Err(OscoreError::InvalidParam);
                 }
+                if request_kid != self.recipient_id() {
+                    return Err(OscoreError::InvalidParam);
+                }
+                let request_seq =
+                    OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
+                if self.is_response_reuse(request_seq) {
+                    return Err(OscoreError::Replay);
+                }
+                self.mark_response_used(request_seq);
                 let mut piv = [0u8; PIV_MAX_LEN];
                 piv[..request_piv.len()].copy_from_slice(request_piv);
                 (piv, request_piv.len(), None)
@@ -1990,6 +2006,48 @@ mod tests {
     use hex_literal::hex;
     use serde_json::Value;
 
+    struct TestStore {
+        context_id: Option<ContextId>,
+        state: SenderSequenceState,
+    }
+
+    impl TestStore {
+        fn for_context(ctx: &Context) -> Self {
+            Self {
+                context_id: Some(ctx.context_id()),
+                state: ctx.sender_sequence_state(),
+            }
+        }
+    }
+
+    impl SenderStateStore for TestStore {
+        type Error = core::convert::Infallible;
+
+        fn load(
+            &mut self,
+            context_id: &ContextId,
+        ) -> Result<Option<SenderSequenceState>, Self::Error> {
+            Ok(self
+                .context_id
+                .filter(|stored_id| stored_id == context_id)
+                .map(|_| self.state))
+        }
+
+        fn compare_exchange(
+            &mut self,
+            context_id: &ContextId,
+            expected: Option<SenderSequenceState>,
+            next: SenderSequenceState,
+        ) -> Result<bool, Self::Error> {
+            if self.load(context_id)? != expected {
+                return Ok(false);
+            }
+            self.context_id = Some(*context_id);
+            self.state = next;
+            Ok(true)
+        }
+    }
+
     fn vector(name: &str) -> Value {
         let vectors: Value =
             serde_json::from_str(include_str!("../../../test/vectors/oscore.json")).unwrap();
@@ -2033,21 +2091,26 @@ mod tests {
                 std::vec::Vec::new()
             };
             let salt = salt.as_deref().unwrap_or(&[]);
+            let id_context_ref: Option<&[u8]> = if id_context.is_empty() {
+                None
+            } else {
+                Some(&id_context)
+            };
 
             assert_eq!(
-                derive_key(&secret, salt, &sender_id, &id_context)
+                derive_key(&secret, salt, &sender_id, id_context_ref)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["sender_key"])
             );
             assert_eq!(
-                derive_key(&secret, salt, &recipient_id, &id_context)
+                derive_key(&secret, salt, &recipient_id, id_context_ref)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["recipient_key"])
             );
             assert_eq!(
-                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
+                derive_iv(&secret, salt, id_context_ref).unwrap().as_slice(),
                 json_hex(&v["expected"]["common_iv"])
             );
         }
@@ -2067,12 +2130,13 @@ mod tests {
                 json_hex(&v["sender_id"])
             };
             let piv = if v["type"] == "request_protection" {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap())
             } else if v["include_piv"] == false {
                 OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
             } else {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap())
             };
+            let piv = piv.unwrap();
             let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
             let salt = v["master_salt"]
                 .as_str()
@@ -2082,8 +2146,13 @@ mod tests {
             } else {
                 std::vec::Vec::new()
             };
+            let id_context_ref: Option<&[u8]> = if id_context.is_empty() {
+                None
+            } else {
+                Some(&id_context)
+            };
             let derived_iv =
-                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), &id_context).unwrap();
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context_ref).unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
             let piv_len = piv.encode_piv(&mut piv_bytes);
 
@@ -2186,7 +2255,7 @@ mod tests {
 
         let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
         let (ciphertext, option) = c7
-            .protect_response(0x45, &[], payload, &[], &[0x14])
+            .protect_response(0x45, &[], payload, &[], &[0x14], false)
             .unwrap();
         assert_eq!(option.as_slice(), b"");
         assert_eq!(
@@ -2196,7 +2265,10 @@ mod tests {
 
         let mut c8 =
             Context::restore(&master_secret, Some(&master_salt), &[1], &[], 0, false).unwrap();
+        let mut store = TestStore::for_context(&c8);
         let (ciphertext, option) = c8
+            .reserve_sender(&mut store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], payload, &[], &[0x14])
             .unwrap();
         assert_eq!(option.as_slice(), &hex!("0100"));
@@ -2333,7 +2405,7 @@ mod tests {
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2341,7 +2413,7 @@ mod tests {
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
         assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3])
+            .protect_response(0x45, &[], b"response", &[0], &[3], false)
             .is_ok());
     }
 
@@ -2350,7 +2422,7 @@ mod tests {
         let secret = [0x44; KEY_LEN];
         let template = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
         let mut store = TestStore {
-            context_id: template.context_id(),
+            context_id: Some(template.context_id()),
             state: SenderSequenceState {
                 next_sequence: 7,
                 exhausted: false,
@@ -2362,7 +2434,7 @@ mod tests {
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2559,10 +2631,18 @@ mod tests {
         let mut oversized_sender = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
         let mut valid_sender = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
         let mut recipient = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
+        let mut oversized_store = TestStore::for_context(&oversized_sender);
         let oversized = oversized_sender
+            .reserve_sender(&mut oversized_store)
+            .unwrap()
             .protect_request(0x02, &[], &[0x55; 129])
             .unwrap();
-        let valid = valid_sender.protect_request(0x02, &[], b"valid").unwrap();
+        let mut valid_store = TestStore::for_context(&valid_sender);
+        let valid = valid_sender
+            .reserve_sender(&mut valid_store)
+            .unwrap()
+            .protect_request(0x02, &[], b"valid")
+            .unwrap();
 
         assert!(matches!(
             recipient.unprotect_request(&oversized.1, &oversized.0),
@@ -2580,12 +2660,23 @@ mod tests {
         let mut client = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
         let mut oversized_server = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
         let mut valid_server = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = client.protect_request(0x01, &[], &[]).unwrap();
+        let mut client_store = TestStore::for_context(&client);
+        let (_, request_option) = client
+            .reserve_sender(&mut client_store)
+            .unwrap()
+            .protect_request(0x01, &[], &[])
+            .unwrap();
         let request_piv = &request_option[1..2];
+        let mut oversized_store = TestStore::for_context(&oversized_server);
         let oversized = oversized_server
+            .reserve_sender(&mut oversized_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], &[0x55; 129], &[0], request_piv)
             .unwrap();
+        let mut valid_store = TestStore::for_context(&valid_server);
         let valid = valid_server
+            .reserve_sender(&mut valid_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv)
             .unwrap();
 
@@ -2637,7 +2728,7 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2719,7 +2810,7 @@ mod tests {
         responder.common_iv = [0; NONCE_LEN];
 
         let (ciphertext, option) = responder
-            .protect_response(0x45, &[], &[], b"\xaa", b"\x05")
+            .protect_response(0x45, &[], &[], b"\xaa", b"\x05", false)
             .unwrap();
 
         assert_eq!(ciphertext.as_slice(), &hex!("26f4d77f5a397d9c0a"));
@@ -2759,8 +2850,17 @@ mod tests {
         let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         sender.sender_seq = seq(0x1_0000_0000);
 
-        let first = sender.protect_request(0x01, &[], b"first").unwrap();
-        let second = sender.protect_request(0x01, &[], b"second").unwrap();
+        let mut store = TestStore::for_context(&sender);
+        let first = sender
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"first")
+            .unwrap();
+        let second = sender
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"second")
+            .unwrap();
         assert_eq!(&first.1[1..6], b"\x01\x00\x00\x00\x00");
 
         recipient.unprotect_request(&second.1, &second.0).unwrap();
@@ -2779,10 +2879,15 @@ mod tests {
         let mut recipient_ctx =
             Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
-        let code = 0x01; // GET
+        let code = 0x01;
         let payload = b"hello";
 
-        let (ciphertext, oscore_opt) = sender_ctx.protect_request(code, &[], payload).unwrap();
+        let mut store = TestStore::for_context(&sender_ctx);
+        let (ciphertext, oscore_opt) = sender_ctx
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(code, &[], payload)
+            .unwrap();
 
         let (dec_code, _options, dec_payload) = recipient_ctx
             .unprotect_request(&oscore_opt, &ciphertext)
@@ -2797,7 +2902,12 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut sender = Context::new_ephemeral(&master_secret, None, b"", b"\x01").unwrap();
         let mut recipient = Context::new_ephemeral(&master_secret, None, b"\x01", b"").unwrap();
-        let (ciphertext, option) = sender.protect_request(0x01, &[], b"request").unwrap();
+        let mut store = TestStore::for_context(&sender);
+        let (ciphertext, option) = sender
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
 
         assert_eq!(option.as_slice(), b"\x09\x00");
         assert_eq!(
@@ -2819,7 +2929,12 @@ mod tests {
     fn unprotect_request_compares_literal_id_context() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut sender = Context::new_ephemeral(&master_secret, None, b"\x00", b"\x01").unwrap();
-        let (ciphertext, _) = sender.protect_request(0x01, &[], b"request").unwrap();
+        let mut store = TestStore::for_context(&sender);
+        let (ciphertext, _) = sender
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let mut matching = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
         matching.id_context[0] = 0xaa;
         matching.id_context_len = 1;
@@ -2848,19 +2963,19 @@ mod tests {
 
         ctx.sender_seq = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
 
-        let (_, option) = ctx.protect_request(0x01, &[], b"last").unwrap();
+        let mut store = TestStore::for_context(&ctx);
+        let (_, option) = ctx
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"last")
+            .unwrap();
         assert_eq!(option.as_slice(), b"\x0d\xff\xff\xff\xff\xff\x00");
         assert_eq!(ctx.sender_seq(), None);
         assert_eq!(
-            ctx.protect_request(0x01, &[], b"again").unwrap_err(),
-            OscoreError::SeqExhausted
-        );
-        assert_eq!(
-            ctx.protect_response_with_piv(0x45, &[], b"again", &[1], &[0])
+            ctx.reserve_sender(&mut store)
                 .unwrap_err(),
-            OscoreError::SeqExhausted
+            ReservationError::SequenceExhausted
         );
-        assert_eq!(ctx.sender_seq(), None);
     }
 
     #[test]
@@ -2899,8 +3014,13 @@ mod tests {
         let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         let options = [0x13, 0xaa, 0xff, 0xbb];
 
+        let mut store = TestStore::for_context(&sender);
         let (ciphertext, oscore_option) =
-            sender.protect_request(0x02, &options, b"payload").unwrap();
+            sender
+                .reserve_sender(&mut store)
+                .unwrap()
+                .protect_request(0x02, &options, b"payload")
+                .unwrap();
         let (code, decoded_options, payload) = recipient
             .unprotect_request(&oscore_option, &ciphertext)
             .unwrap();
@@ -2928,7 +3048,12 @@ mod tests {
         for options in malformed {
             let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
             let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-            let (ciphertext, oscore_option) = sender.protect_request(0x02, options, &[]).unwrap();
+            let mut store = TestStore::for_context(&sender);
+            let (ciphertext, oscore_option) = sender
+                .reserve_sender(&mut store)
+                .unwrap()
+                .protect_request(0x02, options, &[])
+                .unwrap();
 
             assert_eq!(
                 recipient
@@ -2942,20 +3067,21 @@ mod tests {
 
     #[test]
     fn test_unprotect_response_with_piv() {
-        // Simulate Alice -> Bob request, Bob -> Alice response
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice_ctx = Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
         let mut bob_ctx = Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
-        // Alice sends request, save request_kid and request_piv
-        let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
+        let mut alice_store = TestStore::for_context(&alice_ctx);
+        let (_ciphertext, request_opt) = alice_ctx
+            .reserve_sender(&mut alice_store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let request_piv_len = (request_opt[0] & 0x07) as usize;
         let request_piv = &request_opt[1..1 + request_piv_len];
-        // Request KID is Alice's sender_id
         let request_kid = alice_ctx.sender_id();
 
-        // Bob sends response using protect_response (with proper AAD)
-        let response_code = 0x45; // 2.05 Content
+        let response_code = 0x45;
         let (response_ciphertext, response_opt) = bob_ctx
             .protect_response(
                 response_code,
@@ -2997,9 +3123,17 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let mut alice_store = TestStore::for_context(&alice);
+        let (_, request_option) = alice
+            .reserve_sender(&mut alice_store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let request_piv = &request_option[1..2];
+        let mut bob_store = TestStore::for_context(&bob);
         let response = bob
+            .reserve_sender(&mut bob_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv)
             .unwrap();
 
@@ -3021,10 +3155,15 @@ mod tests {
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         let prior_piv = [0];
         let current_piv = [64];
+        let mut bob_store = TestStore::for_context(&bob);
         let prior = bob
+            .reserve_sender(&mut bob_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"prior", &[0], &prior_piv)
             .unwrap();
         let current = bob
+            .reserve_sender(&mut bob_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"current", &[0], &current_piv)
             .unwrap();
 
@@ -3062,11 +3201,19 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let mut alice_store = TestStore::for_context(&alice);
+        let (_, request_option) = alice
+            .reserve_sender(&mut alice_store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let request_piv = &request_option[1..2];
+        let mut bob_store = TestStore::for_context(&bob);
 
         for code in [0x01, 0xc1] {
             let invalid = bob
+                .reserve_sender(&mut bob_store)
+                .unwrap()
                 .protect_response_with_piv(code, &[], b"invalid", &[0], request_piv)
                 .unwrap();
             assert!(matches!(
@@ -3076,6 +3223,8 @@ mod tests {
         }
 
         let valid = bob
+            .reserve_sender(&mut bob_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv)
             .unwrap();
         assert_eq!(
@@ -3092,11 +3241,19 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let mut alice_store = TestStore::for_context(&alice);
+        let (_, request_option) = alice
+            .reserve_sender(&mut alice_store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let request_piv = &request_option[1..2];
         bob.sender_seq = seq(0x1_0000_0000);
 
+        let mut bob_store = TestStore::for_context(&bob);
         let delayed = bob
+            .reserve_sender(&mut bob_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"delayed", &[0], request_piv)
             .unwrap();
         assert_eq!(delayed.1.as_slice(), b"\x05\x01\x00\x00\x00\x00");
@@ -3119,9 +3276,17 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let mut alice_store = TestStore::for_context(&alice);
+        let (_, request_option) = alice
+            .reserve_sender(&mut alice_store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let request_piv = &request_option[1..2];
+        let mut bob_store = TestStore::for_context(&bob);
         let response = bob
+            .reserve_sender(&mut bob_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv)
             .unwrap();
 
@@ -3141,9 +3306,17 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new_ephemeral(&master_secret, None, b"\x00", b"\x01").unwrap();
         let mut bob = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let mut alice_store = TestStore::for_context(&alice);
+        let (_, request_option) = alice
+            .reserve_sender(&mut alice_store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let request_piv = &request_option[1..2];
+        let mut bob_store = TestStore::for_context(&bob);
         let (ciphertext, _) = bob
+            .reserve_sender(&mut bob_store)
+            .unwrap()
             .protect_response_with_piv(0x45, &[], b"response", b"\x00", request_piv)
             .unwrap();
         alice.id_context[0] = 0xaa;
@@ -3165,12 +3338,12 @@ mod tests {
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
             .unwrap();
     }
 
@@ -3187,8 +3360,11 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
+        let mut store = TestStore::for_context(&responder);
         assert_eq!(
             responder
+                .reserve_sender(&mut store)
+                .unwrap()
                 .protect_response_with_piv(0x45, &[], b"response", b"\x02", b"\x00")
                 .unwrap_err(),
             OscoreError::InvalidParam
@@ -3201,21 +3377,21 @@ mod tests {
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -3226,7 +3402,12 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
         let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-        let (ciphertext, _) = sender.protect_request(0x01, &[], b"request").unwrap();
+        let mut store = TestStore::for_context(&sender);
+        let (ciphertext, _) = sender
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
 
         assert_eq!(
             recipient
@@ -3238,13 +3419,16 @@ mod tests {
 
     #[test]
     fn test_unprotect_response_without_piv_uses_request_piv() {
-        // Test that when response has no PIV in OSCORE option, request_piv is used for nonce
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice_ctx = Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
         let mut bob_ctx = Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
-        // Alice sends request, save request_kid and request_piv
-        let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
+        let mut alice_store = TestStore::for_context(&alice_ctx);
+        let (_ciphertext, request_opt) = alice_ctx
+            .reserve_sender(&mut alice_store)
+            .unwrap()
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
         let request_piv_len = (request_opt[0] & 0x07) as usize;
         let request_piv = request_opt[1..1 + request_piv_len].to_vec();
         let request_kid = alice_ctx.sender_id();
@@ -3342,18 +3526,20 @@ mod tests {
 
     #[test]
     fn test_roundtrip_with_0xff_in_class_e_options() {
-        // End-to-end test: protect a request with 0xFF in options, verify decryption
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender_ctx = Context::new(&master_secret, None, None, &[0x00], &[0x01]).unwrap();
-        let mut recipient_ctx = Context::new(&master_secret, None, None, &[0x01], &[0x00]).unwrap();
+        let mut sender_ctx =
+            Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut recipient_ctx =
+            Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
-        let code = 0x01; // GET
-                         // Class E options with 0xFF embedded in a value:
-                         // Option delta=1, length=2, value=[0xFF, 0x42]
+        let code = 0x01;
         let class_e_options = [0x12, 0xFF, 0x42];
         let payload = b"test payload";
 
+        let mut store = TestStore::for_context(&sender_ctx);
         let (ciphertext, oscore_opt) = sender_ctx
+            .reserve_sender(&mut store)
+            .unwrap()
             .protect_request(code, &class_e_options, payload)
             .unwrap();
 
