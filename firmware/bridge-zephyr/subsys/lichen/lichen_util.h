@@ -112,18 +112,15 @@ static inline void secure_zero(void *ptr, size_t len)
 /**
  * @brief Compute SHA-256 hash with secure cleanup
  *
- * SECURITY: The output buffer MUST be at least TC_SHA256_DIGEST_SIZE (32) bytes.
- * The array parameter syntax provides no compile-time bounds checking - it decays
- * to a pointer. Passing a smaller buffer causes undefined behavior (buffer overflow).
- * Callers should declare: uint8_t hash[TC_SHA256_DIGEST_SIZE];
- *
  * @param input Input data (may be NULL if inlen is 0)
  * @param inlen Input length in bytes
- * @param output Output buffer, must be >= 32 bytes (not bounds-checked at runtime)
- * @return 0 on success, -EINVAL if output is NULL or input is NULL with inlen > 0
+ * @param output Output buffer
+ * @param outlen Size of output buffer (must be >= TC_SHA256_DIGEST_SIZE)
+ * @return 0 on success, -EINVAL if output is NULL or input is NULL with inlen > 0,
+ *         -ENOMEM if outlen < TC_SHA256_DIGEST_SIZE
  */
 int lichen_sha256(const uint8_t *input, size_t inlen,
-                  uint8_t output[TC_SHA256_DIGEST_SIZE]);
+                  uint8_t *output, size_t outlen);
 
 /**
  * @brief Convert LICHEN link error code to human-readable string.

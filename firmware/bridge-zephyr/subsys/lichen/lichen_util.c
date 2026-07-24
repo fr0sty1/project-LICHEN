@@ -13,13 +13,16 @@ BUILD_ASSERT(TC_SHA256_DIGEST_SIZE == 32,
              "SHA-256 digest size must be 32 bytes");
 
 int lichen_sha256(const uint8_t *input, size_t inlen,
-                  uint8_t output[TC_SHA256_DIGEST_SIZE])
+                  uint8_t *output, size_t outlen)
 {
     struct tc_sha256_state_struct state;
     int ret = 0;
 
     if ((input == NULL && inlen > 0) || output == NULL) {
         return -EINVAL;
+    }
+    if (outlen < TC_SHA256_DIGEST_SIZE) {
+        return -ENOMEM;
     }
 
     /* Conflated error handling is intentional: callers only need pass/fail,
