@@ -2,11 +2,7 @@
   "id": "project-LICHEN-r4sn",
   "title": "Integrate SX1302 concentrator into lichen-gateway for multi-channel RX/TX",
   "notes": "Commit: ca4e39bc4",
-<<<<<<< Updated upstream
   "status": "in_progress",
-=======
-  "status": "open",
->>>>>>> Stashed changes
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
