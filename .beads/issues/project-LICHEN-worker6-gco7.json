@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-gco7",
+  "title": "[review] project-LICHEN-worker6-243t: TH_2 uses raw concatenation instead of CBOR Sequence per RFC 9528",
+  "description": "## Bug: TH_2 hash input encoding violates RFC 9528\n\n### Location\n`lichen/subsys/lichen/edhoc/edhoc.c`, lines 720-723 (initiator) and 1161-1164 (responder)\n\n### Current code\n```c\nuint8_t th2_input[64];  /* 32 (G_Y) + 32 (H(message_1)) */\nmemcpy(th2_input, ctx-\u003eg_y, 32);\nmemcpy(th2_input + 32, h_msg1, 32);\nret = sha256_hash(th2_input, 64, ctx-\u003eth_2);\n```\n\n### RFC 9528 Section 4.1.2 requirement\n\"Compute the transcript hash TH_2 = H( G_Y, H(message_1) ), where H() is the EDHOC hash algorithm of the selected cipher suite. **The input to the hash function is a CBOR Sequence.**\"\n\n### Problem\nThe code does raw concatenation: `G_Y(32) || H(message_1)(32)` = 64 bytes.\n\nCBOR sequence requires each item individually CBOR-encoded as a bstr:\n- `bstr(G_Y)`: 0x58 0x20 + 32 bytes = 34 bytes\n- `bstr(H(message_1))`: 0x58 0x20 + 32 bytes = 34 bytes\n- Total: 68 bytes\n\nThe `compute_th()` helper already does this correctly (zcbor_bstr_encode_ptr for each input). TH_2 should use `compute_th()` or manually encode the CBOR bstr headers.\n\n### Impact\nP0: Produces wrong TH_2 value. Cascades to PRK_2e, KEYSTREAM_2, TH_3, TH_4, and all derived keys (PRK_out, OSCORE keys). Implementation will not interoperate with any other RFC 9528-conformant implementation.\n\n### Fix\nUse `compute_th(ctx-\u003eth_2, ctx-\u003eg_y, 32, h_msg1, 32, NULL, 0)` in both initiator and responder paths, or add explicit zcbor_bstr_encode for the two inputs.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:33:11.761362272Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:33:11.761362272Z"
+}
