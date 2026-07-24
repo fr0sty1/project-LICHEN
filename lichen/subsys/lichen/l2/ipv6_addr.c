@@ -67,7 +67,7 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
      * flipping it, because pubkey-derived IIDs are not derived from a
      * universally-administered identifier (they are synthetic).
      */
-    memcpy(iid, eui64, 8);
+    memmove(iid, eui64, 8);
     iid[0] ^= UL_BIT;
     return 0;
 }
