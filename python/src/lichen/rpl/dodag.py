@@ -86,8 +86,13 @@ class ParentCandidate:
             raise ValueError("link_etx must be non-negative")
 
     def path_cost(self, min_hop_rank_increase: int) -> int:
-        """Rank this node would have via this neighbour (MRHOF, spec B.1)."""
-        return self.rank + round(self.link_etx * min_hop_rank_increase)
+        """Rank this node would have via this neighbour (MRHOF, spec B.1).
+
+        Returns INFINITE_RANK on overflow to keep rank in the 16-bit range
+        (RFC 6550 Section 8.2.2.5: rank is a 16-bit unsigned integer).
+        """
+        cost = self.rank + round(self.link_etx * min_hop_rank_increase)
+        return INFINITE_RANK if cost >= INFINITE_RANK else cost
 
 
 @dataclass
@@ -238,9 +243,9 @@ class DodagState:
                 best, best_cost = current, current_cost
 
         self.preferred_parent = best.neighbor_id
-        self.rank = best_cost
+        self.rank = best_cost if best_cost < INFINITE_RANK else INFINITE_RANK - 1
         self.role = DodagRole.JOINED
-        self._lowest_rank = min(self._lowest_rank, best_cost)
+        self._lowest_rank = min(self._lowest_rank, self.rank)
 
     def remove_parent(self, neighbor_id: IPv6Address | str) -> None:
         """Drop a neighbour (e.g. on link failure) and re-select.
