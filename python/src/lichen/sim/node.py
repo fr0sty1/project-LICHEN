@@ -56,6 +56,8 @@ class SimNode:
     seed: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
+    started: bool = False
+    heard_set: set[str] = field(default_factory=set, repr=False)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
     def __init__(
@@ -75,6 +77,8 @@ class SimNode:
         tdma_scheduler: TDMAScheduler | None = None,
         sfn: int = 0,
         num_channels: int = 8,
+        started: bool = False,
+        heard_set: set[str] | None = None,
     ) -> None:
         self.id = id
         self.position = position
@@ -88,6 +92,8 @@ class SimNode:
         self.current_channel = current_channel
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
+        self.started = started
+        self.heard_set = heard_set if heard_set is not None else set()
         data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
         h = hash_32(data)
         n = max(num_channels, 3)

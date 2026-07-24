@@ -1148,27 +1148,35 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			lichen_replay_table_init(&replay_table);
 			atomic_set(&link_ctx_initialized, 1);
 		}
-		k_mutex_unlock(&rx_mutex);
-		k_mutex_unlock(&tx_mutex);
+		/*
+		 * NOTE: tx_mutex and rx_mutex are NOT released here.
+		 * They are held across set_rx_callback() and start() to prevent
+		 * a TOCTOU race with concurrent disable (project-LICHEN-tvfm.61).
+		 * Release is at the end of the enable path.
+		 */
 #endif
 		/*
 		 * Re-register RX callback before starting.
 		 * lichen_lora_l2_stop() clears the callback (lora_l2.c:324-325),
 		 * so we must re-register it on enable. (project-LICHEN-yw7i.28)
+		 *
+		 * TOCTOU FIX (project-LICHEN-tvfm.61): Hold tx_mutex and rx_mutex
+		 * across set_rx_callback() and start() to prevent a concurrent
+		 * disable from racing between initialization and RX thread startup.
+		 * Lock ordering safety: lora_mutex is released before the RX
+		 * callback acquires rx_mutex, so no ABBA risk.
 		 */
 		ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 		if (ret != 0) {
 			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
 #if HAVE_LICHEN_LINK
-			k_mutex_lock(&tx_mutex, K_FOREVER);
-			k_mutex_lock(&rx_mutex, K_FOREVER);
 			if (atomic_get(&link_ctx_initialized)) {
 				atomic_set(&link_ctx_initialized, 0);
 				lichen_link_cleanup(&link_ctx);
 			}
+#endif
 			k_mutex_unlock(&rx_mutex);
 			k_mutex_unlock(&tx_mutex);
-#endif
 			return ret;
 		}
 		ret = lichen_lora_l2_start();
@@ -1207,16 +1215,20 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * skip lichen_link_init() and reuse potentially stale crypto state.
 		 */
 		if (ret != 0) {
-			k_mutex_lock(&tx_mutex, K_FOREVER);
-			k_mutex_lock(&rx_mutex, K_FOREVER);
 			if (atomic_get(&link_ctx_initialized)) {
 				atomic_set(&link_ctx_initialized, 0);
 				lichen_link_cleanup(&link_ctx);
 			}
-			k_mutex_unlock(&rx_mutex);
-			k_mutex_unlock(&tx_mutex);
 		}
 #endif
+		/*
+		 * Release mutexes. On success, the RX thread is running.
+		 * Mutexes were acquired at line ~1116-1117 and not released
+		 * since; on the set_rx_callback failure path, this code is
+		 * unreachable (early return above).
+		 */
+		k_mutex_unlock(&rx_mutex);
+		k_mutex_unlock(&tx_mutex);
 		return ret;
 	} else {
 		/*

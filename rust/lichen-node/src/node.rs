@@ -517,7 +517,7 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         if self.router.is_root() {
-                            return (0, RplEvent::DaoReceived);
+                            return (0, RplEvent::DaoReceived { route_updated: false });
                         }
                         let Some(advertised_parents) =
                             crate::routing::dao_parents_for_source(dao_bytes, &sender_addr)
@@ -999,7 +999,7 @@ mod tests {
         let mut output = [0u8; 260];
         assert_eq!(
             root.handle_frame_rpl(&parent_packet, parent_identity.iid, &mut output, 0),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert_eq!(
             root.handle_dao(
@@ -1068,7 +1068,7 @@ mod tests {
                 &mut [0u8; 260],
                 0,
             ),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert!(root.router.lookup_route(&leaf_addr).is_none());
 
@@ -1224,7 +1224,7 @@ mod tests {
                 &mut [0u8; 260],
                 1_999,
             ),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert!(root.router.lookup_route_at(&first_addr, 2_999).is_none());
         assert_eq!(
@@ -1234,7 +1234,7 @@ mod tests {
                 &mut [0u8; 260],
                 2_999,
             ),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert!(root.router.lookup_route(&first_addr).is_none());
         assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());

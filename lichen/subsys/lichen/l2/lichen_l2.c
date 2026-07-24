@@ -1576,27 +1576,44 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			lichen_replay_table_init(&replay_table);
 			atomic_set(&link_ctx_initialized, 1);
 		}
-		k_mutex_unlock(&rx_mutex);
-		k_mutex_unlock(&tx_mutex);
+		/*
+		 * NOTE: tx_mutex and rx_mutex are NOT released here.
+		 * They are held across set_rx_callback() and start() to prevent
+		 * a TOCTOU race with concurrent disable (project-LICHEN-tvfm.61).
+		 * Release is at the end of the enable path (~line 1671-1672).
+		 */
 #endif
 		/*
 		 * Re-register RX callback before starting.
 		 * lichen_lora_l2_stop() clears the callback (lora_l2.c:324-325),
 		 * so we must re-register it on enable. (project-LICHEN-yw7i.28)
+		 *
+		 * TOCTOU FIX (project-LICHEN-tvfm.61): Hold tx_mutex and rx_mutex
+		 * across set_rx_callback() and start() to prevent a concurrent
+		 * disable from racing between initialization (lines 1537-1580) and
+		 * RX thread startup (line 1602). By extending the critical section
+		 * until after start() completes, we guarantee that no concurrent
+		 * lichen_l2_enable(false) can observe link_ctx_initialized==1 and
+		 * then see the RX thread start with stale/lost initialization.
+		 *
+		 * Lock ordering safety: lichen_lora_l2_start() acquires lora_mutex
+		 * internally. lora_l2.c releases lora_mutex BEFORE invoking the
+		 * RX callback, which acquires rx_mutex. Since lora_mutex is never
+		 * held while acquiring rx_mutex, no lock ordering relationship
+		 * exists between lora_mutex and tx_mutex/rx_mutex, so holding
+		 * tx_mutex+rx_mutex while start() holds lora_mutex is safe.
 		 */
 		ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 		if (ret != 0) {
 			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
 #if HAVE_LICHEN_LINK
-			k_mutex_lock(&tx_mutex, K_FOREVER);
-			k_mutex_lock(&rx_mutex, K_FOREVER);
 			if (atomic_get(&link_ctx_initialized)) {
 				atomic_set(&link_ctx_initialized, 0);
 				lichen_link_cleanup(&link_ctx);
 			}
+#endif
 			k_mutex_unlock(&rx_mutex);
 			k_mutex_unlock(&tx_mutex);
-#endif
 			return ret;
 		}
 		ret = lichen_lora_l2_start();
@@ -1635,16 +1652,28 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * skip lichen_link_init() and reuse potentially stale crypto state.
 		 */
 		if (ret != 0) {
-			k_mutex_lock(&tx_mutex, K_FOREVER);
-			k_mutex_lock(&rx_mutex, K_FOREVER);
 			if (atomic_get(&link_ctx_initialized)) {
 				atomic_set(&link_ctx_initialized, 0);
 				lichen_link_cleanup(&link_ctx);
 			}
-			k_mutex_unlock(&rx_mutex);
-			k_mutex_unlock(&tx_mutex);
 		}
 #endif
+		/*
+		 * Release mutexes now that start() has completed (or failed).
+		 * On success: the RX thread is running. A concurrent disable
+		 * will see link_ctx_initialized==1 and orderly stop the RX
+		 * thread before cleaning up link_ctx.
+		 *
+		 * On failure from start(): we already rolled back the callback
+		 * and link_ctx above. Mutexes were acquired at lines 1537-1538
+		 * and not released since; release them now.
+		 *
+		 * On failure from set_rx_callback(): the early-return path above
+		 * already released mutexes and returned. Execution only reaches
+		 * here if set_rx_callback succeeded, so mutexes are still held.
+		 */
+		k_mutex_unlock(&rx_mutex);
+		k_mutex_unlock(&tx_mutex);
 		return ret;
 	} else {
 		/*
