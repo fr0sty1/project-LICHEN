@@ -17,18 +17,27 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 1. Abstract
 2. 2a.1. Overview
-3. 2a.2. TDMA Beacon Format, Slots, Hash Selection, and Join (SCHC 0x08, CDDL, byte layout)
-4. 2a.3. Channel Agility (select_channel, now())
-5. 2a.4. Time Synchronization
-6. 2a.5. Desync Recovery State Machine
-7. 2a.6. Regional Channel Plans and CH0 Rules
-8. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
-9. Implementation Status
-10. References
+3. 2a.1a. CCP-14. Congestion Control (EMA, Load Factor, Hash)
+4. 2a.2. TDMA Beacon Format, Slots, Hash Selection, and Join (SCHC 0x08, CDDL, byte layout)
+5. 2a.3. Channel Agility (select_channel, now())
+6. 2a.4. Time Synchronization
+7. 2a.5. Desync Recovery State Machine
+8. 2a.6. Regional Channel Plans and CH0 Rules
+9. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
+10. Implementation Status
+11. References
 
 ## Overview
 
 LICHEN networks operate under severe bandwidth and duty-cycle constraints. CCP coordinates access to the shared medium using hash-derived TDMA slots synchronized to a network epoch, density-aware adaptive SF selection, multi-channel operation (CH0 dedicated to control per SCHC-compressed beacons and RPL DIOs), deterministic channel agility, time synchronization, signed rx_channel announcements for rendezvous, per-neighbor EMA for RF metrics, and load/density signaling. The root advertises epoch and num_slots. Nodes suppress transmission outside assigned slots. All algorithms are deterministic.
+
+## CCP-14. Congestion Control (EMA, Load Factor, Hash-Based)
+
+All implementations MUST produce identical output for the vector set in `test/vectors/ccp15.json`. These vectors cover the SF, EMA, load_factor, and hash_32 (FNV-1a32 basis `0x811c9dc5`) congestion control entry point.
+
+The oracle for these vectors is an independent arithmetic computation (math-based, no code under test). Each vector supplies an SF seed, an EMA smoothed value (float between 0 and 1), a load_factor (float 0--1), and the expected 32-bit FNV-1a hash of the concatenated inputs.
+
+Congestion control integrates with `adaptive_sf_select()` in Section 2a.7 and with `select_channel()` in Section 2a.3 via the shared FNV-1a32 hash function (`lichen_hash_32` in `lichen-core/src/lib.rs`). Nodes use EMA and load_factor to decide whether to upgrade or downgrade SF, and the hash provides deterministic channel/rendezvous selection.
 
 ## TDMA Frame Structure, Slot Assignment, now(), and Desync Recovery
 
@@ -152,10 +161,11 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2) (see rf_health.rs
 
 (The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
-## Regional Channel Plans and CH0 Rules
+## Implementation Status
 
-- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
-- Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
+- `test/vectors/ccp15.json` — CCP-14 congestion control vectors (SF, EMA, load_factor, FNV-1a32 hash) implemented and validated against independent arithmetic oracle (no code under test).
+- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`, `ccp15.json`.
+- Kconfig options for CCP14, CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
 - Adaptive SF, desync FSM, channel plans, Multi-RX gateway support implemented and tested.
 - All codereview passes closed. Capacity gains verified in simulation per independent oracles.
 
@@ -165,6 +175,7 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2) (see rf_health.rs
 
 - [RFC 2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
 
+- `test/vectors/ccp15.json` (authoritative for CCP-14 congestion control: SF, EMA, load_factor, FNV-1a32 hash; MUST match exactly)
 - `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
 
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
