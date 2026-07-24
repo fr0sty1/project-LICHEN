@@ -437,7 +437,10 @@ int main(void)
 	}
 	if (lora_set_mode(lora_dev, false) < 0) {
 		LOG_ERR("LoRa config failed — spinning for serial debug");
-		k_sleep(K_FOREVER);
+		while (1) {
+			wdt_kick();
+			k_sleep(K_SECONDS(1));
+		}
 	}
 	LOG_INF("LoRa SF10/125kHz/CR4-5 @ %u Hz", LORA_FREQ_HZ);
 #endif
