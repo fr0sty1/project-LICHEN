@@ -87,7 +87,8 @@ class ParentCandidate:
 
     def path_cost(self, min_hop_rank_increase: int) -> int:
         """Rank this node would have via this neighbour (MRHOF, spec B.1)."""
-        return self.rank + round(self.link_etx * min_hop_rank_increase)
+        cost = self.rank + round(self.link_etx * min_hop_rank_increase)
+        return cost if cost < INFINITE_RANK else INFINITE_RANK - 1
 
 
 @dataclass
@@ -238,7 +239,7 @@ class DodagState:
                 best, best_cost = current, current_cost
 
         self.preferred_parent = best.neighbor_id
-        self.rank = best_cost
+        self.rank = best_cost if best_cost < INFINITE_RANK else INFINITE_RANK - 1
         self.role = DodagRole.JOINED
         self._lowest_rank = min(self._lowest_rank, best_cost)
 
