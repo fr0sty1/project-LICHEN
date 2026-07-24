@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9g0k",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Add CONFIG_STACK_CANARIES, CONFIG_STACK_SENTINEL, CONFIG_ASSERT to base prj.conf.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

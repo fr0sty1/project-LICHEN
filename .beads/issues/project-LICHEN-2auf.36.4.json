@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.36.4",
   "title": "Pin Ubuntu 22.04 runner with complete Zephyr host deps for interop CI",
   "description": "Ensure vector-compatibility and other jobs use ubuntu-22.04 with device-tree-compiler, proper west setup, and verify that native_sim tests for link_crypto pass reliably in CI without skips.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

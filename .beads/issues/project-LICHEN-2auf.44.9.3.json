@@ -3,7 +3,7 @@
   "title": "Add prefix DAO routing vectors",
   "description": "Create independently derived typed vectors for Target codec and routing outcomes: /0,/64,/127,/128, noncanonical host bits, overlap/LPM, grouped transits, replay, expiry, withdrawal, multiparent, capacity, owner path, and SRH destination preservation.",
   "acceptance_criteria": "Schema represents prefix key, owner, destination, expected route/path, lifecycle and rejection/no-mutation outcomes; C/Python/Rust consume the same vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

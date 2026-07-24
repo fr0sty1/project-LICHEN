@@ -3,7 +3,7 @@
   "title": "Capture nRF BLE HCI startup trace",
   "description": "Capture the T-Echo gateway Bluetooth controller/HCI/LMP exchange from initialization through the partial version response and stall. Include commands, events, interrupts, controller feature/version expectations, and task state.",
   "acceptance_criteria": "Retained trace identifies the first missing or incorrect HCI/LMP response and minimum model behavior required to reach BLE readiness; exact source/ELF hashes and logs included.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

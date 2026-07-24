@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.138",
   "title": "Router RSSI value passed as 0 in process_dio, actual radio RSSI discarded",
   "description": "In rust/lichen-node/src/node.rs:299: 'self.router.process_dio(\u0026dio, sender_addr, 0, now_ms)' - the rssi parameter is hardcoded to 0. The comment says 'ponytail: use 0 for rssi, real radio would provide it'. This means link quality estimation via RSSI is broken. The NeighborTable stores RSSI but it's always 0. A contributor adding RSSI-based parent selection won't realize the data is invalid. Either thread RSSI through from radio layer or remove RSSI from API to avoid false precision.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

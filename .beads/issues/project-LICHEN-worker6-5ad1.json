@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-5ad1",
+  "title": "[review] project-LICHEN-worker6-eu0i: allow_no_piv_response field is dead code",
+  "description": "The allow_no_piv_response boolean field on Context is set in at least 8 locations (Context::new(), register_fresh(), restore_existing(), new_fresh(), new_ephemeral(), restore(), from_sender_state() etc.) but is never read in any conditional anywhere in lib.rs. This means:\n- restored contexts cannot actually reject responses without PIV (tests that expect this fail)\n- The field serves no purpose\n- Tests named \"restored_context_rejects_response_without_piv\" and \"supplied_material_restores_authoritative_state_and_disables_no_piv\" expect behavior this field cannot enforce because it is dead.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:04:25.486718137Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:04:25.486718137Z"
+}

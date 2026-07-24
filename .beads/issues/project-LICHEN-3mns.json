@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3mns",
   "title": "Harden APRS-IS session authorization",
   "description": "Review during project-LICHEN-2auf.46 found AprsIsClient::send permits pre-login and Unverified receive-only sessions to transmit, and required-line timeouts are surfaced as UnexpectedEof. Define explicit session-phase/authorization checks, preserve timeout-vs-EOF semantics, and add deterministic login/send/write-failure tests. This is separate from lost bounded-line recovery.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

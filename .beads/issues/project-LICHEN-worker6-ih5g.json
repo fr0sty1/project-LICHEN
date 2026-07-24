@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ih5g",
+  "title": "[review] project-LICHEN-worker6-ghdn: schc_fragmentation.json format_version mismatch",
+  "description": "Pre-existing issue discovered during review of commit 3658d1d. The test 'shared_vectors_drive_production_implementations' in rust/lichen-schc/tests/fragmentation_vectors.rs:146 asserts `document.format_version == 1` but test/vectors/schc_fragmentation.json has `format_version: 2`. All other test vectors are at format_version 2 as well. Fix: update the assertion to expect 2.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:22:20.630489571Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:22:20.630489571Z"
+}

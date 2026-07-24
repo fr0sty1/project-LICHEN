@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8b8u.1",
   "title": "Implement lichen_pubkey_to_human_address in C using SHA-256 IID + Crockford Base32",
   "description": "Add implementation to lichen/subsys/lichen/l2/ipv6_addr.c that calls lichen_pubkey_to_iid then encodes to human address string exactly matching Rust human_address_from_pubkey and test/vectors/node_address.json. Follow coding style from existing functions. Include secure_zero if needed.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

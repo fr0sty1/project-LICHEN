@@ -6,7 +6,7 @@
   "acceptance_criteria": "Python, Rust, and Zephyr emit strict lichen.telemetry.v1 JSONL accepted by an independently exercised analyzer fixture; packet hashes correlate TX/RX across implementations and all required identity/direction/status/radio fields are present. Exact clean source/patch/lock/tool/model/fixture provenance, full commands/exits, requested topology, instance IDs/RunId, raw logs and report hashes are retained. The prior provisioning/startup timeout is either reproduced with complete evidence or resolved; it may not be skipped or hidden by retries. Cleanup/log/analyzer failures are fatal; fleet uses ami-0764d1b512e22671f and no builder EBS, with ownership-checked termination/wait and mandatory unmount/detach/wait-available if attachment occurred.",
   "notes": "Preserved progress: Python/Rust compile and parser fixture passed and Zephyr fleet ELF built; three-way EC2 validation remained blocked by Renode EC2 provisioning/startup timeout after correcting an invalid URL, architecture mismatch, and expiring Instance Connect polling.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Separate TOFU pins from LRU peer cache",
   "description": "Discovered during project-LICHEN-m5m1 review. lichen_app_identity stores TOFU-pinned keys in the same bounded table that silently evicts least-recently-updated peers. After eviction, the same EUI-64 can be rebound to a different key without explicit administrative removal, weakening spec 8.6 pinning. Define persistent/non-evictable trust-pin semantics separately from disposable discovery cache state.",
   "acceptance_criteria": "1. A pinned EUI-64 cannot change keys through capacity eviction. 2. Key rotation requires explicit authorized removal/replacement. 3. Capacity pressure remains bounded and tested independently. 4. Persistence/reboot behavior is specified. 5. Three independent security review passes complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

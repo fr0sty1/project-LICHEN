@@ -4,7 +4,7 @@
   "description": "PROTOCOL: TH_3 computation does not match RFC 9528 specification, causing interoperability issues.\n\nInitiator (lines 627-635):\nmemcpy(th3_input + th3_len, ctx-\u003eth_2, 32);\nmemcpy(th3_input + th3_len, plaintext_2, ct2_len);\nmemcpy(th3_input + th3_len, peer_pubkey, 32);\nsha256_hash(th3_input, th3_len, ctx-\u003eth_3);\n\nResponder (lines 970-978): Similar raw concatenation\n\nThis computes H(TH_2 || PLAINTEXT_2 || CRED_R) with raw bytes.\n\nPer RFC 9528 Section 4.1.2, TH_3 should be:\nTH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)\n\nIssues:\n1. Uses PLAINTEXT_2 instead of CIPHERTEXT_2\n2. Uses CRED_R instead of ID_CRED_R  \n3. No CBOR encoding of components\n\nComment at line 626 acknowledges: 'ponytail: proper TH_3 needs CBOR encoding'\n\nImpact: Will not interoperate with RFC 9528-compliant implementations.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:627-635,970-978",
   "notes": "Commit: 5a2c5085f",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

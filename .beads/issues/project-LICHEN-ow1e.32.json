@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.32",
   "title": "panic! used in test code, but should be assert! or match pattern",
   "description": "lichen-sim/src/client.rs:252 uses `panic!(\"wrong variant\")` inside a test:\n\n```rust\n_ =\u003e panic!(\"wrong variant\"),\n```\n\nWhile acceptable in tests, this could be replaced with `assert!(matches!(e, SimError::Server { .. }))` for clearer test output on failure.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

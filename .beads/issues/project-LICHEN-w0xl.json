@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w0xl",
   "title": "Rust lichen-rpl dodag.rs: Removed DodagMembershipState typestate without migration path",
   "description": "In rust/lichen-rpl/src/dodag.rs, the DodagMembershipState\u003cS\u003e typestate pattern (Unjoined, Joined, Root marker types) was deleted. The tests using this pattern were also removed. If any external code depended on this API, it will break. The runtime DodagState with role enum is retained. Consider adding a CHANGELOG entry or deprecation warning before removal.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

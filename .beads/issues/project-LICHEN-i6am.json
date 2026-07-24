@@ -3,7 +3,7 @@
   "title": "fragment.rs: Ack::from_bytes silently treats missing bitmap bytes as zeros",
   "description": "File: rust/lichen-schc/src/fragment.rs\nLines: 220-242 (Ack::from_bytes)\n\nCategory: CORRECTNESS\n\nThe Ack::from_bytes function reads the bitmap_len from wire data, but if the actual bitmap bytes are shorter than needed, it silently treats missing bytes as zeros:\n```rust\nlet n = data[2] as usize;\nlet body = \u0026data[3..];\nlet mut bitmap = [false; MAX_WINDOW_SIZE];\nfor i in 0..n.min(MAX_WINDOW_SIZE) {\n    let byte = if i / 8 \u003c body.len() { body[i / 8] } else { 0 };\n    bitmap[i] = (byte \u003e\u003e (7 - (i % 8))) \u0026 1 != 0;\n}\n```\n\nIf an ACK claims bitmap_len=62 but only provides 2 bytes of bitmap data (16 bits), positions 16-61 are silently set to false (indicating fragments not received).\n\nImpact: Truncated/corrupted ACKs could trigger unnecessary retransmissions (positions beyond available data appear as 'not received'), or mask actual missing fragments if the receiver sends a proper ACK but it gets truncated in transit.\n\nFix: Validate that data length is sufficient for claimed bitmap_len:\n```rust\nlet required_bytes = 3 + n.div_ceil(8);\nif data.len() \u003c required_bytes {\n    return Err(TooShort::new(required_bytes, data.len()).into());\n}\n```",
   "notes": "Fix implemented: length validation added before bitmap parsing in Ack::from_bytes (rust/lichen-schc/src/fragment.rs:232). TooShort error returned for truncated ACKs instead of silent zero-fill. Roundtrip tests pass. Commit pending due to merge conflict in workspace.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

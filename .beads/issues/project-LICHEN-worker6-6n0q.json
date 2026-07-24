@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-6n0q",
+  "title": "[review] project-LICHEN-2auf.44.7.1: Duplicate ANNOUNCE_TYPE / MAX_ANNOUNCE_HOPS constants between lichen-core and lichen-rpl",
+  "description": "## Problem\n\n`ANNOUNCE_TYPE` (`0x01`) and `MAX_ANNOUNCE_HOPS` (`15`) are defined in two places:\n\n1. `rust/lichen-core/src/announce.rs:4-6` (canonical source)\n2. `rust/lichen-rpl/src/routing.rs:927-929` (newly introduced duplicate)\n\nAdditionally, `lichen-core/src/constants.rs:50` defines `ANNOUNCE_TYPE_BYTE = 0x01` — three names for the same constant in the same crate.\n\n## Risk\n\nIf one instance is changed without updating the other, the two modules will have diverging values, causing hard-to-debug protocol mismatches at the RPL/announce boundary. `AnnounceState` in routing.rs is gated behind `#[cfg(feature = \"std\")]` and currently only tested in isolation, but once wired into production message handling the mismatch would be silent.\n\n## Fix\n\nIn `routing.rs`, remove the duplicate `pub const` declarations and import from `lichen_core::announce::{ANNOUNCE_TYPE, MAX_ANNOUNCE_HOPS}`. The `lichen-core` announce module is the single source of truth for the announce wire format constants.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:52:43.575490723Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:52:43.575490723Z"
+}

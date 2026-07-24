@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7hq8",
   "title": "[CODEREVIEW-P1] generate.py lacks ccp15_vectors and ccp15.json write",
   "description": "generate.py only covers some vectors; ccp15.json is manual. To ensure consistency with Python reference (for SF/EMA/hash_32/now/select_channel), add def ccp15_vectors() using pseudocode from spec/02a-coordinated-capacity.md and _write it with format_version=2. discovered-from:zlw5 1vgs la5m",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

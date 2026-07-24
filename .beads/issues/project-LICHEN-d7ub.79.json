@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.79",
   "title": "main.c:78-80 standalone lora_rx_handler ignores received data entirely",
   "description": "Completeness check: Round 1-2 missed that standalone mode RX handler is non-functional.\n\nWHAT: In standalone mode (CONFIG_LICHEN_LORA_L2 without CONFIG_LICHEN_L2), the RX handler does nothing with received data:\n```c\nstatic void lora_rx_handler(const uint8_t *data, size_t len,\n                            int16_t rssi, int8_t snr, void *user_data)\n{\n    ARG_UNUSED(user_data);\n    ARG_UNUSED(data);  // \u003c-- Data is completely ignored!\n\n    // ponytail: RX processing not implemented - add when needed\n    LOG_INF(\"main: RX %zu bytes standalone (RSSI %d dBm, SNR %d dB)\", len, rssi, snr);\n}\n```\n\nWHY BUG: \n1. No frame validation - malformed frames are logged as if valid\n2. No SCHC decompression - the logged 'bytes' are framed, not payload\n3. The comment says 'add when needed' but this is functional code in the build\n4. Users testing standalone mode get misleading output (they think RX works)\n\nIMPACT: Misleading for debugging. Users may think their LoRa link is working when they see RX logs, but no actual data processing occurs.\n\nFIX: Either:\n1. Add at least basic frame header parsing to log meaningful info\n2. Log 'RX %zu bytes (FRAME - processing not implemented)' to be clear\n3. Add a BUILD_ASSERT or compile warning when this mode is used",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

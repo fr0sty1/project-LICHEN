@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-cqc5",
+  "title": "[review] project-LICHEN-worker6-jjhj: schc/fragment.rs type mismatch u8 vs u32 for attempts/MAX_ACK_REQUESTS",
+  "description": "FragmentSender::attempts is u8 but MAX_ACK_REQUESTS is u32. Comparison at lines 548, 565, 935 fails to compile with \"expected u8, found u32\". Pre-existing. Either change attempts to u8::MAX-limited, or cast to u32 in comparisons, or make MAX_ACK_REQUESTS u8.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:21:52.877348044Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:21:52.877348044Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-cqc5",
+      "depends_on_id": "project-LICHEN-worker6-jjhj",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T17:21:53.019596492Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

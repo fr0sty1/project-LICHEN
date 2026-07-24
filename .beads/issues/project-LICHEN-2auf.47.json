@@ -4,7 +4,7 @@
   "description": "Recover UDP/ICMPv6 boundary validation, DAD behavior, coalesced Meshtastic GATT message preservation, and explicit RouteRequest handling.",
   "acceptance_criteria": "Oversized UDP and malformed NS drop; packet-level DAD vectors pass; coalesced GATT bytes are preserved; route variants are deterministic; tests/clippy and three reviews pass.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

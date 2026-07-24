@@ -2,7 +2,7 @@
   "id": "project-LICHEN-riy6",
   "title": "[codereview-pass1] coap_status.c post-cleanup",
   "description": "Chunk 1 (comments) + Chunk 2 (validation/map_count/cbor_header no truncation) + Chunk 3 (error path/ENOBUFS/SERVICE_UNAVAILABLE/format check): All non-SPDX comments removed. map_count updated with overcount checks returning 0 on \u003e255. cbor_put_*_header now rejects \u003e255 with overflow. format_ipv6 and snprintf return values checked for truncation setting overflow. Handlers use SERVICE_UNAVAILABLE for len==0 (ENOBUFS case). No dead code. P0: none. P1: LOG_DBG may be dead in notify if not called by coap_resource_notify - filed as bead. P2: trust_level_str not updated for UNKNOWN. P3: style in time_fields calc. All addressed in passes. Tagged codereview. West tests pending.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:11:19.380276703Z",

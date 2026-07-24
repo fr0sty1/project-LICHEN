@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ihsa",
   "title": "Reject unsupported KISS ports",
   "description": "Rust KISS bridge routes ports 1 through 15 into raw LICHEN parsing although only port 1 is assigned. Reject unsupported ports before raw-frame parsing and add cross-port injection tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

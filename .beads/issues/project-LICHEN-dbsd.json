@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dbsd",
   "title": "Add debug logging to time advancement logic",
   "description": "Modify maybe_advance_time method in python/src/lichen/sim/simulation.py to add debug logging with: sim_id, from_us, to_us, queue_size, pending_rx_timeouts, connected_nodes, waiting_nodes when time advances in BARRIER_SYNC mode.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

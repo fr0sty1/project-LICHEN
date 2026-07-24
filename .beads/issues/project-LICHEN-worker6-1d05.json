@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-1d05",
+  "title": "[review] project-LICHEN-worker6-svpz: test_key_change_detection replays first frame instead of queuing second frame",
+  "description": "File: python/tests/link/test_link_layer.py, lines ~576-580. The new test_key_change_detection calls peer_radio.tx_history[0] both times. MockRadio's tx_history is append-only, so after send('first') and send('second'), tx_history = [frame1, frame2]. tx_history[0] is always frame1. The second queue_rx inserts a REPLAY of the first frame, not the second. The test passes because signature-check precedes replay-check in LinkLayer.receive(), but it tests a replay not a genuine new frame after key change. Fix: use peer_radio.tx_history[-1] for the second queue_rx call (line ~579). Priority P2 — test validity bug; passes for wrong reason and would silently change behavior if check order changed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:59:56.224317084Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:59:56.224317084Z"
+}

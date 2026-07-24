@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.234",
   "title": "Codereview pass 3: Missing test for reset_peer clearing min_epoch",
   "description": "The reset_peer method now clears min_epochs (line 251), but there is no test verifying this behavior. Add a test that: 1) sets min_epoch for a peer, 2) calls reset_peer, 3) verifies min_epoch returns None. This ensures the min_epoch cleanup is exercised in the test suite. Location: rust/lichen-link/src/link_layer.rs:249-252",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -4,7 +4,7 @@
   "description": "Correct Rust node Non-Storing DAO handling: originators address DAOs to the DODAG root and select a parent as next hop; intermediate nodes IP-forward without consuming or rewriting the original IPv6 source; root validates authenticated provenance without equating origin source to immediate L2 forwarder; avoid accepting spoofed target/replay mutations.",
   "acceptance_criteria": "A three-node literal topology proves a leaf DAO crosses an intermediate parent and is accepted at root with original source preserved; spoofed target/provenance fails before mutation; intermediate node does not consume DAO; link-local single-hop rules remain enforced; node/RPL tests and three reviews pass.",
   "notes": "Recovered forwarding implementation and tests preserved in 828443c34 on integration/rust-rpl-recovery. Three-node tests pass, but normal Stack receive dispatch does not yet own/invoke authenticated DAO handling. Finish and review on Linux; no further frontier work was done during evacuation.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

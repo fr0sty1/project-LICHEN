@@ -3,7 +3,7 @@
   "title": "codereview pass 2: deaddrop_get/post ignore query params for node filtering per LCI spec 17.5.8 and 12-apps.md; no OSCORE check; no SenML encode on GET; robustness for buffer full uses hardcoded 32",
   "description": "Finding from codereview pass 2. Per spec rate limits, provider callbacks for DTN/SenML must be wired. File as codereview bead. Fix all.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ofrf",
   "title": "Add robustness details to TDMA spec in 02a-coordinated-capacity.md (project-LICHEN-ve27.3 codereview-pass3-robustness)",
   "description": "Expand TDMA section with: SFN wrap modulo arithmetic details, multi-root beacon conflict resolution, full desync recovery state machine with transitions and timers, handling of RPL version changes during join/drift, precise interaction with time-provider (epoch_floor, stratum, wall_clock_valid). Use strict IETF style (MUST/SHOULD per RFC2119). Perform in small chunks. After EVERY edit chunk, run codereview 3 times by filing codereview beads. Do not close main task until 3 full passes with no P0-P2 findings. End with bd ready --limit 5. See AGENTS.md for review loop.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

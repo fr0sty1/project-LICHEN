@@ -2,7 +2,7 @@
   "id": "project-LICHEN-y9zh",
   "title": "codereview-pass1: RplEvent::DaoReceived change is API break for lichen-gateway reexport",
   "description": "Updating struct variant breaks any downstream matchers on old field name. Since gateway reexports it (see codereview c88c), this needs careful handling or deprecation. P1 API. discovered-from:project-LICHEN-yufp",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

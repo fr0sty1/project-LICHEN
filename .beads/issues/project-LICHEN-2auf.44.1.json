@@ -4,7 +4,7 @@
   "description": "During project-LICHEN-2auf.44 validation, cargo fmt --all from rust/ reformatted 31 files in the isolated worktree, although the intended RPL patch touches only rust/lichen-rpl/src/{dodag,message,routing}.rs, rust/lichen-rpl/tests/mesh_formation.rs, and rust/lichen-node/src/node.rs. Preserve the intended six-file patch, inspect all other formatting diffs against clean base d156a2e74, and remove only formatter collateral before commit. Do not overwrite concurrent or substantive changes. Current worktree: /var/folders/pg/t21pc_0j6_3bq40d087mjbrw0000gn/T/opencode/lichen-rust-rpl; branch integration/rust-rpl-recovery.",
   "acceptance_criteria": "Git diff contains only changes attributable to project-LICHEN-2auf.44 (plus Beads exports if present); intended six-file patch is preserved; git diff --check passes.",
   "notes": "Completed 2026-07-17 in surviving worktree /Volumes/Attic/Opencode/opencode/lichen-rust-rpl. Audited count is five unique substantive paths, not six: rust/lichen-rpl/src/{dodag,message,routing}.rs, rust/lichen-rpl/tests/mesh_formation.rs, rust/lichen-node/src/node.rs. Preserved the entire prior 31-file dirty state at refs/recovery/rpl-before-rustfmt-cleanup-20260717 (d0bad46ea09c9a78e65f865043440e33c0b462af), then restored 26 byte-proven rustfmt-only paths from HEAD. Remaining five files match the preserved ref exactly; git diff --check passed.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

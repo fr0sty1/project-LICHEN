@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wf63",
   "title": "[codereview-pass2] senml.c SENML_VALUE_STRING",
   "description": "Length limit for string value uses 256 like names; should use dedicated SENML_MAX_STRING_LEN? P3. No validation in add yet but task scope senml.c encode. Tests would pass with add func. Matches per spec DTN use.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:44:41.923895094Z",

@@ -3,7 +3,7 @@
   "title": "app_identity: copy_peers does not indicate truncation",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:273-290\n\nsize_t lichen_app_identity_copy_peers(\n    struct lichen_app_identity_peer *out, size_t out_len)\n{\n    ...\n    for (uint8_t i = 0U; i \u003c ARRAY_SIZE(s_peers) \u0026\u0026 count \u003c out_len; i++) {\n        if (s_peers[i].used) {\n            out[count++] = s_peers[i].peer;\n        }\n    }\n    ...\n    return count;\n}\n\nIf there are more peers than out_len, the function fills the buffer and returns out_len. The caller cannot distinguish between 'exactly out_len peers exist' and 'at least out_len peers exist, possibly more'.\n\nThis forces callers to separately call lichen_app_identity_peer_count() to determine if truncation occurred, requiring two mutex lock/unlock cycles and creating a potential TOCTOU race between the count check and the copy.\n\nOptions to fix:\n1. Return total count (even if \u003e out_len) so caller knows if truncation occurred\n2. Add an out parameter for total count\n3. Return -ENOBUFS or similar if truncation occurs",
   "notes": "Commit: 31528fc2a - fix implemented (returns total peer count under lock, caller caps copied amount)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

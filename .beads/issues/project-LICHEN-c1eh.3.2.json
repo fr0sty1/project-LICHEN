@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-c1eh.3.2",
   "title": "coap_dtn.c: update deaddrop_post rate limit to use hash_from_iid(sender_iid) instead of sender_iid[7]",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-cfqa",
+  "title": "[review] lora_ipv6_mesh-mkk4: Rust build artifacts committed to repo",
+  "description": "Commit d83cbc5 includes Rust build artifacts under `rust/target/debug/`:\n- `rust/target/debug/deps/lichen_gateway-f1ce66f1c4497e73.d` (dep file)\n- `rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh-working/dep-graph.part.bin` (4.2MB binary)\n- `rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh.lock` (lock file)\n\nRoot cause: `.gitignore` has no `target/` exclusion for the Rust workspace. Fix:\n1. Add `target/` to `.gitignore` (or `rust/.gitignore`)\n2. `git rm --cached` the committed build artifacts\n3. Amend commit to remove them",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:54:54.496163402Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:54:54.496163402Z"
+}

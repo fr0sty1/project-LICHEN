@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ylph",
   "title": "TUI subscription close in finally blocks may mask original exception",
   "description": "file: python/src/lichen/tui/native.py:2416, 2381, 2539\n\nThe _logs_loop, _raw_rx_loop, and _observe_messages_loop functions all have a pattern where subscription.close() is called in a finally block without exception suppression:\n\n  try:\n      async for result in subscription.results():\n          ...\n  finally:\n      await subscription.close()  # May raise, masking original exception\n\nIf subscription.close() raises an exception (see related bug 07fr about MessageSubscription.close()), the original exception that caused the try block to exit is replaced by the close() exception, masking the real error.\n\nShould be:\n  finally:\n      with suppress(Exception):\n          await subscription.close()\n\nThis ensures the original exception propagates and is properly logged by the outer exception handler.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

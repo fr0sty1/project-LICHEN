@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2zvb",
   "title": "[cross-impl] OSCORE/EDHOC KDF label encoding mismatch",
   "description": "Rust uses tstr labels (\"7\",\"10\") in edhoc.rs:328-340 edhoc_kdf info CBOR; C/Zephyr + Python use uint(7/10/0/1). Causes divergent master_secret/salt. Affects all recent edhoc.rs and oscore.c changes. Align to integer labels per RFC9528 + vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

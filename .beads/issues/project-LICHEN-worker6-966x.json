@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-966x",
+  "title": "[review] project-LICHEN-5pe7: fragile assertion logic in LR1110 test",
+  "description": "In python/tests/sim/test_renode_peripheral_models.py line 446: assert \"error\" not in output.lower() or \"Connect\" in output. This assertion passes if EITHER condition is true. Any output containing \"error\" is forgiven if it also contains \"Connect\" anywhere (even in unrelated context). Additionally, empty output passes vacuously (both conditions false -\u003e assertion passes). This is fragile and could mask real failures. The intent was likely: assert \"error\" not in output.lower() and \"Connect\" in output — requiring both.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:00:43.119854603Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:00:43.119854603Z"
+}

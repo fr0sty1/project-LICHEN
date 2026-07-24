@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ydtk.3",
   "title": "Update gateway tests and hybrid integration for RPL preference in TUN path",
   "description": "Ensure yggdrasil_cross_mesh_routing test and other tests in gateway.rs reflect the RPL preference check. Integrate HybridRouter or Router classify where missing in Gateway for consistency with node routing. Verify no regression in mesh\u003c-\u003emesh and mesh\u003c-\u003eupstream.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

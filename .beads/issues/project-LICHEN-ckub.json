@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ckub",
   "title": "C/Zephyr: include current_channel in build_signed_data() and lichen_announce_view for CCP-9 announce",
   "description": "Add current_channel/rx_channel to lichen_announce_view, update LICHEN_ANNOUNCE_MIN_LEN to 94, update parse to read channel byte at offset 3, shift seq/IID etc. Update build_signed_data to include channel byte after seq_num in signed data. Update scheduler build_announce_frame to include and sign current channel (need to decide how scheduler gets current_channel value - perhaps from config or param). Update tests in lichen/tests/routing_announce. This binds the announced channel against tampering for CCP-9 rendezvous. --parent=project-LICHEN-3i18 --type=task --priority=1 --labels=codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

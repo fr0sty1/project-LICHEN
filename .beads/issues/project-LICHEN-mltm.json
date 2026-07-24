@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mltm",
   "title": "Compliance: Python replay.py replay protection",
   "description": "Policy: 02-physical-link.md §4.4. File: python/src/lichen/link/replay.py. Status: COMPLIANT. ReplayWindow uses 24-bit logical counter (epoch\u003c\u003c16|seqnum) at line 35-41. Old epochs rejected when counter falls below window floor (line 92-93).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

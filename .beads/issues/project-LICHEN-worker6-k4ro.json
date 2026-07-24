@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-k4ro",
+  "title": "[review] project-LICHEN-2auf.44.7.1: announce_state_local_seq_wraps test does not actually test wrap-around",
+  "description": "## Problem\n\nThe test `announce_state_local_seq_wraps` has a misleading name:\n\n```rust\n#[test]\nfn announce_state_local_seq_wraps() {\n    let mut state = AnnounceState::new();\n    assert_eq!(state.local_seq(), 0);\n    assert_eq!(state.bump_local_seq(), 1);\n    assert_eq!(state.local_seq(), 1);\n    assert_eq!(state.bump_local_seq(), 2);\n}\n```\n\nThe sequence goes 0 → 1 → 2. No wrap-around occurs (u16::MAX → 0). The `bump_local_seq` implementation correctly uses `wrapping_add(1)`, but the test does not verify that wrapping behavior works across the boundary.\n\n## Risk\n\nLow (correctness of `wrapping_add` is not in question), but the test name suggests coverage that does not exist. If `wrapping_add` were replaced with `saturating_add` or plain `+ 1` in a future refactor, this test would not catch it.\n\n## Fix\n\nAdd assertions that exercise the wrap boundary:\n```rust\nstate.local_seq = u16::MAX;\nassert_eq!(state.bump_local_seq(), 0);\nassert_eq!(state.local_seq(), 0);\n```\nOr rename the test to `announce_state_local_seq_increments` if wrap-around is never expected in practice.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:53:35.241521472Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:53:35.241521472Z"
+}

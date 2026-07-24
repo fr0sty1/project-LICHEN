@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nqz6.3.3",
   "title": "Audit and update remaining security considerations, OSCORE/EDHOC, RPL security sections in 06-security.md for Yggdrasil consistency",
   "description": "Review sections 8.1-8.4, 8.8-8.10, 15.x for any outdated references to ULA, multiple addresses, or pre-Yggdrasil trust model. Update privacy section 15.5, key storage, replay. Ensure all point to unified single-key derivation. Add references to Schnorr48 and yggdrasil vectors where appropriate.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

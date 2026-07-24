@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.16",
   "title": "Validate IPv6 and UDP length fields before SCHC compression",
   "description": "Trigger: lichen_schc_compress() receives malformed IPv6/UDP input where the IPv6 Payload Length or UDP Length field disagrees with pkt_len. lichen/subsys/lichen/schc/schc.c compresses based on caller length around the UDP rule matching path near line 481 and later decompression normalizes lengths/checksums. Impact: malformed or truncated packets can round-trip into different, apparently valid packets, hiding upstream parser bugs and confusing interoperability tests. Validate IPv6 payload length and UDP length against pkt_len before applying SCHC rules.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

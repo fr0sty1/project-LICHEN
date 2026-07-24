@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-84jn",
+  "title": "[review] project-LICHEN-6mij: confessions_post reserves 64-byte plain buffer but ZCBOR state uses 4 decode levels for 1-level map; peers can send larger payloads that get truncated",
+  "description": "confessions_post at coap_dtn.c:219 uses `uint8_t plain[64]` - the plain buffer is only 64 bytes while deaddrop_post uses 512. If a confession payload exceeds 64 bytes, authorize_mutating truncates it (copy_len = min(raw_len, 64)). However, confessions_post does not decode the CBOR payload at all - it just passes to rate limiter and returns CHANGED. So truncation is effectively silent data loss for oversized confessions. The buffer should at least match deaddrop_post (512) or a BUILD_ASSERT against CONFIG_LICHEN_COAP_SERVER_MAX_PAYLOAD. Track hidden payload truncation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:11.528512606Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:11.528512606Z"
+}

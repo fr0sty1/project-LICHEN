@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nrjk",
   "title": "Python: Node.dispatch_udp signature change may break callers expecting Option",
   "description": "In rust/lichen-node/src/node.rs:180-195 and python equivalent, dispatch_udp() was changed from returning Option\u003cResult\u003c...\u003e\u003e to returning Result\u003c..., UdpDispatchError\u003e.\n\nBefore: None meant 'not UDP', Some(Err) meant 'UDP but dispatch failed'\nAfter: NotUdp variant in the error type\n\nWhile semantically cleaner, this is a breaking API change. Tests were updated but external callers matching on is_some()/is_none() will break.\n\nLocation: rust/lichen-node/src/node.rs:180-195\nRisk: Breaking change for any code pattern-matching on Option.\nFix: Document the API change in release notes; consider deprecation period for major version.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

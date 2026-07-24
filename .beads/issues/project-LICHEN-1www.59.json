@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.59",
   "title": "main.c standalone mode LED blink loop never exits on init failure",
   "description": "Location: firmware/bridge-zephyr/src/main.c:162-175 (standalone LoRa init failure handling)\n\nRisk: When standalone LoRa init fails:\n1. If HAS_LED: enters infinite 200ms blink loop (lines 164-170)\n2. If no LED: enters infinite k_sleep(60s) loop (lines 172-174)\n\nThis is intentional behavior to indicate failure, but:\n1. The blinking LED pattern is documented in the file header (line 8) but users may not read source code\n2. There is no way to distinguish between different failure modes via LED\n3. The board cannot be reset via software from this state - requires power cycle\n4. No serial output after LOG_ERR explaining what failed and how to fix\n\nPattern generating user issue reports: User sees blinking LED but does not know why init failed or what to do.\n\nSuggested fix: Add a final LOG_ERR message before entering the blink loop that says check serial console output for details. Consider implementing distinct blink patterns for different failure modes (lora_l2_init fail vs lora_l2_start fail vs eui64 fail).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

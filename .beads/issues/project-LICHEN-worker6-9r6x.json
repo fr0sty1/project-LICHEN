@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-9r6x",
+  "title": "[review] project-LICHEN-worker6-jjhj: Ack/Fragment byte-1 bit layout inconsistency",
+  "description": "## Summary\n\nThis commit changes `Fragment::write_to`/`from_bytes` to use a new bit layout for byte 1 (`(window \u003c\u003c 7) | (fcn \u003c\u003c 1)`), putting window at bit 7 and FCN at bits 6-1. However, `Ack::write_to` and `Ack::from_bytes_for` were NOT updated to use a compatible layout.\n\n## Specific inconsistencies\n\n### 1. `Ack::write_to` self-inconsistent window bit position\n\n- Complete ACK path (line 265): `out[1] = (self.window \u003c\u003c 7) | 0x40` — window at **bit 7**\n- Non-complete ACK path (line 283): `out[1] = ((self.window \u0026 1) \u003c\u003c FRAGMENT_N) | ...` — window at **bit 6** (`FRAGMENT_N = 6`)\n\nThe two branches use different bit positions for the window field within the same function.\n\n### 2. `Ack::from_bytes_for` reads from wrong bits for complete ACKs\n\n- Line 305: `window = (data[1] \u003e\u003e FRAGMENT_N) \u0026 1` — reads window from **bit 6**\n- Line 306: `complete = (data[1] \u0026 0x01) != 0` — reads complete flag from **bit 0**\n\nBut `write_to` for complete ACKs places:\n- window at **bit 7** (`self.window \u003c\u003c 7`)\n- complete marker as **0x40** (bit 6 set, not bit 0)\n\n### 3. Dead code in `Ack::write_to` non-complete path\n\nLine 283: `if self.complete { 1 } else { 0 }` is always 0 because the complete case returns early at line 267.\n\n## Impact\n\nBefore this commit: Fragment used FRAGMENT_N (bit 6) for window, Ack also used FRAGMENT_N. They were consistent.\n\nAfter this commit: Fragment uses bit 7 for window, Ack still uses bit 6 (and bit 7 for complete ACKs). FragmentReceiver reads bytes with window at bit 7 (line 797), Ack controls/layout aren't harmonized.\n\n## Fix needed\n\nUnify Ack encoding to consistently use one window bit position (likely bit 7 to match Fragment layout), and fix `from_bytes_for` to:\n1. Correctly detect complete ACKs from the right bit position\n2. Handle 2-byte complete ACKs without OOB (see P0 bead project-LICHEN-worker6-ooyg)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:25:31.500564286Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:25:31.500564286Z"
+}

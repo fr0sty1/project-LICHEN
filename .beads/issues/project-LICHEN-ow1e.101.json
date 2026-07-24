@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.101",
   "title": "Inconsistent naming: Record::parse() in lichen-senml vs from_bytes() everywhere else",
   "description": "All codec types across the workspace use from_bytes() for parsing:\n- CoapPacket::from_bytes()\n- LichenFrame::from_bytes()\n- Fragment::from_bytes()\n- Ipv6Header::from_bytes()\n- Dio::from_bytes(), Dao::from_bytes()\n- Announce::from_bytes()\n- BlockOption::from_bytes()\n\nBut lichen-senml/src/record.rs uses:\n  pub fn parse(data: \u0026'a [u8]) -\u003e Result\u003cSelf, CborError\u003e\n\nWhat goes wrong: Inconsistent naming makes the API harder to discover and remember. Users familiar with from_bytes() across the codebase will not find parse() without documentation.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

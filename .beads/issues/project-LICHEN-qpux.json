@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qpux",
   "title": "[cross-impl] SCHC fragmentation production mismatches test vectors",
   "description": "Python SCHC impl (source of truth) fails test_schc_fragmentation_production_conformance for recover_missing_regular_tile (byte diff at index 1: 0x0c vs 0x7c), all0_window_transition, sender_retry_exhaustion, profile_capacity. Rust and Zephyr must match these exact vectors per test/vectors/README.md and interop requirements. Recent worker fixes (a2fe03ec0, merges from worker*) did not resolve. See test_vectors.py:254 asserts. Breaks cross-impl consistency for same SCHC algorithm.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

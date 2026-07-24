@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.87",
   "title": "[lichen_l2.c:959] lichen_link_init called without prior cleanup check",
   "description": "Gap found: link_ctx initialization in iface_init not verified against prior state.\n\nWhy this was missed: iface_init assumed clean state.\n\nThe actual bug: Line 959 calls lichen_link_init(\u0026link_ctx, eui64) without first checking if link_ctx was previously initialized. If lichen_l2_iface_init() is called twice (shouldn't happen via NET_DEVICE_INIT, but could via manual call), the old link_ctx state is overwritten without cleanup.\n\nPotential issues:\n1. If link_ctx contains dynamically allocated state, it would leak\n2. If link_ctx has active sequence numbers, they are lost (could cause replay false positives)\n\nThe static link_ctx at module scope starts zeroed (BSS), so first init is safe. Double-init would be a programming error.\n\nCompare with lichen_l2_enable() at line 708 which does secure_zero(\u0026link_ctx) before re-init.\n\nPriority 3 - defensive cleanup should be added for consistency:\n  if (atomic_get(\u0026link_ctx_initialized)) {\n      lichen_link_cleanup(\u0026link_ctx);\n  }\n  lichen_link_init(\u0026link_ctx, eui64);",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

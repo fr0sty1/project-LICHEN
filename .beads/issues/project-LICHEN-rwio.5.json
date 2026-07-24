@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.5",
   "title": "lichen_lora_l2_get_eui64 returns mutable alias to internal state",
   "description": "lichen_lora_l2_get_eui64() returns const uint8_t* to lora_state.eui64, an internal static buffer. While the const qualifier discourages mutation, C allows callers to cast away const. The header doc says 'Do NOT modify' but this is not enforced.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:366-373\nHeader: firmware/bridge-zephyr/subsys/lichen/lora_l2.h:126-132\n\nWhat goes wrong: A caller could cast away const and modify the EUI-64, corrupting mesh identity. All subsequent packets would use the corrupted address. Since EUI-64 is also used for IPv6 IID derivation (iface_link_addr copy in lichen_l2.c:388), mesh routing would break silently.\n\nMitigation options:\n1. Accept the risk - const is sufficient documentation for cooperative callers\n2. Return a copy into caller-provided buffer (like lichen_eui64_to_iid pattern)\n\nThis is a design smell rather than an exploitable bug in the current codebase since all current callers respect const. Filing as task/priority-2.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

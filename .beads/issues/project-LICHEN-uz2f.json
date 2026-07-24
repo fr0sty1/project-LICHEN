@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uz2f",
   "title": "codereview-pass-1 on draft-lichen-schc-lora-00.md: date still May 2026 after previous edits",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

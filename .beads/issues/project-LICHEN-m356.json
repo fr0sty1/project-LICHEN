@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m356",
   "title": "app_identity: TOFU check on existing peer not atomic with slot update",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:201-231\n\nThe TOFU key pinning check and subsequent slot update are protected by the mutex, which is good. However, the check at lines 210-215 has a subtle issue:\n\nif (s_peers[slot].peer.has_public_key \u0026\u0026\n    memcmp(s_peers[slot].peer.public_key, peer-\u003epublic_key,\n           LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN) != 0) {\n    k_mutex_unlock(\u0026s_mutex);\n    return -EEXIST;\n}\n\nThe condition s_peers[slot].peer.has_public_key will ALWAYS be true for existing peers because:\n- lichen_app_identity_upsert_peer requires has_public_key=true (lines 193-196)\n- lichen_app_identity_upsert_peer_key sets has_public_key=true (line 248)\n\nThe check is defensive but misleading. If it were ever false (perhaps from uninitialized memory or a bug), TOFU would be silently bypassed - the new key would overwrite without verification.\n\nSuggested fix: Either:\n1. __builtin_unreachable() or __ASSERT() after the has_public_key check since it should be invariant\n2. Return -EINTR or similar if has_public_key is unexpectedly false (defensive failure)\n3. Add a comment explaining this is defensive against future changes\n\nNot a critical bug since current code ensures has_public_key is always true, but the defensive check could be made explicitly defensive.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

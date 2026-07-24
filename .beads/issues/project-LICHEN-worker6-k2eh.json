@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-k2eh",
+  "title": "[review] project-LICHEN-2auf.44.7.1: AnnounceState last_relay_map has unbounded growth (memory/DoS)",
+  "description": "## Location\n`rust/lichen-rpl/src/routing.rs` — `AnnounceState` struct, `should_relay()` method\n\n## Problem\n`AnnounceState::should_relay()` inserts every new `originator_iid` (8-byte key) into `last_relay_map: HashMap\u003c[u8; 8], u16\u003e`. There is no eviction policy or maximum capacity.\n\nEach entry consumes ~40-80 bytes (HashMap overhead + key + value). On mesh networks with many nodes or under attack, this grows without bound.\n\n## Impact\n- On constrained devices (LICHEN targets STM32WL with 64KB RAM), fragmented heap growth from large HashMaps can cause allocation failure or premature OOM.\n- An attacker flooding with unique IIDs can exhaust memory — DoS vector.\n- Even in normal operation on a 100+ node mesh, the map grows linearly with node count and never shrinks.\n\n## Fix\nAdd a maximum capacity (e.g., `MAX_ANNOUNCE_ORIGINATORS: usize = 128`) with LRU or FIFO eviction in `should_relay()`. Alternatively, use a fixed-size `heapless` collection for no_std compatibility.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:57:12.560758987Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:57:12.560758987Z"
+}

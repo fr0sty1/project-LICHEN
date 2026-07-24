@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ad1r",
   "title": "ResourceDirectoryResource unbounded entries allows DoS",
   "description": "File: python/src/lichen/coap/resources.py:785\n\nThe Resource Directory accepts unlimited registration entries:\n```python\nself._entries[reg_id] = entry\n```\n\nAn attacker can exhaust node memory by repeatedly POSTing registrations with different endpoint names. Each registration also mounts a resource at /rd/\u003cid\u003e, further consuming memory.\n\nFix: Add a maximum entry limit and reject new registrations when full. Consider adding per-endpoint rate limiting or requiring authentication for RD access.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

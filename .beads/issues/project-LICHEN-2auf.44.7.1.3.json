@@ -3,7 +3,7 @@
   "title": "Keep local Announce out of remote state",
   "description": "Make send_announce validate the local signed Announce and transmit it without processing it into the remote AnnounceProcessor.",
   "acceptance_criteria": "Sending a local Announce has no remote table insertion or eviction side effects, including at capacity.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

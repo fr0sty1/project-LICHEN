@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-exvb",
+  "title": "[review] project-LICHEN-5pe7: TOCTOU race in _unused_tcp_port() helper",
+  "description": "In python/tests/sim/test_renode_peripheral_models.py, _unused_tcp_port() (line 49-52) binds a socket to port 0, obtains the port number, then closes the socket (via context manager). Between close and Renode's bind, another process can grab the port. This is a classic TOCTOU race that can cause flaky test failures. Use SO_REUSEPORT or pass port 0 to Renode directly if supported.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:00:41.813633804Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:00:41.813633804Z"
+}

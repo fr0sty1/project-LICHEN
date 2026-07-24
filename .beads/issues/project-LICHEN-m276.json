@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m276",
   "title": "No bounds check on pending queue access in pending_head/pending_tail",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 266-276\n\nThe pending_head and pending_tail functions access the pending array without bounds checking:\n```c\nstatic struct lichen_meshcore_pending_event *\npending_tail(struct lichen_meshcore_adapter *adapter)\n{\n    return \u0026adapter-\u003epending[adapter-\u003epending_tail];\n}\n\nstatic const struct lichen_meshcore_pending_event *\npending_head(const struct lichen_meshcore_adapter *adapter)\n{\n    return \u0026adapter-\u003epending[adapter-\u003epending_head];\n}\n```\n\nWhile pending_head and pending_tail are kept in bounds by the modulo operations in pending_push/pending_pop, there is no defensive check here. If pending_head or pending_tail were ever corrupted (memory corruption, uninitialized use), this would cause out-of-bounds access.\n\nThe BUILD_ASSERT at line 47-48 ensures indices fit in uint8_t, but doesn't prevent values \u003e= ARRAY_SIZE(adapter-\u003epending).\n\nConsider adding assert(adapter-\u003epending_head \u003c ARRAY_SIZE(adapter-\u003epending)) for defensive programming.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

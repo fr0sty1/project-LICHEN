@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-wde5",
+  "title": "[review] lora_ipv6_mesh-mkk4: rust/target/ build artifacts tracked in git",
+  "description": "## Severity: P0 correctness\n\n64,679 files under `rust/target/` are tracked by git. These include binary build outputs (`.o`, `.bin`), generated docs (`rust/target/doc/`), incremental compilation artifacts, and lock files.\n\n## Root cause\n`.gitignore` does not contain `rust/target/`. The standard Rust `.gitignore` entry `/target/` is missing.\n\n## Impact\n- Bloats repo size with generated, non-source files\n- Every `cargo build` produces dirty tracked files\n- Binary artifacts and docs fluctuate with compiler versions\n\n## Fix\n1. Add `rust/target/` to `.gitignore`\n2. `git rm -r --cached rust/target/` to untrack existing files\n3. Commit the `.gitignore` + removal",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:59:58.67713359Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:59:58.67713359Z"
+}

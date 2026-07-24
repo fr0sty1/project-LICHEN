@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] Kconfig for LICHEN_TDMA lacks dependency on LICHEN_RPL and detailed acceptance criteria",
   "description": "Per AGENTS.md init graph, TDMA depends on link and RPL. Add select LICHEN_RPL. Add --acceptance for 3 clean passes. Tag codereview. Parent project-LICHEN-majo",
   "acceptance_criteria": "1. LICHEN_TDMA Kconfig now depends on LICHEN_RPL per AGENTS.md init dependency graph. 2. LICHEN_LINK_CCP16_LOAD_BALANCING continues to select it. 3. Three consecutive /codereview passes produce zero P0-P1 findings. 4. All review findings filed as codereview-tagged beads. 5. bd ready --limit 5 run at end. Do not close bead until 3 clean passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

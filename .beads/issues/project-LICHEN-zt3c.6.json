@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.6",
   "title": "Update spec/04-network.md and related specs for link-local + Yggdrasil addressing only",
   "description": "Simplify addressing per nqz6: drop ULA/GUA, make 02xx from Ed25519 the primary address. Update all references. Include derivation, routing logic, identity unification.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xgs3",
   "title": "Traffic class parsing/writing may lose bits on truncation",
   "description": "File: rust/lichen-ipv6/src/lib.rs:294-295 and 326\n\nThe traffic class field handling:\n\nWriting (lines 294-295):\n```rust\nout[0] = 0x60 | (self.traffic_class \u003e\u003e 4);\nout[1] = (self.traffic_class \u003c\u003c 4) | ((self.flow_label \u003e\u003e 16) as u8 \u0026 0x0f);\n```\n\nParsing (line 326):\n```rust\nlet traffic_class = ((buf[0] \u0026 0x0f) \u003c\u003c 4) | (buf[1] \u003e\u003e 4);\n```\n\nAnalysis:\n- traffic_class is u8 (8 bits)\n- IPv6 header stores it split: 4 bits in byte 0, 4 bits in byte 1\n- Writing: (tc \u003e\u003e 4) puts high 4 bits in byte 0; (tc \u003c\u003c 4) puts low 4 bits in byte 1\n- Parsing: reassembles from both bytes\n\nThis looks correct. The operations don't lose bits because traffic_class is exactly 8 bits, stored in two 4-bit segments.\n\nActually, let me verify line 294:\n- 0x60 | (self.traffic_class \u003e\u003e 4)\n- If traffic_class = 0xFF, traffic_class \u003e\u003e 4 = 0x0F\n- 0x60 | 0x0F = 0x6F\n- But version field should be 0110 (6), so high nibble should be 0x6\n- This means traffic_class high nibble is written to low nibble of byte 0\n- That's correct per IPv6 format\n\nThis is not a bug. Let me not file this.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

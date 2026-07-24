@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.66",
   "title": "[cross-file] iface_init_failed not checked in lichen_peer_add/remove",
   "description": "Interaction: lichen_l2.c:lichen_peer_add/remove \u003c-\u003e lichen_l2.c:iface_init_failed\n\nBug: lichen_peer_add() (line 599) and lichen_peer_remove() (line 702) check lichen_lora_l2_needs_reinit() and lichen_lora_l2_get_eui64() but do NOT check atomic_get(\u0026iface_init_failed).\n\niface_init_failed is set when lichen_l2_iface_init() fails partway through (lines 1355, 1370, 1387, 1478, 1545). After this failure:\n- link_ctx may be partially initialized or cleaned up\n- peer_table may be in inconsistent state\n\nlichen_peer_add/remove proceed to modify peer_table even if init failed. While this might not crash (peer_table is static), it creates inconsistent state where peers are added to a non-functional interface.\n\nCompare: lichen_l2_send() (line 820), lichen_l2_enable() (line 964), and lora_rx_callback() (line 1299) all check iface_init_failed.\n\nTrigger:\n1. Interface initialization fails (e.g., link_local derivation fails at line 1500)\n2. iface_init_failed is set to 1\n3. Application calls lichen_peer_add() to add a peer\n4. No iface_init_failed check, function proceeds\n5. Peer added to peer_table of non-functional interface",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

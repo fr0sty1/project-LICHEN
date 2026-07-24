@@ -3,7 +3,7 @@
   "title": "Characterize ESP32-S3 ELF and peripheral gaps",
   "description": "For Heltec V3 and T-Deck canonical ELFs, record program headers, expected address regions, entry/vector state, unmapped loads, and first required peripheral accesses against the current skeletal Renode platform.",
   "acceptance_criteria": "Produce a retained machine-readable address/peripheral gap inventory tied to exact ELF hashes, with ordered minimum model milestones for UART boot, interrupts/timers, SPI/GPIO, and SX1262 TX; no surrogate boot claim.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

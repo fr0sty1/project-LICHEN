@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.16",
   "title": "LICHEN_LINK_KEY_LEN used but may not be defined when CONFIG_LICHEN_LINK is disabled",
   "description": "In lichen_l2.c lines 476-479, LICHEN_LINK_KEY_LEN is used to size rx_link_key[]. This code is inside #if HAVE_LICHEN_LINK, which depends on CONFIG_LICHEN_LINK. The macro LICHEN_LINK_KEY_LEN presumably comes from \u003clichen/link.h\u003e included at line 29 (also guarded by CONFIG_LICHEN_LINK).\n\nThis is currently correct, but the pattern is fragile: if someone adds code using LICHEN_LINK_KEY_LEN outside the HAVE_LICHEN_LINK guard, it will fail to compile only when CONFIG_LICHEN_LINK is disabled - a build configuration that may be rarely tested.\n\nRisk: Copy-paste error by contributor adding new code that references LICHEN_LINK_KEY_LEN outside the guard.\n\nConsider: Adding a compile-time assert or comment at the LICHEN_LINK_KEY_LEN usage site noting the guard dependency.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c line 476",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

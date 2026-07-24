@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-xl2q",
+  "title": "[review] project-LICHEN-worker6-rpj4: edhoc_module NameError in test_edhoc.py",
+  "description": "## Bug: edhoc_module NameError in test_edhoc.py\n\n**Pre-existing issue discovered during review.**\n\n**File:** `python/tests/crypto/test_edhoc.py`\n\n**Locations:**\n- Line 451: `monkeypatch.setattr(edhoc_module, \"_x25519_shared_secret\", unexpected_dh)` — `edhoc_module` is undefined\n- Line 526: `monkeypatch.setattr(edhoc_module, \"VerifyKey\", RejectingVerifyKey)` — `edhoc_module` is undefined\n\nBoth tests need `import lichen.crypto.edhoc as edhoc_module` added to imports.\n\n**Impact:** Two tests in `TestEdhocValidation` fail with `NameError` before they can even reach their assertions. These have been broken since the test was written.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:10:05.513845811Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:10:05.513845811Z"
+}

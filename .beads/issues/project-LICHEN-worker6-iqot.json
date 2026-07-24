@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-iqot",
+  "title": "[review] lora_ipv6_mesh-mkk4: build artifacts committed in rust/target/",
+  "description": "Commit d83cbc5 includes 3 files under `rust/target/`:\n- `rust/target/debug/deps/lichen_gateway-f1ce66f1c4497e73.d` — host-specific dep file with absolute paths\n- `rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh-working/dep-graph.part.bin` — binary incremental build artifact (4.2 MB)\n- `rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh.lock` — incremental build lock file\n\nRoot cause: the root `.gitignore` does not exclude `target/`. Only `firmware/bridge-rust/.gitignore` has `target/`. These build artifacts are now tracked in git, polluting the repo with host-specific paths and binary blobs.\n\nFix: add `target/` to the root `.gitignore`, then `git rm --cached` the tracked artifacts.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:51:49.810722277Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:51:49.810722277Z"
+}

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pom0",
   "title": "MessagesResource.render_post id collision handling",
   "description": "File: python/src/lichen/coap/resources.py:555-559\n\nThe message ID auto-increment logic has issues:\n```python\nbody.setdefault('id', self._next_id)\nif isinstance(body['id'], int):\n    self._next_id = max(self._next_id + 1, body['id'] + 1)\nelse:\n    self._next_id += 1\n```\n\nProblems:\n1. If client provides {'id': 999999999}, _next_id jumps to 1 billion unnecessarily\n2. String IDs like 'msg-1' bypass the int check but are stored, then used as dict keys\n3. _sent[msg_id] at line 564 uses str(body['id']) but _sent_order stores msg_id directly\n\nIf multiple clients provide the same numeric ID, earlier messages get overwritten at line 564 since _sent uses ID as key.\n\nFix: Server should always assign IDs, or validate provided IDs don't conflict.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

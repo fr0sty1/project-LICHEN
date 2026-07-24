@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xv4a",
   "title": "[cross-impl] OSCORE NVM failure path differs in Zephyr C vs Python/Rust",
   "description": "Commits 87f90bc7b, dd794057c, 144f124d3 updated lichen/subsys/lichen/oscore/oscore.c:1591 nvm_failed path with detailed SECURITY comment referencing RFC 8613 §7.2/§8.4, SSN rollback prevention, and python-ano.41. Rust edhoc.rs and python/crypto/oscore.py have different error paths and zeroization for protect (no NVM). The C mutex + s_seq_initialized guard and wipe logic may produce different SSN behavior on failure vs Python MemorySecurityContext. Test vectors in test/vectors/oscore.json do not cover NVM failure. Risks nonce reuse or desync across impls.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

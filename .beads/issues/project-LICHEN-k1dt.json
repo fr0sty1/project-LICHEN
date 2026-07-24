@@ -3,7 +3,7 @@
   "title": "codec.rs: BitReader::read returns wrong error type for partial byte reads",
   "description": "File: rust/lichen-schc/src/codec.rs\nLines: 126-140 (BitReader::read)\n\nCategory: CORRECTNESS\n\nThe BitReader::read() function computes required bits and compares against available bits:\n```rust\nfn read(\u0026mut self, nbits: usize) -\u003e Result\u003cu128, SchcError\u003e {\n    let required_bits = self.pos + nbits;\n    let available_bits = self.buf.len() * 8;\n    if required_bits \u003e available_bits {\n        return Err(TooShort::new(required_bits.div_ceil(8), self.buf.len()).into());\n    }\n    ...\n}\n```\n\nThe error reports byte counts (required_bits.div_ceil(8) vs self.buf.len()), but the actual shortage may be less than a full byte. For example:\n- Buffer has 2 bytes (16 bits), already read 15 bits (pos=15)\n- Trying to read 4 bits (required_bits=19)\n- Error: TooShort(3, 2) - \"need 3 bytes, have 2\"\n- But actually we only need 19 bits (2.375 bytes)\n\nThis is technically accurate since we do need at least 3 bytes to have 19 bits, but the error message may be misleading when debugging partial-byte edge cases.\n\nImpact: Minor - error messages are slightly imprecise but functionally correct.\n\nNote: Low priority, the error boundary is correct even if the message is imprecise.",
   "notes": "Commit: 2f1b6b7f3",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

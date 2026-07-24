@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k5zk",
   "title": "Audit Rust/Zephyr/Python implementation parity",
   "description": "THREE co-equal implementations: Rust, Zephyr (C), Python. Python also runs simulator (test oracle). When any disagree, SPEC decides. Need: (1) Feature matrix across all 3, (2) Shared test vectors all must pass (gbuw), (3) Python sim as interop test harness.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

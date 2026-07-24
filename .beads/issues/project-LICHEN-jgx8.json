@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jgx8",
   "title": "[codereview pass 2/3] AnnounceMessage docstring range now 0-15 but some tests/specs assume 0-7; update validation in scheduler if needed",
   "description": "After rename and range update to 0-15 per schema and test vectors, verify all call sites and update if any hard-coded \u003c8 checks. Also check C/Rust for matching range. P3 consistency. Tagged codereview. Discovered-from project-LICHEN-hjo8.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T17:28:56.962795247Z",

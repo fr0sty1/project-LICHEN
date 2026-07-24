@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ypgf",
+  "title": "[review] project-LICHEN-worker6-ghdn: fragmentation test (std) does not compile",
+  "description": "Pre-existing issue: `cargo test -p lichen-schc --test fragmentation --features std` fails to compile with 44 errors — missing types (SenderOutput, SenderStatus, ReceiverResponse, DEFAULT_WINDOW_SIZE, DEFAULT_RECEIVER_LIMIT, TILE_SIZE, MAX_ACK_REQUESTS) and wrong function signatures. The test appears to have drifted from the implementation API.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:22:24.558784112Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:22:24.558784112Z"
+}

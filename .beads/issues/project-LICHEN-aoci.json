@@ -2,7 +2,7 @@
   "id": "project-LICHEN-aoci",
   "title": "[cross-impl] EDHOC transcript hash divergence",
   "description": "Rust (edhoc.rs:415-422: G_Y || H(msg1)), C (edhoc.c:750-764: H(msg1)||G_Y||C_R), Python differ on TH_2/TH_3/TH_4 computation. Breaks PRK chain, MACs, signatures, OSCORE export. See explore report for full details + test/vectors/edhoc.json mismatch. Recent uk36/ow3c/hnyw fixes did not align. Must match spec + Python oracle.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

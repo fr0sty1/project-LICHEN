@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-6hcb",
+  "title": "[review] lora_ipv6_mesh-mkk4: SCHC Fragment::from_bytes All-1 payload uses raw wire bytes",
+  "description": "In `rust/lichen-schc/src/fragment.rs` `Fragment::from_bytes` (line 255), the All-1 fragment path extracts payload as `\u0026data[2 + MIC_LENGTH..data.len() - 1]`. This uses raw wire bytes which are still shifted left by 1 bit (wire format), not recovered bytes. The regular fragment path correctly uses `\u0026body[2..2 + content_len]` (recovered/shifted-right bytes from the body buffer). This means All-1 fragment payloads are corrupted after parsing - the bytes are in wire format, not original. Additionally, `data.len() - 1` skips the last wire byte which may drop needed data. Fix: the All-1 payload must also come from the recovered body buffer (after fixing the compile-error issue with local body reference).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:05:08.90685786Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:05:08.90685786Z"
+}

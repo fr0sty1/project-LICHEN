@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.3",
   "title": "Update lichen-gateway, lichen-meshtastic for EMA/load_factor/density and rf_health.rs",
   "description": "Integrate EMA, load_factor, density calculations for adaptive SF/rebalance in rf_health. Ensure perfect match for ccp9/ccp16 vectors. No dead code.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

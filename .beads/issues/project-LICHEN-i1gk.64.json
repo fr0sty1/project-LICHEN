@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.64",
   "title": "[ipv6_addr.c:269-315 vs lichen_l2.c:1362] log_link_local_from_eui64 failure causes iface_init failure",
   "description": "Cross-file analysis: lichen_l2_iface_init() at line 1362 calls lichen_log_link_local_from_eui64() and on failure (ret \u003c 0), jumps to fail_late_init. Examining ipv6_addr.c:269-315, the function can fail if: (1) eui64 is NULL (line 276), (2) eui64_to_iid fails (line 285), (3) make_link_local fails (line 293), or (4) ipv6_addr_to_str fails (line 302). Case 4 is explicitly marked non-fatal at line 304-305 and doesn't cause return failure. Cases 2-3 are internal functions that only fail on NULL, which can't happen since eui64 was validated. Case 1: eui64 comes from lichen_lora_l2_get_eui64() which was already NULL-checked at line 1246. So the only way this function fails in practice is if the internal calls are buggy. But the goto fail_late_init path exists, and it does cleanup including setting iface_init_failed. The consequence: a hypothetical future bug in ipv6_addr.c would cause iface_init to fail permanently until reboot. This coupling is acceptable but worth documenting.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "docs",
   "assignee": "Mark Atwood",

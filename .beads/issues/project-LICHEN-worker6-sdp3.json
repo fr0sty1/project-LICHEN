@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-sdp3",
+  "title": "[review] project-LICHEN-2auf.44.11.1.1: duplicate #[test] attribute in vectors.rs:409",
+  "description": "vectors.rs:409 has a duplicate #[test] attribute:\\n\\n  #[test]\\n  #[test]\\n  fn test_edhoc_interop_vectors()\\n\\nCauses a compilation warning (duplicate_macro_attribute) and may cause issues with some test runners.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:52:40.684739473Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:52:40.684739473Z"
+}

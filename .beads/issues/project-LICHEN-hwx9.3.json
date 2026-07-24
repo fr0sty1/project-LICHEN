@@ -4,7 +4,7 @@
   "description": "Align generic C/Zephyr fragmentation with the approved LICHEN M=1/N=6 profile, ACK bitstream, bitmap order, RCS placement, and selected capacity while respecting embedded memory limits.",
   "acceptance_criteria": "Host/native_sim tests consume shared vectors; C warnings-as-errors and applicable Zephyr validation pass.",
   "notes": "Implementation checkpointed in 159bf0dcf. Local validation passed: strict Clang C11 warnings-as-errors; standalone SCHC 13/13; strict generated-header compile; host exact recovery and 23,562-byte/126-fragment reassembly harness; sender/receiver delivery timing and lifetime harnesses; fresh fuzz build and plain fuzz; seven generator mutation probes; git diff --check; three final independent reviews clean. Sender state 56 bytes; receiver 280 bytes plus caller-owned buffer. BLOCKED only on required Zephyr native_sim/Twister validation: local checkout has no West workspace and AWS_PROFILE=personal in us-west-2 returns 'Your session has expired. Please reauthenticate using aws login.' Leave issue open until AWS login, then run prepared builder volume workflow and native_sim/Twister.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

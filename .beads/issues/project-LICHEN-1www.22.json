@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.22",
   "title": "lichen_l2_send missing pkt NULL check",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:266-354\n\nlichen_l2_send() is called by Zephyr network stack with pkt parameter. The function does not check if pkt is NULL before calling net_pkt_get_len(pkt).\n\nWhat goes wrong: If Zephyr calls L2 send with NULL pkt (possible in error paths or during interface shutdown), dereferencing pkt would crash. While Zephyr should never do this, defensive NULL check is cheap.\n\nNote: Other L2 implementations in Zephyr also assume pkt is non-NULL since the stack guarantees it, but given this is security-critical code, defense-in-depth applies.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

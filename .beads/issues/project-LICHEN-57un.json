@@ -2,7 +2,7 @@
   "id": "project-LICHEN-57un",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Add _Nonnull/_Nullable to pointer params and returns in public headers. Catches null bugs at compile time.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nefs",
   "title": "[codereview-pass2] coap/Kconfig: imprecise reference to non-existent coap/README in deaddrop help",
   "description": "lichen/subsys/lichen/coap/Kconfig:275 - Help text says 'lichen/subsys/lichen/coap/README (if present)' but no such file exists per glob search. Per AGENTS.md 'NO proactively create documentation files'. Remove reference. discovered-from:project-LICHEN-p3dm",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:02:27.731541225Z",

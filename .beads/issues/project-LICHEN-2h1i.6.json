@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.6",
   "title": "task",
   "description": "## Domain\n\n**lichennet.work** — registered 2026-07-18 via Epik, expires 2028-07-18\n\n## Next Steps\n- [ ] Set up DNS\n- [ ] Landing page (project info, demo apps, hardware links)\n- [ ] Email forwarding (contact@lichennet.work?)\n- [ ] Point demo app dashboards here for conferences",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

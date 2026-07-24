@@ -3,7 +3,7 @@
   "title": "BLE transport: potential NULL dereference in connected_cb",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 121-127\n\nAfter calling bt_conn_get_info(), the code accesses info.le.data_len-\u003etx_max_len without checking if data_len is NULL:\n\n    if (bt_conn_get_info(conn, \u0026info) == 0) {\n        transport_state.mtu = info.le.data_len-\u003etx_max_len;\n        ...\n    }\n\nThe data_len field can be NULL if the connection doesn't have LE Data Length extension negotiated (BLE 4.0 connections). This will cause a NULL pointer dereference on older BLE devices.\n\nFix: Check if info.le.data_len != NULL before dereferencing.",
   "notes": "Fixed as part of MTU refactor in ble_ipsp_transport.c. The buggy bt_conn_get_info + data_len deref was completely replaced by safe bt_gatt_get_mtu(conn) calls (see connected_cb:128 and slip_send:538). No NULL deref possible. Fixed in commit e7443a373 (p0 batch). Code reviewed and builds clean.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

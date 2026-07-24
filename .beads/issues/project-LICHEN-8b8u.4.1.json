@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-8b8u.4.1",
   "title": "Python: add comprehensive test for node_address.json vectors in test_vectors.py using Identity and iid_to_human_address",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

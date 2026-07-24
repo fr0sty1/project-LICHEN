@@ -2,7 +2,7 @@
   "id": "project-LICHEN-sq2k",
   "title": "valid_utf8_text boundary check inconsistency at sequence end",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 445-515 (valid_utf8_text function)\n\nThe UTF-8 validation uses \u003e= for boundary checks in multi-byte sequences:\n```c\n} else if (c \u003e= 0xc2U \u0026\u0026 c \u003c= 0xdfU) {\n    if (i + 1U \u003e= payload_len ||  // Checks i+1 \u003e= len\n```\n\nThis correctly rejects when i+1 is out of bounds. However, the check pattern is:\n- 2-byte: i + 1U \u003e= payload_len (correct - needs 1 more byte after i)\n- 3-byte: i + 2U \u003e= payload_len (correct - needs 2 more bytes after i)\n- 4-byte: i + 3U \u003e= payload_len (correct - needs 3 more bytes after i)\n\nActually, examining more carefully: if payload_len is 2 and i is 0, then for a 2-byte sequence we need bytes at i and i+1 (positions 0 and 1). The check is i+1 \u003e= payload_len, i.e. 1 \u003e= 2, which is false, so we proceed. We access payload[1] which is valid. This is correct.\n\nIf payload_len is 1 and i is 0, the check is 1 \u003e= 1, which is true, so we reject. Correct.\n\nThis function is actually correctly implemented. Not a bug.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

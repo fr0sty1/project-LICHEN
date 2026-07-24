@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.17",
   "title": "gpio_pin_configure_dt failure doesn't prevent gpio_pin_set_dt",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

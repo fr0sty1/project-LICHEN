@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.8",
   "title": "mypy: 8 func-returns-value errors (returning None when declared otherwise)",
   "description": "8 func-returns-value errors where functions declared to return a value only return None:\n- src/lichen/interface/kiss/handler.py: lines 120, 122, 124, 126, 128, 130, 132 (_handle_data, _handle_txdelay, _handle_persistence, _handle_slottime, _handle_txtail, _handle_fullduplex, _handle_return)\n- src/lichen/interface/handler.py: line 71 (_handle_log_subscribe)\n\nFix: Either update return type to -\u003e None, or implement the return value as expected.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

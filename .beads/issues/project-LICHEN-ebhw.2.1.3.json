@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ebhw.2.1.3",
   "title": "Add comprehensive tests for ygg_addr_from_pubkey in lichen-core using yggdrasil-derivation.json vectors",
   "description": "Load test vectors in #[cfg(test)] and assert exact byte match for all vectors including zero-pubkey and official Ygg one. Cross-validate with iid_from_pubkey. Update or add to existing addr.rs tests.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

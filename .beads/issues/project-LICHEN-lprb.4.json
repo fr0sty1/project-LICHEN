@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-lprb.4",
   "title": "Verify no compilation issues in Rust workspace after merge conflict resolution for board config",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vwbb.3",
   "title": "Propagate canonical L2/CoAP/TDMA comments to all t_deck_esp32s3_procpu*.conf files",
   "description": "Ensure t_deck_esp32s3_procpu.conf in gateway/, puck/, bridge-zephyr/ and the validation variants all have matching detailed comments about LICHEN_L2, CoAP path, heap size rationale, beacon interval, and battery provisioning per the resolved merge in project-LICHEN-vwbb. Remove any remaining merge conflict markers or outdated comments.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

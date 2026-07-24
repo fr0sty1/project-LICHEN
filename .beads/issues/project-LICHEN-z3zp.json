@@ -3,7 +3,7 @@
   "title": "Review: Zephyr C code 2026-06-28",
   "description": "Single-pass read-only code review of the Zephyr C code scope. Findings are filed as child issues under this epic.",
   "notes": "Review confidence: 35% chance of missed bug. Least confident areas: generated/board-specific Zephyr driver integration, full SCHC rule coverage, and code paths behind Kconfig combinations not visible from static reading. Would raise confidence if: a Zephyr build matrix for the lichen module ran cleanly, unit tests covered OSCORE/link/RPL null and boundary cases, and compile_commands.json for the current tree was available.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

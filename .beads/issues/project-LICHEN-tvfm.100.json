@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.100",
   "title": "[ipv6_addr.c:136-155] ULA prefix validation only checks first byte, not /8 boundary",
   "description": "Category not checked: IPv6 address handling edge cases\n\nBug found: lichen_make_ula() validates prefix[0] == 0xfd (line 152), but the comment says 'fd00::/8' which implies ALL 8 bits of the first byte. Actually fd00::/8 means:\n- First byte must be 0xfd (correct check)\n\nBut wait - /8 means first 8 bits, which IS the first byte. So prefix[0] == 0xfd is correct.\n\nHowever, the function copies all 8 bytes of prefix without validating bytes 1-7. RFC 4193 says:\n- Bits 0-7: 0xfd (L=1)\n- Bits 8-15: Global ID high byte\n- Bits 16-55: Global ID (40 bits total)\n- Bits 56-63: Subnet ID\n\nThe function doesn't validate that bytes 1-7 form a valid Global ID. An all-zeros Global ID (fd00:0000:0000::) is technically valid but collides with other implementations using the same. A proper ULA should use a pseudo-random Global ID per RFC 4193 Section 3.2.2.\n\nImpact: P4 - Allows potentially colliding ULA prefixes, but this is arguably intentional simplicity.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

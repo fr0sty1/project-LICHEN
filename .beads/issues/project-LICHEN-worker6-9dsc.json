@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-9dsc",
+  "title": "[review] project-LICHEN-2auf.44.11.1.1: build_context_2/3 omit C_R and TH from MAC computation",
+  "description": "The new `build_context_2` and `build_context_3` signatures accept `C_R` and `TH` parameters but the implementations ignore them (prefixed with `_`). \n\nPer RFC 9528:\n- §6.2: context_2 = \u003c\u003c C_R, ID_CRED_R, TH_2, CRED_R, ? EAD_2 \u003e\u003e\n- §6.3: context_3 = \u003c\u003c ID_CRED_I, TH_3, CRED_I, ? EAD_3 \u003e\u003e\n\nCurrent implementation at `rust/lichen-oscore/src/edhoc.rs:485-497` computes only \u003c\u003c ID_CRED, CRED \u003e\u003e for both contexts. The new signatures are correct (adding the missing parameter slots) but the function bodies still omit `C_R` and `TH_x` from the CBOR sequence. This will cause EDHOC interop failures against other RFC-compliant implementations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:47:20.426455752Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:47:20.426455752Z"
+}

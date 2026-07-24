@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ea3k",
   "title": "Compliance: python kiss/bridge.py dispatch byte",
   "description": "Policy: 02-physical-link.md §4.1. File: python/src/lichen/interface/kiss/bridge.py. Status: COMPLIANT. Lines 366-368 check payload[0] == L2_DISPATCH_ROUTING (0x15) before checking routing type.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

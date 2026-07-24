@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-5pfv",
+  "title": "[review] project-LICHEN-worker6-i98v: lib.rs mod tests left behind after API migration, 27 compile errors",
+  "description": "The commit updated tests/vectors.rs for the new OSCORE API (Context::new with id_context, removed load_existing, removed protect_request/protect_response from Context, changed OscoreSeqNum::new to u64, changed derive_key/derive_iv to Option\u003c\u0026[u8]\u003e, changed encode_piv to return Option, changed protect_response to require 6 args with include_piv: bool) but left the internal test module in lib.rs untouched. Result: 27 compile errors when running cargo test -p lichen-oscore.\\n\\nAffected call sites:\\n- seqnum.rs:180,183,186,191,192: OscoreSeqNum::new(u32::MAX) should be u64::MAX.into()\\n- lib.rs:2029,2035,2041,2077: derive_key/derive_iv called with \u0026id_context (Vec ref) instead of Some(\u0026id_context)\\n- lib.rs:2061,2065: OscoreSeqNum::new(sender_seq as u32) should be as u64\\n- lib.rs:2079: piv.encode_piv(...) on Option\u003cOscoreSeqNum\u003e needs .unwrap() first\\n- lib.rs:2287,2434,2442,2738,2820,3266,3271,3302,3306,3312,3316: protect_response called with 5 args, needs 6th bool arg\\n- lib.rs:2458,2494: Context::load_existing removed from API, needs Context::new + restore_existing pattern",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:06:20.835507874Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:06:20.835507874Z"
+}
