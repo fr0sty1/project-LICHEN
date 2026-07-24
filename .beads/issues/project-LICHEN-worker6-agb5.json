@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-agb5",
+  "title": "[review] project-LICHEN-worker6-p19p: test_hash.c orphan file at repo root",
+  "description": "## Issue\n\n`test_hash.c` was added at the repository root in commit 7caf5b3.\n\n### Problem\n\n- No SPDX license header (required for all files in this project)\n- No build integration (no Makefile, CMakeLists.txt, or Cargo.toml reference it)\n- Appears to be a one-off debug/scratch file accidentally committed\n- Tests `lichen_hash_32` with hardcoded expected values but is not part of any test suite\n\n### Expected\n\nEither integrate into the proper test infrastructure (Zephyr test or equivalent) with license headers and build integration, or remove the file.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:36:57.052790311Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:36:57.052790311Z"
+}
