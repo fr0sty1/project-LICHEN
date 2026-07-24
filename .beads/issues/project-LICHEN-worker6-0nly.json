@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-0nly",
   "title": "[review] project-LICHEN-6mij: coap_oscore_authorize_mutating returns coap_oscore_send_unauthorized which already sends response; OK for single-error-path calls but register error case for 4.29 sends unprotected response even for OSCORE requests in deaddrop_post rate-limit path",
   "description": "In coap_dtn.c:137-138, when a rate-limited deaddrop_post fails for an OSCORE-protected request, `lichen_coap_oscore_respond(\u0026auth, ...)` is called. But `auth` was populated by `authorize_mutating` on the original request and is valid. However, at coap_dtn.c:119-123, when a non-OSCORE, non-local-admin request hits deaddrop_post, it sends an UNPROTECTED 4.01 via `lichen_coap_respond` even though the OSCORE option path already returned early via `authorize_mutating` for OSCORE requests that lack a context. This is correct — those paths are mutually exclusive. BUT: if `authorize_mutating` fails (returns \u003c 0), it has already sent a response (4.01 via coap_oscore_send_unauthorized), and the caller returns immediately. No double-send. Verified correct.\n\nAfter full review: no actual bugs found. This is a clean refactoring that correctly centralizes the OSCORE auth pattern.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T15:56:59.717890969Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T15:56:59.717890969Z"
+  "updated_at": "2026-07-24T15:57:05.00209195Z",
+  "closed_at": "2026-07-24T15:57:05.00209195Z",
+  "close_reason": "After full review: no actual double-send or unprotected OSCORE error response bug. auth.is_protected+ctx+piv_len guard in lichen_coap_oscore_respond prevents unprotected fallthrough. All paths verified correct."
 }
