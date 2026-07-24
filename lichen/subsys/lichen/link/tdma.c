@@ -1,33 +1,23 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-/**
- * @file tdma.c
- * @brief LICHEN TDMA slot scheduling (gateway-centric mode)
- *
- * Implements hash-based slot computation and TDMA context management
- * for coordinated capacity protocol (CCP). Enabled via CONFIG_LICHEN_TDMA.
- */
-
-#include <lichen/link_ctx.h>
 #include <lichen/link.h>
+#include <lichen/link_ctx.h>
 #include <lichen/errno.h>
 #include <string.h>
 #include <stdbool.h>
 
-#ifdef CONFIG_LICHEN_TDMA
-
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
+int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {
 	if (num_slots == 0) num_slots = 8;
-	uint8_t buf[8];
-	memcpy(buf, eui64, 8);
+	uint8_t data[8];
+	memcpy(data, eui64, 8);
 	uint32_t e = epoch;
-	for (size_t i = 0; i < 8; i++) {
-		buf[i] ^= (uint8_t)e;
+	for (size_t i = 0; i < 4; i++) {
+		data[i] ^= (uint8_t)(e & 0xff);
 		e >>= 8;
 	}
-	uint32_t h = lichen_hash_32(buf, 8);
+	uint32_t h = lichen_hash_32(data, 8);
 	return (uint8_t)(h % num_slots);
 }
 
@@ -65,5 +55,3 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	uint32_t g = LICHEN_TDMA_GUARD_MS;
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
 }
-
-#endif /* CONFIG_LICHEN_TDMA */

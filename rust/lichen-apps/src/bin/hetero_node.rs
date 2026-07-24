@@ -15,6 +15,8 @@ use std::time::{Duration, Instant};
 
 use sha2::{Digest, Sha256};
 
+const MAX_PACKET_HASHES: usize = 10_000;
+
 /// Metrics collected during node operation.
 struct NodeMetrics {
     tx_count: u32,
@@ -144,7 +146,9 @@ fn main() {
                 metrics.tx_bytes += announce.len() as u64;
                 let hash = Sha256::digest(&announce);
                 let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
-                metrics.packet_hashes_sent.insert(hash_prefix);
+                if metrics.packet_hashes_sent.len() < MAX_PACKET_HASHES {
+                    metrics.packet_hashes_sent.insert(hash_prefix);
+                }
                 emit(
                     "tx",
                     &announce,
@@ -177,7 +181,9 @@ fn main() {
                     // Track packet hash
                     let hash = Sha256::digest(&buf[..pkt.len]);
                     let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
-                    metrics.packet_hashes_received.insert(hash_prefix);
+                    if metrics.packet_hashes_received.len() < MAX_PACKET_HASHES {
+                        metrics.packet_hashes_received.insert(hash_prefix);
+                    }
                     let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {

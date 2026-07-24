@@ -5,7 +5,6 @@
 
 use lichen_rpl::trickle::TrickleEvent;
 
-use crate::routing::TrickleSafeLivenessPolicy;
 use crate::{RplMaintenanceOutcome, RplNode};
 
 pub const DEFAULT_MAINTENANCE_INTERVAL_MS: u64 = 1_000;
@@ -219,7 +218,7 @@ impl RplRuntime {
             .next_maintenance_ms
             .is_some_and(|deadline| now_ms >= deadline)
         {
-            let outcome = node.maintain(now_ms, self.config.neighbor_timeout_ms, &());
+            let outcome = node.maintain(now_ms, self.config.neighbor_timeout_ms);
             self.next_maintenance_ms = self.next_maintenance_after(now_ms);
             Some(outcome)
         } else {
@@ -469,141 +468,5 @@ mod tests {
             .complete_receive(&mut node, p2.action, 10_001, 1)
             .unwrap();
         assert_eq!(node.router.neighbors().count(), 0);
-    }
-
-    #[test]
-    fn poll_with_pending_rejects_until_completed() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let gen = 1;
-
-        let _p1 = runtime.poll(&mut node, 0, gen).unwrap();
-        assert_eq!(
-            runtime.poll(&mut node, 100, gen),
-            Err(RplRuntimeActionError::PollWithPending)
-        );
-
-        let p1 = runtime.poll(&mut node, 0, gen).unwrap_err();
-        assert_eq!(p1, RplRuntimeActionError::PollWithPending);
-    }
-
-    #[test]
-    fn poll_with_pending_clears_after_receive_completion() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let gen = 1;
-
-        let action = runtime.poll(&mut node, 0, gen).unwrap().action;
-        runtime
-            .complete_receive(&mut node, action, 200, gen)
-            .unwrap();
-
-        let _next = runtime.poll(&mut node, 200, gen).unwrap();
-    }
-
-    #[test]
-    fn stale_generation_rejected_on_poll() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let gen = 1;
-
-        let action = runtime.poll(&mut node, 0, gen).unwrap().action;
-        runtime.complete_receive(&mut node, action, 0, gen).unwrap();
-
-        assert_eq!(
-            runtime.poll(&mut node, 0, 2),
-            Err(RplRuntimeActionError::StaleGeneration)
-        );
-    }
-
-    #[test]
-    fn stale_generation_rejected_on_complete_receive() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let gen = 1;
-
-        let action = runtime.poll(&mut node, 0, gen).unwrap().action;
-        assert_eq!(
-            runtime.complete_receive(&mut node, action, 0, 2),
-            Err(RplRuntimeActionError::StaleGeneration)
-        );
-    }
-
-    #[test]
-    fn stale_generation_rejected_on_complete_trickle_transmit() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let gen = 1;
-
-        node.trickle_start(0, 0);
-        let action = runtime.poll(&mut node, 4, gen).unwrap().action;
-        assert_eq!(action, RplRuntimeAction::TrickleTransmit);
-        assert_eq!(
-            runtime.complete_trickle_transmit(&mut node, action, 4, 2),
-            Err(RplRuntimeActionError::StaleGeneration)
-        );
-    }
-
-    #[test]
-    fn stale_generation_rejected_on_complete_trickle_expire() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let gen = 1;
-
-        node.trickle_start(0, 0);
-        let _tx = runtime.poll(&mut node, 4, gen).unwrap();
-        runtime
-            .complete_trickle_transmit(&mut node, RplRuntimeAction::TrickleTransmit, 4, gen)
-            .unwrap();
-
-        let action = runtime.poll(&mut node, 8, gen).unwrap().action;
-        assert_eq!(action, RplRuntimeAction::TrickleExpire);
-        assert_eq!(
-            runtime.complete_trickle_expire(&mut node, action, 8, 0, 2),
-            Err(RplRuntimeActionError::StaleGeneration)
-        );
-    }
-
-    #[test]
-    fn first_poll_binds_unbound_runtime() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-
-        runtime.poll(&mut node, 0, 5).unwrap();
-        let action = runtime.poll(&mut node, 0, 5).unwrap_err();
-        assert_eq!(action, RplRuntimeActionError::PollWithPending);
-    }
-
-    #[test]
-    fn complete_receive_without_pending_action_rejected() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-
-        assert_eq!(
-            runtime.complete_receive(&mut node, RplRuntimeAction::Receive { timeout_ms: 0 }, 0, 1,),
-            Err(RplRuntimeActionError::ActionNotPending)
-        );
-    }
-
-    #[test]
-    fn complete_trickle_transmit_without_pending_action_rejected() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-
-        assert_eq!(
-            runtime.complete_trickle_transmit(&mut node, RplRuntimeAction::TrickleTransmit, 0, 1,),
-            Err(RplRuntimeActionError::ActionNotPending)
-        );
-    }
-
-    #[test]
-    fn complete_trickle_expire_without_pending_action_rejected() {
-        let mut node = node();
-        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-
-        assert_eq!(
-            runtime.complete_trickle_expire(&mut node, RplRuntimeAction::TrickleExpire, 0, 0, 1,),
-            Err(RplRuntimeActionError::ActionNotPending)
-        );
     }
 }

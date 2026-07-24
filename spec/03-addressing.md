@@ -20,7 +20,7 @@ LICHEN nodes have a stable cryptographic identity based on an Ed25519 keypair. H
 
 **Example:** `68T3-TNQW-65FBQ` (from test vector with zero seed)
 
-This address is short enough to speak, type, and remember. It has acceptable collision probability up to 5B nodes (~0.5 expected collisions). It is cryptographically bound to the Ed25519 public key used for signatures, OSCORE, and IPv6 Interface Identifiers. The same IID is used for link-local (`fe80::/10`), ULA, and optional GUA addresses (see 04-network.md). See 06-security.md for unified derivation with Yggdrasil 02xx::/7 compatibility.
+This address is short enough to speak, type, and remember. It has acceptable collision probability up to 5B nodes (~0.5 expected collisions). It is cryptographically bound to the Ed25519 public key used for signatures, OSCORE, and IPv6 Interface Identifiers. The same IID is used for link-local (`fe80::/10`) and primary 02xx::/7 addresses (see 04-network.md). See 06-security.md for unified derivation with Yggdrasil 02xx::/7 compatibility.
 
 On first contact, nodes exchange the full pubkey; TOFU pins the binding. Collisions (rare) are resolved by context, GNSS, or full key verification (DANE/PKIX optional).
 

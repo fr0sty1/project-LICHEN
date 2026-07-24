@@ -127,6 +127,7 @@ struct lichen_meshcore_adapter_stats {
 enum lichen_meshcore_pending_kind {
 	LICHEN_MESHCORE_PENDING_TEXT = 1,
 	LICHEN_MESHCORE_PENDING_STATUS = 2,
+	LICHEN_MESHCORE_PENDING_MAX,
 };
 
 struct lichen_meshcore_pending_event {

@@ -20,20 +20,8 @@
 #include <zephyr/net/net_l2.h>
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/util.h>
-
-#include <lichen/hal.h>
-#include <monocypher.h>
-#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
-#include <lichen/app_identity/app_identity.h>
-#endif
 
 #include <string.h>
-#ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
-#include <ctype.h>
-#include <stdlib.h>
-#include "ipv6.h" /* zephyr/subsys/net/ip — net_ipv6_nbr_add() */
-#endif
 
 /*
  * Compile-time assertion: MTU constants must match between layers.
@@ -59,51 +47,14 @@ BUILD_ASSERT(LICHEN_L2_ADDR_LEN == LICHEN_LORA_L2_ADDR_LEN,
  * Init-order contract with lora_l2.c (project-LICHEN-d7ub.59):
  * lichen_l2_iface_init() owns the network-interface startup path and calls
  * lichen_lora_l2_init() before copying the EUI-64, registering callbacks, or
- * enabling TX/RX. That init path requires an enabled HAL-owned zephyr,lora
- * chosen node; if the board overlay disables it, no runtime ordering can make
- * start() succeed.
+ * enabling TX/RX. That init path requires an enabled lora0 device node; if the
+ * board overlay disables it, no runtime ordering can make start() succeed.
  */
-BUILD_ASSERT(LICHEN_HAL_HAS_LORA_DEVICE,
-	     "LICHEN L2 requires an enabled devicetree chosen zephyr,lora before "
+BUILD_ASSERT(DT_NODE_HAS_STATUS(DT_ALIAS(lora0), okay),
+	     "LICHEN L2 requires an enabled devicetree alias 'lora0' before "
 	     "NET_DEVICE_INIT runs lichen_l2_iface_init()");
 
 LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
-
-#if IS_ENABLED(CONFIG_STATS)
-#include <zephyr/stats/stats.h>
-
-/*
- * L2 RX funnel counters (lora_ipv6_mesh: T1000-E round-trip diagnosis),
- * exported over SMP as the "l2rx" STATS group so the console-less T1000-E's
- * receive path can be localized via if02:
- *   frames   - frames handed to L2 by the radio
- *   verified - passed peer signature verification + decompressed (for a
- *              pinned peer); about to be injected to the IPv6 stack
- *   rejected - failed verification or replay (non-beacon)
- *   injected - successfully injected to the IPv6 stack (net_recv_data ok)
- * If verified/injected climb but the app sees no CoAP response, the gap is
- * above L2 (addressing/CoAP); if they stay flat, the gateway's response is
- * not reaching L2-verified (routing/replay).
- */
-STATS_SECT_START(lichen_l2rx_stats)
-STATS_SECT_ENTRY32(frames)
-STATS_SECT_ENTRY32(verified)
-STATS_SECT_ENTRY32(rejected)
-STATS_SECT_ENTRY32(injected)
-STATS_SECT_END;
-
-STATS_NAME_START(lichen_l2rx_stats)
-STATS_NAME(lichen_l2rx_stats, frames)
-STATS_NAME(lichen_l2rx_stats, verified)
-STATS_NAME(lichen_l2rx_stats, rejected)
-STATS_NAME(lichen_l2rx_stats, injected)
-STATS_NAME_END(lichen_l2rx_stats);
-
-STATS_SECT_DECL(lichen_l2rx_stats) lichen_l2rx_stats;
-#define L2RX_STAT_INC(f) STATS_INC(lichen_l2rx_stats, f)
-#else
-#define L2RX_STAT_INC(f) do { } while (0)
-#endif /* CONFIG_STATS */
 
 /*
  * Log level policy:
@@ -135,7 +86,6 @@ STATS_SECT_DECL(lichen_l2rx_stats) lichen_l2rx_stats;
 #include <lichen/link_ctx.h>
 #include <lichen/replay.h>
 #include <lichen/schc.h>
-#include <lichen/schnorr48.h>
 #define HAVE_LICHEN_LINK 1
 #else
 #define HAVE_LICHEN_LINK 0
@@ -193,10 +143,10 @@ BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
  * Minimum valid LICHEN frame size.
  *
  * Wire format (spec section 4, python/src/lichen/link/frame.py):
- *   Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0-8) + Payload + MIC(0/48)
+ *   Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0-8) + Payload + MIC(4-8)
  *
- * Absolute minimum (broadcast, unsigned, empty payload):
- *   1 + 1 + 1 + 2 + 0 + 0 + 0 = 5 bytes
+ * Absolute minimum (broadcast, 32-bit MIC, empty payload):
+ *   1 + 1 + 1 + 2 + 0 + 0 + 4 = 9 bytes
  *
  * Note: source address is NOT in the wire format; it's derived from context
  * (signature verification or out-of-band information).
@@ -204,10 +154,14 @@ BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
  * SECURITY: Early rejection of runt frames prevents out-of-bounds reads
  * in lichen_link_rx() before MIC validation can occur.
  *
- * MIC size note: unsigned frames have no MIC. Signed frames carry a
- * 48-byte Schnorr signature, which is validated by lichen_link_rx().
+ * MIC size note: 32-bit MIC (4 bytes) is the smallest supported MIC size.
+ * Frames using 64-bit MIC (8 bytes) are always longer than this minimum.
+ * If a security level requires 64-bit MIC but the frame only has 32-bit,
+ * the frame passes this length check but fails during MIC verification
+ * in lichen_link_rx(). This is correct - length check is a fast early-
+ * reject for malformed frames, not a security policy enforcement point.
  */
-#define LICHEN_MIN_FRAME_LEN 5
+#define LICHEN_MIN_FRAME_LEN 9
 
 /*
  * Validate LICHEN_MIN_FRAME_LEN derivation.
@@ -218,13 +172,13 @@ BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
  * (project-LICHEN-1www.41): Use authoritative constants from link.h where
  * available (LICHEN_MIC_32_LEN) to catch drift. Header field sizes are
  * protocol-defined with no shared constant, so we define them locally but
- * validate against LICHEN_MIN_FRAME_LEN = 5 per spec.
+ * validate against LICHEN_MIN_FRAME_LEN = 9 per spec.
  */
 #define LICHEN_FRAME_LENGTH_FIELD 1
 #define LICHEN_FRAME_LLSEC_FIELD  1
 #define LICHEN_FRAME_EPOCH_FIELD  1
 #define LICHEN_FRAME_SEQNUM_FIELD 2
-#define LICHEN_FRAME_MIN_MIC      0
+#define LICHEN_FRAME_MIN_MIC      LICHEN_MIC_32_LEN  /* Use authoritative constant from link.h */
 #define LICHEN_FRAME_MIN_ADDR     0  /* broadcast/NONE mode has 0 addr bytes */
 
 BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
@@ -251,30 +205,35 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  * to ensure signed frames still fit within the LoRa PHY limit.
  *
  * Constant naming (project-LICHEN-tvfm.106, project-LICHEN-tvfm.107):
- * - LICHEN_FRAME_BASE_OVERHEAD (5 bytes): Minimum frame size for validation.
+ * - LICHEN_FRAME_BASE_OVERHEAD (9 bytes): Minimum frame size for validation.
  *   Used in LICHEN_MIN_FRAME_LEN to reject malformed runt frames early.
  *   Does NOT include signature (signature is conditional on has_key).
  * - LICHEN_LORA_FRAME_OVERHEAD (55 bytes): Conservative MTU overhead.
  *   Always reserves space for signature even when not used. This is
  *   intentional: a static MTU simplifies buffer sizing and avoids
- *   dynamic MTU changes when signing keys are provisioned. The 50-byte
+ *   dynamic MTU changes when signing keys are provisioned. The 46-byte
  *   overhead when unsigned is acceptable for the simplicity benefit.
  */
-#define LICHEN_FRAME_BASE_OVERHEAD LICHEN_FRAME_FIXED_HEADER_LEN
+#define LICHEN_FRAME_BASE_OVERHEAD \
+	(LICHEN_FRAME_LENGTH_FIELD + \
+	 LICHEN_FRAME_LLSEC_FIELD + \
+	 LICHEN_FRAME_EPOCH_FIELD + \
+	 LICHEN_FRAME_SEQNUM_FIELD + \
+	 LICHEN_FRAME_MIN_MIC)
 
 /*
  * Assert: LICHEN_LORA_FRAME_OVERHEAD derives from frame format constants.
  *
- * Derivation: fixed header (5 bytes) + Schnorr-48 signature (48 bytes)
- * = 53 bytes base signed overhead. The constant adds 2 bytes of headroom
- * for SCHC rule ID and future address field expansion: 53 + 2 = 55.
+ * Derivation: base overhead (9 bytes, includes 32-bit MIC) + Schnorr-48
+ * signature (48 bytes) = 57 bytes. The constant shaves 2 bytes for SCHC
+ * rule ID headroom: 57 - 2 = 55.
  *
- * This assertion prevents silent drift when LICHEN_FRAME_FIXED_HEADER_LEN
- * or LICHEN_SIG_LEN change without updating lora_l2.h.
+ * This assertion prevents silent drift when any component field or
+ * LICHEN_SIG_LEN changes without updating lora_l2.h.
  * (project-LICHEN-gy7h.9)
  */
 BUILD_ASSERT(LICHEN_LORA_FRAME_OVERHEAD ==
-	     LICHEN_FRAME_FIXED_HEADER_LEN + LICHEN_SIG_LEN + 2,
+	     LICHEN_FRAME_BASE_OVERHEAD + LICHEN_SIG_LEN - 2,
 	     "LICHEN_LORA_FRAME_OVERHEAD derivation stale - update lora_l2.h");
 
 /*
@@ -287,10 +246,10 @@ BUILD_ASSERT(LICHEN_SIG_LEN == 48,
 
 /*
  * Assert: frame header size has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD is independent of the 5-byte unsigned minimum.
+ * LICHEN_LORA_FRAME_OVERHEAD assumes 9-byte minimum frame (broadcast + 32-bit MIC).
  * If this assertion fails, recalculate the overhead constant.
  */
-BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 5,
+BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
 	     "Frame header size changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
 
 /* IPv6 base header size (RFC 8200). Does NOT include extension headers. */
@@ -385,12 +344,12 @@ static struct lichen_link_ctx link_ctx;
 /*
  * Replay protection table for received frames.
  *
- * SECURITY (project-LICHEN-bbti, replay.h:117): Replay windows allocated ONLY
- * after Schnorr-48 verification succeeds in peer_try_all_pubkeys() (constant-time
- * full scan of peer_table) + authenticate_inner_payload() + commit_replay().
- * No unauthenticated path to lichen_replay_get() or table mutation. Full table
- * fails closed (no LRU eviction of legitimate state). Old LRU poisoning via
- * distinct EUIs + weak MIC fixed by mandatory signatures (project-LICHEN-rg8t).
+ * SECURITY (replay.h:100-120): Replay windows are only allocated AFTER peer
+ * authentication succeeds. This prevents a poisoning attack where an attacker
+ * floods spoofed source addresses to evict legitimate peers' replay windows
+ * via LRU eviction. Replay windows are only allocated after peer
+ * authentication succeeds (peer_try_all_pubkeys checks signatures before
+ * calling replay_get()).
  */
 static struct lichen_replay_table replay_table;
 
@@ -477,15 +436,6 @@ BUILD_ASSERT(0, "LICHEN L2 requires single-core: atomic_t usage lacks memory bar
 		"Disable CONFIG_SMP or ensure CONFIG_MP_MAX_NUM_CPUS == 1.");
 #endif
 static atomic_t link_ctx_initialized;
-
-#ifdef CONFIG_LICHEN_L2_TEST_HOOKS
-static atomic_t test_tx_packets;
-static atomic_t test_rx_frames;
-static atomic_t test_rx_injected_packets;
-K_MUTEX_DEFINE(test_stats_mutex);
-static uint8_t test_last_injected[LICHEN_L2_TEST_CAPTURE_MAX];
-static size_t test_last_injected_len;
-#endif
 #endif
 
 /*
@@ -626,6 +576,7 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 				uint8_t src_eui64[8])
 {
 	int ret;
+	size_t saved_out_len = *out_len;
 	const uint8_t *saved_peer_pubkey = ctx->peer_pubkey;
 	const uint8_t *saved_peer_eui64 = ctx->peer_eui64;
 	struct lichen_frame parsed;
@@ -636,22 +587,15 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	}
 
 	/*
-	 * SECURITY: This helper is the peer-authenticated RX path. Unsigned frames
-	 * must not be attributed to a known peer by trying each peer's public key;
-	 * without a signature, lichen_link_rx() has no peer-auth proof to verify.
+	 * SECURITY: This helper is the peer-authenticated RX path. CRC32-only
+	 * frames may still be accepted by lichen_link_rx() for explicit
+	 * unauthenticated/dev-mode callers, but they must not be attributed to
+	 * a known peer by trying each peer's public key. Without a signature,
+	 * lichen_link_rx() has no peer-auth proof to verify.
 	 */
 	if (!parsed.signature_present) {
 		return -LICHEN_EAUTH;
 	}
-
-	/*
-	 * PERFORMANCE: Parse frame once, verify signature against all peers.
-	 * Previously called lichen_link_rx() per peer, which re-parsed the frame
-	 * and re-extracted the auth payload for each iteration (O(n) frame
-	 * parsing). Now uses the pre-parsed frame to call schnorr48_verify_frame()
-	 * directly per peer. Full authentication (SCHC decompress, replay check)
-	 * runs only once for the matching peer. (project-LICHEN-i1gk.100)
-	 */
 
 	/*
 	 * SECURITY: Constant-time peer iteration to prevent timing side-channel.
@@ -677,19 +621,13 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 			continue;
 		}
 
-		if (!schnorr48_pubkey_valid(peer_table[i].pubkey)) {
-			continue;
-		}
+		ctx->peer_pubkey = peer_table[i].pubkey;
+		ctx->peer_eui64 = peer_table[i].eui64;
+		*out_len = saved_out_len;
 
-		int verify_result = schnorr48_verify_frame(
-			frame[0], frame[1],
-			parsed.epoch, parsed.seqnum,
-			parsed.dst_addr, parsed.dst_addr_len,
-			parsed.payload, parsed.payload_len,
-			parsed.mic,
-			peer_table[i].pubkey);
-
-		if (verify_result == 1) {
+		ret = lichen_link_rx(ctx, replay, frame, frame_len,
+				     out_ipv6, out_len, src_eui64);
+		if (ret == 0) {
 			found_idx = (int)i;
 #ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
 			break;
@@ -697,24 +635,25 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 			continue;
 #endif
 		}
+
+		if (ret != -LICHEN_EAUTH) {
+			ctx->peer_pubkey = saved_peer_pubkey;
+			ctx->peer_eui64 = saved_peer_eui64;
+			*out_len = saved_out_len;
+			return ret;
+		}
 	}
 
 	if (found_idx >= 0) {
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
-		/*
-		 * Call lichen_link_rx() for the matching peer to handle full
-		 * authentication (frame re-parse, inner payload extraction,
-		 * MIC verify, SCHC decompress, replay check/commit).
-		 * This runs exactly once, not O(n). Replay is checked here
-		 * (not in the probe loop above) so the duplicate-replay-commit
-		 * workaround from project-LICHEN-bbti is no longer needed.
-		 */
+		*out_len = saved_out_len;
 		ret = lichen_link_rx(ctx, replay, frame, frame_len,
 				     out_ipv6, out_len, src_eui64);
 		if (ret < 0) {
 			ctx->peer_pubkey = saved_peer_pubkey;
 			ctx->peer_eui64 = saved_peer_eui64;
+			*out_len = saved_out_len;
 			return ret;
 		}
 
@@ -726,6 +665,7 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 
 	ctx->peer_pubkey = saved_peer_pubkey;
 	ctx->peer_eui64 = saved_peer_eui64;
+	*out_len = saved_out_len;
 	return -LICHEN_EAUTH;
 }
 #endif /* HAVE_LICHEN_LINK */
@@ -790,22 +730,19 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 	struct lichen_peer_entry *existing = peer_find_locked(eui64);
 	if (existing != NULL) {
 		/*
-		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
-		 * pubkey; subsequent contacts must present the same key.
-		 * Key rotation requires explicit removal (lichen_peer_remove)
-		 * followed by re-add. Silent key changes are rejected to
-		 * prevent impersonation attacks.
+		 * SECURITY: Clear replay window before updating pubkey.
+		 * A new pubkey means new key material, so old sequence numbers
+		 * are no longer valid. Without this, stale replay state could
+		 * reject valid packets from the rotated key or accept replays.
+		 * (project-LICHEN-0li1.36)
 		 */
-		if (crypto_verify32(existing->pubkey, pubkey) != 0) {
-			LOG_WRN("lichen_l2: TOFU violation for ..%02x:%02x "
-				"(pubkey mismatch)", eui64[6], eui64[7]);
-			k_mutex_unlock(&rx_mutex);
-			return -EEXIST;
-		}
-		/* Same key — just refresh last_seen timestamp */
+		lichen_replay_remove(&replay_table, eui64);
+		memcpy(existing->pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);
 		existing->last_seen = k_uptime_get();
+		LOG_INF("lichen_l2: peer updated ..%02x:%02x",
+			eui64[6], eui64[7]);
 		k_mutex_unlock(&rx_mutex);
-		return 0;  /* Peer already known with same key */
+		return 0;  /* Update succeeded */
 	}
 
 	/* Find an empty slot */
@@ -841,7 +778,7 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		 * sequence numbers fall within the old window.
 		 * (project-LICHEN-0li1.53)
 		 */
-		lichen_replay_remove(&replay_table, peer_table[slot].pubkey);
+		lichen_replay_remove(&replay_table, peer_table[slot].eui64);
 		LOG_INF("lichen_l2: peer table full, evicting ..%02x:%02x",
 			peer_table[slot].eui64[6], peer_table[slot].eui64[7]);
 	}
@@ -920,7 +857,7 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	 * (if the peer reconnects and the attacker replays old frames).
 	 * (project-LICHEN-tvfm.45)
 	 */
-	lichen_replay_remove(&replay_table, entry->pubkey);
+	lichen_replay_remove(&replay_table, eui64);
 
 	/* SECURITY: Zero pubkey before marking inactive */
 	secure_zero(entry->pubkey, sizeof(entry->pubkey));
@@ -935,352 +872,6 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	ARG_UNUSED(eui64);
 	return -ENOTSUP;
 #endif
-}
-
-int lichen_l2_publish_app_identity(const char *display_name,
-				   const char *firmware_name)
-{
-#if HAVE_LICHEN_LINK && IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
-	int ret;
-
-	if (atomic_get(&iface_init_failed)) {
-		return -ENODEV;
-	}
-	if (!atomic_get(&link_ctx_initialized)) {
-		return -EAGAIN;
-	}
-
-	k_mutex_lock(&tx_mutex, K_FOREVER);
-	k_mutex_lock(&rx_mutex, K_FOREVER);
-	ret = lichen_app_identity_set_self_from_link_ctx(
-		&link_ctx, display_name, firmware_name);
-	k_mutex_unlock(&rx_mutex);
-	k_mutex_unlock(&tx_mutex);
-
-	return ret;
-#else
-	ARG_UNUSED(display_name);
-	ARG_UNUSED(firmware_name);
-	return -ENOTSUP;
-#endif
-}
-
-int lichen_l2_load_key(const uint8_t seed[32], uint8_t pubkey[32])
-{
-	int ret;
-
-	if (seed == NULL || pubkey == NULL) {
-		return -EINVAL;
-	}
-	if (atomic_get(&iface_init_failed)) {
-		return -ENODEV;
-	}
-	if (!atomic_get(&link_ctx_initialized)) {
-		return -EAGAIN;
-	}
-
-	k_mutex_lock(&tx_mutex, K_FOREVER);
-	k_mutex_lock(&rx_mutex, K_FOREVER);
-	ret = lichen_link_load_key(&link_ctx, seed);
-	if (ret == 0) {
-		memcpy(pubkey, link_ctx.ed25519_pk, LICHEN_L2_PUBKEY_LEN);
-	}
-	k_mutex_unlock(&rx_mutex);
-	k_mutex_unlock(&tx_mutex);
-
-	return ret;
-}
-
-int lichen_l2_load_link_key(const uint8_t link_key[LICHEN_LINK_KEY_LEN])
-{
-	int ret;
-
-	if (link_key == NULL) {
-		return -EINVAL;
-	}
-	if (atomic_get(&iface_init_failed)) {
-		return -ENODEV;
-	}
-	if (!atomic_get(&link_ctx_initialized)) {
-		return -EAGAIN;
-	}
-
-	k_mutex_lock(&tx_mutex, K_FOREVER);
-	k_mutex_lock(&rx_mutex, K_FOREVER);
-	ret = lichen_link_load_link_key(&link_ctx, link_key);
-	k_mutex_unlock(&rx_mutex);
-	k_mutex_unlock(&tx_mutex);
-
-	return ret;
-}
-
-#ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
-/*
- * SECURITY: INSECURE dev-only provisioning. This seed is public (it lives
- * in the source tree) and is shared by every node built with
- * CONFIG_LICHEN_L2_DEV_PROVISIONING, so signatures made with it prove
- * nothing. Bench bring-up only, until announce/EDHOC peer provisioning
- * lands. The Kconfig help text carries the same warning.
- */
-static const uint8_t dev_seed[32] = {
-	0x4c, 0x49, 0x43, 0x48, 0x45, 0x4e, 0x2d, 0x44, /* "LICHEN-D" */
-	0x45, 0x56, 0x2d, 0x53, 0x45, 0x45, 0x44, 0x2d, /* "EV-SEED-" */
-	0x30, 0x30, 0x30, 0x31, 0x2d, 0x49, 0x4e, 0x53, /* "0001-INS" */
-	0x45, 0x43, 0x55, 0x52, 0x45, 0x21, 0x21, 0x21, /* "ECURE!!!" */
-};
-
-/* Parse "aabb..." or "aa:bb:..." into 8 bytes. Returns 0 or -EINVAL. */
-static int dev_parse_eui64(const char *s, uint8_t out[LICHEN_EUI64_LEN])
-{
-	size_t n = 0;
-
-	while (*s != '\0' && n < LICHEN_EUI64_LEN) {
-		char hex[3] = { 0 };
-
-		if (*s == ':' || *s == '-') {
-			s++;
-			continue;
-		}
-		if (!isxdigit((unsigned char)s[0]) ||
-		    !isxdigit((unsigned char)s[1])) {
-			return -EINVAL;
-		}
-		hex[0] = s[0];
-		hex[1] = s[1];
-		out[n++] = (uint8_t)strtoul(hex, NULL, 16);
-		s += 2;
-	}
-
-	return (n == LICHEN_EUI64_LEN && *s == '\0') ? 0 : -EINVAL;
-}
-
-/* Provision one dev peer: derive its pubkey, pin it, and add a static
- * IPv6 neighbor entry. See lichen_l2_dev_provision() for context. */
-static int dev_provision_peer(uint8_t peer_eui64[LICHEN_EUI64_LEN])
-{
-	uint8_t peer_pubkey[LICHEN_L2_PUBKEY_LEN];
-	uint8_t node_seed[LICHEN_SEED_LEN];
-	int ret;
-
-	ret = lichen_link_derive_seed(dev_seed, peer_eui64, node_seed);
-	if (ret == 0) {
-		ret = lichen_link_derive_pubkey(node_seed, peer_pubkey);
-	}
-	secure_zero(node_seed, sizeof(node_seed));
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: dev peer key derivation failed (%d)", ret);
-		return ret;
-	}
-
-	ret = lichen_peer_add(peer_eui64, peer_pubkey);
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: dev peer add failed (%d)", ret);
-		return ret;
-	}
-
-	/*
-	 * Static IPv6 neighbor entry for the peer. IPv6 ND cannot run over
-	 * this link yet — there is no SCHC rule for ICMPv6 NS/NA, so the
-	 * solicitation is silently uncompressible and every unicast send
-	 * parks forever in the ND queue (bd lora_ipv6_mesh-r002). The dev
-	 * peer's link-layer address is knowable from its EUI-64, so resolve
-	 * it statically.
-	 */
-	{
-		uint8_t iid[LICHEN_EUI64_LEN];
-		struct in6_addr peer_ll;
-		struct net_linkaddr lladdr = {
-			.addr = peer_eui64,
-			.len = LICHEN_EUI64_LEN,
-			.type = NET_LINK_IEEE802154,
-		};
-
-		ret = lichen_eui64_to_iid(peer_eui64, iid);
-		if (ret == 0) {
-			ret = lichen_make_link_local(iid, &peer_ll);
-		}
-		if (ret != 0 || lichen_iface == NULL ||
-		    net_ipv6_nbr_add(lichen_iface, &peer_ll, &lladdr, false,
-				     NET_IPV6_NBR_STATE_STATIC) == NULL) {
-			LOG_ERR("lichen_l2: static neighbor add failed (%d)", ret);
-			return ret != 0 ? ret : -ENOMEM;
-		}
-	}
-
-	LOG_WRN("lichen_l2: INSECURE dev provisioning active (peer %02x%02x..%02x%02x)",
-		peer_eui64[0], peer_eui64[1], peer_eui64[6], peer_eui64[7]);
-	return 0;
-}
-
-int lichen_l2_dev_provision(uint8_t peer_eui64_out[LICHEN_EUI64_LEN])
-{
-	uint8_t pubkey[LICHEN_L2_PUBKEY_LEN];
-	uint8_t self_eui64[LICHEN_EUI64_LEN];
-	uint8_t peer_eui64[LICHEN_EUI64_LEN];
-	uint8_t node_seed[LICHEN_SEED_LEN];
-	const char *s = CONFIG_LICHEN_L2_DEV_PEER_EUI64;
-	size_t peers_added = 0;
-	int ret;
-
-	/*
-	 * SECURITY: Per-node dev keys, derived as SHA-512(dev_seed || EUI-64).
-	 * Still INSECURE (dev_seed is public, so anyone can derive any node's
-	 * key), but each node now has a DISTINCT keypair so signature
-	 * verification attributes frames to the correct peer. With one shared
-	 * keypair, every dev node in RF range verified as "the" pinned peer
-	 * and all transmitters collapsed into a single replay window per
-	 * receiver; the highest random boot epoch then permanently starved
-	 * the others (project-LICHEN-wp4o).
-	 */
-	ret = lichen_lora_l2_copy_eui64(self_eui64);
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: dev self EUI-64 read failed (%d)", ret);
-		return ret;
-	}
-	ret = lichen_link_derive_seed(dev_seed, self_eui64, node_seed);
-	if (ret == 0) {
-		ret = lichen_l2_load_key(node_seed, pubkey);
-	}
-	secure_zero(node_seed, sizeof(node_seed));
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: dev key load failed (%d)", ret);
-		return ret;
-	}
-
-	/* CONFIG_LICHEN_L2_DEV_PEER_EUI64 is a comma-separated list of
-	 * EUI-64s; each entry is pinned as a dev peer. */
-	while (*s != '\0') {
-		char token[24]; /* "aa:bb:cc:dd:ee:ff:00:11" = 23 chars */
-		size_t n = 0;
-
-		while (*s == ',' || *s == ' ') {
-			s++;
-		}
-		while (*s != '\0' && *s != ',') {
-			if (n >= sizeof(token) - 1) {
-				LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
-					CONFIG_LICHEN_L2_DEV_PEER_EUI64);
-				return -EINVAL;
-			}
-			token[n++] = *s++;
-		}
-		token[n] = '\0';
-		if (n == 0) {
-			continue;
-		}
-
-		ret = dev_parse_eui64(token, peer_eui64);
-		if (ret != 0) {
-			LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
-				CONFIG_LICHEN_L2_DEV_PEER_EUI64);
-			return ret;
-		}
-
-		ret = dev_provision_peer(peer_eui64);
-		if (ret != 0) {
-			return ret;
-		}
-
-		if (peers_added == 0 && peer_eui64_out != NULL) {
-			memcpy(peer_eui64_out, peer_eui64, LICHEN_EUI64_LEN);
-		}
-		peers_added++;
-	}
-
-	if (peers_added == 0) {
-		LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
-			CONFIG_LICHEN_L2_DEV_PEER_EUI64);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-#endif /* CONFIG_LICHEN_L2_DEV_PROVISIONING */
-
-#ifdef CONFIG_LICHEN_L2_TEST_HOOKS
-int lichen_l2_test_load_key(const uint8_t seed[32], uint8_t pubkey[32])
-{
-	return lichen_l2_load_key(seed, pubkey);
-}
-
-int lichen_l2_test_load_link_key(const uint8_t link_key[LICHEN_LINK_KEY_LEN])
-{
-	return lichen_l2_load_link_key(link_key);
-}
-
-void lichen_l2_test_reset_stats(void)
-{
-	k_mutex_lock(&test_stats_mutex, K_FOREVER);
-	atomic_set(&test_tx_packets, 0);
-	atomic_set(&test_rx_frames, 0);
-	atomic_set(&test_rx_injected_packets, 0);
-	memset(test_last_injected, 0, sizeof(test_last_injected));
-	test_last_injected_len = 0;
-	k_mutex_unlock(&test_stats_mutex);
-}
-
-void lichen_l2_test_get_stats(struct lichen_l2_test_stats *stats)
-{
-	if (stats == NULL) {
-		return;
-	}
-
-	stats->tx_packets = (uint32_t)atomic_get(&test_tx_packets);
-	stats->rx_frames = (uint32_t)atomic_get(&test_rx_frames);
-	stats->rx_injected_packets =
-		(uint32_t)atomic_get(&test_rx_injected_packets);
-	k_mutex_lock(&test_stats_mutex, K_FOREVER);
-	stats->last_injected_len = (uint32_t)test_last_injected_len;
-	memcpy(stats->last_injected, test_last_injected,
-	       sizeof(stats->last_injected));
-	k_mutex_unlock(&test_stats_mutex);
-}
-#endif
-
-/*
- * TX/RX outcome counters — cheap ops visibility into the data path (which
- * otherwise fails only into logs). Read via lichen_l2_get_tx_stats() /
- * lichen_l2_get_rx_stats().
- */
-static atomic_t tx_stat_attempts;
-static atomic_t tx_stat_errors;
-static atomic_t tx_stat_last_err;
-static atomic_t rx_stat_frames;
-static atomic_t rx_stat_accepted;
-static atomic_t rx_stat_last_err;
-
-void lichen_l2_get_tx_stats(uint32_t *attempts, uint32_t *errors, int *last_err)
-{
-	if (attempts != NULL) {
-		*attempts = (uint32_t)atomic_get(&tx_stat_attempts);
-	}
-	if (errors != NULL) {
-		*errors = (uint32_t)atomic_get(&tx_stat_errors);
-	}
-	if (last_err != NULL) {
-		*last_err = (int)atomic_get(&tx_stat_last_err);
-	}
-}
-
-void lichen_l2_get_rx_stats(uint32_t *frames, uint32_t *accepted, int *last_err)
-{
-	if (frames != NULL) {
-		*frames = (uint32_t)atomic_get(&rx_stat_frames);
-	}
-	if (accepted != NULL) {
-		*accepted = (uint32_t)atomic_get(&rx_stat_accepted);
-	}
-	if (last_err != NULL) {
-		*last_err = (int)atomic_get(&rx_stat_last_err);
-	}
-}
-
-static inline void tx_stat_result(int ret)
-{
-	if (ret < 0) {
-		atomic_inc(&tx_stat_errors);
-		atomic_set(&tx_stat_last_err, ret);
-	}
 }
 
 /* Forward declarations */
@@ -1333,11 +924,11 @@ static enum net_verdict lichen_l2_recv(struct net_if *iface,
  * 3. Build LICHEN frame
  * 4. Send via LoRa
  *
- * Ownership: Per Zephyr net_l2 contract, on success (return >= 0 byte count)
- * this function takes ownership of @p pkt and calls net_pkt_unref(). On error
- * (return < 0), caller retains ownership and is responsible for cleanup.
+ * Ownership: Per Zephyr net_l2 contract, on success (return 0) this function
+ * takes ownership of @p pkt and calls net_pkt_unref(). On error (return < 0),
+ * caller retains ownership and is responsible for cleanup.
  */
-static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
+static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 {
 	int ret;
 
@@ -1412,7 +1003,7 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * This handles:
 	 * - SCHC compression
 	 * - Schnorr-48 signature if has_key
-	 * - No MIC for unsigned frames
+	 * - AES-CCM-64 MIC if has_link_key, else CRC32 fallback
 	 */
 	size_t frame_len = sizeof(tx_frame_buf);
 	/*
@@ -1428,22 +1019,6 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * L2 unicast is NOT supported. If future requirements need directed
 	 * addressing (e.g., certain RPL modes, energy optimization), extend
 	 * this to pass a non-NULL dst_eui64 based on routing decisions.
-	 *
-	 * SECURITY IMPLICATIONS of L2 broadcast-only design:
-	 * - Passive eavesdropping: all nodes in RF range receive every frame,
-	 *   including metadata (source EUI-64, frame type, sequence numbers)
-	 * - Replay attacks: attacker observes all frame sequence numbers,
-	 *   making replay easier without L2 filtering
-	 * - DoS amplification: every node must process (checksum, parse,
-	 *   decompress, route) all frames, increasing battery drain
-	 * - No L2 access control: frames reach all neighbors regardless of
-	 *   trust relationship
-	 *
-	 * MITIGATIONS (must be enforced elsewhere in the stack):
-	 * - OSCORE (CoAP E2E encryption) MANDATORY for sensitive payloads
-	 * - Ed25519 link signatures authenticate frame origin
-	 * - IPv6 destination filtering rejects non-unicast at L3
-	 * - SCHC decompression drops frames that don't match local address
 	 */
 	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len, NULL,
 			     tx_frame_buf, &frame_len);
@@ -1472,10 +1047,10 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	LOG_DBG("lichen_l2: TX frame %zu bytes", frame_len);
 
 	/* Send via LoRa */
-	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len, 0U); /* CH0 control/fallback per CCP-9 */
+	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len);
 #else
 	/* No LICHEN link layer - send raw IPv6 (for testing) */
-	ret = lichen_lora_l2_tx(tx_ipv6_buf, pkt_len, 0U);
+	ret = lichen_lora_l2_tx(tx_ipv6_buf, pkt_len);
 #endif
 
 	k_mutex_unlock(&tx_mutex);
@@ -1485,40 +1060,18 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 		return ret;
 	}
 
-#ifdef CONFIG_LICHEN_L2_TEST_HOOKS
-	atomic_inc(&test_tx_packets);
-#endif
-
 	/*
 	 * Per Zephyr net_l2 contract: when L2 returns 0, it took ownership
 	 * of the packet and must free it. The caller (IPv6 stack) will not
 	 * free it on success.
 	 *
-	 * The packet is guaranteed valid here because lichen_lora_l2_tx(..., channel)
+	 * The packet is guaranteed valid here because lichen_lora_l2_tx()
 	 * only receives a pointer to our static tx_frame_buf/tx_ipv6_buf,
 	 * not the net_pkt itself. The packet was linearized into that buffer
 	 * earlier via net_pkt_read(), so the pkt structure is untouched by TX.
-	 *
-	 * KNOWN LIMITATION (project-LICHEN-d7ub.40): If this thread is forcibly
-	 * aborted (k_thread_abort()) between the successful TX at line 1460 and
-	 * this net_pkt_unref(), the packet leaks. This window has no yield point
-	 * in normal operation, so it only occurs on thread abort. A memory pool
-	 * exhaustion would follow. Fixing this would require atomic packet
-	 * ownership tracking, which is disproportionate for an abort-only race.
 	 */
 	net_pkt_unref(pkt);
-	return (int)pkt_len;
-}
-
-/* NET_L2_INIT-facing wrapper: keep the TX outcome counters in one place. */
-static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
-{
-	int ret;
-
-	atomic_inc(&tx_stat_attempts);
-	ret = lichen_l2_send_inner(iface, pkt);
-	tx_stat_result(ret);
-	return ret;
+	return 0;
 }
 
 /**
@@ -1588,22 +1141,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			/* SECURITY: Defensive zero of any stale key material before re-init
 			 * (project-LICHEN-725z.9) */
 			secure_zero(&link_ctx, sizeof(link_ctx));
-			ret = lichen_link_init(&link_ctx, eui64_copy);
-			if (ret < 0) {
-				/* Entropy or mutex failure: do not mark initialized.
-				 * Unlock and propagate (2auf.35.4.2.2). Context remains
-				 * zeroed; next enable will retry. */
-				k_mutex_unlock(&rx_mutex);
-				k_mutex_unlock(&tx_mutex);
-				return ret;
-			}
-#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
-			/* Override the random boot epoch with the persisted,
-			 * monotonically-advancing one (lora_ipv6_mesh-3uhb).
-			 * Idempotent within a boot. */
-			lichen_link_set_epoch(&link_ctx,
-					      lichen_link_epoch_advance_for_boot());
-#endif
+			lichen_link_init(&link_ctx, eui64_copy);
 			/*
 			 * Re-init replay table to match iface_init() behavior.
 			 * Without this, stale replay windows could persist or be
@@ -1631,13 +1169,8 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * Re-register RX callback before starting.
 		 * lichen_lora_l2_stop() clears the callback (lora_l2.c:324-325),
 		 * so we must re-register it on enable. (project-LICHEN-yw7i.28)
-		 * 
-		 * Skip if already running to avoid unnecessary work on repeated
-		 * enable(true) calls (project-LICHEN-d7ub.66).
 		 */
-		if (!lichen_lora_l2_is_running()) {
-			ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
-		}
+		ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 		if (ret != 0) {
 			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
 #if HAVE_LICHEN_LINK
@@ -1711,14 +1244,14 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 *
 		 * This ordering ensures link_ctx cleanup is safe.
 		 */
-		int stop_ret = lichen_lora_l2_stop();
+		int ret = lichen_lora_l2_stop();
 		/*
 		 * If stop() aborted the RX thread (returned -ECANCELED), the thread
 		 * may have been holding rx_mutex during lichen_l2_input(). We must
 		 * call deinit() to reinitialize mutexes before acquiring them, or
 		 * we'll deadlock. (project-LICHEN-i1gk.67)
 		 */
-		if (stop_ret == -ECANCELED) {
+		if (ret == -ECANCELED) {
 			int deinit_ret = lichen_lora_l2_deinit();
 			if (deinit_ret != 0) {
 				LOG_ERR("lichen_l2: deinit after abort failed (%d)", deinit_ret);
@@ -1829,13 +1362,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
 #endif
-		/*
-		 * ret is only assigned in the enable branch; returning it here
-		 * was uninitialized-stack garbage. An aborted RX thread
-		 * (-ECANCELED) was recovered via deinit above, so it is
-		 * success; any other stop() failure propagates.
-		 */
-		return (stop_ret == -ECANCELED) ? 0 : stop_ret;
+		return ret;
 	}
 }
 
@@ -1924,11 +1451,10 @@ static struct net_if_api lichen_iface_api = {
  *
  * Initialization priority: CONFIG_KERNEL_INIT_PRIORITY_DEFAULT is correct
  * for network interfaces. Zephyr's driver subsystem initializes hardware
-	 * drivers (the HAL-selected zephyr,lora radio and hwinfo) at earlier
-	 * priorities (PRE_KERNEL_1/2 or POST_KERNEL with lower priority values),
-	 * so they are available when lichen_l2_iface_init() runs. If a dependency
-	 * is missing on a custom board, the init function sets iface_init_failed
-	 * and logs an error.
+ * drivers (lora0, hwinfo) at earlier priorities (PRE_KERNEL_1/2 or
+ * POST_KERNEL with lower priority values), so they are available when
+ * lichen_l2_iface_init() runs. If a dependency is missing on a custom
+ * board, the init function sets iface_init_failed and logs an error.
  *
  * Ordering contract with lora_l2.c: callers must not start the LoRa L2
  * service before lichen_l2_iface_init() has called lichen_lora_l2_init(),
@@ -1980,8 +1506,8 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  * 6. Registers the LoRa RX callback
  *
  * @note lichen_lora_l2_init() is the required first operation. It validates
-	 * the HAL LoRa device, generates the stable EUI-64, and transitions
-	 * lora_l2.c from LORA_UNINIT to LORA_STOPPED. The EUI-64 copy below is a runtime
+ * lora0 readiness, generates the stable EUI-64, and transitions lora_l2.c
+ * from LORA_UNINIT to LORA_STOPPED. The EUI-64 copy below is a runtime
  * invariant check that this ordering completed before any LICHEN link
  * context or net_if state observes the LoRa identity.
  *
@@ -1998,10 +1524,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 	int ret;
 
 	LOG_INF("lichen_l2: initializing interface");
-	if (atomic_get(&iface_init_failed)) {
-		LOG_ERR("lichen_l2: refusing retry after failed initialization");
-		return;
-	}
 
 	/*
 	 * Do NOT clear iface_init_failed here (project-LICHEN-i1gk.63).
@@ -2017,8 +1539,8 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * - Never explicitly cleared here; first boot starts at 0 (static init)
 	 * - Checked by send/recv/enable to reject operations on half-initialized state
 	 *
-	 * After a failed init, the check above rejects retry attempts, ensuring
-	 * failure is permanent until system restart.
+	 * After a failed init, the lichen_iface != NULL check (see below) catches
+	 * retry attempts, ensuring failure is permanent until system restart.
 	 * This is fail-safe by design.
 	 */
 
@@ -2105,20 +1627,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * depend on replay_table, and no async access occurs before link_ctx_initialized
 	 * is set (after RX callback registration). (project-LICHEN-i1gk.81)
 	 */
-	int init_ret = lichen_link_init(&link_ctx, eui64);
-	if (init_ret < 0) {
-		/* Entropy failure or mutex failure: fail closed, do not mark
-		 * initialized or proceed with RX setup. (2auf.35.4.2) */
-		LOG_ERR("lichen_link_init failed (%d)", init_ret);
-		atomic_set(&iface_init_failed, 1);
-		return;
-	}
-#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
-	/* Override the random boot epoch with the persisted, monotonically-
-	 * advancing one so a rebooted node is never seen as a replay
-	 * (lora_ipv6_mesh-3uhb). Idempotent within a boot. */
-	lichen_link_set_epoch(&link_ctx, lichen_link_epoch_advance_for_boot());
-#endif
+	lichen_link_init(&link_ctx, eui64);
 	lichen_replay_table_init(&replay_table);
 	/*
 	 * Explicitly initialize peer_table at boot.
@@ -2161,23 +1670,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 	lichen_iface = iface;
 
-#if HAVE_LICHEN_LINK
-	/*
-	 * Mark link_ctx as safe to access BEFORE registering the RX callback.
-	 * link_ctx was fully initialized at line ~2086 (lichen_link_init()) along
-	 * with replay_table and peer_table. Setting the flag before callback
-	 * registration eliminates a tiny window where a valid frame arriving
-	 * between callback registration and the flag being set would be dropped
-	 * by the atomic_get(&link_ctx_initialized) guard in lichen_l2_input().
-	 * (project-LICHEN-tvfm.69)
-	 *
-	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
-	 * On single-core Cortex-M, program order suffices since all prior
-	 * stores complete before this store executes.
-	 */
-	atomic_set(&link_ctx_initialized, 1);
-#endif
-
 	/* Register RX callback - must happen AFTER link_ctx is initialized */
 	ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 	if (ret != 0) {
@@ -2186,6 +1678,20 @@ void lichen_l2_iface_init(struct net_if *iface)
 		return;
 	}
 
+#if HAVE_LICHEN_LINK
+	/*
+	 * Mark link_ctx as safe to access.
+	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
+	 * On single-core Cortex-M, program order suffices since all prior
+	 * stores complete before this store executes.
+	 *
+	 * Set AFTER RX callback registration so the flag truthfully indicates
+	 * that the full initialization sequence is complete.
+	 * (project-LICHEN-q3iy.24)
+	 */
+	atomic_set(&link_ctx_initialized, 1);
+#endif
+
 	/* Derive and log link-local address */
 	ret = lichen_log_link_local_from_eui64(eui64, NULL);
 	if (ret < 0) {
@@ -2193,28 +1699,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 		goto fail_late_init;
 	}
 
-	/* Derive and add primary Yggdrasil address (project-LICHEN-p8i6)
-	 * as NET_ADDR_PREFERRED. Key may not be loaded yet in all paths;
-	 * address added when identity available. */
-	uint8_t pubkey[32];
-	bool has_key = false;
-	ret = lichen_link_copy_identity(&link_ctx, NULL, pubkey, &has_key);
-	if (ret == 0 && has_key) {
-		struct in6_addr ygg;
-		ret = lichen_yggdrasil_addr(pubkey, &ygg);
-		if (ret == 0) {
-			char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
-			if (lichen_ipv6_addr_to_str(&ygg, addr_str, sizeof(addr_str)) == 0) {
-				LOG_INF("lichen_l2: primary yggdrasil %s", addr_str);
-			}
-			(void)net_if_ipv6_addr_add(iface, &ygg, NET_ADDR_PREFERRED, 0);
-		}
-	}
-
 #if HAVE_LICHEN_LINK
-#if IS_ENABLED(CONFIG_STATS)
-	(void)STATS_INIT_AND_REG(lichen_l2rx_stats, STATS_SIZE_32, "l2rx");
-#endif
 	LOG_INF("lichen_l2: initialized (full framing)");
 #else
 	LOG_WRN("lichen_l2: initialized (RAW MODE - no framing/crypto)");
@@ -2370,13 +1855,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		return;
 	}
 
-#ifdef CONFIG_LICHEN_L2_TEST_HOOKS
-	atomic_inc(&test_rx_frames);
-#endif
-
 	LOG_DBG("lichen_l2: RX %zu bytes (RSSI %d dBm, SNR %d dB)", len, rssi, snr);
-	atomic_inc(&rx_stat_frames);
-	L2RX_STAT_INC(frames);
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
@@ -2397,7 +1876,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * - Frame parsing
 	 * - Replay protection (if replay table provided)
 	 * - Schnorr-48 signature verification (if peer_pubkey provided)
-	 * - Unsigned or Schnorr-48 frame validation
+	 * - MIC verification (AES-CCM-64 or CRC32)
 	 * - SCHC decompression
 	 *
 	 * SECURITY: Copy link_key into a local buffer rather than capturing a
@@ -2411,8 +1890,14 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * also write valid key material to link_key. If this invariant is violated,
 	 * MIC verification will fail (not silently accept).
 	 *
-	 * The retained link key is copied for API compatibility but current frames
-	 * are either unsigned or authenticated by Schnorr-48.
+	 * SECURITY (project-LICHEN-tvfm.85): When has_link_key is false,
+	 * rx_link_key_ptr remains NULL. This is passed to lichen_link_rx() which:
+	 * - For AES-CCM-64 MIC (8-byte): Fails with -LICHEN_EAUTH (requires key)
+	 * - For CRC32 MIC (4-byte): Falls back to CRC32 verification only
+	 * CRC32 provides integrity (accidental corruption) but not authentication.
+	 * This is expected during unauthenticated bootstrap before key exchange.
+	 * Once EDHOC handshake completes, has_link_key becomes true and frames
+	 * require cryptographic MIC verification.
 	 */
 	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
 	const uint8_t *rx_link_key_ptr = NULL;
@@ -2435,6 +1920,19 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * preventing the replay window poisoning attack described in
 	 * replay.h:100-120.
 	 */
+	struct lichen_link_rx_ctx rx_ctx = {
+		.peer_pubkey = NULL,  /* Set by peer_try_all_pubkeys() */
+		.peer_eui64 = NULL,   /* Set by peer_try_all_pubkeys() */
+		.link_key = rx_link_key_ptr,
+		/*
+		 * current_time: Reserved for time-based replay aging (not currently
+		 * used). The replay protection implementation uses a sliding window
+		 * with monotonic access_counter for LRU eviction, not wall-clock time.
+		 * Setting to 0 is safe because lichen_link_rx() does not read this
+		 * field. If future replay aging is added, use k_uptime_get() here.
+		 */
+		.current_time = 0,
+	};
 	/*
 	 * Defensive initialization: zero src_eui64 in case peer_try_all_pubkeys()
 	 * fails before setting it. On success, src_eui64 is filled with the
@@ -2442,44 +1940,17 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * use this array. (project-LICHEN-tvfm.68)
 	 */
 	uint8_t src_eui64[8] = {0};
-	struct lichen_link_rx_ctx rx_ctx = {
-		.peer_pubkey = NULL,
-		.peer_eui64 = src_eui64,
-		.link_key = rx_link_key_ptr,
-		.current_time = k_uptime_get_32(),
-	};
 
 	ipv6_len = sizeof(rx_ipv6_buf);
 	ret = peer_try_all_pubkeys(&rx_ctx, &replay_table, data, len,
 				   rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
-		/*
-		 * Puck neighbor beacons are 5-byte unsigned broadcast link frames
-		 * with no SCHC/IPv6 payload: [len=4][LLSec=0x00][epoch][seq_hi][seq_lo]
-		 * (see puck send_beacon()).
-		 * lichen_link_rx() rightly rejects them (nothing to deliver), but
-		 * they are valid neighbor traffic, not errors — log at INF instead
-		 * of WRN. (lora_ipv6_mesh-v6g6)
-		 */
-		if (len == 5 && data[0] == 4 && data[1] == 0x00) {
-				LOG_INF("lichen_l2: neighbor beacon epoch=%u seq=%u "
-					"rssi=%d snr=%d",
-					data[2],
-					(uint16_t)(((uint16_t)data[3] << 8) | data[4]),
-					rssi, snr);
-				secure_zero(rx_link_key, sizeof(rx_link_key));
-				k_mutex_unlock(&rx_mutex);
-				return;
-		}
-		atomic_set(&rx_stat_last_err, ret);
-		L2RX_STAT_INC(rejected);
 		LOG_WRN("lichen_l2: RX failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
 		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
-	L2RX_STAT_INC(verified);
 
 	/* SECURITY: Validate ipv6_len before using it (project-LICHEN-3pun.5) */
 	if (ipv6_len > sizeof(rx_ipv6_buf)) {
@@ -2586,14 +2057,5 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	}
 
 	/* pkt ownership transferred to network stack - do not access */
-#ifdef CONFIG_LICHEN_L2_TEST_HOOKS
-	k_mutex_lock(&test_stats_mutex, K_FOREVER);
-	test_last_injected_len = MIN(ipv6_len, sizeof(test_last_injected));
-	memcpy(test_last_injected, rx_ipv6_copy, test_last_injected_len);
-	k_mutex_unlock(&test_stats_mutex);
-	atomic_inc(&test_rx_injected_packets);
-#endif
-	atomic_inc(&rx_stat_accepted);
-	L2RX_STAT_INC(injected);
 	LOG_DBG("lichen_l2: injected %zu bytes to IPv6 stack", ipv6_len);
 }

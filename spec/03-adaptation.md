@@ -71,7 +71,7 @@ Full canonical rules (including CoAP fields, OSCORE variants, RPL control messag
 - Rule 1: Global IPv6+UDP+CoAP (42B)
 - Rule 2: ICMPv6 Echo
 - Rule 3: RPL DIO
-- Rule 4: RPL DAO (routable ULA source per security requirements)
+- Rule 4: RPL DAO (routable 02xx source per security requirements)
 - Rules 5/6: OSCORE-protected CoAP variants
 - Rule 7: MQTT-SN
 - Rule 255: Uncompressed fallback (MUST implement)

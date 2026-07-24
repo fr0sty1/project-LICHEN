@@ -25,12 +25,15 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <zephyr/sys/util.h>
+
+/* BUILD_ASSERT for non-Zephyr test builds (Zephyr provides via util.h) */
+#ifndef BUILD_ASSERT
+#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
+#endif
 
 #ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
-#else
-/* BUILD_ASSERT for non-Zephyr test builds */
-#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
 #endif
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
@@ -55,31 +58,11 @@ extern "C" {
 #define SLOT_DURATION_MS 250 /* spec/02a-coordinated-capacity.md:2a.2 (100ms guard, hash slot) */
 #define GUARD_TIME_MS 100 /* spec/02a-coordinated-capacity.md:2a.2 validated by ccp16.json */
 
-#ifdef CONFIG_LICHEN_TDMA
-struct LICHEN_TDMA_Slot {
-	uint32_t start_ms;
-	uint32_t duration_ms;
-	uint8_t node_id[8];
-	uint8_t slot_id;
-	uint8_t priority;
-};
-BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
-#endif
-
-	/** Schnorr-48 signature length in bytes */
+/** Schnorr-48 signature length in bytes */
 #define LICHEN_SIG_LEN 48
 
 #define LICHEN_TDMA_GUARD_MS 100 /* spec/02a-coordinated-capacity.md §2a.2 (ccp16.json, ccp_tdma.json) */
 #define LICHEN_TDMA_SLOT_MS 250 /* spec/02a-coordinated-capacity.md §2a.2 hash(EUI64^epoch)%num_slots via lichen_hash_32 */
-#define LICHEN_TDMA_BEACON_TIMEOUT_SUPERFRAMES 3 /* BEACON_TIMEOUT per 09-packets-timing.md FSM */
-#define LICHEN_TDMA_CONTENTION_RETRIES 5 /* Max DAO retransmissions in contention slot */
-#define LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS 100 /* CSMA min backoff */
-#define LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS 1000 /* CSMA max backoff */
-
-#ifdef CONFIG_LICHEN_TDMA
-struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
-#endif
-
 
 /** Maximum destination address length (EUI-64) */
 #define LICHEN_ADDR_MAX 8
@@ -163,7 +146,6 @@ struct lichen_frame {
 	bool encrypted;          /**< Encrypted frame flag; currently unsupported */
 };
 
-#ifdef CONFIG_LICHEN_TDMA
 struct lichen_tdma_ctx {
 	uint32_t superframe;
 	uint8_t slot;
@@ -171,9 +153,8 @@ struct lichen_tdma_ctx {
 	uint16_t slot_duration;
 	bool synced;
 };
-#endif
 
-	/**
+/**
  * @brief Parse a LICHEN frame from wire bytes.
  *
  * @param[out] frame  Parsed frame structure
@@ -338,14 +319,11 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 		   uint8_t *_Nonnull out_ipv6, size_t *_Nonnull out_len,
 		   uint8_t *_Nonnull src_eui64);
 
-#ifdef CONFIG_LICHEN_TDMA
 int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, struct lichen_link_ctx *_Nonnull ctx);
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn);
 bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
-#endif
-
 uint32_t lichen_hash_32(const uint8_t *data, size_t len);
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
 
 #ifdef __cplusplus
 }

@@ -727,16 +727,16 @@ static void sched_work_handler(struct k_work *work)
 	ARG_UNUSED(work);
 
 	k_mutex_lock(&sched.mutex, K_FOREVER);
-	bool running = sched.running;
 
-	k_mutex_unlock(&sched.mutex);
-
-	if (!running) {
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
 		return;
 	}
 
 	(void)send_announce();
 	schedule_next();
+
+	k_mutex_unlock(&sched.mutex);
 }
 
 int lichen_announce_sched_start(
@@ -828,6 +828,17 @@ uint16_t lichen_announce_sched_get_seq(void)
 	k_mutex_unlock(&sched.mutex);
 
 	return seq;
+}
+
+uint8_t lichen_announce_sched_get_channel(void)
+{
+	uint8_t ch;
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	ch = sched.rx_channel;
+	k_mutex_unlock(&sched.mutex);
+
+	return ch;
 }
 
 int lichen_announce_sched_send_now(void)

@@ -46,6 +46,8 @@ BUILD_ASSERT(LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN <
 	     "MeshCore channel V3 header must fit in a frame");
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_PENDING_EVENTS <= UINT8_MAX,
 	     "Pending event queue indices are uint8_t");
+BUILD_ASSERT(LICHEN_MESHCORE_PENDING_MAX <= UINT8_MAX,
+	     "Pending event kind must fit in uint8_t");
 BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
 	     "Frame max exceeds uint16_t limit for length fields");
 

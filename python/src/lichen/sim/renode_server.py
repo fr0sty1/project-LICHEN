@@ -179,6 +179,9 @@ class RenodeServer:
             while True:
                 self._simulation.deliver_pending_packets()
                 self._simulation.maybe_advance_time()
+                # Re-check after advancing time — a pending TX may have just
+                # completed, making a packet available for delivery.
+                self._simulation.deliver_pending_packets()
                 await asyncio.sleep(0.001)
         except asyncio.CancelledError:
             raise

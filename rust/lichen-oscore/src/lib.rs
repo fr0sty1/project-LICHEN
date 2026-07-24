@@ -474,7 +474,13 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -527,7 +533,13 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -738,7 +750,13 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -936,39 +954,34 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
-        if request_kid.len() > NONCE_ID_LEN
-            || OscoreSeqNum::from_piv(request_piv).is_none()
-            || request_kid != self.recipient_id()
-        {
-            return Err(OscoreError::InvalidParam);
-        }
-
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Determine PIV for nonce: own sequence if including, else request's PIV
-        let (nonce_piv, piv_len, piv_for_option, sender_seq): (
-            [u8; PIV_MAX_LEN],
-            usize,
-            Option<usize>,
-            Option<OscoreSeqNum>,
-        ) = if include_piv {
-            // Generate own PIV.
-            // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
-            let seq = self
-                .sender_seq
-                .fetch_increment()
-                .ok_or(OscoreError::SeqExhausted)?;
-            let mut piv = [0u8; PIV_MAX_LEN];
-            let len = seq.encode_piv(&mut piv);
-            (piv, len, Some(len), Some(seq))
-        } else {
-            // Reuse the request nonce (no new sequence generated).
-            if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                return Err(OscoreError::InvalidParam);
-            }
-            let mut piv = [0u8; PIV_MAX_LEN];
-            piv[..request_piv.len()].copy_from_slice(request_piv);
-            (piv, request_piv.len(), None, None)
-        };
+        let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
+            if include_piv {
+                // Generate own PIV.
+                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
+                let seq = self
+                    .sender_seq
+                    .fetch_increment()
+                    .ok_or(OscoreError::SeqExhausted)?;
+                let mut piv = [0u8; PIV_MAX_LEN];
+                let len = seq.encode_piv(&mut piv);
+                (piv, len, Some(len))
+            } else {
+                // Reuse the request nonce (no new sequence generated).
+                if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
+                    return Err(OscoreError::InvalidParam);
+                }
+                let mut piv = [0u8; PIV_MAX_LEN];
+                piv[..request_piv.len()].copy_from_slice(request_piv);
+                (piv, request_piv.len(), None)
+            };
 
         let nonce_id = if include_piv {
             self.sender_id()
@@ -1021,10 +1034,6 @@ impl Context {
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
             opt.extend_from_slice(&nonce_piv[..len])
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-        }
-
-        if let Some(seq) = sender_seq {
-            self.mark_response_used(seq);
         }
 
         Ok((ct_out, opt))
@@ -2809,6 +2818,31 @@ mod tests {
                 .2,
             b"valid"
         );
+    }
+
+    #[test]
+    fn forged_request_does_not_poison_replay_window() {
+        let master_secret = [0x5a; KEY_LEN];
+        let attacker_secret = [0x5b; KEY_LEN];
+        let mut attacker = Context::new_ephemeral(&attacker_secret, None, &[0], &[1]).unwrap();
+        let mut legitimate = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
+
+        attacker.sender_seq = seq(5);
+        let (forged_ct, forged_opt) = attacker.protect_request(0x01, &[], b"forged").unwrap();
+
+        legitimate.sender_seq = seq(5);
+        let (valid_ct, valid_opt) = legitimate.protect_request(0x01, &[], b"valid").unwrap();
+
+        assert_eq!(
+            recipient
+                .unprotect_request(&forged_opt, &forged_ct)
+                .unwrap_err(),
+            OscoreError::DecryptFailed
+        );
+
+        let result = recipient.unprotect_request(&valid_opt, &valid_ct).unwrap();
+        assert_eq!(result.2.as_slice(), b"valid");
     }
 
     #[test]
