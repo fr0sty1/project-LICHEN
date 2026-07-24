@@ -659,6 +659,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         Array.Copy(resp, 3, rxBuffer, 0, rxLen);
                         rxRssi = (short)ReadLE16(resp, payloadEnd);
                         rxSnr = (short)ReadLE16(resp, payloadEnd + 2);
+                        var wasOneShot = rxOneShot;
                         if (rxOneShot)
                         {
                             rxMode = false;
@@ -667,7 +668,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         // one-shot contract: clear rxMode and rxOneShot only on first packet for PollRx/SetRx(finite timeout);
                         // continuous (0xFFFFFF timeout, rxOneShot=false) keeps rxMode=true for multiple packets.
                         // All accesses under stateLock to eliminate rxMode/stateLock race with SPI/reader/CS paths.
-                        this.Log(LogLevel.Debug, "RX_PACKET {0} bytes (async) oneShot={1}", rxLen, rxOneShot);
+                        this.Log(LogLevel.Debug, "RX_PACKET {0} bytes (async) oneShot={1}", rxLen, wasOneShot);
                         irqFlags |= 0x0002; // RxDone
                         IRQ.Set(true);
                         break;

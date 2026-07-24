@@ -593,6 +593,11 @@ impl RplNode {
         &self.router
     }
 
+    #[cfg(test)]
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.router.add_test_route(target, path)
+    }
+
     /// Check if this node is the DODAG root.
     pub fn is_root(&self) -> bool {
         self.router.is_root()
