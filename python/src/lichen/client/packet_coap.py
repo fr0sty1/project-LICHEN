@@ -454,8 +454,15 @@ class PacketDatagramChannel(DatagramChannel):
             raise error
 
     async def _read_packets(self) -> None:
-        async for packet in self._packet_transport.packets():
-            self._handle_packet(packet)
+        try:
+            async for packet in self._packet_transport.packets():
+                try:
+                    self._handle_packet(packet)
+                except Exception:
+                    logger.exception("unhandled error in _handle_packet")
+        except Exception:
+            logger.exception("packet reader failed")
+            self.close()
 
     def _handle_packet(self, packet: bytes) -> None:
         receiver = self._receiver
