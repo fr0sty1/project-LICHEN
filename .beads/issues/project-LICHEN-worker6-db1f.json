@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-db1f",
   "title": "[review] project-LICHEN-worker6-wa51: EDHOC TH_4 divergence between Python and Rust — cross-implementation interop broken",
   "description": "## Summary\nCommit 150271ac changes TH_3 and TH_4 transcript hash inputs in both Python (`python/src/lichen/crypto/edhoc.py`) and Rust (`rust/lichen-oscore/src/edhoc.rs`), but the two implementations now compute **different TH_4 values** — breaking the LICHEN requirement that all implementations produce identical outputs for cross-implementation validation.\n\n## Changes in this commit\n\n### TH_3 (both implementations) — LGTM\nBoth correctly switch from `ciphertext_2` to `plaintext_2`, and from `id_cred_r` to `cred_r` (full credential). This matches RFC 9528 Section 3.4: TH_3 = H(TH_2, PLAINTEXT_2, CRED_R).\n\n### TH_4 — DIVERGENT\n\n**Python** (initiator line 443, responder line 678):\n```python\nth_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i)\n```\n= H(TH_3, PLAINTEXT_3, CRED_I)\n\n**Rust** (initiator line 1224, responder line 1667):\n```rust\nself.state.th_4 = transcript_4(\u0026self.state.th_3, \u0026ciphertext_3)?;\n```\n= H(TH_3, CIPHERTEXT_3) — no credential\n\n### Per spec\nRFC 9528 Section 3.5: TH_4 = H(TH_3, PLAINTEXT_3)\n\nNeither implementation matches the RFC:\n- Python is wrong: includes CRED_I (CRED_I is already authenticated via the signature in message_3; including it in TH_4 is redundant but creates a different hash than spec)\n- Rust is wrong: uses CIPHERTEXT_3 instead of PLAINTEXT_3\n\n### Impact\n- Python and Rust compute different TH_4 → different PRK_out → different OSCORE master_secret/master_salt → EDHOC between a Python and Rust implementation will fail\n- Both diverge from RFC 9528 Section 3.5\n\n### Fix\nBoth should compute TH_4 = H(TH_3, PLAINTEXT_3):\n- Python: remove `+ cbor2.dumps(cred_i)` from th_4_input\n- Rust: change `transcript_4` to accept `plaintext_3` instead of `ciphertext_3`, update call sites to pass plaintext\n\n## Other changes\n- TILE_SIZE 32→187 and test buffer 10→16: not obviously wrong, but significant. No issue filed.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:34:29.133780859Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:43:49.79040746Z",
-  "started_at": "2026-07-24T19:43:08.256891776Z"
+  "updated_at": "2026-07-24T19:43:52.943749802Z",
+  "started_at": "2026-07-24T19:43:08.256891776Z",
+  "lease_expires_at": "2026-07-24T19:48:52.943749802Z",
+  "heartbeat_at": "2026-07-24T19:43:52.943749802Z"
 }
