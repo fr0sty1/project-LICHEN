@@ -22,7 +22,7 @@ typedef int (*schnorr48_sign_frame_api)(
 	const uint8_t *, size_t, const uint8_t *, const uint8_t *, uint8_t *);
 typedef int (*schnorr48_verify_frame_api)(
 	uint8_t, uint8_t, uint8_t, uint16_t, const uint8_t *, size_t,
-	const uint8_t *, size_t, const uint8_t *, const uint8_t *);
+	const uint8_t *, size_t, const uint8_t *, size_t, const uint8_t *);
 
 static schnorr48_sign_frame_api const sign_frame_api = schnorr48_sign_frame;
 static schnorr48_verify_frame_api const verify_frame_api = schnorr48_verify_frame;
@@ -318,7 +318,7 @@ static int test_verify_valid_signatures(void)
 
 		char msg_buf[128];
 		snprintf(msg_buf, sizeof(msg_buf), "vector %zu: %s", i, v->description);
-		ASSERT_TRUE(schnorr48_verify(pubkey, message, msg_len, sig), msg_buf);
+		ASSERT_TRUE(schnorr48_verify(pubkey, message, msg_len, sig, SCHNORR48_SIG_LEN), msg_buf);
 	}
 	return 1;
 }
@@ -342,7 +342,7 @@ static int test_verify_invalid_signatures(void)
 
 		char msg_buf[128];
 		snprintf(msg_buf, sizeof(msg_buf), "vector %zu: %s", i, v->description);
-		ASSERT_FALSE(schnorr48_verify(pubkey, message, msg_len, sig), msg_buf);
+		ASSERT_FALSE(schnorr48_verify(pubkey, message, msg_len, sig, SCHNORR48_SIG_LEN), msg_buf);
 	}
 	return 1;
 }
@@ -363,25 +363,25 @@ static int test_sign_verify_roundtrip(void)
 	schnorr48_derive_keypair(seed, privkey, pubkey);
 	schnorr48_sign(privkey, pubkey, message, sizeof(message) - 1, sig);
 
-	ASSERT_TRUE(schnorr48_verify(pubkey, message, sizeof(message) - 1, sig),
+	ASSERT_TRUE(schnorr48_verify(pubkey, message, sizeof(message) - 1, sig, SCHNORR48_SIG_LEN),
 		    "roundtrip verify");
 
 	/* Tamper with message */
 	message[0] ^= 1;
-	ASSERT_FALSE(schnorr48_verify(pubkey, message, sizeof(message) - 1, sig),
+	ASSERT_FALSE(schnorr48_verify(pubkey, message, sizeof(message) - 1, sig, SCHNORR48_SIG_LEN),
 		     "tampered message should fail");
 	message[0] ^= 1;  /* restore */
 
 	/* Tamper with signature */
 	sig[0] ^= 1;
-	ASSERT_FALSE(schnorr48_verify(pubkey, message, sizeof(message) - 1, sig),
+	ASSERT_FALSE(schnorr48_verify(pubkey, message, sizeof(message) - 1, sig, SCHNORR48_SIG_LEN),
 		     "tampered signature should fail");
 	sig[0] ^= 1;  /* restore */
 
 	/* Wrong pubkey */
 	uint8_t wrong_pubkey[32];
 	memset(wrong_pubkey, 0x42, 32);
-	ASSERT_FALSE(schnorr48_verify(wrong_pubkey, message, sizeof(message) - 1, sig),
+	ASSERT_FALSE(schnorr48_verify(wrong_pubkey, message, sizeof(message) - 1, sig, SCHNORR48_SIG_LEN),
 		     "wrong pubkey should fail");
 
 	return 1;
@@ -404,15 +404,15 @@ static int test_frame_sign_verify(void)
 		    "sign_frame returns 0 on success");
 
 	/* schnorr48_verify_frame returns 1 on valid signature */
-	ASSERT_TRUE(verify_frame_api(58, 0x21, 1, 42, dst_addr, 2, inner_payload, 4, sig, pubkey) == 1,
+	ASSERT_TRUE(verify_frame_api(58, 0x21, 1, 42, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 1,
 		    "frame verify");
 
 	/* Wrong epoch - returns 0 (invalid signature) */
-	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 2, 42, dst_addr, 2, inner_payload, 4, sig, pubkey) == 0,
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 2, 42, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 0,
 		    "wrong epoch should fail");
 
 	/* Wrong seqnum - returns 0 (invalid signature) */
-	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 43, dst_addr, 2, inner_payload, 4, sig, pubkey) == 0,
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 43, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 0,
 		    "wrong seqnum should fail");
 
 	return 1;
@@ -435,7 +435,7 @@ static int test_frame_bounds_checking(void)
 		    "sign_frame rejects dst_addr_len > 8");
 
 	/* verify_frame should return -EINVAL for dst_addr_len > 8 */
-	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, dst_addr, 9, inner_payload, 4, sig, pubkey) == -EINVAL,
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, dst_addr, 9, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == -EINVAL,
 		    "verify_frame rejects dst_addr_len > 8");
 
 	return 1;
@@ -499,35 +499,35 @@ static int test_signed_frame_cross_language_oracle(void)
 	ASSERT_MEM_EQ(wire, expected_wire, sizeof(wire), "oracle wire frame");
 	ASSERT_TRUE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
 					  dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					  signature, public_key) == 1,
+					  signature, SCHNORR48_SIG_LEN, public_key) == 1,
 		    "verify oracle frame");
 
 	dst_addr[0] ^= 1;
 	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
 					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					   signature, public_key), "reject tampered destination");
+					   signature, SCHNORR48_SIG_LEN, public_key), "reject tampered destination");
 	dst_addr[0] ^= 1;
 	payload[0] ^= 1;
 	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
 					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					   signature, public_key), "reject tampered payload");
+					   signature, SCHNORR48_SIG_LEN, public_key), "reject tampered payload");
 	payload[0] ^= 1;
 	ASSERT_FALSE(schnorr48_verify_frame(0x3c, 0x21, 0x12, 0x3456,
 					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					   signature, public_key), "reject tampered length");
+					   signature, SCHNORR48_SIG_LEN, public_key), "reject tampered length");
 	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x20, 0x12, 0x3456,
 					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					   signature, public_key), "reject tampered LLSec");
+					   signature, SCHNORR48_SIG_LEN, public_key), "reject tampered LLSec");
 	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x13, 0x3456,
 					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					   signature, public_key), "reject tampered epoch");
+					   signature, SCHNORR48_SIG_LEN, public_key), "reject tampered epoch");
 	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3457,
 					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					   signature, public_key), "reject tampered sequence");
+					   signature, SCHNORR48_SIG_LEN, public_key), "reject tampered sequence");
 	signature[0] ^= 1;
 	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
 					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
-					   signature, public_key), "reject tampered signature");
+					   signature, SCHNORR48_SIG_LEN, public_key), "reject tampered signature");
 
 	return 1;
 }

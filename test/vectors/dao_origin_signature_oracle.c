@@ -181,7 +181,7 @@ static bool check_vector(const char *start, const char *end)
 	}
 
 	expected_valid = strncmp(valid_field, "true", 4) == 0;
-	actual_valid = schnorr48_verify(public_key, digest, sizeof(digest), option + 10);
+	actual_valid = schnorr48_verify(public_key, digest, sizeof(digest), option + 10, SCHNORR48_SIG_LEN);
 	if (actual_valid != expected_valid) {
 		return false;
 	}

@@ -297,7 +297,7 @@ int lichen_announce_ingest_authenticated(
 		return ret;
 	}
 	if (!schnorr48_verify(announce.pubkey, signed_data, signed_data_len,
-			      announce.signature)) {
+			      announce.signature, LICHEN_ANNOUNCE_SIGNATURE_LEN)) {
 		return -EACCES;
 	}
 

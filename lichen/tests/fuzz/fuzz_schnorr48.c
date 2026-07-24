@@ -44,7 +44,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	 * Return value is intentionally ignored; we're testing
 	 * that malformed input doesn't cause undefined behavior.
 	 */
-	(void)schnorr48_verify(pubkey, msg, msg_len, sig);
+	(void)schnorr48_verify(pubkey, msg, msg_len, sig, SCHNORR48_SIG_LEN);
 
 	return 0;
 }

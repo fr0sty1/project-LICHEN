@@ -571,7 +571,7 @@ static int edhoc_verify(const uint8_t *pubkey,
 			const uint8_t *sig,
 			const uint8_t *msg, size_t msg_len)
 {
-	return schnorr48_verify(pubkey, msg, msg_len, sig) ? 0 : -1;
+	return schnorr48_verify(pubkey, msg, msg_len, sig, EDHOC_SIG_LEN) ? 0 : -1;
 }
 
 int edhoc_initiator_init(struct edhoc_initiator *ctx,
