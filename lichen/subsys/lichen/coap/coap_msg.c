@@ -33,6 +33,10 @@ LOG_MODULE_REGISTER(lichen_coap_msg, CONFIG_LICHEN_COAP_MSG_LOG_LEVEL);
 #define MSG_CBOR_MAX_SIZE 512
 #define MSG_LOCATION_PATH_MAX 16
 
+/* Maximum CBOR size for one inbox entry: map(4) 1 + "id"+uint 8 +
+ * "from"+addr(45) 52 + "body"+body(200) 207 + "received"+uint 14 = 282 */
+#define MSG_INBOX_ENTRY_MAX_CBOR 282
+
 /* CBOR encoding helpers - local copies to avoid cross-module deps */
 static void cbor_put_map_header(uint8_t *buf, size_t *off, size_t count)
 {
@@ -665,7 +669,7 @@ static size_t encode_inbox_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "messages");
 	cbor_put_array_header(buf, &off, count);
 
-	for (size_t i = 0; i < count && off + 100 < buf_size; i++) {
+	for (size_t i = 0; i < count && off + MSG_INBOX_ENTRY_MAX_CBOR <= buf_size; i++) {
 		const struct lichen_msg *msg = &s_inbox[i];
 
 		if (lichen_coap_format_ipv6(msg->peer_addr, addr_str,
