@@ -63,6 +63,25 @@ static bool s_seq_initialized[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
 static bool s_initialized;
 static K_MUTEX_DEFINE(s_ctx_mutex);
 
+/*
+ * Group OSCORE context - full private definition.
+ * Each group context holds a shared master secret and derives
+ * per-member individual contexts at creation time.
+ */
+struct oscore_group_ctx {
+	char group_name[OSCORE_GROUP_NAME_MAX_LEN];
+	bool has_group_name;
+	uint8_t master_secret[OSCORE_KEY_LEN]; /**< Shared group master secret */
+	uint8_t member_index;                   /**< This member's index in group */
+	enum oscore_group_trust trust;          /**< Group key trust level */
+	uint8_t member_count;                   /**< Number of members with derived contexts */
+	struct oscore_ctx *member_ctx;          /**< This member's per-member OSCORE context */
+	bool active;
+};
+
+static struct oscore_group_ctx s_group_ctx[CONFIG_LICHEN_OSCORE_GROUP_MAX];
+static int s_group_ctx_count;
+
 /* NVM persistence callbacks */
 static oscore_nvm_write_cb s_nvm_write_cb;
 static oscore_nvm_read_cb s_nvm_read_cb;
@@ -2101,5 +2120,316 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 cleanup_unprotect_response:
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(plaintext, sizeof(plaintext));
+	return ret;
+}
+
+/* ---------------------------------------------------------------------------
+ * Group OSCORE context implementation
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Derive per-member sender/recipient IDs from index.
+ * Member 0: sender_id = [0], recipient_id = [1]
+ * Member 1: sender_id = [2], recipient_id = [3]
+ * etc.
+ */
+static void group_id_from_index(uint8_t index,
+				uint8_t *sender_id, size_t *sender_id_len,
+				uint8_t *recipient_id, size_t *recipient_id_len)
+{
+	*sender_id_len = 1;
+	*recipient_id_len = 1;
+	sender_id[0] = index * 2;
+	recipient_id[0] = index * 2 + 1;
+}
+
+static struct oscore_group_ctx *group_find_by_name_locked(const char *name)
+{
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (s_group_ctx[i].active && s_group_ctx[i].has_group_name &&
+		    strncmp(s_group_ctx[i].group_name, name,
+			    OSCORE_GROUP_NAME_MAX_LEN) == 0) {
+			return &s_group_ctx[i];
+		}
+	}
+	return NULL;
+}
+
+int oscore_group_ctx_create(const char *group_name,
+			    const uint8_t *master_secret,
+			    uint8_t group_member_index,
+			    enum oscore_group_trust trust,
+			    struct oscore_group_ctx **ctx_out)
+{
+	int ret;
+
+	if (master_secret == NULL || ctx_out == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	*ctx_out = NULL;
+
+	if (group_member_index >= OSCORE_GROUP_MAX_MEMBERS) {
+		LOG_ERR("group member index %u exceeds max %d",
+			group_member_index, OSCORE_GROUP_MAX_MEMBERS - 1);
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	if (!s_initialized) {
+		k_mutex_unlock(&s_ctx_mutex);
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/* Find free slot */
+	struct oscore_group_ctx *gctx = NULL;
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (!s_group_ctx[i].active) {
+			gctx = &s_group_ctx[i];
+			break;
+		}
+	}
+
+	if (gctx == NULL) {
+		k_mutex_unlock(&s_ctx_mutex);
+		return OSCORE_ERR_NO_MEMORY;
+	}
+
+	memset(gctx, 0, sizeof(*gctx));
+	memcpy(gctx->master_secret, master_secret, OSCORE_KEY_LEN);
+	gctx->member_index = group_member_index;
+	gctx->trust = trust;
+	gctx->member_count = 1;
+
+	if (group_name != NULL) {
+		size_t name_len = strlen(group_name);
+		if (name_len > OSCORE_GROUP_NAME_MAX_LEN - 1) {
+			name_len = OSCORE_GROUP_NAME_MAX_LEN - 1;
+		}
+		memcpy(gctx->group_name, group_name, name_len);
+		gctx->group_name[name_len] = '\0';
+		gctx->has_group_name = true;
+	}
+
+	/* Derive per-member IDs and create per-member context */
+	uint8_t sender_id[1], recipient_id[1];
+	size_t sender_id_len, recipient_id_len;
+	group_id_from_index(group_member_index,
+			    sender_id, &sender_id_len,
+			    recipient_id, &recipient_id_len);
+
+	/*
+	 * We need to create the per-member context. Since we hold the mutex,
+	 * we must call oscore_ctx_create which also takes the mutex. Release
+	 * temporarily, then re-acquire.
+	 */
+	k_mutex_unlock(&s_ctx_mutex);
+
+	struct oscore_ctx *member_ctx = NULL;
+	ret = oscore_ctx_create(master_secret, NULL, 0,
+				sender_id, sender_id_len,
+				recipient_id, recipient_id_len,
+				&member_ctx);
+
+	k_mutex_lock(&s_ctx_mutex);
+
+	if (ret != OSCORE_OK) {
+		memset(gctx, 0, sizeof(*gctx));
+		s_group_ctx_count = 0; /* will be recomputed below */
+		k_mutex_unlock(&s_ctx_mutex);
+		return ret;
+	}
+
+	gctx->member_ctx = member_ctx;
+	gctx->active = true;
+
+	/* Recompute group count */
+	s_group_ctx_count = 0;
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (s_group_ctx[i].active) {
+			s_group_ctx_count++;
+		}
+	}
+
+	k_mutex_unlock(&s_ctx_mutex);
+
+	*ctx_out = gctx;
+	LOG_DBG("Created group OSCORE context '%s' member=%u trust=%d",
+		group_name ? group_name : "(anon)",
+		group_member_index, (int)trust);
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_get_member_ctx(struct oscore_group_ctx *group_ctx,
+				    struct oscore_ctx **out_ctx)
+{
+	if (group_ctx == NULL || out_ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (!group_ctx->active) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+	*out_ctx = group_ctx->member_ctx;
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_get_by_name(const char *group_name,
+				 struct oscore_group_ctx **ctx_out)
+{
+	if (group_name == NULL || ctx_out == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	struct oscore_group_ctx *gctx = group_find_by_name_locked(group_name);
+	k_mutex_unlock(&s_ctx_mutex);
+
+	if (gctx == NULL) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+
+	*ctx_out = gctx;
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_get_trust(const struct oscore_group_ctx *group_ctx,
+			       enum oscore_group_trust *trust)
+{
+	if (group_ctx == NULL || trust == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (!group_ctx->active) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+	*trust = group_ctx->trust;
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_set_trust(struct oscore_group_ctx *group_ctx,
+			       enum oscore_group_trust trust)
+{
+	if (group_ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (!group_ctx->active) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+
+	/* Trust can only be escalated */
+	if (trust < group_ctx->trust) {
+		LOG_ERR("Cannot downgrade group trust from %d to %d",
+			(int)group_ctx->trust, (int)trust);
+		return -EPERM;
+	}
+
+	group_ctx->trust = trust;
+	LOG_DBG("Group trust escalated to %d", (int)trust);
+	return OSCORE_OK;
+}
+
+void oscore_group_ctx_free(struct oscore_group_ctx *ctx)
+{
+	if (ctx == NULL) {
+		return;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	if (ctx->member_ctx != NULL) {
+		oscore_ctx_free(ctx->member_ctx);
+		ctx->member_ctx = NULL;
+	}
+
+	crypto_wipe(ctx, sizeof(*ctx));
+	ctx->active = false;
+
+	/* Recompute group count */
+	s_group_ctx_count = 0;
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (s_group_ctx[i].active) {
+			s_group_ctx_count++;
+		}
+	}
+
+	k_mutex_unlock(&s_ctx_mutex);
+}
+
+size_t oscore_group_ctx_count(void)
+{
+	size_t count = 0;
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	count = (size_t)s_group_ctx_count;
+	k_mutex_unlock(&s_ctx_mutex);
+	return count;
+}
+
+/* Domain separation string for peer-key-derived master secrets */
+static const uint8_t peer_key_info_prefix[] = "LICHEN-OSCORE-peer-key";
+
+int oscore_derive_master_secret_from_peer_key(
+	const uint8_t peer_pubkey[32],
+	const uint8_t peer_iid[8],
+	uint8_t master_secret[OSCORE_KEY_LEN])
+{
+	if (peer_pubkey == NULL || peer_iid == NULL || master_secret == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/*
+	 * info = "LICHEN-OSCORE-peer-key" || iid
+	 * master_secret = HKDF-Expand(HKDF-Extract(salt=0, IKM=pubkey), info, 16)
+	 */
+	uint8_t info[sizeof(peer_key_info_prefix) + 8];
+	uint8_t prk[32];
+
+	memcpy(info, peer_key_info_prefix, sizeof(peer_key_info_prefix));
+	memcpy(info + sizeof(peer_key_info_prefix), peer_iid, 8);
+
+	if (lichen_hkdf_sha256(NULL, 0, peer_pubkey, 32,
+			       info, sizeof(info),
+			       master_secret, OSCORE_KEY_LEN) != 0) {
+		crypto_wipe(prk, sizeof(prk));
+		crypto_wipe(info, sizeof(info));
+		return OSCORE_ERR_KEY_DERIVATION;
+	}
+
+	crypto_wipe(prk, sizeof(prk));
+	crypto_wipe(info, sizeof(info));
+
+	return OSCORE_OK;
+}
+
+int oscore_ctx_create_from_peer_key(
+	const uint8_t peer_pubkey[32],
+	const uint8_t peer_eui64[8],
+	const uint8_t *sender_id, size_t sender_id_len,
+	const uint8_t *recipient_id, size_t recipient_id_len,
+	struct oscore_ctx **ctx)
+{
+	uint8_t iid[8];
+	uint8_t master_secret[OSCORE_KEY_LEN];
+	int ret;
+
+	if (peer_pubkey == NULL || peer_eui64 == NULL || ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/* Derive IID from EUI-64 for the key derivation context */
+	memcpy(iid, peer_eui64, 8);
+	iid[0] &= ~0x02U; /* Clear U/L bit per RFC 4291 */
+
+	ret = oscore_derive_master_secret_from_peer_key(peer_pubkey, iid,
+							 master_secret);
+	if (ret != OSCORE_OK) {
+		return ret;
+	}
+
+	ret = oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+					   sender_id, sender_id_len,
+					   recipient_id, recipient_id_len,
+					   peer_eui64, ctx);
+
+	crypto_wipe(master_secret, sizeof(master_secret));
+
 	return ret;
 }

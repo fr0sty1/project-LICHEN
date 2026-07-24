@@ -1186,13 +1186,18 @@ mod tests {
     impl Radio for RecordingRadio {
         type Error = Infallible;
 
-        async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(&mut self, _channel: u8, _payload: &[u8]) -> Result<(), Self::Error> {
             self.events.lock().unwrap().push("transmit");
             Ok(())
         }
 
+        async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
         async fn receive(
             &mut self,
+            _channel: u8,
             _buf: &mut [u8],
             _timeout_ms: u32,
         ) -> Result<Option<RxPacket>, Self::Error> {
@@ -1205,7 +1210,7 @@ mod tests {
     impl Radio for SwitchableRadio {
         type Error = ();
 
-        async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(&mut self, _channel: u8, _payload: &[u8]) -> Result<(), Self::Error> {
             if self.fail.load(Ordering::Relaxed) {
                 Err(())
             } else {
@@ -1213,8 +1218,13 @@ mod tests {
             }
         }
 
+        async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
         async fn receive(
             &mut self,
+            _channel: u8,
             _buf: &mut [u8],
             _timeout_ms: u32,
         ) -> Result<Option<RxPacket>, Self::Error> {

@@ -1,42 +1,186 @@
 //! Gateway state and packet forwarding.
+//!
+//! Production RPL root using [`RplStack`] with authenticated identity, durable
+//! storage, and admission policy. IO is handled externally (SLIP/serial/sim/hat);
+//! a [`NullRadio`] bridges the stack's transmit path to a drainable queue so the
+//! gateway can forward RPL reply frames via its own transport.
 
 #![forbid(unsafe_code)]
 
-use lichen_core::addr::{Ipv6Addr, NodeId};
-use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
-use lichen_core::ipv6::field;
-use lichen_core::l2_payload::{
-    body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
+use lichen_core::{
+    addr::{Ipv6Addr, NodeId},
+    constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED},
+    icmpv6::hdr_field,
+    ipv6::{field, next_header, IPV6_HEADER_LEN},
+    l2_payload::{
+        body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
+    },
 };
+use lichen_hal::{
+    ChannelConfig, NonVolatile, Radio, RadioConfig, RadioError, RxPacket,
+};
+use lichen_link::identity::Identity;
 use lichen_node::{
-    runtime::{RplRuntime, RplRuntimeConfig},
-    RplEvent, RplNode,
+    announce::AnnounceProcessor,
+    gradient::GradientTable,
+    node::rpl_code,
+    runtime::{RplRuntime, RplRuntimeConfig, DEFAULT_NEIGHBOR_TIMEOUT_MS},
+    RplEvent, RplStack, SecureStack,
 };
 use lichen_rpl::routing::SourceRoutingHeader;
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
+/// A stub radio that collects outgoing frames for external drain.
+///
+/// The gateway manages IO via SLIP/serial/sim/hat backends, not through the
+/// Radio trait. This adapter stores any frames the RPL stack wants to send
+/// (DIO, DAO-ACK) in a Vec that the gateway drains and transmits externally.
+/// `receive` always returns `None` — inbound frames arrive through the
+/// gateway's own IO loop.
 #[derive(Debug)]
-pub struct Gateway {
-    rpl_node: RplNode,
+pub struct NullRadio {
+    /// Frames produced by the RPL stack awaiting external transmission.
+    pub sent: Vec<Vec<u8>>,
+}
+
+impl NullRadio {
+    pub fn new() -> Self {
+        Self { sent: Vec::new() }
+    }
+
+    /// Drain all pending transmitted frames.
+    pub fn drain_sent(&mut self) -> Vec<Vec<u8>> {
+        core::mem::take(&mut self.sent)
+    }
+}
+
+impl Default for NullRadio {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Radio for NullRadio {
+    type Error = RadioError<std::convert::Infallible>;
+
+    async fn transmit(
+        &mut self,
+        _channel: u8,
+        payload: &[u8],
+    ) -> Result<(), Self::Error> {
+        if !payload.is_empty() {
+            self.sent.push(payload.to_vec());
+        }
+        Ok(())
+    }
+
+    async fn cca(
+        &mut self,
+        _channel: u8,
+        _threshold_dbm: i8,
+    ) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
+
+    async fn receive(
+        &mut self,
+        _channel: u8,
+        _buf: &mut [u8],
+        _timeout_ms: u32,
+    ) -> Result<Option<RxPacket>, Self::Error> {
+        Ok(None)
+    }
+
+    fn configure(&mut self, _config: &RadioConfig) {}
+
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+/// Gateway root node with authenticated RPL stack, durable storage, and
+/// admission policy.
+///
+/// The gateway acts as RPL DODAG root in Non-Storing Mode. It owns the
+/// [`RplStack`] (with [`NullRadio`] — IO is handled externally), the
+/// [`RplRuntime`] for single-owner maintenance scheduling, and a [`NonVolatile`]
+/// storage for DAO persistence and admission state.
+#[derive(Debug)]
+pub struct Gateway<S: NonVolatile> {
+    stack: RplStack<NullRadio, S>,
+    radio: NullRadio,
     runtime: RplRuntime,
 }
 
-impl Gateway {
-    pub fn new(node_id: NodeId) -> Self {
-        info!(?node_id, "gateway initialising");
-        let addr = node_id.link_local_addr().0;
+impl<S: NonVolatile> Gateway<S> {
+    /// Create a new gateway root with authenticated identity and durable storage.
+    ///
+    /// `identity` must match the key material derived from the persisted seed.
+    /// `storage` is the durable backend for DAO routes, admission policy, and
+    /// epoch state. `epoch` must be >= 128; use the persisted epoch (or 128 for
+    /// first boot).
+    ///
+    /// The root address is the identity's link-local IPv6 address, which also
+    /// serves as the DODAG ID. The announcement prefix is derived from the
+    /// DODAG ID (ULA prefix `fd` + 7 zero bytes).
+    pub fn new(
+        node_id: NodeId,
+        identity: Identity,
+        storage: S,
+        epoch: u8,
+    ) -> Self {
+        info!(?node_id, epoch, "gateway initialising with RplStack root");
+        let root_addr = node_id.link_local_addr().0;
+        let dodag_id = root_addr;
+
+        let radio = NullRadio::new();
+        let secure = SecureStack::from_radio(radio, identity, epoch)
+            .expect("valid epoch >= 128");
+
+        let announces = AnnounceProcessor::new(
+            GradientTable::new(4),
+            dodag_id[..8].try_into().expect("8-byte prefix"),
+        );
+        let stack = RplStack::provision_root(
+            secure,
+            root_addr,
+            dodag_id,
+            announces,
+            storage,
+        )
+        .expect("root provisioning with authenticated identity and durable storage");
+
         Self {
-            rpl_node: RplNode::new_root(node_id),
+            stack,
+            radio: NullRadio::new(),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
         }
+    }
+
+    /// Reference to the inner RPL stack (for route lookup etc.).
+    pub fn stack(&self) -> &RplStack<NullRadio, S> {
+        &self.stack
+    }
+
+    /// Mutable reference to the inner RPL stack.
+    pub fn stack_mut(&mut self) -> &mut RplStack<NullRadio, S> {
+        &mut self.stack
+    }
+
+    /// Externally drained frames produced by the RPL stack (DIOs, DAO-ACKs).
+    pub fn drain_pending_tx(&mut self) -> Vec<Vec<u8>> {
+        self.radio.drain_sent()
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
     ///
     /// Returns the raw IPv6 packet to inject into the upstream TUN device, or
     /// `None` if decompression fails or the result is not a valid IPv6 packet.
-    pub fn mesh_to_upstream(&mut self, l2_payload: &[u8]) -> Option<Vec<u8>> {
+    pub fn mesh_to_upstream(&self, l2_payload: &[u8]) -> Option<Vec<u8>> {
         if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
             warn!("non-SCHC L2 payload received on upstream gateway path");
             return None;
@@ -115,14 +259,14 @@ impl Gateway {
         }
         (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
-            || self.rpl_node.router().lookup_route(dst).is_some()
+            || self.stack.rpl_node().router().lookup_route(dst).is_some()
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
         self.maintain(now_ms);
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self
-            .rpl_node
+            .stack
             .handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
@@ -130,6 +274,22 @@ impl Gateway {
         } else {
             None
         };
+        if matches!(event, RplEvent::DaoReceived { .. }) {
+            if let Some(dao_bytes) = extract_dao_from_frame(frame) {
+                let origin = extract_dao_origin(frame);
+                if let Some(rx_state) = self.stack.dao_rx_state_mut() {
+                    let _ = self.stack.rpl_node_mut().handle_dao(
+                        &dao_bytes,
+                        origin,
+                        [0u8; 8],
+                        self.stack.announces(),
+                        rx_state,
+                        self.stack.storage_mut(),
+                        now_ms,
+                    );
+                }
+            }
+        }
         (reply_opt, event)
     }
 
@@ -137,7 +297,11 @@ impl Gateway {
     /// monotonic time from Instant::elapsed(). Respects defer-external;
     /// does not auto-admit by TOFU (admission requires explicit pin).
     pub fn maintain(&mut self, now_ms: u64) {
-        let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
+        let _ = self.stack.maintain(
+            now_ms,
+            DEFAULT_NEIGHBOR_TIMEOUT_MS,
+            &(),
+        );
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
@@ -150,7 +314,7 @@ impl Gateway {
         let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
             ipv6.to_vec()
         } else {
-            let route = match self.rpl_node.router().lookup_route(&dst) {
+            let route = match self.stack.rpl_node().router().lookup_route(&dst) {
                 Some(r) => r,
                 None => return None,
             };
@@ -200,6 +364,49 @@ impl Gateway {
     }
 }
 
+/// Extract the DAO body bytes from an SCHC-compressed frame.
+///
+/// Returns `None` if the frame is not an SCHC-compressed RPL DAO message.
+/// The returned slice has the ICMPv6 header stripped (starts at the RPL body).
+fn extract_dao_from_frame(frame: &[u8]) -> Option<Vec<u8>> {
+    if classify_l2_payload(frame) != L2PayloadKind::Schc {
+        return None;
+    }
+    let mut ipv6 = vec![0u8; SCHC_MAX_DECOMPRESSED];
+    let n = decompress(l2_payload_body(frame), &mut ipv6).ok()?;
+    ipv6.truncate(n);
+    if ipv6.len() < IPV6_HEADER_LEN + hdr_field::BODY_OFFSET || ipv6[0] >> 4 != 6 {
+        return None;
+    }
+    if ipv6[6] != next_header::ICMPV6 {
+        return None;
+    }
+    if ipv6[IPV6_HEADER_LEN] != lichen_core::constants::RPL_ICMPV6_TYPE
+        || ipv6[IPV6_HEADER_LEN + 1] != rpl_code::DAO
+    {
+        return None;
+    }
+    Some(ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].to_vec())
+}
+
+/// Extract the origin (IPv6 source address) from the outer IPv6 header of an
+/// SCHC-compressed frame. Returns `[0u8; 16]` on error.
+fn extract_dao_origin(frame: &[u8]) -> [u8; 16] {
+    let mut ipv6 = vec![0u8; SCHC_MAX_DECOMPRESSED];
+    if classify_l2_payload(frame) != L2PayloadKind::Schc {
+        return [0u8; 16];
+    }
+    if let Ok(n) = decompress(l2_payload_body(frame), &mut ipv6) {
+        ipv6.truncate(n);
+        if ipv6.len() >= IPV6_HEADER_LEN && ipv6[0] >> 4 == 6 {
+            let mut origin = [0u8; 16];
+            origin.copy_from_slice(&ipv6[field::SRC_OFFSET..field::DST_OFFSET]);
+            return origin;
+        }
+    }
+    [0u8; 16]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -207,35 +414,70 @@ mod tests {
         addr::{Ipv6Addr, NodeId},
         icmpv6,
     };
+    use lichen_hal::storage::mem::MemStorage;
+    use lichen_link::Seed;
+    use lichen_node::{RplStack, SecureStack};
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
     }
 
-    fn test_gateway() -> Gateway {
-        Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
+    fn test_gateway() -> Gateway<MemStorage> {
+        let node_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]);
+        let identity = Identity::from_seed(Seed::new([0x61; 32]));
+        let root_addr = node_id.link_local_addr().0;
+        let radio = NullRadio::new();
+        let secure = SecureStack::from_radio(radio, identity, 128)
+            .expect("valid epoch");
+        let announces = AnnounceProcessor::new(
+            GradientTable::new(4),
+            root_addr[..8].try_into().unwrap(),
+        );
+        let stack = RplStack::provision_root(
+            secure,
+            root_addr,
+            root_addr,
+            announces,
+            MemStorage::new(),
+        )
+        .expect("root provisioning");
+        Gateway {
+            stack,
+            radio: NullRadio::new(),
+            runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
+        }
+    }
+
+    #[test]
+    fn null_radio_default_is_new() {
+        let r = NullRadio::default();
+        assert!(r.sent.is_empty());
+    }
+
+    #[test]
+    fn gateway_constructs_rpl_stack_root() {
+        let gw = test_gateway();
+        assert!(gw.stack.rpl_node().router().is_root());
     }
 
     #[test]
     fn icmpv6_echo_request_round_trips() {
+        let mut gw = test_gateway();
         let src = ll(1);
         let dst = ll(2);
         let mut packet = [0u8; 52];
         let n = icmpv6::echo_request(&src, &dst, 0x1234, 5, b"ping", &mut packet);
         let packet = &packet[..n];
 
-        let mut gw = test_gateway();
         let schc = gw.upstream_to_mesh(packet).expect("compress failed");
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2 (ICMPv6 echo link-local)");
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
 
-        // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
         assert_eq!(&recovered[8..24], &src.0, "src mismatch");
         assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
-        // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
         assert_eq!(&recovered[44..46], &[0x12, 0x34], "id mismatch");
@@ -245,13 +487,13 @@ mod tests {
 
     #[test]
     fn icmpv6_echo_reply_round_trips() {
+        let mut gw = test_gateway();
         let src = ll(2);
         let dst = ll(1);
         let mut packet = [0u8; 48];
         let n = icmpv6::echo_reply(&src, &dst, 0x1234, 5, &[], &mut packet);
         let packet = &packet[..n];
 
-        let mut gw = test_gateway();
         let schc = gw.upstream_to_mesh(packet).expect("compress failed");
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2");
@@ -306,5 +548,23 @@ mod tests {
         ];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn null_radio_collects_transmit() {
+        let mut radio = NullRadio::new();
+        let payload = b"hello";
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            radio.transmit(0, payload).await.unwrap();
+        });
+        assert_eq!(radio.sent.len(), 1);
+        assert_eq!(radio.sent[0], payload);
+
+        let drained = radio.drain_sent();
+        assert_eq!(drained.len(), 1);
+        assert!(radio.sent.is_empty());
     }
 }

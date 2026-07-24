@@ -530,7 +530,8 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             .receive_timeout(action, self.generation)
             .map_err(RplRuntimeReceiveError::Action)?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
-        let rx = self.stack.radio().receive(&mut wire, timeout_ms).await;
+        let channel = self.stack.radio().rx_channel();
+        let rx = self.stack.radio().receive(channel, &mut wire, timeout_ms).await;
         let post_await_ms = observe_now_ms();
         let received = match rx {
             Ok(Some(packet)) => {
@@ -618,6 +619,24 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     pub fn storage(&self) -> &S {
         &self.storage
+    }
+
+    pub fn storage_mut(&mut self) -> &mut S {
+        &mut self.storage
+    }
+
+    pub fn rpl_node_mut(&mut self) -> &mut RplNode {
+        &mut self.rpl
+    }
+
+    /// Mutable reference to the DAO receive state for root operations.
+    ///
+    /// Returns `None` if this stack is not operating as a root.
+    pub fn dao_rx_state_mut(&mut self) -> Option<&mut DaoRxState> {
+        match &mut self.role {
+            RplRole::Root(rx) => Some(rx),
+            _ => None,
+        }
     }
 
     /// Atomically register a newly established OSCORE context.
@@ -913,6 +932,23 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         self.rpl.trickle_transmit()
     }
 
+    /// Process a received authenticated L2 SCHC payload with RPL handling.
+    ///
+    /// `sender_iid` is the identity established by link-layer signature verification.
+    /// This is a synchronous passthrough to the inner `RplNode` for callers that
+    /// manage radio IO externally (e.g., a gateway over SLIP). For integrated
+    /// async loops, prefer [`Self::process_received`] or the runtime API.
+    pub fn handle_frame_rpl(
+        &mut self,
+        l2_payload: &[u8],
+        sender_iid: [u8; 8],
+        reply: &mut [u8],
+        now_ms: u64,
+    ) -> (usize, RplEvent) {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
+        self.rpl.handle_frame_rpl(l2_payload, sender_iid, reply, self.routing_now_ms)
+    }
+
     pub async fn send_dao(&mut self) -> Result<(), DaoSendError<S::Error>> {
         let RplRole::Leaf(tx) = &mut self.role else {
             return Err(DaoSendError::NotLeaf);
@@ -961,10 +997,11 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         now_ms: u64,
     ) -> Result<Option<RplReceiveOutcome>, RplReceiveError> {
         let mut wire = [0u8; MAX_FRAME_SIZE];
+        let channel = self.stack.radio().rx_channel();
         let packet = self
             .stack
             .radio()
-            .receive(&mut wire, timeout_ms)
+            .receive(channel, &mut wire, timeout_ms)
             .await
             .map_err(|_| RplReceiveError::Receive(RxError::RadioRx))?;
         let Some(packet) = packet else {
@@ -1740,13 +1777,18 @@ mod tests {
     impl Radio for RuntimeRadio {
         type Error = Infallible;
 
-        async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
             self.0.lock().unwrap().transmitted.push(payload.to_vec());
             Ok(())
         }
 
+        async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
         async fn receive(
             &mut self,
+            _channel: u8,
             _buf: &mut [u8],
             timeout_ms: u32,
         ) -> Result<Option<RxPacket>, Self::Error> {
@@ -1766,19 +1808,24 @@ mod tests {
     impl Radio for FailOnceRadio {
         type Error = ();
 
-        async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
             if core::mem::take(&mut self.fail_next) {
                 return Err(());
             }
-            self.inner.transmit(payload).await.map_err(|_| ())
+            self.inner.transmit(channel, payload).await.map_err(|_| ())
+        }
+
+        async fn cca(&mut self, channel: u8, threshold_dbm: i8) -> Result<bool, Self::Error> {
+            self.inner.cca(channel, threshold_dbm).await.map_err(|_| ())
         }
 
         async fn receive(
             &mut self,
+            channel: u8,
             buf: &mut [u8],
             timeout_ms: u32,
         ) -> Result<Option<RxPacket>, Self::Error> {
-            self.inner.receive(buf, timeout_ms).await.map_err(|_| ())
+            self.inner.receive(channel, buf, timeout_ms).await.map_err(|_| ())
         }
 
         fn configure(&mut self, config: &RadioConfig) {
@@ -1828,15 +1875,20 @@ mod tests {
     impl Radio for MeshRadio {
         type Error = Infallible;
 
-        async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
             let mut state = self.state.lock().unwrap();
             state.sent.push(payload.to_vec());
             deliver(&mut state, Some(self.index), payload);
             Ok(())
         }
 
+        async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
         async fn receive(
             &mut self,
+            _channel: u8,
             buf: &mut [u8],
             _timeout_ms: u32,
         ) -> Result<Option<RxPacket>, Self::Error> {
@@ -2173,7 +2225,7 @@ mod tests {
         let mut relayed = [0u8; MAX_FRAME_SIZE];
         assert!(sender
             .radio()
-            .receive(&mut relayed, 1)
+            .receive(0, &mut relayed, 1)
             .await
             .unwrap()
             .is_some());
@@ -2362,7 +2414,7 @@ mod tests {
             let len = link
                 .build_frame(128, 0u16.into(), &[], &payload, &mut wire)
                 .unwrap();
-            transmitter.transmit(&wire[..len]).await.unwrap();
+            transmitter.transmit(0, &wire[..len]).await.unwrap();
             assert!(matches!(
                 root.receive(1, 0).await.unwrap(),
                 Some(RplReceiveOutcome::AnnouncementAccepted { .. })
@@ -2393,7 +2445,7 @@ mod tests {
         };
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let len = send(&bad, &mut wire);
-        transmitter.transmit(&wire[..len]).await.unwrap();
+        transmitter.transmit(0, &wire[..len]).await.unwrap();
         assert!(matches!(
             root.receive(1, 0).await.unwrap(),
             Some(RplReceiveOutcome::AnnouncementRejected(
@@ -2405,7 +2457,7 @@ mod tests {
 
         let valid = signed_announce(&rejected_identity, 1);
         let len = send(&valid, &mut wire);
-        transmitter.transmit(&wire[..len]).await.unwrap();
+        transmitter.transmit(0, &wire[..len]).await.unwrap();
         assert!(matches!(
             root.receive(1, 0).await.unwrap(),
             Some(RplReceiveOutcome::AnnouncementAccepted { .. })
@@ -2501,19 +2553,19 @@ mod tests {
         let mut wire = [0u8; MAX_FRAME_SIZE];
 
         root.send_dio(multicast).await.unwrap();
-        let len = observer.receive(&mut wire, 1).await.unwrap().unwrap().len;
+        let len = observer.receive(0, &mut wire, 1).await.unwrap().unwrap().len;
         let frame = LichenFrame::from_bytes(&wire[..len]).unwrap();
         assert_eq!(frame.addr_mode, AddrMode::None);
         assert!(frame.dst_addr.is_empty());
 
         root.send_dis(multicast).await.unwrap();
-        let len = observer.receive(&mut wire, 1).await.unwrap().unwrap().len;
+        let len = observer.receive(0, &mut wire, 1).await.unwrap().unwrap().len;
         let frame = LichenFrame::from_bytes(&wire[..len]).unwrap();
         assert_eq!(frame.addr_mode, AddrMode::None);
         assert!(frame.dst_addr.is_empty());
 
         root.send_dio(unicast).await.unwrap();
-        let len = observer.receive(&mut wire, 1).await.unwrap().unwrap().len;
+        let len = observer.receive(0, &mut wire, 1).await.unwrap().unwrap().len;
         let frame = LichenFrame::from_bytes(&wire[..len]).unwrap();
         assert_eq!(frame.addr_mode, AddrMode::Extended);
         assert_eq!(frame.dst_addr, ipv6_eui64(unicast));
@@ -2626,8 +2678,8 @@ mod tests {
         let len = LinkLayer::new(sender)
             .build_frame(128, 0u16.into(), &[], &payload[..1 + schc_len], &mut wire)
             .unwrap();
-        first_tx.transmit(&wire[..len]).await.unwrap();
-        second_tx.transmit(&wire[..len]).await.unwrap();
+        first_tx.transmit(0, &wire[..len]).await.unwrap();
+        second_tx.transmit(0, &wire[..len]).await.unwrap();
         assert!(matches!(
             first.receive(1, 100).await.unwrap(),
             Some(RplReceiveOutcome::Rpl(RplEvent::DisReceived))
@@ -2678,7 +2730,7 @@ mod tests {
             let len = link
                 .build_frame(128, 0u16.into(), &[], &payload[..1 + schc_len], &mut wire)
                 .unwrap();
-            sender_radio.transmit(&wire[..len]).await.unwrap();
+            sender_radio.transmit(0, &wire[..len]).await.unwrap();
             let outcome = leaf.receive(1, 0).await.unwrap();
             if accepted {
                 assert!(matches!(
@@ -2757,7 +2809,7 @@ mod tests {
         };
 
         let dio_wire = build_wire(rpl_code::DIO, &dio_body);
-        leaf_tx.transmit(&dio_wire).await.unwrap();
+        leaf_tx.transmit(0, &dio_wire).await.unwrap();
         assert!(matches!(
             leaf.receive(1, 100).await.unwrap(),
             Some(RplReceiveOutcome::RplRejected)
@@ -2765,7 +2817,7 @@ mod tests {
         assert!(!leaf.rpl_node().is_joined());
 
         let dis_wire = build_wire(rpl_code::DIS, &[0, 0]);
-        root_tx.transmit(&dis_wire).await.unwrap();
+        root_tx.transmit(0, &dis_wire).await.unwrap();
         assert!(matches!(
             root.receive(1, 100).await.unwrap(),
             Some(RplReceiveOutcome::RplRejected)
@@ -2775,7 +2827,7 @@ mod tests {
             lichen_rpl::trickle::TrickleEvent::Stopped
         );
         let mut response = [0u8; MAX_FRAME_SIZE];
-        assert!(root_tx.receive(&mut response, 1).await.unwrap().is_none());
+        assert!(root_tx.receive(0, &mut response, 1).await.unwrap().is_none());
     }
 
     #[tokio::test]
@@ -2820,8 +2872,8 @@ mod tests {
         assert_eq!(parsed.dst_addr, expected);
         let mut intended_tx = intended_tx;
         let mut other_tx = other_tx;
-        intended_tx.transmit(&wire[..len]).await.unwrap();
-        other_tx.transmit(&wire[..len]).await.unwrap();
+        intended_tx.transmit(0, &wire[..len]).await.unwrap();
+        other_tx.transmit(0, &wire[..len]).await.unwrap();
 
         assert!(matches!(
             intended.receive(1, 0).await.unwrap(),
@@ -2832,7 +2884,7 @@ mod tests {
         let len = link
             .build_frame(128, 0u16.into(), &[], &payload, &mut wire)
             .unwrap();
-        other_tx.transmit(&wire[..len]).await.unwrap();
+        other_tx.transmit(0, &wire[..len]).await.unwrap();
         assert!(matches!(
             other.receive(1, 0).await.unwrap(),
             Some(RplReceiveOutcome::AnnouncementAccepted { .. })
@@ -2990,7 +3042,7 @@ mod tests {
         let len = leaf_link
             .build_frame(128, 0u16.into(), &[], &payload, &mut wire)
             .unwrap();
-        root.radio().transmit(&wire[..len]).await.unwrap();
+        root.radio().transmit(0, &wire[..len]).await.unwrap();
         assert!(matches!(
             relay.receive(1, 0).await.unwrap(),
             Some(RplReceiveOutcome::AnnouncementAccepted { .. })
@@ -2998,7 +3050,7 @@ mod tests {
         let mut relayed = [0u8; MAX_FRAME_SIZE];
         assert!(root
             .radio()
-            .receive(&mut relayed, 1)
+            .receive(0, &mut relayed, 1)
             .await
             .unwrap()
             .is_some());
@@ -3029,7 +3081,7 @@ mod tests {
         let len = leaf_link
             .build_frame(128, 1u16.into(), &[], &payload, &mut wire)
             .unwrap();
-        root.radio().transmit(&wire[..len]).await.unwrap();
+        root.radio().transmit(0, &wire[..len]).await.unwrap();
         assert!(matches!(
             relay.receive(1, 0).await.unwrap(),
             Some(RplReceiveOutcome::Forwarded { next_hop }) if next_hop == root_addr

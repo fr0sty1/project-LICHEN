@@ -50,4 +50,13 @@ config LICHEN_OSCORE_LOG_LEVEL
 	  Log level for OSCORE subsystem:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
 
+config LICHEN_OSCORE_GROUP_MAX
+	int "Maximum OSCORE group contexts"
+	default 4
+	range 1 16
+	help
+	  Maximum number of OSCORE group contexts.
+	  Each group context uses approximately 40 bytes plus a per-member
+	  OSCORE context (~100 bytes each).
+
 endif # LICHEN_OSCORE

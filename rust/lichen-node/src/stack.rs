@@ -170,6 +170,8 @@ pub struct Stack<R: Radio> {
     message_id: u16,
     /// Forwarding buffer with per-source backpressure (spec appendix-bufferbloat.md).
     forward_buffer: ForwardBuffer,
+    /// CCP-15: Operating channel for TX/RX.
+    channel: u8,
 }
 
 #[cfg(feature = "std")]
@@ -192,6 +194,7 @@ impl<R: Radio> Stack<R> {
         eui64[0] ^= 0x02;
         let node_id = NodeId(eui64);
         Self {
+            channel: radio.rx_channel(),
             radio,
             link: lichen_link::link_layer::LinkLayer::new(identity),
             node: Node::new(node_id),
@@ -311,9 +314,17 @@ impl<R: Radio> Stack<R> {
                 _ => TxError::FrameEncode,
             })?;
 
-        // Radio TX
+        // Radio TX (CCP-15: CCA before transmit)
+        if !self
+            .radio
+            .cca(self.channel, -80)
+            .await
+            .map_err(|_| TxError::RadioTx)?
+        {
+            return Err(TxError::RadioTx);
+        }
         self.radio
-            .transmit(&wire[..wire_len])
+            .transmit(self.channel, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 
@@ -377,8 +388,17 @@ impl<R: Radio> Stack<R> {
                 _ => TxError::FrameEncode,
             })?;
 
+        // CCP-15: CCA before transmit
+        if !self
+            .radio
+            .cca(self.channel, -80)
+            .await
+            .map_err(|_| TxError::RadioTx)?
+        {
+            return Err(TxError::RadioTx);
+        }
         self.radio
-            .transmit(&wire[..wire_len])
+            .transmit(self.channel, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 
@@ -392,7 +412,7 @@ impl<R: Radio> Stack<R> {
         let mut buf = [0u8; MAX_FRAME_SIZE];
         let rx = self
             .radio
-            .receive(&mut buf, timeout_ms)
+            .receive(self.channel, &mut buf, timeout_ms)
             .await
             .map_err(|_| RxError::RadioRx)?;
 
