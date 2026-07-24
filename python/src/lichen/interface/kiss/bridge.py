@@ -373,10 +373,11 @@ class KissBridge:
             )
             if payload[0] == 0x06:
                 aprs_ack = create_ack(own_call, msg_id)
+                aprs_payload = aprs_ack.encode()
             else:
                 from .aprs import AprsRej
-                aprs_ack = AprsRej(addressee=own_call, msg_id=msg_id)
-            aprs_payload = aprs_ack.encode()
+                aprs_rej = AprsRej(addressee=own_call, msg_id=msg_id)
+                aprs_payload = aprs_rej.encode()
         else:
             # Try to synthesize proper APRS packet
             synth = synthesize_aprs(payload)
