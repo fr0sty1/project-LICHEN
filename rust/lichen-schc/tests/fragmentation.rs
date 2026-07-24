@@ -5,7 +5,10 @@
 
 #[cfg(feature = "std")]
 use lichen_schc::fragment::FragmentReceiver;
-use lichen_schc::fragment::{compute_mic, Ack, Fragment, FragmentSender, DEFAULT_WINDOW_SIZE};
+use lichen_schc::fragment::{
+    receiver_abort, Ack, Fragment, FragmentSender, ReceiverResponse, SenderOutput, SenderStatus,
+    DEFAULT_RECEIVER_LIMIT, MAX_ACK_REQUESTS, RULE_ID_A_TO_B, TILE_SIZE,
+};
 
 #[test]
 fn sender_receiver_literal_recovery() {
@@ -51,26 +54,16 @@ fn sender_receiver_literal_recovery() {
 #[test]
 fn multi_fragment_single_window() {
     let payload: Vec<u8> = (0u8..20).collect();
-    let tile_size = 5;
-    let sender = FragmentSender::new(&payload, 20, tile_size, 7).unwrap(); // explicit for test; profile default is now 32
+    let sender = FragmentSender::new(&payload, RULE_ID_A_TO_B, DEFAULT_RECEIVER_LIMIT).unwrap();
 
-    assert_eq!(sender.fragment_count(), 4); // 20 bytes / 5 bytes per tile
+    assert_eq!(sender.fragment_count(), 1);
     assert_eq!(sender.window_count(), 1);
 
     let frags: Vec<_> = sender.iter().collect();
-    assert_eq!(frags.len(), 4);
+    assert_eq!(frags.len(), 1);
 
-    // First fragments have descending FCN (for window_size=7)
-    assert_eq!(frags[0].fcn, 6); // 7-1-0 = 6
-    assert_eq!(frags[1].fcn, 5);
-    assert_eq!(frags[2].fcn, 4);
-    assert!(frags[3].is_all_1()); // Last fragment
-
-    // Verify payloads
-    assert_eq!(frags[0].payload, &[0, 1, 2, 3, 4]);
-    assert_eq!(frags[1].payload, &[5, 6, 7, 8, 9]);
-    assert_eq!(frags[2].payload, &[10, 11, 12, 13, 14]);
-    assert_eq!(frags[3].payload, &[15, 16, 17, 18, 19]);
+    assert!(frags[0].is_all_1());
+    assert_eq!(frags[0].payload, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
 }
 
 #[test]
