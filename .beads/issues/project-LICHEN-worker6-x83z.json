@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-x83z",
+  "title": "[rereview] project-LICHEN-zt3c.13: stale ULA/GUA reference in spec/03-adaptation.md:71 (Rule 1)",
+  "description": "Commit e9528d8e5 updated ULA/GUA -\u003e 02xx references across 5 spec files but missed spec/03-adaptation.md:71, which still says:\\n\\n\u003e Rule 1: Mesh-local IPv6+UDP+CoAP (26B SCHC header, ULA/GUA with /64 prefix MSB match)\\n\\nThis should read: '02xx with /64 prefix MSB match' or 'mesh prefix with /64 MSB match' to be consistent with the rest of the spec (lines 10, 74 in appendix-schc.md now use 02xx; Rule 1 table in draft-lichen-schc-lora-00.md:200 uses mesh_prefix/64).\\n\\nThe commit changed Rule 4 description in this same file (line 74) but overlooked Rule 1 (line 71).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:12:52.727338239Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:12:52.727338239Z"
+}
