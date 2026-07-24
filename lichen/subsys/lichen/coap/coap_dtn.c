@@ -20,7 +20,7 @@
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
-static const struct lichen_deaddrop_provider *s_provider;
+static struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
 static struct k_mutex s_dtn_buf_mutex;
 static struct k_work_delayable s_dtn_expire_work;
@@ -64,7 +64,7 @@ static void dtn_expire_work_handler(struct k_work *work)
 }
 
 int lichen_coap_deaddrop_register(
-	const struct lichen_deaddrop_provider *provider)
+	struct lichen_deaddrop_provider *provider)
 {
 	if (provider == NULL) return -EINVAL;
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);

@@ -210,7 +210,7 @@ struct lichen_deaddrop_provider {
 	struct lichen_dtn_buffer *dtn_buf;  /* non-static DTN storage per P4 review */
 };
 
-int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider);
+int lichen_coap_deaddrop_register(struct lichen_deaddrop_provider *provider);
 
 #ifdef __cplusplus
 }

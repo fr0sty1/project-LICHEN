@@ -7,7 +7,7 @@
 #include <lichen/coap_server.h>
 
 int lichen_coap_dtn_init(void);
-int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider);
+int lichen_coap_deaddrop_register(struct lichen_deaddrop_provider *provider);
 uint16_t lichen_dtn_expire_periodic(void);
 
 #endif
