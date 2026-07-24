@@ -26,7 +26,7 @@ ZTEST(lichen_util, test_sha256_accepts_null_empty_input)
 
 	memset(output, 0xa5, sizeof(output));
 
-	zassert_equal(lichen_sha256(NULL, 0, output), 0,
+	zassert_equal(lichen_sha256(NULL, 0, output, sizeof(output)), 0,
 		      "sha256 accepts NULL input with zero length");
 	zassert_mem_equal(output, empty_sha256, sizeof(output),
 			  "sha256(NULL, 0) returns empty-message digest");
@@ -36,7 +36,7 @@ ZTEST(lichen_util, test_sha256_rejects_null_nonempty_input)
 {
 	uint8_t output[TC_SHA256_DIGEST_SIZE];
 
-	zassert_equal(lichen_sha256(NULL, 1, output), -EINVAL,
+	zassert_equal(lichen_sha256(NULL, 1, output, sizeof(output)), -EINVAL,
 		      "sha256 rejects NULL input with nonzero length");
 }
 
@@ -44,8 +44,16 @@ ZTEST(lichen_util, test_sha256_rejects_null_output)
 {
 	static const uint8_t input[] = { 0x01 };
 
-	zassert_equal(lichen_sha256(input, sizeof(input), NULL), -EINVAL,
+	zassert_equal(lichen_sha256(input, sizeof(input), NULL, 0), -EINVAL,
 		      "sha256 rejects NULL output");
+}
+
+ZTEST(lichen_util, test_sha256_rejects_small_output)
+{
+	uint8_t output[TC_SHA256_DIGEST_SIZE];
+
+	zassert_equal(lichen_sha256(NULL, 0, output, TC_SHA256_DIGEST_SIZE - 1), -ENOMEM,
+		      "sha256 rejects output buffer smaller than TC_SHA256_DIGEST_SIZE");
 }
 
 ZTEST(lichen_util, test_lichen_hash_32)

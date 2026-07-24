@@ -83,7 +83,7 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
         return -EINVAL;
     }
 
-    ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);
+    ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash, sizeof(hash));
     if (ret != 0) {
         LOG_ERR("pubkey_to_iid failed (SHA-256 error %d)", ret);
         goto cleanup;
