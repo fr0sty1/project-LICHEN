@@ -277,8 +277,10 @@ impl NeighborTable {
                     n.etx = etx;
                     n.rssi = rssi;
                     n.last_seen_ms = now_ms;
-                    if coords.is_some() {
-                        n.coords = coords;
+                    if let Some(c) = coords {
+                        if is_valid_coords(c) {
+                            n.coords = Some(c);
+                        }
                     }
                     return (i, None);
                 }
@@ -287,13 +289,14 @@ impl NeighborTable {
             }
         }
         // Insert new
+        let validated_coords = coords.filter(is_valid_coords);
         if let Some(i) = empty_slot {
             self.entries[i] = Some(Neighbor {
                 addr: *addr,
                 etx,
                 rssi,
                 last_seen_ms: now_ms,
-                coords,
+                coords: validated_coords,
             });
             return (i, None);
         }
@@ -311,7 +314,7 @@ impl NeighborTable {
             etx,
             rssi,
             last_seen_ms: now_ms,
-            coords,
+            coords: validated_coords,
         });
         (oldest, evicted)
     }
@@ -334,8 +337,12 @@ impl NeighborTable {
             .and_then(|n| n.coords)
     }
 
-    /// Update coordinates for an existing neighbor. Does nothing if neighbor not found.
+    /// Update coordinates for an existing neighbor.
+    /// Does nothing if neighbor not found or coords are invalid.
     pub fn set_coords(&mut self, addr: &[u8; 16], coords: GeoCoords) {
+        if !is_valid_coords(coords) {
+            return;
+        }
         for n in self.entries.iter_mut().flatten() {
             if n.addr == *addr {
                 n.coords = Some(coords);
@@ -1260,20 +1267,16 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
 /// Validate geographic coordinates.
 /// Returns false for NaN, inf, out-of-range, or null island (0,0).
 #[cfg(feature = "std")]
+const NULL_ISLAND_EPSILON: f64 = 0.001;
+
 fn is_valid_coords(coords: GeoCoords) -> bool {
     let (lat, lon) = coords;
-
-    // Check for NaN/inf
     if !lat.is_finite() || !lon.is_finite() {
         return false;
     }
-
-    // Reject null island sentinel (almost always invalid GPS data)
-    if lat == 0.0 && lon == 0.0 {
+    if lat.abs() < NULL_ISLAND_EPSILON && lon.abs() < NULL_ISLAND_EPSILON {
         return false;
     }
-
-    // Check valid geographic ranges
     (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lon)
 }
 

@@ -159,11 +159,10 @@ const ENCRYPTED_BIT: u8 = 1 << 6;
 const RESERVED_BIT: u8 = 1 << 7;
 
 /// Maximum serialized LoRa frame length, including the Length field.
-/// Length field is u8 (0-255), so total wire frame = 1 + 255 = 256.
-pub const MAX_FRAME_LEN: usize = 256;
+pub const MAX_FRAME_LEN: usize = 255;
 
-/// Maximum body length represented by the Length field (u8 max = 255).
-pub const MAX_FRAME_BODY: usize = 255;
+/// Maximum body length represented by the Length field.
+pub const MAX_FRAME_BODY: usize = MAX_FRAME_LEN - 1;
 
 /// Error type for link-layer frame parsing and serialisation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -604,10 +603,12 @@ mod tests {
             encryption: Encryption::Plaintext,
         };
         let mut small_buf = [0u8; 5];
-        assert!(matches!(
-            frame.write_to(&mut small_buf),
-            Err(FrameError::BufferTooSmall(_))
-        ));
+        let result = frame.write_to(&mut small_buf);
+        assert!(
+            matches!(result, Err(FrameError::BufferTooSmall(_))),
+            "expected BufferTooSmall, got {:?}",
+            result
+        );
 
         let large_payload = vec![0u8; 260];
         let large_frame = LichenFrame {
@@ -705,9 +706,7 @@ mod tests {
                         }
                         "reserved_bit_set" => error == FrameError::ReservedBitSet,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
-                        "signed_encrypted_unsupported" => {
-                            error == FrameError::SignedEncryptedUnsupported
-                        }
+                        "signed_encrypted_unsupported" => error == FrameError::SignedEncryptedUnsupported,
                         "frame_too_large" => error == FrameError::FrameTooLarge,
                         _ => false,
                     };
