@@ -40,9 +40,11 @@ from lichen.announce.processor import (
 from lichen.announce.scheduler import (
     DEFAULT_INTERVAL_MS,
     DEFAULT_JITTER_MS,
+    LISTEN_DURATION_SEC,
     AnnounceScheduler,
     AnnounceTransmitter,
     SchedulerConfig,
+    StartupCoordinator,
 )
 from lichen.gradient import GRADIENT_TIMEOUT_MS
 
@@ -62,10 +64,12 @@ __all__ = [
     "AnnounceTransmitter",
     "DEFAULT_INTERVAL_MS",
     "DEFAULT_JITTER_MS",
+    "LISTEN_DURATION_SEC",
     "GRADIENT_TIMEOUT_MS",
     "MAX_ANNOUNCE_HOPS",
     "SIGNATURE_LENGTH",
     "SchedulerConfig",
+    "StartupCoordinator",
     "decode_congestion",
     "decode_coords",
     "decode_dtn_expiry",

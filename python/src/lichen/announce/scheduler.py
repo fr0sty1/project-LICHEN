@@ -9,7 +9,7 @@ import asyncio
 import contextlib
 import logging
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Set
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INTERVAL_MS = 300_000
 DEFAULT_JITTER_MS = 30_000
+LISTEN_DURATION_SEC = 30.0
+MAX_STARTUP_DELAY_SEC = 300.0
+DELAY_PER_NODE_SEC = 5.0
 
 
 class AnnounceTransmitter(Protocol):
@@ -32,12 +35,48 @@ class AnnounceTransmitter(Protocol):
 
 
 @dataclass
+class StartupCoordinator:
+    """Density-aware startup delay.
+
+    Listens for other nodes before transmitting, then scales the initial
+    announce delay by the number of unique neighbors heard.  This avoids
+    synchronized transmission bursts when many nodes power on together.
+
+    Flow:
+      1. listen_phase() — collect unique IIDs heard on the mesh.
+      2. calculate_delay() — map neighbor count to a delay in seconds.
+    """
+
+    _heard: set[bytes] = field(default_factory=set, init=False, repr=False)
+
+    def record_heard(self, iid: bytes) -> None:
+        """Record a unique peer IID heard during the listen phase."""
+        self._heard.add(iid)
+
+    def nodes_heard(self) -> int:
+        """Return the number of unique nodes heard."""
+        return len(self._heard)
+
+    def calculate_delay(self, max_delay: float = MAX_STARTUP_DELAY_SEC) -> float:
+        """Return a density-scaled startup delay in seconds.
+
+        Formula: min(max_delay, nodes_heard * DELAY_PER_NODE_SEC)
+
+        A node that hears no neighbors starts immediately (delay = 0).
+        A node that hears 10 neighbors waits 50 seconds, spreading out
+        the initial announcement burst across the mesh.
+        """
+        return min(max_delay, self.nodes_heard() * DELAY_PER_NODE_SEC)
+
+
+@dataclass
 class SchedulerConfig:
     """Configuration for the announce scheduler."""
 
     interval_ms: int = DEFAULT_INTERVAL_MS
     jitter_ms: int = DEFAULT_JITTER_MS
     initial_delay_ms: int = 0
+    startup_coordinator: StartupCoordinator | None = None
 
     def __post_init__(self) -> None:
         if self.interval_ms <= 0:
@@ -226,7 +265,17 @@ class AnnounceScheduler:
         while self._running:
             try:
                 initial_delay = self.config.initial_delay_ms
-                if initial_delay == 0:
+                coord = self.config.startup_coordinator
+                if coord is not None:
+                    density_delay = coord.calculate_delay()
+                    logger.info(
+                        "heard %d unique nodes during listen phase; "
+                        "density delay = %.1f s",
+                        coord.nodes_heard(),
+                        density_delay,
+                    )
+                    initial_delay = int(density_delay * 1000)
+                elif initial_delay == 0:
                     initial_delay = random.randint(
                         1000, max(1000, self.config.jitter_ms)
                     )
