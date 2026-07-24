@@ -19,6 +19,7 @@ Test categories:
 """
 
 from ipaddress import IPv6Address
+from unittest.mock import patch
 
 import pytest
 
@@ -730,6 +731,56 @@ class TestDtnBuffer:
 
         # Should have evicted oldest to stay under limit
         assert router._dtn_buffer_size() <= router.dtn_buffer_max_bytes
+
+    def test_clock_skew_does_not_cause_premature_expiry(self, router: Router):
+        """Clock jump backward must not prematurely expire messages.
+
+        Uses time.time() mock to simulate NTP adjustment.
+        """
+        now = 1_000_000_000  # fixed epoch for deterministic test
+        with patch("lichen.routing.router.time") as mock_time:
+            mock_time.time.return_value = now
+
+            packet = make_packet("fd00::100")
+            iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+            expiry = now + 3600  # 1 hour TTL
+
+            result = router.dtn_buffer_message(packet, iid, expiry, now_ms=0)
+            assert result is True
+            assert len(router.dtn_buffer) == 1
+
+            # Simulate clock skew: time jumps backward by 2 hours
+            mock_time.time.return_value = now - 7200
+
+            expired_count = router.dtn_expire_old()
+
+        # Message should NOT be expired — wall clock jumped back,
+        # but absolute expiry (now + 3600) is still in the future
+        # relative to the new "now" (now - 7200)
+        assert expired_count == 0
+        assert len(router.dtn_buffer) == 1
+
+    def test_one_hour_ttl_message_expires_after_wall_clock_advance(self, router: Router):
+        """Message with 1-hour TTL expires when wall clock advances past expiry."""
+        now = 1_000_000_000
+        with patch("lichen.routing.router.time") as mock_time:
+            mock_time.time.return_value = now
+
+            packet = make_packet("fd00::100")
+            iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+            expiry = now + 3600  # 1 hour TTL
+
+            result = router.dtn_buffer_message(packet, iid, expiry, now_ms=0)
+            assert result is True
+            assert len(router.dtn_buffer) == 1
+
+            # Advance wall clock past expiry
+            mock_time.time.return_value = now + 3600 + 1
+
+            expired_count = router.dtn_expire_old()
+
+        assert expired_count == 1
+        assert len(router.dtn_buffer) == 0
 
 
 class TestForwardingBuffer:
