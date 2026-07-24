@@ -464,26 +464,26 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         private void TriggerTxLoopback()
         {
-            // In loopback mode, TX data is immediately available for RX
-            // Copy TX buffer to RX buffer
-            Array.Copy(txBuffer, 0, rxBuffer, 0, txLen);
-            rxLen = txLen;
-            rxRssi = -30; // Simulated good signal
-            rxSnr = 100;  // 10.0 dB * 10
+            lock (stateLock)
+            {
+                Array.Copy(txBuffer, 0, rxBuffer, 0, txLen);
+                rxLen = txLen;
+                rxRssi = -30;
+                rxSnr = 100;
 
-            // If we were in RX mode, trigger RxDone; otherwise just TxDone
-            if (pendingLoopbackRx)
-            {
-                irqFlags |= 0x0003; // TxDone + RxDone
-                pendingLoopbackRx = false;
-                this.Log(LogLevel.Debug, "Loopback: TX done, {0} bytes available in RX", rxLen);
-            }
-            else
-            {
-                irqFlags |= 0x0001; // TxDone only
-                // Store for next RX
-                loopbackDataAvailable = true;
-                this.Log(LogLevel.Debug, "Loopback: TX done, data queued for next RX");
+                if (pendingLoopbackRx)
+                {
+                    irqFlags |= 0x0003; // TxDone + RxDone
+                    pendingLoopbackRx = false;
+                    this.Log(LogLevel.Debug, "Loopback: TX done, {0} bytes available in RX", rxLen);
+                }
+                else
+                {
+                    irqFlags |= 0x0001; // TxDone only
+                    loopbackDataAvailable = true;
+                    this.Log(LogLevel.Debug, "Loopback: TX done, data queued for next RX");
+                }
+                IRQ.Set(true);
             }
         }
 
@@ -521,21 +521,21 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         private void EnterRxModeLoopback()
         {
-            // In loopback mode, check if there's queued data from a previous TX
-            if (loopbackDataAvailable)
+            lock (stateLock)
             {
-                // Data already in rxBuffer from previous TX
-                irqFlags |= 0x0002; // RxDone
-                loopbackDataAvailable = false;
-                rxMode = false;
-                IRQ.Set(true);
-                this.Log(LogLevel.Debug, "Loopback: immediate RX, {0} bytes", rxLen);
-            }
-            else
-            {
-                // Mark that we're waiting for loopback data
-                pendingLoopbackRx = true;
-                this.Log(LogLevel.Debug, "Loopback: RX waiting for TX");
+                if (loopbackDataAvailable)
+                {
+                    irqFlags |= 0x0002; // RxDone
+                    loopbackDataAvailable = false;
+                    rxMode = false;
+                    IRQ.Set(true);
+                    this.Log(LogLevel.Debug, "Loopback: immediate RX, {0} bytes", rxLen);
+                }
+                else
+                {
+                    pendingLoopbackRx = true;
+                    this.Log(LogLevel.Debug, "Loopback: RX waiting for TX");
+                }
             }
         }
 
@@ -585,7 +585,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
         {
             if (loopbackMode)
             {
-                pendingLoopbackRx = false;
+                lock (stateLock)
+                {
+                    pendingLoopbackRx = false;
+                }
                 this.Log(LogLevel.Debug, "Loopback: RX exit");
                 return;
             }
