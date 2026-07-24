@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ig3e",
+  "title": "[review] project-LICHEN-worker6-mjcp: fragments_in_window_vec uses modulo instead of absolute window",
+  "description": "fragments_in_window_vec filters with `f.window == (abs_window % 2) as u8`, but Fragment.window stores the absolute window number (from `index / WINDOW_SIZE`), not the modulo-2 parity. With current constants (MAX_PACKET_SIZE=16384, TILE_SIZE=187 → max 88 tiles → max 2 windows) this works correctly because abs_window values 0 and 1 have unique parity values. However, if WINDOW_SIZE decreases or TILE_SIZE increases such that packets span 3+ windows, abs_window=2 would have parity 0 (same as window 0), causing fragments_in_window_vec(2) to return fragments from window 0 instead of window 2. The correct filter should be `f.window == abs_window as u8`.\n\nFix: Change `f.window == (abs_window % 2) as u8` to `f.window == abs_window as u8` for semantic correctness and robustness against future constant changes.\n\nFile: rust/lichen-schc/src/fragment.rs:1014",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:03:50.383210024Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:03:50.383210024Z"
+}
