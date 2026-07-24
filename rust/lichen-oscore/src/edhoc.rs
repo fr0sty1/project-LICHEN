@@ -433,11 +433,13 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext_3: &[u8],
+    cred_i: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext_3)?;
+    encode_bstr(&mut buf, cred_i)?;
     Ok(compute_th(&buf))
 }
 
@@ -914,7 +916,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1342,7 +1344,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1630,9 +1632,9 @@ mod tests {
         let credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
-        let th_4 = hex!("837a47f19dba8d8d3a9216e42086091eb6eecabad15776adfd61577cb3675fdd");
+        let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
         assert_eq!(
-            transcript_4(&th_3, &ciphertext_3).unwrap(),
+            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
             th_4
         );
 
@@ -1655,23 +1657,23 @@ mod tests {
             "RFC 9529 Message 2 failed: {verified_message_3:?}"
         );
 
-        let prk_out = hex!("77da318df09d26aa4cc69be602930750c32b5551d7a053d52000265d3c180eac");
+        let prk_out = hex!("e61890f95bbc90b69daa297ed2c484b75b796cf28107cc6ef207cf1783e3dedc");
         assert_eq!(
             edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap().as_slice(),
             prk_out
         );
-        let prk_exporter = hex!("a0ef8465a68d81f448c85ea6118170d1f65fa03ef4277250b74a599b3353ab02");
+        let prk_exporter = hex!("3f0908bcd0d0c7422328d2b38423c0a2736fcb104c3021e02d99d23e3d0f0c6e");
         assert_eq!(
             edhoc_kdf(&prk_out, &th_4, "10", &[], 32).unwrap().as_slice(),
             prk_exporter
         );
         assert_eq!(
             edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16).unwrap().as_slice(),
-            &hex!("240e728a7ef8fe1129c26da390ce9954")
+            &hex!("f31f9c5d452e861ead55dbc117be299a")
         );
         assert_eq!(
             edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8).unwrap().as_slice(),
-            &hex!("32d1a820b919523a")
+            &hex!("d99dbbddf07fcff4")
         );
 
         let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
