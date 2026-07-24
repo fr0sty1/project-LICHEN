@@ -164,7 +164,8 @@ static bool is_link_local(const uint8_t addr[16])
 
 static bool is_global(const uint8_t addr[16])
 {
-	return (addr[0] >> 5) == 0x01; /* 001x xxxx = 2000::/3 */
+	return (addr[0] >> 5) == 0x01 ||             /* 2000::/3 */
+	       (addr[0] & 0xFE) == 0x02;              /* 02xx::/7 Yggdrasil */
 }
 
 static bool is_ula(const uint8_t addr[16])
@@ -766,7 +767,7 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 			return SCHC_ERR_NO_MATCHING_RULE;
 		}
 	} else if (rule_id == SCHC_RULE_GLOBAL_COAP || rule_id == SCHC_RULE_GLOBAL_OSCORE) {
-		if (!is_global(src) || !is_global(dst)) {
+		if (!(is_global(src) || is_ula(src)) || !(is_global(dst) || is_ula(dst))) {
 			return SCHC_ERR_NO_MATCHING_RULE;
 		}
 	}

@@ -115,6 +115,7 @@ static inline int schc_rule_id(const uint8_t *data, size_t len)
 #define SCHC_FRAGMENT_RULE_B_TO_A 0x79u
 #define SCHC_FRAGMENT_TILE_SIZE 187u
 #define SCHC_FRAGMENT_WINDOW_SIZE 63u
+#define SCHC_BITMAP_MASK ((UINT64_C(1) << SCHC_FRAGMENT_WINDOW_SIZE) - 1U)
 #define SCHC_ALL_1 0x3fu
 #define SCHC_FRAGMENT_MAX_TILES 126u
 #define SCHC_FRAGMENT_MAX_PACKET_SIZE 23562u
@@ -167,6 +168,15 @@ int schc_ack_encode(const struct schc_ack *ack, uint8_t *out, size_t out_len);
 SCHC_WARN_UNUSED_RESULT
 int schc_ack_decode(struct schc_ack *ack, uint64_t assigned_bitmap,
 		    bool check_assigned, const uint8_t *data, size_t data_len);
+
+struct schc_fragment {
+	const uint8_t *tile;
+	size_t tile_len;
+	uint8_t rule_id;
+	uint8_t window;
+	uint8_t fcn;
+	uint8_t rcs[4];
+};
 
 SCHC_WARN_UNUSED_RESULT
 int schc_control_encode(enum schc_fragment_control control, uint8_t rule_id,
