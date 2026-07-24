@@ -467,8 +467,7 @@ fn build_coap_udp(
         udp_len,
         NEXT_HEADER_UDP,
         hop_limit,
-        traffic_class,
-        flow_label,
+        (traffic_class, flow_label),
         &src,
         &dst,
     );
@@ -668,8 +667,7 @@ impl PacketProfile for Icmpv6EchoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
@@ -842,8 +840,7 @@ impl PacketProfile for RplDioProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
@@ -994,8 +991,7 @@ impl PacketProfile for RplDaoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
