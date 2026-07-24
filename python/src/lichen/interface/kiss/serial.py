@@ -46,6 +46,7 @@ class KissSerialConnection:
     _closed: bool = False
     _loop: asyncio.AbstractEventLoop | None = field(default=None, repr=False)
     _open_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    _recv_task: asyncio.Task | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         # Wire up handler's TX callback to our on_frame
@@ -117,12 +118,20 @@ class KissSerialConnection:
                 return ser.read(min(waiting, 4096))
             return ser.read(1)
 
+        self._recv_task = asyncio.current_task()
         try:
-            chunk = await self._loop.run_in_executor(None, _read)
+            chunk = await asyncio.wait_for(
+                self._loop.run_in_executor(None, _read),
+                timeout=2.0,
+            )
+        except asyncio.TimeoutError:
+            return True
         except (serial.SerialException, OSError) as exc:
             log.error("KISS serial read error: %s", exc)
             self._closed = True
             raise ConnectionError(str(exc)) from exc
+        finally:
+            self._recv_task = None
 
         if chunk is None:
             self._closed = True
@@ -156,6 +165,11 @@ class KissSerialConnection:
         if self._closed:
             return
         self._closed = True
+
+        # Cancel any in-flight recv to unblock the executor thread
+        recv_task = self._recv_task
+        if recv_task is not None and not recv_task.done():
+            recv_task.cancel()
 
         ser = self._serial
         if ser is not None:
