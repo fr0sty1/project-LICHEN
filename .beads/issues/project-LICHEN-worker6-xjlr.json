@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-xjlr",
+  "title": "[review] project-LICHEN-worker6-p19p: EDHOC KDF test vectors changed without implementation changes",
+  "description": "## Potential issue: EDHOC KDF test vectors changed\n\n**File:** `rust/lichen-oscore/src/edhoc.rs`\n\nAll EDHOC KDF test vectors (`prk_2e`, `keystream_2`, `prk_out`, `prk_exporter`, and derived exporter values) were changed in the test module. The commit diff shows no corresponding changes to the `edhoc_kdf` implementation.\n\n**Changed values:**\n- `prk_2e`: `e998b69d...` → `d584ac2e...`\n- `keystream_2`: `980ec080...` → `bbcacc62...`\n- `prk_out`: `99a837cb...` → `b2c5f5a4...`\n- `prk_exporter`: `f8ad34b1...` → `dceb63a4...`\n- Exporter \"0\" output: `7ced998c...` → `5212b18f...`\n- Exporter \"1\" output: `307b26d9...` → `bf4054ca...`\n\nThese reference \"RFC 9529\" test vectors. Either:\n1. The old test vectors were wrong and these are corrected\n2. The new test vectors are wrong (implementation drift from a different commit)\n\n**Action:** Verify these values against RFC 9529 (or an independent reference implementation) to confirm correctness.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:31:56.898495316Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:31:56.898495316Z"
+}
