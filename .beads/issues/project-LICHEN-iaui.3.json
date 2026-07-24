@@ -5,11 +5,14 @@
   "status": "open",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:20:17.23050757Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:06:00.869827963Z",
+  "updated_at": "2026-07-23T05:46:46.825606722Z",
   "started_at": "2026-07-23T05:46:46.825606722Z",
+  "lease_expires_at": "2026-07-23T05:51:46.825606722Z",
+  "heartbeat_at": "2026-07-23T05:46:46.825606722Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-iaui.3",
