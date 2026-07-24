@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-w16u",
   "title": "[review] project-LICHEN-worker6-tkjl: write_to and from_bytes header bit layout incompatible with test vectors",
   "description": "## Bug: Header bit layout mismatch vs shared test vectors\n\n**File:** `rust/lichen-schc/src/fragment.rs:154,176-177,255,274,284`\n\n**Severity:** P0 — spec compliance, interop failure\n\nThe shared test vectors (`test/vectors/schc_fragmentation.json`) use the following bit layout for Fragment headers:\n- **Bit 7** (MSB): window bit\n- **Bits 6..1**: FCN (6 bits, shifted left by 1 to leave bit 0 for first payload byte top bit)\n- **Bit 0**: top bit of first data byte (ORed by the interleaved 7-bit encoding)\n\nHowever, `write_to` and `from_bytes` use:\n- **Bit 6** (`FRAGMENT_N`): window bit  \n- **Bits 5..0**: FCN\n\nThis makes the wire format incompatible with canonical test vectors.\n\n**Evidence:**\nTest vector `tile_0` (FCN=62, window=0): expected wire header `0x7c`\n- With FRAGMENT_N=6: `((window \u003c\u003c 7) | (fcn \u003c\u003c 1)) = ((0 \u003c\u003c 7) | (62 \u003c\u003c 1)) = 0x7c` ✓\n- Our code: `out[1] = ((0 \u003c\u003c 6) | 62) = 0x3e` ✗ (test fails)\n\nThe `fragmentation_vectors` test fails with assertion error comparing `[120, 62, ...]` (our output) vs `[120, 124, ...]` (test vector expected `0x7c = 124`).\n\n**Fix approach:**\n- `write_to`: `out[1] = ((window \u0026 1) \u003c\u003c 7) | ((fcn \u0026 63) \u003c\u003c 1);`\n- `from_bytes`: `window = (data[1] \u003e\u003e 7) \u0026 1; fcn = (data[1] \u003e\u003e 1) \u0026 63;`\n\nBackward-incompatible wire format change — all dependent tests need update.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:05:24.463541221Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:15:50.463175061Z",
-  "started_at": "2026-07-24T19:15:50.463175061Z",
-  "lease_expires_at": "2026-07-24T19:20:50.463175061Z",
-  "heartbeat_at": "2026-07-24T19:15:50.463175061Z"
+  "updated_at": "2026-07-24T19:05:24.463541221Z"
 }

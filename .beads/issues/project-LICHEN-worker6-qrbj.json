@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-qrbj",
   "title": "[review] project-LICHEN-worker6-sj6v: allow_no_piv_response guard blocks PIV-included responses",
   "description": "In protect_response() at lib.rs:949, the guard `if !self.allow_no_piv_response { return Err(OscoreError::InvalidParam); }` is placed before the include_piv branch, blocking ALL protect_response calls on restored contexts even when include_piv=true. RFC 8613 Section 5.2 allows responders to include their own PIV in responses regardless of the no-PIV-response policy. The guard should be: `if !include_piv \u0026\u0026 !self.allow_no_piv_response { ... }`.\n\nAdditionally, lines 975-977 perform a redundant PIV length check after OscoreSeqNum::from_piv() already succeeded at line 970 (from_piv rejects empty and oversized PIVs). This dead code should be removed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:10:43.907536579Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:15:50.840630841Z",
-  "started_at": "2026-07-24T19:15:50.840630841Z",
-  "lease_expires_at": "2026-07-24T19:20:50.840630841Z",
-  "heartbeat_at": "2026-07-24T19:15:50.840630841Z"
+  "updated_at": "2026-07-24T19:10:43.907536579Z"
 }

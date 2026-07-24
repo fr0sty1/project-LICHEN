@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-sj6v",
   "title": "[review] project-LICHEN-worker6-fcs3: protect_response missing allow_no_piv_response check — 10 test failures",
   "description": "## Root cause\n\n`Context::protect_response` (lib.rs:949-1040) never reads the `self.allow_no_piv_response` field. The field is set (in `register_fresh`, `restore_existing`, `new_ephemeral`, `restore`) but never checked before allowing an `include_piv=false` response.\n\n## Test failures\n\nAll 10 failures are `unwrap_err()` panicking on `Ok` or replay errors bubbling where they shouldn't:\n\n1. `fresh_context_activates_only_after_atomic_registration` — unregistered context should reject no-PIV response, got `Ok`\n2. `restored_context_rejects_response_without_piv` — restored context should reject no-PIV response, got `Ok`\n3. `supplied_material_restores_authoritative_state_and_disables_no_piv` — same\n4. `response_without_piv_requires_requester_identity` — expected rejection, got `Ok`\n5. `response_without_piv_is_one_shot_per_request` — expected replay rejection, got `Ok`\n6. `delayed_explicit_piv_ordinary_response_ignores_peer_replay_window` — got `Replay`\n7. `dropped_pending_response_preserves_committed_window_across_large_jump` — got `Replay`\n8. `oversized_explicit_piv_response_does_not_poison_valid_retry` — got `Replay`\n9. `public_unprotect_rejects_malformed_inner_options` — got `Ok` instead of error\n10. `test_roundtrip_with_0xff_in_class_e_options` — got `SeqExhausted`\n\n## Fix needed\n\nAdd an `allow_no_piv_response` guard in `protect_response` at the start of the `include_piv=false` branch, returning `InvalidParam` when `!self.allow_no_piv_response`.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:28:41.936882496Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:15:53.744666355Z",
-  "started_at": "2026-07-24T19:15:53.744666355Z",
-  "lease_expires_at": "2026-07-24T19:20:53.744666355Z",
-  "heartbeat_at": "2026-07-24T19:15:53.744666355Z"
+  "updated_at": "2026-07-24T18:28:41.936882496Z"
 }
