@@ -1005,6 +1005,22 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	 * L2 unicast is NOT supported. If future requirements need directed
 	 * addressing (e.g., certain RPL modes, energy optimization), extend
 	 * this to pass a non-NULL dst_eui64 based on routing decisions.
+	 *
+	 * SECURITY IMPLICATIONS of L2 broadcast-only design:
+	 * - Passive eavesdropping: all nodes in RF range receive every frame,
+	 *   including metadata (source EUI-64, frame type, sequence numbers)
+	 * - Replay attacks: attacker observes all frame sequence numbers,
+	 *   making replay easier without L2 filtering
+	 * - DoS amplification: every node must process (checksum, parse,
+	 *   decompress, route) all frames, increasing battery drain
+	 * - No L2 access control: frames reach all neighbors regardless of
+	 *   trust relationship
+	 *
+	 * MITIGATIONS (must be enforced elsewhere in the stack):
+	 * - OSCORE (CoAP E2E encryption) MANDATORY for sensitive payloads
+	 * - Ed25519 link signatures authenticate frame origin
+	 * - IPv6 destination filtering rejects non-unicast at L3
+	 * - SCHC decompression drops frames that don't match local address
 	 */
 	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len, NULL,
 			     tx_frame_buf, &frame_len);
