@@ -1729,6 +1729,30 @@ def ccp_load_balancing_vectors() -> list[dict]:
             "score": 0.81,
             "action": "prefer_alt_channel_dynamic_slot",
         },
+        {
+            "name": "select_channel_timing_now_near_wrap",
+            "description": "select_channel via hash_32(now() ^ iid) with now near u32 wrap, 8 channels. Independent FNV-1a32 oracle per spec/02a-coordinated-capacity.md.",
+            "eui64_hex": "0011223344556677",
+            "now": 4294967280,
+            "num_channels": 8,
+            "select_channel": 0,
+        },
+        {
+            "name": "select_channel_timing_now_zero",
+            "description": "select_channel via hash_32(now() ^ iid) with now=0 (epoch start), 8 channels. Independent FNV-1a32 oracle.",
+            "eui64_hex": "0011223344556677",
+            "now": 0,
+            "num_channels": 8,
+            "select_channel": 3,
+        },
+        {
+            "name": "select_channel_timing_now_mid",
+            "description": "select_channel via hash_32(now() ^ iid) with mid-range now=12345678, 8 channels. Independent FNV-1a32 oracle.",
+            "eui64_hex": "0011223344556677",
+            "now": 12345678,
+            "num_channels": 8,
+            "select_channel": 2,
+        },
     ]
 
 
