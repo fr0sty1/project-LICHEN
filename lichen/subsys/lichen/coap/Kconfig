@@ -284,7 +284,7 @@ config LICHEN_COAP_DEADDROP_RATE_LIMIT_MS
 config LICHEN_COAP_DEADDROP_MAX_STORAGE
 	int "Max deaddrop storage entries"
 	depends on LICHEN_COAP_DEADDROP
-	default 8
+	default LICHEN_DTN_MAX_MESSAGES
 	range 1 64
 	help
 	  Maximum messages in DTN deaddrop buffer.
