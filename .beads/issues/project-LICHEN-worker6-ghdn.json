@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-ghdn",
   "title": "[review] lora_ipv6_mesh-mkk4: SCHC Fragment::from_bytes compile error - dangling stack reference",
   "description": "In `rust/lichen-schc/src/fragment.rs`, `Fragment::from_bytes` at line 259 returns `Fragment` with `payload: \u0026body[2..2 + content_len]` where `body` is a stack-local array. Rust rejects this at compile time with error E0515 'cannot return value referencing local variable body'. The code does not compile. Fix: `from_bytes` must write the recovered payload into a caller-provided buffer (restore the old signature with `out: \u0026mut [u8]`) instead of returning a reference. The All-1 payload path at line 255 also needs correction - it currently uses raw wire `data` bytes instead of recovered (shifted) `body` bytes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:04:59.590608288Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:07:36.532685136Z",
-  "started_at": "2026-07-24T17:07:36.532685136Z",
-  "lease_expires_at": "2026-07-24T17:12:36.532685136Z",
-  "heartbeat_at": "2026-07-24T17:07:36.532685136Z"
+  "updated_at": "2026-07-24T17:04:59.590608288Z"
 }
