@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-m79t",
   "title": "[review] project-LICHEN-worker6-dscl: ACK from_bytes_for still uses count-based validation, incompatible with new bitmap encoding in write_to",
   "description": "## Bug: Encode/decode mismatch in Ack\n\n### Root cause\nCommit 42379b3 changed `Ack::write_to` (line 252-264) from writing a count byte `n as u8` at `out[2]` to writing individual bitmap bits via `set_bit`. However, `from_bytes_for` (lines 283-289) was NOT correspondingly updated — it still reads `data[2]` as a count:\n\n```rust\nlet n = data[2] as usize;       // reads bitmap bits as count\nlet body_bytes = n.div_ceil(8); // wildly inflated\nlet required = 3 + body_bytes;\nif data.len() \u003c required {       // rejects valid messages\n    return Err(TooShort::new(required, data.len()).into());\n}\n```\n\n### Impact\n- `write_to` → `from_bytes_for` round-trip is broken for ACKs with non-trivial bitmaps\n- Any bitmap byte at `data[2]` with bits set (e.g., 0x80 → n=128 → requires 19 bytes) causes spurious `TooShort`\n- Lines 290-295 compute a `[bool; MAX_WINDOW_SIZE]` bitmap that is shadowed by line 297 (`let mut bitmap = 0u64`) — dead code\n\n### Also present in affected code\n- The initial bitmap parser (lines 283-295) and the actual bitmap parser (lines 296-317) **both** run, with the first computing useless data and potentially rejecting before the second executes\n- The `restored` padding bits in `write_to` (line 261-262) are always set to 1 (`true`), but SCHC RFC 8724 says byte-alignment padding SHOULD be 0\n\n### Fix direction\n1. Remove the count-based validation/parsing at lines 283-295\n2. Replace with validation based on the actual bit-length format\n3. Use `bit_count = (data.len() - 1) * 8 - 2` (already computed at line 296) for length validation\n4. Fix the `restored` padding to use 0 instead of 1 (or document why 1 is intentional for the compression scheme)\n\n**priority: P1** — breaks round-trip, silent data corruption risk\n**Files:** rust/lichen-schc/src/fragment.rs lines 283-295, 239-263",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:23:13.381815932Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:24:20.932469302Z",
-  "started_at": "2026-07-24T18:24:20.932469302Z",
-  "lease_expires_at": "2026-07-24T18:29:20.932469302Z",
-  "heartbeat_at": "2026-07-24T18:24:20.932469302Z"
+  "updated_at": "2026-07-24T19:15:21.901032918Z",
+  "started_at": "2026-07-24T18:24:20.932469302Z"
 }
