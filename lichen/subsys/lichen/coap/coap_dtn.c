@@ -23,6 +23,7 @@ LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DTN_LOG_LEVEL);
 #define DEADDROP_QUERY_OPTS_MAX 8
 
 static const struct lichen_deaddrop_provider *s_provider;
+static K_MUTEX_DEFINE(s_provider_mutex);
 static struct lichen_dtn_buffer s_dtn_buf;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static struct k_work_delayable s_dtn_expire_work;
@@ -75,18 +76,30 @@ int lichen_coap_deaddrop_register(
 		k_mutex_unlock(&s_dtn_buf_mutex);
 		return r;
 	}
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
 	s_provider = provider;
+	k_mutex_unlock(&s_provider_mutex);
 	r = lichen_dtn_init(&s_dtn_buf);
 	if (r < 0) {
 		k_mutex_unlock(&s_dtn_buf_mutex);
 		return r;
 	}
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
 	s_provider->dtn_buf = &s_dtn_buf;
+	k_mutex_unlock(&s_provider_mutex);
 	k_work_init_delayable(&s_dtn_expire_work, dtn_expire_work_handler);
 	lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
 	k_work_schedule(&s_dtn_expire_work, K_SECONDS(30));
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	return 0;
+}
+
+const struct lichen_deaddrop_provider *lichen_coap_deaddrop_provider_get(void)
+{
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
+	const struct lichen_deaddrop_provider *p = s_provider;
+	k_mutex_unlock(&s_provider_mutex);
+	return p;
 }
 
 static int deaddrop_oscore_respond(struct coap_resource *resource,
@@ -115,7 +128,8 @@ static int deaddrop_post(struct coap_resource *resource,
 			 struct coap_packet *request,
 			 struct sockaddr *addr, socklen_t addr_len)
 {
-	if (s_provider == NULL || s_provider->store == NULL) {
+	const struct lichen_deaddrop_provider *provider = lichen_coap_deaddrop_provider_get();
+	if (provider == NULL || provider->store == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 	uint8_t dest_iid[8] = {0};
@@ -195,8 +209,8 @@ static int deaddrop_post(struct coap_resource *resource,
 	s_last_deaddrop[iid7] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
-	if (s_provider && s_provider->store) {
-		int r = s_provider->store(payload, payload_len);
+	if (provider->store) {
+		int r = provider->store(payload, payload_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
@@ -278,7 +292,8 @@ static int deaddrop_get(struct coap_resource *resource,
 			struct coap_packet *request,
 			struct sockaddr *addr, socklen_t addr_len)
 {
-	if (s_provider == NULL || s_provider->retrieve == NULL) {
+	const struct lichen_deaddrop_provider *provider = lichen_coap_deaddrop_provider_get();
+	if (provider == NULL || provider->retrieve == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
@@ -323,7 +338,7 @@ static int deaddrop_get(struct coap_resource *resource,
 			     type, sizeof(type), &after_unix);
 	uint8_t raw_buf[CONFIG_LICHEN_DTN_MAX_PACKET_SIZE];
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
-	int raw_len = s_provider->retrieve(raw_buf, sizeof(raw_buf),
+	int raw_len = provider->retrieve(raw_buf, sizeof(raw_buf),
 					   node[0] ? node : NULL);
 	uint16_t pending = lichen_dtn_len(&s_dtn_buf);
 	k_mutex_unlock(&s_dtn_buf_mutex);
