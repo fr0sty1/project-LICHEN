@@ -13,9 +13,8 @@ use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
 
+use hex;
 use sha2::{Digest, Sha256};
-
-const MAX_PACKET_HASHES: usize = 10_000;
 
 /// Metrics collected during node operation.
 struct NodeMetrics {
@@ -103,7 +102,8 @@ fn main() {
                 peer_id: Option<String>,
                 rssi: Option<i32>,
                 snr: Option<i32>| {
-        let hash = format!("{:x}", Sha256::digest(payload));
+        let hash = Sha256::digest(payload);
+        let hash_hex = hex::encode(&hash[..16]);
         println!(
             "TELEMETRY {}",
             serde_json::json!({
@@ -112,8 +112,8 @@ fn main() {
                 "ts_us": ts_us,
                 "node_id": format!("rust-{}", node_id),
                 "impl": "rust",
-                "tx_id": hash[..32].to_string(),
-                "packet_hash": hash[..32].to_string(),
+                "tx_id": hash_hex,
+                "packet_hash": hash_hex,
                 "direction": if event.starts_with("tx") { "tx" } else { "rx" },
                 "peer_id": peer_id,
                 "payload_len": payload.len(),
@@ -146,9 +146,7 @@ fn main() {
                 metrics.tx_bytes += announce.len() as u64;
                 let hash = Sha256::digest(&announce);
                 let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
-                if metrics.packet_hashes_sent.len() < MAX_PACKET_HASHES {
-                    metrics.packet_hashes_sent.insert(hash_prefix);
-                }
+                metrics.packet_hashes_sent.insert(hash_prefix);
                 emit(
                     "tx",
                     &announce,
@@ -181,9 +179,7 @@ fn main() {
                     // Track packet hash
                     let hash = Sha256::digest(&buf[..pkt.len]);
                     let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
-                    if metrics.packet_hashes_received.len() < MAX_PACKET_HASHES {
-                        metrics.packet_hashes_received.insert(hash_prefix);
-                    }
+                    metrics.packet_hashes_received.insert(hash_prefix);
                     let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {
