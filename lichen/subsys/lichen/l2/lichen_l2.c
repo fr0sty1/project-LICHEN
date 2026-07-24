@@ -2389,7 +2389,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * The retained link key is copied for API compatibility but current frames
 	 * are either unsigned or authenticated by Schnorr-48.
 	 */
-	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
+	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN] = {0};
 	const uint8_t *rx_link_key_ptr = NULL;
 	if (link_ctx.has_link_key) {
 		memcpy(rx_link_key, link_ctx.link_key, LICHEN_LINK_KEY_LEN);
