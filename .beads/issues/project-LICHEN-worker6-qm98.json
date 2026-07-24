@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-qm98",
   "title": "[rereview] project-LICHEN-dk3c.5: lichen_rpl_dodag_process_dio has zero C callers - gateway_centric never propagates",
   "description": "## Description\\n\\nThe function  in  was updated to accept a new  parameter and set  from it. However, there are **zero callers** of this function anywhere in C code under . grep across all  files shows only the definition and declaration.\\n\\n## Impact\\n\\n-  is always  (initialized by )\\n-  is never called (it also has zero callers)\\n- The entire dynamic announce interval feature (GATEWAY vs NORMAL intervals) is dead code\\n- The announce scheduler always uses  regardless of DODAG state\\n\\n## Files\\n-  - definition with no callers\\n-  -  has no callers\\n-  - declaration\\n-  - declaration\\n\\n## Fix\\nWire  into the DIO receive path, or wire  into the DODAG join/leave path. The entire feature is non-functional without a caller.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

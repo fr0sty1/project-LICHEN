@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.2.2.4",
   "title": "Add focused tests for UDP ingress bounds checking and malformed packet drops",
   "description": "Add/update tests in test/ or python tests to cover UdpDatagram.from_bytes validation cases (bad ports, bad length, checksum=0, malformed source), and that channels drop them with metrics recorded. Use test vectors where possible. Align with ICMPv6 recovery tests.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

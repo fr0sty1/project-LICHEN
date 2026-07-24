@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ftvd.2",
   "title": "Resolve merge conflicts for bridge-zephyr boards when rebasing worker18",
   "description": "Identify and fix any merge conflicts in firmware/bridge-zephyr/boards/* files when integrating worker18 changes into main or rebasing.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

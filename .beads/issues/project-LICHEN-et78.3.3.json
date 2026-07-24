@@ -2,7 +2,7 @@
   "id": "project-LICHEN-et78.3.3",
   "title": "Update RPL test vectors, interop tests, and add RFC2119 validation tests for Trickle/MRHOF",
   "description": "Extend test/vectors/rpl_*.json, rust/lichen-rpl/tests/, lichen/tests/rpl_routing/ and validation scripts to cover new MUST checks for Trickle parameters and MRHOF. Ensure Rust \u003c-\u003e C/Zephyr produce identical behavior.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
