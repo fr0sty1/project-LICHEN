@@ -1,0 +1,76 @@
+{
+  "format_version": 2,
+  "description": "Canonical test vectors for mesh-to-internet and internet-to-mesh forwarding decisions. Implementations MUST classify each destination address consistently and route it to the correct next hop (upstream TUN, local mesh, or drop).",
+  "vectors": [
+    {
+      "name": "link_local_mesh_node",
+      "description": "fe80::/10 address: always local mesh, never upstream.",
+      "dst_addr": "fe800000000000000200000000000001",
+      "is_local_mesh": true,
+      "classify": "link_local"
+    },
+    {
+      "name": "ula_mesh_node",
+      "description": "fd00::/8 ULA address: always local mesh (DODAG prefix).",
+      "dst_addr": "fd000000000000010200000000000001",
+      "is_local_mesh": true,
+      "classify": "mesh_local"
+    },
+    {
+      "name": "yggdrasil_primary_02xx",
+      "description": "02xx Yggdrasil address: NOT local mesh, forward upstream via Yggdrasil tunnel.",
+      "dst_addr": "0200000000000000e1b0c44298fc1c14",
+      "is_local_mesh": false,
+      "classify": "external"
+    },
+    {
+      "name": "yggdrasil_02xx_other",
+      "description": "02xx address with different IID: external, needs upstream.",
+      "dst_addr": "02d4a4a4a4a4a4a40000000000000002",
+      "is_local_mesh": false,
+      "classify": "external"
+    },
+    {
+      "name": "nat64_prefix",
+      "description": "NAT64 well-known prefix 64:ff9b::/96: external, forward to upstream.",
+      "dst_addr": "0064ff9b000000000000000000000001",
+      "is_local_mesh": false,
+      "classify": "external"
+    },
+    {
+      "name": "global_unicast_2001",
+      "description": "2001:db8::/32 documentation prefix: external, upstream.",
+      "dst_addr": "20010db8000000000000000000000001",
+      "is_local_mesh": false,
+      "classify": "external"
+    },
+    {
+      "name": "multicast",
+      "description": "ff00::/8 multicast: NOT routable, should be dropped.",
+      "dst_addr": "ff020000000000000000000000000001",
+      "is_local_mesh": false,
+      "classify": "external"
+    },
+    {
+      "name": "unique_local_different_prefix",
+      "description": "ULA fd01::/8 (different ULA region): treated as external if not in mesh prefix table.",
+      "dst_addr": "fd010000000000000200000000000001",
+      "is_local_mesh": false,
+      "classify": "external"
+    },
+    {
+      "name": "link_local_second_octet_bf",
+      "description": "febf:: address: boundary of fe80::/10, still link-local.",
+      "dst_addr": "febf0000000000000200000000000001",
+      "is_local_mesh": true,
+      "classify": "link_local"
+    },
+    {
+      "name": "ula_with_lichen_prefix",
+      "description": "fd00:lichen::/32 ULA with known mesh prefix containing this address.",
+      "dst_addr": "fd006c696368656e0000000000000001",
+      "is_local_mesh": true,
+      "classify": "mesh_local"
+    }
+  ]
+}

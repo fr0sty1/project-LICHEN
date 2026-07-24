@@ -396,16 +396,17 @@ impl LinkLayer {
 
     /// Atomically remove a peer's configured key, pin, and replay window.
     pub fn forget_peer(&mut self, iid: &[u8; 8]) {
-        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
+        let peer_key = self.peers.remove(iid).map(|peer| peer.identity.pubkey);
         let pinned_key = self.pinned.remove(iid);
-        if let Some(key) = peer_key {
-            self.replay.reset_peer(&key);
-            self.evict_cache_by_pubkey(&key);
+        if let Some(ref key) = peer_key {
+            self.replay.reset_peer(key);
+            self.evict_cache_by_pubkey(key);
         }
-        if let Some(key) = pinned_key {
-            if Some(key) != peer_key {
-                self.replay.reset_peer(&key);
-                self.evict_cache_by_pubkey(&key);
+        if let Some(ref key) = pinned_key {
+            let pk = &key.pubkey;
+            if peer_key.as_ref() != Some(pk) {
+                self.replay.reset_peer(pk);
+                self.evict_cache_by_pubkey(pk);
             }
         }
     }

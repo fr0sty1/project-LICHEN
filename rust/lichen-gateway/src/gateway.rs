@@ -245,6 +245,31 @@ mod tests {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
     }
 
+    fn ygg_addr(iid_suffix: u8) -> Ipv6Addr {
+        let mut addr = [0u8; 16];
+        addr[0] = 0x02;
+        addr[15] = iid_suffix;
+        Ipv6Addr(addr)
+    }
+
+    fn mesh_addr(iid_suffix: u8) -> Ipv6Addr {
+        let mut addr = [0u8; 16];
+        addr[0] = 0xfd;
+        addr[1] = 0x00;
+        addr[15] = iid_suffix;
+        Ipv6Addr(addr)
+    }
+
+    fn from_hex(s: &str) -> [u8; 16] {
+        let bytes: Vec<u8> = (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect();
+        let mut arr = [0u8; 16];
+        arr.copy_from_slice(&bytes);
+        arr
+    }
+
     fn test_gateway() -> Gateway {
         Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
     }
@@ -319,12 +344,12 @@ mod tests {
     fn yggdrasil_cross_mesh_routing() {
         let gw = test_gateway();
         let local = ll(1);
-        let ygg_cross = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
+        let ygg_cross = ygg_addr(2);
         let nat64 = [
             0x00u8, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 2, 1,
         ];
         assert!(gw.is_local_mesh(&local.0));
-        assert!(!gw.is_local_mesh(&ygg_cross));
+        assert!(!gw.is_local_mesh(&ygg_cross.0));
         assert!(!gw.is_local_mesh(&nat64));
     }
 
@@ -339,5 +364,189 @@ mod tests {
         ];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_none());
+    }
+
+    // ── Mesh-to-Internet forwarding tests ──────────────────────────────────
+
+    #[test]
+    fn mesh_to_upstream_decompresses_02xx_ygg_packet() {
+        let mut gw = test_gateway();
+        let src = ll(1);
+        let dst = ygg_addr(2);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
+        let ipv6 = &packet[..n];
+
+        let schc = gw.upstream_to_mesh(ipv6).expect("compress failed");
+        assert_eq!(schc[0], L2_DISPATCH_SCHC);
+
+        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
+        assert_eq!(&recovered[8..24], &src.0);
+        assert_eq!(&recovered[24..40], &dst.0);
+    }
+
+    #[test]
+    fn mesh_to_upstream_packet_with_multicast_source_is_dropped() {
+        let mut gw = test_gateway();
+        let mut packet = [0u8; 48];
+        packet[0] = 0x60;
+        packet[4] = 0;
+        packet[5] = 8;
+        packet[6] = 58;
+        packet[7] = 64;
+        packet[8] = 0xff;
+        packet[24] = 0x02;
+        packet[25] = 0;
+        packet[40] = 128;
+        let schc = gw.upstream_to_mesh(&packet).expect("compress");
+        assert!(gw.mesh_to_upstream(&schc).is_none());
+    }
+
+    #[test]
+    fn mesh_to_upstream_packet_with_unspecified_source_is_dropped() {
+        let mut gw = test_gateway();
+        let mut packet = [0u8; 48];
+        packet[0] = 0x60;
+        packet[4] = 0;
+        packet[5] = 8;
+        packet[6] = 58;
+        packet[7] = 64;
+        packet[24] = 0x02;
+        packet[40] = 128;
+        let schc = gw.upstream_to_mesh(&packet).expect("compress");
+        assert!(gw.mesh_to_upstream(&schc).is_none());
+    }
+
+    #[test]
+    fn mesh_to_upstream_routing_announce_not_schc_is_dropped() {
+        let mut gw = test_gateway();
+        let announce = [L2_DISPATCH_ROUTING, 0x01, 0x00];
+        assert!(gw.mesh_to_upstream(&announce).is_none());
+    }
+
+    // ── Internet-to-Mesh forwarding tests ──────────────────────────────────
+
+    #[test]
+    fn upstream_to_mesh_ula_dest_goes_to_mesh() {
+        let mut gw = test_gateway();
+        let src = ygg_addr(1);
+        let dst = mesh_addr(2);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
+        let ipv6 = &packet[..n];
+
+        let result = gw.upstream_to_mesh(ipv6).expect("compress");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+    }
+
+    #[test]
+    fn upstream_to_mesh_link_local_dest_goes_to_mesh() {
+        let mut gw = test_gateway();
+        let src = ygg_addr(1);
+        let dst = ll(2);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
+        let ipv6 = &packet[..n];
+
+        let result = gw.upstream_to_mesh(ipv6).expect("compress");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+    }
+
+    #[test]
+    fn upstream_to_mesh_02xx_dest_goes_to_upstream_not_mesh() {
+        let mut gw = test_gateway();
+        let src = ll(1);
+        let dst = ygg_addr(2);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"", &mut packet);
+        let ipv6 = &packet[..n];
+
+        let result = gw.upstream_to_mesh(ipv6).expect("compress");
+
+        let (_, body) = result.split_at(1);
+        let mut decompressed = [0u8; SCHC_MAX_DECOMPRESSED];
+        let n = decompress(body, &mut decompressed).unwrap();
+        let recovered = &decompressed[..n];
+
+        let mut recovered_dst = [0u8; 16];
+        recovered_dst.copy_from_slice(&recovered[24..40]);
+        assert_eq!(recovered_dst, dst.0);
+    }
+
+    #[test]
+    fn upstream_to_mesh_multicast_source_is_dropped() {
+        let mut gw = test_gateway();
+        let mut packet = [0u8; 48];
+        packet[0] = 0x60;
+        packet[4] = 0;
+        packet[5] = 8;
+        packet[6] = 58;
+        packet[7] = 64;
+        packet[8] = 0xff;
+        packet[24] = 0xfd;
+        packet[40] = 128;
+        assert!(gw.upstream_to_mesh(&packet).is_none());
+    }
+
+    #[test]
+    fn upstream_to_mesh_unspecified_source_is_dropped() {
+        let mut gw = test_gateway();
+        let mut packet = [0u8; 48];
+        packet[0] = 0x60;
+        packet[4] = 0;
+        packet[5] = 8;
+        packet[6] = 58;
+        packet[7] = 64;
+        packet[24] = 0xfe;
+        packet[25] = 0x80;
+        packet[40] = 128;
+        assert!(gw.upstream_to_mesh(&packet).is_none());
+    }
+
+    #[test]
+    fn upstream_to_mesh_not_ipv6_is_dropped() {
+        let mut gw = test_gateway();
+        assert!(gw.upstream_to_mesh(&[0x45, 0, 0, 0]).is_none());
+    }
+
+    // ── Gateway route classification tests ─────────────────────────────────
+
+    #[test]
+    fn classify_02xx_primary_is_not_local_mesh() {
+        let gw = test_gateway();
+        let ygg_primary = ygg_addr(0x01);
+        let ygg_different = ygg_addr(0x99);
+        let link_local = ll(1);
+        let ula_local = mesh_addr(1);
+
+        assert!(gw.is_local_mesh(&link_local.0));
+        assert!(gw.is_local_mesh(&ula_local.0));
+        assert!(!gw.is_local_mesh(&ygg_primary.0));
+        assert!(!gw.is_local_mesh(&ygg_different.0));
+    }
+
+    #[test]
+    fn is_local_mesh_matches_forwarding_test_vectors() {
+        let gw = test_gateway();
+        let test_cases: &[(&str, &str, bool)] = &[
+            ("link_local_mesh_node", "fe800000000000000200000000000001", true),
+            ("ula_mesh_node", "fd000000000000010200000000000001", true),
+            ("yggdrasil_primary_02xx", "0200000000000000e1b0c44298fc1c14", false),
+            ("yggdrasil_02xx_other", "02d4a4a4a4a4a4a40000000000000002", false),
+            ("nat64_prefix", "0064ff9b000000000000000000000001", false),
+            ("global_unicast_2001", "20010db8000000000000000000000001", false),
+            ("multicast", "ff020000000000000000000000000001", false),
+            ("link_local_second_octet_bf", "febf0000000000000200000000000001", true),
+            ("ula_with_lichen_prefix", "fd006c696368656e0000000000000001", true),
+        ];
+
+        for (name, hex_str, expected) in test_cases {
+            let addr = from_hex(hex_str);
+            let actual = gw.is_local_mesh(&addr);
+            assert_eq!(
+                actual, *expected,
+                "{name}: expected is_local_mesh={expected}, got {actual}"
+            );
+        }
     }
 }

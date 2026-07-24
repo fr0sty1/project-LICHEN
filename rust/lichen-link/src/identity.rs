@@ -4,7 +4,9 @@ extern crate alloc;
 
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::derive_keypair;
-use lichen_core::{addr::ygg_addr_from_pubkey, lichen_hash_32};
+use lichen_core::addr::ygg_addr_from_pubkey;
+#[cfg(test)]
+use lichen_core::lichen_hash_32;
 use sha2::{Digest, Sha256};
 
 /// Derive a link-local IID from an Ed25519 public key.

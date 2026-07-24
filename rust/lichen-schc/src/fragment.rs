@@ -1020,9 +1020,6 @@ impl<'s, 'b> Iterator for RetransmitIter<'s, 'b> {
 // ─── std-only: all_fragments + FragmentReceiver ───────────────────────────────
 
 #[cfg(feature = "std")]
-pub use std_ext::*;
-
-#[cfg(feature = "std")]
 mod std_ext {
     extern crate std;
     use std::collections::{HashMap, HashSet};
@@ -1037,7 +1034,7 @@ mod std_ext {
         }
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
-            self.fragments_in_window(abs_window).collect()
+            self.fragments_in_window_vec(abs_window)
         }
     }
 
@@ -1045,7 +1042,7 @@ mod std_ext {
     #[derive(Debug)]
     pub struct FragmentReceiver {
         window_size: usize,
-        rule_id: Option<u8>,
+        rule_id: u8,
         tiles: HashMap<usize, Vec<u8>>,
         current_window: usize,
         completed_windows: HashSet<usize>,
@@ -1068,7 +1065,7 @@ mod std_ext {
         pub fn new(window_size: usize) -> Self {
             FragmentReceiver {
                 window_size,
-                rule_id: 0,
+                rule_id: 0u8,
                 tiles: HashMap::new(),
                 current_window: 0,
                 completed_windows: HashSet::new(),
@@ -1141,7 +1138,7 @@ mod std_ext {
                     mic_ok: None,
                 };
             }
-            if self.rule_id == 0 {
+            if self.rule_id == 0u8 {
                 self.rule_id = frag.rule_id;
             } else if self.rule_id != frag.rule_id {
                 return ReceiverResult {
@@ -1193,11 +1190,12 @@ mod std_ext {
                     self.completed_windows.insert(abs_window);
                     self.current_window = abs_window + 1;
                 }
+                let bitmap_u64 = bitmap_to_u64(&bitmap);
                 return ReceiverResult {
                     ack: Some(Ack::new(
                         self.rule_id,
                         (abs_window % 2) as u8,
-                        &bitmap,
+                        bitmap_u64,
                         false,
                     )),
                     reassembled: None,
@@ -1213,7 +1211,8 @@ mod std_ext {
 
         fn finalize(&mut self) -> ReceiverResult {
             let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, &bitmap, false);
+            let bitmap_u64 = bitmap_to_u64(&bitmap);
+            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, bitmap_u64, false);
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).
@@ -1240,7 +1239,7 @@ mod std_ext {
                     ack: Some(Ack::new(
                         self.rule_id,
                         (self.all1_window % 2) as u8,
-                        &bitmap,
+                        bitmap_u64,
                         true,
                     )),
                     reassembled: Some(data),
@@ -1254,6 +1253,16 @@ mod std_ext {
                 }
             }
         }
+    }
+
+    fn bitmap_to_u64(bits: &[bool]) -> u64 {
+        let mut result = 0u64;
+        for (i, &b) in bits.iter().enumerate() {
+            if b {
+                result |= 1 << (63 - i);
+            }
+        }
+        result
     }
 }
 

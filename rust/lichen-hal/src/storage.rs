@@ -76,11 +76,9 @@ fn read_raw<'a, S: NonVolatile>(
     key: &str,
     buf: &'a mut [u8],
 ) -> Result<Option<&'a [u8]>, RedundantOpenError<S::Error>> {
-    let Some(len) = storage
-        .read(key, buf)
-        .map_err(RedundantOpenError::Storage)?
-    else {
-        return Ok(None);
+    let len = match storage.read(key, buf) {
+        Some(len) => len,
+        None => return Ok(None),
     };
     if len > buf.len() {
         return Err(RedundantOpenError::BufferTooSmall);
@@ -93,12 +91,16 @@ fn read_parsed_update<S: NonVolatile>(
     key: &str,
     buf: &mut [u8],
     magic: [u8; 4],
-) -> Result<Option<(u64, usize)>, RedundantUpdateError<S::Error>> {
+) -> Result<(Option<(u64, usize)>, bool), RedundantUpdateError<S::Error>> {
     let raw = read_raw(storage, key, buf).map_err(|error| match error {
         RedundantOpenError::Storage(error) => RedundantUpdateError::Storage(error),
         _ => RedundantUpdateError::Corrupt,
     })?;
-    Ok(raw.and_then(|raw| parse_slot(raw, &magic)).map(|(generation, payload)| (generation, payload.len())))
+    let present = raw.is_some();
+    let parsed = raw
+        .and_then(|raw| parse_slot(raw, &magic))
+        .map(|(generation, payload)| (generation, payload.len()));
+    Ok((parsed, present))
 }
 
 /// Open the newest valid value from two alternating slots.
@@ -162,12 +164,8 @@ pub fn provision_redundant<S: NonVolatile>(
     record: &mut [u8],
 ) -> Result<(), RedundantProvisionError<S::Error>> {
     let mut present = [0u8; 1];
-    let a = storage
-        .read(keys[0], &mut present)
-        .map_err(RedundantProvisionError::Storage)?;
-    let b = storage
-        .read(keys[1], &mut present)
-        .map_err(RedundantProvisionError::Storage)?;
+    let a = storage.read(keys[0], &mut present);
+    let b = storage.read(keys[1], &mut present);
     if a.is_some() || b.is_some() {
         return Err(RedundantProvisionError::Exists);
     }
@@ -281,8 +279,9 @@ pub fn peer_key(index: usize) -> heapless::String<16> {
 /// Returns `Some(seed)` if found and valid, `None` otherwise.
 pub fn load_seed<S: NonVolatile>(storage: &S) -> Result<Option<Seed>, S::Error> {
     let mut buf = [0u8; 32];
-    let Some(n) = storage.read(keys::IDENTITY_SEED, &mut buf)? else {
-        return Ok(None);
+    let n = match storage.read(keys::IDENTITY_SEED, &mut buf) {
+        Some(n) => n,
+        None => return Ok(None),
     };
     Ok(if n == 32 { Some(Seed::new(buf)) } else { None })
 }
@@ -295,8 +294,9 @@ pub fn save_seed<S: NonVolatile>(storage: &mut S, seed: &Seed) -> Result<(), S::
 /// Load link layer epoch from storage.
 pub fn load_epoch<S: NonVolatile>(storage: &S) -> Result<Option<u8>, S::Error> {
     let mut buf = [0u8; 1];
-    let Some(n) = storage.read(keys::EPOCH, &mut buf)? else {
-        return Ok(None);
+    let n = match storage.read(keys::EPOCH, &mut buf) {
+        Some(n) => n,
+        None => return Ok(None),
     };
     Ok(if n == 1 { Some(buf[0]) } else { None })
 }
@@ -309,8 +309,9 @@ pub fn save_epoch<S: NonVolatile>(storage: &mut S, epoch: u8) -> Result<(), S::E
 /// Load link layer sequence number from storage.
 pub fn load_seqnum<S: NonVolatile>(storage: &S) -> Result<Option<u16>, S::Error> {
     let mut buf = [0u8; 2];
-    let Some(n) = storage.read(keys::SEQNUM, &mut buf)? else {
-        return Ok(None);
+    let n = match storage.read(keys::SEQNUM, &mut buf) {
+        Some(n) => n,
+        None => return Ok(None),
     };
     Ok(if n == 2 {
         Some(u16::from_be_bytes(buf))
@@ -327,13 +328,11 @@ pub fn save_seqnum<S: NonVolatile>(storage: &mut S, seqnum: u16) -> Result<(), S
 /// Load peer count from storage.
 pub fn load_peer_count<S: NonVolatile>(storage: &S) -> Result<usize, S::Error> {
     let mut buf = [0u8; 1];
-    Ok(storage.read(keys::PEER_COUNT, &mut buf)?.map_or(0, |n| {
-        if n == 1 {
-            buf[0] as usize
-        } else {
-            0
-        }
-    }))
+    let n = match storage.read(keys::PEER_COUNT, &mut buf) {
+        Some(n) => n,
+        None => return Ok(0),
+    };
+    Ok(if n == 1 { buf[0] as usize } else { 0 })
 }
 
 /// Load a peer pubkey from storage.
@@ -343,8 +342,9 @@ pub fn load_peer<S: NonVolatile>(storage: &S, index: usize) -> Result<Option<Pub
     }
     let key = peer_key(index);
     let mut buf = [0u8; 32];
-    let Some(n) = storage.read(&key, &mut buf)? else {
-        return Ok(None);
+    let n = match storage.read(&key, &mut buf) {
+        Some(n) => n,
+        None => return Ok(None),
     };
     Ok(if n == 32 {
         Some(PublicKey::new(buf))
