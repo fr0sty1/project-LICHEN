@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-i7d4",
   "title": "[review] project-LICHEN-worker6-p19p: test/vectors/edhoc.json not regenerated after TH_2 CBOR fix",
   "description": "TH_2 computation changed from raw concat to CBOR-wrapped per RFC 9528. All downstream crypto values changed (prk, th, msg2, msg3, oscore secrets). The canonical test/vectors/edhoc.json still contains old values. Must regenerate with generate.py.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:35:37.720899584Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:35:37.720899584Z"
+  "updated_at": "2026-07-24T19:56:37.83714353Z",
+  "started_at": "2026-07-24T19:56:37.83714353Z",
+  "lease_expires_at": "2026-07-24T20:01:37.83714353Z",
+  "heartbeat_at": "2026-07-24T19:56:37.83714353Z"
 }
