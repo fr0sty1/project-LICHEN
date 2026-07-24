@@ -872,9 +872,12 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 	}
 
 	oscore_nvm_write_cb write_cb;
+	oscore_nvm_read_cb read_cb;
 	uint8_t eui64_copy[OSCORE_EUI64_LEN];
 	const uint8_t *eui64 = NULL;
 	int idx;
+	bool was_initialized;
+	uint32_t effective_seq = sender_seq;
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
@@ -885,6 +888,8 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 	}
 
 	write_cb = s_nvm_write_cb;
+	read_cb = s_nvm_read_cb;
+	was_initialized = s_seq_initialized[idx];
 	if (ctx->has_peer_eui64) {
 		memcpy(eui64_copy, ctx->peer_eui64, OSCORE_EUI64_LEN);
 		eui64 = eui64_copy;
@@ -892,8 +897,40 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 
 	k_mutex_unlock(&s_ctx_mutex);
 
+	/*
+	 * If context is not yet initialized, attempt to read last SSN from
+	 * NVM to prevent nonce reuse across reboots (RFC 8613 7.2.1,
+	 * Appendix D.4). This is the primary NVM read path for non-EUI64
+	 * contexts (oscore_ctx_create path) and a secondary safety net for
+	 * EUI64 contexts where create_with_eui64 NVM read may have failed.
+	 * Safe bump: use max(stored_ssn + 1, sender_seq) so that we never
+	 * roll back below the highest persisted SSN.
+	 */
+	if (!was_initialized && read_cb != NULL) {
+		uint32_t stored_ssn;
+		int read_ret = read_cb(eui64, &stored_ssn);
+		if (read_ret == 0) {
+			if (stored_ssn < UINT32_MAX) {
+				uint32_t safe_seq = stored_ssn + 1;
+				if (safe_seq > effective_seq) {
+					effective_seq = safe_seq;
+					LOG_WRN("Bumped sender_seq from %u to %u "
+						"to avoid nonce reuse across reboot",
+						sender_seq, effective_seq);
+				}
+			} else {
+				LOG_ERR("NVM has exhausted SSN; OSCORE context "
+					"cannot be used");
+				effective_seq = UINT32_MAX;
+			}
+		} else {
+			LOG_DBG("No SSN in NVM for context, starting at %u",
+				sender_seq);
+		}
+	}
+
 	if (write_cb != NULL) {
-		int ret = write_cb(eui64, sender_seq);
+		int ret = write_cb(eui64, effective_seq);
 		if (ret != 0) {
 			LOG_ERR("Failed to persist SSN to NVM: %d", ret);
 			return OSCORE_ERR_NVM_FAILED;
@@ -903,12 +940,12 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	idx = ctx_get_index(ctx);
 	if (idx >= 0) {
-		ctx->sender_seq = sender_seq;
+		ctx->sender_seq = effective_seq;
 		s_seq_initialized[idx] = true;
 	}
 	k_mutex_unlock(&s_ctx_mutex);
 
-	LOG_DBG("Set sender_seq to %u for nonce persistence", sender_seq);
+	LOG_DBG("Set sender_seq to %u for nonce persistence", effective_seq);
 	return OSCORE_OK;
 }
 
