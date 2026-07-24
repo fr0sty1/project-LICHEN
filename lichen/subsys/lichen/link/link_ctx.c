@@ -586,14 +586,13 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {
 	if (num_slots == 0) num_slots = 8;
-	uint8_t data[8];
+	uint8_t data[12];
 	memcpy(data, eui64, 8);
-	uint32_t e = epoch;
-	for (size_t i = 0; i < 4; i++) {
-		data[i] ^= (uint8_t)(e & 0xff);
-		e >>= 8;
-	}
-	uint32_t h = lichen_hash_32(data, 8);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+	uint32_t h = lichen_hash_32(data, 12);
 	return (uint8_t)(h % num_slots);
 }
 int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)
@@ -639,16 +638,4 @@ uint32_t lichen_hash_32(const uint8_t *data, size_t len)
 	return hash;
 }
 
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
-{
-	if (num_slots == 0) num_slots = 8;
-	uint8_t buf[8];
-	memcpy(buf, eui64, 8);
-	uint32_t e = epoch;
-	for (size_t i = 0; i < 8; i++) {
-		buf[i] ^= (uint8_t)e;
-		e >>= 8;
-	}
-	uint32_t h = lichen_hash_32(buf, 8);
-	return (uint8_t)(h % num_slots);
-}
+
