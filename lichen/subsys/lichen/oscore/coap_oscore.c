@@ -338,3 +338,67 @@ int coap_oscore_send_unauthorized(struct coap_resource *resource,
 	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
 	return coap_err_to_oscore(ret);
 }
+
+int coap_oscore_auth_mutating(struct coap_resource *resource,
+			      struct coap_packet *request,
+			      struct sockaddr *addr, socklen_t addr_len,
+			      uint8_t expected_method,
+			      struct coap_oscore_auth_result *result)
+{
+	uint8_t peer_eui64[8] = {0};
+	uint8_t plain[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
+
+	memset(result, 0, sizeof(*result));
+
+	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+		lichen_eui64_to_iid(peer_eui64, peer_eui64);
+	}
+
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	if (coap_oscore_is_protected(request)) {
+		uint8_t opts[32];
+		size_t opt_len = sizeof(opts);
+		size_t plain_len = sizeof(plain);
+		uint8_t orig_code;
+		int r;
+
+		if (oscore_ctx_get_by_eui64(peer_eui64, &result->ctx) != OSCORE_OK ||
+		    result->ctx == NULL) {
+			coap_oscore_send_unauthorized(resource, request, addr, addr_len);
+			return -COAP_RESPONSE_CODE_UNAUTHORIZED;
+		}
+
+		result->piv_len = sizeof(result->piv);
+		r = coap_oscore_unprotect_request(result->ctx, request, &orig_code,
+						  opts, &opt_len, plain, &plain_len,
+						  result->piv, &result->piv_len);
+		if (r != OSCORE_OK) {
+			return -COAP_RESPONSE_CODE_UNAUTHORIZED;
+		}
+		if (orig_code != expected_method) {
+			return -COAP_RESPONSE_CODE_NOT_ALLOWED;
+		}
+		result->payload = plain;
+		result->payload_len = plain_len;
+		return 0;
+	}
+#endif
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+		return -COAP_RESPONSE_CODE_UNAUTHORIZED;
+	}
+
+	const uint8_t *raw_payload;
+	uint16_t raw_len;
+	raw_payload = coap_packet_get_payload(request, &raw_len);
+	if (raw_payload != NULL) {
+		result->payload = raw_payload;
+		result->payload_len = raw_len;
+	}
+	result->ctx = NULL;
+	result->piv_len = 0;
+	return 0;
+}
