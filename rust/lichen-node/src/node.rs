@@ -382,9 +382,9 @@ impl RplNode {
     /// `sender_iid` is the identity established by link-layer signature verification.
     ///
     /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
-    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the root
-    /// processed a DAO; for [`RplEvent::DisReceived`], send a DIO; otherwise a
-    /// nonzero output is a reply.
+    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the
+    /// caller may inspect `route_updated` to decide whether to update its
+    /// routing table; otherwise a nonzero output is a reply.
     pub fn handle_frame_rpl(
         &mut self,
         l2_payload: &[u8],
@@ -397,9 +397,6 @@ impl RplNode {
 
     /// Process an authenticated SCHC payload with measured link quality.
     /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
-    ///
-    /// Returns `(output_len, rpl_event)`. See [`handle_frame_rpl`] for variant
-    /// descriptions.
     pub fn handle_frame_rpl_with_link(
         &mut self,
         l2_payload: &[u8],
@@ -522,7 +519,7 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         if self.router.is_root() {
-                            return (0, RplEvent::DaoReceived { route_updated: false });
+                            return (0, RplEvent::DaoReceived);
                         }
                         let Some(advertised_parents) =
                             crate::routing::dao_parents_for_source(dao_bytes, &sender_addr)
@@ -1004,7 +1001,7 @@ mod tests {
         let mut output = [0u8; 260];
         assert_eq!(
             root.handle_frame_rpl(&parent_packet, parent_identity.iid, &mut output, 0),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert_eq!(
             root.handle_dao(
@@ -1073,7 +1070,7 @@ mod tests {
                 &mut [0u8; 260],
                 0,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route(&leaf_addr).is_none());
 
@@ -1229,7 +1226,7 @@ mod tests {
                 &mut [0u8; 260],
                 1_999,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route_at(&first_addr, 2_999).is_none());
         assert_eq!(
@@ -1239,7 +1236,7 @@ mod tests {
                 &mut [0u8; 260],
                 2_999,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route(&first_addr).is_none());
         assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());
@@ -1472,19 +1469,13 @@ mod tests {
         assert_eq!(RplEvent::DisReceived, RplEvent::DisReceived);
 
         let dio_inc = RplEvent::DioReceived { inconsistent: true };
-        let dio_cons = RplEvent::DioReceived {
-            inconsistent: false,
-        };
+        let dio_cons = RplEvent::DioReceived { inconsistent: false };
         assert_eq!(dio_inc, dio_inc);
         assert_ne!(dio_inc, dio_cons);
         assert_ne!(dio_inc, RplEvent::None);
 
-        let dao_up = RplEvent::DaoReceived {
-            route_updated: true,
-        };
-        let dao_no = RplEvent::DaoReceived {
-            route_updated: false,
-        };
+        let dao_up = RplEvent::DaoReceived { route_updated: true };
+        let dao_no = RplEvent::DaoReceived { route_updated: false };
         assert_eq!(dao_up, dao_up);
         assert_ne!(dao_up, dao_no);
 
