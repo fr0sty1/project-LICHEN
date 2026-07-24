@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-jh96",
+  "title": "[review] project-LICHEN-worker6-yotd: TH_3 uses ciphertext not plaintext and credential ID not full credential",
+  "description": "## Spec deviation: TH_3 composition\n\n**File:** python/src/lichen/crypto/edhoc.py  \n**Lines:** 379 (initiator), 608 (responder)\n\n**What the code does:**\n```python\nth_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)\n```\nUses CIPHERTEXT_2 and ID_CRED_R (credential identifier), not PLAINTEXT_2 and CRED_R.\n\n**What RFC 9528 §5.4.2 requires:**\n\u003e Compute the transcript hash TH_3 = H(TH_2, PLAINTEXT_2, CRED_R),\n\u003e where H() is the EDHOC hash algorithm... The input to the hash\n\u003e function is a CBOR Sequence.\n\nUses PLAINTEXT_2 (plaintext before encryption) and CRED_R (the full credential, not just its identifier).\n\nThis is a correctness/interop bug that would produce a different TH_3 value.\n\n**Severity:** P1 - correctness/spec-compliance",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:47:49.374537517Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:47:49.374537517Z"
+}
