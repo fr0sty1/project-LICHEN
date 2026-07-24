@@ -39,8 +39,10 @@ class TDMAScheduler:
         self.clock = SuperframeClock()
         self.eui64 = bytes(8)
     def hash_slot(self, eui64: bytes, n_slots: int = 8, epoch: int = 0) -> int:
-        data = eui64 + epoch.to_bytes(4, "little")
-        return hash_32(data) % n_slots
+        data = bytearray(eui64)
+        for i in range(4):
+            data[i] ^= (epoch >> (i * 8)) & 0xff
+        return hash_32(bytes(data)) % n_slots
     def sync_from_beacon(self, rx_time_us: int, sfn: int, assigned: int = -1) -> None:
         self.clock.sfn = sfn
         self.clock.last_sync_us = rx_time_us
