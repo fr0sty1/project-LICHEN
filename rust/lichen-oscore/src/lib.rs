@@ -2180,114 +2180,6 @@ mod tests {
         }
     }
 
-    struct TestStore {
-        context_id: ContextId,
-        state: SenderSequenceState,
-    }
-
-    impl TestStore {
-        fn for_context(context: &Context) -> Self {
-            Self {
-                context_id: context.context_id(),
-                state: context.sender_sequence_state(),
-            }
-        }
-    }
-
-    impl SenderStateStore for TestStore {
-        type Error = core::convert::Infallible;
-
-        fn load(
-            &mut self,
-            context_id: &ContextId,
-        ) -> Result<Option<SenderSequenceState>, Self::Error> {
-            Ok((*context_id == self.context_id).then_some(self.state))
-        }
-
-        fn compare_exchange(
-            &mut self,
-            context_id: &ContextId,
-            expected: Option<SenderSequenceState>,
-            next: SenderSequenceState,
-        ) -> Result<bool, Self::Error> {
-            if *context_id != self.context_id || expected != Some(self.state) {
-                return Ok(false);
-            }
-            self.state = next;
-            Ok(true)
-        }
-    }
-
-    trait TestProtect {
-        fn protect_request(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
-
-        fn protect_response_with_piv(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-            request_kid: &[u8],
-            request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
-    }
-
-    impl TestProtect for Context {
-        fn protect_request(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_request(code, options, payload)
-        }
-
-        fn protect_response_with_piv(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-            request_kid: &[u8],
-            request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_response_with_piv(code, options, payload, request_kid, request_piv)
-        }
-    }
-
     #[test]
     fn test_piv_encode_decode() {
         let mut piv = [0u8; PIV_MAX_LEN];
@@ -2380,7 +2272,7 @@ mod tests {
 
         let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
         let (ciphertext, option) = c7
-            .protect_response(0x45, &[], payload, &[], &[0x14])
+            .protect_response(0x45, &[], payload, &[], &[0x14], false)
             .unwrap();
         assert_eq!(option.as_slice(), b"");
         assert_eq!(
@@ -2527,7 +2419,7 @@ mod tests {
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2535,7 +2427,7 @@ mod tests {
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
         assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3])
+            .protect_response(0x45, &[], b"response", &[0], &[3], true)
             .is_ok());
     }
 
@@ -2551,12 +2443,12 @@ mod tests {
             },
         };
         let mut context =
-            Context::load_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
+            Context::restore_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2587,7 +2479,7 @@ mod tests {
         }
 
         assert!(matches!(
-            Context::load_existing(&[0x44; KEY_LEN], None, None, &[1], &[0], &mut EmptyStore),
+            Context::restore_existing(&[0x44; KEY_LEN], None, None, &[1], &[0], &mut EmptyStore),
             Err(ContextStoreError::Missing)
         ));
     }
@@ -2644,9 +2536,9 @@ mod tests {
         };
         let mut second_store = first_store.clone();
         let mut first =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
+            Context::restore_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
         let mut second =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
+            Context::restore_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
 
         let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
         let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());
@@ -2831,7 +2723,7 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2913,7 +2805,7 @@ mod tests {
         responder.common_iv = [0; NONCE_LEN];
 
         let (ciphertext, option) = responder
-            .protect_response(0x45, &[], &[], b"\xaa", b"\x05")
+            .protect_response(0x45, &[], &[], b"\xaa", b"\x05", false)
             .unwrap();
 
         assert_eq!(ciphertext.as_slice(), &hex!("26f4d77f5a397d9c0a"));
@@ -3359,12 +3251,12 @@ mod tests {
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
             .unwrap();
     }
 
@@ -3395,21 +3287,21 @@ mod tests {
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );

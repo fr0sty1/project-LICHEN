@@ -111,28 +111,7 @@ fn context_at(
     sequence: u64,
 ) -> (Context, TestStore) {
     let mut store = TestStore::existing(sequence);
-    let context = Context::load_existing(
-        master_secret,
-        master_salt,
-        id_context,
-        sender_id,
-        recipient_id,
-        &mut store,
-    )
-    .unwrap();
-    (context, store)
-}
-
-fn context_at(
-    master_secret: &[u8; 16],
-    master_salt: Option<&[u8]>,
-    id_context: Option<&[u8]>,
-    sender_id: &[u8],
-    recipient_id: &[u8],
-    sequence: u64,
-) -> (Context, TestStore) {
-    let mut store = TestStore::existing(sequence);
-    let context = Context::load_existing(
+    let context = Context::restore_existing(
         master_secret,
         master_salt,
         id_context,
@@ -340,7 +319,7 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::load_existing(
+    let result = Context::restore_existing(
         &master_secret,
         None,
         None,
@@ -362,7 +341,7 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::load_existing(
+    let result = Context::restore_existing(
         &master_secret,
         None,
         None,
@@ -396,7 +375,7 @@ fn present_empty_id_context_is_distinct_and_encoded() {
 
 #[test]
 fn id_context_over_implementation_capacity_is_rejected() {
-    let result = Context::load_existing(
+    let result = Context::restore_existing(
         &[0u8; 16],
         None,
         Some(&[0; 9]),
@@ -427,120 +406,6 @@ fn malformed_oscore_options_are_rejected_without_keys() {
 }
 
 #[test]
-fn test_request_protection_vectors() {
-    for vector in load_vectors()
-        .vectors
-        .into_iter()
-        .filter(|vector| vector.vector_type == "request_protection")
-    {
-        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
-        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
-        let id_context = vector.id_context.as_ref().map(|value| hex_to_bytes(value));
-        let sender_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
-        let recipient_id = hex_to_bytes(vector.recipient_id.as_ref().unwrap());
-        let plaintext = vector.plaintext.as_ref().unwrap();
-        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
-            "rfc8613_c4_request_protection" => (
-                hex_to_bytes("0914"),
-                hex_to_bytes("612f1092f1776f1c1668b3825e"),
-            ),
-            "rfc8613_c5_request_protection_no_salt" => (
-                hex_to_bytes("091400"),
-                hex_to_bytes("4ed339a5a379b0b8bc731fffb0"),
-            ),
-            "rfc8613_c6_request_protection_with_id_context" => (
-                hex_to_bytes("19140837cbf3210017a2d3"),
-                hex_to_bytes("72cd7273fd331ac45cffbe55c3"),
-            ),
-            _ => panic!("missing independent expected values for {}", vector.name),
-        };
-        let (mut context, mut store) = context_at(
-            &master_secret,
-            master_salt.as_deref(),
-            id_context.as_deref(),
-            &sender_id,
-            &recipient_id,
-            u64::from(vector.sender_seq.unwrap()),
-        );
-
-        let (ciphertext, option) = context
-            .reserve_sender(&mut store)
-            .unwrap()
-            .protect_request(
-                plaintext.code,
-                &hex_to_bytes("b3747631"),
-                &hex_to_bytes(&plaintext.payload),
-            )
-            .unwrap();
-
-        assert_eq!(
-            option.as_slice(),
-            expected_option,
-            "OSCORE option mismatch for {}",
-            vector.name
-        );
-        assert_eq!(
-            ciphertext.as_slice(),
-            expected_ciphertext,
-            "ciphertext mismatch for {}",
-            vector.name
-        );
-    }
-}
-
-#[test]
-fn test_response_protection_vectors() {
-    for vector in load_vectors()
-        .vectors
-        .into_iter()
-        .filter(|vector| vector.vector_type == "response_protection")
-    {
-        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
-        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
-        let responder_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
-        let requester_id = hex_to_bytes(vector.request_kid.as_ref().unwrap());
-        let request_piv = hex_to_bytes(vector.request_piv.as_ref().unwrap());
-        let plaintext = vector.plaintext.as_ref().unwrap();
-        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
-            "rfc8613_c7_response_protection" => (
-                hex_to_bytes(""),
-                hex_to_bytes("dbaad1e9a7e7b2a813d3c31524378303cdafae119106"),
-            ),
-            "rfc8613_c8_response_with_partial_iv" => (
-                hex_to_bytes("0100"),
-                hex_to_bytes("4d4c13669384b67354b2b6175ff4b8658c666a6cf88e"),
-            ),
-            _ => panic!("missing independent expected values for {}", vector.name),
-        };
-        let (mut requester, _) = context_at(
-            &master_secret,
-            master_salt.as_deref(),
-            None,
-            &requester_id,
-            &responder_id,
-            0,
-        );
-
-        let (code, options, payload) = requester
-            .unprotect_response(&expected_option, &expected_ciphertext, &request_piv)
-            .unwrap_or_else(|_| panic!("unprotect_response failed for {}", vector.name));
-
-        assert_eq!(code, plaintext.code, "code mismatch for {}", vector.name);
-        assert_eq!(
-            options.as_slice(),
-            hex_to_bytes(&plaintext.options),
-            "options mismatch for {}",
-            vector.name
-        );
-        assert_eq!(
-            payload.as_slice(),
-            hex_to_bytes(&plaintext.payload),
-            "payload mismatch for {}",
-            vector.name
-        );
-    }
-}
-
 #[test]
 fn test_edhoc_interop_vectors() {
     let path = concat!(

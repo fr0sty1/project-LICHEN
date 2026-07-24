@@ -536,7 +536,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(Some(packet)) => {
                 if packet.len > wire.len() {
                     let (now_ms, _maintenance) = runtime
-                        .complete_receive(&mut self.rpl, action, post_await_ms)
+                        .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
                         .map_err(RplRuntimeReceiveError::Action)?;
                     self.routing_now_ms = self.routing_now_ms.max(now_ms);
                     return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -550,7 +550,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 match process_result {
                     Ok(outcome) => Some(outcome),
                     Err(e) => {
-                        let _ = runtime.complete_receive(&mut self.rpl, action, post_await_ms);
+                        let _ = runtime.complete_receive(&mut self.rpl, action, post_await_ms, self.generation);
                         return Err(e);
                     }
                 }
@@ -558,7 +558,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(None) => None,
             Err(_) => {
                 let (now_ms, _maintenance) = runtime
-                    .complete_receive(&mut self.rpl, action, post_await_ms)
+                    .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
                     .map_err(RplRuntimeReceiveError::Action)?;
                 self.routing_now_ms = self.routing_now_ms.max(now_ms);
                 return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -567,7 +567,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             }
         };
         let (now_ms, maintenance) = runtime
-            .complete_receive(&mut self.rpl, action, post_await_ms)
+            .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
             .map_err(RplRuntimeReceiveError::Action)?;
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
         Ok(RplRuntimeReceiveOutcome {
