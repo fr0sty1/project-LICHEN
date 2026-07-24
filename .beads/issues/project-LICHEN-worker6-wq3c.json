@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-wq3c",
   "title": "[review] project-LICHEN-worker6-wa51: Rust edhoc TH_4 uses CIPHERTEXT_3 instead of PLAINTEXT_3+CRED_I — cross-implementation interop break",
   "description": "## Summary\n\nThe commit changes EDHOC TH_4 computation asymmetrically between Python and Rust, creating a hard interop break.\n\n### What Python does (correct per RFC 9528 section 3.4)\n\n- Init TH_4: `H(TH_3, PLAINTEXT_3, CRED_I)` — uses plaintext + credential\n- Resp TH_4: `H(TH_3, PLAINTEXT_3, CRED_I)` — same\n\n### What Rust does (wrong)\n\n- Init TH_4 (line 1224): `transcript_4(\u0026th_3, \u0026ciphertext_3.0)` — uses ciphertext only, no credential\n- Resp TH_4 (line 1667): `transcript_4(\u0026th_3, \u0026pending.ciphertext_3)` — same\n- `transcript_4` function at line 477 only accepts 2 params: `(th_3, ciphertext_3)`\n\n### Impact\n\nPython and Rust implementations will derive different TH_4 values, leading to different OSCORE master secrets, sender/recipient keys. Compromises all interop.\n\n### Root cause\n\nThe `transcript_4` function was never updated to RFC 9528's 3-input definition H(TH_3, PLAINTEXT_3, CRED_I). This diff made a bad situation worse: the responder path changed from `plaintext` (closer to correct) to `ciphertext_3` (further from correct).\n\n### Fix needed\n\n1. Update `transcript_4` to accept `(th_3, plaintext_3, credential)` — 3 params\n2. Update both call sites (init line 1224, resp line 1667) to pass plaintext + credential\n3. Remove the `ciphertext_3` field from `PendingMessage3` — it's not needed for correct TH_4\n\n### Verification\n\nThe test at line 1957 already calls `transcript_4(\u0026th_3, \u0026plaintext_3, \u0026credential_i)` with the correct 3-arg signature — proving the function needs 3 params. Build currently fails with `--features edhoc` due to signature mismatch.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:38:44.105908431Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:38:44.105908431Z"
+  "updated_at": "2026-07-24T19:51:33.953630656Z",
+  "started_at": "2026-07-24T19:51:33.953630656Z",
+  "lease_expires_at": "2026-07-24T19:56:33.953630656Z",
+  "heartbeat_at": "2026-07-24T19:51:33.953630656Z"
 }
