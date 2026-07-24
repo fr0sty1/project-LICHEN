@@ -13,8 +13,16 @@ pub const MIC_LENGTH: usize = 4;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
-pub const MAX_ACK_REQUESTS: u32 = 3;
+pub const MAX_ACK_REQUESTS: u8 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
+
+pub const TILE_SIZE: usize = 187;
+pub const WINDOW_SIZE: usize = 63;
+pub const BITMAP_MASK: u64 = (1u64 << 63) - 1;
+pub const MAX_PACKET_SIZE: usize = 16384;
+pub const DEFAULT_RECEIVER_LIMIT: usize = 1281;
+pub const RULE_ID_A_TO_B: u8 = 0x78;
+pub const RULE_ID_B_TO_A: u8 = 0x79;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -148,7 +156,8 @@ impl<'a> Fragment<'a> {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
+        out[1] = (self.window << 7) | (self.fcn << 1);
+        let mut index = 0;
         if self.is_all_1() {
             for byte in self.mic {
                 out[1 + index] |= byte >> 7;
@@ -164,44 +173,39 @@ impl<'a> Fragment<'a> {
         Ok(needed)
     }
 
-    pub fn from_bytes(data: &'a [u8]) -> Result<Self, FragmentError> {
+    pub fn from_bytes(data: &[u8], out: &'a mut [u8]) -> Result<Fragment<'a>, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
+        check_rule(data[0])?;
         let rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let fcn = data[1] & ((1 << FRAGMENT_N) - 1);
-        let rest = &data[2..];
-        if fcn == ALL_1_FCN {
-            if rest.len() < MIC_LENGTH {
-                return Err(TooShort::new(2 + MIC_LENGTH, data.len()).into());
-            }
-            let mut mic = [0u8; MIC_LENGTH];
-            mic.copy_from_slice(&rest[..MIC_LENGTH]);
-            Ok(Fragment {
-                rule_id,
-                window,
-                fcn,
-                payload: &rest[MIC_LENGTH..],
-                mic,
-            })
-        } else {
-            Ok(Fragment {
-                rule_id,
-                window,
-                fcn,
-                payload: rest,
-                mic: [0u8; MIC_LENGTH],
-            })
-        }
         let window = data[1] >> 7;
-        let fcn = (data[1] >> 1) & 0x3f;
-        let content_len = data.len() - 2;
-        let content_offset = if fcn == ALL_1_FCN { MIC_LENGTH } else { 0 };
+        let fcn = (data[1] >> 1) & ((1 << FRAGMENT_N) - 1);
+
         if fcn == ALL_1_FCN {
-            if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&content_len) {
+            let rest_len = data.len() - 2;
+            if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&rest_len) {
                 return Err(FragmentError::InvalidTileLength);
             }
+            let payload_len = rest_len - MIC_LENGTH;
+            if out.len() < payload_len {
+                return Err(BufferTooSmall::new(payload_len, out.len()).into());
+            }
+            let mut mic = [0u8; MIC_LENGTH];
+            for i in 0..MIC_LENGTH {
+                mic[i] = ((data[1 + i] & 1) << 7) | (data[2 + i] >> 1);
+            }
+            for i in 0..payload_len {
+                let wire = 1 + MIC_LENGTH + i;
+                out[i] = ((data[wire] & 1) << 7) | (data[wire + 1] >> 1);
+            }
+            Ok(Fragment {
+                rule_id,
+                window,
+                fcn,
+                payload: &out[..payload_len],
+                mic,
+            })
         } else {
             if data.len() != TILE_SIZE + 2 {
                 return Err(FragmentError::InvalidTileLength);
@@ -209,28 +213,20 @@ impl<'a> Fragment<'a> {
             if window == 1 && fcn == 0 {
                 return Err(FragmentError::InvalidFcn);
             }
-        }
-        let payload_len = content_len - content_offset;
-        if out.len() < payload_len {
-            return Err(BufferTooSmall::new(payload_len, out.len()).into());
-        }
-        for (i, byte) in out[..payload_len].iter_mut().enumerate() {
-            let wire = 1 + content_offset + i;
-            *byte = (data[wire] << 7) | (data[wire + 1] >> 1);
-        }
-        let mut mic = [0; MIC_LENGTH];
-        if fcn == ALL_1_FCN {
-            for i in 0..MIC_LENGTH {
-                mic[i] = (data[1 + i] << 7) | (data[2 + i] >> 1);
+            if out.len() < TILE_SIZE {
+                return Err(BufferTooSmall::new(TILE_SIZE, out.len()).into());
             }
+            for i in 0..TILE_SIZE {
+                out[i] = ((data[1 + i] & 1) << 7) | (data[2 + i] >> 1);
+            }
+            Ok(Fragment {
+                rule_id,
+                window,
+                fcn,
+                payload: &out[..TILE_SIZE],
+                mic: [0u8; MIC_LENGTH],
+            })
         }
-        Ok(Self {
-            rule_id: data[0],
-            window,
-            fcn,
-            payload: &out[..payload_len],
-            mic,
-        })
     }
 }
 
@@ -285,6 +281,8 @@ impl Ack {
         out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
+        let n = kept + restored;
+        let body_bytes = n.div_ceil(8);
         out[2] = n as u8;
         for b in out[3..3 + body_bytes].iter_mut() {
             *b = 0;
@@ -340,7 +338,7 @@ impl Ack {
                 bitmap |= 1u64 << (62 - position);
             }
         }
-        let ack = Self::new(data[0], window, bitmap, false);
+        let ack = Self::new(rule_id, window, bitmap, complete);
         let mut canonical = [0u8; 10];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {
@@ -429,6 +427,7 @@ pub enum SenderOutput {
     },
 }
 
+#[derive(Debug)]
 pub struct FragmentSender<'a> {
     payload: &'a [u8],
     pub rule_id: u8,
@@ -454,12 +453,6 @@ impl<'a> FragmentSender<'a> {
         if payload.len() > SCHC_MAX_DECOMPRESSED {
             return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
         }
-        let mic = compute_mic(payload);
-        let count = if payload.is_empty() {
-            1
-        } else {
-            payload.len().div_ceil(tile_size)
-        };
         Ok(FragmentSender {
             payload,
             rule_id,
