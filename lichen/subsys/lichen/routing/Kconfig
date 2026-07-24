@@ -199,15 +199,6 @@ config LICHEN_ANNOUNCE_SCHEDULER
 	  random jitter to prevent collision. Requires LICHEN_LINK for identity
 	  (keypair) and link-layer transmission.
 
-config LICHEN_ANNOUNCE_INTERVAL_MS
-	int "Announce interval in milliseconds"
-	depends on LICHEN_ANNOUNCE_SCHEDULER
-	default 300000
-	help
-	  Time between announce transmissions. Spec 9.4 recommends 300 seconds
-	  (300000 ms). Shorter intervals increase network overhead but improve
-	  route freshness for dynamic topologies.
-
 config LICHEN_ANNOUNCE_JITTER_MS
 	int "Announce jitter in milliseconds"
 	depends on LICHEN_ANNOUNCE_SCHEDULER
@@ -226,6 +217,33 @@ config LICHEN_ANNOUNCE_INITIAL_DELAY_MS
 	  a random delay (1-jitter_ms) is used to prevent thundering herd on
 	  mass power-on. Setting explicitly allows the node to receive announces
 	  from others first, building gradients before advertising itself.
+
+config LICHEN_ANNOUNCE_INTERVAL_NORMAL
+	int "Announce interval in milliseconds (ORPHAN / normal state)"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 300000
+	help
+	  Announce interval when the node is not joined to a gateway-centric
+	  DODAG. Default 300 seconds (300000 ms). Used for the ORPHAN state
+	  and when DODAG_LOSS_RESUME_TIMEOUT expires after DODAG loss.
+
+config LICHEN_ANNOUNCE_INTERVAL_GATEWAY
+	int "Announce interval in milliseconds (gateway-centric DODAG)"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 1800000
+	help
+	  Announce interval when the node is joined to a gateway-centric DODAG.
+	  Default 1800 seconds (30 minutes). Longer interval reduces overhead
+	  in stable routed networks since the gateway provides route refresh.
+
+config LICHEN_DODAG_LOSS_RESUME_TIMEOUT
+	int "DODAG loss resume timeout in seconds"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 60
+	help
+	  After losing DODAG parent(s), the announce scheduler resumes the
+	  normal interval after this timeout. Default 60 seconds. Prevents
+	  rapid interval oscillation from transient link loss.
 
 config LICHEN_LOADNG
 	bool "LICHEN LOADng reactive route discovery"

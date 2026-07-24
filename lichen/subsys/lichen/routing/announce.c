@@ -459,7 +459,12 @@ struct announce_scheduler {
 	bool running;
 	uint16_t seq_num;
 	struct k_work_delayable work;
+	struct k_work_delayable dodag_loss_work;
 	struct k_mutex mutex;
+
+	/* DODAG state for dynamic interval selection */
+	bool dodag_joined;
+	bool gateway_centric;
 
 	/* Configuration (copied at start) */
 	struct lichen_link_ctx *link_ctx;
@@ -654,9 +659,20 @@ static int send_announce(void)
 	return ret;
 }
 
+static uint32_t get_current_interval_locked(void)
+{
+	if (sched.dodag_joined && sched.gateway_centric) {
+		return CONFIG_LICHEN_ANNOUNCE_INTERVAL_GATEWAY;
+	}
+	return CONFIG_LICHEN_ANNOUNCE_INTERVAL_NORMAL;
+}
+
 static void schedule_next(void)
 {
-	uint32_t interval_ms = CONFIG_LICHEN_ANNOUNCE_INTERVAL_MS;
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	uint32_t interval_ms = get_current_interval_locked();
+	k_mutex_unlock(&sched.mutex);
+
 	uint32_t jitter_ms = random_range(0, CONFIG_LICHEN_ANNOUNCE_JITTER_MS);
 	uint32_t delay_ms = interval_ms + jitter_ms;
 
@@ -680,6 +696,60 @@ static void sched_work_handler(struct k_work *work)
 
 	(void)send_announce();
 	schedule_next();
+}
+
+static void dodag_loss_resume_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool running = sched.running;
+	bool joined = sched.dodag_joined;
+
+	if (running && !joined) {
+		LOG_INF("DODAG loss resume timeout: reverting to normal announce interval");
+	}
+	k_mutex_unlock(&sched.mutex);
+
+	if (running) {
+		schedule_next();
+	}
+}
+
+void lichen_announce_sched_set_dodag_state(bool joined, bool gateway_centric)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
+		return;
+	}
+
+	bool prev_gateway = sched.dodag_joined && sched.gateway_centric;
+	sched.dodag_joined = joined;
+	sched.gateway_centric = joined ? gateway_centric : false;
+	bool new_gateway = sched.dodag_joined && sched.gateway_centric;
+
+	if (prev_gateway != new_gateway) {
+		LOG_INF("DODAG state change: joined=%d gateway=%d, rescheduling announce",
+			joined, gateway_centric);
+		k_mutex_unlock(&sched.mutex);
+
+		/* Reschedule with new interval immediately */
+		(void)k_work_cancel_delayable(&sched.work);
+		schedule_next();
+	} else {
+		k_mutex_unlock(&sched.mutex);
+	}
+
+	/* Schedule or cancel DODAG loss resume timer */
+	if (!joined) {
+		uint32_t delay_s = CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT;
+		if (delay_s > 0) {
+			k_work_schedule(&sched.dodag_loss_work, K_SECONDS(delay_s));
+		}
+	} else {
+		(void)k_work_cancel_delayable(&sched.dodag_loss_work);
+	}
 }
 
 int lichen_announce_sched_start(
@@ -740,6 +810,7 @@ void lichen_announce_sched_stop(void)
 	k_mutex_unlock(&sched.mutex);
 
 	(void)k_work_cancel_delayable(&sched.work);
+	(void)k_work_cancel_delayable(&sched.dodag_loss_work);
 	LOG_INF("announce scheduler stopped");
 }
 
@@ -808,6 +879,7 @@ static int announce_sched_init(void)
 {
 	k_mutex_init(&sched.mutex);
 	k_work_init_delayable(&sched.work, sched_work_handler);
+	k_work_init_delayable(&sched.dodag_loss_work, dodag_loss_resume_handler);
 	return 0;
 }
 
