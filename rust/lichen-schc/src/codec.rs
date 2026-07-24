@@ -22,6 +22,7 @@ use lichen_core::constants::{
     RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 
 /// IPv6 link-local prefix (fe80::/64) as a u128 with the prefix in the high 64 bits.
 /// To reconstruct a full link-local address, OR this with a 64-bit Interface Identifier (IID).
@@ -262,8 +263,8 @@ fn write_ipv6_header(
     out[5] = payload_len as u8;
     out[6] = next_header;
     out[7] = hop_limit;
-    out[8..24].copy_from_slice(src);
-    out[24..40].copy_from_slice(dst);
+    out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(src);
+    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(dst);
 }
 
 // ─── per-rule compress ────────────────────────────────────────────────────────
@@ -284,7 +285,7 @@ fn write_ipv6_header(
 // RPL body starts at offset 44 (after IPv6 + ICMPv6 header).
 
 fn ensure_ipv6(packet: &[u8]) -> Result<(), SchcError> {
-    if packet.len() < 40 || packet[0] >> 4 != 6 {
+    if packet.len() < IPV6_HEADER_LEN || packet[0] >> 4 != 6 {
         return Err(SchcError::NoMatchingRule);
     }
     Ok(())
@@ -298,10 +299,10 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // UDP header starts immediately after IPv6
-    let udp = &packet[40..];
+    let udp = &packet[IPV6_HEADER_LEN..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
     let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
     let coap = &udp[8..];
@@ -357,10 +358,10 @@ fn compress_icmpv6_echo(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // ICMPv6 header starts at offset 40
-    let icmp = &packet[40..];
+    let icmp = &packet[IPV6_HEADER_LEN..];
     let icmp_type = icmp[0];
     let icmp_id = u16::from_be_bytes([icmp[4], icmp[5]]);
     let icmp_seq = u16::from_be_bytes([icmp[6], icmp[7]]);
@@ -399,8 +400,8 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // RPL body starts at offset 44: skip 40-byte IPv6 + 4-byte ICMPv6 header (type/code/checksum)
     let rpl = &packet[44..];
     let instance = rpl[0];
@@ -448,8 +449,8 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // RPL body starts at offset 44: skip 40-byte IPv6 + 4-byte ICMPv6 header (type/code/checksum)
     let rpl = &packet[44..];
     let instance = rpl[0];
@@ -497,10 +498,10 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
     // UDP header starts immediately after IPv6
-    let udp = &packet[40..];
+    let udp = &packet[IPV6_HEADER_LEN..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
     let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
 
@@ -865,8 +866,8 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
 
     let nh = packet[6];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src = &packet[field::SRC_OFFSET..field::DST_OFFSET];
+    let dst = &packet[field::DST_OFFSET..IPV6_HEADER_LEN];
 
     if nh == 17 {
         // UDP — try MQTT-SN (rule 5) first if port matches, then CoAP (rules 0/1)
@@ -1077,10 +1078,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17; // UDP
         packet[7] = 64; // Hop limit
-        packet[8..24].copy_from_slice(&src_addr);
-        packet[24..40].copy_from_slice(&dst_addr);
-        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
-        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
+        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
+        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
+        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..52].copy_from_slice(payload);
@@ -1117,10 +1118,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17;
         packet[7] = 64;
-        packet[8..24].copy_from_slice(&src_addr);
-        packet[24..40].copy_from_slice(&dst_addr);
-        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
-        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
+        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
+        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
+        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..55].copy_from_slice(payload);
@@ -1155,10 +1156,10 @@ mod tests {
         packet[5] = udp_len as u8;
         packet[6] = 17;
         packet[7] = 64;
-        packet[8..24].copy_from_slice(&src_addr);
-        packet[24..40].copy_from_slice(&dst_addr);
-        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
-        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src_addr);
+        packet[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr);
+        packet[IPV6_HEADER_LEN..IPV6_HEADER_LEN + 2].copy_from_slice(&src_port.to_be_bytes());
+        packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&dst_port.to_be_bytes());
         packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
         packet[46..48].copy_from_slice(&cksum.to_be_bytes());
         packet[48..51].copy_from_slice(payload);

@@ -1160,7 +1160,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         sender_iid: [u8; 8],
     ) -> Result<Option<RplReceiveOutcome>, RplReceiveError> {
         let local_link_addr = self.stack.local_addr().0;
-        let current_destination: [u8; 16] = received.ipv6[24..40].try_into().unwrap();
+        let current_destination: [u8; 16] = received.ipv6[field::DST_OFFSET..IPV6_HEADER_LEN].try_into().unwrap();
         if current_destination != self.local_rpl_addr && current_destination != local_link_addr {
             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
         }
@@ -1172,7 +1172,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         {
             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
         }
-        let source: [u8; 16] = received.ipv6[8..24].try_into().unwrap();
+        let source: [u8; 16] = received.ipv6[field::SRC_OFFSET..field::DST_OFFSET].try_into().unwrap();
         if source != self.rpl.router.dodag_id() {
             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
         }
@@ -1394,7 +1394,7 @@ fn advance_rpl_source_route(
     current_destination: [u8; 16],
     sender_iid: [u8; 8],
 ) -> Result<Option<[u8; 16]>, RxError> {
-    if ipv6.len() < 64 || ipv6[6] != 43 || ipv6[24..40] != current_destination {
+    if ipv6.len() < 64 || ipv6[6] != 43 || ipv6[field::DST_OFFSET..IPV6_HEADER_LEN] != current_destination {
         return Err(RxError::InvalidSourceRoute);
     }
     let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
@@ -1445,7 +1445,7 @@ fn advance_rpl_source_route(
         return Err(RxError::InvalidSourceRoute);
     }
     ipv6[next_start..next_start + 16].copy_from_slice(&current_destination);
-    ipv6[24..40].copy_from_slice(&next_destination);
+    ipv6[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&next_destination);
     ipv6[43] -= 1;
     Ok(Some(next_destination))
 }
@@ -1999,7 +1999,7 @@ mod tests {
         )
         .unwrap();
         let mut routed = wire[..len].to_vec();
-        assert_eq!(&routed[24..40], &relay_one);
+        assert_eq!(&routed[field::DST_OFFSET..IPV6_HEADER_LEN], &relay_one);
         assert_eq!(&routed[40..48], &[59, 4, 3, 2, 0, 0, 0, 0]);
         assert_eq!(&routed[48..64], &relay_two);
         assert_eq!(&routed[64..80], &destination);

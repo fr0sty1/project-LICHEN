@@ -4,7 +4,7 @@
 
 use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
-use lichen_core::ipv6::field;
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -172,7 +172,7 @@ impl Gateway {
                 routed[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
                 let transport = ipv6[6];
                 routed[6] = 43;
-                routed[24..40].copy_from_slice(&route[0]);
+                routed[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&route[0]);
                 routed[40] = transport;
                 routed[41] = (routing_len / 8 - 1) as u8;
                 if srh.write_to(&mut routed[42..]).is_err() {
@@ -233,8 +233,8 @@ mod tests {
 
         // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
-        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
-        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
+        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
         // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
@@ -258,8 +258,8 @@ mod tests {
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
         assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type should be 129");
-        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
-        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
+        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
     }
 
     #[test]
