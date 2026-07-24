@@ -2,13 +2,15 @@
   "id": "project-LICHEN-et78.2.2",
   "title": "Add MUST enforcement for S=1 Schnorr signatures on all RPL control messages (DIO/DAO/DIS)",
   "description": "Per draft-lichen-link-01.md and draft-lichen-rpl-lora-00.md, all RPL control frames MUST set S=1. Implement validation in lichen/subsys/lichen/rpl/ to reject unsigned frames before any state mutation. Link to project-LICHEN-et78.2",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:20.034624996Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:27:20.034624996Z",
+  "updated_at": "2026-07-24T05:32:19.903747377Z",
+  "closed_at": "2026-07-24T05:32:19.903747377Z",
+  "close_reason": "Added S=1 signature option validation (type 0x12, data_len=56) in extract_updates as terminal option check; signature verification remains caller responsibility per Rust architecture",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-et78.2.2",
