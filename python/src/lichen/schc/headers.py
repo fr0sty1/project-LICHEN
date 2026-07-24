@@ -239,8 +239,6 @@ class _CoapUdpProfile(PacketProfile):
     def _addr_ok(self, addr: int) -> bool: ...
 
     def matches(self, raw: bytes) -> bool:
-        if len(raw) < HEADER_LENGTH + UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
-            return False
         try:
             header = IPv6Header.from_bytes(raw)
         except PacketError:
