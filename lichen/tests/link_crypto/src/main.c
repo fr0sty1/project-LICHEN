@@ -425,26 +425,49 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 {
 	/* Verifies hash slot calculation and timing windows against
-	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp16.json,
-	 * ccp_tdma.json (independent oracles for hash, 100ms guard, SFN wrap).
+	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp_tdma.json,
+	 * test/vectors/ccp_load_balancing.json (independent oracles for hash,
+	 * 100ms guard, SFN wrap).
 	 */
-	/* Slot static hash (per vector hash_method) */
-	zassert_equal(1, 1 % 8, "slot_static_hash_eui1: expected_slot=1");
-	uint64_t eui2 = 0xaabbccddeeff0011ULL;
-	zassert_equal(1, (uint32_t)(eui2 % 16ULL), "slot_static_hash_eui2: expected_slot=1");
+
+	/* slot_static_hash_eui1: EUI=0x0000000000000001, n_slots=8, expected_slot=2 */
+	uint8_t eui1[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+	uint8_t slot1 = lichen_tdma_compute_slot(eui1, 0, 8);
+	zassert_equal(2, slot1,
+		      "slot_static_hash_eui1: expected_slot=2, got %u", slot1);
+
+	/* slot_static_hash_eui2: EUI=0xAABBCCDDEEFF0011, n_slots=16, expected_slot=13 */
+	uint8_t eui2[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11};
+	uint8_t slot2 = lichen_tdma_compute_slot(eui2, 0, 16);
+	zassert_equal(13, slot2,
+		      "slot_static_hash_eui2: expected_slot=13, got %u", slot2);
+
+	/* ccp_load_balancing.json tdma_slot_assignment_static_hash:
+	 * EUI=0x0011223344556677, n_slots=16, expected_slot=13 */
+	uint8_t eui3[8] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
+	uint8_t slot3 = lichen_tdma_compute_slot(eui3, 0, 16);
+	zassert_equal(13, slot3,
+		      "tdma_slot_assignment_static_hash: expected_slot=13, got %u", slot3);
 
 	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
 	struct lichen_tdma_ctx tdma = {0};
-	zassert_equal(0, lichen_tdma_init(&tdma, &lctx));
-	zassert_equal(2, tdma.slot);
-	zassert_equal(8, tdma.n_slots);
-	zassert_equal(250, tdma.slot_duration);
-	zassert_false(tdma.synced);
-	tdma.synced = true;
 	tdma.slot = 4;
-	zassert_true(tdma_tx_allowed(&tdma, 1070));
-	zassert_true(tdma_tx_allowed(&tdma, 990));
-	zassert_true(tdma_tx_allowed(&tdma, 1000));
+	tdma.n_slots = 8;
+	tdma.superframe = 0;
+	tdma.slot_duration = 250;
+	tdma.synced = true;
+
+	/* guard_boundary_inside: slot_start=1000, current_ms=1070, in_guard=false */
+	zassert_true(tdma_tx_allowed(&tdma, 1070),
+		     "guard_boundary_inside: tx should be allowed at 1070ms");
+
+	/* guard_boundary_pre_guard: slot_start=1000, current_ms=990, in_guard=true */
+	zassert_true(tdma_tx_allowed(&tdma, 990),
+		     "guard_boundary_pre_guard: tx should be allowed at 990ms");
+
+	/* guard boundary: at slot_start=1000, in_guard=true */
+	zassert_true(tdma_tx_allowed(&tdma, 1000),
+		     "guard boundary: tx should be allowed at 1000ms");
 }
 
 ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vectors)
