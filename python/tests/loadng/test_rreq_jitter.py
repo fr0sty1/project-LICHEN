@@ -286,3 +286,36 @@ class TestJitterDistribution:
         # All delays should be within the configured bounds [10, 50]
         for delay in delays_observed:
             assert 10 <= delay <= 50, f"Delay {delay} out of bounds [10, 50]"
+
+
+class TestExceptionHandling:
+    """Tests that exceptions from link.send() are properly handled."""
+
+    @pytest.mark.asyncio
+    async def test_link_send_exception_is_logged_and_re_raised(
+        self, node: Node, caplog: pytest.LogCaptureFixture
+    ):
+        """Exception from link.send() is logged and propagates to caller."""
+        import logging
+
+        caplog.set_level(logging.ERROR)
+
+        # Mock link.send to raise
+        async def _raise(_data: bytes) -> bool:
+            raise RuntimeError("link send failed")
+
+        with (
+            patch("lichen.node.random.randint", return_value=0),
+            patch.object(node.link, "send", _raise),
+        ):
+            task = node.scheduled_send(b"test_data")
+
+            with pytest.raises(RuntimeError, match="link send failed"):
+                await task
+
+        # Verify exception was logged
+        assert len(caplog.records) >= 1
+        assert any(
+            "scheduled_send: link.send failed" in record.message
+            for record in caplog.records
+        ), "Exception not logged"
