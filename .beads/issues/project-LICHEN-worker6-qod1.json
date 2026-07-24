@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-qod1",
   "title": "[rereview] project-LICHEN-ow1e.208: test does not compile - wrong call signatures for protect_request and unprotect_request",
   "description": "Commit 1444000dc adds test  that calls:\\n\\n1.  — but the actual API requires output buffers: . Missing  and  args.\\n\\n2.  — but the actual API requires . Missing  and  args.\\n\\nBoth calls will fail to compile. The test was never verified with  before commit.\\n\\nAffected file: rust/lichen-oscore/src/lib.rs",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T14:17:24.939739641Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:15:02.518931545Z",
-  "started_at": "2026-07-24T16:15:02.518931545Z",
-  "lease_expires_at": "2026-07-24T16:20:02.518931545Z",
-  "heartbeat_at": "2026-07-24T16:15:02.518931545Z"
+  "updated_at": "2026-07-24T16:41:28.618975756Z",
+  "started_at": "2026-07-24T16:15:02.518931545Z"
 }
