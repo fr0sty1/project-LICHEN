@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-oc1f",
+  "title": "[review] project-LICHEN-worker6-69p2: test vectors stale for new wire format",
+  "description": "## Bug: Integration test vectors do not match new wire format\n\n**Location:** `rust/lichen-schc/tests/fragmentation_vectors.rs:206`\n\nThe test `shared_vectors_drive_production_implementations` fails because the wire bytes in `test/vectors/schc_fragmentation.json` were not regenerated for the new (unshifted) encoding format.\n\nThe JSON file declares `\"format_version\": 2` and the test asserts `format_version == 2`, but the wire byte sequences still contain the old bit-shift-by-1 encoding.\n\n**Specific failure:**\nFor fragment `tile_0` of `recover_missing_regular_tile`:\n- New code produces: `[0x78, 0x3e, 0x00, ...]` (byte 1 = 62, unshifted)\n- Test vector expects: `[0x78, 0x7c, 0x00, ...]` (byte 1 = 124, left-shifted-by-1)\n- `0x3e = 0b0011_1110` → FCN=62, window=0 (correct, new format)\n- `0x7c = 0b0111_1100` → old format had shift-left-by-1\n\nAll fragment wire bytes and ACK wire bytes need regeneration.\n\n**Fix:** Regenerate all wire byte sequences in `test/vectors/schc_fragmentation.json` using the new unshifted encoding. The Python reference implementation at `python/src/lichen/schc/` may need the same encoding update.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:54:00.618281567Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:54:00.618281567Z"
+}
