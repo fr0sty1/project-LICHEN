@@ -4,6 +4,7 @@
 
 This module provides the Medium class that tracks active transmissions and
 handles radio propagation, including collision detection with capture effect.
+Channel rendezvous uses hop channels computed from SFN/EUI (CCP-12).
 """
 
 from __future__ import annotations
@@ -43,10 +44,8 @@ class Medium:
     """Radio medium that tracks transmissions and handles propagation.
 
     Supports multi-channel operation with independent collision/propagation
-    oracles per channel. For CCP-12 rendezvous, get_rx_candidates,
-    detect_activity, and start_tx use hop channel computed from SFN/EUI
-    (via node's hop_schedule or synchronized_hop_channel helper). Keeps
-    LR-FHSS support via rx_frequency_hz filter.
+    oracles per channel. Channel selection uses CCP-12 SFN/EUI-based hop
+    channels computed by the caller.
 
     Attributes:
         propagation: The propagation model used for path loss calculations.
@@ -67,7 +66,6 @@ class Medium:
         """
         self.propagation = propagation if propagation is not None else PropagationModel()
         self.noise_floor_dbm = noise_floor_dbm
-        self.density_estimate = 0.0
         self._active_transmissions: list[Transmission] = []
         self._tx_positions: dict[str, tuple[float, float, float]] = {}
 
@@ -81,8 +79,9 @@ class Medium:
         channel: int = 0,
         phy_mode: str = "lora",
     ) -> Transmission:
-        """Tag transmission with hop channel computed from SFN/EUI (via
-        hop_schedule or helper per CCP-12). Keeps LR-FHSS airtime support.
+        """Create a transmission and add it to the active set.
+
+        Channel is the caller-computed CCP-12 hop channel from SFN/EUI.
         """
         if phy_mode == "lr_fhss":
             duration_us = lr_fhss_airtime_us(len(payload))
@@ -99,7 +98,6 @@ class Medium:
         )
         self._active_transmissions.append(tx)
         self._tx_positions[tx.id] = position
-        self.density_estimate = len(self._active_transmissions) / 10.0
         return tx
 
     def end_tx(self, transmission_id: str) -> None:
@@ -125,9 +123,7 @@ class Medium:
             List of active Transmission objects.
         """
         return [
-            tx
-            for tx in self._active_transmissions
-            if tx.start_time_us <= time_us < tx.end_time_us
+            tx for tx in self._active_transmissions if tx.start_time_us <= time_us < tx.end_time_us
         ]
 
     def get_rx_candidates(
@@ -136,39 +132,27 @@ class Medium:
         rx_position: tuple[float, float, float],
         time_us: int,
         channel: int = 0,
-        rx_frequency_hz: int | None = None,
     ) -> list[RxCandidate]:
         """Get all decodable transmissions for a receiver on given channel.
 
-        Uses hop channel computed from SFN/EUI via node's hop_schedule or
-        synchronized_hop_channel helper per CCP-12. Only considers TX on
-        matching channel. Independent oracle per channel. Supports LR-FHSS
-        via optional rx_frequency_hz filter.
-
-        For each active transmission on matching channel (excluding self),
-        calculates distance, RSSI, and SNR. Only includes decodable ones.
+        Only considers active transmissions on the matching channel (excluding
+        self). For each, calculates distance, RSSI, and SNR. Only includes
+        those above the sensitivity threshold.
 
         Args:
             rx_node_id: ID of the receiving node.
             rx_position: (x, y, z) position of the receiver in meters.
             time_us: Current simulation time in microseconds.
-            channel: Hop channel from SFN/EUI (default 0).
-            rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
+            channel: CCP-12 hop channel from SFN/EUI (default 0).
 
         Returns:
             List of RxCandidate objects for decodable transmissions.
         """
         candidates: list[RxCandidate] = []
-        active = [
-            tx
-            for tx in self.get_active_transmissions(time_us)
-            if tx.channel == channel
-        ]
+        active = [tx for tx in self.get_active_transmissions(time_us) if tx.channel == channel]
 
         for tx in active:
             if tx.source_node_id == rx_node_id:
-                continue
-            if rx_frequency_hz is not None and tx.frequency_hz != rx_frequency_hz:
                 continue
 
             tx_pos = self._tx_positions.get(tx.id)
@@ -188,15 +172,10 @@ class Medium:
             snr = rssi - self.noise_floor_dbm
             is_lr_fhss = tx.phy_mode == "lr_fhss"
             sensitivity = SENSITIVITY_LR_FHSS if is_lr_fhss else SENSITIVITY_SF10
-            if self.propagation.can_decode(
-                tx.tx_power_dbm, distance, sensitivity_dbm=sensitivity
-            ):
+            if self.propagation.can_decode(tx.tx_power_dbm, distance, sensitivity_dbm=sensitivity):
                 candidates.append(
-                    RxCandidate(
-                        transmission=tx, rssi=rssi, snr=snr, is_lr_fhss=is_lr_fhss
-                    )
+                    RxCandidate(transmission=tx, rssi=rssi, snr=snr, is_lr_fhss=is_lr_fhss)
                 )
-
 
         return candidates
 
@@ -246,35 +225,23 @@ class Medium:
         time_us: int,
         sensitivity_dbm: float = SENSITIVITY_DEFAULT,
         channel: int = 0,
-        rx_frequency_hz: int | None = None,
     ) -> bool:
         """Detect if any transmission is active and detectable at a position
         on the specified channel.
-
-        Uses hop channel from SFN/EUI via node's hop_schedule or helper per
-        CCP-12 for rendezvous. Supports LR-FHSS via rx_frequency_hz.
-        Independent per-channel oracle.
 
         Args:
             position: (x, y, z) position of the detector in meters.
             time_us: Current simulation time in microseconds.
             sensitivity_dbm: Receiver sensitivity threshold in dBm.
                 Defaults to SF10 sensitivity (-132 dBm).
-            channel: Hop channel computed from SFN/EUI (default 0).
-            rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
+            channel: CCP-12 hop channel from SFN/EUI (default 0).
 
         Returns:
             True if channel activity is detected, False otherwise.
         """
-        active = [
-            tx
-            for tx in self.get_active_transmissions(time_us)
-            if tx.channel == channel
-        ]
+        active = [tx for tx in self.get_active_transmissions(time_us) if tx.channel == channel]
 
         for tx in active:
-            if rx_frequency_hz is not None and tx.frequency_hz != rx_frequency_hz:
-                continue
             tx_pos = self._tx_positions.get(tx.id)
             if tx_pos is None:
                 continue
