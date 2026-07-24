@@ -550,6 +550,7 @@ class Router:
             logger.warning("no preferred parent, cannot route external")
             return RouteDecision.DROP, None
 
+        logger.debug("forwarding external via parent %s", parent)
         return RouteDecision.FORWARD, parent
 
     def _queue_pending(
