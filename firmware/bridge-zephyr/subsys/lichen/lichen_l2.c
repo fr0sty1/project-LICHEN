@@ -169,23 +169,19 @@ BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
  * These values are defined by the LICHEN spec (section 4) and cannot change
  * without a protocol revision. The BUILD_ASSERTs document the derivation.
  *
- * (project-LICHEN-1www.41): Use authoritative constants from link.h where
- * available (LICHEN_MIC_32_LEN) to catch drift. Header field sizes are
- * protocol-defined with no shared constant, so we define them locally but
- * validate against LICHEN_MIN_FRAME_LEN = 9 per spec.
+ * Uses authoritative constants from link.h to catch drift if the frame format
+ * changes (project-LICHEN-1www.41). The addr field has no shared constant for
+ * the "zero" (broadcast) case, so it remains local. The MIC constant uses the
+ * authoritative value from link.h.
  */
-#define LICHEN_FRAME_LENGTH_FIELD 1
-#define LICHEN_FRAME_LLSEC_FIELD  1
-#define LICHEN_FRAME_EPOCH_FIELD  1
-#define LICHEN_FRAME_SEQNUM_FIELD 2
-#define LICHEN_FRAME_MIN_MIC      LICHEN_MIC_32_LEN  /* Use authoritative constant from link.h */
-#define LICHEN_FRAME_MIN_ADDR     0  /* broadcast/NONE mode has 0 addr bytes */
+#define LICHEN_FRAME_MIN_MIC LICHEN_MIC_32_LEN  /* authoritative from link.h */
+#define LICHEN_FRAME_MIN_ADDR 0                  /* broadcast/NONE mode has 0 addr bytes */
 
 BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
-	     LICHEN_FRAME_LENGTH_FIELD +
-	     LICHEN_FRAME_LLSEC_FIELD +
-	     LICHEN_FRAME_EPOCH_FIELD +
-	     LICHEN_FRAME_SEQNUM_FIELD +
+	     LICHEN_FRAME_LEN_FIELD_LEN +
+	     LICHEN_FRAME_LLSEC_LEN +
+	     LICHEN_FRAME_EPOCH_LEN +
+	     LICHEN_FRAME_SEQNUM_LEN +
 	     LICHEN_FRAME_MIN_ADDR +
 	     LICHEN_FRAME_MIN_MIC,
 	     "LICHEN_MIN_FRAME_LEN does not match frame component sizes");
@@ -215,10 +211,10 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  *   overhead when unsigned is acceptable for the simplicity benefit.
  */
 #define LICHEN_FRAME_BASE_OVERHEAD \
-	(LICHEN_FRAME_LENGTH_FIELD + \
-	 LICHEN_FRAME_LLSEC_FIELD + \
-	 LICHEN_FRAME_EPOCH_FIELD + \
-	 LICHEN_FRAME_SEQNUM_FIELD + \
+	(LICHEN_FRAME_LEN_FIELD_LEN + \
+	 LICHEN_FRAME_LLSEC_LEN + \
+	 LICHEN_FRAME_EPOCH_LEN + \
+	 LICHEN_FRAME_SEQNUM_LEN + \
 	 LICHEN_FRAME_MIN_MIC)
 
 /*
