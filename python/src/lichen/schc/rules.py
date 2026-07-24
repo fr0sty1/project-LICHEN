@@ -360,7 +360,7 @@ RPL_DIO_RULE = Rule(
 _DAO_BASE_FIELDS = (
     FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT),
     FieldDescriptor("RPL.kd_flags", 8, MO.IGNORE, CDA.VALUE_SENT),
-    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT),
+    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
     FieldDescriptor("RPL.seq", 8, MO.IGNORE, CDA.VALUE_SENT),
     FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT),
 )
