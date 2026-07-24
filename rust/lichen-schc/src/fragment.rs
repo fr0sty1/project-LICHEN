@@ -1,9 +1,6 @@
 //! Rule Set Version 2 SCHC ACK-on-Error fragmentation (RFC 8724 section 8).
 
-use lichen_core::{
-    constants::SCHC_MAX_DECOMPRESSED,
-    error::{BufferTooSmall, TooShort},
-};
+use lichen_core::error::{BufferTooSmall, TooShort};
 
 pub const FRAGMENT_M: u8 = 1;
 pub const FRAGMENT_N: u8 = 6;
@@ -181,15 +178,25 @@ impl<'a> Fragment<'a> {
         let rule_id = data[0];
         let window = data[1] >> 7;
         let fcn = (data[1] >> 1) & 0x3f;
+        if window == 1 && fcn == 0 {
+            return Err(FragmentError::InvalidFcn);
+        }
+        if data[data.len() - 1] & 1 != 0 {
+            return Err(FragmentError::InvalidTileLength);
+        }
+        if fcn == ALL_1_FCN {
+            if content_len < MIC_LENGTH + 1 || content_len > MIC_LENGTH + TILE_SIZE {
+                return Err(FragmentError::InvalidTileLength);
+            }
+        } else if content_len != TILE_SIZE {
+            return Err(FragmentError::InvalidTileLength);
+        }
         for i in 0..content_len {
             let low = data[2 + i] >> 1;
             let high = (data[1 + i] & 1) << 7;
             out[i] = low | high;
         }
         if fcn == ALL_1_FCN {
-            if content_len < MIC_LENGTH {
-                return Err(TooShort::new(2 + MIC_LENGTH, data.len()).into());
-            }
             let mut mic = [0u8; MIC_LENGTH];
             mic.copy_from_slice(&out[..MIC_LENGTH]);
             Ok(Fragment {
