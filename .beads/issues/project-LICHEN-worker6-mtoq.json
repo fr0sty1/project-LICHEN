@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-mtoq",
   "title": "[review] project-LICHEN-worker6-69p2: test vectors mismatch — new wire format but old vector bytes",
   "description": "The fragmentation_vectors integration test fails because the code produces a new simplified wire format (plain header byte with window\u003c\u003c6 | fcn) but the test vectors in test/vectors/schc_fragmentation.json still use the old shifted-left-by-1 wire format.\n\nTest expected byte2: 0x3E (new format: (0\u003c\u003c6)|62 = 62)\nVector has byte2: 0x7C (old format: ((0\u003c\u003c6)|62)\u003c\u003c1 = 124)\n\nThe format_version was bumped from 1 to 2, but the wire bytes in the vectors were NOT updated to match the new encoding.\n\nTo fix: Update all wire hex values in test/vectors/schc_fragmentation.json to match the new wire format (rule_id, plain header byte without the left-bit-shift, MIC bytes, payload bytes). Also update the fragment from_bytes test at line 213 to match.\n\nAffected: test/vectors/schc_fragmentation.json, rust/lichen-schc/tests/fragmentation_vectors.rs",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:58:26.49824726Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:28:18.885287485Z",
-  "started_at": "2026-07-24T19:02:22.182037876Z",
-  "lease_expires_at": "2026-07-24T20:33:18.885287485Z",
-  "heartbeat_at": "2026-07-24T20:28:18.885287485Z"
+  "updated_at": "2026-07-24T20:38:20.084817184Z",
+  "started_at": "2026-07-24T19:02:22.182037876Z"
 }
