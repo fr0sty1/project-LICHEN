@@ -1382,6 +1382,16 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 
 	LOG_DBG("lichen_l2: TX IPv6 %zu bytes", pkt_len);
 
+	/* DEBUG: verify first nibble is IPv6 version 6 (project-LICHEN-d7ub.38) */
+	if (IS_ENABLED(CONFIG_LICHEN_L2_TX_VERIFY_IPV6)) {
+		if ((tx_ipv6_buf[0] >> 4) != 6) {
+			LOG_ERR("lichen_l2: TX pkt not IPv6 (version=%u)",
+				tx_ipv6_buf[0] >> 4);
+			k_mutex_unlock(&tx_mutex);
+			return -EINVAL;
+		}
+	}
+
 #if HAVE_LICHEN_LINK
 	/*
 	 * Use lichen_link_tx() to build the complete frame with proper MIC.

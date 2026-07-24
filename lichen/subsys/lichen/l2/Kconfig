@@ -194,6 +194,16 @@ config LICHEN_GATEWAY_MULTI_SF
 	  Gateway performs CAD across SFs before RX (lr1110/lora_l2 updates).
 	  Complements SF assignment. Increases power but supports dense mesh.
 
+config LICHEN_L2_TX_VERIFY_IPV6
+	bool "DEBUG: verify IPv6 version on every TX packet"
+	depends on LICHEN_L2
+	default n
+	help
+	  Verify the first nibble of every transmitted packet is IPv6 version 6.
+	  This is purely a safety check for debugging — Zephyr's net_l2 contract
+	  guarantees TX packets are IPv6, and this check adds CPU overhead on
+	  every packet. Enable only during development or fuzz testing.
+
 config LICHEN_L2_TEST_HOOKS
 	bool "LICHEN L2 ztest-only test hooks"
 	depends on LICHEN_L2

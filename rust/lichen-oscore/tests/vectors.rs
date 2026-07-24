@@ -242,12 +242,14 @@ fn present_empty_id_context_is_distinct_and_encoded() {
     let (mut present, mut store) = context_at(&secret, None, Some(&[]), &[0], &[1], 0);
 
     assert_ne!(absent.context_id(), present.context_id());
-    let (_, option) = present
+    let mut ct_buf = [0u8; 280];
+    let mut opt_buf = [0u8; 20];
+    let (_, opt_len) = present
         .reserve_sender(&mut store)
         .unwrap()
-        .protect_request(0x01, &[], &[])
+        .protect_request(0x01, &[], &[], &mut ct_buf, &mut opt_buf)
         .unwrap();
-    assert_eq!(option.as_slice(), &[0x19, 0x00, 0x00, 0x00]);
+    assert_eq!(&opt_buf[..opt_len], &[0x19, 0x00, 0x00, 0x00]);
 }
 
 #[test]
@@ -313,24 +315,28 @@ fn test_request_protection_vectors() {
             u64::from(vector.sender_seq.unwrap()),
         );
 
-        let (ciphertext, option) = context
+        let mut ct_buf = [0u8; 280];
+        let mut opt_buf = [0u8; 20];
+        let (ct_len, opt_len) = context
             .reserve_sender(&mut store)
             .unwrap()
             .protect_request(
                 plaintext.code,
                 &hex_to_bytes("b3747631"),
                 &hex_to_bytes(&plaintext.payload),
+                &mut ct_buf,
+                &mut opt_buf,
             )
             .unwrap();
 
         assert_eq!(
-            option.as_slice(),
+            &opt_buf[..opt_len],
             expected_option,
             "OSCORE option mismatch for {}",
             vector.name
         );
         assert_eq!(
-            ciphertext.as_slice(),
+            &ct_buf[..ct_len],
             expected_ciphertext,
             "ciphertext mismatch for {}",
             vector.name
@@ -371,19 +377,21 @@ fn test_response_protection_vectors() {
             0,
         );
 
-        let (code, options, payload) = requester
-            .unprotect_response(&expected_option, &expected_ciphertext, &request_piv)
+        let mut opt_out = [0u8; 128];
+        let mut pay_out = [0u8; 128];
+        let (code, opt_len, pay_len) = requester
+            .unprotect_response(&expected_option, &expected_ciphertext, &request_piv, &mut opt_out, &mut pay_out)
             .unwrap_or_else(|_| panic!("unprotect_response failed for {}", vector.name));
 
         assert_eq!(code, plaintext.code, "code mismatch for {}", vector.name);
         assert_eq!(
-            options.as_slice(),
+            &opt_out[..opt_len],
             hex_to_bytes(&plaintext.options),
             "options mismatch for {}",
             vector.name
         );
         assert_eq!(
-            payload.as_slice(),
+            &pay_out[..pay_len],
             hex_to_bytes(&plaintext.payload),
             "payload mismatch for {}",
             vector.name
