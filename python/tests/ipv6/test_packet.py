@@ -159,6 +159,39 @@ def test_packet_rejects_truncated_payload() -> None:
         IPv6Packet.from_bytes(hdr.to_bytes() + b"short")
 
 
+def test_packet_from_bytes_ignores_trailing_data_by_default() -> None:
+    pkt = IPv6Packet(
+        header=IPv6Header("fe80::1", "fe80::2", NextHeader.UDP),
+        payload=b"hello",
+    )
+    raw = pkt.to_bytes()
+    padded = raw + b"trailing"
+    parsed = IPv6Packet.from_bytes(padded)
+    assert parsed.payload == b"hello"
+    assert parsed.header.next_header == NextHeader.UDP
+
+
+def test_packet_from_bytes_strict_rejects_trailing_data() -> None:
+    pkt = IPv6Packet(
+        header=IPv6Header("fe80::1", "fe80::2", NextHeader.UDP),
+        payload=b"hello",
+    )
+    raw = pkt.to_bytes()
+    padded = raw + b"trailing"
+    with pytest.raises(PacketError, match="trailing"):
+        IPv6Packet.from_bytes(padded, strict=True)
+
+
+def test_packet_from_bytes_strict_accepts_exact_data() -> None:
+    pkt = IPv6Packet(
+        header=IPv6Header("fe80::1", "fe80::2", NextHeader.UDP),
+        payload=b"hello",
+    )
+    raw = pkt.to_bytes()
+    parsed = IPv6Packet.from_bytes(raw, strict=True)
+    assert parsed.payload == b"hello"
+
+
 def test_packet_rejects_oversized_payload() -> None:
     pkt = IPv6Packet(
         header=IPv6Header("::1", "::2", NextHeader.UDP),
