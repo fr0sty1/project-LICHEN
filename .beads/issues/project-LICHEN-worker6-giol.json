@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-giol",
+  "title": "[review] project-LICHEN-6mij.2.4: config_put in coap_server.c not refactored to use coap_oscore_authorize_mutating",
+  "description": "config_put at coap_server.c:196 still uses bare lichen_coap_is_local_admin() without OSCORE support (no coap_oscore_authorize_mutating). All other mutating handlers in coap_dtn.c, coap_keys.c, and msg_inbox_post were refactored, but config_put was missed. Unprotected ops cannot be authorized via OSCORE.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:24.286921875Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:24.286921875Z"
+}
