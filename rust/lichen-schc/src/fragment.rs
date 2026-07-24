@@ -1035,10 +1035,6 @@ impl<'s, 'b> Iterator for RetransmitIter<'s, 'b> {
 // ─── std-only: all_fragments + FragmentReceiver ───────────────────────────────
 
 #[cfg(feature = "std")]
-#[allow(unused_imports)]
-pub use std_ext::*;
-
-#[cfg(feature = "std")]
 #[allow(dead_code)]
 mod std_ext {
     extern crate std;
