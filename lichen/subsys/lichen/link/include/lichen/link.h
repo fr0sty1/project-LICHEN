@@ -71,6 +71,10 @@ BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
 
 #define LICHEN_TDMA_GUARD_MS 100 /* spec/02a-coordinated-capacity.md §2a.2 (ccp16.json, ccp_tdma.json) */
 #define LICHEN_TDMA_SLOT_MS 250 /* spec/02a-coordinated-capacity.md §2a.2 hash(EUI64^epoch)%num_slots via lichen_hash_32 */
+#define LICHEN_TDMA_BEACON_TIMEOUT_SUPERFRAMES 3 /* BEACON_TIMEOUT per 09-packets-timing.md FSM */
+#define LICHEN_TDMA_CONTENTION_RETRIES 5 /* Max DAO retransmissions in contention slot */
+#define LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS 100 /* CSMA min backoff */
+#define LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS 1000 /* CSMA max backoff */
 
 #ifdef CONFIG_LICHEN_TDMA
 struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
