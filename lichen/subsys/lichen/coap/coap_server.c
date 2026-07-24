@@ -165,7 +165,7 @@ static int status_get(struct coap_resource *resource,
 
 static const char * const status_path[] = { "status", NULL };
 static const char * const status_attrs[] = {
-	"rt=\"lichen.status\"",
+	"rt=\"status\"",
 	"ct=\"60\"",
 	NULL,
 };
@@ -237,7 +237,7 @@ static int config_put(struct coap_resource *resource,
 
 static const char * const config_path[] = { "config", NULL };
 static const char * const config_attrs[] = {
-	"rt=\"lichen.config\"",
+	"rt=\"config\"",
 	"ct=\"60\"",
 	NULL,
 };
@@ -277,9 +277,9 @@ static int neighbors_get(struct coap_resource *resource,
 	return ret < 0 ? ret : 0;
 }
 
-static const char * const neighbors_path[] = { "neighbors", NULL };
+static const char * const neighbors_path[] = { "status", "neighbors", NULL };
 static const char * const neighbors_attrs[] = {
-	"rt=\"lichen.neighbors\"",
+	"rt=\"status\"",
 	"ct=\"60\"",
 	NULL,
 };
