@@ -184,6 +184,7 @@ class TestIndexCards:
         targets = sorted(set(re.findall(r'hx-get="([^"]+)"', resp.text)))
         assert targets == [
             "/partial/location",
+            "/partial/mesh-stats",
             "/partial/messages",
             "/partial/neighbors",
             "/partial/presence",
@@ -200,6 +201,16 @@ class TestIndexCards:
 # ---------------------------------------------------------------------------
 # JSON API
 # ---------------------------------------------------------------------------
+
+
+class TestPartialMeshStats:
+    async def test_mesh_stats_renders(self, client: AsyncClient) -> None:
+        resp = await client.get("/partial/mesh-stats")
+        assert resp.status_code == 200
+        assert "500/500" in resp.text
+        assert "1243" in resp.text
+        assert "0.3%" in resp.text
+        assert "4 gateways" in resp.text
 
 
 class TestApiStatus:
