@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-g2aq",
+  "title": "[review] project-LICHEN-worker6-p19p: Python EDHOC reference impl has same raw-concat TH_2 bug",
+  "description": "Discovered during review of Rust EDHOC transcript_2 fix. The Python reference implementation at python/src/lichen/crypto/edhoc.py computes TH_2 via raw byte concatenation (g_y + h_msg1) at two call sites: EdhocInitiator._process_message_2 line 389 and EdhocResponder._process_message_1 line 598. Per RFC 9528 Section 5.3.2, TH_2 = H(G_Y, H(message_1)) where the input is a CBOR Sequence, meaning both G_Y and H(message_1) must be CBOR bstr-encoded before hashing. This is the same bug the Rust commit fixed. The test vector in test/vectors/edhoc.json th_2 field is also a placeholder (all 0x42).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:37:23.431286108Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:37:23.431286108Z"
+}
