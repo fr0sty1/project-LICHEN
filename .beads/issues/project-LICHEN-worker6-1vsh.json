@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-1vsh",
+  "title": "[review] project-LICHEN-worker6-6lxk: literal_regular_fragment test has stale expected value 0x7c, should be 0x3e",
+  "description": "Test literal_regular_fragment in rust/lichen-schc/src/fragment.rs:1297 expects header byte [0x78, 0x7c] for fragment with rule_id=0x78, window=0, fcn=62. With FRAGMENT_N=6, the encoding is: ((window \u0026 1) \u003c\u003c 6) | (fcn \u0026 0x3F) = (0 \u003c\u003c 6) | 62 = 0x3e. The expected value 0x7c is stale — likely from an earlier encoding scheme (FRAGMENT_N=7 would still give 0x3e for fcn=62). Change line 1297: [0x78, 0x7c] -\u003e [0x78, 0x3e]. Pre-existing bug, not introduced by this commit.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:06:31.458059503Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:06:31.458059503Z"
+}
