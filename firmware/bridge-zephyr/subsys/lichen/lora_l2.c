@@ -606,34 +606,45 @@ out:
 
 int lichen_lora_l2_start(void)
 {
-    enum lora_state state = lora_get_state();
+    k_mutex_lock(&lora_mutex, K_FOREVER);
 
+    /* Atomically claim RUNNING state under mutex.
+     * Only one thread can transition STOPPED->RUNNING; any other thread
+     * sees RUNNING (-> success) or a concurrent state change (-> EAGAIN).
+     * This eliminates the TOCTOU window between a racy lora_get_state()
+     * check and the actual transition. (project-LICHEN-gy7h.1) */
+    enum lora_state state = lora_get_state();
     switch (state) {
     case LORA_UNINIT:
         LOG_ERR("lora_l2: not initialized, call lichen_lora_l2_init() first");
+        k_mutex_unlock(&lora_mutex);
         return -EINVAL;
     case LORA_ABORTED:
         LOG_ERR("lora_l2: in ABORTED state, call deinit() then init()");
+        k_mutex_unlock(&lora_mutex);
         return -ECANCELED;
     case LORA_DEINITING:
         LOG_ERR("lora_l2: deinit in progress, cannot start");
+        k_mutex_unlock(&lora_mutex);
         return -EBUSY;
     case LORA_RUNNING:
-        return 0;  /* Already running */
+        k_mutex_unlock(&lora_mutex);
+        return 0;
     case LORA_STOPPED:
-        break;  /* Proceed */
+        /* Claim the transition atomically under the mutex.
+         * lora_transition_from() uses atomic CAS, so if the state has
+         * changed between our lora_get_state() and this CAS, it fails
+         * and we return -EAGAIN. */
+        if (lora_transition_from(LORA_STOPPED, LORA_RUNNING) != 0) {
+            k_mutex_unlock(&lora_mutex);
+            return -EAGAIN;
+        }
+        break;
     default:
         LOG_ERR("lora_l2: unknown state (%d), forcing ABORTED", state);
         atomic_set(&current_state, LORA_ABORTED);
-        return -EINVAL;
-    }
-
-    k_mutex_lock(&lora_mutex, K_FOREVER);
-
-    /* Double-check state under mutex */
-    if (lora_get_state() != LORA_STOPPED) {
         k_mutex_unlock(&lora_mutex);
-        return -EAGAIN;
+        return -EINVAL;
     }
 
     /*
@@ -674,14 +685,13 @@ int lichen_lora_l2_start(void)
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
         LOG_ERR("lora_l2: config failed (%d)", ret);
+        lora_transition(LORA_STOPPED);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
 
-    if (lora_transition(LORA_RUNNING) != 0) {
-        k_mutex_unlock(&lora_mutex);
-        return -EIO;
-    }
+    /* State already claimed as LORA_RUNNING by lora_transition_from above.
+     * No additional transition needed here. */
 
     /* Start RX thread.
      * k_thread_create() returns the thread pointer passed in (first arg).
