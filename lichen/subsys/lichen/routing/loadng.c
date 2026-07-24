@@ -509,7 +509,7 @@ int lichen_loadng_discovery_get_rreq(const struct lichen_loadng_discovery *disco
 	memcpy(rreq->originator, discovery->originator, 16);
 	memcpy(rreq->destination, discovery->destination, 16);
 	rreq->seq_num = discovery->seq_num;
-	rreq->hop_limit = 0;
+	rreq->hop_limit = expanding_ring[discovery->ring_index];
 	rreq->flags = 0;
 
 	return 0;
@@ -587,9 +587,10 @@ int lichen_loadng_process_rreq(const uint8_t our_addr[16],
 		return 0;
 	}
 
+	uint8_t actual_hops = (uint8_t)MIN(LICHEN_LOADNG_MAX_HOP_LIMIT - rreq->hop_limit, 255);
 	struct lichen_loadng_route reverse = {
-		.hop_count = rreq->hop_limit + 1,
-		.metric = rreq->hop_limit + 1,
+		.hop_count = actual_hops,
+		.metric = actual_hops,
 		.seq_num = rreq->seq_num,
 		.valid_until_ms = now_ms + LICHEN_LOADNG_ROUTE_TIMEOUT_MS,
 		.active = true,
@@ -598,7 +599,7 @@ int lichen_loadng_process_rreq(const uint8_t our_addr[16],
 	memcpy(reverse.next_hop, from_neighbor, 16);
 	(void)lichen_loadng_cache_add(&reverse);
 
-	/* Are we the destination? Generate RREP. */
+	/* Are we the destination? Generate RREP with our own sequence number. */
 	if (memcmp(rreq->destination, our_addr, 16) == 0) {
 		result->has_reply = true;
 		memcpy(result->reply.originator, our_addr, 16);
@@ -610,10 +611,10 @@ int lichen_loadng_process_rreq(const uint8_t our_addr[16],
 		return 0;
 	}
 
-	if (rreq->hop_limit < 15) {
+	if (rreq->hop_limit > 1) {
 		result->has_forward = true;
 		result->forward = *rreq;
-		result->forward.hop_limit = rreq->hop_limit + 1;
+		result->forward.hop_limit = rreq->hop_limit - 1;
 	}
 
 	return 0;

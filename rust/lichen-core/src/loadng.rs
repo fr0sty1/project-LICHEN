@@ -613,6 +613,97 @@ mod tests {
         assert_eq!(err, LoadngError::InvalidDiscoveryReply);
     }
 
+    fn ll_seq_is_fresher(old_seq: u16, new_seq: u16) -> bool {
+        if old_seq == new_seq {
+            return false;
+        }
+        let diff = new_seq.wrapping_sub(old_seq);
+        diff < 0x8000
+    }
+
+    #[test]
+    fn seq_freshness_equal() {
+        assert!(!ll_seq_is_fresher(0, 0));
+    }
+
+    #[test]
+    fn seq_freshness_simple_increment() {
+        assert!(ll_seq_is_fresher(0, 1));
+    }
+
+    #[test]
+    fn seq_freshness_simple_decrement() {
+        assert!(!ll_seq_is_fresher(1, 0));
+    }
+
+    #[test]
+    fn seq_freshness_forward_100() {
+        assert!(ll_seq_is_fresher(0, 100));
+    }
+
+    #[test]
+    fn seq_freshness_backward_100() {
+        assert!(!ll_seq_is_fresher(100, 0));
+    }
+
+    #[test]
+    fn seq_freshness_half_range_boundary_not_fresher() {
+        assert!(!ll_seq_is_fresher(0, 0x8000));
+    }
+
+    #[test]
+    fn seq_freshness_half_range_just_below_fresher() {
+        assert!(ll_seq_is_fresher(0, 0x7FFF));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn seq_freshness_wrap_forward_FFFF_to_0000() {
+        assert!(ll_seq_is_fresher(0xFFFF, 0));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn seq_freshness_wrap_forward_FFFF_to_0001() {
+        assert!(ll_seq_is_fresher(0xFFFF, 1));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn seq_freshness_wrap_backward_0000_to_FFFF() {
+        assert!(!ll_seq_is_fresher(0, 0xFFFF));
+    }
+
+    #[test]
+    fn seq_freshness_wrap_forward_65530_to_5() {
+        assert!(ll_seq_is_fresher(65530, 5));
+    }
+
+    #[test]
+    fn seq_freshness_wrap_backward_5_to_65530() {
+        assert!(!ll_seq_is_fresher(5, 65530));
+    }
+
+    #[test]
+    fn seq_freshness_half_to_zero() {
+        assert!(!ll_seq_is_fresher(0x8000, 0));
+    }
+
+    #[test]
+    fn seq_freshness_half_minus_one_to_zero() {
+        assert!(ll_seq_is_fresher(0x8001, 0));
+    }
+
+    #[test]
+    fn seq_freshness_near_half_forward() {
+        assert!(ll_seq_is_fresher(0x7FFF, 0x8000));
+    }
+
+    #[test]
+    fn seq_freshness_max_range_minus_one() {
+        assert!(!ll_seq_is_fresher(0, 0xFFFE));
+    }
+
     #[test]
     fn route_discovery_runtime_transition_table_rejects_invalid_edges() {
         assert!(RouteDiscoveryState::Idle

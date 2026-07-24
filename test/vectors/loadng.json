@@ -1,0 +1,120 @@
+{
+  "format_version": 2,
+  "name": "LOADng sequence number freshness",
+  "description": "Canonical test vectors for LOADng 16-bit sequence number wrap-aware freshness (RFC 1982 serial number arithmetic). Each vector pairs (a, b) and asserts whether b is fresher than a. All three implementations (Rust, Python, C) must agree on every case.",
+  "spec": "spec/05-routing.md §10, spec/appendix-loadng.md §B2.2",
+  "vectors": [
+    {
+      "name": "equal_seqs",
+      "a": 0,
+      "b": 0,
+      "b_fresher": false,
+      "description": "Equal seq numbers: neither is fresher"
+    },
+    {
+      "name": "simple_increment",
+      "a": 0,
+      "b": 1,
+      "b_fresher": true,
+      "description": "b=1 is fresher than a=0 (normal forward increment)"
+    },
+    {
+      "name": "simple_decrement",
+      "a": 1,
+      "b": 0,
+      "b_fresher": false,
+      "description": "b=0 is older than a=1 (normal decrement is stale)"
+    },
+    {
+      "name": "forward_100",
+      "a": 0,
+      "b": 100,
+      "b_fresher": true,
+      "description": "b=100 is fresher than a=0"
+    },
+    {
+      "name": "backward_100",
+      "a": 100,
+      "b": 0,
+      "b_fresher": false,
+      "description": "b=0 is older than a=100 (diff > half, wrap backward considered stale)"
+    },
+    {
+      "name": "half_range_boundary_not_fresher",
+      "a": 0,
+      "b": 32768,
+      "b_fresher": false,
+      "description": "b=32768 is exactly at the half-range boundary: diff=32768 is NOT < 32768, so not fresher"
+    },
+    {
+      "name": "half_range_just_below_fresher",
+      "a": 0,
+      "b": 32767,
+      "b_fresher": true,
+      "description": "b=32767 is within the half-range: diff=32767 < 32768, so fresher"
+    },
+    {
+      "name": "wrap_forward_FFFF_to_0000",
+      "a": 65535,
+      "b": 0,
+      "b_fresher": true,
+      "description": "b=0 wraps forward from a=65535: diff=(0-65535)&0xFFFF=1, fresher"
+    },
+    {
+      "name": "wrap_forward_FFFF_to_0001",
+      "a": 65535,
+      "b": 1,
+      "b_fresher": true,
+      "description": "b=1 wraps forward from a=65535: diff=2, fresher"
+    },
+    {
+      "name": "wrap_backward_0000_to_FFFF",
+      "a": 0,
+      "b": 65535,
+      "b_fresher": false,
+      "description": "b=65535 is a huge step backward from a=0: diff=65535 >= 32768, not fresher (would need 65535->0 to be fresher)"
+    },
+    {
+      "name": "wrap_forward_65530_to_5",
+      "a": 65530,
+      "b": 5,
+      "b_fresher": true,
+      "description": "b=5 wraps forward from a=65530: diff=(5-65530)&0xFFFF=11, fresher"
+    },
+    {
+      "name": "wrap_backward_5_to_65530",
+      "a": 5,
+      "b": 65530,
+      "b_fresher": false,
+      "description": "b=65530 is a backward wrap from a=5: diff=(65530-5)&0xFFFF=65525 >= 32768, stale"
+    },
+    {
+      "name": "half_to_zero_wrap",
+      "a": 32768,
+      "b": 0,
+      "b_fresher": true,
+      "description": "b=0 wraps forward from a=32768: diff=(0-32768)&0xFFFF=32768, boundary -> NOT fresher per spec (diff must be < half)"
+    },
+    {
+      "name": "half_minus_one_to_zero_wrap",
+      "a": 32769,
+      "b": 0,
+      "b_fresher": true,
+      "description": "b=0 wraps forward from a=32769: diff=(0-32769)&0xFFFF=32767 < 32768, fresher"
+    },
+    {
+      "name": "near_half_forward",
+      "a": 32767,
+      "b": 32768,
+      "b_fresher": true,
+      "description": "b=32768 is just over the half boundary from a=32767: diff=1, fresher (but 0->32768 is not)"
+    },
+    {
+      "name": "max_range_minus_one",
+      "a": 0,
+      "b": 65534,
+      "b_fresher": false,
+      "description": "b=65534 from a=0: diff=65534 >= 32768, not fresher (wrap direction is backward)"
+    }
+  ]
+}

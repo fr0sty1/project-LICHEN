@@ -182,3 +182,79 @@ def test_older_seq_still_suppressed() -> None:
     rreq_old = RREQ(originator=ORIG, destination=D, seq_num=50)
     second = r.process_rreq(rreq_old, from_neighbor=ORIG, now=5_000)
     assert second.suppressed is True
+
+
+def test_seq_half_range_boundary_0_to_32768_not_suppressed() -> None:
+    """seq 0->32768: half-range boundary, 32768 is NOT fresher, so seq=32768 is suppressed."""
+    r = _router(M)
+    rreq_a = RREQ(originator=ORIG, destination=D, seq_num=0)
+    first = r.process_rreq(rreq_a, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    rreq_b = RREQ(originator=ORIG, destination=D, seq_num=0x8000)
+    second = r.process_rreq(rreq_b, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is True
+
+
+def test_seq_half_range_just_below_0_to_32767_not_suppressed() -> None:
+    """seq 0->32767: 32767 is fresher (diff < half), so processed again (not suppressed)."""
+    r = _router(M)
+    rreq_a = RREQ(originator=ORIG, destination=D, seq_num=0)
+    first = r.process_rreq(rreq_a, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    rreq_b = RREQ(originator=ORIG, destination=D, seq_num=0x7FFF)
+    second = r.process_rreq(rreq_b, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is False
+    assert second.forward is not None
+
+
+def test_seq_wrap_FFFF_to_1_not_suppressed() -> None:
+    """seq 0xFFFF->1: wrapped forward two steps, processed again."""
+    r = _router(M)
+    rreq_a = RREQ(originator=ORIG, destination=D, seq_num=0xFFFF)
+    first = r.process_rreq(rreq_a, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    rreq_b = RREQ(originator=ORIG, destination=D, seq_num=1)
+    second = r.process_rreq(rreq_b, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is False
+    assert second.forward is not None
+
+
+def test_seq_0_to_FFFF_suppressed() -> None:
+    """seq 0->0xFFFF: 0xFFFF is stale (wrap backward), suppressed."""
+    r = _router(M)
+    rreq_a = RREQ(originator=ORIG, destination=D, seq_num=0)
+    first = r.process_rreq(rreq_a, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    rreq_b = RREQ(originator=ORIG, destination=D, seq_num=0xFFFF)
+    second = r.process_rreq(rreq_b, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is True
+
+
+def test_seq_half_plus_one_to_0_not_suppressed() -> None:
+    """seq 0x8001->0: wraps forward with diff=32767 < half, processed again."""
+    r = _router(M)
+    rreq_a = RREQ(originator=ORIG, destination=D, seq_num=0x8001)
+    first = r.process_rreq(rreq_a, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    rreq_b = RREQ(originator=ORIG, destination=D, seq_num=0)
+    second = r.process_rreq(rreq_b, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is False
+    assert second.forward is not None
+
+
+def test_seq_32767_to_32768_fresher_not_suppressed() -> None:
+    """seq 0x7FFF->0x8000: diff=1, 32768 is fresher, not suppressed."""
+    r = _router(M)
+    rreq_a = RREQ(originator=ORIG, destination=D, seq_num=0x7FFF)
+    first = r.process_rreq(rreq_a, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    rreq_b = RREQ(originator=ORIG, destination=D, seq_num=0x8000)
+    second = r.process_rreq(rreq_b, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is False
+    assert second.forward is not None
