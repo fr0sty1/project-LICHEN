@@ -99,23 +99,41 @@ config LICHEN_LORA_L2_RX_TIMEOUT_MS
 	  Lower values provide faster stop() responsiveness. Higher values may
 	  reduce wakeups on some platforms, but slow disable/enable cycles.
 
+config LICHEN_OP_CLASS_ID
+	int "Operating class ID (CCP-3/CCP-4)"
+	depends on LICHEN_LORA_L2
+	default 0
+	range 0 2
+	help
+	  Operating class identifier for regional channel plans:
+	  0 = US/CA (903.9 MHz, 1 W max, no duty cycle)
+	  1 = EU (868.1 MHz, 14 dBm, 1% duty cycle)
+	  2 = AU/NZ (916.8 MHz, 30 dBm, <5% duty cycle)
+
 config LICHEN_LORA_FREQUENCY
 	int "LoRa frequency in Hz"
 	depends on LICHEN_LORA_L2
+	default 903900000 if LICHEN_OP_CLASS_ID = 0
+	default 868100000 if LICHEN_OP_CLASS_ID = 1
+	default 916800000 if LICHEN_OP_CLASS_ID = 2
 	default 915000000
 	range 150000000 960000000
 	help
 	  LoRa carrier frequency in Hz. Must comply with regional regulations.
-	  Common ISM bands: 915000000 (US), 868000000 (EU), 433000000 (Asia).
+	  Set automatically from operating class; override for custom frequencies.
+	  Common ISM bands: 903900000 (US/CA), 868100000 (EU), 916800000 (AU/NZ).
 
 config LICHEN_LORA_TX_POWER
 	int "LoRa TX power in dBm"
 	depends on LICHEN_LORA_L2
+	default 20 if LICHEN_OP_CLASS_ID = 0
+	default 14 if LICHEN_OP_CLASS_ID = 1
+	default 30 if LICHEN_OP_CLASS_ID = 2
 	default 14
-	range 0 22
+	range 0 30
 	help
-	  LoRa transmit power in dBm. Default 14 dBm is safe worldwide.
-	  Higher values may violate regional regulations.
+	  LoRa transmit power in dBm. Set automatically from operating class;
+	  override for hardware-specific limits or regulatory compliance.
 
 config LICHEN_L2
 	bool "LICHEN Zephyr L2 network interface"

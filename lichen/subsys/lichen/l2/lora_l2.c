@@ -37,6 +37,7 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
+#include <lichen/op_class.h>
 #include <lichen/tx_queue.h>
 
 #include "lichen_util.h"
@@ -1159,19 +1160,35 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
     }
     lora_data.rx_channel = effective_channel;
 
-    /* Extend LoRa driver for channel param: reconfigure frequency for data channels.
-     * Control CH0 uses Kconfig base freq; data channels use base + ch*spacing.
-     * Matches lr1110/lora_config path and test vectors (channel field in announce).
+    /* Configure data channels via operating class lookup table (CCP-3/CCP-4).
+     * CH0 uses the base frequency from the plan; data channels use
+     * base + ch * spacing derived from the plan's channel mask.
+     * Falls back to Kconfig values when no plan entry matches.
      */
     if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED) && effective_channel > 0 && lora_data.lora_dev != NULL) {
-        uint32_t ch_freq = CONFIG_LICHEN_LORA_FREQUENCY + (uint32_t)effective_channel * 200000U;
+        uint32_t plan_freq = CONFIG_LICHEN_LORA_FREQUENCY;
+        uint32_t plan_bw = BW_125_KHZ;
+        uint8_t plan_sf = SF_10;
+        uint8_t plan_cr = CR_4_5;
+        int8_t plan_power = CONFIG_LICHEN_LORA_TX_POWER;
+
+        const struct lichen_op_class_params *oc = lichen_op_class_lookup(CONFIG_LICHEN_OP_CLASS_ID);
+        if (oc != NULL) {
+            plan_freq = oc->frequency_hz;
+            plan_bw = oc->bandwidth_hz;
+            plan_sf = oc->spreading_factor;
+            plan_cr = oc->coding_rate;
+            plan_power = oc->tx_power_dbm;
+        }
+
+        uint32_t ch_freq = plan_freq + (uint32_t)effective_channel * 200000U;
         struct lora_modem_config ch_config = {
             .frequency = ch_freq,
-            .bandwidth = BW_125_KHZ,
-            .datarate = SF_10,
-            .coding_rate = CR_4_5,
+            .bandwidth = plan_bw,
+            .datarate = plan_sf,
+            .coding_rate = plan_cr,
             .preamble_len = 8,
-            .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
+            .tx_power = plan_power,
             .tx = true,
         };
         int cfg_ret = lora_config(lora_data.lora_dev, &ch_config);
