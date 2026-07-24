@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fcv6",
+  "title": "[rereview] project-LICHEN-a4n2.3: nonce consumed before tx_queue_push — seqnum leak on ENOBUFS",
+  "description": "In lichen_link_tx() (lichen_link_tx.c:124-178), the nonce (epoch, seqnum) is allocated by lichen_link_next_tx() at line 124, BEFORE the tx_queue_push_default_deadline() call at line 174. If tx_queue_push fails (e.g., queue full with same-priority frames, returning -ENOBUFS), the function returns the error but the nonce has already been consumed. There is no lichen_link_release_tx() rollback mechanism. The caller will retry, consuming another nonce, causing a sequence-number gap.\n\nThis is not a security vulnerability (receivers handle seq gaps), but it is a correctness issue: a nonce is permanently lost per ENOBUFS failure, and in the worst case with sustained backpressure, the node could exhaust its nonce space faster than intended.\n\nFix options:\n1. Add a lichen_link_release_tx() that decrements seqnum / rewinds epoch on failure\n2. Restructure lichen_link_tx() to push first, then allocate nonce only on success\n3. Pass the already-built frame directly to the radio on ENOBUFS instead of returning error (bypass the queue)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:18:47.517133617Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:18:47.517133617Z"
+}

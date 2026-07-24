@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2j8r.3",
   "title": "Validate lichen_coap_dtn_init and subsystem init order against AGENTS.md graph for coap_dtn.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
