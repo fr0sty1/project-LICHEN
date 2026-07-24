@@ -223,7 +223,7 @@ static int deaddrop_post(struct coap_resource *resource,
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
-		uint8_t plain[512];
+		uint8_t plain[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
 		size_t plain_len = sizeof(plain);
 		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len,
 					     ct, ct_len, &orig_code, opts,
@@ -436,7 +436,7 @@ static int confessions_post(struct coap_resource *resource,
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
-		uint8_t plain[64];
+		uint8_t plain[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
 		size_t plain_len = sizeof(plain);
 		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len,
 					     ct, ct_len, &orig_code, opts,
