@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-yx4w",
   "title": "[review] project-LICHEN-worker6-p6n9: Python EDHOC TH_2 CBOR encoding breaks interop with Rust test vectors",
   "description": "## Bug\n\n`python/src/lichen/crypto/edhoc.py` changed TH_2 encoding from raw byte concatenation to CBOR encoding:\n\nInitiator (line 389): `cbor2.dumps(g_y) + cbor2.dumps(h_msg1)`  \nResponder (line 598): `cbor2.dumps(self._eph_pk) + cbor2.dumps(h_msg1)`\n\nPreviously raw: `g_y + h_msg1`\n\nThe Rust implementation in `rust/lichen-oscore/src/edhoc.rs:407-414` uses raw concatenation (`G_Y || H(msg1)`) and its test vector (`rfc9529_signature_trace_vectors`) matches RFC 9529 Appendix B. The Python CBOR change will produce different TH_2 values, breaking interop between implementations.\n\nThe Python code should revert to raw concatenation to match Rust and the RFC 9529 test vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:29:17.958368695Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:43:36.853275106Z",
-  "started_at": "2026-07-24T19:43:36.853275106Z",
-  "lease_expires_at": "2026-07-24T19:48:36.853275106Z",
-  "heartbeat_at": "2026-07-24T19:43:36.853275106Z"
+  "updated_at": "2026-07-24T20:21:21.296705456Z",
+  "started_at": "2026-07-24T19:43:36.853275106Z"
 }
