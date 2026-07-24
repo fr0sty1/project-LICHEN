@@ -2,17 +2,15 @@
   "id": "lora-ipv6-mesh-7xg",
   "title": "Phase 0: Python Prototype + Simulation",
   "description": "Build Python prototype with simulated wireless to validate protocol design before embedded implementation. Exit criteria: multi-node simulation runs, SCHC compression validated, RPL DODAG forms, CoAP messaging works end-to-end over simulated LoRa links.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T05:09:46Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-24T23:37:26.173934859Z",
+  "updated_at": "2026-07-24T23:37:39.690379982Z",
   "started_at": "2026-07-24T21:42:58.034737701Z",
-  "closed_at": "2026-06-23T15:52:38Z",
-  "close_reason": "All Python prototype exit criteria met: SCHC validated, RPL DODAG forms in simulation, CoAP end-to-end over multi-hop mesh (eo8/1a0/ijj)",
-  "lease_expires_at": "2026-07-24T23:42:26.173934859Z",
-  "heartbeat_at": "2026-07-24T23:37:26.173934859Z"
+  "closed_at": "2026-07-24T23:37:39.690379982Z",
+  "close_reason": "Already fixed"
 }
