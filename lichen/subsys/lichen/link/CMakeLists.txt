@@ -22,6 +22,10 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_EPOCH_PERSIST
   epoch_persist.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_CCP16_LOAD_BALANCING
+  link_load_balance.c
+)
+
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Include SCHC headers for compression/decompression
