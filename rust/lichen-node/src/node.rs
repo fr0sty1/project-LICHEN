@@ -382,7 +382,9 @@ impl RplNode {
     /// `sender_iid` is the identity established by link-layer signature verification.
     ///
     /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
-    /// the output bytes to `next_hop`; otherwise a nonzero output is a reply.
+    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the
+    /// caller may inspect `route_updated` to decide whether to update its
+    /// routing table; otherwise a nonzero output is a reply.
     pub fn handle_frame_rpl(
         &mut self,
         l2_payload: &[u8],
