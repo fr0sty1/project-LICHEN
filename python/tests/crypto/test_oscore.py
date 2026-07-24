@@ -202,6 +202,70 @@ class TestMemorySecurityContext:
 
         edhoc_ctx = initiator.export_oscore()
 
-        # Create context with recovered sequence number
         ctx = MemorySecurityContext.from_edhoc(edhoc_ctx, starting_sequence_number=42)
         assert ctx.sender_sequence_number == 42
+
+    def test_no_nonce_reuse_after_simulated_nvm_failure(self) -> None:
+        """After simulated NVM failure, restored context produces distinct nonces.
+
+        Simulates: context created, used at seq=20..99, crashes, then restored
+        at starting_sequence_number=1000. Verifies the restored context
+        produces a nonce different from the crash-period context's nonces.
+        """
+        master_secret = bytes.fromhex("0102030405060708090a0b0c0d0e0f10")
+        master_salt = bytes.fromhex("9e7ca92223786340")
+
+        # Phase 1: Pre-crash context, used up through seq=99
+        pre_crash = MemorySecurityContext(
+            master_secret=master_secret,
+            master_salt=master_salt,
+            sender_id=b"",
+            recipient_id=b"\x01",
+        )
+        pre_crash.sender_sequence_number = 99
+        pre_crash._sender_sequence_reservation_end = (1 << 40)
+
+        # Compute nonce for pre-crash seq=99
+        alg = pre_crash.alg_aead
+        fresh_seq0 = MemorySecurityContext(
+            master_secret=master_secret,
+            master_salt=master_salt,
+            sender_id=b"",
+            recipient_id=b"\x01",
+        )
+        pre_crash_nonce = fresh_seq0._construct_nonce(
+            b"\x63", fresh_seq0.sender_id, alg
+        )
+
+        # Phase 2: Simulate crash — destroy pre_crash context, restore at seq=1000
+        restored = MemorySecurityContext(
+            master_secret=master_secret,
+            master_salt=master_salt,
+            sender_id=b"",
+            recipient_id=b"\x01",
+            starting_sequence_number=1000,
+        )
+
+        # Compute nonce for restored seq=1000
+        restored_nonce = fresh_seq0._construct_nonce(
+            b"\x03\xe8", restored.sender_id, alg
+        )
+
+        # Phase 3: Verify nonces are distinct (no nonce reuse)
+        assert pre_crash_nonce != restored_nonce, (
+            f"Nonce reuse detected: seq=99 and seq=1000 produce same nonce "
+            f"{pre_crash_nonce.hex()}"
+        )
+
+        # Verify restored nonce matches independently computed value
+        expected_nonce = "4622d4dd6d944168eefb549b94"
+        assert restored_nonce.hex() == expected_nonce, (
+            f"Restored nonce mismatch: got {restored_nonce.hex()}, "
+            f"expected {expected_nonce}"
+        )
+
+        # Verify restored context can protect successfully
+        assert restored.has_reserved_sender_sequence
+        seqno = restored.new_sequence_number()
+        assert seqno == 1000
+        assert restored.sender_sequence_number == 1001

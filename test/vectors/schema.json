@@ -827,12 +827,12 @@
       "type": "object",
       "required": ["name", "type"],
       "additionalProperties": false,
-      "description": "OSCORE (RFC 8613) test vector for key derivation, request/response protection, replay detection, or invalid input.",
+      "description": "OSCORE (RFC 8613) test vector for key derivation, request/response protection, replay detection, invalid input, or SSN restore.",
       "properties": {
         "name": {"type": "string"},
         "type": {
           "type": "string",
-          "enum": ["key_derivation", "request_protection", "response_protection", "roundtrip", "replay", "invalid"]
+          "enum": ["key_derivation", "request_protection", "response_protection", "roundtrip", "replay", "invalid", "ssn_restore"]
         },
         "description": {"type": "string"},
         "master_secret": {"$ref": "#/definitions/hex", "description": "16-byte master secret (AES-128)"},
@@ -854,6 +854,16 @@
           "type": "integer",
           "minimum": 0,
           "description": "Sender sequence number for protection"
+        },
+        "starting_sequence_number": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Initial sender sequence number for restored context (NVM recovery)"
+        },
+        "prior_sequence_number": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Last sequence number used before simulated NVM failure (ssn_restore vectors)"
         },
         "request_piv": {
           "$ref": "#/definitions/hex",
@@ -895,6 +905,7 @@
             "sender_key": {"$ref": "#/definitions/hex"},
             "recipient_key": {"$ref": "#/definitions/hex"},
             "common_iv": {"$ref": "#/definitions/hex"},
+            "nonce": {"$ref": "#/definitions/hex", "description": "AEAD nonce for request/response protection vectors"},
             "oscore_option": {"$ref": "#/definitions/hex"},
             "ciphertext": {"$ref": "#/definitions/hex"},
             "is_replay": {"type": "boolean"},
