@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "EDHOC interop vectors. Python EdhocInitiator/Responder reference oracle with fixed seeds + deterministic ephemeral keys. Records PRK states, TH values, messages, OSCORE context. Matches Rust byte-for-byte when Rust uses same deterministic ephemeral keys.",
+  "description": "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no code-under-test). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte. Follows oscore/schnorr48 patterns and test integrity rules.",
   "vectors": [
     {
       "name": "fixed_seed_sign_sign",
