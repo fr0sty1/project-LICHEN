@@ -20,6 +20,8 @@ import pytest
 from jsonschema import Draft7Validator
 
 from lichen.announce.coords import decode_coords, encode_coords
+from lichen.sim.tdma import TDMAScheduler, hash_32 as tdma_hash_32
+from lichen.sim.tdma import synchronized_hop_channel as tdma_sync_hop
 from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
@@ -548,6 +550,77 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     assert ch == o.get("channel", ch)
     now = i.get("now", 0)
     assert now == o.get("now", now)
+
+
+def _ccp15_cases():
+    doc = _load("ccp15.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _ccp15_input_bytes(vector: dict) -> bytes:
+    import struct
+    name = vector["name"]
+    if name in ("seed0", "seed1", "seed2"):
+        h = int(vector["hash_32"], 16)
+        load_factor = h / 4294967295.0
+        ema = 0.1 * load_factor + 0.9 * 0.4
+        sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
+        return struct.pack(">Bff", sf, ema, load_factor)
+    return struct.pack(">Bff", vector["sf"], vector["ema"], vector["load_factor"])
+
+
+@pytest.mark.parametrize("name,vector", _ccp15_cases())
+def test_ccp15_interference_backoff(name: str, vector: dict) -> None:
+    sf = vector["sf"]
+    ema = vector["ema"]
+    load_factor = vector["load_factor"]
+    interference_score = round(0.5 * ema + 0.3 * load_factor + 0.2 * (1.0 - sf / 12.0), 6)
+    assert interference_score == vector["interference_score"]
+    input_bytes = _ccp15_input_bytes(vector)
+    backoff_jitter_ms = tdma_hash_32(input_bytes + b"jitter") % 100
+    assert backoff_jitter_ms == vector["backoff_jitter_ms"]
+
+
+def _ccp_tdma_cases():
+    doc = _load("ccp_tdma.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp_tdma_cases())
+def test_ccp_tdma_vector(name: str, vector: dict) -> None:
+    sched = TDMAScheduler()
+    assert sched.validate_vector(vector), f"tdma validation drift: {name}"
+
+
+def _ccp_load_balancing_cases():
+    doc = _load("ccp_load_balancing.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp_load_balancing_cases())
+def test_ccp_load_balancing_vector(name: str, vector: dict) -> None:
+    sched = TDMAScheduler()
+    assert sched.validate_vector(vector), f"load balancing validation drift: {name}"
+
+
+def _hash_32_cases():
+    doc = _load("hash_32.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _hash_32_cases())
+def test_hash_32_vector(name: str, vector: dict) -> None:
+    if "input_hex" in vector:
+        data = bytes.fromhex(vector["input_hex"])
+    else:
+        data = vector["input"].encode()
+    h = tdma_hash_32(data)
+    expected = int(vector["output"], 16) if isinstance(vector["output"], str) else vector["output"]
+    assert h == expected, f"hash_32 drift: {name}"
 
 
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:

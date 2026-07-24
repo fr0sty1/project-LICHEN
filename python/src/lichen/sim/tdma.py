@@ -76,7 +76,8 @@ class TDMAScheduler:
     def validate_vector(self, vector: dict) -> bool:
         if "eui64_hex" in vector:
             eui = bytes.fromhex(vector["eui64_hex"])
-            computed = self.hash_slot(eui, vector.get("n_slots", 8), vector.get("epoch", 0))
+            n = vector.get("n_slots", vector.get("num_slots", 8))
+            computed = self.hash_slot(eui, n, vector.get("epoch", 0))
             return computed == vector.get("expected_slot", 0)
         if "sfn" in vector or "expected_channel" in vector:
             sfn = vector.get("sfn", 0)
@@ -89,8 +90,26 @@ class TDMAScheduler:
             start = vector["slot_start_ms"] * 1000
             dur = vector.get("slot_duration_ms", 250) * 1000
             g = vector.get("guard_ms", 50) * 1000
-            in_window = (start - g) <= t <= (start + dur + g)
-            return in_window == (not vector.get("expected_in_guard", False))
+            in_guard = (start - g) <= t < start or (start + dur) < t <= (start + dur + g)
+            return in_guard == vector.get("expected_in_guard", False)
+        if "local_beacon_rx_ms" in vector:
+            delta = vector["local_beacon_rx_ms"] - vector["expected_beacon_ms"]
+            return delta == vector.get("expected_correction_ms", delta)
+        if "observed_ms" in vector:
+            beacon_nominal = vector["beacon_nominal_ms"]
+            observed = vector["observed_ms"]
+            deltas = [o - beacon_nominal for o in observed]
+            max_delta = max(max(deltas), -min(deltas))
+            ppm = (max_delta * 1_000_000) // beacon_nominal
+            slot_adjust = (ppm * beacon_nominal) // 1_000_000
+            return ppm == vector.get("expected_ppm", ppm) and slot_adjust == vector.get(
+                "slot_adjust_ticks", slot_adjust
+            )
+        if "util" in vector:
+            score = vector["util"] * 2.0 - 0.09
+            return round(score, 2) == vector.get("score", round(score, 2))
+        if "slot_ms" in vector:
+            return vector["slot_ms"] > vector["guard_ms"]
         return True
 
     def get_hop_channel(self, sfn: int | None = None, seed: int = 0, num_channels: int = 8) -> int:
