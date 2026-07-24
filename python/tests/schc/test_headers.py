@@ -75,12 +75,12 @@ def test_hop_limit_preserved() -> None:
     assert IPv6Header.from_bytes(restored).hop_limit == 7
 
 
-def test_non_linklocal_falls_back_to_uncompressed() -> None:
-    # ULA addresses don't match the link-local rule -> fallback rule 255.
+def test_non_linklocal_ula_matches_global() -> None:
+    # ULA addresses match the global rule (rule 1), not rule 255.
     ula = IPv6Address("fd00::1")
     raw = _build_packet(_coap_request(), src=ula, dst=ula)
     compressed = compress_packet(raw)
-    assert compressed[0] == 255
+    assert compressed[0] == 1  # rule 1 (global CoAP)
     assert decompress_packet(compressed) == raw
 
 
@@ -151,8 +151,8 @@ def test_truncated_icmpv6_falls_back() -> None:
 
 
 def test_decompress_rejects_truncated_packet_residue() -> None:
-    # Rule 0 requires exactly 1 rule-ID byte plus 25 residue bytes.
-    with pytest.raises(SchcError, match="requires 25 residue bytes"):
+    # Rule 0 requires exactly 1 rule-ID byte plus 25 residue bytes = 26 total.
+    with pytest.raises(SchcError, match="need 26 bytes for residue of rule 0"):
         decompress_packet(bytes(25))
 
 

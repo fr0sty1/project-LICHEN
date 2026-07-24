@@ -68,7 +68,7 @@ Full canonical rules (including CoAP fields, OSCORE variants, RPL control messag
 
 **Summary of key rules (see appendix for TV/MO/CDA tables):**
 - Rule 0: Link-local IPv6+UDP+CoAP (26B SCHC header)
-- Rule 1: Global IPv6+UDP+CoAP (42B)
+- Rule 1: Mesh-local IPv6+UDP+CoAP (26B SCHC header, ULA/GUA with /64 prefix MSB match)
 - Rule 2: ICMPv6 Echo
 - Rule 3: RPL DIO
 - Rule 4: RPL DAO (routable ULA source per security requirements)
@@ -96,15 +96,17 @@ Rule 3 for DIO (code=1), Rule 4 for DAO with D=1 (kd_flags bit 6 set, DODAGID pr
 
 **Compressed size: 19 bytes** (Rule ID + Hop Limit + endpoint IIDs + ports)
 
-**Legacy Version 1 Rule 1: Global IPv6 + UDP**
+**Version 2 Rule 1: Mesh-Local IPv6 + UDP + CoAP**
+
+Both source and destination addresses use MSB(64)/LSB(64) matching against the provisioned mesh /64 prefix. Only 64-bit IIDs travel in the residue.
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
-| IPv6.SrcPrefix | 02xx-prefix/64 | equal | not-sent |
-| IPv6.DstPrefix | 0 | ignore | value-sent (64 bits) |
+| IPv6.SrcAddr | mesh_prefix/64 | MSB(64) | LSB(64) |
+| IPv6.DstAddr | mesh_prefix/64 | MSB(64) | LSB(64) |
 | (other fields as Rule 0) | | | |
 
-**Compressed size: 27 bytes** (Rule 0 fields plus full destination prefix)
+**Compressed size: 26 bytes** (Hop Limit + IIDs + ports + CoAP fields, excl. CoAP payload tail)
 
 **Rule 7: IPv6 + UDP + MQTT-SN (port 10883)**
 

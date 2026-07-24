@@ -17,10 +17,9 @@ Profiles implemented (spec appendix A.1):
 
 The variable trailer (CoAP token/options/payload, or RPL options) travels
 verbatim after the byte-aligned residue. Lengths and checksums are recomputed on
-decompression. Address note: link-local /64 prefixes are elided (only 64-bit IID carried);
-global (02xx::/7 primary or 2000::/3 GUA) addresses carried in full. Prefix
-context elision for globals requires link-layer state (deferred). See
-_is_global() and spec/04-network.md for scope assumptions.
+decompression. Address note: both link-local (fe80::/64) and ULA-mesh (fd00::/64)
+prefixes are elided via MSB(64)/LSB(64), carrying only the 64-bit IID. GUA
+addresses without a /64 context match fall back to rule 255 (uncompressed).
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ from ipaddress import IPv6Address
 
 from lichen.ipv6.icmpv6 import icmpv6_checksum
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader, PacketError
-from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram, udp_checksum
+from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram, UdpError, udp_checksum
 from lichen.schc.codec import SchcError, compress, decompress, residue_byte_length
 from lichen.schc.rules import (
     GLOBAL_COAP_RULE,
@@ -321,7 +320,7 @@ class CoapUdpGlobalProfile(_CoapUdpProfile):
     rule = GLOBAL_COAP_RULE
 
     def _addr_ok(self, addr: int) -> bool:
-        return _is_global(addr)
+        return _is_ula(addr) or _is_global(addr)
 
 
 class _OscoreUdpProfile(_CoapUdpProfile):
@@ -355,7 +354,7 @@ class OscoreUdpGlobalProfile(_OscoreUdpProfile):
     rule = GLOBAL_OSCORE_RULE
 
     def _addr_ok(self, addr: int) -> bool:
-        return _is_global(addr)
+        return _is_ula(addr) or _is_global(addr)
 
 
 class _RplProfile(PacketProfile):

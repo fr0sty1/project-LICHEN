@@ -181,11 +181,13 @@ Most common case for intra-mesh traffic.
 
 **Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues + CoAP fields; see test vectors)
 
-### 4.3. Rule 1: Global IPv6 + UDP + CoAP
+### 4.3. Rule 1: Mesh-Local IPv6 + UDP + CoAP (ULA/GUA with known /64 prefix)
 
-For traffic using ULA or GUA addresses.
+For traffic within the mesh using ULA (fd00::/8) or GUA addresses that share a known /64 prefix. The SCHC context is provisioned with the mesh prefix at deployment time. Addresses that do not match the provisioned prefix fall back to Rule 255 (uncompressed).
 
 **Rule Definition:** (aligned with appendix-schc.md:A.3, 03-adaptation.md:5.5, and GLOBAL_COAP_RULE)
+
+Each 128-bit IPv6 address is treated as a single SCHC field. The mesh /64 prefix is matched via MSB(64); only the 64-bit Interface Identifier is sent as the LSB residue.
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -194,13 +196,11 @@ For traffic using ULA or GUA addresses.
 | IPv6.FlowLabel | 0 | equal | not-sent |
 | IPv6.PayloadLength | - | ignore | compute |
 | IPv6.NextHeader | 17 | equal | not-sent |
-| IPv6.HopLimit | 64 | ignore | not-sent |
-| IPv6.SrcPrefix | mesh_prefix/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (L2 derived) |
-| IPv6.DstPrefix | - | ignore | value-sent (64 bits) |
-| IPv6.DstIID | - | ignore | value-sent (64 bits) |
-| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
-| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
+| IPv6.HopLimit | - | ignore | value-sent |
+| IPv6.SrcAddr | mesh_prefix/64 | MSB(64) | LSB(64) |
+| IPv6.DstAddr | mesh_prefix/64 | MSB(64) | LSB(64) |
+| UDP.SrcPort | - | ignore | value-sent |
+| UDP.DstPort | - | ignore | value-sent |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
 | CoAP.Version | 1 | equal | not-sent |
@@ -209,7 +209,7 @@ For traffic using ULA or GUA addresses.
 | CoAP.Code | - | ignore | value-sent |
 | CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 12-14 bytes (includes CoAP fields per appendix A.3)
+**Compressed size:** ~26 bytes + CoAP payload tail (Rule ID + Hop Limit + 2×64-bit IIDs + ports + CoAP fields). For ULA mesh prefixes (fd00::/8), a future version MAY omit Hop Limit (not-sent, TV=64) and compress ports via MSB(12)/LSB(4) to reduce overhead to ~12-14 bytes.
 
 ### 4.4. Rule 2: ICMPv6 Echo
 

@@ -227,16 +227,15 @@ ICMPV6_ECHO_RULE = Rule(
 # ---------------------------------------------------------------------------
 # Whole-packet rules (spec appendix A.1), built from shared field helpers.
 #
-# Constant IPv6/transport fields are elided. Link-local addresses match the
-# fe80::/64 prefix via MSB(64) so only the 64-bit IID travels; global (02xx::/7
-# primary Yggdrasil or 2000::/3 GUA) addresses carried in full (prefix context
-# elision deferred to link layer per spec/03-adaptation.md and 04-network.md).
-# Lengths and checksums are recomputed on decompression. Variable trailers
-# (CoAP token/options/payload, RPL options) travel verbatim after the residue,
-# handled by schc/headers.py.
+# Constant IPv6/transport fields are elided. Both link-local (fe80::/64) and
+# ULA mesh (fd00::/64) addresses use MSB(64)/LSB(64) matching so only the 64-bit
+# IID travels. Lengths and checksums are recomputed on decompression. Variable
+# trailers (CoAP token/options/payload, RPL options) travel verbatim after the
+# residue, handled by schc/headers.py.
 # ---------------------------------------------------------------------------
 
 _LINK_LOCAL_PREFIX_TV = 0xFE80 << 112  # fe80::/64 as a 128-bit target value
+_GLOBAL_PREFIX_TV = 0xFD00 << 112  # fd00::/64 ULA mesh prefix as a 128-bit target value
 
 
 def _addr_field(field_id: str, *, link_local: bool) -> FieldDescriptor:
@@ -245,7 +244,10 @@ def _addr_field(field_id: str, *, link_local: bool) -> FieldDescriptor:
             field_id, 128, MO.MSB, CDA.LSB,
             target_value=_LINK_LOCAL_PREFIX_TV, mo_arg=64,
         )
-    return FieldDescriptor(field_id, 128, MO.IGNORE, CDA.VALUE_SENT)
+    return FieldDescriptor(
+        field_id, 128, MO.MSB, CDA.LSB,
+        target_value=_GLOBAL_PREFIX_TV, mo_arg=64,
+    )
 
 
 def _ipv6_header_fields(

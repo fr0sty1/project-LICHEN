@@ -107,6 +107,7 @@ impl Rule {
 
 // ---------------------------------------------------------------------------
 const LINK_LOCAL_PREFIX_TV: u128 = 0xfe80_0000_0000_0000_0000_0000_0000_0000;
+const GLOBAL_PREFIX_TV: u128 = 0xfd00_0000_0000_0000_0000_0000_0000_0000;
 
 // Common field groups to match Python rules.py:246-311 and parsed fields in headers.rs/codec.rs:296+
 const IPV6_BASE: &[FieldDescriptor] = &[
@@ -182,19 +183,19 @@ const GLOBAL_ADDR: &[FieldDescriptor] = &[
     FieldDescriptor {
         field_id: "IPv6.src",
         length_bits: 128,
-        mo: Mo::Ignore,
-        cda: Cda::ValueSent,
-        target_value: 0,
-        mo_arg: None,
+        mo: Mo::Msb,
+        cda: Cda::Lsb,
+        target_value: GLOBAL_PREFIX_TV,
+        mo_arg: Some(64),
         mapping: None,
     },
     FieldDescriptor {
         field_id: "IPv6.dst",
         length_bits: 128,
-        mo: Mo::Ignore,
-        cda: Cda::ValueSent,
-        target_value: 0,
-        mo_arg: None,
+        mo: Mo::Msb,
+        cda: Cda::Lsb,
+        target_value: GLOBAL_PREFIX_TV,
+        mo_arg: Some(64),
         mapping: None,
     },
 ];
