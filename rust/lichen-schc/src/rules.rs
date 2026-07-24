@@ -45,6 +45,45 @@ pub struct FieldDescriptor {
     pub mapping: Option<&'static [u128]>,
 }
 
+impl FieldDescriptor {
+    /// Number of residue bits for an LSB action (`length_bits - mo_arg`).
+    pub fn lsb_bits(&self) -> u16 {
+        self.length_bits - self.mo_arg.unwrap_or(0)
+    }
+
+    /// Number of residue bits for a MAPPING_SENT index (ceil(log2(n)) for n >= 2).
+    /// Returns 0 when no mapping is set.
+    pub fn mapping_bits(&self) -> u16 {
+        match self.mapping {
+            Some(m) if m.len() >= 2 => ((m.len() - 1) as u16).ilog2() as u16 + 1,
+            _ => 0,
+        }
+    }
+
+    /// Whether this field requires a value for compression/matching.
+    pub fn requires_value(&self) -> bool {
+        matches!(
+            (self.mo, self.cda),
+            (Mo::Equal, _)
+                | (Mo::Msb, _)
+                | (Mo::MatchMapping, _)
+                | (_, Cda::ValueSent)
+                | (_, Cda::Lsb)
+                | (_, Cda::MappingSent)
+        )
+    }
+
+    /// Number of residue bits this field contributes, based on its CDA.
+    pub fn residue_bits(&self) -> u16 {
+        match self.cda {
+            Cda::ValueSent => self.length_bits,
+            Cda::Lsb => self.lsb_bits(),
+            Cda::MappingSent => self.mapping_bits(),
+            Cda::NotSent | Cda::Compute => 0,
+        }
+    }
+}
+
 /// A SCHC rule: an ordered list of field descriptors keyed by a rule ID.
 ///
 /// Rule IDs 0-127 are compression rules; 255 is the uncompressed fallback.
@@ -52,6 +91,18 @@ pub struct FieldDescriptor {
 pub struct Rule {
     pub rule_id: u8,
     pub fields: &'static [FieldDescriptor],
+}
+
+impl Rule {
+    /// Total number of residue bits for this rule (sum over all field CDA contributions).
+    pub fn residue_bit_length(&self) -> u16 {
+        self.fields.iter().map(|fd| fd.residue_bits()).sum()
+    }
+
+    /// Number of bytes needed for the residue (ceil of residue_bit_length / 8).
+    pub fn residue_byte_length(&self) -> usize {
+        (self.residue_bit_length() as usize + 7) >> 3
+    }
 }
 
 // ---------------------------------------------------------------------------
