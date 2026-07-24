@@ -15,6 +15,12 @@ use std::time::{Duration, Instant};
 
 use sha2::{Digest, Sha256};
 
+/// Compute a 16-byte hash prefix for a payload.
+fn packet_hash_prefix(payload: &[u8]) -> [u8; 16] {
+    let hash = Sha256::digest(payload);
+    hash[..16].try_into().unwrap()
+}
+
 /// Metrics collected during node operation.
 struct NodeMetrics {
     tx_count: u32,
@@ -101,7 +107,8 @@ fn main() {
                 peer_id: Option<String>,
                 rssi: Option<i32>,
                 snr: Option<i32>| {
-        let hash = format!("{:x}", Sha256::digest(payload));
+        let hash_prefix = packet_hash_prefix(payload);
+        let hash_hex: String = hash_prefix.iter().map(|b| format!("{b:02x}")).collect();
         println!(
             "TELEMETRY {}",
             serde_json::json!({
@@ -110,8 +117,8 @@ fn main() {
                 "ts_us": ts_us,
                 "node_id": format!("rust-{}", node_id),
                 "impl": "rust",
-                "tx_id": hash[..16].to_string(),
-                "packet_hash": hash[..16].to_string(),
+                "tx_id": hash_hex,
+                "packet_hash": hash_hex,
                 "direction": if event.starts_with("tx") { "tx" } else { "rx" },
                 "peer_id": peer_id,
                 "payload_len": payload.len(),
@@ -142,8 +149,7 @@ fn main() {
             Ok(()) => {
                 metrics.tx_count += 1;
                 metrics.tx_bytes += announce.len() as u64;
-                let hash = Sha256::digest(&announce);
-                let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
+                let hash_prefix = packet_hash_prefix(&announce);
                 metrics.packet_hashes_sent.insert(hash_prefix);
                 emit(
                     "tx",
@@ -174,10 +180,9 @@ fn main() {
                     metrics.rx_count += 1;
                     metrics.rx_bytes += pkt.len as u64;
 
-                    // Track packet hash
-                    let hash = Sha256::digest(&buf[..pkt.len]);
-                    let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
-                    metrics.packet_hashes_received.insert(hash_prefix);
+    // Track packet hash
+    let hash_prefix = packet_hash_prefix(&buf[..pkt.len]);
+    metrics.packet_hashes_received.insert(hash_prefix);
                     let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {
