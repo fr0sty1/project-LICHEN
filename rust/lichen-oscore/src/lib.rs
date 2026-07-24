@@ -937,6 +937,13 @@ impl Context {
         request_piv: &[u8],
         include_piv: bool,
     ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+        if request_kid.len() > NONCE_ID_LEN
+            || OscoreSeqNum::from_piv(request_piv).is_none()
+            || request_kid != self.recipient_id()
+        {
+            return Err(OscoreError::InvalidParam);
+        }
+
         // Determine PIV for nonce: own sequence if including, else request's PIV
         let (nonce_piv, piv_len, piv_for_option, sender_seq): (
             [u8; PIV_MAX_LEN],
