@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-ps69",
   "title": "[review] lora_ipv6_mesh-mkk4: SOS render_put contradicts spec (POST required)",
   "description": "spec/12-apps.md:609 defines SOS activation via POST with 2.01 Created. python/src/lichen/coap/resources.py:716 changed render_post to render_put with CHANGED (2.04). This is a direct spec violation. Either change the spec or revert to POST.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T16:48:40.9950407Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:48:40.9950407Z"
+  "updated_at": "2026-07-24T17:01:17.443491233Z",
+  "closed_at": "2026-07-24T17:01:17.443491233Z",
+  "close_reason": "Closed"
 }
