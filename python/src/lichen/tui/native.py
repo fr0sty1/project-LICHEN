@@ -979,7 +979,7 @@ def rf_health_rows(state: RFHealthState, width: int = 76) -> tuple[str, ...]:
     # Neighbor RF section
     rows.append(field_line("neighbors_rf", "--- Neighbor RF Health ---", width=width))
 
-    if state.cheater_count > 0:
+    if state.neighbors and state.cheater_count > 0:
         rows.append(
             field_line(
                 "CHEATERS",
