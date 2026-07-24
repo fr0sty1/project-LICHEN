@@ -151,9 +151,9 @@ def test_truncated_icmpv6_falls_back() -> None:
 
 
 def test_decompress_rejects_truncated_packet_residue() -> None:
-    # Rule 0 requires exactly 1 rule-ID byte plus 25 residue bytes.
-    with pytest.raises(SchcError, match="requires 25 residue bytes"):
-        decompress_packet(bytes(25))
+    # Rule 0 requires exactly 1 rule-ID byte plus 22 residue bytes (23 total).
+    with pytest.raises(SchcError, match="need 23 bytes for residue"):
+        decompress_packet(bytes(22))
 
 
 def test_decompress_rejects_missing_declared_token() -> None:

@@ -18,8 +18,8 @@
 //! The verb choice signals that SCHC requires matching rules on both ends.
 
 use lichen_core::constants::{
-    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
-    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
+    PORT_COAP, PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
+    RULE_MQTT_SN, RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -312,6 +312,14 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let coap_mid = u16::from_be_bytes([coap[2], coap[3]]);
     let tail = &coap[4..];
 
+    // Validate ports are in the CoAP range (MSB 12 bits match 5683)
+    const COAP_MSB_MASK: u16 = 0xFFF0;
+    if (src_port & COAP_MSB_MASK) != (PORT_COAP & COAP_MSB_MASK)
+        || (dst_port & COAP_MSB_MASK) != (PORT_COAP & COAP_MSB_MASK)
+    {
+        return Err(SchcError::NoMatchingRule);
+    }
+
     if out.is_empty() {
         return Err(BufferTooSmall::new(1, 0).into());
     }
@@ -332,8 +340,9 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
         w.write(dst_int, 128)?;
     }
 
-    w.write(src_port as u128, 16)?;
-    w.write(dst_port as u128, 16)?;
+    // MSB(12)/LSB(4) port compression: only the low nibble travels
+    w.write((src_port & 0xF) as u128, 4)?;
+    w.write((dst_port & 0xF) as u128, 4)?;
     w.write(coap_type as u128, 2)?;
     w.write(coap_tkl as u128, 4)?;
     w.write(coap_code as u128, 8)?;
@@ -630,8 +639,12 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
         (r.read(128)?, r.read(128)?)
     };
 
-    let src_port = r.read(16)? as u16;
-    let dst_port = r.read(16)? as u16;
+    // MSB(12)/LSB(4) port decompression: reconstruct from 4-bit LSB + target_value MSB
+    const COAP_MSB_MASK: u16 = 0xFFF0;
+    let src_port_lsb = r.read(4)? as u16;
+    let dst_port_lsb = r.read(4)? as u16;
+    let src_port = (PORT_COAP & COAP_MSB_MASK) | src_port_lsb;
+    let dst_port = (PORT_COAP & COAP_MSB_MASK) | dst_port_lsb;
     let coap_type = r.read(2)? as u8;
     let coap_tkl = r.read(4)? as u8;
     let coap_code = r.read(8)? as u8;
@@ -1115,7 +1128,7 @@ mod tests {
             "6000000000131140fe800000000000000000000000000001\
              fe80000000000000000000000000000216331633001328dd\
              40011234ff737461747573",
-            "00400000000000000001000000000000000216331633000448d0\
+            "00400000000000000001000000000000000233000448d0\
              ff737461747573",
             0,
         );
@@ -1128,7 +1141,7 @@ mod tests {
              20010db800000000000000000000000216331633001\
              3ca6c40011234ff737461747573",
             "014020010db800000000000000000000000120010db8000000\
-             00000000000000000216331633000448d0ff737461747573",
+             00000000000000000233000448d0ff737461747573",
             1,
         );
     }

@@ -259,6 +259,12 @@ class _CoapUdpProfile(PacketProfile):
             return False
         if udp.checksum == 0 or udp_checksum(header.src_addr, header.dst_addr, raw[HEADER_LENGTH:]):
             return False
+        # Port must be in the CoAP range (MSB 12 bits match 5683 = 0x163)
+        COAP_MSB_MASK = 0xFFF0
+        if (udp.src_port & COAP_MSB_MASK) != (5683 & COAP_MSB_MASK) or (
+            udp.dst_port & COAP_MSB_MASK
+        ) != (5683 & COAP_MSB_MASK):
+            return False
         coap = udp.payload
         tkl = coap[0] & 0x0F
         if coap[0] >> 6 != 1 or tkl > 8 or _COAP_FIXED_HEADER + tkl > len(coap):
