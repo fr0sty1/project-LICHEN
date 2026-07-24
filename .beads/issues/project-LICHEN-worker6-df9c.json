@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-df9c",
   "title": "[rereview] project-LICHEN-dk3c.5: sched_work_handler releases lock before send_announce — phantom announce possible after stop",
   "description": "sched_work_handler (announce.c:684-699) checks sched.running under the mutex (line 688-691), then releases the lock before calling send_announce() (line 697). A concurrent lichen_announce_sched_stop() could set running=false and cancel the work in the gap. Since send_announce() already passed the running check, it would transmit a phantom announce after the scheduler was stopped.\\n\\nFile: lichen/subsys/lichen/routing/announce.c:684-699\\nSeverity: P2",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

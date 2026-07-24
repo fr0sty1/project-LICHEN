@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-bj6n",
+  "title": "[rereview] project-LICHEN-dk3c.5: TOCTOU race in set_dodag_state — loss timer scheduled outside mutex",
+  "description": "In lichen_announce_sched_set_dodag_state (announce.c:744-752), the dodag_loss_work timer scheduling (line 748) and cancellation (line 751) both execute after the mutex has been released (at line 735 or 741). Between the unlock and the k_work_schedule/k_work_cancel_delayable call, the dodag_loss_resume_handler work handler could fire, observe the stale dodag_joined state, and call schedule_next() with a potentially wrong interval. Specifically:\n\n1. set_dodag_state(false, ...) schedules dodag_loss_work at line 748.\n2. Before the work fires, set_dodag_state(true, ...) is called. It unlocks at line 741 (else branch since prev_gateway == new_gateway when transitioning from gateway to... wait, no. Actually the scenario is simpler:\n\n- set_dodag_state(true, false) releases the mutex at line 735 or 741.\n- Between that release and the k_work_cancel_delayable at line 751, the dodag_loss_resume_handler (scheduled by a prior set_dodag_state(false, ...)) fires and calls schedule_next().\n- The handler reads dodag_joined=true (just set by the concurrent set_dodag_state), schedules with the gateway interval.\n- Then the cancel at line 751 runs, but the work has already been rescheduled.\n\nFix: move the timer scheduling/cancellation inside the mutex scope. Or better, restructure so that the dodag_loss_resume_handler just sets a flag and the interval selection in schedule_next() checks both dodag_joined and the loss flag atomically.\n\nFile: lichen/subsys/lichen/routing/announce.c:744-752",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:40:14.268308033Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:40:14.268308033Z"
+}
