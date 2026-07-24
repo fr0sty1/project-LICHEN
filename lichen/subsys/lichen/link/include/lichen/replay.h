@@ -34,10 +34,14 @@
 extern "C" {
 #endif
 
-/** Maximum peers to track replay state for */
-#ifndef CONFIG_LICHEN_LINK_MAX_NEIGHBORS
-#define CONFIG_LICHEN_LINK_MAX_NEIGHBORS 16
-#endif
+/**
+ * @brief Maximum peers to track replay state for.
+ *
+ * Uses CONFIG_LICHEN_LINK_MAX_NEIGHBORS from Kconfig.
+ * Defined in lichen/subsys/lichen/link/Kconfig (default 16, range 4-64).
+ * The LICHEN_LINK Kconfig must be enabled, guaranteeing this config is set.
+ */
+/* CONFIG_LICHEN_LINK_MAX_NEIGHBORS provided by Kconfig - no header default */
 
 /* Use LICHEN_EUI64_LEN from link_ctx.h for consistency */
 #include <lichen/link_ctx.h>
