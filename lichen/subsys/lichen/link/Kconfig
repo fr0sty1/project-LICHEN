@@ -168,4 +168,28 @@ config LICHEN_N_CHANNELS
 	  Matches regional plan (e.g. 8 for EU868). Used for mod N in
 	  select_channel/hash_32 and synchronized_hop_channel(CCP-12).
 
+config LICHEN_MIN_DWELL_MS
+	int "Minimum dwell time per channel (ms)"
+	depends on LICHEN_MULTI_CHANNEL_ENABLED
+	default 100
+	range 10 10000
+	help
+	  Minimum time a node stays on a data channel before hopping.
+	  Prevents excessive channel switching. Regional regulations may
+	  impose stricter minimums (e.g. EU ETSI EN 300.220 duty cycle).
+	  See spec/02a-coordinated-capacity.md §2a.3 and
+	  spec/02-physical-link.md §4.3.
+
+config LICHEN_BLACKLIST_DURATION_MS
+	int "Noisy channel blacklist duration (ms)"
+	depends on LICHEN_MULTI_CHANNEL_ENABLED
+	default 60000
+	range 1000 300000
+	help
+	  Duration a channel remains blacklisted after CCA failure
+	  or excessive noise detection. During this period the channel
+	  is excluded from select_channel() and hash-based hopping.
+	  Longer durations reduce retransmissions in congested
+	  environments. See spec/02a-coordinated-capacity.md §2a.3.
+
 endif # LICHEN_LINK
