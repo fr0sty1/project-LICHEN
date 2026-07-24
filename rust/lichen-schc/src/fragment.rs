@@ -274,6 +274,9 @@ impl Ack {
             }
             return Ok(ack);
         }
+        if data.len() < 3 {
+            return Err(TooShort::new(3, data.len()).into());
+        }
         let window = (data[1] >> FRAGMENT_N) & 1;
         let n = data[2] as usize;
         if n > WINDOW_SIZE {
