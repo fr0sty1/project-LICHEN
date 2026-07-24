@@ -60,6 +60,7 @@ impl core::error::Error for BridgeError {}
 
 /// Routing error codes mapped from Meshtastic Routing.Error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RoutingErrorCode {
     None,
     NoRoute,

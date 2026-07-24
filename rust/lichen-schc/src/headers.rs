@@ -95,6 +95,7 @@ impl<'a> ParsedPacket<'a> {
 
 /// Error type for packet parsing/building.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PacketError {
     /// Packet is too short.
     TooShort { expected: usize, actual: usize },

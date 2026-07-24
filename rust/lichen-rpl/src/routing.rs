@@ -143,6 +143,7 @@ pub enum DaoMalformed {
 
 #[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoVerifyError {
     Malformed(DaoMalformed),
     UnknownKey,
@@ -251,6 +252,7 @@ pub fn dao_origin_digest(
 
 #[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoPersistentOpenError<E> {
     Missing,
     Corrupt,
@@ -262,6 +264,7 @@ pub enum DaoPersistentOpenError<E> {
 
 #[cfg(feature = "std")]
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoProvisionError<E> {
     Open(DaoPersistentOpenError<E>),
     Storage(E),
@@ -566,6 +569,7 @@ fn map_open_error<E>(error: RedundantOpenError<E>) -> DaoPersistentOpenError<E> 
 
 #[cfg(feature = "std")]
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoTxError<E> {
     Persistence(E),
     Stale,
@@ -597,6 +601,7 @@ pub struct DaoAdmissionState {
 
 #[cfg(feature = "std")]
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoAdmissionUpdateError<E> {
     Persistence(E),
     Stale,
@@ -812,6 +817,7 @@ pub enum DaoProcessOutcome {
 
 #[cfg(feature = "std")]
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoProcessError<E> {
     Replay,
     Persistence(E),
@@ -841,6 +847,7 @@ pub struct DaoDiagnosticLimits {
 #[doc(hidden)]
 #[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoDiagnosticError {
     Rejected,
 }

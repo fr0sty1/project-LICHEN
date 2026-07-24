@@ -279,6 +279,7 @@ pub struct SignedDaoEnvelope<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DaoEnvelopeError {
     Rpl(RplError),
     MissingSignature,
