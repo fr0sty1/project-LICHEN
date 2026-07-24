@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-whz4",
   "title": "[review] project-LICHEN-worker6-ldv2: CBOR sequence used instead of CBOR array for all transcript hash inputs",
   "description": "Throughout edhoc.py, TH_2_input, TH_3_input, and TH_4_input are constructed as CBOR sequences (concatenation of individually encoded items) rather than as CBOR arrays as required by RFC 9528.\n\nAffected lines and their corrections:\n\nTH_2 (initiator, line 388):\n  Current: cbor2.dumps(g_y) + cbor2.dumps(h_msg1)\n  Should be: cbor2.dumps([g_y, c_r, h_msg1])\n\nTH_2 (responder, line 597):\n  Current: cbor2.dumps(self._eph_pk) + cbor2.dumps(h_msg1)\n  Should be: cbor2.dumps([self._eph_pk, self.c_r, h_msg1])\n\nTH_3 (initiator, lines 418-422):\n  Current: cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)\n  Should be: cbor2.dumps([self._th_2, ciphertext_2, id_cred_r])\n\nTH_3 (responder, lines 620-624):\n  Current: cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)\n  Should be: cbor2.dumps([self._th_2, ciphertext_2, id_cred_r])\n\nTH_4 (initiator, line 443):\n  Current: cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)\n  Should be: cbor2.dumps([self._th_3, ciphertext_3])\n\nTH_4 (responder, line 677):\n  Current: cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)\n  Should be: cbor2.dumps([self._th_3, ciphertext_3])\n\nPer RFC 9528, transcript hash inputs are CBOR arrays (denoted by brackets [...] in the spec), not CBOR sequences. The concatenation-of-individually-encoded-items produces different bytes than a proper array encoding, causing incorrect transcript hashes on all three rounds (TH_2, TH_3, TH_4).\n\nNote: the same CBOR sequence pattern appears in other context constructions (context_2 at line 408, context_3 at line 428) which should also be reviewed for array encoding.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:38:21.613873807Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:52:04.321835094Z",
-  "started_at": "2026-07-24T19:52:04.321835094Z",
-  "lease_expires_at": "2026-07-24T19:57:04.321835094Z",
-  "heartbeat_at": "2026-07-24T19:52:04.321835094Z"
+  "updated_at": "2026-07-24T20:21:45.634063684Z",
+  "started_at": "2026-07-24T19:52:04.321835094Z"
 }
