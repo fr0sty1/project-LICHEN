@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nkcv",
   "title": "[spec-compliance] Hardcoded constants instead of lichen-core constants",
   "description": "rust/lichen-link/src/frame.rs and link_layer.rs hard-code MIC/SignaturePresent instead of using constants from lichen-core/src/constants.rs for L2_DISPATCH_SCHC=0x14, LICHEN_SIG_LEN=48 per draft-lichen-link-01.md. See project-LICHEN-s3t5",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
