@@ -10,6 +10,7 @@ use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
+use lichen_core::rf_health::RfHealthMetrics;
 use lichen_core::udp::UDP_HEADER_LEN;
 use lichen_core::{addr::Ipv6Addr, addr::NodeId, icmpv6};
 use lichen_schc::codec;
@@ -97,6 +98,7 @@ pub struct Node {
 pub struct RplNode {
     pub(crate) node: Node,
     pub(crate) router: Router,
+    pub(crate) rf_health: RfHealthMetrics,
 }
 
 impl Node {
@@ -275,6 +277,7 @@ impl RplNode {
         Self {
             node: Node::new(node_id),
             router: Router::new(node_addr, dodag_id),
+            rf_health: RfHealthMetrics::new(),
         }
     }
 
@@ -293,6 +296,7 @@ impl RplNode {
             Self {
                 node: Node::new(node_id),
                 router,
+                rf_health: RfHealthMetrics::new(),
             },
             state,
         ))
@@ -313,6 +317,7 @@ impl RplNode {
             Self {
                 node: Node::new(node_id),
                 router,
+                rf_health: RfHealthMetrics::new(),
             },
             state,
         ))
@@ -473,21 +478,29 @@ impl RplNode {
                         let dio_bytes = &pkt[body_offset..];
                         if let Ok(dio) = lichen_rpl::message::Dio::from_bytes(dio_bytes) {
                             let outcome = match link {
-                                Some((etx, rssi)) => self.router.process_dio_with_etx_outcome(
-                                    &dio,
-                                    dio_bytes,
-                                    sender_addr,
-                                    etx,
-                                    rssi,
-                                    now_ms,
-                                ),
-                                None => self.router.process_dio_outcome(
-                                    &dio,
-                                    dio_bytes,
-                                    sender_addr,
-                                    0,
-                                    now_ms,
-                                ),
+                                Some((etx, rssi)) => {
+                                    self.rf_health.record_rx(rssi);
+                                    self.rf_health.record_density(self.router.neighbors().count() as u8);
+                                    self.router.process_dio_with_etx_outcome(
+                                        &dio,
+                                        dio_bytes,
+                                        sender_addr,
+                                        etx,
+                                        rssi,
+                                        now_ms,
+                                    )
+                                }
+                                None => {
+                                    self.rf_health.record_rx(0);
+                                    self.rf_health.record_density(self.router.neighbors().count() as u8);
+                                    self.router.process_dio_outcome(
+                                        &dio,
+                                        dio_bytes,
+                                        sender_addr,
+                                        0,
+                                        now_ms,
+                                    )
+                                }
                             };
                             return match outcome {
                                 DioProcessOutcome::Rejected => (0, RplEvent::None),
@@ -591,6 +604,10 @@ impl RplNode {
 
     pub fn router(&self) -> &Router {
         &self.router
+    }
+
+    pub fn rf_health_mut(&mut self) -> &mut RfHealthMetrics {
+        &mut self.rf_health
     }
 
     /// Check if this node is the DODAG root.
@@ -792,6 +809,7 @@ mod tests {
         let mut child = RplNode {
             node: Node::new(child_id),
             router: Router::new(child_addr, root_addr),
+            rf_health: RfHealthMetrics::new(),
         };
         let dio = lichen_rpl::message::Dio {
             rpl_instance_id: RPL_INSTANCE_ID,
@@ -860,6 +878,7 @@ mod tests {
                 RplNode {
                     node: Node::new(child_id),
                     router: Router::new(child_addr, root_addr),
+                    rf_health: RfHealthMetrics::new(),
                 },
                 child_addr,
             )
@@ -937,14 +956,17 @@ mod tests {
         let mut root = RplNode {
             node: Node::new(root_id),
             router: root_router,
+            rf_health: RfHealthMetrics::new(),
         };
         let mut parent = RplNode {
             node: Node::new(parent_id),
             router: Router::new(parent_addr, root_addr),
+            rf_health: RfHealthMetrics::new(),
         };
         let mut leaf = RplNode {
             node: Node::new(leaf_id),
             router: Router::new(leaf_addr, root_addr),
+            rf_health: RfHealthMetrics::new(),
         };
         let mut announces = AnnounceProcessor::new(
             GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
@@ -1138,6 +1160,7 @@ mod tests {
         let mut root = RplNode {
             node: Node::new(root_id),
             router,
+            rf_health: RfHealthMetrics::new(),
         };
         assert!(root.router.set_dao_lifetime_unit(1));
         let mut announces = AnnounceProcessor::new(
@@ -1207,6 +1230,7 @@ mod tests {
         let mut root = RplNode {
             node: Node::new(root_id),
             router: Router::new_root(root_addr),
+            rf_health: RfHealthMetrics::new(),
         };
         assert!(root.router.set_dao_lifetime_unit(1));
         let mut first =

@@ -17,6 +17,8 @@ extern crate std;
 use std::vec::Vec;
 
 #[cfg(feature = "std")]
+use lichen_core::rf_health::RfHealthMetrics;
+#[cfg(feature = "std")]
 use lichen_hal::NonVolatile;
 #[cfg(feature = "std")]
 use lichen_link::{identity::iid_from_pubkey, link_layer::LinkLayer};
@@ -29,7 +31,8 @@ use lichen_rpl::message::DODAG_CONFIG_DATA_LEN;
 #[cfg(feature = "std")]
 pub use lichen_rpl::message::{
     Dao, DaoOriginSignature, Dio, DodagConfig, OptionIter, RplError, RplTarget, SignedDaoEnvelope,
-    TransitInfo, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
+    TransitInfo, CCP16_METRICS_DATA_LEN, CCP16_METRICS_LEN, DAO_ORIGIN_SIGNATURE_LEN,
+    OPT_CCP16_METRICS, OPT_DODAG_CONFIG, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SignatureVerifiedDao;
@@ -451,6 +454,7 @@ pub struct Router {
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
+    pub rf_health: RfHealthMetrics,
     #[cfg(test)]
     test_storage: lichen_hal::storage::mem::MemStorage,
     #[cfg(test)]
@@ -473,6 +477,7 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            rf_health: RfHealthMetrics::new(),
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
@@ -511,6 +516,7 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            rf_health: RfHealthMetrics::new(),
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
@@ -958,7 +964,21 @@ impl Router {
         let Ok(config_len) = self.dodag_config.write_to(&mut out[base_len..]) else {
             return 0;
         };
-        base_len + config_len
+        let mut pos = base_len + config_len;
+        let sf = self.rf_health.adaptive_sf();
+        let density = self.rf_health.density;
+        let load_hi = (self.rf_health.packet_loss_rate_fp().as_fp() >> 8) as u8;
+        let load_lo = self.rf_health.packet_loss_rate_fp().as_fp() as u8;
+        if pos + CCP16_METRICS_LEN <= out.len() {
+            out[pos] = OPT_CCP16_METRICS;
+            out[pos + 1] = CCP16_METRICS_DATA_LEN as u8;
+            out[pos + 2] = density;
+            out[pos + 3] = sf;
+            out[pos + 4] = load_hi;
+            out[pos + 5] = load_lo;
+            pos += CCP16_METRICS_LEN;
+        }
+        pos
     }
 
     /// Get the route path for a destination (root only).
@@ -1033,6 +1053,11 @@ impl Router {
     /// Read-only access to the synchronized neighbor table.
     pub fn neighbors(&self) -> &NeighborTable {
         &self.neighbors
+    }
+
+    /// Mutable access to RF health metrics.
+    pub fn rf_health_mut(&mut self) -> &mut RfHealthMetrics {
+        &mut self.rf_health
     }
 
     /// Remove stale neighbors and their corresponding DODAG parent candidates.
@@ -1616,9 +1641,9 @@ mod tests {
         assert_eq!(router.dodag.max_rank_increase, 1024);
         assert_eq!(router.dodag_config.lifetime_unit, 30);
 
-        let mut encoded = [0u8; 40];
-        assert_eq!(router.build_dio(&mut encoded), encoded.len());
-        assert_eq!(&encoded[Dio::BASE_LEN..], &bytes[Dio::BASE_LEN..]);
+        let mut encoded = [0u8; 48];
+        assert_eq!(router.build_dio(&mut encoded), Dio::BASE_LEN + 16 + CCP16_METRICS_LEN);
+        assert_eq!(&encoded[Dio::BASE_LEN..Dio::BASE_LEN + 16], &bytes[Dio::BASE_LEN..]);
         assert_eq!(router.build_dio(&mut [0u8; 39]), 0);
     }
 
@@ -1961,7 +1986,7 @@ mod tests {
     #[test]
     fn root_advertises_its_actual_trickle_config() {
         let root = Router::new_root(link_local(1));
-        let mut bytes = [0u8; Dio::BASE_LEN + 16];
+        let mut bytes = [0u8; Dio::BASE_LEN + 16 + CCP16_METRICS_LEN];
         assert_eq!(root.build_dio(&mut bytes), bytes.len());
         let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
 
@@ -1984,7 +2009,7 @@ mod tests {
         let root = Router::new_root_with_config(link_local(1), config.clone()).unwrap();
 
         assert_eq!(root.rank(), 128);
-        let mut bytes = [0u8; Dio::BASE_LEN + 16];
+        let mut bytes = [0u8; Dio::BASE_LEN + 16 + CCP16_METRICS_LEN];
         assert_eq!(root.build_dio(&mut bytes), bytes.len());
         let dio = Dio::from_bytes(&bytes).unwrap();
         let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
