@@ -123,24 +123,21 @@ STATS_SECT_DECL(lichen_l2rx_stats) lichen_l2rx_stats;
 /*
  * Include LICHEN link layer if available.
  *
- * Required symbols from these headers (must stay inside HAVE_LICHEN_LINK guards):
+ * Required symbols from these headers (must stay inside CONFIG_LICHEN_LINK guards):
  *   link.h:     lichen_link_tx(), lichen_link_rx(), lichen_link_frame_overhead(),
  *               struct lichen_link_rx_ctx, struct lichen_link_tx_ctx
  *   link_ctx.h: LICHEN_LINK_KEY_LEN, struct lichen_link_ctx, lichen_link_init(),
  *               lichen_link_cleanup()
  *   schc.h:     lichen_schc_compress(), lichen_schc_decompress() (stateless - no init)
  */
-#if defined(CONFIG_LICHEN_LINK)
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
 #include <lichen/replay.h>
 #include <lichen/schc.h>
-#define HAVE_LICHEN_LINK 1
-#else
-#define HAVE_LICHEN_LINK 0
 #endif
 
-#if !HAVE_LICHEN_LINK
+#if !IS_ENABLED(CONFIG_LICHEN_LINK)
 #error "CONFIG_LICHEN_LINK is required before lichen_l2.c can use LICHEN link constants"
 #endif
 
@@ -156,7 +153,7 @@ STATS_SECT_DECL(lichen_l2rx_stats) lichen_l2rx_stats;
  * The raw mode was useful for early bring-up but is not suitable for any
  * deployment. If you hit this error, enable CONFIG_LICHEN_LINK in your prj.conf.
  */
-BUILD_ASSERT(HAVE_LICHEN_LINK,
+BUILD_ASSERT(IS_ENABLED(CONFIG_LICHEN_LINK),
 	     "CONFIG_LICHEN_LINK is required: raw IPv6-over-LoRa provides no "
 	     "security, compression, or interoperability. Enable LICHEN_LINK "
 	     "in prj.conf or menuconfig.");
@@ -364,7 +361,7 @@ static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN + OSCORE_MAX_OVERHE
 static K_MUTEX_DEFINE(rx_mutex);  /* Lock order: 2nd (after tx_mutex) */
 
 /* Link context for framing */
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 static struct lichen_link_ctx link_ctx;
 /*
  * Replay protection table for received frames.
@@ -521,7 +518,7 @@ static uint8_t iface_link_addr[LICHEN_L2_ADDR_LEN];
 
 /* ─── Peer table management ──────────────────────────────────────────────── */
 
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 /**
  * @brief Find peer entry by EUI-64 (internal, caller must hold rx_mutex).
  *
@@ -703,12 +700,12 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	*out_len = saved_out_len;
 	return -LICHEN_EAUTH;
 }
-#endif /* HAVE_LICHEN_LINK */
+#endif /* IS_ENABLED(CONFIG_LICHEN_LINK) */
 
 int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		    const uint8_t pubkey[LICHEN_L2_PUBKEY_LEN])
 {
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 	/*
 	 * SECURITY: Array parameters decay to pointers - no compile-time or
 	 * runtime size enforcement. BUILD_ASSERTs at lines 108-111 verify the
@@ -838,7 +835,7 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 
 int lichen_peer_remove(const uint8_t eui64[8])
 {
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 	if (eui64 == NULL) {
 		return -EINVAL;
 	}
@@ -915,7 +912,7 @@ int lichen_peer_remove(const uint8_t eui64[8])
 int lichen_l2_publish_app_identity(const char *display_name,
 				   const char *firmware_name)
 {
-#if HAVE_LICHEN_LINK && IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+#if IS_ENABLED(CONFIG_LICHEN_LINK) && IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 	int ret;
 
 	if (atomic_get(&iface_init_failed)) {
@@ -1381,7 +1378,7 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 
 	LOG_DBG("lichen_l2: TX IPv6 %zu bytes", pkt_len);
 
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 	/*
 	 * Use lichen_link_tx() to build the complete frame with proper MIC.
 	 * This handles:
@@ -1518,7 +1515,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			return ret;
 		}
 
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 		/*
 		 * Re-initialize link_ctx if it was cleaned up by a prior disable.
 		 * (project-LICHEN-rwio.1)
@@ -1587,7 +1584,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 		if (ret != 0) {
 			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 			k_mutex_lock(&tx_mutex, K_FOREVER);
 			k_mutex_lock(&rx_mutex, K_FOREVER);
 			if (atomic_get(&link_ctx_initialized)) {
@@ -1624,7 +1621,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 				LOG_WRN("lichen_l2: failed to clear callback on start failure (%d)", cb_ret);
 			}
 		}
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 		/*
 		 * Roll back link_ctx state on start() failure. (project-LICHEN-dq6n.20)
 		 *
@@ -1684,7 +1681,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 				 * The link_ctx contents may be stale, but the next enable()
 				 * will re-initialize it properly since link_ctx_initialized=0.
 				 */
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 				atomic_set(&link_ctx_initialized, 0);
 #endif
 			}
@@ -1693,7 +1690,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * Note: We intentionally do NOT clear lichen_iface here.
 		 * See the invariant comment at the lichen_iface declaration.
 		 */
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 		/*
 		 * Clean up link context: wipe keys, reset sequence state.
 		 * Hold both mutexes to prevent races with in-flight TX/RX:
@@ -2002,7 +1999,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 		return;
 	}
 
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 	/*
 	 * Initialize link context before enabling RX.
 	 *
@@ -2116,7 +2113,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 		return;
 	}
 
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 	/*
 	 * Mark link_ctx as safe to access.
 	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
@@ -2155,7 +2152,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 		}
 	}
 
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 #if IS_ENABLED(CONFIG_STATS)
 	(void)STATS_INIT_AND_REG(lichen_l2rx_stats, STATS_SIZE_32, "l2rx");
 #endif
@@ -2199,7 +2196,7 @@ fail_late_init:
 	 */
 	atomic_set(&iface_init_failed, 1);
 	(void)lichen_lora_l2_set_rx_callback(NULL, NULL);
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 	k_mutex_lock(&tx_mutex, K_FOREVER);
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 	atomic_set(&link_ctx_initialized, 0);
@@ -2324,7 +2321,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
-#if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_LICHEN_LINK)
 	/*
 	 * Guard against access before initialization.
 	 * This shouldn't happen in normal operation, but could if a packet
