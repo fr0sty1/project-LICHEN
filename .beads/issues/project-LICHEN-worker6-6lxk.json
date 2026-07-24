@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-6lxk",
   "title": "[review] project-LICHEN-worker6-2u0i: lichen-schc crate has 8 pre-existing compilation errors; test unverifiable",
   "description": "## Summary\nThe commit `project-LICHEN-worker6-2u0i: fix` updates `multi_fragment_single_window` test to match the new `FragmentSender::new` API (3 args instead of 4). The test logic appears correct on inspection, but cannot be verified because the `lichen-schc` crate has **8 pre-existing compilation errors** in `fragment.rs` (the `std_ext` module at lines 1074-1277):\n\n1. Line 1074: `fragments_in_window` method not found (should be `fragments_in_window_vec`)\n2. Lines 1105, 1178, 1179, 1180: `rule_id` used as `u8` but field is now `Option\u003cu8\u003e`\n3. Lines 1232, 1250, 1275: `Ack::new` arguments mismatch: `rule_id` passed as `Option\u003cu8\u003e` instead of `u8`, bitmap passed as `\u0026Vec\u003cbool\u003e` instead of `u64`\n\nThese errors exist at HEAD and HEAD~1 — they are not introduced by this commit. However, they mean **no tests in lichen-schc can run**, including the test being modified in this commit. This is a P0 correctness issue (broken build).\n\n## Diff analysis\nTest change appears logically correct:\n- Old API: `FragmentSender::new(payload, rule_id, tile_size, window_size)` — 4 args\n- New API: `FragmentSender::new(payload, rule_id, receiver_limit)` — 3 args, uses constants TILE_SIZE=187, WINDOW_SIZE=63\n- Payload: TILE_SIZE+7 bytes → 2 fragments, single window\n- FCN assertions correct: frag[0].fcn=62 (not all-1), frag[1].is_all_1()\n- Payload slice assertions correct: [..TILE_SIZE], [TILE_SIZE..]",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:30:41.179763883Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:30:41.179763883Z"
+  "updated_at": "2026-07-24T19:15:52.347978464Z",
+  "started_at": "2026-07-24T19:15:52.347978464Z",
+  "lease_expires_at": "2026-07-24T19:20:52.347978464Z",
+  "heartbeat_at": "2026-07-24T19:15:52.347978464Z"
 }
