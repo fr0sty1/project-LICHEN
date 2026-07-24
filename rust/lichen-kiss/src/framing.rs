@@ -273,13 +273,9 @@ pub fn kiss_encode_raw(
         }
     };
 
-    // Escape data into remaining buffer (after FEND + CMD, before final FEND)
-    let escaped_len = kiss_escape(data, &mut out[data_start..])?;
-
-    // Check we have room for final FEND
-    if data_start + escaped_len >= out.len() {
-        return Err(KissError::BufferTooSmall);
-    }
+    // Escape data into remaining buffer (leave one byte for trailing FEND)
+    let avail = out.len() - 1;
+    let escaped_len = kiss_escape(data, &mut out[data_start..avail])?;
 
     out[data_start + escaped_len] = FEND;
 
