@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-scgm",
+  "title": "[review] project-LICHEN-worker6-69p2: check_rule validation removed from deserializers",
+  "description": "## Bug: Input validation `check_rule()` removed from deserializers\n\n**Location:** \n- `rust/lichen-schc/src/fragment.rs:167` (`Fragment::from_bytes`)\n- `rust/lichen-schc/src/fragment.rs:260` (`Ack::from_bytes_for`)\n\nBoth `Fragment::from_bytes` and `Ack::from_bytes_for` previously called `check_rule(data[0])?` to validate that the rule_id in the input matches known rule IDs (120 or 121). This validation was removed in this commit.\n\n**Impact:** Unknown/malformed rule IDs are silently accepted rather than rejected with `FragmentError::UnsupportedRule`. This means:\n- Corrupted fragments with wrong rule IDs will be accepted and potentially mismatched to the wrong session\n- The `rule_id` field in `FragmentReceiver` (which uses sentinel value 0) could accept garbage data that happens to pass other checks\n\n**Note:** `check_rule()` IS still called in both `write_to` methods (`Fragment::write_to` at line 134, `Ack::write_to` at line 220), so the asymmetry is inconsistent.\n\n**Fix:** Restore `check_rule(data[0])?` in both deserialization functions.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:53:56.479413611Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:53:56.479413611Z"
+}
