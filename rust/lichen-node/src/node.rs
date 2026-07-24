@@ -20,7 +20,7 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome, TrickleSafeLivenessPolicy};
+use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome};
 #[cfg(feature = "std")]
 use crate::{
     announce::AnnounceProcessor,
@@ -609,13 +609,8 @@ impl RplNode {
     }
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
-    pub fn maintain<P: TrickleSafeLivenessPolicy>(
-        &mut self,
-        now_ms: u64,
-        neighbor_timeout_ms: u64,
-        policy: &P,
-    ) -> RplMaintenanceOutcome {
-        self.router.maintain(now_ms, neighbor_timeout_ms, policy)
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        self.router.maintain(now_ms, neighbor_timeout_ms)
     }
 
     /// Return the current Trickle deadline without advancing it.
@@ -1467,13 +1462,19 @@ mod tests {
         assert_eq!(RplEvent::DisReceived, RplEvent::DisReceived);
 
         let dio_inc = RplEvent::DioReceived { inconsistent: true };
-        let dio_cons = RplEvent::DioReceived { inconsistent: false };
+        let dio_cons = RplEvent::DioReceived {
+            inconsistent: false,
+        };
         assert_eq!(dio_inc, dio_inc);
         assert_ne!(dio_inc, dio_cons);
         assert_ne!(dio_inc, RplEvent::None);
 
-        let dao_up = RplEvent::DaoReceived { route_updated: true };
-        let dao_no = RplEvent::DaoReceived { route_updated: false };
+        let dao_up = RplEvent::DaoReceived {
+            route_updated: true,
+        };
+        let dao_no = RplEvent::DaoReceived {
+            route_updated: false,
+        };
         assert_eq!(dao_up, dao_up);
         assert_ne!(dao_up, dao_no);
 

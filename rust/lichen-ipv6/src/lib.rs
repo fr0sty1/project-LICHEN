@@ -1072,7 +1072,9 @@ mod tests {
         let h1 = Ipv6Header::from_bytes(&w1).unwrap();
         let p1 = &w1[40..];
         assert!(handle_icmpv6(&h1.dst, &h1, p1).unwrap().is_none());
-        let w2 = hex!("60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000");
+        let w2 = hex!(
+            "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000"
+        );
         let h2 = Ipv6Header::from_bytes(&w2).unwrap();
         let p2 = &w2[40..];
         assert!(handle_icmpv6(&h2.dst, &h2, p2).unwrap().is_none());
@@ -1080,7 +1082,9 @@ mod tests {
         let h3 = Ipv6Header::from_bytes(&w3).unwrap();
         let u3 = &w3[40..];
         assert!(!verify_udp_checksum(&h3.src, &h3.dst, u3));
-        let w4 = hex!("6000000000081140fe800000000000000000000000000001fe8000000000000000000000000000021633");
+        let w4 = hex!(
+            "6000000000081140fe800000000000000000000000000001fe8000000000000000000000000000021633"
+        );
         assert!(UdpHeader::from_bytes(&w4[40..]).is_err());
     }
     #[test]

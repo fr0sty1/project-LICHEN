@@ -1981,6 +1981,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "ccm",
+ "curve25519-dalek",
  "defmt 0.3.100",
  "ed25519-dalek",
  "heapless",

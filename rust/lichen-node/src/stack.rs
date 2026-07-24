@@ -583,7 +583,9 @@ pub fn add_rpl_source_route(
     #[cfg(feature = "std")]
     {
         let srh = SourceRoutingHeader::from_route(route).map_err(|_| TxError::NoRoute)?;
-        let _ = srh.write_to(&mut out[42..]).map_err(|_| TxError::BufferTooSmall)?;
+        let _ = srh
+            .write_to(&mut out[42..])
+            .map_err(|_| TxError::BufferTooSmall)?;
     }
     #[cfg(not(feature = "std"))]
     {

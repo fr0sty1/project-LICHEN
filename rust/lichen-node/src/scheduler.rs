@@ -255,10 +255,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
                 new_interval
             );
         } else {
-            info!(
-                "announce interval set to {} ms (normal mode)",
-                new_interval
-            );
+            info!("announce interval set to {} ms (normal mode)", new_interval);
         }
         new_interval
     }

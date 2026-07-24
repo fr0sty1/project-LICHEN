@@ -1092,7 +1092,8 @@ impl RouteTarget {
         }
         let remaining_bits = self.prefix_len % 8;
         remaining_bits == 0
-            || (self.prefix.0[whole_bytes] ^ address.0[whole_bytes]) & (u8::MAX << (8 - remaining_bits))
+            || (self.prefix.0[whole_bytes] ^ address.0[whole_bytes])
+                & (u8::MAX << (8 - remaining_bits))
                 == 0
     }
 }

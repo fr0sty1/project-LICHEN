@@ -435,9 +435,8 @@ impl DodagConfig {
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
-        let flags = ((self.gateway_centric as u8) << 7)
-            | ((self.a_flag as u8) << 4)
-            | (self.pcs & 0x07);
+        let flags =
+            ((self.gateway_centric as u8) << 7) | ((self.a_flag as u8) << 4) | (self.pcs & 0x07);
         out[2] = flags;
         out[3] = self.dio_int_doublings;
         out[4] = self.dio_int_min;
