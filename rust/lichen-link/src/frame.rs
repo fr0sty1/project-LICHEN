@@ -373,6 +373,11 @@ impl<'a> LichenFrame<'a> {
                 .expect("header-read frame can reject signed encrypted combination");
             return Err(FrameError::SignedEncryptedUnsupported);
         }
+        // SECURITY: Reject frames where signature is present but the frame
+        // body is too short for the 48-byte Schnorr signature. An attacker
+        // could set the signature bit without appending a signature, hoping
+        // the parser reads past the buffer (over-read) or misinterprets
+        // payload bytes as MIC.
         let mic_len = if signature { 48 } else { 0 };
         let min_body = 4 + addr_len + mic_len;
         if body.len() < min_body {

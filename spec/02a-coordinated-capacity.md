@@ -150,7 +150,22 @@ Procedure AdaptiveSFSelect(AssignedSF, Neighbor, Density, Utilization, LoadFacto
 
 EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neighbor state on every RX. Integrate with RPL DIO capability signaling. No dead code.
 
-(The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
+## 2a.5. Desync Recovery State Machine
+
+The recovery mechanism is a finite state machine. All implementations MUST produce identical test vector output (see `test/vectors/ccp16.json`, `ccp_tdma.json`).
+
+Nodes MUST follow the initialization dependency graph from AGENTS.md (normative for subsystem ordering to prevent use-before-init crashes) and the `lichen_node_init()` example (AGENTS.md). `lichen_link_init()` MUST precede `lichen_link_load_key()`, `lichen_rpl_dodag_init()`, TDMA (`lichen_tdma_init()`), `oscore_init()`, and `lichen_coap_client_init()` per the graph in AGENTS.md.
+
+| Current State | Event/Condition | Timer/Timeout | Action | Next State | Reference |
+|---|---|---|---|---|---|
+| UNJOINED | Power-on / reset | - | `lichen_node_init(eui64, seed)` per AGENTS.md init graph | ACQUIRING | `AGENTS.md`, `lichen_link_init()` |
+| ACQUIRING | Valid beacon (higher stratum/version) | BEACON_TIMEOUT = 3×superframe | Sync SFN, adopt time, DAO confirm, load key via `lichen_link_load_key()` | SYNCED | `lichen_rpl_dodag_init()`, `lichen_link_load_key()` |
+| SYNCED | Beacon rx in assigned slot | superframe_timer | TX in slot, update RPL | SYNCED | Guard 100 ms enforced per §2a.2 |
+| SYNCED | >3 missed beacons or RPL version increment | rejoin_timeout = 10×superframe_len (Kconfig `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT`, default 10 s) | Reset SFN, clear stale state | DRIFTING | Desync recovery |
+| DRIFTING | Beacon rx or contention success | REJOIN_TIMEOUT | Re-init DODAG if needed, TOFU key pin | ACQUIRING | `oscore_init()` ordering |
+| REJOINING | DAO-ACK + slot assign | - | Enter assigned slot, report LCI status | SYNCED | `lichen_coap_client_init()` |
+
+MUST reset all timers on state transition. All transitions and multi-root cases produce identical test vector output. See full init graph in AGENTS.md (normative where referenced) and `spec/09-packets-timing.md` §14.8 for additional detail.
 
 ## Regional Channel Plans and CH0 Rules
 
@@ -174,5 +189,7 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 - `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
 - `docs/firmware-time-provider.md`
 - `spec/drafts/draft-lichen-link-01.md` (L2 0x15 join frame)
+- `spec/09-packets-timing.md` (desync recovery FSM, boot storm avoidance, TDMA timing)
+- `AGENTS.md` (normative for init dependency graph, `lichen_node_init()`, `lichen_link_init()`, `lichen_link_load_key()`, `oscore_init()`, `lichen_coap_client_init()` ordering)
 
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](03-adaptation.md)
