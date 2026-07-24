@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-2nb8",
+  "title": "[review] project-LICHEN-worker6-ow6z: Fragment::from_bytes API change broke integration tests",
+  "description": "The commit changed `Fragment::from_bytes` from 2 arguments `(data: \u0026[u8], tile: \u0026mut [u8])` to 1 argument `(data: \u0026[u8])` in `rust/lichen-schc/src/fragment.rs`, adding the `DEFAULT_RECEIVER_LIMIT` constant. The fuzz target at `rust/lichen-schc/fuzz/fuzz_targets/fuzz_fragment.rs` was correctly updated, but the integration tests were not:\n\n1. `rust/lichen-schc/tests/fragmentation_vectors.rs` — 4 call sites still pass `(\u0026wire, \u0026mut tile)` (lines 214, 241, 379, and likely more)\n2. `rust/lichen-schc/tests/fragmentation.rs` — may also have old call sites (TILE_SIZE usage)\n\nResult: `cargo test -p lichen-schc` produces 4 `E0061` errors (\"this function takes 1 argument but 2 arguments were supplied\").\n\nPartial migration = broken tests. All test files using the old API must be updated to match the new single-argument signature.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:45:57.585913252Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:45:57.585913252Z"
+}
