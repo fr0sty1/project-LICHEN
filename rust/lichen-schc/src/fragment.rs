@@ -256,24 +256,22 @@ impl Ack {
 
         let n = WINDOW_SIZE - (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
         let body_bytes = n.div_ceil(8);
-        let needed = 1 + (2 + n + ((8 - ((2 + n) % 8)) % 8)).div_ceil(8);
+        let needed = 3 + body_bytes;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = self.window << 7;
+        out[2] = n as u8;
         let trailing = (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
         let kept = WINDOW_SIZE - trailing;
         for position in 0..kept {
-            let bit_index = 2 + position;
             if self.bitmap & (1u64 << (62 - (WINDOW_SIZE - 1 - position))) != 0 {
-                set_bit(&mut out[1..needed], bit_index, true);
+                let byte_offset = 3 + position / 8;
+                let bit_offset = 7 - position % 8;
+                out[byte_offset] |= 1 << bit_offset;
             }
-        }
-        out[2] = n as u8;
-        for b in out[3..3 + body_bytes].iter_mut() {
-            *b = 0;
         }
         Ok(needed)
     }
@@ -290,6 +288,12 @@ impl Ack {
         let window = (data[1] >> FRAGMENT_N) & 1;
         let complete = (data[1] & 0x40) != 0;
         if complete {
+            if data.len() > 2 {
+                return Err(FragmentError::MalformedAck);
+            }
+            if data[1] & 0x3f != 0 {
+                return Err(FragmentError::MalformedAck);
+            }
             return Ok(Self::new(rule_id, window, 0, true));
         }
         if data.len() < 3 {
@@ -301,27 +305,24 @@ impl Ack {
         if data.len() < required {
             return Err(TooShort::new(required, data.len()).into());
         }
-        let bit_count = (data.len() - 1) * 8 - 2;
-        let mut bitmap = 0u64;
-        if bit_count >= WINDOW_SIZE {
-            let padding = bit_count - WINDOW_SIZE;
-            if padding > 7 || (0..padding).any(|i| get_bit(&data[1..], 2 + WINDOW_SIZE + i)) {
+        let padding_bits = body_bytes * 8 - n;
+        if padding_bits > 0 {
+            let last_byte = data[2 + body_bytes];
+            let pad_mask = (1u8 << padding_bits) - 1;
+            if last_byte & pad_mask != 0 {
                 return Err(FragmentError::MalformedAck);
             }
-            for position in 0..WINDOW_SIZE {
-                if get_bit(&data[1..], 2 + position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-        } else {
-            for position in 0..bit_count {
-                if get_bit(&data[1..], 2 + position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-            for position in bit_count..WINDOW_SIZE {
+        }
+        let mut bitmap = 0u64;
+        for position in 0..n.min(WINDOW_SIZE) {
+            let byte_offset = 3 + position / 8;
+            let bit_offset = 7 - position % 8;
+            if data[byte_offset] & (1 << bit_offset) != 0 {
                 bitmap |= 1u64 << (62 - position);
             }
+        }
+        for position in n.min(WINDOW_SIZE)..WINDOW_SIZE {
+            bitmap |= 1u64 << (62 - position);
         }
         let ack = Self::new(rule_id, window, bitmap, false);
         if assigned.is_some_and(|mask| bitmap & !mask & BITMAP_MASK != 0) {

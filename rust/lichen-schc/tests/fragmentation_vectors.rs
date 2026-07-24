@@ -135,7 +135,7 @@ fn write_fragment(fragment: &Fragment<'_>) -> Vec<u8> {
 }
 
 fn write_response(response: ReceiverResponse) -> Vec<u8> {
-    let mut wire = [0u8; 10];
+    let mut wire = [0u8; 11];
     let length = response.write_to(&mut wire).unwrap();
     wire[..length].to_vec()
 }
@@ -241,9 +241,13 @@ fn exercise_transfer(vector: &Vector) {
         let fragment = Fragment::from_bytes(&wire, &mut tile).unwrap();
         assert_eq!(receiver.receive(&fragment).response, None);
         let result = receiver.receive_bytes(&expand(&loss.ack_req)).unwrap();
+        let actual = write_response(result.response.unwrap());
         assert_eq!(
-            write_response(result.response.unwrap()),
-            expand(&loss.ack_success)
+            actual,
+            expand(&loss.ack_success),
+            "vector: {}, ack_success mismatch: actual={:02x?}",
+            vector.name,
+            actual,
         );
         assert_eq!(receiver.packet(), Some(packet.as_slice()));
     }
