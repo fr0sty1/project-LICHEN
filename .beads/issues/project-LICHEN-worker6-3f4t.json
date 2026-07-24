@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-3f4t",
+  "title": "[review] project-LICHEN-worker6-p19p: dead code and double computation in FragmentSender::new",
+  "description": "## Issues in fragment.rs\n\n### 1. Unused `body_bytes` in `Ack::write_to`\n`fragment.rs:285` — `body_bytes` is computed but never used:\n```rust\nlet body_bytes = n.div_ceil(8);  // unused\n```\nThis was refactored from old code that used it to zero-initialize body bytes, but now `out[..needed].fill(0)` handles that.\n\n### 2. Unused locals `mic` and `count` in `FragmentSender::new`\n`fragment.rs:459-460` — both computed but shadowed by struct field initializers:\n```rust\nlet mic = compute_mic(payload);           // computed, unused\nlet count = payload.len().div_ceil(TILE_SIZE);  // computed, unused\nOk(FragmentSender {\n    ...\n    count: payload.len().div_ceil(TILE_SIZE),  // recomputed\n    mic: compute_mic(payload),                 // recomputed\n})\n```\nThis causes `compute_mic` to be called twice and `div_ceil` twice.\n\n### Recommended fix\nRemove local variables and use struct field initializers directly, or use locals in struct fields.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:37:32.862359436Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:37:32.862359436Z"
+}
