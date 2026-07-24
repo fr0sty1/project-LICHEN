@@ -1,19 +1,16 @@
 {
   "id": "project-LICHEN-msao",
   "title": "simulation.py: remove get_rx_result duplication and merge conflict artifacts",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:52:45.841376558Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:15:56.691796246Z",
+  "updated_at": "2026-07-24T16:41:04.345116856Z",
   "started_at": "2026-07-23T02:57:06.241801818Z",
   "closed_at": "2026-07-23T02:57:11.081332413Z",
   "close_reason": "simulation duplication fixed as primary merge conflict resolution",
-  "lease_expires_at": "2026-07-24T16:20:56.691796246Z",
-  "heartbeat_at": "2026-07-24T16:15:56.691796246Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-msao",
