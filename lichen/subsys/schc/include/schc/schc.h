@@ -116,6 +116,7 @@ static inline int schc_rule_id(const uint8_t *data, size_t len)
 #define SCHC_FRAGMENT_TILE_SIZE 187u
 #define SCHC_FRAGMENT_WINDOW_SIZE 63u
 #define SCHC_FRAGMENT_MAX_TILES 126u
+#define SCHC_ALL_1 0x3fu
 #define SCHC_FRAGMENT_MAX_PACKET_SIZE 23562u
 #define SCHC_FRAGMENT_DEFAULT_RECEIVER_LIMIT 1281u
 #define SCHC_FRAGMENT_MAX_ATTEMPTS 4u

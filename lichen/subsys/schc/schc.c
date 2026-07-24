@@ -257,7 +257,7 @@ int schc_fragment_decode(struct schc_fragment *fragment,
 	if ((data[data_len - 1u] & 1u) != 0u) {
 		return SCHC_ERR_FRAGMENT_PADDING;
 	}
-	uint8_t fcn = (data[1] >> 1) & 0x3fu;
+	uint8_t fcn = (data[1] >> 1) & SCHC_ALL_1;
 	uint8_t window = data[1] >> 7;
 	bool all1 = fcn == SCHC_ALL_1;
 	size_t content_len = data_len - 2u;
@@ -365,7 +365,7 @@ int schc_ack_decode(struct schc_ack *ack, uint64_t assigned_bitmap,
 		.complete = (data[1] & 0x40u) != 0u,
 	};
 	if (decoded.complete) {
-		if (data_len != 2u || (data[1] & 0x3fu) != 0u) {
+		if (data_len != 2u || (data[1] & SCHC_ALL_1) != 0u) {
 			return SCHC_ERR_ACK_MALFORMED;
 		}
 		*ack = decoded;
