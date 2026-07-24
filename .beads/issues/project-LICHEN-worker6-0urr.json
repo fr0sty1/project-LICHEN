@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-0urr",
   "title": "[review] project-LICHEN-worker6-tkjl: test vectors out of sync with fragment format changes",
   "description": "The commit changes FCN values and buffer sizes in fragment.rs (content_len + 2 to +3, FCN shifting), and updates inline unit tests (fragmentation.rs) to match, but the shared test vectors JSON (test/vectors/schc_fragmentation.json) at format_version=2 still has old wire byte expectations (e.g. expects [0x78, 0x7c] but impl generates [0x78, 0x3e]). Test shared_vectors_drive_production_implementations in fragmentation_vectors.rs FAILS. Either the JSON must be regenerated to match the new wire format, or the implementation must be verified against the spec.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:11:18.643851536Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:20:28.893869306Z",
-  "started_at": "2026-07-24T19:20:28.893869306Z",
-  "lease_expires_at": "2026-07-24T19:25:28.893869306Z",
-  "heartbeat_at": "2026-07-24T19:20:28.893869306Z"
+  "updated_at": "2026-07-24T20:21:24.201372551Z",
+  "started_at": "2026-07-24T19:20:28.893869306Z"
 }
