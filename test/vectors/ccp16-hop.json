@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "CCP-12 synchronized hop vectors matching spec/02a:120 SelectChannel pseudocode using shared hash_32(FNV). Independent oracle per test integrity rules. Includes SFN wrap, multi-channel (8/16), rendezvous, density fallback. Covers ccp16-hop.json.",
+  "description": "CCP-12 synchronized hop vectors matching spec/02a:120 SelectChannel pseudocode using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Includes SFN wrap, multi-channel (8/16), rendezvous, density fallback.",
   "vectors": [
     {
       "name": "hop_sfn0_8ch",

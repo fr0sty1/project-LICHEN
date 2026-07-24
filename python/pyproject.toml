@@ -119,3 +119,4 @@ module = [
     "lichen.coap.secure",
 ]
 disable_error_code = ["misc"]
+

@@ -1804,7 +1804,7 @@ def ccp16_vectors() -> list[dict]:
         ),
         _v(
             "select_channel_sf12_low_snr",
-            "snr<-5 triggers sf=12. Channel computed via hash (density<=8 so non-zero).",
+            "snr<-5 triggers sf=12. Channel via hash (density<=8 so non-zero).",
             2, 4, -10, 500,
         ),
         _v(
@@ -1892,12 +1892,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
 
 
 def ccp9_vectors() -> list[dict]:
-    # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
-    # oracles for announce-based rendezvous, control channel (CH0) fallback for
-    # unknown peers, integration with synchronized_hop_channel (CCP-12 preference),
-    # initial contact, known-peer prediction, announce channel field parsing.
-    # Matches spec 02a-coordinated-capacity.md CCP-9 section and python sim/medium.py
-    # rendezvous logic. Mathematical, no code-under-test dependency.
+    # CCP-9 rendezvous mechanisms from da2q multi-channel context.
     return [
         {
             "name": "announce_rendezvous_channel",
@@ -1926,7 +1921,7 @@ def ccp9_vectors() -> list[dict]:
         },
         {
             "name": "announce_channel_parse_roundtrip",
-            "description": "Announce packet with channel field encodes/decodes consistently. Tests L2 payload dispatch for rendezvous metadata. Independent oracle bytes from spec L2 dispatch + wire format (no code-under-test as oracle).",
+            "description": "Announce packet with channel field encodes/decodes consistently. Tests L2 payload dispatch for rendezvous metadata. Independent oracle bytes from spec L2 dispatch + wire format (no LICHEN code).",
             "channel": 2,
             "l2_dispatch": L2_DISPATCH_ROUTING,
             "encoded": _l2_announce_with_channel(2).hex(),
@@ -1951,8 +1946,6 @@ def ccp13_vectors() -> list[dict]:
 
     Independent math oracles for prune/eviction, partial overlap proration,
     remaining_ms, usage_permille, can_transmit, next_tx_available_ms.
-    Matches Rust lichen-core::duty_cycle, C lichen_duty_cycle_* in hal.c,
-    and python sim exactly per test integrity rules. No impl dependency.
     """
     return [
         {
@@ -2112,32 +2105,32 @@ def main() -> None:
     )
     _write(
         "ccp_load_balancing.json",
-        "CCP load balancing and TDMA vectors with independent math oracles (hash_32, drift calc from spec).",
+        "CCP load balancing and TDMA vectors using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code).",
         ccp_load_balancing_vectors(),
     )
     _write(
         "ccp16.json",
-        "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test. Uses hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Matches input/output ccp_vector schema.",
+        "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test. Uses hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code).",
         ccp16_vectors(),
     )
     _write(
         "ccp16-hop.json",
-        "CCP-12 synchronized hop vectors matching spec/02a:120 SelectChannel pseudocode using shared hash_32(FNV). Independent oracle per test integrity rules. Includes SFN wrap, multi-channel (8/16), rendezvous, density fallback. Covers ccp16-hop.json.",
+        "CCP-12 synchronized hop vectors matching spec/02a:120 SelectChannel pseudocode using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Includes SFN wrap, multi-channel (8/16), rendezvous, density fallback.",
         ccp12_synchronized_hop_vectors(),
     )
     _write(
         "ccp9.json",
-        "CCP-9 rendezvous vectors using independent _l2_announce_with_channel oracle (exact wire format, no AnnounceMessage dep) and math from spec.",
+        "CCP-9 rendezvous vectors using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code).",
         ccp9_vectors(),
     )
     _write(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test).",
+        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (no LICHEN code).",
         ccp15_vectors(),
     )
     _write(
         "ccp13.json",
-        "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C, Python sim exactly. No code-under-test dependency.",
+        "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Independent external arithmetic oracle (no LICHEN code).",
         ccp13_vectors(),
     )
     _write(
@@ -2162,7 +2155,7 @@ def main() -> None:
     )
     _write(
         "edhoc.json",
-        "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no code-under-test). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte. Follows oscore/schnorr48 patterns and test integrity rules.",
+        "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no LICHEN code). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte.",
         edhoc_vectors(),
     )
 
