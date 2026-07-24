@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-7mns",
+  "title": "[review] project-LICHEN-iaui.3: pre-existing compilation errors in Rust edhoc.rs",
+  "description": "This commit (project-LICHEN-iaui.3) is correct — it properly wipes ed_seed in all C code paths and wraps seed in Zeroizing on the Rust side.\n\nHOWEVER, the Rust file rust/lichen-oscore/src/edhoc.rs has pre-existing compilation errors (not introduced by this commit) that were discovered during review:\n\n1. E0252: Duplicate imports of CryptoRng and RngCore at line 33 (redundant with line 32)\n2. E0428: Duplicate function definitions for build_context_2 (lines 444, 470), build_context_3 (lines 451, 480), build_signature_structure (lines 458, 491)\n3. E0425: PendingMessage2 and PendingMessage3 types referenced but not in scope (lines 750, 837, 1232, 1298) — likely renamed to Lifecycle enum variants\n4. E0119: Conflicting Zeroize implementations via #[derive] and manual impl for both EdhocInitiator (line 581) and EdhocResponder (line 954) — double impl conflict\n\nThese must be fixed before the crate can compile with --all-features.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:51.186093593Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:51.186093593Z"
+}
