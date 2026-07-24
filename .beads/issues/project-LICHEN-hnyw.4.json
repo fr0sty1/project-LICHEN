@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.4",
   "title": "Verify clean git state, run cargo fmt/clippy/tests across Rust workspace and close remaining conflicts",
   "description": "Ensure no merge markers, clean build with no_std+heapless, forbid unsafe where required, run full quality gates (fmt, clippy, test vectors match). Update any related files.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
