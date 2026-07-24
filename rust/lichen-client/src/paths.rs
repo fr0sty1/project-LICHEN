@@ -17,6 +17,9 @@ pub const STATUS: &str = "/status";
 /// Neighbor / link-quality table (GET).
 pub const STATUS_NEIGHBORS: &str = "/status/neighbors";
 
+/// Routing table (GET). §17.5.3.
+pub const STATUS_ROUTES: &str = "/status/routes";
+
 /// Read the inbox (GET, Observable).
 pub const MSG_INBOX: &str = "/msg/inbox";
 
