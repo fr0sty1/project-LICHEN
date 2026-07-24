@@ -240,7 +240,7 @@ class TestFuzz:
         frames = list(reader)
 
         assert len(frames) == len(expected)
-        for frame, (exp_port, exp_data) in zip(frames, expected, strict=True):
+        for frame, (exp_port, exp_data) in zip(frames, expected):
             assert frame.port == exp_port
             assert frame.data == exp_data
 
