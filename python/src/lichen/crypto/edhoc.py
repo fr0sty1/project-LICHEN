@@ -386,7 +386,7 @@ class EdhocInitiator:
             self._c_r = c_r
             g_xy = _x25519_shared_secret(self._eph_sk, g_y)
             h_msg1 = _compute_th(self._msg1)
-            th_2_input = g_y + h_msg1
+            th_2_input = g_y + _encode_connection_id(c_r) + h_msg1
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
             self._prk_3e2m = self._prk_2e
@@ -595,7 +595,7 @@ class EdhocResponder:
             self._c_i = c_i
             g_xy = _x25519_shared_secret(self._eph_sk, g_x)
             h_msg1 = _compute_th(message_1)
-            th_2_input = self._eph_pk + h_msg1
+            th_2_input = self._eph_pk + _encode_connection_id(self.c_r) + h_msg1
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
             self._prk_3e2m = self._prk_2e
