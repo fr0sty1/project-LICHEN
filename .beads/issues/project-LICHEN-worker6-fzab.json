@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fzab",
+  "title": "[review] project-LICHEN-636h.3: DispatchMessage log reads rxOneShot after mutation",
+  "description": "In SX1262.cs DispatchMessage at line 766 (RX_PACKET case), the debug log `this.Log(LogLevel.Debug, \"RX_PACKET {0} bytes (async) oneShot={1}\", rxLen, rxOneShot)` reads rxOneShot after lines 759-762 may have already set it to false (when rxOneShot was true). The log will always show `oneShot=False` for one-shot RX_PACKETs, making diagnostic output misleading. Fix: capture rxOneShot value before the mutation and log the captured value.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:53:13.242684533Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:53:13.242684533Z"
+}
