@@ -952,7 +952,7 @@ impl Context {
             return Err(OscoreError::InvalidParam);
         }
 
-        if !include_piv {
+        let deferred_mark: Option<OscoreSeqNum> = if !include_piv {
             if !self.allow_no_piv_response {
                 return Err(OscoreError::InvalidParam);
             }
@@ -964,7 +964,10 @@ impl Context {
             if self.is_response_reuse(request_seq) {
                 return Err(OscoreError::Replay);
             }
-        }
+            Some(request_seq)
+        } else {
+            None
+        };
 
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
@@ -976,10 +979,6 @@ impl Context {
                 let len = seq.encode_piv(&mut piv);
                 (piv, len, Some(len))
             } else {
-                let request_seq =
-                    OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
-                self.mark_response_used(request_seq);
-
                 let mut piv = [0u8; PIV_MAX_LEN];
                 piv[..request_piv.len()].copy_from_slice(request_piv);
                 (piv, request_piv.len(), None)
@@ -1036,6 +1035,10 @@ impl Context {
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
             opt.extend_from_slice(&nonce_piv[..len])
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
+        }
+
+        if let Some(seq) = deferred_mark {
+            self.mark_response_used(seq);
         }
 
         Ok((ct_out, opt))
