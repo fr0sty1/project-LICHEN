@@ -17,9 +17,9 @@
 
 use core::fmt;
 
-use lichen_link::frame::{
-    AddrMode, Encryption, FrameError, LichenFrame, MicLength, Signature, MAX_FRAME_LEN,
-};
+use lichen_link::frame::{FrameError, LichenFrame, MAX_FRAME_LEN};
+#[cfg(test)]
+use lichen_link::frame::{AddrMode, Encryption, MicLength, Signature};
 use lichen_link::seqnum::LinkSeqNum;
 
 use crate::framing::{kiss_decode, kiss_encode, kiss_unescape, KissCommand, KissError, FEND};
@@ -88,7 +88,7 @@ impl From<FrameError> for BridgeError {
     fn from(e: FrameError) -> Self {
         match e {
             FrameError::FrameTooLarge => Self::PayloadTooLarge,
-            FrameError::BufferTooSmall => Self::BufferTooSmall,
+            FrameError::BufferTooSmall(_) => Self::BufferTooSmall,
             _ => Self::Frame(e),
         }
     }
@@ -328,66 +328,6 @@ impl KissBridge {
         self.encode_payload(&work_buf[..frame_len], port, out)
     }
 
-    /// Create a minimal LICHEN frame from payload and encode as KISS.
-    ///
-    /// # SECURITY: Creates UNSIGNED frames
-    ///
-    /// This method produces frames with `Signature::Absent`, violating spec 8.3
-    /// which requires "Every originated frame carries a Schnorr signature."
-    ///
-    /// **Use only for:**
-    /// - Loopback testing where signature verification is disabled
-    /// - Debugging with a known-permissive receiver
-    ///
-    /// **For production TX:** Use `lichen_link::LinkLayer::build_frame` (which
-    /// signs with the node's identity), then pass the result to `encode_link_frame`.
-    ///
-    /// # Arguments
-    ///
-    /// * `payload` - Application payload bytes
-    /// * `dst_addr` - Destination address (empty for broadcast)
-    /// * `port` - KISS port
-    /// * `work_buf` - Working buffer for frame serialization
-    /// * `out` - Output buffer for KISS frame
-    ///
-    /// # Returns
-    ///
-    /// Number of bytes written to `out`, or error.
-    pub fn encode_payload_as_frame(
-        &mut self,
-        payload: &[u8],
-        dst_addr: &[u8],
-        port: u8,
-        work_buf: &mut [u8],
-        out: &mut [u8],
-    ) -> Result<usize, BridgeError> {
-        // Determine address mode from dst_addr length
-        let addr_mode = match dst_addr.len() {
-            0 => AddrMode::None,
-            2 => AddrMode::Short,
-            8 => AddrMode::Extended,
-            len => return Err(BridgeError::InvalidAddressLength(len)),
-        };
-
-        // Unsigned frames have no MIC; signed frames are built by the security layer.
-        let mic = [];
-
-        let seqnum = self.seqnum.fetch_increment();
-
-        let frame = LichenFrame {
-            epoch: self.default_epoch,
-            seqnum,
-            dst_addr,
-            payload,
-            mic: &mic,
-            addr_mode,
-            mic_length: MicLength::Bits32,
-            signature: Signature::Absent,
-            encryption: Encryption::Plaintext,
-        };
-
-        self.encode_link_frame(&frame, port, work_buf, out)
-    }
 }
 
 /// Check if a byte slice starts with a KISS frame delimiter.
@@ -553,54 +493,6 @@ mod tests {
         assert_eq!(decoded_frame.epoch, 5);
         assert_eq!(decoded_frame.seqnum.get(), 100);
         assert_eq!(decoded_frame.payload, b"test");
-    }
-
-    #[test]
-    fn test_encode_payload_as_frame_broadcast() {
-        let mut bridge = KissBridge::with_epoch(200);
-        bridge.set_epoch(130); // Valid epoch in [128, 255] per spec section 4.4
-        bridge.set_seqnum(LinkSeqNum::new(10));
-
-        let mut work_buf = [0u8; 256];
-        let mut out = [0u8; 128];
-        let len = bridge
-            .encode_payload_as_frame(b"hello", &[], PORT_RAW, &mut work_buf, &mut out)
-            .unwrap();
-
-        // Verify seqnum incremented
-        assert_eq!(bridge.seqnum().get(), 11);
-
-        // Decode and verify
-        let mut decode_buf = [0u8; 256];
-        let frame = bridge
-            .handle_kiss_frame(&out[..len], &mut decode_buf)
-            .unwrap();
-
-        assert_eq!(frame.epoch, 130);
-        assert_eq!(frame.seqnum.get(), 10);
-        assert_eq!(frame.payload, b"hello");
-        assert_eq!(frame.addr_mode, AddrMode::None);
-    }
-
-    #[test]
-    fn test_encode_payload_as_frame_short_addr() {
-        let mut bridge = KissBridge::default();
-
-        let dst_addr = [0xAB, 0xCD];
-        let mut work_buf = [0u8; 256];
-        let mut out = [0u8; 128];
-        let len = bridge
-            .encode_payload_as_frame(b"hi", &dst_addr, PORT_RAW, &mut work_buf, &mut out)
-            .unwrap();
-
-        let mut decode_buf = [0u8; 256];
-        let frame = bridge
-            .handle_kiss_frame(&out[..len], &mut decode_buf)
-            .unwrap();
-
-        assert_eq!(frame.dst_addr, &[0xAB, 0xCD]);
-        assert_eq!(frame.addr_mode, AddrMode::Short);
-        assert_eq!(frame.payload, b"hi");
     }
 
     #[test]
