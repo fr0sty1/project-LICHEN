@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-hejn",
   "title": "[review] project-LICHEN-worker6-p4bl: 8 unit test failures in lichen-oscore after API changes",
   "description": "Commit ff40b86 ('project-LICHEN-worker6-p4bl: fix') changed several public APIs in lichen-oscore:\n- protect_response now requires an additional 'include_piv: bool' parameter\n- Context::new now takes id_context as third argument (previously omitted)\n- OscoreSeqNum::new returns Option\u003cOscoreSeqNum\u003e instead of OscoreSeqNum\n- Context::load_existing removed in favor of Context::new().restore_existing()\n\n8 unit tests in lib.rs fail because their call sites were not updated to match the new signatures:\n1. delayed_explicit_piv_ordinary_response_ignores_peer_replay_window\n2. dropped_pending_response_preserves_committed_window_across_large_jump\n3. fresh_context_activates_only_after_atomic_registration\n4. oversized_explicit_piv_response_does_not_poison_valid_retry\n5. public_unprotect_rejects_malformed_inner_options\n6. response_without_piv_is_one_shot_per_request\n7. response_without_piv_requires_requester_identity\n8. test_roundtrip_with_0xff_in_class_e_options\n\nAll 10 integration tests in tests/vectors.rs pass (including rewritten test_request_protection_vectors and test_response_protection_vectors which now use hardcoded independent oracles).",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:22:45.262166776Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:24:21.290824921Z",
-  "started_at": "2026-07-24T18:24:21.290824921Z",
-  "lease_expires_at": "2026-07-24T18:29:21.290824921Z",
-  "heartbeat_at": "2026-07-24T18:24:21.290824921Z"
+  "updated_at": "2026-07-24T18:22:45.262166776Z"
 }

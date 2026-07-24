@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-1bg2",
+  "title": "[review] project-LICHEN-worker6-ow6z: Fragment::from_bytes signature changed but 6 test call sites still pass tile buffer",
+  "description": "Commit 344c8fa removed the tile buffer parameter from Fragment::from_bytes (now takes only data: \u0026[u8]) and updated the fuzz target, but missed 6 call sites in tests/fragmentation_vectors.rs (lines 214, 241, 379) and tests/fragmentation.rs (lines 123, 125, 236) that still pass \u0026mut tile as second argument. cargo test -p lichen-schc fails with E0061.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:47:02.235989643Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:47:02.235989643Z"
+}
