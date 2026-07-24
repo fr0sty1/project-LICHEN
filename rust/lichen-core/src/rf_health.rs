@@ -235,7 +235,7 @@ impl PacketLossRate {
 }
 
 impl RfHealthMetrics {
-    /// Adaptive SF selection per spec/02a-coordinated-capacity.md §2a.3
+    /// Adaptive SF selection per spec/02a-coordinated-capacity.md §2a.7
     /// table and pseudocode (critical conditions first). Uses named constants
     /// matching the IF conditions exactly. See also 02-physical-link.md:3.5.
     #[inline]
