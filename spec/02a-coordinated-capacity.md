@@ -25,9 +25,10 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 7. 2a.5. Desync Recovery State Machine
 8. 2a.6. Regional Channel Plans and CH0 Rules
 9. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
-10. Appendix A: Test Vectors and Constants
-11. Implementation Status
-12. References
+10. 2a.8. CCP-12 Synchronized Hopping
+11. Appendix A: Test Vectors and Constants
+12. Implementation Status
+13. References
 
 ## Overview
 
@@ -163,11 +164,73 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2) (see rf_health.rs
 
 (The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
+## 2a.8. CCP-12 Synchronized Hopping
+
+Synchronized channel hopping (CCP-12) enables multi-channel TDMA operation where all nodes transition through a deterministic hop sequence locked to the SFN. This provides statistical interference avoidance, frequency diversity, and predictable rendezvous without per-link negotiation.
+
+### Synchronization Mechanism
+
+All nodes MUST derive the current hop channel from:
+
+```
+hop_seed   = EUI64[0..3] XOR epoch          // 4-byte seed derived from EUI64 and network epoch
+hop_channel = SynchronizedHopChannel(SFN, hop_seed, NUM_CHANNELS)
+```
+
+Where `SynchronizedHopChannel` is defined in §2a.8.3 pseudocode.
+
+**SFN source priorities (MUST use highest available):**
+1. GNSS PPS (if GNSS locked): SFN derived from GPS time; stratum 0
+2. DIO beacon (if within 10 hops of root): SFN from root's TDMA beacon; stratum = DIO hop count
+3. Forwarded beacon (if no local sync): relayed SFN with stratum incremented
+
+Nodes MUST NOT use an SFN from a source with stratum > 3 for slot-critical operations, but MAY use it for rendezvous estimation.
+
+### Rendezvous Protocol
+
+Nodes announce their preferred RX channel via `rx_channel` in signed DIO/beacon announcements (see CCP-9, spec/05-routing.md:9.2). The `rx_channel` value is an index into the channel plan (0 = CH0 control channel).
+
+**Rendezvous decision rules:**
+1. A sender that knows the receiver's `rx_channel` (from a recent signed announcement) SHOULD transmit on that channel.
+2. A sender without a recent announcement MUST compute the receiver's hop channel via `SynchronizedHopChannel(receiver_EUI, epoch, NUM_CHANNELS)`.
+3. A node that has not yet joined the DODAG MUST listen on CH0 (channel 0) for beacons and DIOs.
+4. CH0 is the fallback rendezvous channel; all nodes MUST listen on CH0 at least once every `MAX_BEACON_PERIOD` seconds (default 120 s).
+
+### 2a.8.3. Pseudocode (IETF-style, language agnostic)
+
+```
+Procedure SynchronizedHopChannel(SFN, Seed, NumChannels):
+    1. Data = CONCAT(Seed as LE u32 bytes, (SFN AND 0xFFFFFFFF) as LE u32 bytes)
+    2. Hash = FNV1A32(Data)  // basis 0x811c9dc5
+    3. N = MAX(NumChannels, 3)
+    4. RETURN 1 + (Hash MOD N)
+```
+
+The result is a channel index in the range [1, NumChannels] (channel 0 is reserved for CH0 control).
+
+All implementations MUST produce identical results to `test/vectors/ccp16-hop.json`.
+
+### 2a.8.4. Hop Sequence Properties
+
+- The sequence is deterministic: given the same (seed, SFN), all nodes select the same channel.
+- The sequence is full-period: for a given seed, every channel in [1, NumChannels] is reachable (FNV-1a32 covers the full 32-bit output space before MOD).
+- SFN wrap-around is handled correctly: (§2a.2 delta arithmetic, unsigned 32-bit modular). Test vector `ccp16-hop.json` includes an SFN=0xFFFFFFFF wraparound case.
+- A node MUST NOT transmit on a hop channel unless it is within its assigned TDMA slot (see §2a.2).
+- GPS-synchronized nodes MAY use the SFN derived from GPS time as a more accurate reference; the hop sequence computation is identical.
+
+### 2a.8.5. Implementation Requirements
+
+- `synchronized_hop_channel(SFN, seed, num_channels)` in `lichen-core` MUST match `python/src/lichen/sim/tdma.py:16`.
+- Zephyr implementations in `lichen/subsys/lichen/link.*` MUST use the same FNV-1a32 `lichen_hash_32` as the TDMA slot computation.
+- Rendezvous announcements in DIO/beacon MUST carry `rx_channel` in the signed data (CCP-9 da2q format).
+- Nodes MUST record per-neighbor `rx_channel` from latest signed announcement, validated against the sender's known EUI64.
+
 ## Implementation Status
 
 - `test/vectors/ccp15.json` — CCP-14 congestion control vectors (SF, EMA, load_factor, FNV-1a32 hash) implemented and validated against independent arithmetic oracle (no code under test).
 - Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`, `ccp15.json`.
-- Kconfig options for CCP14, CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
+- CCP-12 synchronized hopping (Section 2a.8) implemented in Python simulator (`python/src/lichen/sim/tdma.py`, `node.py`, `medium.py`, `protocol.py`, `simulation.py`); test vectors in `test/vectors/ccp16-hop.json` validated against independent arithmetic oracle.
+- Kconfig options for CCP12, CCP14, CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
 - Adaptive SF, desync FSM, channel plans, Multi-RX gateway support implemented and tested.
 - All codereview passes closed. Capacity gains verified in simulation per independent oracles.
 
@@ -179,6 +242,7 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2) (see rf_health.rs
 
 - `test/vectors/ccp15.json` (authoritative for CCP-14 congestion control: SF, EMA, load_factor, FNV-1a32 hash; MUST match exactly)
 - `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
+- `test/vectors/ccp16-hop.json` (authoritative for CCP-12 synchronized hopping: SFN-derived hop channel, seed, wrap, rendezvous; MUST match exactly)
 
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/drafts/draft-lichen-schc-lora-00.md`
