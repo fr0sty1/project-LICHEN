@@ -223,11 +223,11 @@ Trickle algorithm (RFC 6206) controls DIO transmission rate.
 
 **Parameters:**
 
-| Parameter | Symbol | Value | Rationale |
-|-----------|--------|-------|-----------|
-| Minimum interval | Imin | 4 seconds | Allow network to stabilize |
-| Maximum interval | Imax | 17.5 minutes | 2^8 × Imin, reduce steady-state |
-| Redundancy constant | k | 10 | High k = more suppression |
+| Parameter | Symbol | Value | Rationale | Source |
+|-----------|--------|-------|-----------|--------|
+| Minimum interval | Imin | 4 seconds | Allow network to stabilize | `constants.toml:59` |
+| Maximum interval | Imax | 17.5 minutes | 2^8 × Imin, reduce steady-state | `constants.toml:60` |
+| Redundancy constant | k | 10 | High k = more suppression | `constants.toml:61` |
 
 ### 6.2. Interval Calculation
 
@@ -704,7 +704,7 @@ When DODAG root advertises prefix:
 
 ### 10.4. Implementation Status
 
-The `lichen-rpl` crate (`#![no_std]`, `std` only for simulator/gateway) and the matching C port in `lichen/subsys/lichen/rpl/` fully implement the profile: DAO Origin Signature Option (temporary type 0x12, 56-octet), replay-floor persistence, non-storing source routing per RFC 6554, MRHOF+CCP-16, Trickle timers, and all verification rules. Validated bit-exactly against `test/vectors/dao_origin_vectors.rs`, `rpl_route_state_vectors.rs`, and `ccp16*.json`. This document is now the canonical normative reference; `spec/appendix-rpl.md` is non-normative summary only. Merge conflicts from parallel worktrees resolved and deduplicated.
+The `lichen-rpl` crate (`#![no_std]`, `std` only for simulator/gateway) and the matching C port in `lichen/subsys/lichen/rpl/` (`lichen_rpl_dodag_init()`, `rpl_dodag.h`) fully implement the profile: DAO Origin Signature Option (temporary type 0x12, 56-octet), replay-floor persistence, non-storing source routing per RFC 6554, MRHOF+CCP-16, Trickle timers (params from `constants.toml:57-61`), and all verification rules. Validated bit-exactly against `test/vectors/dao_origin_vectors.rs`, `rpl_route_state_vectors.rs`, and `ccp16*.json`. This document is now the canonical normative reference; `spec/appendix-rpl.md` is non-normative summary only. Merge conflicts from parallel worktrees resolved and deduplicated.
 
 ## 11. Security Considerations
 
