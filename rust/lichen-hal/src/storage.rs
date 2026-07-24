@@ -98,7 +98,9 @@ fn read_parsed_update<S: NonVolatile>(
         RedundantOpenError::Storage(error) => RedundantUpdateError::Storage(error),
         _ => RedundantUpdateError::Corrupt,
     })?;
-    Ok(raw.and_then(|raw| parse_slot(raw, &magic)).map(|(generation, payload)| (generation, payload.len())))
+    Ok(raw
+        .and_then(|raw| parse_slot(raw, &magic))
+        .map(|(generation, payload)| (generation, payload.len())))
 }
 
 /// Open the newest valid value from two alternating slots.

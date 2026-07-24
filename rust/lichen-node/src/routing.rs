@@ -48,9 +48,7 @@ pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
 
 #[cfg(feature = "std")]
 fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
-    let imin_ms = 1u32
-        .checked_shl(u32::from(config.dio_int_min))
-        .unwrap_or(0);
+    let imin_ms = 1u32.checked_shl(u32::from(config.dio_int_min)).unwrap_or(0);
     if imin_ms == 0 || config.dio_redundancy_const == 0 {
         return None;
     }
@@ -333,12 +331,7 @@ impl NeighborTable {
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().map_or(false, |neighbor| {
-                !policy.is_alive(
-                    neighbor.last_seen_ms,
-                    now_ms,
-                    max_age_ms,
-                    heard_consistent,
-                )
+                !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms, heard_consistent)
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
@@ -395,12 +388,7 @@ impl NeighborTable {
         now_ms: u64,
         max_age_ms: u64,
     ) -> bool {
-        let Some(neighbor) = self
-            .entries
-            .iter()
-            .flatten()
-            .find(|n| n.addr == *addr)
-        else {
+        let Some(neighbor) = self.entries.iter().flatten().find(|n| n.addr == *addr) else {
             return false;
         };
         let age = now_ms.saturating_sub(neighbor.last_seen_ms);
@@ -1075,11 +1063,17 @@ impl Router {
         let heard_consistent = self.trickle.counter;
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
-        self.neighbors
-            .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
+        self.neighbors.prune_with_removed(
+            policy,
+            now_ms,
+            max_age_ms,
+            heard_consistent,
+            |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
-            }, policy);
+            },
+            policy,
+        );
         if removed_len != 0 {
             self.dodag.remove_parents(&removed[..removed_len]);
         }
