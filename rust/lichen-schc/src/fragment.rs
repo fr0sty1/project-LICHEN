@@ -196,15 +196,18 @@ impl<'a> Fragment<'a> {
                 mic,
             })
         } else {
-            let payload_len = (data.len() - 2).min(tile.len());
-            for i in 0..payload_len {
+            let content_bytes = data.len() - 2;
+            if content_bytes != TILE_SIZE {
+                return Err(FragmentError::InvalidTileLength);
+            }
+            for i in 0..TILE_SIZE {
                 tile[i] = ((data[1 + i] & 1) << 7) | (data[2 + i] >> 1);
             }
             Ok(Fragment {
                 rule_id,
                 window,
                 fcn,
-                payload: &tile[..payload_len],
+                payload: &tile[..TILE_SIZE],
                 mic: [0u8; MIC_LENGTH],
             })
         }
@@ -1312,9 +1315,9 @@ mod tests {
             payload: &tile,
             mic: [0; MIC_LENGTH],
         };
-        let mut wire = [0xff; TILE_SIZE + 3];
+        let mut wire = [0xff; TILE_SIZE + 2];
         assert_eq!(fragment.write_to(&mut wire), Ok(wire.len()));
-        assert_eq!(&wire[..2], &[0x78, 0x3e]);
+        assert_eq!(&wire[..2], &[0x78, 0x7c]);
         assert!(wire[2..].iter().all(|&byte| byte == 0));
     }
 
