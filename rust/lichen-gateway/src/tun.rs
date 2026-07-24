@@ -37,6 +37,8 @@ pub struct TunDevice {
 impl TunDevice {
     /// Create and open a TUN interface named `name` (e.g. `"lichen0"`).
     pub fn open(name: &str) -> io::Result<Self> {
+        // SAFETY: `c"/dev/net/tun"` is a valid null-terminated C string; `O_RDWR` is a valid
+        // libc flag; the fd returned is checked for validity (< 0) immediately below.
         let fd = unsafe {
             libc::open(
                 c"/dev/net/tun".as_ptr() as *const libc::c_char,
@@ -65,9 +67,13 @@ impl TunDevice {
         let nb = name.len().min(15);
         ifr.ifr_name[..nb].copy_from_slice(&name.as_bytes()[..nb]);
 
+        // SAFETY: `fd` is a valid file descriptor (checked above); `TUNSETIFF` is a valid ioctl
+        // number; `ifr` is a properly initialised `Ifreq` struct with matching ABI layout (#[repr(C)]).
         let rc = unsafe { libc::ioctl(fd, TUNSETIFF, &ifr as *const Ifreq as *const libc::c_void) };
         if rc < 0 {
             let e = io::Error::last_os_error();
+            // SAFETY: `fd` is a valid file descriptor (ioctl succeeded); no other thread is
+            // using it concurrently during this error path; we are about to abandon it.
             unsafe { libc::close(fd) };
             return Err(io::Error::new(
                 e.kind(),
@@ -76,9 +82,13 @@ impl TunDevice {
         }
 
         // Must be non-blocking for tokio AsyncFd.
+        // SAFETY: `fd` is valid and owned by this thread; `F_GETFL` has no preconditions.
         let fl = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+        // SAFETY: `fd` is valid; `fl` was just retrieved from `F_GETFL` and `O_NONBLOCK` is
+        // a valid flag; the result is checked immediately below.
         if fl < 0 || unsafe { libc::fcntl(fd, libc::F_SETFL, fl | libc::O_NONBLOCK) } < 0 {
             let e = io::Error::last_os_error();
+            // SAFETY: same as above — `fd` is still valid and owned; no concurrent close.
             unsafe { libc::close(fd) };
             return Err(io::Error::new(
                 e.kind(),
@@ -86,6 +96,8 @@ impl TunDevice {
             ));
         }
 
+        // SAFETY: `fd` is a valid, owned file descriptor; `OwnedFd::from_raw_fd` takes ownership
+        // and will close it on drop — no other code holds a reference to this fd.
         let owned = unsafe { OwnedFd::from_raw_fd(fd) };
         info!(name, "TUN device opened");
         Ok(Self {
@@ -99,6 +111,9 @@ impl TunDevice {
         loop {
             let mut guard = self.inner.readable().await?;
             match guard.try_io(|inner| {
+                // SAFETY: `inner.as_raw_fd()` returns the valid fd owned by `self.inner`;
+                // `buf` is a mutable slice, so `as_mut_ptr()` is valid for `buf.len()` bytes;
+                // the return value is checked for errors (< 0) immediately.
                 let n = unsafe {
                     libc::read(
                         inner.as_raw_fd(),
@@ -131,6 +146,10 @@ impl TunDevice {
         loop {
             let mut guard = self.inner.writable().await?;
             match guard.try_io(|inner| {
+                // SAFETY: `inner.as_raw_fd()` is a valid fd; `buf.as_ptr().add(written)` is
+                // within the bounds of `buf` because `written < buf.len()` (we only loop when
+                // `written < buf.len()` and `written` is always in-bounds); the return value
+                // is checked for errors.
                 let n = unsafe {
                     libc::write(
                         inner.as_raw_fd(),
