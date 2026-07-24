@@ -17,10 +17,10 @@
     },
     {
       "name": "test-seed-01",
-      "pubkey": "0101010101010101010101010101010101010101010101010101010101010101",
-      "hash8": "72cd6e8422c407fb",
-      "iid": "70cd6e8422c407fb",
-      "human_address": "71KB-EGGH-C81ZV"
+      "pubkey": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "hash8": "34750f98bd59fcfc",
+      "iid": "34750f98bd59fcfc",
+      "human_address": "38X8-FK2Y-NKZ7W"
     }
   ]
 }

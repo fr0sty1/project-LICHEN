@@ -1,12 +1,12 @@
 [
   {
-    "description": "Test vector matching Rust lichen-link identity test with seed 0x01*32 (pubkey derived, but shown for reference)",
-    "pubkey": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "ygg_addr": "0200000000000000e1b0c44298fc1c14"
+    "description": "Yggdrasil address from Ed25519 pubkey derived from seed 0x01*32. ygg_addr = 0x02 || SHA-512(pubkey)[0:7] || IID (U/L-bit-cleared SHA-256(pubkey)[0:8]).",
+    "pubkey": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+    "ygg_addr": "023784728ae7309e34750f98bd59fcfc"
   },
   {
-    "description": "Zero pubkey vector for IID U/L bit test",
+    "description": "Zero pubkey vector for IID U/L bit verification and Yggdrasil prefix.",
     "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
-    "ygg_addr": "02d4a4a4a4a4a4a4e1b0c44298fc1c14"
+    "ygg_addr": "025046adc1dba83864687aadf862bd77"
   }
 ]
