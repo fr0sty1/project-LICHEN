@@ -922,6 +922,23 @@ impl Context {
     ///
     /// Returns (ciphertext, oscore_option_value).
     ///
+    /// # Durable Storage Warning
+    ///
+    /// When `include_piv: true`, this method increments the in-memory sender
+    /// sequence **without** going through an atomic `SenderStateStore`
+    /// compare-and-exchange reservation. A crash after encryption but before
+    /// the caller persists the new sequence will cause nonce reuse on restore,
+    /// breaking AES-CCM confidentiality.
+    ///
+    /// **Production callers that use durable storage MUST use**
+    /// `reserve_sender` + `ReservedSender::protect_response_with_piv`
+    /// **instead**, which atomically commits the new sequence before encryption.
+    ///
+    /// This method remains available as a convenience for:
+    ///  - Test code
+    ///  - Pure in-memory contexts that never persist sender state
+    ///  - The `include_piv: false` path (no sequence increment, safe regardless)
+    ///
     /// # Parameters
     /// - `code`: Response code (e.g., 0x45 for 2.05 Content)
     /// - `class_e_options`: Class E CoAP options to encrypt
@@ -2380,7 +2397,7 @@ mod tests {
 
         let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
         let (ciphertext, option) = c7
-            .protect_response(0x45, &[], payload, &[], &[0x14])
+            .protect_response(0x45, &[], payload, &[], &[0x14], false)
             .unwrap();
         assert_eq!(option.as_slice(), b"");
         assert_eq!(
@@ -2527,15 +2544,15 @@ mod tests {
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
 
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
-        assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3])
+        assert!(ctx_ref
+            .protect_response(0x45, &[], b"response", &[0], &[3], false)
             .is_ok());
     }
 
@@ -2556,7 +2573,7 @@ mod tests {
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2831,7 +2848,7 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2913,7 +2930,7 @@ mod tests {
         responder.common_iv = [0; NONCE_LEN];
 
         let (ciphertext, option) = responder
-            .protect_response(0x45, &[], &[], b"\xaa", b"\x05")
+            .protect_response(0x45, &[], &[], b"\xaa", b"\x05", false)
             .unwrap();
 
         assert_eq!(ciphertext.as_slice(), &hex!("26f4d77f5a397d9c0a"));
@@ -3359,12 +3376,12 @@ mod tests {
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
             .unwrap();
     }
 
@@ -3395,21 +3412,21 @@ mod tests {
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
