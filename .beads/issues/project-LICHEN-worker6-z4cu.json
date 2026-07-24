@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-z4cu",
   "title": "[review] project-LICHEN-worker6-r05h: .tmp_check/test.rs accidentally committed",
   "description": "Commit 592dfa855 introduces `.tmp_check/test.rs`, a throwaway Rust file with a deliberate compilation error (2-argument transcript_4 called with 3 arguments). This temp check file should not be tracked in version control. The `.tmp_check/` directory is not in `.gitignore`.\n\nFix: remove the file with `git rm .tmp_check/test.rs` and add `.tmp_check/` to `.gitignore`.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T20:09:45.28903682Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:12:24.467698602Z",
-  "started_at": "2026-07-24T20:12:24.467698602Z",
-  "lease_expires_at": "2026-07-24T20:17:24.467698602Z",
-  "heartbeat_at": "2026-07-24T20:12:24.467698602Z"
+  "updated_at": "2026-07-24T20:21:48.179804739Z",
+  "started_at": "2026-07-24T20:12:24.467698602Z"
 }
