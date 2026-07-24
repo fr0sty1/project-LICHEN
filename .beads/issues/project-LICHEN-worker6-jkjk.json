@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-jkjk",
+  "title": "[review] lora_ipv6_mesh-mkk4: deleted SCHC OSCORE compression test vectors without replacements",
+  "description": "The `oscore_linklocal` (rule_id 5) and `oscore_global` (rule_id 6) test vectors were removed from `test/vectors/schc_compression.json` without any replacement vectors.\n\nThese were the only canonical test vectors for OSCORE SCHC compression in the cross-implementation test vectors file. While the unit tests in `python/tests/schc/test_headers_rules.py` still test rule 5/6 round-trip internally, removing canonical vectors eliminates cross-implementation validation for OSCORE SCHC compression.\n\nIf the removed vectors were incorrectly generated (code-under-test as oracle — violating test integrity rules), they should be replaced with independently-verified test vectors (e.g., computed via OpenSSL, pyca/cryptography, or manual hex construction). Simply removing them leaves a coverage gap.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:47:28.439077125Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:47:28.439077125Z"
+}
