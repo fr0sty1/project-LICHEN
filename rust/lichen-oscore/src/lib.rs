@@ -971,6 +971,12 @@ impl Context {
         if !self.active {
             return Err(OscoreError::InvalidParam);
         }
+        if request_kid.len() > NONCE_ID_LEN
+            || OscoreSeqNum::from_piv(request_piv).is_none()
+            || request_kid != self.recipient_id()
+        {
+            return Err(OscoreError::InvalidParam);
+        }
         if !include_piv && !self.allow_no_piv_response {
             return Err(OscoreError::InvalidParam);
         }
