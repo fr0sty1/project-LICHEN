@@ -582,9 +582,9 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
          * 4. This is a driver bug that needs immediate attention, not silent handling
          */
         /* lora_recv() returns int: negative errno on error, byte count on success.
-         * sizeof(rx_buf) is size_t. Cast sizeof to int for comparison since
-         * LICHEN_LORA_MAX_PHY_PAYLOAD (255) fits safely in int. */
-        if (ret > (int)sizeof(rx_buf)) {
+         * At this point ret > 0 (we checked ret < 0 and ret == 0 above), so cast
+         * ret to size_t for a type-safe comparison against sizeof(rx_buf). */
+        if ((size_t)ret > sizeof(rx_buf)) {
             /*
              * Driver returned more bytes than buffer size - corruption likely.
              * Store crash info for post-mortem, transition to ABORTED, and
