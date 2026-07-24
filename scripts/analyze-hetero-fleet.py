@@ -19,7 +19,6 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import DefaultDict
 
 
 @dataclass
@@ -377,8 +376,7 @@ def generate_report(logs_dir: Path, output: Path) -> None:
     if issues:
         lines.append("### Interop Failures")
         lines.append("")
-        for issue in issues:
-            lines.append(issue)
+        lines.extend(issues)
         lines.append("")
     else:
         lines.append("No interop failures detected (all impl pairs communicated).")
@@ -392,19 +390,20 @@ def generate_report(logs_dir: Path, output: Path) -> None:
 
     if missing:
         # Group by implementation
-        by_impl: DefaultDict[str, list[tuple[str, str]]] = defaultdict(list)
+        by_impl: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
         for h, node_id, impl in missing:
             by_impl[impl].append((h, node_id))
 
         for impl in ["py", "rust", "zephyr"]:
-            if impl in by_impl and by_impl[impl]:
-                lines.append(f"### {impl} ({len(by_impl[impl])} missing)")
+            items = by_impl.get(impl)
+            if items:
+                lines.append(f"### {impl} ({len(items)} missing)")
                 lines.append("")
                 # Show first 10, summarize rest
-                for h, node_id in by_impl[impl][:10]:
+                for h, node_id in items[:10]:
                     lines.append(f"- `{h}` from {node_id}")
-                if len(by_impl[impl]) > 10:
-                    lines.append(f"- ... and {len(by_impl[impl]) - 10} more")
+                if len(items) > 10:
+                    lines.append(f"- ... and {len(items) - 10} more")
                 lines.append("")
 
     # Summary

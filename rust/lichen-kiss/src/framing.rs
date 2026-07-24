@@ -543,33 +543,75 @@ impl KissReader {
     }
 }
 
+/// Priority level for queued frames.
+///
+/// Higher-priority values indicate more urgent traffic (0 = highest).
+/// Per spec/appendix-bufferbloat.md §3:
+///   0 = routing control (DIO/DAO)
+///   1 = link-layer ACKs
+///   2 = urgent app messages
+///   3 = bulk data (lowest)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum Priority {
+    /// Routing control (DIO/DAO) — highest.
+    Routing = 0,
+    /// Link-layer ACKs.
+    Ack = 1,
+    /// Urgent application messages.
+    Urgent = 2,
+    /// Bulk data — lowest.
+    Bulk = 3,
+}
+
+impl Priority {
+    /// Convert a u8 (0-3) to a Priority.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(Self::Routing),
+            1 => Some(Self::Ack),
+            2 => Some(Self::Urgent),
+            3 => Some(Self::Bulk),
+            _ => None,
+        }
+    }
+}
+
+/// A queued frame entry with metadata.
+#[derive(Debug, Clone)]
+struct QueuedFrame {
+    encoded: heapless::Vec<u8, 512>,
+    deadline_ms: u64,
+    priority: Priority,
+}
+
 /// Incremental KISS frame writer with output queue.
 ///
-/// Queue frames with `queue_frame()`, then drain encoded bytes with `try_get_frame()`.
+/// Supports time-based expiry (§2) and priority queuing (§3) per
+/// spec/appendix-bufferbloat.md.
 ///
 /// # Example
 ///
 /// ```
 /// # #[cfg(feature = "kiss")]
 /// # {
-/// use lichen_kiss::{KissWriter, KissCommand};
+/// use lichen_kiss::{KissWriter, KissCommand, Priority};
 ///
 /// let mut writer = KissWriter::new();
 /// let mut out = [0u8; 64];
 ///
-/// // Queue a frame
-/// writer.queue_frame(0, KissCommand::Data, b"Hi").unwrap();
+/// // Queue a frame with priority and deadline (ms since epoch)
+/// writer.queue_frame(0, KissCommand::Data, b"Hi", Priority::Bulk, 60_000).unwrap();
 ///
-/// // Get encoded frame
-/// if let Some(len) = writer.try_get_frame(&mut out) {
+/// // Get encoded frame (expired frames are silently dropped)
+/// if let Some(len) = writer.try_get_frame(&mut out, 100_000) {
 ///     // out[..len] contains: FEND, CMD, escaped data, FEND
 /// }
 /// # }
 /// ```
 #[derive(Debug)]
 pub struct KissWriter {
-    // ponytail: 8 frames × 512 bytes each = 4KB max, sufficient for typical TNC traffic
-    queue: heapless::Deque<heapless::Vec<u8, 512>, 8>,
+    queue: heapless::Deque<QueuedFrame, 8>,
 }
 
 impl Default for KissWriter {
@@ -588,46 +630,138 @@ impl KissWriter {
 
     /// Queue a frame for transmission.
     ///
-    /// The frame is pre-encoded (FEND delimiters + escaping) and stored in the queue.
-    /// Returns an error if the queue is full or the frame is too large.
+    /// `deadline_ms` is the absolute deadline in milliseconds (e.g.,
+    /// `Instant::now().as_millis() + 60_000` for a 60-second deadline).
+    /// If the queue is full and the new frame has higher priority than the
+    /// lowest-priority queued frame, the lowest-priority frame is preempted
+    /// (dropped) to make room.
+    ///
+    /// Returns an error if the frame is too large, or if the queue is full
+    /// and the new frame cannot preempt any queued frame.
     pub fn queue_frame(
         &mut self,
         port: u8,
         cmd: KissCommand,
         data: &[u8],
+        priority: Priority,
+        deadline_ms: u64,
     ) -> Result<(), KissError> {
-        self.queue_frame_raw(port, cmd as u8, data)
+        self.queue_frame_raw(port, cmd as u8, data, priority, deadline_ms)
     }
 
     /// Queue a frame with raw command byte.
-    pub fn queue_frame_raw(&mut self, port: u8, cmd: u8, data: &[u8]) -> Result<(), KissError> {
+    pub fn queue_frame_raw(
+        &mut self,
+        port: u8,
+        cmd: u8,
+        data: &[u8],
+        priority: Priority,
+        deadline_ms: u64,
+    ) -> Result<(), KissError> {
         let mut frame: heapless::Vec<u8, 512> = heapless::Vec::new();
         let mut tmp = [0u8; 512];
         let len = kiss_encode_raw(port, cmd, data, &mut tmp)?;
         frame
             .extend_from_slice(&tmp[..len])
             .map_err(|_| KissError::BufferTooSmall)?;
-        self.queue
-            .push_back(frame)
-            .map_err(|_| KissError::BufferTooSmall)?;
+
+        // Try push_back first. If it fails (queue full), attempt preemption.
+        // We must push a QueuedFrame, but it can't move `frame` here since it's
+        // needed in the preemption path. Use `heapless::Vec::clone` for the fast path.
+        let temp = QueuedFrame {
+            encoded: frame.clone(),
+            deadline_ms,
+            priority,
+        };
+        if self.queue.push_back(temp).is_ok() {
+            return Ok(());
+        }
+
+        // Queue is full — try preemption. Find the lowest-priority frame
+        // (highest numeric priority value). If the new frame has equal or lower
+        // priority, fall through and return an error.
+        let lowest_priority = self
+            .queue
+            .iter()
+            .max_by_key(|f| f.priority)
+            .map(|f| f.priority)
+            .unwrap();
+        if priority >= lowest_priority {
+            return Err(KissError::BufferTooSmall);
+        }
+
+        // Preempt: remove one frame with the lowest priority, push new one.
+        // Rebuild the deque dropping the first low-priority frame found.
+        let old = self.queue.clone();
+        self.queue.clear();
+        let mut removed = false;
+        for f in old.iter() {
+            if !removed && f.priority == lowest_priority {
+                removed = true;
+            } else {
+                let _ = self.queue.push_back(f.clone());
+            }
+        }
+        let _ = self.queue.push_back(QueuedFrame {
+            encoded: frame,
+            deadline_ms,
+            priority,
+        });
         Ok(())
     }
 
-    /// Try to get the next encoded frame from the queue.
+    /// Try to get the next non-expired encoded frame from the queue.
     ///
-    /// Returns the number of bytes written to `out`, or `None` if queue is empty
-    /// or the output buffer is too small. Use `pending_count()` to distinguish.
-    pub fn try_get_frame(&mut self, out: &mut [u8]) -> Option<usize> {
-        // Peek first to avoid popping a frame we can't fully copy
-        let frame = self.queue.front()?;
-        if out.len() < frame.len() {
+    /// Expired frames (those whose deadline has passed) are silently dropped.
+    /// Returns the number of bytes written to `out`, or `None` if the queue is
+    /// empty, all frames are expired, or the output buffer is too small.
+    /// Use `pending_count()` to distinguish empty from too-small buffer.
+    ///
+    /// `now_ms` is the current time in milliseconds (e.g.,
+    /// `Instant::now().as_millis()`).
+    pub fn try_get_frame(&mut self, out: &mut [u8], now_ms: u64) -> Option<usize> {
+        // Drop expired frames from the front
+        while let Some(front) = self.queue.front() {
+            if front.deadline_ms < now_ms {
+                self.queue.pop_front();
+            } else {
+                break;
+            }
+        }
+
+        // Find the highest-priority non-expired frame.
+        // Clone the deque first to avoid borrow conflicts.
+        let snapshot = self.queue.clone();
+
+        let best = snapshot
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.deadline_ms >= now_ms)
+            .min_by_key(|(_, f)| f.priority)
+            .map(|(i, f)| (i, f.encoded.len()));
+
+        let (best_idx, frame_len) = best?;
+
+        // Check buffer size by peeking at the cloned data
+        if out.len() < frame_len {
             return None;
         }
-        // Safe to unwrap: we just confirmed front() returned Some
-        let frame = self.queue.pop_front().unwrap();
-        let len = frame.len();
-        out[..len].copy_from_slice(&frame[..]);
-        Some(len)
+
+        // Copy frame data from the snapshot before mutating self.queue
+        if let Some(frame) = snapshot.iter().nth(best_idx) {
+            out[..frame_len].copy_from_slice(&frame.encoded);
+        } else {
+            return None;
+        }
+
+        // Rebuild self.queue excluding the best frame
+        self.queue.clear();
+        for (i, f) in snapshot.iter().enumerate() {
+            if i != best_idx {
+                let _ = self.queue.push_back(f.clone());
+            }
+        }
+        Some(frame_len)
     }
 
     /// Number of frames waiting in queue.
@@ -1125,11 +1259,14 @@ mod tests {
     fn test_writer_simple() {
         let mut writer = KissWriter::new();
         let mut out = [0u8; 64];
+        let now_ms = 100_000u64;
 
-        writer.queue_frame(0, KissCommand::Data, b"Hi").unwrap();
+        writer
+            .queue_frame(0, KissCommand::Data, b"Hi", Priority::Bulk, now_ms + 60_000)
+            .unwrap();
         assert_eq!(writer.pending_count(), 1);
 
-        let len = writer.try_get_frame(&mut out).unwrap();
+        let len = writer.try_get_frame(&mut out, now_ms).unwrap();
         assert_eq!(&out[..len], &[FEND, 0x00, b'H', b'i', FEND]);
         assert!(writer.is_empty());
     }
@@ -1138,43 +1275,117 @@ mod tests {
     fn test_writer_multiple_frames() {
         let mut writer = KissWriter::new();
         let mut out = [0u8; 64];
+        let now_ms = 100_000u64;
 
-        writer.queue_frame(0, KissCommand::Data, b"A").unwrap();
-        writer.queue_frame(1, KissCommand::Data, b"B").unwrap();
+        writer
+            .queue_frame(0, KissCommand::Data, b"A", Priority::Bulk, now_ms + 60_000)
+            .unwrap();
+        writer
+            .queue_frame(1, KissCommand::Data, b"B", Priority::Bulk, now_ms + 60_000)
+            .unwrap();
         assert_eq!(writer.pending_count(), 2);
 
-        let len1 = writer.try_get_frame(&mut out).unwrap();
+        let len1 = writer.try_get_frame(&mut out, now_ms).unwrap();
         assert_eq!(&out[..len1], &[FEND, 0x00, b'A', FEND]);
 
-        let len2 = writer.try_get_frame(&mut out).unwrap();
+        let len2 = writer.try_get_frame(&mut out, now_ms).unwrap();
         assert_eq!(&out[..len2], &[FEND, 0x10, b'B', FEND]); // port 1 = 0x10
 
-        assert!(writer.try_get_frame(&mut out).is_none());
+        assert!(writer.try_get_frame(&mut out, now_ms).is_none());
     }
 
     #[test]
     fn test_writer_with_escaping() {
         let mut writer = KissWriter::new();
         let mut out = [0u8; 64];
+        let now_ms = 100_000u64;
 
         // Data containing FEND byte
         writer
-            .queue_frame(0, KissCommand::Data, &[0x41, FEND, 0x42])
+            .queue_frame(0, KissCommand::Data, &[0x41, FEND, 0x42], Priority::Bulk, now_ms + 60_000)
             .unwrap();
 
-        let len = writer.try_get_frame(&mut out).unwrap();
+        let len = writer.try_get_frame(&mut out, now_ms).unwrap();
         assert_eq!(&out[..len], &[FEND, 0x00, 0x41, FESC, TFEND, 0x42, FEND]);
     }
 
     #[test]
     fn test_writer_clear() {
         let mut writer = KissWriter::new();
+        let now_ms = 100_000u64;
 
-        writer.queue_frame(0, KissCommand::Data, b"A").unwrap();
-        writer.queue_frame(0, KissCommand::Data, b"B").unwrap();
+        writer
+            .queue_frame(0, KissCommand::Data, b"A", Priority::Bulk, now_ms + 60_000)
+            .unwrap();
+        writer
+            .queue_frame(0, KissCommand::Data, b"B", Priority::Bulk, now_ms + 60_000)
+            .unwrap();
         assert_eq!(writer.pending_count(), 2);
 
         writer.clear();
         assert!(writer.is_empty());
+    }
+
+    #[test]
+    fn test_writer_expiry() {
+        let mut writer = KissWriter::new();
+        let mut out = [0u8; 64];
+
+        // Frame with deadline already past
+        writer
+            .queue_frame(0, KissCommand::Data, b"expired", Priority::Bulk, 50)
+            .unwrap();
+        // Frame with future deadline
+        writer
+            .queue_frame(0, KissCommand::Data, b"live", Priority::Bulk, 200)
+            .unwrap();
+
+        // At time 100, the first frame is expired and should be dropped
+        let len = writer.try_get_frame(&mut out, 100).unwrap();
+        assert_eq!(&out[..len], &[FEND, 0x00, b'l', b'i', b'v', b'e', FEND]);
+        assert!(writer.is_empty());
+    }
+
+    #[test]
+    fn test_writer_priority_preemption() {
+        let mut writer = KissWriter::new();
+        let mut out = [0u8; 64];
+        let now_ms = 100_000u64;
+
+        // Fill queue with low-priority frames
+        for i in 0..8 {
+            let data = [b'A' + i as u8];
+            writer
+                .queue_frame(i, KissCommand::Data, &data, Priority::Bulk, now_ms + 60_000)
+                .unwrap();
+        }
+        assert_eq!(writer.pending_count(), 8);
+
+        // Queue is full — try adding a low-priority frame: should fail
+        let result = writer.queue_frame(
+            8,
+            KissCommand::Data,
+            b"X",
+            Priority::Bulk,
+            now_ms + 60_000,
+        );
+        assert_eq!(result, Err(KissError::BufferTooSmall));
+
+        // Try adding a high-priority frame: should preempt one Bulk frame
+        writer
+            .queue_frame(
+                8,
+                KissCommand::Data,
+                b"HIGH",
+                Priority::Routing,
+                now_ms + 60_000,
+            )
+            .unwrap();
+        // Still 8 frames (one was preempted, new one added)
+        assert_eq!(writer.pending_count(), 8);
+
+        // The high-priority frame should come out first
+        let len = writer.try_get_frame(&mut out, now_ms).unwrap();
+        assert_eq!(&out[..len], &[FEND, 0x80, b'H', b'I', b'G', b'H', FEND]);
     }
 }
