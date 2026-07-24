@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iaui.4",
   "title": "Remove or secure dev stubs that log insecure keys",
   "description": "Dev/test stubs that log master_secret, keys, etc. must be removed or guarded by CONFIG_LICHEN_INSECURE_DEBUG only with clear warnings. Prevent accidental key exposure in logs. P0. Parent of project-LICHEN-iaui",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

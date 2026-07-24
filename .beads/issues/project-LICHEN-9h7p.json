@@ -3,7 +3,7 @@
   "title": "Update SimNode and Simulation for synchronized hopping",
   "description": "Add current_channel, hop_schedule to SimNode. Integrate SFN/time based hopping in simulation loop. Rendezvous via beacons/DIO announcements. Follow test integrity. codereview. Child of da2q.12.8",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",
