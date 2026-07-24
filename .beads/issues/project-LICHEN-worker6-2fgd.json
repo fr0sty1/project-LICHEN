@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-2fgd",
   "title": "[review] lora_ipv6_mesh-mkk4: duplicate import in edhoc.rs",
   "description": "`rust/lichen-oscore/src/edhoc.rs` line 32-33: `use rand_core::{CryptoRng, RngCore};` is imported twice. This is a compile error that prevents the crate from building.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:07:53.935830829Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:07:53.935830829Z"
+  "updated_at": "2026-07-24T19:19:27.288684382Z",
+  "started_at": "2026-07-24T19:19:27.288684382Z",
+  "lease_expires_at": "2026-07-24T19:24:27.288684382Z",
+  "heartbeat_at": "2026-07-24T19:19:27.288684382Z"
 }

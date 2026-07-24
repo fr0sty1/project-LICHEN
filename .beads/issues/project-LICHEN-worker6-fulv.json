@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-fulv",
   "title": "[review] project-LICHEN-worker6-i98v: lichen-oscore has 43 compile errors",
   "description": "## Summary\n`cargo test --no-run -p lichen-oscore` fails with 43 compile errors in the library test code (lib.rs).\n\n## Error Categories\n\n### P0: Duplicate test helpers (E0428, E0119, E0592)\n`TestStore`, `TestProtect`, and `for_context` defined twice in lib.rs tests module — merging/refactoring artifact from previous API migration.\n\n### P0: protect_response missing `include_piv` argument (E0061)\n12 call sites pass 5 args to `protect_response()` but signature now requires 6 (added `include_piv: bool`).\n\n### P0: `Context::load_existing` removed but still called (E0599)\n3 call sites in lib.rs still use the removed `load_existing` constructor.\n\n### P1: `OscoreSeqNum::new` type mismatch (E0308)\nMultiple test sites pass `u32` to `OscoreSeqNum::new` which expects `u64`.\n\n### P1: `Option\u003cOscoreSeqNum\u003e` unwrap needed (E0599)\n`increment()`, `fetch_increment()`, `get()`, `encode_piv()` called on `Option\u003cOscoreSeqNum\u003e` instead of unwrapped `OscoreSeqNum`.\n\n### P1: `derive_key`/`derive_iv` type mismatch (E0308)\nTest code passes `\u0026id_context` (`\u0026Vec\u003cu8\u003e`) but functions now expect `Option\u003c\u0026[u8]\u003e` — needs `Some(\u0026id_context)`.\n\n### P2: Ambiguous `TestStore::for_context` (E0034)\n~13 call sites get ambiguity errors due to duplicate definitions.\n\n## Impact\nLibrary and tests cannot compile — blocking all development and CI.\n\n## Files\n- `rust/lichen-oscore/src/lib.rs` — test module has all 43 errors\n- `rust/lichen-oscore/src/seqnum.rs` — type mismatches in seqnum tests\n- `rust/lichen-oscore/tests/vectors.rs` — this file's rewrite is correct, issue is in lib.rs",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:09:25.010714242Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:09:25.010714242Z"
+  "updated_at": "2026-07-24T19:19:25.381653412Z",
+  "started_at": "2026-07-24T19:19:25.381653412Z",
+  "lease_expires_at": "2026-07-24T19:24:25.381653412Z",
+  "heartbeat_at": "2026-07-24T19:19:25.381653412Z"
 }
