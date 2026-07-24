@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-szj4",
+  "title": "project-LICHEN-n8c6 review: wrong comment about push() seqnum consumption in link_layer.py",
+  "description": "In link_layer.py _send_locked, lines 386-389: the comment states 'If push() raises QueueFullError the seqnum IS consumed (gap) because the frame was already built with that seqnum; reuse would cause replay confusion.' But push() is called BEFORE _next_seqnum(). If push() raises QueueFullError, _next_seqnum() is never reached, so seqnum is NOT consumed. The comment incorrectly describes the behavior. Also, the reasoning about replay confusion is questionable since the frame was never enqueued/transmitted.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:49:37.316578056Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:49:37.316578056Z"
+}
