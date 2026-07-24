@@ -156,6 +156,225 @@ static void make_ll(uint8_t iid, uint8_t addr[16])
 	addr[15] = iid;
 }
 
+/* Freshness helper test: wraps the inline function so we can test it directly. */
+static int test_seq_freshness(void)
+{
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(0, 0), "equal seq");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(0, 1), "0->1 fresher");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(0, 100), "0->100 fresher");
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(100, 0), "100->0 diff=65436 >= 32768, not fresher");
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(1, 0), "1->0 is stale (wrap backward)");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(65530, 5), "65530->5 wrapped forward, fresher");
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(5, 65530), "5->65530 is stale (> half space)");
+	ASSERT_EQ(false, lichen_loadng_seq_is_fresher(0, 32768), "0->32768 at boundary -> not fresher");
+	ASSERT_EQ(true, lichen_loadng_seq_is_fresher(0, 32767), "0->32767 within half, fresher");
+	return 1;
+}
+
+/* Route cache freshness: stale seq_num rejected even with better metric. */
+static int test_cache_add_rejects_stale_seq_num(void)
+{
+	uint8_t dest[16], next_hop[16];
+	make_ll(10, dest);
+	make_ll(20, next_hop);
+
+	struct lichen_loadng_route r1 = {0}, r2 = {0};
+	memcpy(r1.destination, dest, 16);
+	memcpy(r1.next_hop, next_hop, 16);
+	r1.seq_num = 100;
+	r1.metric = 200;
+	r1.hop_count = 4;
+	r1.valid_until_ms = 10000;
+	r1.active = true;
+
+	memcpy(r2.destination, dest, 16);
+	memcpy(r2.next_hop, next_hop, 16);
+	r2.seq_num = 50;
+	r2.metric = 50;
+	r2.hop_count = 2;
+	r2.valid_until_ms = 10000;
+	r2.active = true;
+
+	lichen_loadng_cache_init();
+	lichen_loadng_cache_add(&r1);
+	lichen_loadng_cache_add(&r2);
+
+	struct lichen_loadng_route result;
+	int ret = lichen_loadng_cache_lookup(dest, 0, &result);
+	ASSERT_EQ(0, ret, "route found");
+	ASSERT_EQ(100, result.seq_num, "existing seq_num preserved");
+	ASSERT_EQ(200, result.metric, "existing metric preserved");
+	return 1;
+}
+
+/* Route cache freshness: fresher seq_num accepted even with worse metric. */
+static int test_cache_add_accepts_fresher_seq_num(void)
+{
+	uint8_t dest[16], next_hop[16];
+	make_ll(10, dest);
+	make_ll(20, next_hop);
+
+	struct lichen_loadng_route r1 = {0}, r2 = {0};
+	memcpy(r1.destination, dest, 16);
+	memcpy(r1.next_hop, next_hop, 16);
+	r1.seq_num = 50;
+	r1.metric = 50;
+	r1.hop_count = 2;
+	r1.valid_until_ms = 10000;
+
+	memcpy(r2.destination, dest, 16);
+	memcpy(r2.next_hop, next_hop, 16);
+	r2.seq_num = 100;
+	r2.metric = 200;
+	r2.hop_count = 4;
+	r2.valid_until_ms = 10000;
+
+	lichen_loadng_cache_init();
+	lichen_loadng_cache_add(&r1);
+	lichen_loadng_cache_add(&r2);
+
+	struct lichen_loadng_route result;
+	int ret = lichen_loadng_cache_lookup(dest, 0, &result);
+	ASSERT_EQ(0, ret, "route found");
+	ASSERT_EQ(100, result.seq_num, "fresher seq_num accepted");
+	ASSERT_EQ(200, result.metric, "worse metric accepted with fresher seq");
+	return 1;
+}
+
+/* Route cache freshness: same seq_num, better metric accepted. */
+static int test_cache_add_same_seq_better_metric(void)
+{
+	uint8_t dest[16], next_hop[16];
+	make_ll(10, dest);
+	make_ll(20, next_hop);
+
+	struct lichen_loadng_route r1 = {0}, r2 = {0};
+	memcpy(r1.destination, dest, 16);
+	memcpy(r1.next_hop, next_hop, 16);
+	r1.seq_num = 100;
+	r1.metric = 200;
+	r1.hop_count = 4;
+	r1.valid_until_ms = 10000;
+
+	memcpy(r2.destination, dest, 16);
+	memcpy(r2.next_hop, next_hop, 16);
+	r2.seq_num = 100;
+	r2.metric = 150;
+	r2.hop_count = 3;
+	r2.valid_until_ms = 10000;
+
+	lichen_loadng_cache_init();
+	lichen_loadng_cache_add(&r1);
+	lichen_loadng_cache_add(&r2);
+
+	struct lichen_loadng_route result;
+	int ret = lichen_loadng_cache_lookup(dest, 0, &result);
+	ASSERT_EQ(0, ret, "route found");
+	ASSERT_EQ(150, result.metric, "better metric accepted with same seq");
+	return 1;
+}
+
+/* Route cache freshness: same seq_num, worse or equal metric rejected. */
+static int test_cache_add_same_seq_worse_metric(void)
+{
+	uint8_t dest[16], next_hop[16];
+	make_ll(10, dest);
+	make_ll(20, next_hop);
+
+	struct lichen_loadng_route r1 = {0}, r2 = {0};
+	memcpy(r1.destination, dest, 16);
+	memcpy(r1.next_hop, next_hop, 16);
+	r1.seq_num = 100;
+	r1.metric = 100;
+	r1.hop_count = 2;
+	r1.valid_until_ms = 10000;
+
+	memcpy(r2.destination, dest, 16);
+	memcpy(r2.next_hop, next_hop, 16);
+	r2.seq_num = 100;
+	r2.metric = 200;
+	r2.hop_count = 4;
+	r2.valid_until_ms = 10000;
+
+	lichen_loadng_cache_init();
+	lichen_loadng_cache_add(&r1);
+	lichen_loadng_cache_add(&r2);
+
+	struct lichen_loadng_route result;
+	int ret = lichen_loadng_cache_lookup(dest, 0, &result);
+	ASSERT_EQ(0, ret, "route found");
+	ASSERT_EQ(100, result.metric, "worse metric rejected with same seq");
+	return 1;
+}
+
+/* Route cache freshness: seq_num wraparound (65530 -> 5 is fresher). */
+static int test_cache_add_seq_wraparound_forward(void)
+{
+	uint8_t dest[16], next_hop[16];
+	make_ll(10, dest);
+	make_ll(20, next_hop);
+
+	struct lichen_loadng_route r1 = {0}, r2 = {0};
+	memcpy(r1.destination, dest, 16);
+	memcpy(r1.next_hop, next_hop, 16);
+	r1.seq_num = 65530;
+	r1.metric = 100;
+	r1.hop_count = 2;
+	r1.valid_until_ms = 10000;
+
+	memcpy(r2.destination, dest, 16);
+	memcpy(r2.next_hop, next_hop, 16);
+	r2.seq_num = 5;
+	r2.metric = 200;
+	r2.hop_count = 4;
+	r2.valid_until_ms = 10000;
+
+	lichen_loadng_cache_init();
+	lichen_loadng_cache_add(&r1);
+	lichen_loadng_cache_add(&r2);
+
+	struct lichen_loadng_route result;
+	int ret = lichen_loadng_cache_lookup(dest, 0, &result);
+	ASSERT_EQ(0, ret, "route found");
+	ASSERT_EQ(5, result.seq_num, "wrapped seq_num 5 is fresher than 65530");
+	ASSERT_EQ(200, result.metric, "worse metric accepted with wrapped fresher seq");
+	return 1;
+}
+
+/* Route cache freshness: seq_num wraparound (5 -> 65530 is stale). */
+static int test_cache_add_seq_wraparound_backward(void)
+{
+	uint8_t dest[16], next_hop[16];
+	make_ll(10, dest);
+	make_ll(20, next_hop);
+
+	struct lichen_loadng_route r1 = {0}, r2 = {0};
+	memcpy(r1.destination, dest, 16);
+	memcpy(r1.next_hop, next_hop, 16);
+	r1.seq_num = 5;
+	r1.metric = 100;
+	r1.hop_count = 2;
+	r1.valid_until_ms = 10000;
+
+	memcpy(r2.destination, dest, 16);
+	memcpy(r2.next_hop, next_hop, 16);
+	r2.seq_num = 65530;
+	r2.metric = 200;
+	r2.hop_count = 4;
+	r2.valid_until_ms = 10000;
+
+	lichen_loadng_cache_init();
+	lichen_loadng_cache_add(&r1);
+	lichen_loadng_cache_add(&r2);
+
+	struct lichen_loadng_route result;
+	int ret = lichen_loadng_cache_lookup(dest, 0, &result);
+	ASSERT_EQ(0, ret, "route found");
+	ASSERT_EQ(5, result.seq_num, "original seq_num 5 preserved, 65530 rejected as stale");
+	ASSERT_EQ(100, result.metric, "original metric preserved");
+	return 1;
+}
+
 /* Tests */
 
 static int test_rreq_roundtrip(void)
@@ -360,6 +579,13 @@ int main(void)
 	RUN_TEST(test_rreq_write_rejects_null);
 	RUN_TEST(test_rreq_write_rejects_small_buffer);
 	RUN_TEST(test_wire_format_seq_num_big_endian);
+	RUN_TEST(test_seq_freshness);
+	RUN_TEST(test_cache_add_rejects_stale_seq_num);
+	RUN_TEST(test_cache_add_accepts_fresher_seq_num);
+	RUN_TEST(test_cache_add_same_seq_better_metric);
+	RUN_TEST(test_cache_add_same_seq_worse_metric);
+	RUN_TEST(test_cache_add_seq_wraparound_forward);
+	RUN_TEST(test_cache_add_seq_wraparound_backward);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 
