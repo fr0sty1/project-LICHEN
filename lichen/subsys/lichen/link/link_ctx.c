@@ -277,6 +277,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 #ifdef CONFIG_NVS
 	(void)save_tuple(ctx); /* persist new key + reset tuple; ignore errors to not block boot */
 #endif
+	(void)seq_unlock(ctx);
 	return 0;
 }
 
