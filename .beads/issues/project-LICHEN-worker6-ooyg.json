@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-ooyg",
   "title": "[review] project-LICHEN-worker6-jjhj: Ack::from_bytes_for OOB panic on complete ACK",
   "description": "## Critical panic bug\n\n`Ack::from_bytes_for` (fragment.rs:300) unconditionally accesses `data[2]` after only checking `data.len() \u003e= 2`. A complete ACK is exactly 2 bytes (`[rule_id, (window \u003c\u003c 7) | 0x40]`), so when `FragmentSender::handle_ack_bytes` receives a complete ACK via `Ack::from_bytes(data)`, it panics with index out of bounds at `data[2]`.\n\n## Root cause\n\n`from_bytes_for` (line 307) reads `let n = data[2] as usize` before any length check that distinguishes complete vs non-complete ACKs. The complete flag is decoded at line 306 but never used to gate the subsequent bitmap parsing.\n\n## How to reproduce\n\n```rust\nlet complete_ack = [0x78, 0xc0]; // Complete ACK for window 1\nlet ack = Ack::from_bytes(\u0026complete_ack); // PANICS: index 2 out of bounds\n```\n\n## Impact\n\nAny reception path that calls `Ack::from_bytes` with a complete ACK will crash the sender. This happens when `FragmentSender::handle_ack_bytes` receives a complete ACK after successful reassembly.\n\n## Fix needed\n\n`Ack::from_bytes_for` must check the complete flag early and return a 2-byte complete ACK before attempting to read `data[2]`.\n\nRelated: the complete flag is read from bit 0 (`data[1] \u0026 0x01`) but `write_to` places the complete marker at bit 6 (`0x40`). These don't match.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:25:20.374492451Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:19:20.781920663Z",
-  "started_at": "2026-07-24T19:19:20.781920663Z",
-  "lease_expires_at": "2026-07-24T19:24:20.781920663Z",
-  "heartbeat_at": "2026-07-24T19:19:20.781920663Z"
+  "updated_at": "2026-07-24T20:21:01.442728493Z",
+  "started_at": "2026-07-24T19:19:20.781920663Z"
 }
