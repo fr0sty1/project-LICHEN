@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8nq9",
   "title": "[codereview-pass3] handle_frame_rpl:316 ignores route_updated for Gateway.routes population",
   "description": "In RplNode::handle_frame_rpl the DaoReceived event returns route_updated from process_dao but caller in gateway forwarding does not use it to call add_route with DAO-derived path/nexthop. No path-to-NodeId conversion either. P0. discovered-from:project-LICHEN-fy9q",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

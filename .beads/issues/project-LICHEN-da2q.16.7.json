@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16.7",
   "title": "Rust lichen-rpl/gateway: CCP-16 Load Balancing",
   "description": "Implement in lichen-rpl and mesh-gateway crates: TDMA, adaptive SF, multi-channel load balancing, density-aware logic. Update rpl, link, gateway. After every chunk run codereview 3x, file ALL codereview beads. Parallel with Zephyr/Python. Clippy, tests. Fix ALL. Do not close until clean 3 passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

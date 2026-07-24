@@ -3,7 +3,7 @@
   "title": "Reject relayed link-local DAO origins",
   "description": "At roots, allow link-local DAO origin only when immediate authenticated sender matches the origin and the advertised parent is root. Perform rejection after signature/replay classification but before mutation.",
   "acceptance_criteria": "Direct authenticated link-local DAO with parent root can apply; malicious relay or non-root parent fails without route or persistence mutation; precedence tests pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

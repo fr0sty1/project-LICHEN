@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:25:19.38058Z",
   "close_reason": "Fixed: Added clarifying sentence explaining why 100ms is used as the initial timeout (ample time for thread checking running flag between lora_recv() calls; if blocked inside lora_recv() needs up to RX_TIMEOUT_MS)",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

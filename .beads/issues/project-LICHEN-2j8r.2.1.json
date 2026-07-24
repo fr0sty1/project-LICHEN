@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2j8r.2.1",
   "title": "coap_dtn.c: remove redundant ctx lookup in deaddrop_post after OSCORE unprotect",
   "description": "The protected path already does oscore_ctx_get_by_eui64 and unprotect; the second lookup at line ~117 is redundant and can fail incorrectly. Preserve both OSCORE unprotect (main) and protected response paths (worker8). Use --json",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

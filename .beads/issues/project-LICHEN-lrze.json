@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lrze",
   "title": "[codereview-pass3-robustness] coap_dtn.c: init does not lock mutex during lichen_dtn_init_with_size; potential race on first CoAP request before init completes. Also missing K_MUTEX_DEFINE(s_senml_pack_mutex) or combined. Tagged codereview",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:67. Follows pattern from loadng.c and native.c for static shared state. Fix all before closing main bead. Pass 3 after first logical chunk (mutex+init fix).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

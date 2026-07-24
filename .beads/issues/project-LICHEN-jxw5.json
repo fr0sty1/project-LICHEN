@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jxw5",
   "title": "task",
   "description": "rust/lichen-embassy/src/sim.rs:142-149 - When receive buffer is smaller than payload, data is silently truncated and the returned RxPacket.len reflects copy_len (bytes written) not payload_len (bytes received). Caller cannot detect truncation. Should either require adequately-sized buffers or signal truncation in the return value.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:41:42.14225Z",
   "closed_at": "2026-07-12T00:41:42.14225Z",
-  "close_reason": "Fixed: Return RadioError::Protocol when payload exceeds buffer instead of silently truncating"
+  "close_reason": "Fixed: Return RadioError::Protocol when payload exceeds buffer instead of silently truncating",
+  "labels": [
+    "owner-reserved"
+  ]
 }

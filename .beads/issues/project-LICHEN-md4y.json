@@ -5,12 +5,9 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T21:29:29.953175736Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:31:01.701139099Z",
-  "started_at": "2026-07-22T21:31:01.701139099Z",
-  "lease_expires_at": "2026-07-22T21:36:01.701139099Z",
-  "heartbeat_at": "2026-07-22T21:31:01.701139099Z"
+  "updated_at": "2026-07-24T22:22:52.273924098Z",
+  "started_at": "2026-07-22T21:31:01.701139099Z"
 }

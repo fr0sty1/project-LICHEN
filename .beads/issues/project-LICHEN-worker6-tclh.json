@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-tclh",
+  "title": "[review] project-LICHEN-worker6-zvp7: unused _cred parameter and misleading parameter name in transcript_4",
+  "description": "## Dead parameter in `transcript_4` (`rust/lichen-oscore/src/edhoc.rs:434`)\n\nThe TH_4 computation was corrected per RFC 9528 Section 4.1 — `cred` is no longer hashed. However:\n\n1. **Unused `_cred` parameter**: The function signature still takes `_cred: \u0026[u8]` as the third parameter. All 3 callers still pass it, but it is never used. This wastes stack space and is misleading to future readers. The parameter should be removed from the signature and all callers should drop the argument.\n\n2. **Misleading parameter name**: The comment says TH_4 = H(CBOR(TH_3) || CBOR(CIPHERTEXT_3)), but the actual parameter is named `plaintext`. Either the comment or the parameter name is incorrect. According to RFC 9528, the input to TH_4 is CIPHERTEXT_3 (encrypted payload of EDHOC message 3). If the callers pass the correct value, the parameter should be renamed to `ciphertext_3`.\n\n### Callers\n- `edhoc.rs:881`: `transcript_4(\u0026self.state.th_3, \u0026plaintext_3, \u0026credential_i)`\n- `edhoc.rs:1309`: `transcript_4(\u0026self.state.th_3, \u0026pending.plaintext, peer.credential)`\n- `edhoc.rs:1599`: `transcript_4(\u0026th_3, \u0026plaintext_3, \u0026credential_i)` (test)\n\n### Impact\nThe hash computation is correct (matches RFC 9528), so this is a code cleanliness issue (P3). But the dead parameter and misleading name will confuse future maintainers.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:56:20.671029257Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:56:20.671029257Z"
+}

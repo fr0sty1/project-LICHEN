@@ -5,11 +5,13 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:38:25.277758293Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:39:05.942780619Z",
-  "closed_at": "2026-07-22T16:39:05.942780619Z",
-  "close_reason": "Reconciled interference score to additive busy_pct + (PER*100) matching ccp15.json vector and updated all references/pseudocode/normative section. 3 clean codereview passes completed with no P0-P2.",
+  "updated_at": "2026-07-24T21:47:16.264837242Z",
+  "started_at": "2026-07-24T16:16:28.432927864Z",
+  "closed_at": "2026-07-24T21:47:16.264837242Z",
+  "close_reason": "Added interference score test vectors to ccp15.json (additive formula busy_pct + PER*100) and updated generate.py to produce them. Reconciles to one formula per spec/02a-coordinated-capacity.md.",
   "labels": [
     "codereview"
   ]

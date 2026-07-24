@@ -12,18 +12,19 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-30T21:04:59.662153Z",
   "labels": [
-    "zephyr",
-    "lilygo",
     "ble",
-    "serial",
-    "lci",
-    "native-interface",
-    "hardware",
     "board-support",
     "bringup",
     "firmware",
     "hal",
-    "partner-handoff"
+    "hardware",
+    "lci",
+    "lilygo",
+    "native-interface",
+    "owner-reserved",
+    "partner-handoff",
+    "serial",
+    "zephyr"
   ],
   "dependencies": [
     {

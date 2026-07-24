@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ngsu",
+  "title": "std_ext FragmentReceiver: unwrap_or(0) masks rule_id invariant violations",
+  "description": "In rust/lichen-schc/src/fragment.rs std_ext module, lines 1231/1249/1274 use self.rule_id.unwrap_or(0) when constructing ACK/NACK. While rule_id is always Some at these sites in correct usage, if a future bug left it as None, this would silently construct an ACK with rule_id=0 (invalid per check_rule) that only fails at wire serialization time with FragmentError::InvalidRuleId. Contrast with no_std FragmentReceiver line 1000 which uses self.rule_id? for proper error propagation. Fix: use self.rule_id.expect(\"rule_id must be set\") or self.rule_id.unwrap() to expose invariant violations immediately.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:47:41.116625854Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:47:41.116625854Z"
+}

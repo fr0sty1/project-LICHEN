@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T21:18:59.918707Z",
   "closed_at": "2026-06-29T21:18:59.918707Z",
-  "close_reason": "Added recv argument validation to lr1110_lora_recv and lora_sim_recv so NULL dev/data and zero-size buffers return -EINVAL; verified with diff check and EC2 Zephyr gateway builds covering the project LoRa stack."
+  "close_reason": "Added recv argument validation to lr1110_lora_recv and lora_sim_recv so NULL dev/data and zero-size buffers return -EINVAL; verified with diff check and EC2 Zephyr gateway builds covering the project LoRa stack.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

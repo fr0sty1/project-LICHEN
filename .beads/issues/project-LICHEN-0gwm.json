@@ -5,11 +5,13 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:07:07.272891091Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:07:49.863516822Z",
-  "closed_at": "2026-07-22T17:07:49.863516822Z",
-  "close_reason": "Fixed by extending get_rx_candidates and detect_activity with channel filtering for rendezvous and per-channel independence (as part of main 64um updates). 3 clean passes completed.",
+  "updated_at": "2026-07-24T22:27:09.158650003Z",
+  "started_at": "2026-07-24T22:26:51.395682256Z",
+  "closed_at": "2026-07-24T22:27:09.158650003Z",
+  "close_reason": "Already fixed",
   "labels": [
     "codereview"
   ],

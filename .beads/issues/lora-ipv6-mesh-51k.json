@@ -12,5 +12,8 @@
   "updated_at": "2026-05-27T23:49:28Z",
   "started_at": "2026-05-27T23:48:26Z",
   "closed_at": "2026-05-27T23:49:28Z",
-  "close_reason": "Fixed: Changed hasattr(sim.event_queue, 'size') to len(sim.event_queue). EventQueue implements __len__, not size property. Added test_tick_simulation_counts_events to verify events_processed is now correct."
+  "close_reason": "Fixed: Changed hasattr(sim.event_queue, 'size') to len(sim.event_queue). EventQueue implements __len__, not size property. Added test_tick_simulation_counts_events to verify events_processed is now correct.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

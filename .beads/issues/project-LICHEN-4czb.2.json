@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4czb.2",
   "title": "Add sig_len param + bounds check to schnorr48_verify_frame",
   "description": "Update schnorr48_verify_frame() signature, impl in schnorr48.c (at line ~406), header, and docstring to accept and validate sig_len == SCHNORR48_SIG_LEN. Return -EINVAL on mismatch. Defensive OOB prevention.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.231",
   "title": "Codereview pass 3: LOADng seqnum - docs and style adequate, no findings",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -12,6 +12,7 @@
   "closed_at": "2026-07-06T17:19:18.325077Z",
   "close_reason": "LOADng seqnum docs and style adequate",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -3,7 +3,7 @@
   "title": "[codereview3/3] Reference to rules.py:272 and 03-adaptation.md correct but add line refs for PIO proposal. No P0. Update spec consistently, then address all new codereview beads before closing bsof/3yl7",
   "description": "P3: Minor reference precision. After fixing table/calc, run full 3 codereview passes on final chunk. discovered-from:project-LICHEN-bsof",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

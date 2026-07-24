@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.24",
   "title": "oscore/edhoc: make Monocypher wipe dependency explicit",
   "description": "Why this exists: review of project-LICHEN-9nrr.17 found that OSCORE and EDHOC source files include monocypher.h and call crypto_wipe(), but their Kconfig options do not explicitly select or depend on LICHEN_CRYPTO_MONOCYPHER. Current tests/apps often enable Monocypher through link signatures or prj.conf, masking the dependency. What needs to be done: decide whether OSCORE/EDHOC should select LICHEN_CRYPTO_MONOCYPHER, move crypto_wipe into a smaller common wipe helper, or replace those call sites with a subsystem-local secure wipe. Verify OSCORE and EDHOC builds with and without link enabled. As a code-generation/fix Bead, run two review passes before closing.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
@@ -13,8 +13,9 @@
   "closed_at": "2026-06-30T02:59:41.882737Z",
   "close_reason": "Fixed by making CONFIG_LICHEN_OSCORE select LICHEN_CRYPTO_MONOCYPHER and removing the oscore test's direct Monocypher enable so the dependency is proven by the subsystem. Verified qemu_x86 OSCORE unit build/run, OSCORE with link enabled, and EDHOC compile checks with and without link. Filed project-LICHEN-9nrr.27 for the unrelated EDHOC hkdf_expand warning found during verification.",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

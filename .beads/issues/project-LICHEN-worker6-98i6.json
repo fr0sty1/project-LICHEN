@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-98i6",
+  "title": "[review] project-LICHEN-worker6-2u0i: fragile u8 cast in multi_fragment_single_window test payload range",
+  "description": "In rust/lichen-schc/tests/fragmentation.rs:53, the payload is built via `(0..(TILE_SIZE + 7) as u8).map(|i| i as u8).collect()`. The `as u8` on the range upper bound silently truncates if TILE_SIZE + 7 \u003e 255 (e.g. if TILE_SIZE ever grows past 248), turning a range into a wrong smaller range. The `.map(|i| i as u8)` is also a no-op since `i` is already `u8`. Fix: use `(0usize..TILE_SIZE + 7).map(|i| i as u8).collect()` to avoid the truncation hazard and the redundant cast.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:32:47.412666815Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:32:47.412666815Z"
+}

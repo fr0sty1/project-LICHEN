@@ -3,7 +3,7 @@
   "title": "Follow-up from worker13 merge of e6e3c12b9",
   "description": "Any new issues discovered during 3 codereview passes on merged changes from worker13",
   "notes": "No new issues from codereview passes on merged worker13 commit e6e3c12b9; P0-P4 addressed; quality gates (cargo test, clippy, ruff, pytest, west native_sim) all pass. Closing as complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

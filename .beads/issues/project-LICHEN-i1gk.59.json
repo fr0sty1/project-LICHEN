@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:42:14.059594Z",
   "close_reason": "Fixed: Added Cygwin/MinGW/NetBSD guards, removed incorrect _SYS_SOCKET_H check",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

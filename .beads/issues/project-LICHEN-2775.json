@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2775",
   "title": "Review Zephyr C code",
   "description": "Perform a code review of all Zephyr C code and report defects, risks, and test gaps with file and line references.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T02:47:09.072976Z",
   "closed_at": "2026-06-29T02:47:09.072976Z",
-  "close_reason": "Zephyr C code review completed; actionable kqma findings were filed and fixed in assigned subagents."
+  "close_reason": "Zephyr C code review completed; actionable kqma findings were filed and fixed in assigned subagents.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

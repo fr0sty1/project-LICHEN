@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zz04",
   "title": "announce: opportunistic_wait_time_ms allows negative rank producing negative wait time",
   "description": "File: python/src/lichen/announce/coords.py:261-273\n\nThe opportunistic_wait_time_ms(rank) function does not validate that rank \u003e= 0:\n\n```python\ndef opportunistic_wait_time_ms(rank: int) -\u003e int:\n    return rank * OPPORTUNISTIC_SLOT_TIME_MS\n```\n\nIf a negative rank is passed (e.g., rank=-1), this returns a negative wait time (-100ms), which could cause undefined behavior in callers that expect non-negative wait times.\n\nShould add validation: if rank \u003c 0: raise ValueError('rank must be non-negative')",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -14,14 +14,15 @@
   "closed_at": "2026-06-30T00:27:50.557218Z",
   "close_reason": "Implemented AES-CCM encrypted link-frame TX/RX handling, added encrypted link crypto tests, ran quality gates, completed two review passes, and filed follow-up project-LICHEN-9nrr.17 for AES-CCM module coupling.",
   "labels": [
-    "review",
-    "exhaustive",
-    "zephyr",
     "c",
-    "link",
-    "security",
     "encryption",
-    "feature-gap"
+    "exhaustive",
+    "feature-gap",
+    "link",
+    "owner-reserved",
+    "review",
+    "security",
+    "zephyr"
   ],
   "dependencies": [
     {

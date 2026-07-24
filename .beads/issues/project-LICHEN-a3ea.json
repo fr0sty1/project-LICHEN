@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a3ea",
   "title": "task",
   "description": "python/src/lichen/client/ip_coap.py:81-88. Exception leaves _context set.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:37:09.730872Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

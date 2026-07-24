@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:42:17.757809Z",
   "close_reason": "Fixed: Updated comment to clarify defensive error handling for defense-in-depth",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

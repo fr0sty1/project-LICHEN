@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:30.457506Z",
   "close_reason": "Won't fix - Kconfig 'range' directive cannot reference other Kconfig symbols like NUM_PREEMPT_PRIORITIES. Runtime validation in k_thread_create() catches invalid priority values with an assertion. The default value 7 is valid for all Zephyr configurations. Adding a static range (e.g., 0-15) would be incorrect for configs with fewer preempt priorities.",
   "labels": [
-    "review-r3",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r3"
   ],
   "dependencies": [
     {

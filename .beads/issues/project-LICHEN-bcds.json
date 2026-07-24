@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T05:25:26.225899Z",
   "closed_at": "2026-07-12T05:25:26.225899Z",
-  "close_reason": "SCHC fragmentation was already implemented in lichen/subsys/schc/schc.c (commit 86b9df45d from 2026-06-29). The file contains complete fragmenter (schc_fragmenter_init/next/retransmit), reassembler (schc_reassembler_init/input/ack), and ACK handling APIs. Fuzz tests pass. Bead description was outdated."
+  "close_reason": "SCHC fragmentation was already implemented in lichen/subsys/schc/schc.c (commit 86b9df45d from 2026-06-29). The file contains complete fragmenter (schc_fragmenter_init/next/retransmit), reassembler (schc_reassembler_init/input/ack), and ACK handling APIs. Fuzz tests pass. Bead description was outdated.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

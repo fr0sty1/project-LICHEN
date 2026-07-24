@@ -14,11 +14,12 @@
   "closed_at": "2026-07-01T11:54:14.685077Z",
   "close_reason": "Completed: MeshCore channel text ingress now maps to the shared app-interface submit_text boundary with channel/type/UTF-8 validation, required ACK preflight before submit, deterministic direct SEND_TXT_MSG errors, gateway reentrancy/cross-thread protections, canonical vector/generator/doc updates, direct native_sim and Twister evidence, and three final clean codereview passes.",
   "labels": [
-    "zephyr",
+    "app-interface",
+    "firmware",
     "meshcore",
     "messaging",
-    "firmware",
-    "app-interface"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

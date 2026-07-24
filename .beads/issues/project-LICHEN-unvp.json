@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:11:02.112553Z",
   "closed_at": "2026-07-11T06:11:02.112553Z",
-  "close_reason": "Fixed: tx_send.try_send now handles errors - logs warning when channel full (packet dropped), logs error and exits loop when channel closed (sim task exited). Also added handling for rx_recv.recv() returning None."
+  "close_reason": "Fixed: tx_send.try_send now handles errors - logs warning when channel full (packet dropped), logs error and exits loop when channel closed (sim task exited). Also added handling for rx_recv.recv() returning None.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

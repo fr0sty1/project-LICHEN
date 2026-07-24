@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q19x",
   "title": "random module imported but only used for non-security purposes",
   "description": "File: python/src/lichen/link/link_layer.py:24, 139, 367\n\nThe 'random' module is imported and used in two places:\n1. Line 139: Epoch initialization (security-sensitive - filed separately)\n2. Line 367: CAD backoff slot selection\n\nFor CAD backoff (line 367):\n    slots = random.randint(0, window - 1)\n\nUsing non-cryptographic random for backoff is acceptable - predictable backoff timing is not a security issue, just potentially suboptimal collision avoidance.\n\nHowever, mixing security-sensitive and non-security-sensitive uses of 'random' in the same file is confusing. Consider:\n1. Use 'secrets' for epoch (security)\n2. Keep 'random' for backoff (performance)\n3. Add comment explaining why random is OK for backoff\n\nThis is a code clarity issue, not a bug. P4.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

@@ -14,8 +14,9 @@
   "close_reason": "Closed",
   "labels": [
     "contract",
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

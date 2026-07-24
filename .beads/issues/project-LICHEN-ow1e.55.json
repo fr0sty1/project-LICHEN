@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:01:23.83248Z",
   "close_reason": "Verified: state_machine.py implementation is sound. All features confirmed working: generic StateMachine with transition table validation, @requires_state decorator, frozen dataclass, clear error messages, and logging. Tests pass.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

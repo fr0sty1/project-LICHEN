@@ -14,11 +14,12 @@
   "closed_at": "2026-06-30T23:47:54.016714Z",
   "close_reason": "Completed: canonical JSON-driven Zephyr meshtastic_codec vector harness implemented and native_sim Twister passed.",
   "labels": [
-    "zephyr",
-    "meshtastic",
-    "protobuf",
+    "app-interface",
     "firmware",
-    "app-interface"
+    "meshtastic",
+    "owner-reserved",
+    "protobuf",
+    "zephyr"
   ],
   "dependencies": [
     {

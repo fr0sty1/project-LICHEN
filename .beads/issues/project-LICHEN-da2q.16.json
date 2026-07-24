@@ -3,7 +3,7 @@
   "title": "CCP-16: Load Balancing",
   "description": "Coordinated Capacity Profile section detailing Load Balancing from da2q multi-channel coordination context.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

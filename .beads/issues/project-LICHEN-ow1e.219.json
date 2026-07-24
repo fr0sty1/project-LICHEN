@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.219",
   "title": "gradient.py: seq_ge and DATA_GRADIENT_TIMEOUT_MS are dead code",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -12,8 +12,9 @@
   "closed_at": "2026-07-06T17:18:27.528779Z",
   "close_reason": "Removed unused DATA_GRADIENT_TIMEOUT_MS constant. seq_ge does not exist in the codebase.",
   "labels": [
-    "dead-code",
     "cleanup",
+    "dead-code",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

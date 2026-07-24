@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:00:46.575216Z",
   "close_reason": "Non-issue - f64 has 53 bits mantissa, sufficient for 15+ decimal digits. APRS needs only 2 decimal places of minutes (~1.8m resolution). No precision loss.",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

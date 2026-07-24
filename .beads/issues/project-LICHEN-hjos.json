@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hjos",
   "title": "task",
   "description": "rust/lichen-sim/src/client.rs:117-140. Protocol corruption.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:36:57.796792Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

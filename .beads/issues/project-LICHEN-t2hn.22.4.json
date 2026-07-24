@@ -15,12 +15,13 @@
   "closed_at": "2026-07-01T20:12:20.865284Z",
   "close_reason": "Completed: MeshCore BLE now uses ble_app_owner for callbacks and owner-held connection refs; passkey prepare ordering preserved; native_sim/Twister evidence recorded.",
   "labels": [
-    "zephyr",
-    "meshcore",
-    "ble",
     "app-interface",
+    "ble",
     "firmware",
-    "meshtastic"
+    "meshcore",
+    "meshtastic",
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -14,12 +14,13 @@
   "closed_at": "2026-07-03T03:02:14.857412Z",
   "close_reason": "Completed LoRa L2 HAL boundary and no-hardware validation.",
   "labels": [
-    "zephyr",
-    "hal",
     "api",
-    "firmware",
     "board-support",
-    "partner-handoff"
+    "firmware",
+    "hal",
+    "owner-reserved",
+    "partner-handoff",
+    "zephyr"
   ],
   "dependencies": [
     {

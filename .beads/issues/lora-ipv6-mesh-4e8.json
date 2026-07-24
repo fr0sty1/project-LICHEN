@@ -12,5 +12,8 @@
   "updated_at": "2026-05-28T18:31:18Z",
   "started_at": "2026-05-28T18:29:35Z",
   "closed_at": "2026-05-28T18:31:18Z",
-  "close_reason": "Fixed: Added EventQueue.remove_events_for_node(node_id) method that filters and re-heapifies. Simulation.remove_node() now calls this to purge orphan events. Added 4 tests (3 for EventQueue, 1 for Simulation integration)."
+  "close_reason": "Fixed: Added EventQueue.remove_events_for_node(node_id) method that filters and re-heapifies. Simulation.remove_node() now calls this to purge orphan events. Added 4 tests (3 for EventQueue, 1 for Simulation integration).",
+  "labels": [
+    "owner-reserved"
+  ]
 }

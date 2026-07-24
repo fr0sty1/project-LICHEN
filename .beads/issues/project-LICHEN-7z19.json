@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:35:00.796228Z",
   "closed_at": "2026-07-12T00:35:00.796228Z",
-  "close_reason": "Verified compliant: AES-CCM-16-64-128 with HKDF-SHA256 key derivation, correct nonce computation per Section 5.2, replay window with post-decrypt update, sequence exhaustion check, zeroize-on-drop. One documented limitation (empty AAD vs Section 5.4 full structure) is marked ponytail for future work."
+  "close_reason": "Verified compliant: AES-CCM-16-64-128 with HKDF-SHA256 key derivation, correct nonce computation per Section 5.2, replay window with post-decrypt update, sequence exhaustion check, zeroize-on-drop. One documented limitation (empty AAD vs Section 5.4 full structure) is marked ponytail for future work.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

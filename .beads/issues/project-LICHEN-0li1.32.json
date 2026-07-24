@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:10:22.788151Z",
   "close_reason": "Added inline BY DESIGN comment at line 548 explaining that repeated lichen_link_rx calls are intentional for peer signature verification. The comment references the issue ID and explains the performance tradeoff (redundant SCHC/MIC work acceptable given LoRa's low packet rate and bounded peer count).",
   "labels": [
-    "review-r1",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r1"
   ],
   "dependencies": [
     {

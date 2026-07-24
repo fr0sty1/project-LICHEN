@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-x7ir",
   "title": "codereview-pass-2: appendix-senml.md battery example uses wrong unit '%RH' for 'pct' (should be '%'); cross-check with lichen-senml record units",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ftvd.3",
   "title": "Update firmware-board-capability-matrix.md to reflect xiao_s3_wio_sx1262 retirement status",
   "description": "Ensure the matrix document accurately reflects the BLOCKED/RETIRED status and proxy recommendation for Seeed XIAO ESP32-S3 + Wio-SX1262.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

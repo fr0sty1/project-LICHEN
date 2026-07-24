@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T03:42:03.659356Z",
   "close_reason": "Fixed: Added platform assumptions documentation for ARM Cortex-M targets",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
     "round3",
-    "security",
-    "exhaustive"
+    "security"
   ],
   "dependencies": [
     {

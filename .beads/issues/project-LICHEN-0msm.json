@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0msm",
   "title": "Rust lichen-schc codec.rs: Removed duplicate function but needs test coverage",
   "description": "In rust/lichen-schc/src/codec.rs, significant simplification was done to the codec logic. The changes look correct but the reduction in code without corresponding new tests may leave edge cases uncovered. Verify that existing test coverage exercises the boundary cases that the removed code may have handled.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T18:08:24.58272Z",
   "close_reason": "Test coverage exists - round_trip tests in codec.rs verify compression/decompression for all rules",
   "labels": [
+    "owner-reserved",
     "test-coverage"
   ]
 }

@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T18:26:31.735842Z",
   "close_reason": "Fixed: Reduced RX_TIMEOUT_MS from 5000ms to 1000ms (default) via new CONFIG_LICHEN_LORA_L2_RX_TIMEOUT_MS Kconfig option. Stop latency reduced from 5.1s to 1.1s worst case. Users can adjust via Kconfig (100-10000ms range).",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

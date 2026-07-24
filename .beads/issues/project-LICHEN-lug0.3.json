@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lug0.3",
   "title": "Add SCHC recompress with RPL-aware rule for mesh-to-mesh packets",
   "description": "After SRH insertion for local_mesh packets, re-compress using appropriate SCHC context/rule that accounts for RPL extension headers (SRH). Integrate with existing schc:: compressor in Gateway. Ensure compression matches spec for downward traffic. Part of project-LICHEN-lug0.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

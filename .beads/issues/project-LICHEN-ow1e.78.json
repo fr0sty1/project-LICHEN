@@ -13,9 +13,10 @@
   "closed_at": "2026-07-06T17:02:38.718993Z",
   "close_reason": "Fixed: Added prominent '# Security: Unverified Structure' documentation to LichenFrame struct explaining that signature.is_present() indicates wire presence not verification, and callers must use LinkLayer::verify().",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

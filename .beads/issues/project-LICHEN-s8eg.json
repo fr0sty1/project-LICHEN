@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:35:30.397662Z",
   "closed_at": "2026-07-12T00:35:30.397662Z",
-  "close_reason": "Verified compliant: Full RFC 9528 Suite 0 implementation with correct EDHOC-KDF, TH computation, PRK derivation, message structures, signature verification, OSCORE export, and small subgroup attack protection"
+  "close_reason": "Verified compliant: Full RFC 9528 Suite 0 implementation with correct EDHOC-KDF, TH computation, PRK derivation, message structures, signature verification, OSCORE export, and small subgroup attack protection",
+  "labels": [
+    "owner-reserved"
+  ]
 }

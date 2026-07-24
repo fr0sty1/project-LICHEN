@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:24:51.917573Z",
   "close_reason": "Fixed: Moved LICHEN_MIN_FRAME_LEN from inside lichen_l2_input() to file scope near MAX_LORA_FRAME, with comment explaining derivation",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

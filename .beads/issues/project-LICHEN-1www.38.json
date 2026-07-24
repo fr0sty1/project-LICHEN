@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.38",
   "title": "LICHEN_MIN_FRAME_LEN derivation spread across multiple constants without static assert",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -12,9 +12,10 @@
   "closed_at": "2026-06-27T21:44:21.068831Z",
   "close_reason": "Invalid - BUILD_ASSERT already exists at lines 109-116 validating LICHEN_MIN_FRAME_LEN derivation",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

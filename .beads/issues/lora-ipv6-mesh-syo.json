@@ -12,5 +12,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T19:19:23.109785Z",
   "closed_at": "2026-07-06T19:19:23.109785Z",
-  "close_reason": "Superseded by project-LICHEN-3ain (more comprehensive ARDC engagement plan)"
+  "close_reason": "Superseded by project-LICHEN-3ain (more comprehensive ARDC engagement plan)",
+  "labels": [
+    "owner-reserved"
+  ]
 }

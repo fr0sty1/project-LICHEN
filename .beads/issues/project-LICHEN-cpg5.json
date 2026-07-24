@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cpg5",
   "title": "task",
   "description": "python/src/lichen/crypto/edhoc.py:296,508. Missing shared secret zero-check per RFC 7748.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:36:49.230356Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

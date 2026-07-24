@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:08:34.194149Z",
   "closed_at": "2026-07-11T06:08:34.194149Z",
-  "close_reason": "Fixed: Clamp i16 SNR to i8 range before cast to prevent truncation"
+  "close_reason": "Fixed: Clamp i16 SNR to i8 range before cast to prevent truncation",
+  "labels": [
+    "owner-reserved"
+  ]
 }

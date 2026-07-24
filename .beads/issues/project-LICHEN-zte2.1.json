@@ -14,16 +14,17 @@
   "closed_at": "2026-07-01T23:32:43.486856Z",
   "close_reason": "Completed gateway /status CBOR location metadata no-hardware scope with native_sim/qemu Twister, qemu gateway app build, two clean final code reviews, and evidence recorded in notes.",
   "labels": [
-    "zephyr",
-    "firmware",
-    "location",
-    "gateway",
     "coap",
-    "status",
-    "test",
+    "firmware",
+    "gateway",
     "gnss",
     "hardware",
-    "network-source"
+    "location",
+    "network-source",
+    "owner-reserved",
+    "status",
+    "test",
+    "zephyr"
   ],
   "dependencies": [
     {

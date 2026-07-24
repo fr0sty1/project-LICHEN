@@ -2,7 +2,7 @@
   "id": "project-LICHEN-htlx",
   "title": "Synchronize Python SCHC, interop tests, full test suite, 3x reviews per child, fix ALL findings",
   "description": "Update python/src/lichen/schc/* to match profile. Add/update interop tests with Rust/C using shared vectors. Run full tests (pytest, cargo test, west twister, fuzz). Perform 3 review passes (/review-myoss, /review-rusty, /do-beads) per child task. Fix EVERY finding (P0-P4, opinion). Close all children and epic only when acceptance criteria met: identical output across 3 impls on all vectors, no test weakening, all reviews clean or opinion-only.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

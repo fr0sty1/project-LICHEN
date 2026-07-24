@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T03:44:47.361199Z",
   "close_reason": "Fixed: clarified mutex documentation - lora_dev and eui64 are write-once, rx_callback pair is mutex-protected",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round2",
-    "exhaustive"
+    "round2"
   ],
   "dependencies": [
     {

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p67i",
   "title": "codereview: Builder error swallowed in scheduler",
   "description": "rust/lichen-node/src/scheduler.rs:247 maps all AnnounceError to BufferTooSmall, losing InvalidChannel distinction. Update error mapping for robustness. codereview P2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

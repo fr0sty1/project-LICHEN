@@ -3,7 +3,7 @@
   "title": "bridge-esp32: replace 2 unwrap() calls with error handling",
   "description": "firmware/bridge-esp32/src/main.rs has 2 unwrap() calls (lines 159, 175). These will panic the device on failure. Replace with proper error handling.",
   "notes": "Development firmware uses esp_backtrace for debug info. Init failures genuinely should stop the device. For production: add LED error patterns and optional watchdog recovery.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
@@ -14,8 +14,9 @@
   "closed_at": "2026-06-28T05:04:05.350209Z",
   "close_reason": "Replaced panic/expect with error logging and graceful degradation (LED blink pattern or continue loop)",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ],
   "dependencies": [
     {

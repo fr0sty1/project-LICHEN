@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T22:28:28.407994Z",
   "close_reason": "Closed",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

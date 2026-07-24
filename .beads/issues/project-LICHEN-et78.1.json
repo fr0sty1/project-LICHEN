@@ -2,7 +2,7 @@
   "id": "project-LICHEN-et78.1",
   "title": "Add full Non-Storing Mode MUST compliance checks to rust/lichen-rpl",
   "description": "Implement RFC2119 MUST validations for Non-Storing RPL mode per draft-lichen-rpl-lora-00.md section on DAO handling, source routing, and S=1 bit in rust/lichen-rpl/src/",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

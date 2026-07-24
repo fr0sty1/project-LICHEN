@@ -12,20 +12,21 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-30T21:30:43.12283Z",
   "labels": [
-    "lilygo",
-    "t-deck",
-    "flash",
-    "partitions",
-    "hardware",
-    "smoke-test",
-    "bootloader",
-    "zephyr",
     "blocker",
     "board-support",
+    "bootloader",
     "bringup",
     "firmware",
+    "flash",
     "hal",
-    "partner-handoff"
+    "hardware",
+    "lilygo",
+    "owner-reserved",
+    "partitions",
+    "partner-handoff",
+    "smoke-test",
+    "t-deck",
+    "zephyr"
   ],
   "dependencies": [
     {

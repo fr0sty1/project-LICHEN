@@ -4,7 +4,7 @@
   "description": "Recover post-checkpoint listener-first shutdown, connection/task ownership, stale-callback isolation, RX cleanup, reconnect safety, and duplicate-push prevention.",
   "acceptance_criteria": "Stop is idempotent; active clients receive EOF; no tasks remain; overlapping clients cannot replace owner; stale callbacks cannot reach reconnects; focused async tests and three reviews pass.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

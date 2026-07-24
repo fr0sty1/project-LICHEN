@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.1.4",
   "title": "Port wrap-aware LOADng freshness/bounds to C/Zephyr lichen/subsys",
   "description": "Implement equivalent freshness checks and bounds in lichen/subsys/lichen/routing/loadng.c matching Rust/Python. Update tests/loadng/main.c and Zephyr integration. Verify against test vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

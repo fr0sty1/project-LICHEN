@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0f9f",
   "title": "Create Codex codereview command from Claude command",
   "description": "Find the existing Claude /codereview command and add an equivalent Codex /codereview command, reusing the original content as much as possible.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T01:35:41.10755Z",
   "closed_at": "2026-06-29T01:35:41.10755Z",
-  "close_reason": "Created Codex codereview prompt from the Claude codereview command and installed it under ~/.codex/prompts."
+  "close_reason": "Created Codex codereview prompt from the Claude codereview command and installed it under ~/.codex/prompts.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

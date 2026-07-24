@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T03:48:34.760425Z",
   "close_reason": "Preserved: verified bounded visited_set loop detection and O(E * H) DAO assembly comments remain after RPL fixes; no code change required for this positive review decision.",
   "labels": [
+    "c",
+    "owner-reserved",
     "review",
-    "zephyr",
-    "c"
+    "zephyr"
   ],
   "dependencies": [
     {

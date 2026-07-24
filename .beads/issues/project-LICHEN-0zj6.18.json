@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T06:39:58.602391Z",
   "close_reason": "Trimmed verbose ownership comment from 7 lines to 2: 'net_recv_data takes ownership on success; we unref on failure'",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

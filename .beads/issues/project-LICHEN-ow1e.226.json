@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.226",
   "title": "Codereview pass 1: LOADng seqnum - RFC 1982 implementation correct, one related bug found",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -12,6 +12,7 @@
   "closed_at": "2026-07-06T17:19:15.85827Z",
   "close_reason": "LOADng seqnum RFC 1982 implementation verified correct",
   "labels": [
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ph9l",
+  "title": "[review] project-LICHEN-iaui.3: Duplicate ctx-\u003estate assignments in edhoc.c initiator/responder export_oscore",
+  "description": "Code quality issue in lichen/subsys/lichen/edhoc/edhoc.c:\n- In edhoc_initiator_export_oscore: line 1040 sets ctx-\u003estate = EDHOC_STATE_EXPORTED, then line 1049 sets it again to the same value. The seed wipe was inserted between the duplicate state assignments at line 1042, but the duplicate wasnt cleaned up.\n- In edhoc_responder_export_oscore: same pattern at line 1555 and 1564.\n\nNot a correctness bug (harmless overwrite) but confusing dead code. Remove the first assignment on line 1040 and line 1555.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:58:25.261753209Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:58:25.261753209Z"
+}

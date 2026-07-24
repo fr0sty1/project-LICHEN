@@ -2,7 +2,7 @@
   "id": "project-LICHEN-so71",
   "title": "Compliance: python/src/lichen/sim/node_server.py polling",
   "description": "Policy: No-polling. Status: VIOLATION. Has 1ms sleep poll loop. Fix: deprecate in favor of renode_server.py (4t5u) or convert to push-based callbacks.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -25,5 +25,8 @@
       "type": "blocks",
       "created_at": "2026-07-10T23:11:42.344233Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

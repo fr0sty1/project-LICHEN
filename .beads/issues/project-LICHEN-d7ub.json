@@ -13,7 +13,8 @@
   "closed_at": "2026-06-29T22:00:51.614987Z",
   "close_reason": "All 90 exhaustive Zephyr C review child issues are closed and representative bridge builds pass",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ]
 }

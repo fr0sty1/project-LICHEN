@@ -14,6 +14,7 @@
   "close_reason": "Not a bug - net_pkt_unref properly frees the packet including any partial data",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

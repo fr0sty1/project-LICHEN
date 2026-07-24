@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:32:43.894639Z",
   "close_reason": "Fixed: Added thread safety documentation to lichen_lora_l2_get_eui64() in both header (lora_l2.h) and implementation (lora_l2.c). The function returns an alias to internal state; callers must ensure no concurrent deinit() while using the pointer, or copy the value immediately.",
   "labels": [
-    "review",
-    "round1",
     "contract",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round1"
   ],
   "dependencies": [
     {

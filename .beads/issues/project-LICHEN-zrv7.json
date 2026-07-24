@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-11T06:14:59.125343Z",
   "closed_at": "2026-07-11T06:14:59.125343Z",
-  "close_reason": "Fixed: Added RFC 4443 section 2.3 compliant checksum verification to handle_icmpv6(). Packets with invalid checksums are now silently discarded before processing. Added test_handle_discards_invalid_checksum to verify the fix."
+  "close_reason": "Fixed: Added RFC 4443 section 2.3 compliant checksum verification to handle_icmpv6(). Packets with invalid checksums are now silently discarded before processing. Added test_handle_discards_invalid_checksum to verify the fix.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

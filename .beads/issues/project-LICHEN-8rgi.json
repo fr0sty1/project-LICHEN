@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8rgi",
   "title": "[codereview-pass2.3] draft-lichen-schc-lora-00.md chunk1: implementation impact on Rust rules.rs codec and test vectors",
   "description": "Third independent review pass for first draft chunk. Assess what changes needed in lichen-schc/src/rules.rs (add mapping support), headers.rs for RPL option parsing, update test vectors in test/vectors/schc_compression.json, and ensure no regression to existing RPL rules 3/4. discovered-from:project-LICHEN-ftlq",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

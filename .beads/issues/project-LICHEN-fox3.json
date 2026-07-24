@@ -3,7 +3,7 @@
   "title": "Evaluate build-time firmware timestamp as GNSS/time epoch seed",
   "description": "User suggested using build-time stamps in firmware or board metadata to epoch GNSS/time. Evaluate software-only design: how build epoch is embedded, trust/freshness limits, interaction with GNSS cold start and network/manual time sources, and what hardware validation remains for RTC/GNSS behavior. Create implementation follow-ups if accepted.",
   "notes": "User clarified the build-time timestamp idea: use build-time stamps in firmware or board metadata to epoch GNSS/time. Evaluation should compare immutable firmware build epoch, board/provisioning metadata epoch, and trust/staleness interactions with GNSS cold start, RTC, network/manual time, and rollback risk.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -14,10 +14,11 @@
   "closed_at": "2026-07-02T22:12:25.821255Z",
   "close_reason": "Completed as design confirmation and de-duplication: existing closed Beads project-LICHEN-xj8k, project-LICHEN-ecq7, project-LICHEN-2067, and project-LICHEN-2067.1 already accept and implement the no-hardware policy that firmware build epoch and optional authenticated board/provision epoch are lower-bound freshness floors for GNSS/time, not authoritative clocks. Confirmed current implementation surfaces in docs/firmware-time-provider.md, lichen/cmake/lichen_build_epoch.cmake, lichen/subsys/lichen/hal, lichen/tests/build_epoch, lichen/tests/hal, and lichen/tests/puck_location. Physical validation remains blocked/tracked by existing GNSS hardware Beads. Created follow-ups project-LICHEN-7rmw, project-LICHEN-vfdi, and project-LICHEN-okar for newly identified spec/status/provision-persistence gaps.",
   "labels": [
-    "time",
-    "gnss",
     "firmware",
-    "software-design"
+    "gnss",
+    "owner-reserved",
+    "software-design",
+    "time"
   ],
   "dependencies": [
     {

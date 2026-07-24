@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1dsk",
   "title": "Add debug logging to transmission start methods",
   "description": "Modify start_transmission and _handle_tx_start_delayed methods in python/src/lichen/sim/simulation.py to add debug logging with: sim_id, node_id, payload_len, node_state, queue_size, jitter_enabled, current_time when transmission starts or is delayed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

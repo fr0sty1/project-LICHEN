@@ -2,7 +2,7 @@
   "id": "project-LICHEN-c37g",
   "title": "senml: Record::from_bytes alias lacks doc comment",
   "description": "File: rust/lichen-senml/src/record.rs\nLines: 78-85\n\nThe from_bytes method is documented as an alias for parse(), but the doc comment says 'parse a single record' without documenting:\n1. That the input must be a complete SenML-CBOR pack (not raw CBOR)\n2. That exactly one record must be present (multi-record packs are rejected)\n3. That trailing bytes are silently ignored (see related issue)\n\nThe #[inline] attribute suggests this is a thin wrapper, which is good, but users coming from other LICHEN codec APIs (like LichenFrame::from_bytes) might expect different semantics.\n\nImpact: API documentation gap; potential misuse.\n\nFix: Expand the doc comment:\n```rust\n/// Parse a single record from a SenML-CBOR pack.\n///\n/// The input must be a CBOR array containing exactly one record map.\n/// Returns [] if the pack contains zero or\n/// more than one record.\n///\n/// Alias for [](Self::parse), provided for API consistency with\n/// other codec types in the workspace.\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

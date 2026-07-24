@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ebhw.2.1",
   "title": "Add ygg_addr_from_pubkey to lichen-core::addr.rs matching test vectors and current Rust impl",
   "description": "Implement the address derivation function in core so it can be shared. Must produce identical output to current yggdrasil_addr_from_pubkey and C lichen_yggdrasil_addr. Include tests from vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

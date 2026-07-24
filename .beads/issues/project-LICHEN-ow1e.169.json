@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.169",
   "title": "gateway/aprs_is: alt_ft conversion magic number needs comment",
   "description": "In aprs_is.rs:139-143, the calculation (self.alt_dm as i32 * 328084) / 1_000_000 uses a magic number. Add comment explaining: '1 decimeter = 0.328084 feet'",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -13,6 +13,7 @@
   "closed_at": "2026-07-06T17:13:44.386132Z",
   "close_reason": "Comment already present at line 140: '// 1 decimeter = 0.328084 feet'. The magic number 328084 in the calculation (self.alt_dm as i32 * 328084) / 1_000_000 is explained.",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

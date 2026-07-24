@@ -3,7 +3,7 @@
   "title": "Close validation workflow and audit worktree",
   "description": "Review generated artifacts and the large worktree, update/close completed workflow Beads, document residual blockers, and prepare a clean commit boundary without pushing.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

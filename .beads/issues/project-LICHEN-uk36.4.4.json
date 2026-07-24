@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.4.4",
   "title": "Verify and update all test vectors in test/vectors/ for EDHOC/Schnorr/OSCORE consistency with aligned implementations",
   "description": "Regenerate or validate test vectors after fixes. Ensure Python reference, Rust, and C/Zephyr implementations all pass the vectors. Update any outdated vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

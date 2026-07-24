@@ -13,9 +13,10 @@
   "closed_at": "2026-06-27T06:14:40.580825Z",
   "close_reason": "Added 1-second backoff delay after non-EAGAIN lora_recv errors to prevent log flooding and CPU starvation",
   "labels": [
-    "risk",
     "maintainer-burden",
-    "review"
+    "owner-reserved",
+    "review",
+    "risk"
   ],
   "dependencies": [
     {

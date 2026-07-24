@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:40:48.732466Z",
   "closed_at": "2026-07-12T00:40:48.732466Z",
-  "close_reason": "Verified compliant: async select() pattern is event-driven, not CPU-burning polling. DIO1 interrupt is a latency optimization tracked separately if needed"
+  "close_reason": "Verified compliant: async select() pattern is event-driven, not CPU-burning polling. DIO1 interrupt is a latency optimization tracked separately if needed",
+  "labels": [
+    "owner-reserved"
+  ]
 }

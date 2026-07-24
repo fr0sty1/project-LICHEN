@@ -14,14 +14,15 @@
   "closed_at": "2026-07-01T08:05:33.790649Z",
   "close_reason": "Completed deterministic Python board intake CLI/report tool with source-backed facts, separated inferences/decisions, no Zephyr validation claims, Meshtastic-like and MeshCore-like tests, conflict reporting, review evidence, and local checks.",
   "labels": [
-    "zephyr",
-    "hal",
     "ai",
-    "platformio",
     "board-support",
-    "tooling",
+    "firmware",
+    "hal",
+    "owner-reserved",
     "partner-handoff",
-    "firmware"
+    "platformio",
+    "tooling",
+    "zephyr"
   ],
   "dependencies": [
     {

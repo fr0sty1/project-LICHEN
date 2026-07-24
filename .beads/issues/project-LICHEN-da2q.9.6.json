@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.9.6",
   "title": "CCP-9: Implement rendezvous RX_CHANNEL parsing in Rust link layer",
   "description": "Update rust/lichen-core/src/link.rs or rf module to parse RX_CHANNEL from announces, store per-peer preferred_channel with TOFU pinning. Integrate with synchronized_hop_channel fallback. Add unit tests matching new vectors. Follow no_std, heapless. Run 3 codereviews.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T17:10:59.682830988Z",

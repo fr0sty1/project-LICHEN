@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-c1eh.3.1",
   "title": "coap_dtn.c: add uint8_t hash_from_iid(const uint8_t iid[8]) helper using simple FNV-like mix of all 8 bytes",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

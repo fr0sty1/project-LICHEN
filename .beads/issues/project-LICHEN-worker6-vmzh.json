@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-vmzh",
+  "title": "[review] project-LICHEN-636h.3: Loopback setter calls Disconnect without connectionLock",
+  "description": "In SX1262.cs Line 51, the Loopback property setter calls `Disconnect()` and then sets `loopbackMode = value` on line 52 without holding connectionLock. Disconnect itself locks connectionLock internally, but the mode assignment is outside the lock. A concurrent EnsureConnected() call (which also takes connectionLock) could reconnect before loopbackMode is toggled, creating a brief window where the connection uses the wrong mode. Fix: wrap the body in `lock (connectionLock) { ... }`.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:53:14.843548669Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:53:14.843548669Z"
+}

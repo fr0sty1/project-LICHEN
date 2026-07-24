@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kudc.8",
   "title": "Conformance tests and spec cross-check: verify CCP-16 metrics, thresholds, CBOR structures across all impls vs spec/02a section 3.5",
   "description": "Add/update tests that run ccp16.json, ccp_tdma.json, ccp_load_balancing.json against Rust, Python, Zephyr. Check all tables in spec/02a (load metrics, thresholds, signaling formats). Fix any gaps. Include test vector generation updates if needed. Close when all pass identically.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

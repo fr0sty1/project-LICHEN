@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:19:08.274618Z",
   "closed_at": "2026-07-13T00:19:08.274618Z",
-  "close_reason": "Fixed: Implemented LRU eviction policy - when peer table is full, evict least-recently-updated peer instead of returning ENOMEM. Added last_updated_ticks tracking and find_lru_peer_locked() helper."
+  "close_reason": "Fixed: Implemented LRU eviction policy - when peer table is full, evict least-recently-updated peer instead of returning ENOMEM. Added last_updated_ticks tracking and find_lru_peer_locked() helper.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

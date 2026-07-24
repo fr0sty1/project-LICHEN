@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.16",
   "title": "Harden Rust RPL instance and saturation filtering",
   "description": "Add process_dio validation for RPL instance ID and remove finite candidates whose path cost saturates to INFINITE_RANK instead of retaining them in the parent map. Add tests and vector coverage where appropriate.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
@@ -19,5 +19,8 @@
       "type": "parent-child",
       "created_at": "2026-07-15T05:55:11.971786Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

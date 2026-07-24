@@ -10,10 +10,10 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:44:33.279251463Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:02:37.544501182Z",
+  "updated_at": "2026-07-24T22:27:10.690875997Z",
   "started_at": "2026-07-23T03:59:04.625476447Z",
-  "closed_at": "2026-07-23T04:02:37.544501182Z",
-  "close_reason": "Audit complete: full CT compliance confirmed in C/Rust implementations for scalar mult and sig comparison per draft-lichen-schnorr-00.md:5.3. No code changes required. Tests and vectors pass.",
+  "closed_at": "2026-07-24T22:27:10.690875997Z",
+  "close_reason": "Already fixed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-grx5",

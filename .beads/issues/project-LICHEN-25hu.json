@@ -2,7 +2,7 @@
   "id": "project-LICHEN-25hu",
   "title": "app_identity: TOFU check assumes has_public_key invariant without assertion",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:210-215\n\nThe TOFU check guards against public key mismatch:\nif (s_peers[slot].peer.has_public_key \u0026\u0026 memcmp(...) != 0) {\n    return -EEXIST;\n}\n\nThe s_peers[slot].peer.has_public_key check will always be true because:\n- upsert_peer requires has_public_key=true (line 194)\n- upsert_peer_key sets has_public_key=true (line 248)\n\nThis is an invariant that should be documented or asserted:\n__ASSERT(s_peers[slot].peer.has_public_key, 'existing peer must have key');\n\nIf has_public_key were ever false (memory corruption, future code change), TOFU would be silently bypassed. The current code fails open rather than closed for security-critical functionality.\n\nLow priority since the invariant currently holds, but an assertion would make the security assumption explicit.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "cleanup",
   "assignee": "AI Agent",

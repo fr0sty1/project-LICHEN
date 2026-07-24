@@ -2,7 +2,7 @@
   "id": "project-LICHEN-77u0",
   "title": "[CODEREVIEW1] generate.py ccp16_vectors",
   "description": "test/vectors/generate.py:1582 - Function uses dict without from typing import Any,Dict; also missing full vector schema compliance (no 'encoded'/'expect' fields like others). P1 correctness for vectors task. discovered-from:project-LICHEN-da2q.16.4",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

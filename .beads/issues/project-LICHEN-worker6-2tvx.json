@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-2tvx",
+  "title": "[review] project-LICHEN-worker6-sj6v: misleading test name for restored_context_rejects_response_without_piv",
+  "description": "Test restored_context_rejects_response_without_piv (line 2756) calls protect_response() with include_piv=true, but the test name says without_piv. This conflicts with the recent implementation change that rejects all protect_response calls on restored contexts (not just without-piv ones). Either rename the test to reflect the actual behavior (rejects all responses) or confirm the implementation intent.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:08:44.514588341Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:08:44.514588341Z"
+}

@@ -11,7 +11,7 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:38:45.072703Z",
   "closed_at": "2026-07-12T00:38:45.072703Z",
-  "close_reason": "Verified compliant: KissWriter TX queue is bounded at compile time using heapless::Deque\u003cheapless::Vec\u003cu8, 512\u003e, 8\u003e - max 8 frames of 512 bytes each (~4KB total). Returns KissError::BufferTooSmall when full.",
+  "close_reason": "Verified compliant: KissWriter TX queue is bounded at compile time using heapless::Deque<heapless::Vec<u8, 512>, 8> - max 8 frames of 512 bytes each (~4KB total). Returns KissError::BufferTooSmall when full.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-jcjj",
@@ -19,5 +19,8 @@
       "type": "parent-child",
       "created_at": "2026-07-10T23:10:58.99984Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

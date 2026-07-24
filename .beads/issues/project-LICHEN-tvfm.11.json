@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T01:49:41.227893Z",
   "close_reason": "Duplicate of .9 - same secure_zero function",
   "labels": [
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "round1",
-    "exhaustive"
+    "round1"
   ],
   "dependencies": [
     {

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-r28m",
+  "title": "[review] project-LICHEN-worker6-p19p: Dead variable assignments in Ack::write_to",
+  "description": "## Dead code in Ack::write_to\n\n**File:** `rust/lichen-schc/src/fragment.rs:284-285`\n\n```rust\nlet n = kept;\nlet body_bytes = n.div_ceil(8);\n```\n\nBoth `n` and `body_bytes` are computed but never used. In the old code, these were used to size the output. The new code uses a different approach (set_bit on individual positions) but left these unused assignments behind.\n\n**Fix:** Remove the dead assignments.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:31:52.833356396Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:31:52.833356396Z"
+}

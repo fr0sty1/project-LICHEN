@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m6kn",
   "title": "EDHOC: Hardcoded correlation value assumes CoAP transport",
   "description": "CORRECTNESS: edhoc_initiator_create_msg1 hardcodes corr=1 in METHOD_CORR encoding.\n\nLocation: lichen/subsys/lichen/edhoc/edhoc.c:431\n\nuint8_t method_corr = ctx-\u003emethod * 4 + 1;  // corr=1 hardcoded\n\nPer RFC 9528:\n- corr indicates transport-specific correlation method\n- corr=1 is for CoAP with client-initiated requests\n- Other transports may require different correlation values\n\nImpact: Cannot be used over non-CoAP transports without modification.\n\nFix: Make correlation value configurable via context or init parameter.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:431",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

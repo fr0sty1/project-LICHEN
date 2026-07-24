@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.4",
   "title": "Reject identical sender and recipient IDs for unicast OSCORE contexts",
   "description": "Trigger: oscore_ctx_create() is called with identical non-empty sender_id and recipient_id. lichen/subsys/lichen/oscore/oscore.c only logs a warning around line 520, then derives sender and recipient keys for a context the comment says breaks unicast OSCORE. Impact: direction separation collapses for unicast contexts, making the context ambiguous and prone to incorrect OSCORE behavior. Return OSCORE_ERR_INVALID_PARAM unless/until Group OSCORE semantics are explicitly supported.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
@@ -13,9 +13,10 @@
   "closed_at": "2026-06-29T02:46:43.802401Z",
   "close_reason": "Fixed in oscore_ctx_create: reject both zero-length sender_id and recipient_id (lines 570-575). Uses saturating checks and explicit error. Matches RFC 8613 §5.2. Commit e791bd4ab.",
   "labels": [
-    "oscore",
+    "correctness",
     "crypto",
-    "correctness"
+    "oscore",
+    "owner-reserved"
   ],
   "dependencies": [
     {

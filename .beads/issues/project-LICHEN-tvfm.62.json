@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:53:29.209641Z",
   "close_reason": "Fixed: Added documentation comment to NET_DEVICE_INIT explaining why CONFIG_KERNEL_INIT_PRIORITY_DEFAULT is correct for network interfaces, noting that Zephyr initializes hardware drivers at earlier priorities, and that the init function gracefully handles missing dependencies via iface_init_failed.",
   "labels": [
-    "review",
-    "round2",
+    "exhaustive",
     "gap",
-    "exhaustive"
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

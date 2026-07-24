@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r9pz",
   "title": "Add cross-language OSCORE SCHC vectors",
   "description": "Review of project-LICHEN-2auf.42 found test/vectors/schc_compression.json covers rules 0-4 only. Add independent canonical vectors for OSCORE rules 5/6 and update Rust/C consumers together; do not add Python-only vectors that break existing cross-language harnesses.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

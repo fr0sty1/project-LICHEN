@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6kq3",
   "title": "task",
   "description": "python/src/lichen/link/link_layer.py:411-416. DoS when MIC impl added.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:37:03.776547Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

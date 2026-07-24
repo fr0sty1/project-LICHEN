@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2j8r.1",
   "title": "Analyze git history and conflicting changes in coap_dtn.c between main and worker8 branch",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

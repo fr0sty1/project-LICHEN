@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:41:04.315942Z",
   "closed_at": "2026-07-12T00:41:04.315942Z",
-  "close_reason": "All 8 compliance checks complete. 1 fix applied (STM32WL wait_on_busy spin loop). All code uses event-driven async patterns."
+  "close_reason": "All 8 compliance checks complete. 1 fix applied (STM32WL wait_on_busy spin loop). All code uses event-driven async patterns.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

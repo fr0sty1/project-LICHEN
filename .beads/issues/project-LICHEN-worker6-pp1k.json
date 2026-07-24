@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-pp1k",
+  "title": "[review] project-LICHEN-iaui.3: duplicate state assignment in C export_oscore",
+  "description": "Both edhoc_initiator_export_oscore and edhoc_responder_export_oscore set ctx-\u003estate = EDHOC_STATE_EXPORTED twice on the success path (lines 1040+1049 and 1555+1564 in edhoc.c). The first assignment before the crypto_wipe block is correct; the second is redundant. While not a security bug, it is a latent defect risk if code is inserted between the two assignments. Remove the redundant second assignment.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:56:58.252895434Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:56:58.252895434Z"
+}

@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:58:14.766258Z",
   "closed_at": "2026-07-12T00:58:14.766258Z",
-  "close_reason": "Fixed: sign fail now uses goto cleanup instead of early return, ensuring l2_payload is wiped consistently with other buffers"
+  "close_reason": "Fixed: sign fail now uses goto cleanup instead of early return, ensuring l2_payload is wiped consistently with other buffers",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3i18.4.2",
   "title": "Update all test vectors and cross-impl tests for announce current_channel field",
   "description": "Revise ccp9-rendezvous.json, announce test vectors, Python/Rust/C parse/to_bytes/signed_data to include current_channel consistently at decided wire position. Ensure bit-exact match.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:44:04.583483Z",
   "close_reason": "Fixed: Added issue reference to existing comment explaining the defensive copy is intentional for future-proofing",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

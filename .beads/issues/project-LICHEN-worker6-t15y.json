@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-t15y",
+  "title": "[review] project-LICHEN-worker6-1hbf: Rust EDHOC test vectors are self-referential",
+  "description": "## Issue\n\n`rust/lichen-oscore/src/edhoc.rs:2067-2190`: The test vectors for TH_4, prk_out, prk_exporter, OSCORE master_secret, and OSCORE master_salt were updated to match the Rust implementation output. These expected values were computed from the same code they are testing, making them self-referential oracles.\n\n## Risk\n\nIf the implementation is wrong (e.g., wrong CRED_R encoding, wrong KDF order), tests will pass because expected values were computed from the same wrong implementation.\n\n## Fix\n\nDerive test vectors from an independent oracle:\n- Python reference implementation (once Python is also fixed to match spec)\n- External cryptographic tool (openssl KDF, pyca/cryptography)\n- A second independent implementation\n- Pre-computed and committed as hex literals with source annotation\n\nSee AGENTS.md \"Test vector discipline\" section.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:34:40.890388817Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:34:40.890388817Z"
+}

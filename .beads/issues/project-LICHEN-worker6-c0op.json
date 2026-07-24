@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-c0op",
+  "title": "[review] project-LICHEN-worker6-xrvk: indentation regression in std_ext FragmentReceiver",
+  "description": "Commit f2ce09c5695 introduced formatting/indentation regressions in rust/lichen-schc/src/fragment.rs std_ext module, confirmed by cargo fmt --check:\n\n1. FragmentReceiver::new() (lines 1103-1115): struct literal fields under-indented by one level vs the fn body\n2. FragmentReceiver::receive() (lines 1178-1188): if let Some(active) block under-indented by one level (at fn declaration level instead of body level)\n3. Ack construction block (lines 1232-1243): return block under-indented inside if frag.is_all_0() branch\n\nThe rule_id: u8 → Option\u0026lt;u8\u003e conversion logic itself is correct (fixes pre-existing type-safety issue where struct declared Option\u0026lt;u8\u003e but code treated it as u8). Only the indentation is wrong.\n\nFix: run cargo fmt on the file to auto-correct indentation, or manually re-indent the affected blocks.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:53:30.144657947Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:53:30.144657947Z"
+}

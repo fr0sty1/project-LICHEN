@@ -2,7 +2,7 @@
   "id": "project-LICHEN-91bc",
   "title": "[kimi-review] 7f85d1d: [SEVERITY: high] Empty diff: the commit claims to add a boun",
   "description": "Commit: 7f85d1d69\nMessage: fix(meshcore): bounds check payload_len in encode_pending_text()\n\nFinding: [SEVERITY: high] Empty diff: the commit claims to add a bounds check for `payload_len`, but no code changes are included. Either the fix was never actually committed (misleading/no-op commit) or the diff was truncated. The fix cannot be verified and, as presented, the vulnerability it claims to address remains unpatched.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.53",
-  "title": "rpl/dodag: DodagMembershipState\u003cS\u003e typestate is unused in production code",
-  "description": "In dodag.rs:80-143, the typestate DodagMembershipState\u003cS\u003e is defined but only used in tests. Production code uses DodagState with a runtime role field. Either commit to typestate throughout (refactor DodagState) or remove until actually needed. Currently it's dead weight that tests exercise but production ignores.",
+  "title": "rpl/dodag: DodagMembershipState<S> typestate is unused in production code",
+  "description": "In dodag.rs:80-143, the typestate DodagMembershipState<S> is defined but only used in tests. Production code uses DodagState with a runtime role field. Either commit to typestate throughout (refactor DodagState) or remove until actually needed. Currently it's dead weight that tests exercise but production ignores.",
   "status": "open",
   "priority": 3,
   "issue_type": "task",
@@ -14,6 +14,7 @@
   "close_reason": "Closed",
   "labels": [
     "elegance",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

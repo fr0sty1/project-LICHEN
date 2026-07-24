@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kmxm",
   "title": "Review Zephyr C code",
   "description": "Review project-owned Zephyr C implementation for correctness, safety, initialization, and protocol issues. Report findings with file and line references.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-29T21:19:18.996035Z",
   "closed_at": "2026-06-29T21:19:18.996035Z",
-  "close_reason": "Completed Zephyr C review fix pass: all discovered child findings were fixed in separate subagents and verified with local tests plus EC2 Zephyr builds."
+  "close_reason": "Completed Zephyr C review fix pass: all discovered child findings were fixed in separate subagents and verified with local tests plus EC2 Zephyr builds.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

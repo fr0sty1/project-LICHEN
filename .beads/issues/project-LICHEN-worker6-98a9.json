@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-98a9",
+  "title": "[review] project-LICHEN-worker6-xrvk: cargo fmt violations in std_ext FragmentReceiver",
+  "description": "The commit f2ce09c changed rule_id from u8 (0 sentinel) to Option\u003cu8\u003e in the std_ext FragmentReceiver. The logic fix is correct, but cargo fmt --check reports indentation errors across four changed blocks:\n\n1. FragmentReceiver::new() body (line ~1103): struct fields misaligned\n2. if let Some(active) = self.rule_id block (line ~1178): inconsistent indentation\n3. Ack return block (line ~1232): inconsistent indentation\n4. finalize() rule_id extract (line ~1252): inconsistent indentation\n\nFix: run cargo fmt on the file.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:54:59.108469088Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:54:59.108469088Z"
+}

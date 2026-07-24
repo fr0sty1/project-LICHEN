@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:37:03.383143Z",
   "closed_at": "2026-07-12T00:37:03.383143Z",
-  "close_reason": "Verified compliant with tracked gaps. Policy infrastructure in place: shared test vectors exist in test/vectors/, Python is source of truth (README), CI tests all three impls. Gaps already tracked as sub-beads (1dj6 OSCORE, cdmc RPL, k5zk feature matrix). Child k5zk remains open for feature matrix work."
+  "close_reason": "Verified compliant with tracked gaps. Policy infrastructure in place: shared test vectors exist in test/vectors/, Python is source of truth (README), CI tests all three impls. Gaps already tracked as sub-beads (1dj6 OSCORE, cdmc RPL, k5zk feature matrix). Child k5zk remains open for feature matrix work.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

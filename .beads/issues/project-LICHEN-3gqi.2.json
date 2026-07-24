@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3gqi.2",
   "title": "Implement comprehensive GNSS and time synchronization simulation for Renode",
   "description": "Add support for GNSS peripherals in Renode models for T-Echo (u-blox), T1000-E (LR1110+AG3335). Include build-time epoch stamping, NMEA sentence generation in sim, integration with SenML and RPL time. Parallel test development. Update docs/renode-workflow.md and test suite.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

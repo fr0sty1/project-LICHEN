@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ca3u",
+  "title": "[review] project-LICHEN-worker6-rpj4: error message references raw items[1] instead of validated suite variable in edhoc.py",
+  "description": "In `EdhocResponder.process_message_1` (python/src/lichen/crypto/edhoc.py:593), `suite` is validated via `_validate_int(items[1], \"suite\")` on line 591, but the error message on line 593 still references raw `items[1]`:\n```python\nraise ValueError(f\"Unsupported cipher suite: {items[1]}\")\n```\nShould use `{suite}` instead of `{items[1]}` for consistency and to eliminate the correctness hazard if `_validate_int` semantics ever change.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:07:51.417625829Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:07:51.417625829Z"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-0cy4",
+  "title": "[review] project-LICHEN-worker6-mjcp: vec_bool_to_bitmap hardcodes WINDOW_SIZE instead of using receiver's window_size field",
+  "description": "The new vec_bool_to_bitmap() helper introduced in this commit hardcodes the global constant WINDOW_SIZE (63) when computing bitmap positions (line 1045: 1u64 \u003c\u003c (WINDOW_SIZE - 1 - i)). This free function is called from std_ext::FragmentReceiver methods where the receiver's own window_size field may differ from the global constant. While the sender always uses WINDOW_SIZE=63 for window sizing (so the mismatch doesn't currently manifest), a receiver configured with a different window_size would produce ACK bitmaps with positions mapped relative to WINDOW_SIZE (63) instead of its own window_size, causing incorrect mapping for non-default window sizes. The function should accept a window_size parameter or be made a method on FragmentReceiver that uses self.window_size.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:10:18.773931867Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:10:18.773931867Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0cy4",
+      "depends_on_id": "HEAD",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T19:10:18.927812974Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

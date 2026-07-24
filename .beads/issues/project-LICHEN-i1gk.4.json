@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:42:20.09721Z",
   "close_reason": "Fixed: validate transition before atomic_cas in lora_transition_from() to avoid momentarily invalid state",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

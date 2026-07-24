@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.8",
   "title": "Make simulation debug toggle affect diagnostics",
   "description": "Review found Simulation._debug_enabled is cosmetic: existing simulation logging does not consult it, and inherited tests no longer verify debug behavior. Define the minimal runtime effect for the documented toggle, restore independent log assertions, and remove tests that swallow all exceptions or leave results unused.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

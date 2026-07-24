@@ -5,9 +5,11 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:26:06.077897639Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:26:58.385826542Z",
-  "closed_at": "2026-07-22T15:26:58.385826542Z",
-  "close_reason": "net_ip.h included; sockaddr_in6 cast and AF_INET6 check added with addr_len guard"
+  "updated_at": "2026-07-24T22:01:39.176069913Z",
+  "started_at": "2026-07-24T22:00:32.241911727Z",
+  "closed_at": "2026-07-24T22:01:39.176069913Z",
+  "close_reason": "Already fixed"
 }

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-899s",
+  "title": "[review] project-LICHEN-worker6-mjcp: fragments_in_window_vec parity filter fragile for \u003e2 windows",
+  "description": "## Issue\n\n`FragmentSender::fragments_in_window_vec(abs_window)` at fragment.rs:1013-1014 uses parity-only filtering:\n```rust\nself.iter().filter(|f| f.window == (abs_window % 2) as u8).collect()\n```\n\n`get_fragment` sets `window = index / WINDOW_SIZE` (absolute window number, can be 0, 1, 2, ...). The parity filter `abs_window % 2` would match fragments from window 0 AND window 2 when asked for abs_window=2 (both parity 0), returning wrong tiles.\n\n## Current impact: none\n\nWith `MAX_PACKET_SIZE=16384`, `TILE_SIZE=187`, `WINDOW_SIZE=63`, the max tile count = ceil(16384/187) = 88, producing at most 2 windows. Parity uniquely identifies the window. But this is fragile.\n\n## Fix\n\nChange filter to exact absolute window match:\n```rust\nself.iter().filter(|f| f.window == abs_window as u8).collect()\n```\n\nNote: this may require changes to `write_to` which rejects `fragment.window \u003e 1`. The sender-retransmit path would need to wrap absolute window to parity before wire encoding.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:07:47.089705727Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:07:47.089705727Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-899s",
+      "depends_on_id": "project-LICHEN-worker6-mjcp",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T19:07:47.237679185Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

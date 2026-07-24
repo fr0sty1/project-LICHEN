@@ -13,12 +13,13 @@
   "closed_at": "2026-07-06T18:08:34.421078Z",
   "close_reason": "Future work - HAL reset-cause clear support deferred to hardware validation phase",
   "labels": [
-    "zephyr",
-    "hal",
     "api",
-    "firmware",
     "board-support",
-    "partner-handoff"
+    "firmware",
+    "hal",
+    "owner-reserved",
+    "partner-handoff",
+    "zephyr"
   ],
   "dependencies": [
     {

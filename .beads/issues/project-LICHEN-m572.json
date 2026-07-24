@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m572",
   "title": "task",
   "description": "commands.rs:186-188 - On non-Unix platforms, format!(\"{seed_hex}\\n\") creates a temporary String containing the private key seed that is never zeroized. The seed hex copy remains in memory after the function returns, potentially recoverable by an attacker with memory access.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T00:42:28.814378Z",
   "closed_at": "2026-07-12T00:42:28.814378Z",
-  "close_reason": "Fixed: replaced std::fs::write(format!(...)) with File::create + writeln! to avoid creating a temporary String that would leak seed material in memory. The writeln! macro writes directly to the file handle without intermediate allocation."
+  "close_reason": "Fixed: replaced std::fs::write(format!(...)) with File::create + writeln! to avoid creating a temporary String that would leak seed material in memory. The writeln! macro writes directly to the file handle without intermediate allocation.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

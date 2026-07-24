@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T00:45:20.579933Z",
   "closed_at": "2026-07-13T00:45:20.579933Z",
-  "close_reason": "Already fixed: _UNSET sentinel variable is not present in codec.py - confirmed via grep and file inspection"
+  "close_reason": "Already fixed: _UNSET sentinel variable is not present in codec.py - confirmed via grep and file inspection",
+  "labels": [
+    "owner-reserved"
+  ]
 }

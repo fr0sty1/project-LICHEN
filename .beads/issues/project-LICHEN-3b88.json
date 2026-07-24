@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3b88",
   "title": "task",
   "description": "rust/lichen-cli/src/commands.rs:224-230. Key generation fails on Windows.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -19,5 +19,8 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:37:02.6171Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

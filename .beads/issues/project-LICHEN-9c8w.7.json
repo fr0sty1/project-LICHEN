@@ -14,6 +14,7 @@
   "close_reason": "Fixed: Downgraded thread name failure LOG_WRN to LOG_DBG (cosmetic, non-actionable)",
   "labels": [
     "logging",
+    "owner-reserved",
     "refactor"
   ],
   "dependencies": [

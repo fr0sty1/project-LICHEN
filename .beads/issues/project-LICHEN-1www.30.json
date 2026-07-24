@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.30",
   "title": "generate_eui64 returns uninitialized ret on error path before SHA-256 call",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
@@ -13,6 +13,7 @@
   "close_reason": "Invalid finding - early error paths return explicit error codes directly, not via ret variable",
   "labels": [
     "correctness",
+    "owner-reserved",
     "review"
   ],
   "dependencies": [

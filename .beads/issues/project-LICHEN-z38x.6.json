@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T04:26:34.39519Z",
   "close_reason": "Fixed: Added retained RAM crash info infrastructure - crash_info.h/c with CRASH_MAGIC, store/check_and_clear functions; called early in main(); also fixed missing LICHEN Kconfig menuconfig entry and added top-level Kconfig",
   "labels": [
-    "reliability",
-    "refactor"
+    "owner-reserved",
+    "refactor",
+    "reliability"
   ],
   "dependencies": [
     {

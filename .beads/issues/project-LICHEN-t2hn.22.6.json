@@ -15,12 +15,13 @@
   "closed_at": "2026-07-01T20:12:21.012356Z",
   "close_reason": "Completed: BLE owner/session lock ordering fixed with owner connection generation and stale-write race coverage; native_sim/Twister evidence recorded.",
   "labels": [
-    "zephyr",
-    "ble",
     "app-interface",
+    "ble",
     "firmware",
+    "meshcore",
     "meshtastic",
-    "meshcore"
+    "owner-reserved",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -3,7 +3,7 @@
   "title": "Harden secure CoAP resources",
   "description": "Make /config writes default-deny with explicit opt-in, strictly validate SOS CBOR/from/t fields before mutation, and cap sent-message records plus dynamically mounted detail resources.",
   "acceptance_criteria": "Default config PUT is unauthorized and non-mutating; explicit opt-in allows valid writes; malformed SOS maps/identifiers/timestamps reject without activation; sent history and detail routes retain only the configured newest entries; focused tests, Ruff, mypy, and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

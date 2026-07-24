@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.51",
   "title": "[crash_info.c:36-39] crash_info_check_and_clear does not zero location/extra/count",
   "description": "Gap: Only magic and reason are cleared after logging; location, extra, and count persist in retained RAM.\n\nWhat: Lines 36-39 only clear magic and reason fields. The location and extra fields (which may contain sensitive line numbers or state) persist until the next crash overwrites them. The count field is deliberately preserved, but location/extra should arguably be cleared.\n\nWhy it matters: In a security audit context, stale crash location data in retained RAM could reveal internal code structure or state to an attacker with physical access who can read retained RAM. Minor issue since crash_info is debugging data, but violates the principle of not retaining unneeded data.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
@@ -13,9 +13,10 @@
   "closed_at": "2026-06-28T07:11:08.496258Z",
   "close_reason": "Fixed: crash_info_check_and_clear now zeros location and extra after logging. Count is intentionally preserved for lifetime tracking (accumulates across warm resets until power cycle). Added clarifying comment.",
   "labels": [
-    "review-r2",
+    "exhaustive",
+    "owner-reserved",
     "review",
-    "exhaustive"
+    "review-r2"
   ],
   "dependencies": [
     {

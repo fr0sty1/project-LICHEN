@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5g8t",
   "title": "RF observability: duty cycle, TX queue, and local health",
   "description": "Track and expose RF resource usage for firmware and TUI consumption. Own duty cycle accounting, neighbor cheat detection, TX queue state, and RF health metrics. Software-only: counters, ring buffers, and API surfaces.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:53:03.547538Z",
   "closed_at": "2026-07-06T18:53:03.547538Z",
-  "close_reason": "All 6 children complete: duty cycle tracking, cheat detection, TX queue API, RF health, both TUI tabs."
+  "close_reason": "All 6 children complete: duty cycle tracking, cheat detection, TX queue API, RF health, both TUI tabs.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

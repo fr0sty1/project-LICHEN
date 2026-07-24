@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xcd6.1",
   "title": "Build LICHEN fleet AMI",
   "description": "Launch a tagged temporary ARM64 builder in us-west-2c, install Renode/Rust/Python fleet dependencies, sanitize it, create and tag the AMI, then terminate session-created resources.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -19,5 +19,8 @@
       "type": "parent-child",
       "created_at": "2026-07-15T20:59:29.086741Z"
     }
+  ],
+  "labels": [
+    "owner-reserved"
   ]
 }

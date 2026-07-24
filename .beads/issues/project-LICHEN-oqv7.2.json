@@ -3,7 +3,7 @@
   "title": "Implement nRF52840 Renode BLE startup",
   "description": "Wire or replace the unused NRF52840_BLE stub with controller/HCI/LMP behavior sufficient for canonical Zephyr Bluetooth initialization. T-Echo gateway currently stalls after partial LMP version before CoAP AUTOSTART.",
   "acceptance_criteria": "T-Echo gateway reaches BLE readiness and CoAP AUTOSTART with a harness-observed advertising or GATT effect; nRF52840DK and R1 model consumers are covered; no production Bluetooth behavior is disabled; unsupported RF/pairing boundaries documented.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

@@ -5,11 +5,13 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:20:43.812517719Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:23:10.18802444Z",
-  "closed_at": "2026-07-22T17:23:10.18802444Z",
-  "close_reason": "Updated wire format doc, FIXED_LENGTH, struct, from_bytes, builder, tests, scheduler signed_data and builder to include current_channel=0 per CCP-9 and Python parity. All tests updated and roundtrip verified.",
+  "updated_at": "2026-07-24T22:28:35.026359982Z",
+  "started_at": "2026-07-24T22:28:14.144252897Z",
+  "closed_at": "2026-07-24T22:28:35.026359982Z",
+  "close_reason": "Already fixed",
   "labels": [
     "codereview"
   ]

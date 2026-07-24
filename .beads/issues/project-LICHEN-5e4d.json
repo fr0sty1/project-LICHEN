@@ -3,7 +3,7 @@
   "title": "strncpy used for source_name copies - potential truncation without warning",
   "description": "File: lichen/subsys/lichen/app_interface/hal_bridge.c:234-236, 273-278\n\n  strncpy(app-\u003esource_name, hal-\u003esource_name,\n      sizeof(app-\u003esource_name) - 1U);\n  app-\u003esource_name[sizeof(app-\u003esource_name) - 1U] = '\\0';\n\nAnd:\n  strncpy(app-\u003esource_name, hal-\u003esource_name,\n      sizeof(app-\u003esource_name) - 1U);\n  app-\u003esource_name[sizeof(app-\u003esource_name) - 1U] = '\\0';\n  strncpy(app-\u003erejection_source_name, hal-\u003erejection_source_name,\n      sizeof(app-\u003erejection_source_name) - 1U);\n  app-\u003erejection_source_name[sizeof(app-\u003erejection_source_name) - 1U] = '\\0';\n\nThe code correctly null-terminates after strncpy, preventing buffer overflow. However:\n\n1. If source strings exceed 23 characters, they are silently truncated\n2. No warning or error is raised\n3. Truncated names may cause identification issues downstream\n\nFor a source_name[24] buffer:\n- Input: 'my-long-location-source-name-v2' (31 chars)\n- Output: 'my-long-location-source' (23 chars) - truncated\n\nThis is not a memory safety bug but may cause operational issues. Consider:\n1. Logging when truncation occurs\n2. Returning -EINVAL if name exceeds capacity\n3. Documenting the 23-character limit",
   "notes": "Commit: e64939791",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -13,8 +13,9 @@
   "closed_at": "2026-07-12T05:36:59.565819Z",
   "close_reason": "Created nvs_persistence test: NVS read/write, settings subsystem, file-backed persistence",
   "labels": [
-    "simulation",
     "native_sim",
+    "owner-reserved",
+    "simulation",
     "zephyr"
   ]
 }

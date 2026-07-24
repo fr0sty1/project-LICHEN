@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.16",
   "title": "Magic number 255 for max LoRa packet size",
   "description": "lora_l2.c:159,362 — Value 255 used for max packet size. MAX_LORA_FRAME defined in lichen_l2.c:40 but not shared. Either use shared constant or document the SF10/BW125 PHY constraint.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T18:13:40.102269Z",
   "close_reason": "Used existing LICHEN_LORA_MAX_PHY_PAYLOAD constant (already defined in lora_l2.h) instead of magic number 255 in lora_l2.c at lines 159 and 368",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

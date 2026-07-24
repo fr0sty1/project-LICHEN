@@ -1,7 +1,7 @@
 {
   "id": "lora-ipv6-mesh-5ai",
   "title": "SimulatorServer.get_app() creates new Starlette on each call",
-  "description": "**Bug / Code Quality**\n\nIn server.py:218-226:\n```python\ndef get_app(self) -\u003e Starlette | None:\n    if self._api is None:\n        return None\n    return self._api.create_app()  # Creates new instance each time!\n```\n\nEach call to get_app() creates a fresh Starlette application instance via create_app(). This is:\n1. Wasteful (new Route objects each time)\n2. Potentially buggy if caller expects the same instance\n3. Inconsistent with start() which caches the app for uvicorn\n\nFix: Cache the Starlette app in SimulatorServer, or have SimulatorAPI cache it internally.\n\nFiles: server.py:218-226, api.py:557-587",
+  "description": "**Bug / Code Quality**\n\nIn server.py:218-226:\n```python\ndef get_app(self) -> Starlette | None:\n    if self._api is None:\n        return None\n    return self._api.create_app()  # Creates new instance each time!\n```\n\nEach call to get_app() creates a fresh Starlette application instance via create_app(). This is:\n1. Wasteful (new Route objects each time)\n2. Potentially buggy if caller expects the same instance\n3. Inconsistent with start() which caches the app for uvicorn\n\nFix: Cache the Starlette app in SimulatorServer, or have SimulatorAPI cache it internally.\n\nFiles: server.py:218-226, api.py:557-587",
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
@@ -12,5 +12,8 @@
   "updated_at": "2026-05-28T16:49:02Z",
   "started_at": "2026-05-28T16:46:10Z",
   "closed_at": "2026-05-28T16:49:02Z",
-  "close_reason": "Fixed: SimulatorAPI.create_app() now caches the Starlette instance in self._app. Subsequent calls return the cached app instead of creating new Route objects each time."
+  "close_reason": "Fixed: SimulatorAPI.create_app() now caches the Starlette instance in self._app. Subsequent calls return the cached app instead of creating new Route objects each time.",
+  "labels": [
+    "owner-reserved"
+  ]
 }

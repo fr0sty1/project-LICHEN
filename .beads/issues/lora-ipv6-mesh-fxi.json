@@ -12,5 +12,8 @@
   "updated_at": "2026-06-26T21:27:14Z",
   "started_at": "2026-06-09T03:22:56Z",
   "closed_at": "2026-06-09T04:01:21Z",
-  "close_reason": "Fixed the critical RX operation bug and made progress on metrics collection implementation"
+  "close_reason": "Fixed the critical RX operation bug and made progress on metrics collection implementation",
+  "labels": [
+    "owner-reserved"
+  ]
 }

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.9.4",
   "title": "Vectors: CCP-9 requirements from da2q context",
   "description": "Vectors implementation for CCP-9 Rendezvous Mechanisms requirements from da2q context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

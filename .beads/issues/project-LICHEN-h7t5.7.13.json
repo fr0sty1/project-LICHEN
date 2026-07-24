@@ -12,14 +12,15 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-30T21:25:31.330549Z",
   "labels": [
-    "zephyr",
-    "lilygo",
-    "hardware",
     "board-support",
     "bringup",
     "firmware",
     "hal",
-    "partner-handoff"
+    "hardware",
+    "lilygo",
+    "owner-reserved",
+    "partner-handoff",
+    "zephyr"
   ],
   "dependencies": [
     {

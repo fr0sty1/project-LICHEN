@@ -2,7 +2,7 @@
   "id": "project-LICHEN-la4j",
   "title": "TcpConnection: bare except clauses swallow all exceptions",
   "description": "In python/src/lichen/interface/tcp.py TcpConnection, the get_peername() and close() methods catch all exceptions with bare 'except Exception:' and log debug messages. While the logging was added, catching Exception is too broad - it will swallow KeyboardInterrupt (via SystemExit) if it occurs during close. Consider catching more specific exceptions (OSError, ConnectionError) or using 'except BaseException:' with re-raise for SystemExit/KeyboardInterrupt.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
@@ -11,5 +11,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-06T18:53:07.452151Z",
   "closed_at": "2026-07-06T18:53:07.452151Z",
-  "close_reason": "Fixed by workflow"
+  "close_reason": "Fixed by workflow",
+  "labels": [
+    "owner-reserved"
+  ]
 }

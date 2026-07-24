@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fgip",
+  "title": "[review] project-LICHEN-worker6-1ror: transcript_4 parameter ciphertext_3 misnamed, should be plaintext_3",
+  "description": "The `transcript_4` function (edhoc.rs:542) names its second parameter `ciphertext_3` but per EDHOC RFC 9528 §4.5, TH_4 = H(TH_3, PLAINTEXT_3, CRED_I). Both callers now pass plaintext correctly (line 1201: `\u0026plaintext_3`, line 1631: `\u0026pending.plaintext`), but the parameter name is misleading and could cause future maintainers to mistakenly pass ciphertext.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:10:31.57117439Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:10:31.57117439Z"
+}

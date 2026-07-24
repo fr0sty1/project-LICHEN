@@ -13,10 +13,11 @@
   "closed_at": "2026-06-28T02:40:13.287844Z",
   "close_reason": "Fixed: fail_late_init path now acquires both tx_mutex and rx_mutex in the correct order (tx_mutex first, then rx_mutex), matching the enable/disable paths in lichen_l2_enable(). Updated comment to document the lock ordering rationale.",
   "labels": [
-    "review",
-    "round2",
     "cross-file",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review",
+    "round2"
   ],
   "dependencies": [
     {

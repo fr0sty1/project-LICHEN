@@ -13,6 +13,7 @@
   "closed_at": "2026-06-27T22:28:24.351223Z",
   "close_reason": "Added structured table documenting all 5 detection priority levels with their checks, actions, and use cases",
   "labels": [
+    "owner-reserved",
     "readability",
     "review"
   ],

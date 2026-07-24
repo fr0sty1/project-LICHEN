@@ -13,8 +13,9 @@
   "closed_at": "2026-06-28T03:44:03.620266Z",
   "close_reason": "Fixed: Removed zero-initialization of src_eui64 to make bugs visible if peer_try_all_pubkeys returns success without setting it",
   "labels": [
-    "review",
-    "exhaustive"
+    "exhaustive",
+    "owner-reserved",
+    "review"
   ],
   "dependencies": [
     {

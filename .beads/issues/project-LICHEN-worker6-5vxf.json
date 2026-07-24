@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-5vxf",
+  "title": "project-LICHEN-worker6-trau: dead duplicate validation in protect_response else branch",
+  "description": "Commit c1f4690f added early validation at lines 974-979 for protect_response (request_kid length, from_piv validity, recipient_id match). The existing validation at lines 999-1006 inside the 'else (no PIV) branch now duplicates those checks:\n\n- request_piv.is_empty() — caught by from_piv.is_none()\n- request_piv.len() \u003e PIV_MAX_LEN — caught by from_piv.is_none()\n- request_kid != self.recipient_id() — duplicate of line 976\n- OscoreSeqNum::from_piv(request_piv).map(...).unwrap() — safe now but unwrap() is fragile\n\nThe dead code should be removed; the early validation already covers all cases. The .unwrap() on line 1007 should be replaced with a safe access pattern (match or expect with message).",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:03:52.271045385Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:03:52.271045385Z"
+}

@@ -12,7 +12,8 @@
   "closed_at": "2026-06-28T05:05:01.77622Z",
   "close_reason": "All panic issues fixed, logging added to lichen-link, logging review complete",
   "labels": [
-    "rust",
-    "quality"
+    "owner-reserved",
+    "quality",
+    "rust"
   ]
 }
