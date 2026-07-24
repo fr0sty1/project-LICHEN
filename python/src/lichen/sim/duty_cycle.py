@@ -8,7 +8,6 @@ This module provides a sliding window tracker for compliance monitoring.
 
 from __future__ import annotations
 
-
 class DutyCycleTracker:
     """Track transmit duty cycle over a sliding time window.
 
@@ -139,6 +138,22 @@ class DutyCycleTracker:
         remaining_us = int(max_airtime - total_airtime)
         return remaining_us // 1000
 
+    def usage_permille(self, time_us: int) -> int:
+        """Return current duty cycle usage in permille (window-relative).
+
+        Computes `(used_airtime * 1000) / window_us`, matching the Rust
+        implementation. For 1% duty cycle, at limit this returns 10.
+
+        Args:
+            time_us: Current time in microseconds.
+
+        Returns:
+            Usage in permille (0 to 1000+).
+        """
+        self._prune(time_us)
+        used = self._airtime_in_window(time_us)
+        return (used * 1000) // self._window_us
+
     def usage_percent(self, time_us: int) -> float:
         """Return current duty cycle usage as a percentage.
 
@@ -184,6 +199,11 @@ class DutyCycleTracker:
     def next_tx_available_ms(self, airtime_us: int, time_us: int) -> int:
         """Return when a TX of given airtime will be allowed.
 
+        Uses cumulative-freed algorithm matching Rust implementation:
+        computes how much budget must be freed (needed), then walks
+        records in chronological order accumulating freed duration
+        until enough has aged out.
+
         Args:
             airtime_us: Duration of proposed transmission in microseconds.
             time_us: Current time in microseconds.
@@ -193,38 +213,31 @@ class DutyCycleTracker:
             (impossible even with empty window), otherwise milliseconds until
             enough budget is available.
         """
-        max_airtime = self._window_us * self._limit_ratio
+        max_airtime_us = self._window_us * self._limit_ratio
+        max_airtime_ms = max_airtime_us // 1000
+        airtime_ms = airtime_us // 1000
 
-        # Check if TX exceeds maximum possible budget - impossible even with empty window
-        if airtime_us > max_airtime:
+        if airtime_us > max_airtime_us:
             return -1
 
-        if self.can_transmit(airtime_us, time_us):
+        self._prune(time_us)
+        used_ms = self._airtime_in_window(time_us) // 1000
+
+        if used_ms + airtime_ms <= max_airtime_ms:
             return 0
 
-        # Need to wait for old TXs to expire
-        # Binary search would be more efficient, but simple linear scan
-        # is fine for typical usage
+        needed = used_ms + airtime_ms - max_airtime_ms
+        freed = 0
 
-        # Sort transmissions by end time
-        sorted_txs = sorted(
-            ((t + d, d) for t, d in self._transmissions),
-            key=lambda x: x[0],
-        )
+        time_ms = time_us // 1000
+        window_ms = self._window_us // 1000
 
-        # Simulate time passing as TXs expire
-        total_airtime = self._airtime_in_window(time_us)
-        for end_time_us, _duration in sorted_txs:
-            if end_time_us <= time_us - self._window_us:
-                continue
+        # Records are kept in chronological order
+        for ts_us, dur_us in self._transmissions:
+            freed += dur_us // 1000
+            if freed >= needed:
+                ts_ms = ts_us // 1000
+                delay = ts_ms + window_ms - time_ms
+                return max(0, delay)
 
-            # At this time, this TX will have fully expired
-            future_time = end_time_us + self._window_us
-            total_airtime = self._airtime_in_window(future_time)
-
-            if (total_airtime + airtime_us) <= max_airtime:
-                delay_us = future_time - time_us
-                return max(0, delay_us // 1000)
-
-        # Should not reach here if logic is correct
-        return self.time_until_budget_refill_ms(time_us)
+        return -1
