@@ -458,6 +458,14 @@ class Simulation:
 
         event = self._event_queue.pop()
         self._current_time_us = event.time_us
+        self._debug_log(
+            "process_next_event",
+            sim_id=self._id,
+            event_type=event.__class__.__name__,
+            event_time_us=event.time_us,
+            queue_size=len(self._event_queue),
+            **self._get_blocked_node_info(),
+        )
         self._handle_event(event)
         return event
 
