@@ -18,6 +18,8 @@ const SNR_POOR: i8 = 0;
 const SNR_GOOD: i8 = 8;
 const LOAD_HIGH: u32 = FP_SCALE * 4 / 5;
 const LOAD_REBALANCE: u32 = FP_SCALE * 2 / 5;
+const FNV_BASIS: u32 = 0x811c9dc5;
+const FNV_PRIME: u32 = 0x01000193;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RfHealthMetrics {
@@ -261,6 +263,81 @@ impl RfHealthMetrics {
     }
 }
 
+/// FNV-1a32 hash matching spec/02a-coordinated-capacity.md:123 and test vectors.
+#[inline]
+pub fn fnv1a32(data: &[u8]) -> u32 {
+    let mut hash = FNV_BASIS;
+    for &b in data {
+        hash ^= b as u32;
+        hash = hash.wrapping_mul(FNV_PRIME);
+    }
+    hash
+}
+
+/// SelectChannel per spec/02a-coordinated-capacity.md §2a.3.1 pseudocode.
+///
+/// Returns channel index: 0 for CH0 (control) when density > 8, else
+/// 1 + (FNV-1a32(EUI64_BE || epoch_LE) % MAX(n_channels, 3)).
+/// Matches ccp16.json test vectors.
+#[inline]
+pub fn select_channel(eui64: &[u8; 8], epoch: u32, density: u8, n_channels: u8) -> u8 {
+    if density > 8 {
+        return 0;
+    }
+    let mut data = [0u8; 12];
+    data[..8].copy_from_slice(eui64);
+    data[8..12].copy_from_slice(&epoch.to_le_bytes());
+    let h = fnv1a32(&data);
+    let n = n_channels.max(3);
+    1 + (h % n as u32) as u8
+}
+
+/// Synchronized hop channel per TDMA spec (seed=slot, sfn wrapping u32).
+///
+/// Used for per-slot channel hopping. seed is typically the assigned slot
+/// index. Matches ccp16-hop.json test vectors.
+#[inline]
+pub fn synchronized_hop_channel(sfn: u32, seed: u32, num_channels: u8) -> u8 {
+    let mut data = [0u8; 8];
+    data[..4].copy_from_slice(&seed.to_le_bytes());
+    data[4..8].copy_from_slice(&sfn.to_le_bytes());
+    let h = fnv1a32(&data);
+    let n = num_channels.max(3);
+    1 + (h % n as u32) as u8
+}
+
+/// Adaptive SF selection per spec/02a-coordinated-capacity.md §2a.7 pseudocode.
+///
+/// Applies incremental adjustments starting from `assigned_sf`:
+/// - Density > 10 OR utilization > 150: +2 (cap 12)
+/// - EMA_SNR > 8 AND density < 5: -1 (floor 7)
+/// - EMA_Loss > 0.25 OR utilization > 200: +1 (cap 12), tx not allowed if utilization > 200
+///
+/// Returns (sf, tx_allowed).
+#[inline]
+pub fn adaptive_sf_select(
+    assigned_sf: u8,
+    snr_ema: i8,
+    density: u8,
+    utilization: u16,
+    loss_rate_ema: u16,
+) -> (u8, bool) {
+    let mut sf = if assigned_sf == 0 { 10 } else { assigned_sf };
+    if density > 10 || utilization > 150 {
+        sf = sf.saturating_add(2).min(12);
+    }
+    if snr_ema > 8 && density < 5 {
+        sf = sf.saturating_sub(1).max(7);
+    }
+    if loss_rate_ema > 2500 || utilization > 200 {
+        sf = sf.saturating_add(1).min(12);
+        if utilization > 200 {
+            return (sf, false);
+        }
+    }
+    (sf, true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,6 +494,81 @@ mod tests {
         stats.update(20);
         assert_eq!(stats.min, -10);
         assert_eq!(stats.max, 20);
+    }
+
+    #[test]
+    fn fnv1a32_basis_matches_vectors() {
+        let h = fnv1a32(b"");
+        assert_eq!(h, 0x811c9dc5);
+    }
+
+    #[test]
+    fn fnv1a32_self_consistency() {
+        let a = fnv1a32(b"");
+        let b = fnv1a32(b"");
+        assert_eq!(a, b);
+        assert_eq!(a, FNV_BASIS);
+    }
+
+    #[test]
+    fn select_channel_density_above_8_returns_zero() {
+        assert_eq!(select_channel(&[0u8; 8], 0, 9, 8), 0);
+        assert_eq!(select_channel(&[0u8; 8], 0, 10, 16), 0);
+        assert_eq!(select_channel(&[0u8; 8], 0, 255, 3), 0);
+    }
+
+    #[test]
+    fn select_channel_low_density_uses_hash() {
+        let eui = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
+        let ch = select_channel(&eui, 1, 3, 3);
+        assert_eq!(ch, 2);
+    }
+
+    #[test]
+    fn select_channel_min_channels_is_3() {
+        let eui = [0u8; 8];
+        let ch = select_channel(&eui, 0, 0, 1);
+        assert!(ch >= 1 && ch <= 3);
+    }
+
+    #[test]
+    fn synchronized_hop_channel_sfn0_8ch() {
+        let ch = synchronized_hop_channel(0, 0, 8);
+        assert_eq!(ch, 6);
+    }
+
+    #[test]
+    fn synchronized_hop_channel_sfn_wrap() {
+        let ch = synchronized_hop_channel(4294967295, 0, 8);
+        assert_eq!(ch, 2);
+    }
+
+    #[test]
+    fn adaptive_sf_select_density_high_increases_sf() {
+        let (sf, allowed) = adaptive_sf_select(10, 5, 15, 0, 0);
+        assert_eq!(sf, 12);
+        assert!(allowed);
+    }
+
+    #[test]
+    fn adaptive_sf_select_high_utilization_denies_tx() {
+        let (sf, allowed) = adaptive_sf_select(10, 5, 3, 250, 0);
+        assert_eq!(sf, 12);
+        assert!(!allowed);
+    }
+
+    #[test]
+    fn adaptive_sf_select_good_snr_low_density_decreases_sf() {
+        let (sf, allowed) = adaptive_sf_select(10, 12, 3, 0, 0);
+        assert_eq!(sf, 9);
+        assert!(allowed);
+    }
+
+    #[test]
+    fn adaptive_sf_select_high_loss_increases_sf() {
+        let (sf, allowed) = adaptive_sf_select(10, 5, 3, 0, 3000);
+        assert_eq!(sf, 11);
+        assert!(allowed);
     }
 
     #[test]
