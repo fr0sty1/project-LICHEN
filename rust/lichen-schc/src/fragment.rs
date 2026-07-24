@@ -1109,7 +1109,7 @@ mod std_ext {
         pub fn new(window_size: usize) -> Self {
             FragmentReceiver {
                 window_size,
-                rule_id: 0,
+                rule_id: None,
                 tiles: HashMap::new(),
                 current_window: 0,
                 completed_windows: HashSet::new(),
@@ -1182,14 +1182,16 @@ mod std_ext {
                     mic_ok: None,
                 };
             }
-            if self.rule_id == 0 {
-                self.rule_id = frag.rule_id;
-            } else if self.rule_id != frag.rule_id {
-                return ReceiverResult {
-                    ack: None,
-                    reassembled: None,
-                    mic_ok: None,
-                };
+            if let Some(active) = self.rule_id {
+                if active != frag.rule_id {
+                    return ReceiverResult {
+                        ack: None,
+                        reassembled: None,
+                        mic_ok: None,
+                    };
+                }
+            } else {
+                self.rule_id = Some(frag.rule_id);
             }
             let abs_window = self.abs_window(frag);
             if self.completed_windows.contains(&abs_window) {
@@ -1236,7 +1238,7 @@ mod std_ext {
                 }
                 return ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id,
+                        self.rule_id.unwrap(),
                         (abs_window % 2) as u8,
                         &bitmap,
                         false,
@@ -1254,7 +1256,7 @@ mod std_ext {
 
         fn finalize(&mut self) -> ReceiverResult {
             let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, &bitmap, false);
+            let nack = Ack::new(self.rule_id.unwrap(), (self.all1_window % 2) as u8, &bitmap, false);
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).
@@ -1279,7 +1281,7 @@ mod std_ext {
                 self.reassembled = Some(data.clone());
                 ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id,
+                        self.rule_id.unwrap(),
                         (self.all1_window % 2) as u8,
                         &bitmap,
                         true,
