@@ -53,6 +53,8 @@ pub mod scheduler;
 #[cfg(feature = "std")]
 pub mod secure;
 #[cfg(feature = "std")]
+pub mod secure_dispatch;
+#[cfg(feature = "std")]
 pub mod stack;
 #[cfg(feature = "std")]
 pub mod tdma_scheduler;
