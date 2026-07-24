@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qiex",
+  "title": "[review] project-LICHEN-6mij.2.4: coap_msg.c has 2 mutating handlers not refactored for OSCORE",
+  "description": "Two mutating handlers in coap_msg.c (lines 419 and 759) still use bare lichen_coap_is_local_admin() without refactoring to coap_oscore_authorize_mutating(). This prevents OSCORE-authenticated mesh peers from sending messages or acknowledging them.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:25.876825287Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:25.876825287Z"
+}
