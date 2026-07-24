@@ -3,7 +3,8 @@
 """Integration test for native LCI interface over SLIP transport.
 
 End-to-end test of native LCI interface: starts native_sim node with SLIP
-transport, uses aiocoap to exercise CoAP resources per spec/11-lci.md.
+transport, uses aiocoap-backed LciClient to exercise CoAP resources per
+spec/11-lci.md.
 
 Run with:
     LICHEN_RUN_NATIVE_LCI_INTEGRATION=1 pytest -v -k native_lci
@@ -13,7 +14,9 @@ Requirements:
 - Build: west build -b native_sim firmware/bridge-zephyr -- -DCONFIG_NET_SLIP=y
 
 Architecture:
-    pytest <--> aiocoap <--> SlipTransport <--> PTY <--> native_sim
+    pytest <--> LciClient <--> PacketCoapResourceTransport
+        <--> PacketDatagramChannel <--> SlipPacketTransport <--> PTY
+        <--> native_sim
 
 This test exercises LCI resources defined in spec/11-lci.md:
 - /.well-known/core (resource discovery)
@@ -31,13 +34,19 @@ import os
 import pty
 import signal
 import subprocess
-from dataclasses import dataclass
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import cbor2
 import pytest
 
+from lichen.client.ip_coap import CoapTransportError
+from lichen.client.lci import LciClient
+from lichen.client.model import DeviceStatus, Neighbor
+from lichen.client.packet_coap import PacketCoapConfig, PacketCoapResourceTransport
+from lichen.client.transport import PacketTransport
 from lichen.slip.codec import StreamDecoder
 from lichen.slip.codec import encode as slip_encode
 
@@ -57,66 +66,77 @@ SLIP_BUFFER_SIZE = 4096
 
 
 # ============================================================================
-# SLIP Transport over PTY
+# PacketTransport over PTY + SLIP
 # ============================================================================
 
 
-@dataclass
-class SlipPtyTransport:
-    """SLIP framing over a PTY connected to native_sim.
+class SlipPacketTransport(PacketTransport):
+    """PacketTransport implementation over a PTY with SLIP framing.
 
-    Provides send/receive for IPv6 packets wrapped in SLIP framing.
-    Used as the underlying transport for CoAP communication with native_sim.
+    Sends and receives IPv6 packets through a PTY connected to native_sim,
+    using SLIP (RFC 1055) framing.
     """
 
-    master_fd: int
-    decoder: StreamDecoder
+    def __init__(self, master_fd: int) -> None:
+        self._master_fd = master_fd
+        self._decoder = StreamDecoder()
+        self._rx_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+        self._reader_task: asyncio.Task[None] | None = None
+        self._closed = False
 
-    @classmethod
-    def create(cls, master_fd: int) -> SlipPtyTransport:
-        """Create a SLIP transport from a PTY master file descriptor."""
-        return cls(master_fd=master_fd, decoder=StreamDecoder())
+    async def connect(self) -> None:
+        if self._reader_task is None:
+            self._reader_task = asyncio.create_task(self._read_loop())
 
-    def send(self, packet: bytes) -> None:
-        """Send an IPv6 packet wrapped in SLIP framing."""
+    async def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._reader_task is not None:
+            self._reader_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._reader_task
+            self._reader_task = None
+
+    async def send_packet(self, packet: bytes) -> None:
         frame = slip_encode(packet)
-        os.write(self.master_fd, frame)
+        os.write(self._master_fd, frame)
 
-    async def receive(self, timeout: float = 1.0) -> bytes | None:
-        """Receive and decode the next SLIP-framed IPv6 packet.
+    def packets(self) -> AsyncIterator[bytes]:
+        return self._packets()
 
-        Returns None on timeout.
-        """
-        loop = asyncio.get_event_loop()
-        deadline = loop.time() + timeout
-
-        while loop.time() < deadline:
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                return None
-
+    async def _packets(self) -> AsyncIterator[bytes]:
+        while not self._closed:
             try:
-                # Use select to check if data is available
-                ready = await asyncio.wait_for(
-                    loop.run_in_executor(None, self._read_available),
-                    timeout=remaining,
+                packet = await asyncio.wait_for(
+                    self._rx_queue.get(), timeout=1.0
                 )
-                if ready:
-                    packets = self.decoder.feed(ready)
-                    if packets:
-                        return packets[0]
             except TimeoutError:
-                return None
+                continue
+            if packet is None:
+                break
+            yield packet
 
-        return None
+    async def _read_loop(self) -> None:
+        loop = asyncio.get_event_loop()
+        while not self._closed:
+            try:
+                data = await loop.run_in_executor(None, self._read_available)
+                if data:
+                    for packet in self._decoder.feed(data):
+                        await self._rx_queue.put(packet)
+            except OSError:
+                break
+            except asyncio.CancelledError:
+                break
+        await self._rx_queue.put(None)
 
     def _read_available(self) -> bytes:
-        """Read available data from PTY (blocking helper for executor)."""
         import select
 
-        readable, _, _ = select.select([self.master_fd], [], [], 0.1)
+        readable, _, _ = select.select([self._master_fd], [], [], 0.1)
         if readable:
-            return os.read(self.master_fd, SLIP_BUFFER_SIZE)
+            return os.read(self._master_fd, SLIP_BUFFER_SIZE)
         return b""
 
 
@@ -126,13 +146,6 @@ class SlipPtyTransport:
 
 
 def _find_native_sim_binary() -> Path | None:
-    """Find a native_sim binary with SLIP support.
-
-    Searches:
-    1. twister-out/ for test builds
-    2. firmware/bridge-zephyr/build/ for manual builds
-    """
-    # Check twister-out for native_sim builds
     for twister_dir in PROJECT_ROOT.glob("twister-out*"):
         native_sim_dir = twister_dir / "native_sim"
         if native_sim_dir.is_dir():
@@ -141,7 +154,6 @@ def _find_native_sim_binary() -> Path | None:
                 if binary.exists():
                     return binary
 
-    # Check manual build directory
     bridge_build = PROJECT_ROOT / "firmware" / "bridge-zephyr" / "build"
     if bridge_build.exists():
         binary = bridge_build / "zephyr" / "zephyr.exe"
@@ -158,26 +170,17 @@ class NativeSimProcess:
     process: subprocess.Popen[bytes]
     master_fd: int
     slave_fd: int
-    transport: SlipPtyTransport
+    packet_transport: SlipPacketTransport
+    lci_client: LciClient | None = field(default=None, init=False)
+    _resource_transport: PacketCoapResourceTransport | None = field(
+        default=None, init=False
+    )
 
     @classmethod
     async def start(cls, binary_path: Path) -> NativeSimProcess:
-        """Start native_sim with a PTY for SLIP communication.
-
-        Args:
-            binary_path: Path to the native_sim executable.
-
-        Returns:
-            NativeSimProcess managing the running instance.
-        """
-        # Create PTY pair for SLIP communication
         master_fd, slave_fd = pty.openpty()
-
-        # Get the slave device name
         slave_name = os.ttyname(slave_fd)
 
-        # Start native_sim with the PTY as its serial device
-        # native_sim uses --bt-dev for serial device path
         process = subprocess.Popen(
             [
                 str(binary_path),
@@ -188,20 +191,45 @@ class NativeSimProcess:
             stderr=subprocess.PIPE,
         )
 
-        # Give the process time to initialize
         await asyncio.sleep(0.5)
 
-        transport = SlipPtyTransport.create(master_fd)
+        packet_transport = SlipPacketTransport(master_fd)
 
         return cls(
             process=process,
             master_fd=master_fd,
             slave_fd=slave_fd,
-            transport=transport,
+            packet_transport=packet_transport,
         )
 
+    async def connect_lci(self) -> LciClient:
+        if self.lci_client is not None:
+            return self.lci_client
+
+        config = PacketCoapConfig(
+            local_host="fe80::2",
+            peer_host="fe80::1",
+            timeout_s=COAP_TIMEOUT,
+        )
+        transport = PacketCoapResourceTransport(
+            self.packet_transport,
+            config=config,
+        )
+        await transport.connect()
+        client = LciClient(transport)
+        self._resource_transport = transport
+        self.lci_client = client
+        return client
+
     async def stop(self) -> None:
-        """Stop the native_sim process and cleanup resources."""
+        if self.lci_client is not None:
+            try:
+                await self.lci_client.close()
+            except (CoapTransportError, OSError, asyncio.CancelledError):
+                pass
+            self.lci_client = None
+            self._resource_transport = None
+
         if self.process.poll() is None:
             self.process.send_signal(signal.SIGTERM)
             try:
@@ -226,87 +254,12 @@ class NativeSimProcess:
 
 
 # ============================================================================
-# CoAP Client for SLIP Transport
-# ============================================================================
-
-
-class SlipCoapClient:
-    """Minimal CoAP client over SLIP transport.
-
-    This is a simplified CoAP implementation that works over SLIP
-    for testing purposes. For full LCI testing, use aiocoap with
-    a proper transport binding.
-
-    Note: This stub implementation demonstrates the architecture.
-    Full implementation requires CoAP message parsing/serialization.
-    """
-
-    def __init__(self, transport: SlipPtyTransport) -> None:
-        self.transport = transport
-        self._message_id = 0
-
-    def _next_message_id(self) -> int:
-        self._message_id = (self._message_id + 1) & 0xFFFF
-        return self._message_id
-
-    async def get(self, path: str, timeout: float = COAP_TIMEOUT) -> dict[str, Any]:
-        """Send a CoAP GET request and return the parsed CBOR response.
-
-        Args:
-            path: Resource path (e.g., "/status")
-            timeout: Request timeout in seconds
-
-        Returns:
-            Parsed CBOR payload as a dictionary
-
-        Raises:
-            TimeoutError: If no response received
-            ValueError: If response parsing fails
-        """
-        # TODO: Implement full CoAP request/response over SLIP
-        # This requires:
-        # 1. Build CoAP GET message
-        # 2. Wrap in IPv6+UDP headers
-        # 3. Send via SLIP
-        # 4. Receive and parse response
-        raise NotImplementedError(
-            "Full CoAP-over-SLIP implementation pending. "
-            "See architecture notes in module docstring."
-        )
-
-    async def put(
-        self, path: str, payload: dict[str, Any], timeout: float = COAP_TIMEOUT
-    ) -> bool:
-        """Send a CoAP PUT request with CBOR payload.
-
-        Args:
-            path: Resource path (e.g., "/config")
-            payload: Dictionary to encode as CBOR
-            timeout: Request timeout in seconds
-
-        Returns:
-            True if the PUT was successful (2.xx response)
-
-        Raises:
-            TimeoutError: If no response received
-        """
-        raise NotImplementedError(
-            "Full CoAP-over-SLIP implementation pending. "
-            "See architecture notes in module docstring."
-        )
-
-
-# ============================================================================
 # Test Fixtures
 # ============================================================================
 
 
 @pytest.fixture
 async def native_sim() -> NativeSimProcess | None:
-    """Fixture providing a running native_sim process with SLIP transport.
-
-    Yields None if native_sim binary is not available.
-    """
     binary = _find_native_sim_binary()
     if binary is None:
         yield None
@@ -320,13 +273,18 @@ async def native_sim() -> NativeSimProcess | None:
 
 
 @pytest.fixture
-def coap_client(
+async def lci_client(
     native_sim: NativeSimProcess | None,
-) -> SlipCoapClient | None:
-    """Fixture providing a CoAP client connected to native_sim."""
+) -> LciClient | None:
     if native_sim is None:
-        return None
-    return SlipCoapClient(native_sim.transport)
+        yield None
+        return
+
+    client = await native_sim.connect_lci()
+    try:
+        yield client
+    finally:
+        pass
 
 
 # ============================================================================
@@ -335,7 +293,6 @@ def coap_client(
 
 
 def _has_native_sim() -> bool:
-    """Check if native_sim binary is available."""
     return _find_native_sim_binary() is not None
 
 
@@ -359,22 +316,17 @@ skip_integration_disabled = pytest.mark.skipif(
 @skip_no_native_sim
 @pytest.mark.asyncio
 async def test_native_sim_starts() -> None:
-    """Test that native_sim starts and can be stopped cleanly."""
     binary = _find_native_sim_binary()
     assert binary is not None
 
     proc = await NativeSimProcess.start(binary)
     try:
-        # Verify process is running
         assert proc.process.poll() is None
-        # Give it time to initialize
         await asyncio.sleep(0.5)
-        # Still running
         assert proc.process.poll() is None
     finally:
         await proc.stop()
 
-    # Process should be terminated
     assert proc.process.poll() is not None
 
 
@@ -382,105 +334,97 @@ async def test_native_sim_starts() -> None:
 @skip_no_native_sim
 @pytest.mark.asyncio
 async def test_well_known_core_discovery(
-    coap_client: SlipCoapClient | None,
+    lci_client: LciClient | None,
 ) -> None:
-    """Test CoAP resource discovery via /.well-known/core.
-
-    Per RFC 6690, the response is link-format listing available resources.
-    Expected resources per spec/11-lci.md:
-    - /status
-    - /config
-    - /neighbors
-    """
-    if coap_client is None:
+    if lci_client is None:
         pytest.skip("native_sim not available")
 
-    # TODO: Implement when CoAP-over-SLIP is ready
-    pytest.skip("CoAP-over-SLIP implementation pending")
+    resources = await lci_client.discover()
+
+    assert isinstance(resources, list)
+    resource_paths = {r for r in resources}
+    assert "/status" in resource_paths
+    assert "/config" in resource_paths
+    assert "/neighbors" in resource_paths
 
 
 @skip_integration_disabled
 @skip_no_native_sim
 @pytest.mark.asyncio
 async def test_status_resource(
-    coap_client: SlipCoapClient | None,
+    lci_client: LciClient | None,
 ) -> None:
-    """Test GET /status returns CBOR-encoded node status.
-
-    Expected fields per spec/11-lci.md:
-    - uptime_s: integer seconds since boot
-    - rank: RPL rank (if joined)
-    - battery_pct: battery percentage (if applicable)
-    """
-    if coap_client is None:
+    if lci_client is None:
         pytest.skip("native_sim not available")
 
-    # TODO: Implement when CoAP-over-SLIP is ready
-    pytest.skip("CoAP-over-SLIP implementation pending")
+    status = await lci_client.get_status()
+
+    assert isinstance(status, DeviceStatus)
+    assert status.uptime_s is not None
+    assert isinstance(status.uptime_s, int)
+    assert status.uptime_s >= 0
 
 
 @skip_integration_disabled
 @skip_no_native_sim
 @pytest.mark.asyncio
 async def test_config_resource_get(
-    coap_client: SlipCoapClient | None,
+    lci_client: LciClient | None,
 ) -> None:
-    """Test GET /config returns CBOR-encoded configuration."""
-    if coap_client is None:
+    if lci_client is None:
         pytest.skip("native_sim not available")
 
-    # TODO: Implement when CoAP-over-SLIP is ready
-    pytest.skip("CoAP-over-SLIP implementation pending")
+    config = await lci_client.get_config()
+
+    assert isinstance(config, dict)
+    assert len(config) >= 0
 
 
 @skip_integration_disabled
 @skip_no_native_sim
 @pytest.mark.asyncio
 async def test_config_resource_put(
-    coap_client: SlipCoapClient | None,
+    lci_client: LciClient | None,
 ) -> None:
-    """Test PUT /config updates configuration and returns 2.04 Changed."""
-    if coap_client is None:
+    if lci_client is None:
         pytest.skip("native_sim not available")
 
-    # TODO: Implement when CoAP-over-SLIP is ready
-    pytest.skip("CoAP-over-SLIP implementation pending")
+    await lci_client.set_config({"name": "test-node"})
 
 
 @skip_integration_disabled
 @skip_no_native_sim
 @pytest.mark.asyncio
 async def test_neighbors_resource(
-    coap_client: SlipCoapClient | None,
+    lci_client: LciClient | None,
 ) -> None:
-    """Test GET /neighbors returns CBOR neighbor table.
-
-    In a freshly started node with no peers, this should return an empty list.
-    """
-    if coap_client is None:
+    if lci_client is None:
         pytest.skip("native_sim not available")
 
-    # TODO: Implement when CoAP-over-SLIP is ready
-    pytest.skip("CoAP-over-SLIP implementation pending")
+    neighbors = await lci_client.list_neighbors()
+
+    assert isinstance(neighbors, list)
+    for n in neighbors:
+        assert isinstance(n, Neighbor)
 
 
 @skip_integration_disabled
 @skip_no_native_sim
 @pytest.mark.asyncio
 async def test_key_resource(
-    coap_client: SlipCoapClient | None,
+    lci_client: LciClient | None,
 ) -> None:
-    """Test GET /key returns public key and fingerprint.
-
-    Expected fields:
-    - fingerprint: hex string (first 8 bytes of pubkey)
-    - pubkey: raw 32-byte public key
-    """
-    if coap_client is None:
+    if lci_client is None:
         pytest.skip("native_sim not available")
 
-    # TODO: Implement when CoAP-over-SLIP is ready
-    pytest.skip("CoAP-over-SLIP implementation pending")
+    identity = await lci_client.get_identity()
+
+    assert isinstance(identity, dict)
+    if "fingerprint" in identity:
+        assert isinstance(identity["fingerprint"], str)
+    if "pubkey" in identity:
+        assert isinstance(identity["pubkey"], bytes)
+        assert len(identity["pubkey"]) == 32
 
 
 # ============================================================================
@@ -496,7 +440,6 @@ class TestCborEncodingContracts:
     """
 
     def test_status_payload_structure(self) -> None:
-        """Verify status payload CBOR structure."""
         payload = {
             "uptime_s": 12345,
             "battery_pct": 87,
@@ -511,7 +454,6 @@ class TestCborEncodingContracts:
         assert isinstance(decoded["rank"], int)
 
     def test_config_payload_structure(self) -> None:
-        """Verify config payload CBOR structure."""
         payload = {
             "name": "node-01",
             "role": "router",
@@ -525,7 +467,6 @@ class TestCborEncodingContracts:
         assert decoded["tx_power_dbm"] == 14
 
     def test_neighbors_payload_structure(self) -> None:
-        """Verify neighbors payload CBOR structure."""
         payload = [
             {
                 "addr": "fe80::1",
@@ -542,8 +483,7 @@ class TestCborEncodingContracts:
         assert decoded[0]["etx"] == 1.5
 
     def test_key_payload_structure(self) -> None:
-        """Verify key payload CBOR structure."""
-        pubkey = bytes(32)  # 32-byte Ed25519 public key
+        pubkey = bytes(32)
         payload = {
             "fingerprint": pubkey[:8].hex(),
             "pubkey": pubkey,
@@ -551,5 +491,5 @@ class TestCborEncodingContracts:
         encoded = cbor2.dumps(payload)
         decoded = cbor2.loads(encoded)
 
-        assert len(decoded["fingerprint"]) == 16  # 8 bytes = 16 hex chars
+        assert len(decoded["fingerprint"]) == 16
         assert len(decoded["pubkey"]) == 32
