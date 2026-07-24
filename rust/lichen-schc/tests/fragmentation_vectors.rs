@@ -7,6 +7,7 @@ use lichen_schc::fragment::{
     FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, MAX_SCHC_PACKET, TILE_SIZE,
 };
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 
 const VECTORS_JSON: &str = include_str!("../../../test/vectors/schc_fragmentation.json");
 
@@ -151,8 +152,9 @@ fn shared_vectors_drive_production_implementations() {
         assert!(!vector.name.is_empty());
         assert!(!vector.provenance.is_empty());
         if let Some(packet) = &vector.packet {
-            let _data = expand(packet);
-            let _expected = vector.packet_sha256.as_ref().unwrap();
+            let digest = Sha256::digest(expand(packet));
+            let expected = decode_hex(vector.packet_sha256.as_ref().unwrap());
+            assert_eq!(&digest[..], expected);
         }
 
         match vector.category.as_str() {
