@@ -272,12 +272,13 @@ bool schnorr48_verify(const uint8_t *pubkey,
 int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
+			 const uint8_t *signer_iid, size_t signer_iid_len,
 			 const uint8_t *payload, size_t payload_len,
 			 const uint8_t *privkey,
 			 const uint8_t *pubkey,
 			 uint8_t *sig)
 {
-	uint8_t header[14];
+	uint8_t header[29];
 
 	size_t header_len = 0;
 	uint8_t nonce_hash[64];
@@ -287,13 +288,23 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	uint8_t e_extended[32];
 	crypto_sha512_ctx ctx;
 
-	/* Validate dst_addr_len before use */
-	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
+	/* Validate dst_addr_len + signer_iid_len before use */
+	if (dst_addr_len + signer_iid_len > SCHNORR48_MAX_ADDR_LEN) {
+		return -EINVAL;
+	}
+
+	/* Validate signer_iid_len is 0 or 8 */
+	if (signer_iid_len != 0 && signer_iid_len != 8) {
 		return -EINVAL;
 	}
 
 	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
 	if (dst_addr_len > 0 && dst_addr == NULL) {
+		return -EINVAL;
+	}
+
+	/* Validate: if signer_iid_len > 0, signer_iid must not be NULL */
+	if (signer_iid_len > 0 && signer_iid == NULL) {
 		return -EINVAL;
 	}
 
@@ -314,6 +325,10 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	if (dst_addr_len > 0) {
 		memcpy(&header[header_len], dst_addr, dst_addr_len);
 		header_len += dst_addr_len;
+	}
+	if (signer_iid_len > 0) {
+		memcpy(&header[header_len], signer_iid, signer_iid_len);
+		header_len += signer_iid_len;
 	}
 
 	/*
@@ -373,17 +388,28 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
+			   const uint8_t *signer_iid, size_t signer_iid_len,
 			   const uint8_t *payload, size_t payload_len,
 			   const uint8_t *sig,
 			   const uint8_t *pubkey)
 {
-	/* Validate dst_addr_len before use */
-	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
+	/* Validate dst_addr_len + signer_iid_len before use */
+	if (dst_addr_len + signer_iid_len > SCHNORR48_MAX_ADDR_LEN) {
+		return -EINVAL;
+	}
+
+	/* Validate signer_iid_len is 0 or 8 */
+	if (signer_iid_len != 0 && signer_iid_len != 8) {
 		return -EINVAL;
 	}
 
 	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
 	if (dst_addr_len > 0 && dst_addr == NULL) {
+		return -EINVAL;
+	}
+
+	/* Validate: if signer_iid_len > 0, signer_iid must not be NULL */
+	if (signer_iid_len > 0 && signer_iid == NULL) {
 		return -EINVAL;
 	}
 
@@ -406,7 +432,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	const uint8_t *e_received = sig;
 	const uint8_t *s = sig + 16;
 
-	uint8_t header[14];
+	uint8_t header[29];
 	size_t header_len = 0;
 	uint8_t e_extended[32];
 	uint8_t R_prime[32];
@@ -422,6 +448,10 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	if (dst_addr_len > 0) {
 		memcpy(&header[header_len], dst_addr, dst_addr_len);
 		header_len += dst_addr_len;
+	}
+	if (signer_iid_len > 0) {
+		memcpy(&header[header_len], signer_iid, signer_iid_len);
+		header_len += signer_iid_len;
 	}
 
 	static const uint8_t zero[32] = {0};
@@ -465,6 +495,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
+			 const uint8_t *signer_iid, size_t signer_iid_len,
 			 const uint8_t *payload, size_t payload_len,
 			 const uint8_t *privkey,
 			 const uint8_t *pubkey,
@@ -476,6 +507,8 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	(void)seqnum;
 	(void)dst_addr;
 	(void)dst_addr_len;
+	(void)signer_iid;
+	(void)signer_iid_len;
 	(void)payload;
 	(void)payload_len;
 	(void)privkey;
@@ -488,6 +521,7 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
+			   const uint8_t *signer_iid, size_t signer_iid_len,
 			   const uint8_t *payload, size_t payload_len,
 			   const uint8_t *sig,
 			   const uint8_t *pubkey)
@@ -498,6 +532,8 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	(void)seqnum;
 	(void)dst_addr;
 	(void)dst_addr_len;
+	(void)signer_iid;
+	(void)signer_iid_len;
 	(void)payload;
 	(void)payload_len;
 	(void)sig;

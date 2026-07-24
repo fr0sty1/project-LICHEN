@@ -4,10 +4,10 @@
 
 Wire layout (spec 4.1)::
 
-    +--------+--------+-------+--------+----------+---------+--------+
-    | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload | MIC    |
-    +--------+--------+-------+--------+----------+---------+--------+
-       1B       1B       1B      2B       0/2/8B    var      0/48B
+    +--------+--------+-------+--------+----------+-------------+---------+--------+
+    | Length | LLSec  | Epoch | SeqNum | Dst Addr | Signer IID  | Payload | MIC    |
+    +--------+--------+-------+--------+----------+-------------+---------+--------+
+        1B       1B       1B      2B       0/2/8B       8B         var      0/48B
 
 ``Length`` is the total frame length excluding the Length field itself.
 Multi-byte integer fields are big-endian.
@@ -16,9 +16,9 @@ The LLSec byte (spec 4.2) packs, from the least-significant bit::
 
     bits 0-1 : Addr Mode  (0=none/broadcast, 1=16-bit, 2=64-bit, 3=elided)
     bits 2-4 : MIC selector (0 or 1; ignored for wire MIC length)
-    bit  5   : Signature present (Schnorr-48, 48 bytes)
+    bit  5   : Signature present (S=1; Schnorr-48, 48 bytes)
     bit  6   : Encrypted (unsupported)
-    bit  7   : Reserved (must be 0)
+    bit  7   : Signer IID present (SI=1; 8-byte signer IID follows Dst Addr)
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ _MIC_LEN_SHIFT = 2
 _MIC_LEN_MASK = 0b0000_0111
 _SIGNATURE_BIT = 1 << 5
 _ENCRYPTED_BIT = 1 << 6
-_RESERVED_BIT = 1 << 7
+_SIGNER_IID_BIT = 1 << 7
 
 _MAX_FRAME_BODY = 255  # the Length field is a single byte
 MAX_FRAME_BODY = _MAX_FRAME_BODY
@@ -97,6 +97,8 @@ class LichenFrame:
             reuses mic field for wire compatibility; link_layer.receive strips
             it from payload visible to upper layers.
         encrypted: Whether the unsupported encrypted-frame flag is set.
+        signer_iid: 8-byte signer IID (present when signer_iid_present=True).
+        signer_iid_present: Whether signer IID follows Dst Addr (LLSec bit 7).
     """
 
     epoch: int
@@ -108,10 +110,16 @@ class LichenFrame:
     mic_length: MicLength = MicLength.BITS32
     signature_present: bool = False
     encrypted: bool = False
+    signer_iid: bytes = b""
+    signer_iid_present: bool = False
 
     def _validate(self) -> None:
         if self.signature_present and self.encrypted:
             raise FrameError("signed and encrypted frames are unsupported")
+        if self.signer_iid_present and not self.signature_present:
+            raise FrameError("signer IID present but signature is not")
+        if self.signature_present and not self.signer_iid_present:
+            raise FrameError("signature present but signer IID is not")
         if not 0 <= self.epoch <= 0xFF:
             raise FrameError(f"epoch out of range: {self.epoch}")
         if not 0 <= self.seqnum <= 0xFFFF:
@@ -120,6 +128,10 @@ class LichenFrame:
             raise FrameError(
                 f"dst_addr is {len(self.dst_addr)} bytes but {self.addr_mode.name} "
                 f"requires {self.addr_mode.addr_len}"
+            )
+        if self.signer_iid_present and len(self.signer_iid) != 8:
+            raise FrameError(
+                f"signer_iid is {len(self.signer_iid)} bytes but requires 8"
             )
         expected_mic_len = _SIGNATURE_LENGTH if self.signature_present else 0
         if len(self.mic) != expected_mic_len:
@@ -135,6 +147,8 @@ class LichenFrame:
             value |= _SIGNATURE_BIT
         if self.encrypted:
             value |= _ENCRYPTED_BIT
+        if self.signer_iid_present:
+            value |= _SIGNER_IID_BIT
         return value
 
     def to_bytes(self) -> bytes:
@@ -145,7 +159,8 @@ class LichenFrame:
                 with the LLSec modes, or the frame exceeds 254 body bytes.
         """
         self._validate()
-        body_len = 4 + len(self.dst_addr) + len(self.payload) + len(self.mic)
+        signer_len = len(self.signer_iid) if self.signer_iid_present else 0
+        body_len = 4 + len(self.dst_addr) + signer_len + len(self.payload) + len(self.mic)
         if body_len > MAX_FRAME_BODY:
             raise FrameError(
                 f"frame body is {body_len} bytes, exceeds {MAX_FRAME_BODY}"
@@ -154,6 +169,7 @@ class LichenFrame:
             bytes([self.llsec_byte(), self.epoch])
             + self.seqnum.to_bytes(2, "big")
             + self.dst_addr
+            + (self.signer_iid if self.signer_iid_present else b"")
             + self.payload
             + self.mic
         )
@@ -189,8 +205,6 @@ class LichenFrame:
             raise FrameError(f"frame body too short: {length} bytes")
 
         llsec = body[0]
-        if llsec & _RESERVED_BIT:
-            raise FrameError("LLSec reserved bit (7) must be 0")
         addr_mode = AddrMode(llsec & _ADDR_MODE_MASK)
         mic_field = (llsec >> _MIC_LEN_SHIFT) & _MIC_LEN_MASK
         try:
@@ -204,14 +218,23 @@ class LichenFrame:
         offset = 4
         addr_len = addr_mode.addr_len
         signature_present = bool(llsec & _SIGNATURE_BIT)
+        signer_iid_present = bool(llsec & _SIGNER_IID_BIT)
         if signature_present and llsec & _ENCRYPTED_BIT:
             raise FrameError("signed and encrypted frames are unsupported")
+        if signer_iid_present and not signature_present:
+            raise FrameError("signer IID present but signature is not")
+        if signature_present and not signer_iid_present:
+            raise FrameError("signature present but signer IID is not")
+        signer_len = 8 if signer_iid_present else 0
         mic_len = _SIGNATURE_LENGTH if signature_present else 0
-        if length < offset + addr_len + mic_len:
+        min_len = offset + addr_len + signer_len + mic_len
+        if length < min_len:
             raise FrameError("frame too short for declared address/MIC sizes")
 
         dst_addr = body[offset : offset + addr_len]
         offset += addr_len
+        signer_iid = body[offset : offset + signer_len] if signer_iid_present else b""
+        offset += signer_len
         payload = body[offset : len(body) - mic_len]
         mic = body[len(body) - mic_len :]
 
@@ -225,4 +248,6 @@ class LichenFrame:
             mic_length=mic_length,
             signature_present=signature_present,
             encrypted=bool(llsec & _ENCRYPTED_BIT),
+            signer_iid=signer_iid,
+            signer_iid_present=signer_iid_present,
         )

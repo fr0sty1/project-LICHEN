@@ -150,7 +150,7 @@ pub const SIGNATURE_LENGTH: usize = 48;
 /// Sign a link-layer frame. The returned 48 bytes occupy the MIC field.
 ///
 /// Signed data layout: length || LLSec || epoch || seqnum || dst_addr_len(1)
-/// || dst_addr || payload (domain separation per j7rk).
+/// || dst_addr || [signer_iid (8) if SI=1] || payload (domain separation per j7rk).
 #[allow(clippy::too_many_arguments)]
 pub fn sign_frame(
     length: u8,
@@ -158,11 +158,12 @@ pub fn sign_frame(
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
+    signer_iid: &[u8],
     inner_payload: &[u8],
     privkey: &PrivateKey,
     pubkey: &PublicKey,
 ) -> [u8; 48] {
-    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, inner_payload);
+    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, signer_iid, inner_payload);
     sign(privkey, pubkey, &msg)
 }
 
@@ -176,6 +177,7 @@ pub fn verify_frame(
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
+    signer_iid: &[u8],
     payload: &[u8],
     signature: &[u8],
     sender_pubkey: &PublicKey,
@@ -184,7 +186,7 @@ pub fn verify_frame(
         return false;
     }
     let sig: [u8; 48] = signature.try_into().unwrap();
-    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, payload);
+    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, signer_iid, payload);
     verify(sender_pubkey, &msg, &sig)
 }
 
@@ -194,15 +196,20 @@ fn build_signable(
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
+    signer_iid: &[u8],
     inner_payload: &[u8],
 ) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(6 + dst_addr.len() + inner_payload.len());
+    let signer_iid_len = if llsec & 0x80 != 0 { 8usize } else { 0 };
+    let mut buf = Vec::with_capacity(6 + dst_addr.len() + signer_iid_len + inner_payload.len());
     buf.push(length);
     buf.push(llsec);
     buf.push(epoch);
     buf.extend_from_slice(&seqnum.to_be_bytes());
     buf.push(dst_addr.len() as u8);
     buf.extend_from_slice(dst_addr);
+    if signer_iid_len > 0 {
+        buf.extend_from_slice(signer_iid);
+    }
     buf.extend_from_slice(inner_payload);
     buf
 }
@@ -472,12 +479,15 @@ mod tests {
         let dst_addr = [0x00u8, 0x01u8];
         let inner_payload = b"hello";
 
+        let signer_iid = [0x66u8; 8];
+        let llsec: u8 = 0x21 | 0x80;
         let sig = sign_frame(
             59,
-            0x21,
+            llsec,
             epoch,
             seqnum,
             &dst_addr,
+            &signer_iid,
             inner_payload,
             &priv_a,
             &pub_a,
@@ -494,6 +504,8 @@ mod tests {
             mic_length: MicLength::Bits32,
             signature: Signature::Present,
             encryption: Encryption::Plaintext,
+            signer_iid: &signer_iid,
+            signer_iid_present: true,
         };
         let mut wire = [0u8; 128];
         let n = frame.write_to(&mut wire).unwrap();
@@ -501,6 +513,8 @@ mod tests {
         // Node B: parse and verify
         let rx = LichenFrame::from_bytes(&wire[..n]).unwrap();
         assert_eq!(rx.signature, Signature::Present);
+        assert_eq!(rx.signer_iid_present, true);
+        assert_eq!(rx.signer_iid, &signer_iid);
         assert!(
             replay.accept(rx.seqnum),
             "first delivery should pass replay window"
@@ -508,10 +522,11 @@ mod tests {
         assert!(
             verify_frame(
                 59,
-                0x21,
+                llsec,
                 rx.epoch,
                 rx.seqnum,
                 rx.dst_addr,
+                rx.signer_iid,
                 rx.payload,
                 rx.mic,
                 &pub_a
@@ -526,7 +541,7 @@ mod tests {
         let mut tampered = *inner_payload;
         tampered[0] ^= 0xFF;
         assert!(
-            !verify_frame(59, 0x21, epoch, seqnum, &dst_addr, &tampered, &sig, &pub_a),
+            !verify_frame(59, llsec, epoch, seqnum, &dst_addr, &signer_iid, &tampered, &sig, &pub_a),
             "tampered payload must not verify"
         );
 
@@ -534,10 +549,11 @@ mod tests {
         assert!(
             !verify_frame(
                 59,
-                0x21,
+                llsec,
                 epoch,
                 seqnum,
                 &dst_addr,
+                &signer_iid,
                 inner_payload,
                 &sig,
                 &pub_b
@@ -549,10 +565,11 @@ mod tests {
         assert!(
             !verify_frame(
                 59,
-                0x21,
+                llsec,
                 epoch,
                 seqnum,
                 &dst_addr,
+                &signer_iid,
                 inner_payload,
                 &sig[..47],
                 &pub_a

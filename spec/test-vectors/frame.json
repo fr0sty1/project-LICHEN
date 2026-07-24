@@ -40,8 +40,8 @@
     },
     {
       "name": "frame_with_signature",
-      "description": "Frame with signature_present flag set, MIC contains Schnorr-48 signature",
-      "input_hex": "3a2105abcdbeef55555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555511223344",
+      "description": "Frame with signature_present flag set and signer IID, MIC contains Schnorr-48 signature",
+      "input_hex": "42a105abcdbeef112233445566778855555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555511223344",
       "expected": {
         "addr_mode": 1,
         "mic_length": 0,
@@ -52,7 +52,7 @@
         "dst_addr_hex": "beef",
         "payload_hex": "55555555",
         "mic_hex": "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555511223344",
-        "notes": "MIC is exactly LICHEN_SIG_LEN (48) bytes when signature_present is true"
+        "notes": "MIC is exactly LICHEN_SIG_LEN (48) bytes when signature_present is true; signer IID present"
       }
     },
     {
@@ -97,20 +97,12 @@
       }
     },
     {
-      "name": "max_size_frame",
-      "description": "Maximum frame size (255-byte body), unsigned",
-      "input_hex": "ff00000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaffffffff",
+      "name": "frame_too_large",
+      "description": "Frame body exceeds maximum allowed size (254 bytes)",
+      "input_hex": "ff0000000000000000",
       "expected": {
-        "addr_mode": 0,
-        "mic_length": 0,
-        "signature_present": false,
-        "encrypted": false,
-        "epoch": 0,
-        "seqnum": 0,
-        "dst_addr_hex": "",
-        "payload_len": 251,
-        "mic_hex": "",
-        "notes": "Payload is 251 bytes of 0xAA (255 - 4-byte fixed header)"
+        "error": true,
+        "error_type": "frame_too_large"
       }
     },
     {
@@ -123,12 +115,12 @@
       }
     },
     {
-      "name": "invalid_reserved_bit",
-      "description": "LLSec reserved bit 7 is set (must be 0)",
-      "input_hex": "0880011234aabbccdd",
+      "name": "signer_iid_without_signature",
+      "description": "LLSec signer IID bit 7 is set but S=0 (must have S=1)",
+      "input_hex": "1080011234aabbccddaabbccdddeadbeef",
       "expected": {
         "error": true,
-        "error_type": "reserved_bit_set"
+        "error_type": "signer_iid_no_signature"
       }
     },
     {

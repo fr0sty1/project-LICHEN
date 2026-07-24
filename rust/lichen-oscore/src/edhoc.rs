@@ -60,6 +60,13 @@ pub const ID_CRED_MAX_PARAMETERS: usize = 8;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConnectionId(heapless::Vec<u8, CONNECTION_ID_CAPACITY>);
 
+impl Zeroize for ConnectionId {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+impl ZeroizeOnDrop for ConnectionId {}
+
 impl ConnectionId {
     /// Create a bounded connection identifier.
     pub fn new(value: &[u8]) -> Result<Self, EdhocError> {
@@ -1161,6 +1168,7 @@ impl EdhocInitiator {
             let m_3 =
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
             let signature_3 = schnorr::sign(&self.signing_key, &self.pubkey, &m_3);
+            self.signing_key.zeroize();
             let mut ciphertext_3 = SecretVec::<128>::new();
             encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
             encode_bstr(&mut ciphertext_3, &signature_3)?;
@@ -1224,6 +1232,9 @@ impl EdhocInitiator {
         self.signing_key.zeroize();
         self.eph_secret.zeroize();
         self.state.zeroize();
+        self.state.msg1.zeroize();
+        self.state.g_y.zeroize();
+        self.state.c_r.zeroize();
         self.state.lifecycle = Lifecycle::Failed;
     }
 }
@@ -1334,6 +1345,9 @@ impl EdhocResponder {
         self.signing_key.zeroize();
         self.eph_secret.zeroize();
         self.state.zeroize();
+        self.state.msg1.zeroize();
+        self.state.g_x.zeroize();
+        self.state.c_i.zeroize();
         self.state.lifecycle = Lifecycle::Failed;
     }
 
@@ -1443,6 +1457,7 @@ impl EdhocResponder {
                 &mac_2,
             )?;
             let signature_2 = schnorr::sign(&self.signing_key, &self.pubkey, &m_2);
+            self.signing_key.zeroize();
 
             let mut plaintext_2 = SecretVec::<128>::new();
             encode_identifier(&mut plaintext_2, &self.c_r)?;

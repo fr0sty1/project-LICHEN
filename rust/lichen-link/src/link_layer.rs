@@ -303,16 +303,14 @@ struct PinnedKey {
 /// LICHEN link layer: builds signed frames for TX and verifies them on RX.
 ///
 /// Peer table is keyed by IID (8 bytes) in a HashMap for O(1) lookup.
-/// On RX, every known peer is tried; the first successful verify pins the
-/// sender. Unknown senders are rejected (no TOFU auto-enrolment — callers
-/// handle that via the Announce layer).
+/// Signed frames include the sender IID (LLSec bit 7, 8 bytes after DST),
+/// enabling O(1) peer lookup by IID instead of O(n) scan.
 ///
-/// # Signature Verification Cost
+/// # Signature Verification
 ///
-/// Since frames do not include the sender IID, RX must scan peers to find
-/// whose public key verifies the signature. Worst-case is O(n) Schnorr
-/// verifications where n = peer count. Keep peer count low (e.g., <20 direct
-/// neighbors) or implement sender IID hints in upper layers for larger networks.
+/// When SI=1 (signer IID present), the signer IID is read directly from
+/// the wire, enabling O(1) peer lookup by IID. Unknown senders are rejected
+/// (no TOFU auto-enrolment — callers handle that via the Announce layer).
 ///
 /// # Key Pinning
 ///
@@ -469,8 +467,9 @@ impl LinkLayer {
         if addr_mode.addr_len() != dst_addr.len() {
             return Err(FrameError::AddrLenMismatch);
         }
-        let llsec = (addr_mode as u8) | (1 << 5);
-        let frame_length = 4 + dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
+        let llsec = (addr_mode as u8) | (1 << 5) | (1 << 7);
+        let signer_iid = &self.identity.iid;
+        let frame_length = 4 + dst_addr.len() + 8 + inner_payload.len() + SIGNATURE_LENGTH;
         if frame_length > MAX_FRAME_BODY {
             return Err(FrameError::FrameTooLarge);
         }
@@ -480,6 +479,7 @@ impl LinkLayer {
             epoch,
             seqnum,
             dst_addr,
+            signer_iid,
             inner_payload,
             &self.identity.privkey,
             &self.identity.pubkey,
@@ -494,6 +494,8 @@ impl LinkLayer {
             mic_length: MicLength::Bits32,
             signature: Signature::Present,
             encryption: Encryption::Plaintext,
+            signer_iid,
+            signer_iid_present: true,
         };
         frame.write_to(out)
     }
@@ -512,19 +514,26 @@ impl LinkLayer {
         }
 
         let inner_payload = frame.payload;
-        let frame_length = 4 + frame.dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
+        let frame_length = 4 + frame.dst_addr.len() + 8 + inner_payload.len() + SIGNATURE_LENGTH;
 
-        // O(n) scan — try every known peer
+        // O(1) lookup using signer IID (LLSec bit 7, 8 bytes after DST)
+        let sender_iid: &[u8; 8] = frame.signer_iid.try_into().map_err(|_| {
+            #[cfg(feature = "log")]
+            debug!("link_layer: frame without signer IID");
+            LinkRxError::UnknownSender
+        })?;
+
         let Some(sender) = self
             .peers
-            .values()
-            .find(|p| {
+            .get(sender_iid)
+            .filter(|p| {
                 schnorr::verify_frame(
                     frame_length as u8,
                     frame.llsec_byte(),
                     frame.epoch,
                     frame.seqnum,
                     frame.dst_addr,
+                    frame.signer_iid,
                     frame.payload,
                     frame.mic,
                     &p.identity.pubkey,
@@ -533,7 +542,7 @@ impl LinkLayer {
             .map(|p| p.identity.clone())
         else {
             #[cfg(feature = "log")]
-            debug!("link_layer: frame from unknown sender");
+            debug!("link_layer: frame from unknown sender (IID {:02x?})", &sender_iid[6..]);
             return Err(LinkRxError::UnknownSender);
         };
 
@@ -622,6 +631,7 @@ mod tests {
 
         let rx = ll_bob.receive_frame(&wire[..n]).unwrap();
         assert_eq!(rx.payload, b"hello");
+        assert_eq!(rx.sender.iid, ll_alice.identity.iid);
     }
 
     #[test]
@@ -639,6 +649,8 @@ mod tests {
         let frame = LichenFrame::from_bytes(&wire[..n]).unwrap();
         assert_eq!(frame.addr_mode, AddrMode::Elided);
         assert_eq!(frame.dst_addr, &[] as &[u8]);
+        assert_eq!(frame.signer_iid_present, true);
+        assert_eq!(frame.signer_iid, &alice_layer.identity.iid);
         assert_eq!(bob.receive_frame(&wire[..n]).unwrap().payload, b"hello");
     }
 
@@ -884,8 +896,8 @@ mod tests {
             .build_frame(1, seq(1), &[], b"hello", &mut wire)
             .unwrap();
 
-        // Flip a bit in the inner payload region
-        wire[6] ^= 0xFF;
+        // Flip a bit in the inner payload region (offset 5 + 8 signer IID bytes = 13)
+        wire[13] ^= 0xFF;
         assert_eq!(
             ll_bob.receive_frame(&wire[..n]).unwrap_err(),
             LinkRxError::UnknownSender

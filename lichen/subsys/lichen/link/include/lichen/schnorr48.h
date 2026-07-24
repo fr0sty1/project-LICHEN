@@ -65,8 +65,8 @@ extern "C" {
 /** Seed length for key derivation */
 #define SCHNORR48_SEED_LEN 32
 
-/** Maximum destination address length for frame signing */
-#define SCHNORR48_MAX_ADDR_LEN 8
+/** Maximum destination address + signer IID length for frame signing */
+#define SCHNORR48_MAX_ADDR_LEN 16
 
 /**
  * @brief Apply Ed25519 clamping to a scalar.
@@ -126,7 +126,8 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
  * @brief Sign a LICHEN link-layer frame.
  *
  * Builds the signable data (length || LLSec || epoch || seqnum || dst_addr_len(1)
- * || dst_addr || payload) for domain separation and produces a 48-byte signature.
+ * || dst_addr || signer_iid || payload) for domain separation and produces a
+ * 48-byte signature. The signer IID is included in the signed data when present.
  *
  * @param[in]  length        Frame body length byte
  * @param[in]  llsec         Wire LLSec byte
@@ -134,6 +135,8 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
  * @param[in]  seqnum        Sequence number (big-endian in signable data)
  * @param[in]  dst_addr      Destination address (may be NULL if dst_addr_len is 0)
  * @param[in]  dst_addr_len  Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
+ * @param[in]  signer_iid    Signer IID (8 bytes, may be NULL if signer_iid_len is 0)
+ * @param[in]  signer_iid_len Signer IID length (0 or 8)
  * @param[in]  payload       Inner payload
  * @param[in]  payload_len   Payload length
  * @param[in]  privkey       32-byte private key
@@ -145,6 +148,7 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
 int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
+			 const uint8_t *_Nullable signer_iid, size_t signer_iid_len,
 			 const uint8_t *_Nonnull payload, size_t payload_len,
 			 const uint8_t *_Nonnull privkey,
 			 const uint8_t *_Nonnull pubkey,
@@ -159,6 +163,8 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
  * @param[in] seqnum       Sequence number
  * @param[in] dst_addr     Destination address (may be NULL if dst_addr_len is 0)
  * @param[in] dst_addr_len Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
+ * @param[in] signer_iid   Signer IID (8 bytes, may be NULL if signer_iid_len is 0)
+ * @param[in] signer_iid_len Signer IID length (0 or 8)
  * @param[in] payload      Inner payload (may be NULL if payload_len is 0)
  * @param[in] payload_len  Inner payload length
  * @param[in] sig          48-byte signature from the MIC field
@@ -170,6 +176,7 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
+			   const uint8_t *_Nullable signer_iid, size_t signer_iid_len,
 			   const uint8_t *_Nullable payload, size_t payload_len,
 			   const uint8_t *_Nonnull sig,
 			   const uint8_t *_Nonnull pubkey);

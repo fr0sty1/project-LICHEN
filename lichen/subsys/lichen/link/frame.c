@@ -16,7 +16,7 @@
 #define LLSEC_MIC_LEN_MASK    0x1c
 #define LLSEC_SIG_PRESENT     0x20
 #define LLSEC_ENCRYPTED       0x40
-#define LLSEC_RESERVED        0x80
+#define LLSEC_SIGNER_IID      0x80
 
 /* Address lengths by mode (index = enum lichen_addr_mode value) */
 static const uint8_t addr_lens[] = { 0, 2, 8, 0 };
@@ -57,10 +57,6 @@ int lichen_frame_parse(struct lichen_frame *frame,
 
 	uint8_t llsec = data[off++];
 
-	if (llsec & LLSEC_RESERVED) {
-		return -EINVAL;
-	}
-
 	frame->addr_mode = llsec & LLSEC_ADDR_MODE_MASK;
 
 	/* Only 0b000 (32-bit) and 0b001 (64-bit) MIC lengths are defined. */
@@ -71,17 +67,28 @@ int lichen_frame_parse(struct lichen_frame *frame,
 
 	frame->mic_length = (enum lichen_mic_len)mic_length;
 	frame->signature_present = (llsec & LLSEC_SIG_PRESENT) != 0;
+	frame->signer_iid_present = (llsec & LLSEC_SIGNER_IID) != 0;
 	frame->encrypted = (llsec & LLSEC_ENCRYPTED) != 0;
 	if (frame->encrypted) {
 		return -EPROTONOSUPPORT;
 	}
 
+	/* Validate SI/S coupling: SI=1 requires S=1, S=1 requires SI=1 */
+	if (frame->signer_iid_present && !frame->signature_present) {
+		return -EINVAL;
+	}
+	if (frame->signature_present && !frame->signer_iid_present) {
+		return -EINVAL;
+	}
+
 	/* Now that we know MIC length, verify frame is long enough */
 	frame->mic_len = frame->signature_present ? LICHEN_SIG_LEN : 0U;
 	uint8_t addr_len = addr_lens[frame->addr_mode];
+	frame->signer_iid_len = frame->signer_iid_present ? 8U : 0U;
 
-	/* Check total required length: fixed header + address + MIC */
-	if (len < LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) + frame->mic_len) {
+	/* Check total required length: fixed header + address + signer IID + MIC */
+	if (len < LICHEN_FRAME_FIXED_HEADER_LEN + (size_t)addr_len +
+		   (size_t)frame->signer_iid_len + frame->mic_len) {
 		return -EINVAL;
 	}
 
@@ -94,10 +101,16 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	memcpy(frame->dst_addr, &data[off], frame->dst_addr_len);
 	off += frame->dst_addr_len;
 
+	/* Signer IID (present only when SI=1) */
+	if (frame->signer_iid_present) {
+		memcpy(frame->signer_iid, &data[off], 8);
+		off += 8;
+	}
+
 	/* MIC at the end */
 	memcpy(frame->mic, &data[len - frame->mic_len], frame->mic_len);
 
-	/* Payload is everything between address and MIC */
+	/* Payload is everything between address/signer IID and MIC */
 	frame->payload = &data[off];
 	frame->payload_len = len - off - frame->mic_len;
 
@@ -125,6 +138,14 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		return -EPROTONOSUPPORT;
 	}
 
+	/* Validate SI/S coupling: SI requires S, S requires SI */
+	if (frame->signer_iid_present && !frame->signature_present) {
+		return -EINVAL;
+	}
+	if (frame->signature_present && !frame->signer_iid_present) {
+		return -EINVAL;
+	}
+
 	/*
 	 * Caller must initialize frame->mic and frame->mic_len before calling.
 	 * The MIC is not computed here - it must be computed externally over
@@ -141,7 +162,8 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		return -EINVAL;
 	}
 
-	size_t non_payload_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) + mic_len;
+	size_t non_payload_len = LICHEN_FRAME_FIXED_HEADER_LEN + (size_t)addr_len +
+				 (size_t)frame->signer_iid_len + mic_len;
 
 	if (frame->payload_len > LICHEN_MAX_FRAME_LEN - non_payload_len) {
 		return -EMSGSIZE;
@@ -166,6 +188,9 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	if (frame->signature_present) {
 		llsec |= LLSEC_SIG_PRESENT;
 	}
+	if (frame->signer_iid_present) {
+		llsec |= LLSEC_SIGNER_IID;
+	}
 	if (frame->encrypted) {
 		llsec |= LLSEC_ENCRYPTED;
 	}
@@ -183,6 +208,12 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		memcpy(&buf[off], frame->dst_addr, addr_len);
 	}
 	off += addr_len;
+
+	/* Signer IID */
+	if (frame->signer_iid_present) {
+		memcpy(&buf[off], frame->signer_iid, 8);
+		off += 8;
+	}
 
 	/* Payload */
 	if (frame->payload_len > 0) {

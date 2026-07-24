@@ -77,10 +77,10 @@ document are to be interpreted as described in RFC 2119.
 ### 3.1. Overall Structure
 
 ```
-Octets: 1        1       1      2       var     var      var
-       +--------+-------+------+-------+-------+--------+-----+
-       | LENGTH | LLSec | EPO  | SEQ   |  DST  |  PLD   | MIC |
-       +--------+-------+------+-------+-------+--------+-----+
+Octets: 1        1       1      2       var     8      var      var
+       +--------+-------+------+-------+-------+------+--------+-----+
+       | LENGTH | LLSec | EPO  | SEQ   |  DST  | SIID |  PLD   | MIC |
+       +--------+-------+------+-------+-------+------+--------+-----+
 ```
 
 - **LENGTH** (1 octet): Number of bytes in the frame body (everything after
@@ -101,7 +101,11 @@ Octets: 1        1       1      2       var     var      var
   After 0xFFFF, the next tuple uses the next EPO and SEQ zero. See Section 5.2.
 
 - **DST** (0, 2, or 8 octets): Destination address. Present and length
-  determined by AddrMode in LLSec. See Section 3.3.
+   determined by AddrMode in LLSec. See Section 3.3.
+
+- **SIID** (8 octets, conditional): Signer IID (Interface Identifier). Present
+   when the SI bit (LLSec bit 7) is set. Contains the EUI-64 of the signing
+   node. MUST be present when S=1. See Section 3.4.
 
 - **PLD** (variable): authenticated inner payload. The first octet is a
   dispatch value: `0x14` for SCHC, whose body begins with the SCHC rule ID, or
@@ -112,15 +116,18 @@ Octets: 1        1       1      2       var     var      var
   2 bytes.
 
 - **MIC** (0 or 48 octets): Message Integrity Code. When S=0, the MIC is
-  absent regardless of MicLength. When S=1, the MIC is the full 48-byte
-  Schnorr signature and MicLength is ignored. See Section 4.
+   absent regardless of MicLength. When S=1, the MIC is the full 48-byte
+   Schnorr signature and MicLength is ignored. See Section 4.
+
+   The `fixed_header_size` for deriving PLD length is 4 (LENGTH+LLSec+EPO+SEQ)
+   plus 8 when the SI bit is set.
 
 ### 3.2. LLSec Byte
 
 ```
   Bit:  7   6   5   4   3   2   1   0
        +---+---+---+---+---+---+---+---+
-       | R | E | S |  MicLength  | AM  |
+       | SI| E | S |  MicLength  | AM  |
        +---+---+---+---+---+---+---+---+
 ```
 
@@ -153,8 +160,11 @@ Octets: 1        1       1      2       var     var      var
   frames are unsupported in the current interoperable profile; senders MUST
   leave E clear and receivers MUST discard frames with E=1.
 
-- **Bit 7 (R): Reserved.** Senders MUST set to 0. Receivers MUST discard
-  frames with R=1.
+- **Bit 7 (SI): Signer IID present.** When set, an 8-byte Signer IID (SIID)
+   field containing the sender's EUI-64 follows the DST field. Signed frames
+   (S=1) MUST also set SI=1. Unsigned frames MUST set SI=0. Frames with SI=1
+   and S=0 are invalid and MUST be discarded. Frames with S=1 and SI=0 are
+   invalid and MUST be discarded.
 
 ### 3.3. Destination Address
 
@@ -171,14 +181,24 @@ When AddrMode is Elided (0b11), the destination is recoverable from context
 (e.g. the first IPv6 destination address in the SCHC payload). No destination
 bytes are present on the wire in this mode.
 
-### 3.4. Source Address
+### 3.4. Signer IID
 
-The frame format intentionally omits a source address field. The sender's
-immediate link identity is established by successful Schnorr signature
-verification with a provisioned trust-store key (Section 4). The selected
-trust-store record supplies the peer EUI-64. An IPv6 source address in the
-payload identifies the end-to-end network-layer origin and MUST NOT be used as
-the immediate signer identity.
+When the SI bit (LLSec bit 7) is set, an 8-byte Signer IID (SIID) field follows
+DST on the wire. The SIID carries the EUI-64 of the signing node and enables
+the receiver to look up the signing key directly, without having to trial-verify
+against all provisioned keys.
+
+The frame format intentionally omits a general source address field. The
+sender's immediate link identity is established by the Signer IID (when
+present) and—for signed frames—by subsequent Schnorr signature verification
+with a provisioned trust-store key (Section 4). The selected trust-store record
+supplies the peer EUI-64. An IPv6 source address in the payload identifies the
+end-to-end network-layer origin and MUST NOT be used as the immediate signer
+identity.
+
+Signed frames (S=1) MUST set SI=1 and MUST carry a valid Signer IID. Unsigned
+frames MUST set SI=0. Receivers MUST treat any frame with S=1 and SI=0, or S=0
+and SI=1, as invalid and MUST discard it.
 
 ## 4. Authentication
 
@@ -188,11 +208,12 @@ When S=1, the MIC field contains the full 48-byte Schnorr signature as defined i
 [draft-lichen-schnorr-00]. The signature is computed over:
 
 ```
-signed_data = LENGTH || LLSec || EPO || SEQ || DST_LEN(1) || DST || PLD
+signed_data = LENGTH || LLSec || EPO || SEQ || DST_LEN(1) || DST || SIID(8) || PLD
 ```
 
-(DST_LEN provides domain separation for variable-length DST field; all fields
-before the MIC, in wire order, excluding the MIC itself.)
+(DST_LEN provides domain separation for variable-length DST field; SIID is the
+8-byte Signer IID, present only when SI=1; all fields before the MIC, in wire
+order, excluding the MIC itself.)
 
 The signing key is the sender's long-term Ed25519 private key. The
 corresponding public key is distributed via the LICHEN announce protocol or
@@ -275,10 +296,11 @@ it cannot establish an unused greater tuple under the existing key.
 
 ```
   LENGTH = 0x4A  (74 bytes body: header + ~22B SCHC RPL DIO + 48B MIC)
-  LLSec  = 0x20  (AddrMode=None, MicLength=0, S=1, E=0)
+  LLSec  = 0xA0  (AddrMode=None, MicLength=0, S=1, E=0, SI=1)
   EPO    = 0x03
   SEQ    = 0x00, 0x2C
   DST    = (absent, AddrMode=None)
+  SIID   = 8 bytes signer EUI-64
   PLD    = <22 bytes of SCHC-compressed RPL DIO>
   MIC    = 48-byte Schnorr signature
 ```
@@ -289,11 +311,12 @@ Total frame: 75 bytes. RPL control frames MUST use S=1 per section 4.2.
 
 ```
   LENGTH = 0x3D  (61 bytes body)
-  LLSec  = 0x22  (AddrMode=Extended, S=1, E=0; MIC is 48B)
-            = 0b0010_0010
+  LLSec  = 0xA2  (AddrMode=Extended, S=1, E=0, SI=1; MIC is 48B)
+            = 0b1010_0010
   EPO    = 0x01
   SEQ    = 0x00, 0x01
   DST    = 8 bytes EUI-64
+  SIID   = 8 bytes signer EUI-64
   PLD    = <1 byte SCHC-compressed CoAP>
   MIC    = 48-byte Schnorr signature
 ```
@@ -303,8 +326,8 @@ Total frame: 75 bytes. RPL control frames MUST use S=1 per section 4.2.
 ### 6.3. Encrypted Frame (Unsupported)
 
 ```
-  LLSec  = 0x62  = 0b0110_0010
-            (AddrMode=Extended, MicLength=0b000, S=1, E=1)
+  LLSec  = 0xE2  = 0b1110_0010
+            (AddrMode=Extended, MicLength=0b000, S=1, E=1, SI=1)
   Result: rejected; signed encrypted frames are unsupported.
 ```
 

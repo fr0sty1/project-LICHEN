@@ -102,10 +102,9 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
-	/* LLSec byte: S=1 (bit 5), MicLength=0 (bits 2-4 cleared per spec and
-	 * Rust). Matches frame.c:162, link_layer.rs:486, 09-packets-timing.md:48
-	 * (0x21 example). LLSec included in signed_data; fixes interop. */
-	uint8_t llsec = (addr_mode & 0x03U) | 0x20U;
+	/* LLSec byte: S=1 (bit 5), SI=1 (bit 7), MicLength=0 (bits 2-4 cleared).
+	 * SI=1 is REQUIRED for signed frames per spec. */
+	uint8_t llsec = (addr_mode & 0x03U) | 0x20U | LLSEC_SIGNER_IID;
 
 	/* Preflight size checks BEFORE consuming nonce (deterministic TX
 	 * requirement; matches Python/Rust frame_length calc). */
@@ -114,7 +113,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	}
 	mic_len = SCHNORR48_SIG_LEN;
 	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
-			  LICHEN_FRAME_LEN_FIELD_LEN) + l2_payload_len + mic_len;
+			  LICHEN_FRAME_LEN_FIELD_LEN) + 8 + l2_payload_len + mic_len;
 	if (frame_body_len > 255 || frame_body_len > LICHEN_MAX_FRAME_BODY_LEN) {
 		return -EMSGSIZE;
 	}
@@ -131,16 +130,19 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	/* Sign using parameters that guarantee DST_LEN(1) prefix at signable
 	 * offset 5 (fixes cross-impl inconsistency with Python _build_signable_data
 	 * at link_layer.py:285-289 and Rust build_signable at schnorr.rs:202-208).
+	 * Signer IID (sender's EUI-64) is included in the signed data after DST.
 	 * Uses payload_buf copy for safety during crypto. Matches spec exactly. */
 	memcpy(payload_buf, l2_payload, l2_payload_len);
 	if (schnorr48_sign_frame((uint8_t)frame_body_len, llsec, epoch, seqnum,
-				 dst_addr, dst_addr_len, payload_buf, l2_payload_len,
+				 dst_addr, dst_addr_len,
+				 ctx->eui64, 8,
+				 payload_buf, l2_payload_len,
 				 ctx->ed25519_sk, ctx->ed25519_pk, signature) != 0) {
 		ret = -EINVAL;
 		goto cleanup;
 	}
 
-	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || PLD || SIG) */
+	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || SIGNER_IID(8) || PLD || SIG) */
 	off = 0;
 	out_frame[off++] = (uint8_t)frame_body_len; /* body length after LENGTH byte */
 	out_frame[off++] = llsec;
@@ -151,6 +153,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		memcpy(&out_frame[off], dst_addr, dst_addr_len);
 		off += dst_addr_len;
 	}
+	memcpy(&out_frame[off], ctx->eui64, 8);
+	off += 8;
 	memcpy(&out_frame[off], l2_payload, l2_payload_len);
 	off += l2_payload_len;
 	memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);

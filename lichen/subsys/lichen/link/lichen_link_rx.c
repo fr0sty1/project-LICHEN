@@ -140,10 +140,20 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
+		/* Verify signer IID matches peer EUI-64 */
+		if (parsed.signer_iid_present &&
+		    memcmp(parsed.signer_iid, ctx->peer_eui64, 8) != 0) {
+			LOG_WRN("signer IID does not match peer EUI-64\n");
+			ret = -LICHEN_EAUTH;
+			goto cleanup;
+		}
+
 		int verify_result = schnorr48_verify_frame(frame[0], frame[1],
 							   parsed.epoch, parsed.seqnum,
 							   parsed.dst_addr,
 							   parsed.dst_addr_len,
+							   parsed.signer_iid,
+							   parsed.signer_iid_len,
 							   auth_payload,
 							   auth_payload_len,
 							   parsed.mic,

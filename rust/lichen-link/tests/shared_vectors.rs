@@ -36,6 +36,8 @@ struct LinkFrameFields {
     mic_length: u8,
     signature_present: bool,
     encrypted: bool,
+    #[serde(default)]
+    signer_iid: String,
 }
 
 fn hex_decode(s: &str) -> Vec<u8> {
@@ -100,12 +102,14 @@ fn test_link_frame_vectors() {
 
             let dst_addr = hex_decode(&fields.dst_addr);
             let payload = hex_decode(&fields.payload);
+            let signer_iid = hex_decode(&fields.signer_iid);
             let signature = sign_frame(
                 encoded[0],
                 encoded[1],
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum),
                 &dst_addr,
+                &signer_iid,
                 &payload,
                 &private_key,
                 &public_key,
@@ -119,6 +123,7 @@ fn test_link_frame_vectors() {
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum),
                 &dst_addr,
+                &signer_iid,
                 &payload,
                 &signature,
                 &public_key,
@@ -136,6 +141,7 @@ fn test_link_frame_vectors() {
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum),
                 &dst_addr,
+                &signer_iid,
                 &payload,
                 &signature,
                 &public_key
@@ -146,6 +152,7 @@ fn test_link_frame_vectors() {
                 fields.epoch ^ 1,
                 LinkSeqNum::new(fields.seqnum),
                 &dst_addr,
+                &signer_iid,
                 &payload,
                 &signature,
                 &public_key
@@ -156,6 +163,7 @@ fn test_link_frame_vectors() {
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum ^ 1),
                 &dst_addr,
+                &signer_iid,
                 &payload,
                 &signature,
                 &public_key
@@ -166,6 +174,7 @@ fn test_link_frame_vectors() {
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum),
                 &dst_addr,
+                &signer_iid,
                 &payload,
                 &signature,
                 &public_key
@@ -176,6 +185,7 @@ fn test_link_frame_vectors() {
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum),
                 &tampered_dst,
+                &signer_iid,
                 &payload,
                 &signature,
                 &public_key
@@ -186,6 +196,7 @@ fn test_link_frame_vectors() {
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum),
                 &dst_addr,
+                &signer_iid,
                 &tampered_payload,
                 &signature,
                 &public_key
@@ -196,6 +207,7 @@ fn test_link_frame_vectors() {
                 fields.epoch,
                 LinkSeqNum::new(fields.seqnum),
                 &dst_addr,
+                &signer_iid,
                 &payload,
                 &tampered_signature,
                 &public_key

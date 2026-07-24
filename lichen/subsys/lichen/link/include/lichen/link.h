@@ -80,6 +80,9 @@ struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
 /** Maximum destination address length (EUI-64) */
 #define LICHEN_ADDR_MAX 8
 
+/** LLSec bit flag: signer IID present after destination address */
+#define LLSEC_SIGNER_IID 0x80
+
 /**
  * @brief Address mode (LLSec bits 0-1)
  */
@@ -146,6 +149,8 @@ struct lichen_frame {
 	uint16_t seqnum;         /**< Sequence number (replay protection) */
 	uint8_t dst_addr[8];     /**< Destination address (0-8 bytes) */
 	uint8_t dst_addr_len;    /**< Destination address length */
+	uint8_t signer_iid[8];   /**< Signer IID (8 bytes when present, 0 otherwise) */
+	uint8_t signer_iid_len;  /**< Signer IID length (8 when present, 0 otherwise) */
 	const uint8_t *_Nullable payload;  /**< Inner payload */
 	size_t payload_len;      /**< Inner payload length */
 	size_t inner_payload_len; /**< Same as payload_len; signature is in MIC */
@@ -156,6 +161,7 @@ struct lichen_frame {
 	enum lichen_addr_mode addr_mode;
 	enum lichen_mic_len mic_length;
 	bool signature_present;  /**< Schnorr-48 occupies the MIC field */
+	bool signer_iid_present; /**< Signer IID present in frame */
 	bool encrypted;          /**< Encrypted frame flag; currently unsupported */
 };
 
