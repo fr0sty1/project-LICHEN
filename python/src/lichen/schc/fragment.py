@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 
 N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1
-MAX_WINDOW_SIZE = ALL_1 - 1
-DEFAULT_WINDOW_SIZE = 7
+MAX_WINDOW_SIZE = ALL_1
+DEFAULT_WINDOW_SIZE = 63
 MIC_LENGTH = 4
 RULE_IDS = (0x2a, 0x78, 0x79)
 TILE_SIZE = 187
@@ -244,6 +244,27 @@ class FragmentSender:
     def fragments_in_window(self, abs_window: int) -> list[Fragment]:
         start = abs_window * self.window_size
         return self._fragments[start : start + self.window_size]
+
+    def start(self) -> None:
+        self.status = "sending"
+        self.attempts = 0
+
+    def timeout(self) -> bytes:
+        if self.attempts >= MAX_ACK_REQUESTS:
+            self.status = "aborted"
+            return sender_abort(self.rule_id)
+        self.attempts += 1
+        return ack_request(self.rule_id, 0)
+
+    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        ack = Ack.from_bytes(data, assigned_fcns=[f.fcn for f in self._fragments])
+        missing: list[Fragment] = []
+        for pos, bit in enumerate(ack.bitmap):
+            if not bit:
+                frag_pos = ack.window * self.window_size + pos
+                if frag_pos < len(self._fragments):
+                    missing.append(self._fragments[frag_pos])
+        return [missing[0].to_bytes(), ack_request(self.rule_id, ack.window)]
 
     def retransmit(
         self, abs_window: int, bitmap: Sequence[bool]

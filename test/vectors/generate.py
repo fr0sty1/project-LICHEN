@@ -1992,20 +1992,46 @@ def ccp13_vectors() -> list[dict]:
 
 
 def rpl_messages_vectors() -> list[dict]:
+    from ipaddress import IPv6Address
+    from lichen.rpl.messages import DIO, DAO
+    pkt_dio = DIO(
+        rpl_instance_id=0, version=1, rank=256, grounded=True,
+        mode_of_operation=1, preference=0, dtsn=0, flags=0, reserved=0,
+        dodag_id=IPv6Address("::"),
+    )
+    pkt_dao = DAO(
+        rpl_instance_id=0, dao_sequence=5, dodag_id=IPv6Address("::"),
+    )
     return [
         {
             "name": "dio_base",
             "type": "dio",
-            "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
-            "encoded": "01001e0001000000000000000000000000000000",
-            "fields": {"rpl_instance_id": 0, "version": 1, "rank": 256, "grounded": True},
+            "description": "Base RPL DIO (RFC 6550).",
+            "encoded": pkt_dio.to_bytes().hex(),
+            "fields": {
+                "rpl_instance_id": pkt_dio.rpl_instance_id,
+                "version": pkt_dio.version,
+                "rank": pkt_dio.rank,
+                "grounded": pkt_dio.grounded,
+                "mode_of_operation": pkt_dio.mode_of_operation,
+                "preference": pkt_dio.preference,
+                "dtsn": pkt_dio.dtsn,
+                "flags": pkt_dio.flags,
+                "dodag_id": str(pkt_dio.dodag_id),
+            },
         },
         {
             "name": "dao_base",
             "type": "dao",
             "description": "Base RPL DAO with DODAGID (RFC 6550).",
-            "encoded": "0201050000000000000000000000000000000000",
-            "fields": {"rpl_instance_id": 0, "dao_sequence": 5},
+            "encoded": pkt_dao.to_bytes().hex(),
+            "fields": {
+                "rpl_instance_id": pkt_dao.rpl_instance_id,
+                "ack_requested": pkt_dao.ack_requested,
+                "dao_sequence": pkt_dao.dao_sequence,
+                "dodag_id": str(pkt_dao.dodag_id) if pkt_dao.dodag_id else None,
+                "flags": pkt_dao.flags,
+            },
         },
     ]
 
@@ -2023,7 +2049,7 @@ def ipv6_malformed_vectors() -> list[dict]:
     bad_t[40] = 0
     udp_good = _udp_ipv6(ll_src, ll_dst, b"data")
     bad_u = bytearray(udp_good)
-    bad_u[44] = 0
+    bad_u[45] = 0
     cases = [
         ("packet_version", bytes(bad_ver), "packet_version"),
         ("icmpv6_too_short", short, "icmpv6_too_short"),
