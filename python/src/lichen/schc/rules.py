@@ -323,7 +323,7 @@ LINK_LOCAL_ICMPV6_ECHO_RULE = Rule(
 )
 
 # Rule 3: RPL DIO base object (RFC 6550 6.3) over link-local ICMPv6.
-# PIO (type=3) handled via match-mapping in draft-lichen-schc-lora-00.md:228
+# PIO (type=8) handled via match-mapping in draft-lichen-schc-lora-00.md:228
 # (updated ref from old 272; see PIO details in spec for LICHEN lifetimes).
 _DIO_BASE_FIELDS = (
     FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT),
@@ -334,6 +334,24 @@ _DIO_BASE_FIELDS = (
     FieldDescriptor("RPL.flags", 8, MO.EQUAL, CDA.NOT_SENT),
     FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
     FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT),
+)
+# RPL option fields per appendix-schc.md A.4:
+# RPL.Option.Type uses MATCH_MAPPING (prioritized: 0=Pad1,8=PIO,2=DagMetric,...).
+# PIO-specific fields follow for type=8. Defined as a constant for documentation
+# and future codec integration; currently options pass as tail verbatim.
+# The RPL_DIO_RULE below includes only base fields to maintain backward
+# compatibility with existing test vectors and codec behavior.
+_DIO_OPTION_FIELDS = (
+    FieldDescriptor(
+        "RPL.Option.Type", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT,
+        mapping=(0, 8, 2, 5, 6, 7),
+    ),
+    FieldDescriptor("RPL.Option.Len", 8, MO.EQUAL, CDA.NOT_SENT, target_value=30),
+    FieldDescriptor("PIO.PrefixLen", 8, MO.EQUAL, CDA.NOT_SENT, target_value=64),
+    FieldDescriptor("PIO.Flags", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0xC0),
+    FieldDescriptor("PIO.ValidPreferred", 64, MO.IGNORE, CDA.VALUE_SENT),
+    FieldDescriptor("PIO.Prefix", 128, MO.MSB, CDA.LSB, mo_arg=64,
+                     target_value=0xfe800000000000000000000000000000),
 )
 RPL_DIO_RULE = Rule(
     rule_id=3,

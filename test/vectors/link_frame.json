@@ -15,7 +15,8 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false
+        "encrypted": false,
+        "signer_iid": ""
       },
       "encoded": "0700010002616263"
     },
@@ -31,7 +32,8 @@
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false
+        "encrypted": false,
+        "signer_iid": ""
       },
       "encoded": "0801102030abcd6869"
     },
@@ -47,7 +49,8 @@
         "addr_mode": 2,
         "mic_length": 1,
         "signature_present": false,
-        "encrypted": false
+        "encrypted": false,
+        "signer_iid": ""
       },
       "encoded": "1006ffffff000102030405060764617461"
     },
@@ -63,9 +66,10 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": true,
-        "encrypted": true
+        "encrypted": true,
+        "signer_iid": "aabbccddaabbccdd"
       },
-      "encoded": "356003000478000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "encoded": "3dE0030004aabbccddaabbccdd7800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
         "error": "signed_encrypted_unsupported"
       }

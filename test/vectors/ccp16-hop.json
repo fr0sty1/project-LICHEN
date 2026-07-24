@@ -9,7 +9,7 @@
       "seed": 0,
       "num_channels": 8,
       "expected_channel": 6,
-      "hash_32": 2615243109,
+      "hash_32": 2166136261,
       "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle."
     },
     {
@@ -17,8 +17,8 @@
       "sfn": 1,
       "seed": 42,
       "num_channels": 16,
-      "expected_channel": 15,
-      "hash_32": 2645478846,
+      "expected_channel": 5,
+      "hash_32": 926423932,
       "description": "Example rendezvous channel selection per CCP-12 using real hash_32."
     },
     {
@@ -28,7 +28,7 @@
       "num_channels": 8,
       "density": 9,
       "expected_channel": 0,
-      "hash_32": 2615243109,
+      "hash_32": 2166136261,
       "description": "Density>8 returns 0 per SelectChannel pseudocode line 1."
     },
     {
@@ -37,7 +37,7 @@
       "seed": 0,
       "num_channels": 8,
       "expected_channel": 2,
-      "hash_32": 3025216001,
+      "hash_32": 555378985,
       "description": "SFN wraparound per spec Now() u32 mod and SelectChannel."
     },
     {

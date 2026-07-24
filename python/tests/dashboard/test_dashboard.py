@@ -207,6 +207,16 @@ class TestIndexCards:
 # ---------------------------------------------------------------------------
 
 
+class TestPartialMeshStats:
+    async def test_mesh_stats_renders(self, client: AsyncClient) -> None:
+        resp = await client.get("/partial/mesh-stats")
+        assert resp.status_code == 200
+        assert "500/500" in resp.text
+        assert "1243" in resp.text
+        assert "0.3%" in resp.text
+        assert "4 gateways" in resp.text
+
+
 class TestApiStatus:
     async def test_ok_true_when_data(self, client: AsyncClient) -> None:
         with _mock_fetch({"rank": 128}):

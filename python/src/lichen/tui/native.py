@@ -1070,7 +1070,7 @@ def _battery_text(pct: int | None, mv: int | None) -> str:
     return " ".join(parts) or "--"
 
 
-class NativeStatusBar(Static):
+class NativeStatusBar(Static):  # type: ignore[misc]  # textual lacks py.typed
     """One-line global status bar."""
 
     DEFAULT_CSS = """
@@ -1102,7 +1102,7 @@ class NativeStatusBar(Static):
         self.update(status_line(self.status, self.line_width))
 
 
-class CommandBar(Static):
+class CommandBar(Static):  # type: ignore[misc]  # textual lacks py.typed
     """One-line context command footer."""
 
     DEFAULT_CSS = """
@@ -1132,7 +1132,7 @@ class CommandBar(Static):
         return "  ".join(self.commands)
 
 
-class ModeNav(Static):
+class ModeNav(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Top-level mode navigation."""
 
     MODES: ClassVar[tuple[str, ...]] = (
@@ -1178,7 +1178,7 @@ class ModeNav(Static):
         self.update(self.render_modes())
 
 
-class MessageList(Static):
+class MessageList(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Compact message preview list."""
 
     DEFAULT_CSS = """
@@ -1263,7 +1263,7 @@ class MessagingPanel:
         return field_line("delivery", result.state.value, detail, self.line_width)
 
 
-class ConfigTable(Static):
+class ConfigTable(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Config row summary widget."""
 
     def __init__(self, rows: tuple[ConfigRow, ...] = (), *, width: int = 76) -> None:
@@ -1287,7 +1287,7 @@ class ConfigTable(Static):
         )
 
 
-class LogPanel(Static):
+class LogPanel(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Log stream summary widget."""
 
     def __init__(self, rows: tuple[LogRow, ...] = (), *, width: int = 76) -> None:
@@ -1303,7 +1303,7 @@ class LogPanel(Static):
         )
 
 
-class DiagnosticsPanel(Static):
+class DiagnosticsPanel(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Diagnostics summary widget."""
 
     def __init__(self, rows: tuple[DiagnosticRow, ...] = (), *, width: int = 76) -> None:
@@ -1322,7 +1322,7 @@ class DiagnosticsPanel(Static):
         )
 
 
-class ActivePane(Static):
+class ActivePane(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Single active screen pane for all top-level modes."""
 
     DEFAULT_CSS = """
@@ -1506,7 +1506,7 @@ class ActivePane(Static):
                 )
 
 
-class NativeClientApp(App[None]):
+class NativeClientApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
     """Native LCI TUI shell with stable dashboard widgets."""
 
     TITLE = "LICHEN Native Client"

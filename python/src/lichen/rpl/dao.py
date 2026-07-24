@@ -477,7 +477,8 @@ class DaoManager:
         if self._contains_cycle(parents):
             raise DaoError("candidate graph contains a cycle", reason="cycle")
 
-        routes = self._build_routes_incremental(parents, candidates, changed)
+        host_routes = self._build_routes(parents, candidates)
+        routes = self._merge_prefix_routes(host_routes)
         if len(routes) > self.max_routes:
             raise DaoError("route capacity exceeded", reason="capacity")
 
@@ -485,7 +486,7 @@ class DaoManager:
             bool(changed)
             or parents != self._parent_map
             or expiry != self._edge_expiry
-            or routes != self.routing_table.routes()
+            or host_routes != self._existing_host_routes()
         )
 
         self._parent_map = parents
@@ -498,6 +499,18 @@ class DaoManager:
         self.routing_table.replace_routes(routes)
         return DaoOutcome(True, state_changed, False, reason)
 
+    def _existing_host_routes(self) -> dict[IPv6Address, list[IPv6Address]]:
+        return self.routing_table.routes()
+
+    def _merge_prefix_routes(
+        self, host_routes: dict[IPv6Address, list[IPv6Address]]
+    ) -> dict[IPv6Address, list[IPv6Address]]:
+        merged = dict(host_routes)
+        for rt, entry in self.routing_table._routes.items():
+            if rt.prefix_len < 128 and entry.is_usable():
+                merged[rt.prefix] = list(entry.path)
+        return merged
+
     def expire_routes(self, now_seconds: float | None = None) -> bool:
         """Remove expired active edges and routes while retaining snapshot tombstones."""
         now = self.clock() if now_seconds is None else now_seconds
@@ -507,15 +520,10 @@ class DaoManager:
             for edge, deadline in self._edge_expiry.items()
             if deadline is None or deadline > now
         }
-        changed_parents: set[IPv6Address] = set()
-        for target in set(parents) | set(self._parent_map):
-            old_parents = self._parent_map.get(target, ())
-            new_parents = parents.get(target, ())
-            if set(old_parents) != set(new_parents):
-                changed_parents.add(target)
-        routes = self._build_routes_incremental(parents, self._candidate_map, changed_parents)
+        host_routes = self._build_routes(parents, self._candidate_map)
+        routes = self._merge_prefix_routes(host_routes)
         changed = (
-            bool(changed_parents)
+            parents != self._parent_map
             or expiry != self._edge_expiry
             or routes != self.routing_table.routes()
         )
@@ -534,7 +542,8 @@ class DaoManager:
         self._edge_expiry = {
             edge: deadline for edge, deadline in self._edge_expiry.items() if edge[0] != target
         }
-        routes = self._build_routes_incremental(self._parent_map, self._candidate_map, {target})
+        host_routes = self._build_routes(self._parent_map, self._candidate_map)
+        routes = self._merge_prefix_routes(host_routes)
         self.routing_table.replace_routes(routes)
         current = self._freshness.get(target)
         if current is not None:
@@ -829,43 +838,6 @@ class DaoManager:
             if path:
                 routes[target] = path
         return routes
-
-    def _build_routes_incremental(
-        self,
-        parents: dict[IPv6Address, tuple[IPv6Address, ...]],
-        candidates: dict[IPv6Address, tuple[_Candidate, ...]],
-        changed: set[IPv6Address],
-    ) -> dict[IPv6Address, list[IPv6Address]]:
-        affected = self._affected_targets(parents, changed)
-        routes = dict(self.routing_table.routes())
-        for target in sorted(affected & set(parents)):
-            path = self._assemble_path(target, parents, candidates, set())
-            if path:
-                routes[target] = path
-            else:
-                routes.pop(target, None)
-        for target in affected - set(parents):
-            routes.pop(target, None)
-        return routes
-
-    def _affected_targets(
-        self,
-        parents: dict[IPv6Address, tuple[IPv6Address, ...]],
-        changed: set[IPv6Address],
-    ) -> set[IPv6Address]:
-        dependents: dict[IPv6Address, set[IPv6Address]] = {}
-        for child, parent_list in parents.items():
-            for parent in parent_list:
-                dependents.setdefault(parent, set()).add(child)
-        affected: set[IPv6Address] = set(changed)
-        queue = list(changed)
-        while queue:
-            node = queue.pop()
-            for dependent in dependents.get(node, ()):
-                if dependent not in affected:
-                    affected.add(dependent)
-                    queue.append(dependent)
-        return affected
 
     def _assemble_path(
         self,

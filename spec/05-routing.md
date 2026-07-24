@@ -30,42 +30,40 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 Routing prefers **local mesh first** for 02xx addresses (gradient, LOADng, RPL) before Yggdrasil fallback. Link-local is always direct. `is_off_mesh()` reflects the single-primary 02xx model (no ULA/GUA).
 
 ```
-def route_packet(dst):
-    if is_02xx_off_mesh(dst):
-        # 02xx destination not in local mesh routes (use Yggdrasil via BR)
-        return forward_to_rpl_parent()
+Procedure RoutePacket(dst):
+    1. IF is_02xx_off_mesh(dst) THEN
+         // 02xx destination not in local mesh routes (use Yggdrasil via BR)
+         RETURN forward_to_rpl_parent()
 
-    if is_02xx(dst):  # Yggdrasil-derived primary (per 04-network.md §6.1, 06-security.md)
-        # Local mesh first
-        gradient = gradient_table.lookup(dst)
-        if gradient and not gradient.expired:
-            # Known peer via announce/LOADng/RPL
-            return forward_to(gradient.next_hop)
+    2. IF is_02xx(dst) THEN  // Yggdrasil-derived primary
+         // Local mesh first
+         Gradient = GradientTable.Lookup(dst)
+         IF Gradient AND NOT Gradient.Expired THEN
+             // Known peer via announce/LOADng/RPL
+             RETURN forward_to(Gradient.NextHop)
 
-        if rpl_route := rpl_lookup(dst):
-            return forward_via_rpl(rpl_route)
+         RplRoute = RplLookup(dst)
+         IF RplRoute IS NOT NULL THEN
+             RETURN forward_via_rpl(RplRoute)
 
-        # No local route: Yggdrasil fallback (via BR TUN for off-mesh 02xx)
-        return yggdrasil_forward(dst)
-    else:
-        # Non-02xx: off-mesh via RPL/BR
-        return forward_to_rpl_parent()
+         // No local route: Yggdrasil fallback (via BR TUN for off-mesh 02xx)
+         RETURN yggdrasil_forward(dst)
+    3. ELSE
+         // Non-02xx: off-mesh via RPL/BR
+         RETURN forward_to_rpl_parent()
 ```
 
 **Updated `is_off_mesh()`:**
 
 ```
-def is_off_mesh(dst):
-    """True if destination cannot use local mesh (gradient/LOADng/RPL).
-    For 02xx: only after local-mesh-first check fails (then Yggdrasil).
-    Link-local: always False. Non-02xx: True. Removed GUA/ULA refs.
-    """
-    if is_link_local(dst):
-        return False
-    if not is_02xx(dst):
-        return True
-    # 02xx local-mesh-first
-    return (gradient_table.lookup(dst) is None and not has_rpl_route(dst))
+Procedure IsOffMesh(dst):
+    // True if destination cannot use local mesh (gradient/LOADng/RPL).
+    // For 02xx: only after local-mesh-first check fails (then Yggdrasil).
+    // Link-local: always False. Non-02xx: True.
+    1. IF IsLinkLocal(dst) THEN RETURN False
+    2. IF NOT Is02xx(dst) THEN RETURN True
+    3. // 02xx local-mesh-first
+    RETURN (GradientTable.Lookup(dst) IS NULL AND NOT HasRplRoute(dst))
 ```
 
 **Address classification:**
@@ -432,8 +430,6 @@ Announce routing provides zero-latency peer-to-peer paths for active mesh partic
 
 **Key insight:** Most peer-to-peer traffic is between nodes that are actively participating in the mesh. These nodes announce regularly. No discovery needed.
 
-**Yggdrasil interaction:** When a destination 02xx address has no gradient and LOADng fails (or is in progress), the packet is forwarded to the border router's Yggdrasil TUN for off-mesh routing per §7.2. Local mesh (announce gradient, LOADng) is always attempted before Yggdrasil fallback.
-
 ### 9.2. Announce Message (CCP-9 updated)
 
 Nodes broadcast announces periodically inside the L2 routing/control namespace.
@@ -480,30 +476,30 @@ Fixed announce size: 93 bytes (type(1)+flags/rx_channel(1)+hop(1)+seq(2)+IID(8)+
 **On receive announce (after L2 unwrap + parse):**
 
 ```
-def process_announce(announce, from_neighbor):
-    if not verify_schnorr(announce.pubkey, announce.signature, announce.signed_data):
-        drop("invalid signature")
-        return
+Procedure ProcessAnnounce(Announce, FromNeighbor):
+    1. IF NOT VerifySchnorr(Announce.PubKey, Announce.Signature, Announce.SignedData) THEN
+         DROP("invalid signature")
+         RETURN
 
-    # Check for duplicate/old
-    existing = gradient_table.get(announce.originator)
-    if existing and existing.seq_num >= announce.seq_num:
-        drop("stale announce")
-        return
+    2. // Check for duplicate/old
+    Existing = GradientTable.Get(Announce.Originator)
+    IF Existing IS NOT NULL AND Existing.SeqNum >= Announce.SeqNum THEN
+         DROP("stale announce")
+         RETURN
 
-    # Install/update gradient
-    gradient_table.update(
-        destination=announce.originator,
-        next_hop=from_neighbor,
-        hop_count=announce.hop_count,
-        seq_num=announce.seq_num,
-        source="announce",
-        expires=now() + GRADIENT_TIMEOUT
+    3. // Install/update gradient
+    GradientTable.Update(
+         Destination = Announce.Originator,
+         NextHop = FromNeighbor,
+         HopCount = Announce.HopCount,
+         SeqNum = Announce.SeqNum,
+         Source = "announce",
+         Expires = Now() + GRADIENT_TIMEOUT
     )
 
-    # Forward if hop count allows
-    if announce.hop_count < MAX_ANNOUNCE_HOPS:
-        announce.hop_count += 1
+    4. // Forward if hop count allows
+    IF Announce.HopCount < MAX_ANNOUNCE_HOPS THEN
+         Announce.HopCount = Announce.HopCount + 1
         broadcast(announce)
 ```
 
@@ -538,7 +534,7 @@ First announce from a new node establishes TOFU binding.
 
 ### 9.7. Geographic Fallback (GPSR)
 
-When gradient is missing and LOADng times out, nodes with GPS can fall back to geographic routing. For 02xx destinations, Yggdrasil fallback via border router (§7.2) is attempted before GPSR; GPSR is a last-resort for local mesh when no BR path exists or the BR is unreachable.
+When gradient is missing and LOADng times out, nodes with GPS can fall back to geographic routing.
 
 **Coordinates in App Data:**
 
@@ -587,32 +583,28 @@ coordinate-only announce metadata fresh or trustworthy by themselves.
 **GPSR Forwarding:**
 
 ```
-def gpsr_forward(dst_coords, packet):
-    # Find neighbor closest to destination
-    best = None
-    best_dist = my_distance_to(dst_coords)  # greedy progress required
+Procedure GpsrForward(DstCoords, Packet):
+    1. Best = NULL
+    2. BestDist = MyDistanceTo(DstCoords)  // greedy progress required
 
-    for neighbor in neighbor_table:
-        if neighbor.coords is None:
-            continue
-        d = distance(neighbor.coords, dst_coords)
-        if d < best_dist:
-            best_dist = d
-            best = neighbor
+    3. FOR EACH Neighbor IN NeighborTable:
+         IF Neighbor.Coords IS NULL THEN CONTINUE
+         D = Distance(Neighbor.Coords, DstCoords)
+         IF D < BestDist THEN
+             BestDist = D
+             Best = Neighbor
 
-    if best:
-        forward_to(best)
-    else:
-        # Local minimum - perimeter mode or drop
-        drop("gpsr: no progress")  # ponytail: perimeter mode if needed later
+    4. IF Best IS NOT NULL THEN
+         ForwardTo(Best)
+    5. ELSE
+         DROP("gpsr: no progress")
 ```
 
 **When GPSR is attempted:**
 1. No gradient for destination
 2. LOADng RREQ timed out (RREQ_RETRIES exhausted)
-3. Yggdrasil fallback unavailable (no BR, BR unreachable, or off-mesh routing fails)
-4. Destination coords known (from previous announce or out-of-band)
-5. At least one neighbor has coords
+3. Destination coords known (from previous announce or out-of-band)
+4. At least one neighbor has coords
 
 **Privacy:**
 
@@ -629,11 +621,9 @@ TOFU binding are valid.
 Border routers MAY buffer messages for unreachable destinations, delivering when a path appears.
 
 **When used:**
-- Destination has no gradient and LOADng fails (both local mesh and Yggdrasil fallback per §7.2)
+- Destination has no gradient and LOADng fails
 - Message has store-and-forward flag set
 - Router has buffer space
-
-For 02xx destinations, Yggdrasil fallback is attempted before DTN buffering. DTN is only used when the destination is unreachable via both local mesh and Yggdrasil.
 
 **Message Header Extension:**
 
@@ -716,14 +706,14 @@ Opportunistic Header (after IPv6 header):
 Each candidate waits before forwarding:
 
 ```
-def opportunistic_forward(packet, my_rank):
-    wait_time = my_rank * SLOT_TIME  # rank 0 = immediate
-    wait(wait_time)
+Procedure OpportunisticForward(Packet, MyRank):
+    1. WaitTime = MyRank * SLOT_TIME  // rank 0 = immediate
+    2. WAIT(WaitTime)
 
-    if heard_forward_from_better_rank:
-        suppress()  # higher-priority node handled it
-    else:
-        forward(packet)
+    3. IF HeardForwardFromBetterRank THEN
+         SUPPRESS()  // higher-priority node handled it
+    4. ELSE
+         FORWARD(Packet)
 ```
 
 | Parameter | Value |
@@ -754,19 +744,11 @@ LOADng provides reactive route discovery when no gradient exists:
 - Nodes that stopped announcing (sleeping, failed)
 - First contact before any announce received
 
-For 02xx destinations, if LOADng fails (RREQ_RETRIES exhausted), the packet falls through to Yggdrasil routing via the border router per §7.2. LOADng is the local-mesh reactive path; Yggdrasil is the off-mesh fallback.
-
 ### 10.2. When LOADng is Used
-
-LOADng is attempted before Yggdrasil fallback for 02xx addresses:
 
 ```
 if gradient_table.lookup(dst) returns None or expired:
-    if is_02xx(dst):
-        initiate LOADng discovery
-        # Yggdrasil fallback applied if LOADng fails (§7.2)
-    else:
-        initiate LOADng discovery  # non-02xx, no Yggdrasil fallback
+    initiate LOADng discovery
 ```
 
 ### 10.3. Route Request (RREQ)
@@ -841,8 +823,6 @@ See Appendix B2 for full LOADng configuration.
 ## 11. Gradient Table
 
 ### 11.1. Unified Structure
-
-The gradient table tracks local-mesh paths only. For 02xx addresses with no gradient entry (after announce, LOADng, and passive learning are exhausted), the packet is forwarded to Yggdrasil via the border router per §7.2. The gradient table and Yggdrasil are complementary: gradient for local mesh, Yggdrasil for off-mesh reachability.
 
 All routing methods populate a single gradient table:
 
@@ -919,10 +899,10 @@ App Data (congestion):
 When multiple next-hops have equal hop count:
 
 ```
-def select_next_hop(candidates):
+Procedure SelectNextHop(Candidates):
     // Prefer least-congested path. See spec/02a-coordinated-capacity.md §2a.2
     // for TDMA channel selection + now() SFN wrap semantics (unsigned modular arithmetic per ccp16.json).
-    return min(candidates, key=lambda n: n.queue_depth)
+    RETURN the candidate with the smallest queue_depth value
 ```
 
 **Scope:**
@@ -936,45 +916,33 @@ Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip ba
 ## 12. Summary
 
 ```
-                          ┌─────────────────┐
-                          │  Border Router  │
-                          │   (Internet)    │
-                          └────────┬────────┘
-                                   │
-                        Yggdrasil TUN (off-mesh 02xx)
-                                   │
-                             RPL (DODAG)
-                           upward/downward
-                                   │
+                         ┌─────────────────┐
+                         │  Border Router  │
+                         │   (Internet)    │
+                         └────────┬────────┘
+                                  │
+                            RPL (DODAG)
+                          upward/downward
+                                  │
 ┌─────────────────────────────────┴─────────────────────────────────┐
 │                                                                    │
 │    Node A ◄──────── Gradient ────────► Node B                     │
 │       │            (from announces)        │                       │
 │       │                                    │                       │
 │    Node C ◄─── LOADng (if no gradient) ──► Node D                 │
-│       │                                    │                       │
-│       └──── Yggdrasil (if all mesh fails) ─┘                       │
 │                                                                    │
 │                      Mesh Interior                                 │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-**Decision order for 02xx addresses:**
+| Traffic | Primary | Fallback |
+|---------|---------|----------|
+| To/from internet | RPL | -- |
+| Peer (active node) | Announce gradient | LOADng |
+| Peer (unknown node) | LOADng | RPL via root (inefficient) |
+| Broadcast | Hop-limited flood | -- |
 
-1. Gradient table lookup (announce or passive)
-2. LOADng discovery (if no gradient)
-3. RPL via parent (if destination known in DODAG)
-4. Yggdrasil fallback via BR TUN (off-mesh or unreachable locally)
-
-| Traffic | Primary | Fallback | Off-Mesh Fallback |
-|---------|---------|----------|-------------------|
-| To/from internet | RPL | -- | Yggdrasil (via BR TUN) |
-| Peer (active node) | Announce gradient | LOADng | Yggdrasil |
-| Peer (unknown node) | LOADng | Gradient (from RREP) | Yggdrasil |
-| Off-mesh 02xx | Yggdrasil via BR | -- | -- |
-| Broadcast | Hop-limited flood | -- | -- |
-
-The three-tier approach (gradient → LOADng → Yggdrasil) optimizes for each traffic pattern while providing fallbacks for edge cases. All local-mesh paths are attempted before Yggdrasil fallback per §7.2.
+The three-tier approach optimizes for each traffic pattern while providing fallbacks for edge cases.
 
 ---
 

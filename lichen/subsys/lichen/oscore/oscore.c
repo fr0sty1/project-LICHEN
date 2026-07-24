@@ -40,14 +40,14 @@ struct oscore_ctx {
 	uint8_t sender_id[OSCORE_ID_MAX_LEN];   /**< Sender ID */
 	uint8_t sender_id_len;                  /**< Sender ID length */
 	uint8_t sender_key[OSCORE_KEY_LEN];     /**< Sender Key */
-	uint64_t sender_seq;                    /**< Sender Sequence Number (40-bit, RFC 8613) */
+	uint64_t sender_seq;                    /**< Sender Sequence Number */
 
 	/* Recipient context */
 	uint8_t recipient_id[OSCORE_ID_MAX_LEN]; /**< Recipient ID */
 	uint8_t recipient_id_len;                /**< Recipient ID length */
 	uint8_t recipient_key[OSCORE_KEY_LEN];   /**< Recipient Key */
-	uint64_t recipient_seq;                  /**< Last received seq (40-bit) */
-	uint32_t replay_window;                  /**< Replay window bitmap */
+	uint64_t recipient_seq;                  /**< Last received seq */
+	uint64_t replay_window;                  /**< Replay window bitmap */
 
 	/* Peer identity (optional EUI-64 for per-peer lookup) */
 	uint8_t peer_eui64[OSCORE_EUI64_LEN];   /**< Peer's EUI-64 address */
@@ -202,41 +202,8 @@ static void replay_clear_pending_context_locked(int ctx_idx);
 #define CBOR_NULL         0xf6  /* simple value null */
 
 /*
- * OSCORE option flags (RFC 8613 Section 6.1):
- *   Bit 7 (0x80): Reserved, MUST be 0
- *   Bit 5 (0x20), Bit 6 (0x40): Reserved
- *   Bit 4 (0x10): h flag (KID Context present)
- *   Bit 3 (0x08): k flag (KID present)
- *   Bits 2-0 (0x07): n field (PIV length, 3 bits)
- */
-#define OSCORE_FLAG_RESERVED   0x80  /* Reserved bit mask */
-#define OSCORE_FLAG_KID_CONTEXT 0x10 /* KID Context present */
-#define OSCORE_FLAG_KID        0x08  /* KID present */
-#define OSCORE_FLAG_N_MASK     0x07  /* PIV length mask (lower 3 bits) */
-
-/* OSCORE version in AAD (RFC 8613 Section 5.4) */
-#define OSCORE_VERSION         0x01
-
-/*
- * CBOR array-header helpers (RFC 8949 Section 3.1):
- *   array(n) = CBOR_ARRAY_BASE | n, for n <= 23
- */
-#define CBOR_ARRAY_1  (CBOR_ARRAY_BASE | 1)  /* 1-element array */
-#define CBOR_ARRAY_3  (CBOR_ARRAY_BASE | 3)  /* 3-element array */
-#define CBOR_ARRAY_5  (CBOR_ARRAY_BASE | 5)  /* 5-element array */
-
-/* Internal CBOR buffer capacity for AAD and HKDF-info structures */
-#define CBOR_BUF_CAP 64
-
-/*
- * CBOR tstr helpers (RFC 8949 Section 3.1):
- *   tstr(n) = CBOR_TSTR_BASE | n, for n <= 23
- */
-#define CBOR_TSTR_8   (CBOR_TSTR_BASE | 8)   /* tstr of length 8 */
-
-/*
  * Replay window implementation uses a 32-bit bitmap. The configurable
- * window size must not exceed 32 entries.
+ * window size must not exceed what can be tracked in uint32_t.
  * (Fixes python-ano.55)
  */
 #if CONFIG_LICHEN_OSCORE_REPLAY_WINDOW > 32
@@ -275,14 +242,20 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	 * RFC 8949 Section 3.1: array(n) = 0x80 | n for n <= 23
 	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_ARRAY_5;
+	buf[off++] = 0x85;
 
+	/*
+	 * id: bstr (RFC 8613 Section 3.2.1, first element)
+	 * CBOR bstr: major type 2 (0x40) + length
+	 *   0x40-0x57: length 0-23 inline (0x40 | len)
+	 *   0x58: 1-byte length follows
+	 */
 	if (id_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_len;
+		buf[off++] = 0x40 | (uint8_t)id_len;
 	} else {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = CBOR_BSTR_1BYTE;
+		buf[off++] = 0x58;
 		buf[off++] = (uint8_t)id_len;
 	}
 	if (off + id_len > buf_len) return -1;
@@ -300,14 +273,14 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	 */
 	if (id_context_len == 0) {
 		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_NULL;
+		buf[off++] = 0xf6;
 	} else {
 		if (id_context_len <= 23) {
 			if (off >= buf_len) return -1;
-			buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_context_len;
+			buf[off++] = 0x40 | (uint8_t)id_context_len;
 		} else {
 			if (off + 1 >= buf_len) return -1;
-			buf[off++] = CBOR_BSTR_1BYTE;
+			buf[off++] = 0x58;
 			buf[off++] = (uint8_t)id_context_len;
 		}
 		if (off + id_context_len > buf_len) return -1;
@@ -315,15 +288,26 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		off += id_context_len;
 	}
 
+	/*
+	 * alg_aead: int (RFC 8613 Section 3.2.1, third element)
+	 * Value 10 = AES-CCM-16-64-128 (COSE Algorithm ID from RFC 9053)
+	 * CBOR uint: major type 0, values 0-23 encode directly (no prefix)
+	 */
 	if (off >= buf_len) return -1;
 	buf[off++] = OSCORE_ALG_AEAD;
 
+	/*
+	 * type: tstr (RFC 8613 Section 3.2.1, fourth element)
+	 * One of "Key", "IV", or "Info"
+	 * CBOR tstr: major type 3 (0x60) + length
+	 *   0x60-0x77: length 0-23 inline (0x60 | len)
+	 */
 	size_t type_len = strlen(type);
 	if (type_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_TSTR_BASE | (uint8_t)type_len;
+		buf[off++] = 0x60 | (uint8_t)type_len;
 	} else {
-		return -1;
+		return -1; /* type shouldn't be > 23 chars */
 	}
 	if (off + type_len > buf_len) return -1;
 	memcpy(buf + off, type, type_len);
@@ -341,7 +325,7 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		buf[off++] = (uint8_t)out_len;
 	} else if (out_len <= 255) {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = CBOR_UINT_1BYTE;
+		buf[off++] = 0x18;
 		buf[off++] = (uint8_t)out_len;
 	} else {
 		return -1; /* L shouldn't be > 255 for OSCORE */
@@ -394,20 +378,37 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	 * We build the inner structure in a temp buffer, then encode it
 	 * as a bstr inside the Enc_structure.
 	 */
-	uint8_t inner[CBOR_BUF_CAP];
+	uint8_t inner[64];
 	size_t inner_off = 0;
 
-	inner[inner_off++] = CBOR_ARRAY_5;
+	/*
+	 * aad_array: 5-element array
+	 * CBOR array: major type 4 (0x80) + 5 items = 0x85
+	 */
+	inner[inner_off++] = 0x85;
 
-	inner[inner_off++] = OSCORE_VERSION;
+	/*
+	 * oscore_version: uint = 1 (RFC 8613 Section 5.4, first element)
+	 * CBOR uint: values 0-23 encode directly
+	 */
+	inner[inner_off++] = 0x01;
 
-	inner[inner_off++] = CBOR_ARRAY_1;
+	/*
+	 * algorithms: 1-element array containing alg_aead (second element)
+	 * 0x81 = array of 1 item (0x80 | 1)
+	 * Value 10 = AES-CCM-16-64-128 (COSE Algorithm ID from RFC 9053)
+	 */
+	inner[inner_off++] = 0x81;
 	inner[inner_off++] = OSCORE_ALG_AEAD;
 
+	/*
+	 * request_kid: bstr (RFC 8613 Section 5.4, third element)
+	 * CBOR bstr: 0x40 | len for len <= 23
+	 */
 	if (request_kid_len <= 23) {
-		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_kid_len;
+		inner[inner_off++] = 0x40 | (uint8_t)request_kid_len;
 	} else {
-		return -1;
+		return -1; /* shouldn't happen with OSCORE_ID_MAX_LEN */
 	}
 	if (request_kid_len > 0) {
 		if (inner_off + request_kid_len > sizeof(inner)) {
@@ -417,8 +418,12 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		inner_off += request_kid_len;
 	}
 
+	/*
+	 * request_piv: bstr (RFC 8613 Section 5.4, fourth element)
+	 * CBOR bstr: 0x40 | len for len <= 23
+	 */
 	if (request_piv_len <= 23) {
-		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_piv_len;
+		inner[inner_off++] = 0x40 | (uint8_t)request_piv_len;
 	} else {
 		return -1;
 	}
@@ -429,23 +434,50 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		memcpy(inner + inner_off, request_piv, request_piv_len);
 		inner_off += request_piv_len;
 	}
-	inner[inner_off++] = CBOR_BSTR_BASE | 0;
+	/*
+	 * options: empty bstr (RFC 8613 Section 5.4, fifth element)
+	 * Class I options - not used in this implementation
+	 * 0x40 = bstr of length 0
+	 */
+	inner[inner_off++] = 0x40;
 
-	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_ARRAY_3;
+	/*
+	 * Now build Enc_structure (RFC 9052 Section 5.3):
+	 *   ["Encrypt0", h'', external_aad]
+	 * where external_aad = bstr .cbor aad_array (the inner buffer)
+	 */
 
+	/*
+	 * 3-element array
+	 * CBOR array: 0x83 = 0x80 | 3
+	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_TSTR_8;
+	buf[off++] = 0x83;
+
+	/*
+	 * "Encrypt0" as tstr (8 chars)
+	 * CBOR tstr: 0x68 = 0x60 | 8 (tstr of length 8)
+	 */
+	if (off >= buf_len) return -1;
+	buf[off++] = 0x68;
 	if (off + 8 > buf_len) return -1;
 	memcpy(buf + off, "Encrypt0", 8);
 	off += 8;
 
+	/*
+	 * empty bstr (protected header per RFC 9052 Section 5.3)
+	 * 0x40 = bstr of length 0
+	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_BSTR_BASE | 0;
+	buf[off++] = 0x40;
 
+	/*
+	 * external_aad as bstr wrapping the inner CBOR
+	 * CBOR bstr: 0x40 | len for len <= 23, 0x58 + len for len 24-255
+	 */
 	if (inner_off <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_BSTR_BASE | (uint8_t)inner_off;
+		buf[off++] = 0x40 | (uint8_t)inner_off;
 	} else {
 		if (off + 1 >= buf_len) return -1;
 		buf[off++] = 0x58;
@@ -674,7 +706,7 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 	k_mutex_unlock(&s_ctx_mutex);
 
 	*ctx_out = ctx;
-	LOG_DBG("Created OSCORE context (sender=%u, recipient=%u)",
+	LOG_DBG("Created OSCORE context (sender=%llu, recipient=%llu)",
 		sender_id_len, recipient_id_len);
 	return OSCORE_OK;
 
@@ -746,7 +778,7 @@ int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
 			if (ctx_idx >= 0) {
 				ctx->sender_seq = stored_ssn;
 				s_seq_initialized[ctx_idx] = true;
-				LOG_DBG("Restored SSN %u from NVM for peer", stored_ssn);
+				LOG_DBG("Restored SSN %llu from NVM for peer", stored_ssn);
 
 				/* SECURITY: Warn if restored SSN is near exhaustion.
 				 * Per RFC 8613 Section 7.5, implementations must
@@ -754,10 +786,10 @@ int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
 				 * close to exhaustion, key rotation is urgent.
 				 */
 				if (stored_ssn >= OSCORE_SSN_MAX - OSCORE_SSN_ROTATION_CRITICAL) {
-					LOG_WRN("Restored SSN %u near exhaustion, "
+					LOG_WRN("Restored SSN %llu near exhaustion, "
 						"key rotation required", stored_ssn);
 				} else if (stored_ssn >= OSCORE_SSN_MAX - OSCORE_SSN_ROTATION_WARNING) {
-					LOG_WRN("Restored SSN %u approaching exhaustion, "
+					LOG_WRN("Restored SSN %llu approaching exhaustion, "
 						"key rotation recommended", stored_ssn);
 				}
 			}
@@ -855,7 +887,7 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint64_t sender_seq)
 	}
 	k_mutex_unlock(&s_ctx_mutex);
 
-	LOG_DBG("Set sender_seq to %u for nonce persistence", sender_seq);
+	LOG_DBG("Set sender_seq to %llu for nonce persistence", sender_seq);
 	return OSCORE_OK;
 }
 
@@ -925,10 +957,10 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *ctx,
 	}
 
 	if (result == OSCORE_FRESHNESS_CRITICAL) {
-		LOG_WRN("OSCORE context critical (%u remaining) - immediate key rotation needed",
+		LOG_WRN("OSCORE context critical (%llu remaining) - immediate key rotation needed",
 			remaining);
 	} else if (result == OSCORE_FRESHNESS_WARNING) {
-		LOG_INF("OSCORE context warning (%u remaining) - proactive key rotation recommended",
+		LOG_INF("OSCORE context warning (%llu remaining) - proactive key rotation recommended",
 			remaining);
 	}
 
@@ -1046,13 +1078,13 @@ int oscore_option_parse(const uint8_t *data, size_t len,
 	remaining--;
 
 	/* Reserved bit must be 0 */
-	if (flags & OSCORE_FLAG_RESERVED) {
+	if (flags & 0x80) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	bool h_flag = (flags & OSCORE_FLAG_KID_CONTEXT) != 0;
-	bool k_flag = (flags & OSCORE_FLAG_KID) != 0;
-	uint8_t n = (flags & OSCORE_FLAG_N_MASK);
+	bool h_flag = (flags & 0x10) != 0; /* KID Context present */
+	bool k_flag = (flags & 0x08) != 0; /* KID present */
+	uint8_t n = flags & 0x07;          /* PIV length */
 
 	/* Parse PIV */
 	if (n > 0) {
@@ -1125,13 +1157,13 @@ int oscore_option_build(const struct oscore_option *option,
 	/* Flags byte */
 	uint8_t flags = 0;
 	if (option->has_kid_context) {
-		flags |= OSCORE_FLAG_KID_CONTEXT;
+		flags |= 0x10;
 	}
 	if (option->has_kid) {
-		flags |= OSCORE_FLAG_KID;
+		flags |= 0x08;
 	}
 	if (option->has_piv) {
-		flags |= (option->piv_len & OSCORE_FLAG_N_MASK);
+		flags |= (option->piv_len & 0x07);  /* Lower 3 bits per RFC 8613 */
 	}
 
 	if (off >= buflen) {
@@ -1241,10 +1273,10 @@ static size_t encode_piv(uint64_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
 		return 1;
 	}
 
-	/* Find number of bytes needed (max 5 for 40-bit PIV) */
+	/* Find number of bytes needed */
 	size_t len = 0;
 	uint64_t tmp = seq;
-	while (tmp > 0 && len < OSCORE_PIV_MAX_LEN) {
+	while (tmp > 0) {
 		len++;
 		tmp >>= 8;
 	}
@@ -1284,14 +1316,14 @@ static bool replay_check_acceptable(const struct oscore_ctx *ctx, uint64_t seq)
 	}
 
 	/* seq <= recipient_seq: check if within window */
-	uint64_t diff = ctx->recipient_seq - seq;
+	uint32_t diff = ctx->recipient_seq - seq;
 	if (diff >= window_size) {
 		/* Too old */
 		return false;
 	}
 
 	/* Check if already seen */
-	uint32_t mask = 1UL << ((uint32_t)diff);
+	uint32_t mask = 1U << diff;
 	if (ctx->replay_window & mask) {
 		/* Replay detected */
 		return false;
@@ -1383,11 +1415,11 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq)
 {
 	if (seq > ctx->recipient_seq) {
 		/* New highest seq - shift window */
-		uint64_t shift = seq - ctx->recipient_seq;
+		uint32_t shift = seq - ctx->recipient_seq;
 		if (shift >= 32) {
 			ctx->replay_window = 0;
 		} else {
-			ctx->replay_window <<= (uint32_t)shift;
+			ctx->replay_window <<= shift;
 		}
 		ctx->replay_window |= 1; /* Mark current as seen */
 		ctx->recipient_seq = seq;
@@ -1395,7 +1427,7 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq)
 	}
 
 	/* seq <= recipient_seq: check if still within window */
-	uint64_t diff = ctx->recipient_seq - seq;
+	uint32_t diff = ctx->recipient_seq - seq;
 	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
 		/*
 		 * SECURITY: Seq fell outside window while we were decrypting -
@@ -1414,7 +1446,7 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq)
 	}
 
 	/* Check if already marked by another thread */
-	uint32_t mask = 1UL << ((uint32_t)diff);
+	uint32_t mask = 1U << diff;
 	if (ctx->replay_window & mask) {
 		return false;
 	}
@@ -1449,13 +1481,13 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
 	    oscore_opt == NULL || oscore_opt_len == NULL) {
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto common_wipe;
+		goto cleanup_protect_request;
 	}
 
 	if ((options_len > 0 && options == NULL) ||
 	    (payload_len > 0 && payload == NULL)) {
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto common_wipe;
+		goto cleanup_protect_request;
 	}
 
 	/*
@@ -1471,7 +1503,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE context not in storage array");
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto common_wipe;
+		goto cleanup_protect_request;
 	}
 
 	/* Require sender_seq to be explicitly initialized before first use */
@@ -1479,15 +1511,15 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender_seq not initialized - call oscore_ctx_set_sender_seq()");
 		ret = OSCORE_ERR_INVALID_PARAM;
-		goto common_wipe;
+		goto cleanup_protect_request;
 	}
 
 	/* Check for sender sequence number exhaustion before use */
-	if (ctx->sender_seq >= OSCORE_SSN_MAX) {
+	if (ctx->sender_seq == OSCORE_SSN_MAX) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender sequence exhausted - key rotation required");
 		ret = OSCORE_ERR_SEQ_EXHAUSTED;
-		goto common_wipe;
+		goto cleanup_protect_request;
 	}
 
 	/* Get and increment sender sequence number atomically */
@@ -1515,10 +1547,9 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	 *
 	 * Class 2 - post-transmittable NVM failure (persist_ssn failing
 	 * after ciphertext and OSCORE option are fully built and returned
-	 * to the caller): goes to the distinct nvm_failed path, which
-	 * conditionally rolls back sender_seq to the pre-increment value
-	 * (if no concurrent increment occurred) and sets s_seq_initialized
-	 * to maintain nonce uniqueness on reboot per RFC 8613 §7.2.
+	 * to the caller): goes to the distinct nvm_failed path, which takes
+	 * extra measures (safety-margin SSN bump inside persist_ssn,
+	 * s_seq_initialized sync) because the packet may still be sent.
 	 */
 
 	/*
@@ -1575,7 +1606,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 
 	/* Build OSCORE option */
 	opt.has_piv = true;
-	opt.piv_len = (uint8_t)(piv_len & OSCORE_FLAG_N_MASK);
+	opt.piv_len = (uint8_t)(piv_len & 0x07);
 	opt.has_kid = true;
 	opt.kid_len = ctx->sender_id_len;
 	memcpy(opt.piv, piv, piv_len);
@@ -1612,7 +1643,7 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* After common wipe in common_wipe, this dedicated
+	/* After common wipe in cleanup_protect_request, this dedicated
 	 * nvm_failed path locks mutex to safely handle sender_seq.
 	 * SECURITY: SSN MUST NOT be left incremented on NVM failure -
 	 * would allow AES-CCM nonce reuse attack vector on reboot
@@ -1735,9 +1766,9 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	if (ret != OSCORE_OK) {
 		k_mutex_unlock(&s_ctx_mutex);
 		if (ret == OSCORE_ERR_REPLAY) {
-			LOG_WRN("OSCORE replay detected: seq=%u", seq);
+			LOG_WRN("OSCORE replay detected: seq=%llu", seq);
 		} else {
-			LOG_ERR("OSCORE replay reservation unavailable: seq=%u", seq);
+			LOG_ERR("OSCORE replay reservation unavailable: seq=%llu", seq);
 		}
 		return ret;
 	}
@@ -1784,7 +1815,7 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	replay_reserved = false;
 	if (!replay_update_window(ctx, seq)) {
 		k_mutex_unlock(&s_ctx_mutex);
-		LOG_WRN("OSCORE replay detected after decrypt: seq=%u", seq);
+		LOG_WRN("OSCORE replay detected after decrypt: seq=%llu", seq);
 		ret = OSCORE_ERR_REPLAY;
 		goto cleanup_unprotect_request;
 	}

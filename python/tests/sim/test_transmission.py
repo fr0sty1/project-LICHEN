@@ -6,7 +6,7 @@ from uuid import UUID
 
 import pytest
 
-from lichen.sim.transmission import Transmission, airtime_us
+from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
 
 
 class TestAirtimeUs:
@@ -61,6 +61,29 @@ class TestAirtimeUs:
         """Airtime should always be positive."""
         for size in [0, 1, 10, 50, 100, 255]:
             assert airtime_us(size) > 0
+
+
+class TestLrFhssAirtime:
+    """Tests for lr_fhss_airtime_us function."""
+
+    def test_negative_payload_raises(self) -> None:
+        with pytest.raises(ValueError, match="non-negative"):
+            lr_fhss_airtime_us(-1)
+
+    def test_lr_fhss_is_twice_lora(self) -> None:
+        for size in [0, 10, 50, 100, 255]:
+            lora = airtime_us(size)
+            fhss = lr_fhss_airtime_us(size)
+            assert fhss == lora * 2
+
+    def test_lr_fhss_airtime_positive(self) -> None:
+        for size in [0, 1, 10, 50, 100, 255]:
+            assert lr_fhss_airtime_us(size) > 0
+
+    def test_lr_fhss_increases_with_payload(self) -> None:
+        small = lr_fhss_airtime_us(10)
+        large = lr_fhss_airtime_us(100)
+        assert small < large
 
 
 class TestTransmission:
@@ -170,3 +193,24 @@ class TestTransmission:
             channel=5,
         )
         assert tx.channel == 5
+
+    def test_default_phy_mode_is_lora(self) -> None:
+        tx = Transmission(
+            source_node_id="node-1",
+            payload=b"test",
+            tx_power_dbm=10,
+            start_time_us=0,
+            end_time_us=100,
+        )
+        assert tx.phy_mode == "lora"
+
+    def test_lr_fhss_phy_mode(self) -> None:
+        tx = Transmission(
+            source_node_id="node-1",
+            payload=b"test",
+            tx_power_dbm=10,
+            start_time_us=0,
+            end_time_us=100,
+            phy_mode="lr_fhss",
+        )
+        assert tx.phy_mode == "lr_fhss"

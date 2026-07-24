@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
-from enum import Enum, auto
+from functools import total_ordering
 from ipaddress import IPv6Address
-from typing import Optional
 
 from lichen.ipv6 import to_ipv6
 from lichen.ipv6.packet import ExtensionHeader, IPv6Packet, NextHeader
@@ -34,103 +33,95 @@ class RoutingError(Exception):
     """Raised on malformed routes or source-routing headers."""
 
 
-class InvalidRouteEntryTransition(Exception):
-    """Raised on invalid route entry state transitions."""
-
-
-class RouteEntryState(Enum):
-    Fresh = auto()
-    Stale = auto()
-    Expired = auto()
-
-    def can_transition_to(self, next: RouteEntryState) -> bool:
-        allowed = {
-            RouteEntryState.Fresh: {RouteEntryState.Fresh, RouteEntryState.Stale, RouteEntryState.Expired},
-            RouteEntryState.Stale: {RouteEntryState.Fresh, RouteEntryState.Stale, RouteEntryState.Expired},
-            RouteEntryState.Expired: {RouteEntryState.Expired},
-        }
-        return next in allowed[self]
-
-
-@dataclass
-class RouteEntry:
-    path: list[IPv6Address]
-    state: RouteEntryState = RouteEntryState.Fresh
-
-    @classmethod
-    def fresh(cls, path: list[IPv6Address]) -> RouteEntry:
-        return cls(path=path, state=RouteEntryState.Fresh)
-
-    def is_usable(self) -> bool:
-        return self.state != RouteEntryState.Expired
-
-    def mark_stale(self) -> None:
-        if not self.state.can_transition_to(RouteEntryState.Stale):
-            raise InvalidRouteEntryTransition(
-                f"cannot transition from {self.state.name} to Stale"
-            )
-        self.state = RouteEntryState.Stale
-
-    def mark_expired(self) -> None:
-        if not self.state.can_transition_to(RouteEntryState.Expired):
-            raise InvalidRouteEntryTransition(
-                f"cannot transition from {self.state.name} to Expired"
-            )
-        self.state = RouteEntryState.Expired
-
-    def refresh(self, path: list[IPv6Address]) -> None:
-        if self.state == RouteEntryState.Expired:
-            raise InvalidRouteEntryTransition(
-                "cannot refresh expired route entry"
-            )
-        self.path = path
-        self.state = RouteEntryState.Fresh
-
-
+@total_ordering
 @dataclass(frozen=True)
 class RouteTarget:
+    """Canonical IPv6 route prefix.
+
+    ``prefix`` is always canonical: unused host bits are cleared.
+    A /128 target behaves identically to a host address.
+    """
     prefix: IPv6Address
     prefix_len: int
 
     def __post_init__(self) -> None:
         if not (0 <= self.prefix_len <= 128):
-            raise ValueError(f"prefix_len must be between 0 and 128, got {self.prefix_len}")
-
-    @classmethod
-    def new(cls, address: IPv6Address | str, prefix_len: int) -> RouteTarget:
-        if not (0 <= prefix_len <= 128):
-            raise ValueError(f"prefix_len must be between 0 and 128, got {prefix_len}")
-        addr_bytes = bytearray(to_ipv6(address).packed)
-        whole_bytes = prefix_len // 8
-        remaining_bits = prefix_len % 8
-        used_bytes = whole_bytes + (1 if remaining_bits else 0)
+            raise RoutingError(f"prefix_len must be between 0 and 128, got {self.prefix_len}")
+        whole_bytes = self.prefix_len // 8
+        remaining_bits = self.prefix_len % 8
         if remaining_bits:
-            addr_bytes[whole_bytes] &= 0xFF << (8 - remaining_bits)
-        for i in range(used_bytes, 16):
-            addr_bytes[i] = 0
-        return cls(prefix=IPv6Address(bytes(addr_bytes)), prefix_len=prefix_len)
+            mask = 0xFF << (8 - remaining_bits)
+            prefix = bytearray(self.prefix.packed)
+            prefix[whole_bytes] &= mask
+            prefix[whole_bytes + 1:] = b'\x00' * (15 - whole_bytes)
+        else:
+            prefix = bytearray(self.prefix.packed)
+            prefix[whole_bytes:] = b'\x00' * (16 - whole_bytes)
+        object.__setattr__(self, 'prefix', IPv6Address(bytes(prefix)))
 
     @classmethod
     def host(cls, address: IPv6Address | str) -> RouteTarget:
-        return cls(prefix=to_ipv6(address), prefix_len=128)
+        return cls(to_ipv6(address), 128)
 
     def contains(self, address: IPv6Address | str) -> bool:
         addr = to_ipv6(address)
+        if self.prefix_len == 128:
+            return addr == self.prefix
         whole_bytes = self.prefix_len // 8
         if self.prefix.packed[:whole_bytes] != addr.packed[:whole_bytes]:
             return False
         remaining_bits = self.prefix_len % 8
         if remaining_bits == 0:
             return True
-        return (
-            (self.prefix.packed[whole_bytes] ^ addr.packed[whole_bytes])
-            & (0xFF << (8 - remaining_bits))
-        ) == 0
+        mask = 0xFF << (8 - remaining_bits)
+        return (self.prefix.packed[whole_bytes] ^ addr.packed[whole_bytes]) & mask == 0
 
-    def __lt__(self, other: RouteTarget) -> bool:
+    def __lt__(self, other: object) -> bool:
         if not isinstance(other, RouteTarget):
             return NotImplemented
         return (self.prefix_len, self.prefix) < (other.prefix_len, other.prefix)
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, RouteTarget):
+            return NotImplemented
+        return (self.prefix_len, self.prefix) <= (other.prefix_len, other.prefix)
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, RouteTarget):
+            return NotImplemented
+        return (self.prefix_len, self.prefix) > (other.prefix_len, other.prefix)
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, RouteTarget):
+            return NotImplemented
+        return (self.prefix_len, self.prefix) >= (other.prefix_len, other.prefix)
+
+    def __hash__(self) -> int:
+        return hash((self.prefix_len, self.prefix))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RouteTarget):
+            return NotImplemented
+        return self.prefix_len == other.prefix_len and self.prefix == other.prefix
+
+
+class RouteEntryState:
+    FRESH = "fresh"
+    STALE = "stale"
+    EXPIRED = "expired"
+
+
+@dataclass
+class RouteEntry:
+    path: list[IPv6Address]
+    state: str = RouteEntryState.FRESH
+
+    @classmethod
+    def fresh(cls, path: Sequence[IPv6Address | str]) -> RouteEntry:
+        return cls(path=[to_ipv6(a) for a in path], state=RouteEntryState.FRESH)
+
+    def is_usable(self) -> bool:
+        return self.state != RouteEntryState.EXPIRED
 
 
 @dataclass
@@ -183,53 +174,27 @@ class SourceRoutingHeader:
         return cls.from_ext_data(ext.data)
 
 
-def _canonicalize_prefix(address: IPv6Address, prefix_len: int) -> IPv6Address:
-    return RouteTarget.new(address, prefix_len).prefix
-
-
 @dataclass
 class RoutingTable:
-    """Root-side map of target/prefix to source-route path reaching it.
+    """Root-side map of route targets to source-route paths.
 
-    Supports both /128 host routes and shorter prefix routes with
-    longest-prefix-match lookup.
+    Host routes use /128 targets and store the full path ending at the target.
+    Prefix routes use shorter prefix lengths and store a path to the egress node.
+
+    ``lookup`` uses longest-prefix-match when prefix routes are present,
+    otherwise falls back to exact /128 host match for performance.
     """
 
     _routes: dict[RouteTarget, RouteEntry] = field(default_factory=dict)
     _prefix_route_count: int = 0
-    _rpl_managed_hosts: set[IPv6Address] = field(default_factory=set)
-    _rpl_managed_prefixes: dict[RouteTarget, IPv6Address] = field(default_factory=dict)
-    _unavailable_managed_prefixes: set[RouteTarget] = field(default_factory=set)
-
-    def _add_target_route(self, target: RouteTarget, path: list[IPv6Address]) -> bool:
-        if len(path) > MAX_ROUTE_HOPS:
-            return False
-        is_new = target not in self._routes
-        if is_new and len(self._routes) == MAX_ROUTES:
-            return False
-        existing = self._routes.get(target)
-        if existing is not None and existing.state != RouteEntryState.Expired:
-            existing.refresh(path)
-        else:
-            self._routes[target] = RouteEntry.fresh(path)
-        if is_new and target.prefix_len < 128:
-            self._prefix_route_count += 1
-        return True
 
     def add_route(
         self, target: IPv6Address | str, path: Sequence[IPv6Address | str]
     ) -> None:
-        return self._legacy_add_route(target, path)
-
-    def _legacy_add_route(
-        self, target: IPv6Address | str, path: Sequence[IPv6Address | str]
-    ) -> None:
-        if not path:
-            raise RoutingError("route path must not be empty")
-        if len(path) > MAX_ROUTE_HOPS:
-            raise RoutingError("route path exceeds maximum hop count")
         converted_target = to_ipv6(target)
         converted_path = [to_ipv6(a) for a in path]
+        if not path:
+            raise RoutingError("route path must not be empty")
         if converted_path[-1] != converted_target:
             raise RoutingError("route path must end at target")
         if not self._add_target_route(RouteTarget.host(converted_target), converted_path):
@@ -237,68 +202,50 @@ class RoutingTable:
 
     def add_prefix_route(
         self,
-        target: RouteTarget | IPv6Address | str,
+        target: RouteTarget,
         egress: IPv6Address | str,
         path: Sequence[IPv6Address | str],
-    ) -> bool:
-        if isinstance(target, RouteTarget):
-            rt = target
-        else:
-            raise TypeError("add_prefix_route requires a RouteTarget")
-        egress_addr = to_ipv6(egress)
+    ) -> None:
+        if target.prefix_len == 128:
+            raise RoutingError("use add_route for /128 targets")
         converted_path = [to_ipv6(a) for a in path]
-        if rt.prefix_len == 128:
+        converted_egress = to_ipv6(egress)
+        if converted_path[-1] != converted_egress:
+            raise RoutingError("prefix route path must end at egress")
+        if any(hop == target.prefix for hop in converted_path):
+            raise RoutingError("prefix route path must not contain target prefix address")
+        if not self._add_target_route(target, converted_path):
+            raise RoutingError("route capacity exceeded")
+
+    def _add_target_route(self, target: RouteTarget, path: list[IPv6Address]) -> bool:
+        if not path:
+            raise RoutingError("route path must not be empty")
+        if len(path) > MAX_ROUTE_HOPS:
+            raise RoutingError("route path exceeds maximum hop count")
+        is_new = target not in self._routes
+        if is_new and len(self._routes) >= MAX_ROUTES:
             return False
-        if not converted_path or converted_path[-1] != egress_addr:
-            return False
-        if any(hop == rt.prefix for hop in converted_path):
-            return False
-        was_managed = self._rpl_managed_prefixes.get(rt) == egress_addr
-        is_managed = was_managed or egress_addr in self._rpl_managed_hosts
-        if not self._add_target_route(rt, converted_path):
-            return False
-        if is_managed:
-            self._rpl_managed_prefixes[rt] = egress_addr
-        else:
-            self._rpl_managed_prefixes.pop(rt, None)
-        self._unavailable_managed_prefixes.discard(rt)
+        self._routes[target] = RouteEntry.fresh(path)
+        if is_new and target.prefix_len < 128:
+            self._prefix_route_count += 1
         return True
 
-    def add_host_route(
-        self, target: IPv6Address | str, path: Sequence[IPv6Address | str]
-    ) -> bool:
-        converted_target = to_ipv6(target)
-        converted_path = [to_ipv6(a) for a in path]
-        if not converted_path:
-            return False
-        if len(converted_path) > MAX_ROUTE_HOPS:
-            return False
-        if converted_path[-1] != converted_target:
-            return False
-        return self._add_target_route(RouteTarget.host(converted_target), converted_path)
-
     def remove_route(self, target: IPv6Address | str) -> None:
-        self._routes.pop(RouteTarget.host(to_ipv6(target)), None)
+        self._routes.pop(RouteTarget.host(target), None)
 
     def remove_prefix_route(self, target: RouteTarget) -> None:
         if target.prefix_len < 128 and target in self._routes:
             del self._routes[target]
             self._prefix_route_count -= 1
-            self._rpl_managed_prefixes.pop(target, None)
-            self._unavailable_managed_prefixes.discard(target)
 
     def clear(self) -> None:
         self._routes.clear()
         self._prefix_route_count = 0
-        self._rpl_managed_prefixes.clear()
-        self._rpl_managed_hosts.clear()
-        self._unavailable_managed_prefixes.clear()
 
     def routes(self) -> dict[IPv6Address, list[IPv6Address]]:
         result: dict[IPv6Address, list[IPv6Address]] = {}
         for rt, entry in self._routes.items():
-            if rt.prefix_len == 128 and entry.is_usable():
-                result[rt.prefix] = entry.path
+            result[rt.prefix] = list(entry.path)
         return result
 
     def replace_routes(
@@ -306,58 +253,33 @@ class RoutingTable:
     ) -> None:
         self.clear()
         for target, path in routes.items():
-            self._legacy_add_route(target, path)
+            self._add_target_route(RouteTarget.host(target), path)
 
     def lookup(self, target: IPv6Address | str) -> list[IPv6Address] | None:
         addr = to_ipv6(target)
         if self._prefix_route_count == 0:
             entry = self._routes.get(RouteTarget.host(addr))
-            if entry is not None and entry.is_usable():
-                return list(entry.path)
-            return None
-        best: tuple[int, RouteEntry] | None = None
+            return list(entry.path) if entry is not None and entry.is_usable() else None
+        best: RouteEntry | None = None
+        best_len = -1
         for rt, entry in self._routes.items():
-            if not entry.is_usable():
-                continue
-            if rt.contains(addr):
-                if best is None or rt.prefix_len > best[0]:
-                    best = (rt.prefix_len, entry)
-        return list(best[1].path) if best is not None else None
+            if rt.contains(addr) and entry.is_usable() and rt.prefix_len > best_len:
+                best = entry
+                best_len = rt.prefix_len
+        return list(best.path) if best is not None else None
 
     def build_source_route(self, target: IPv6Address | str) -> list[IPv6Address] | None:
-        """The hop path to ``target``, or ``None`` if no route is known."""
         return self.lookup(target)
+
+    def entry_state(self, target: IPv6Address | str) -> str | None:
+        entry = self._routes.get(RouteTarget.host(target))
+        return entry.state if entry is not None else None
 
     def __len__(self) -> int:
         return len(self._routes)
 
     def __contains__(self, target: IPv6Address | str) -> bool:
-        return RouteTarget.host(to_ipv6(target)) in self._routes
-
-    def mark_stale(self, target: IPv6Address | str) -> None:
-        entry = self._routes.get(RouteTarget.host(to_ipv6(target)))
-        if entry is not None:
-            entry.mark_stale()
-
-    def mark_expired(self, target: IPv6Address | str) -> None:
-        entry = self._routes.get(RouteTarget.host(to_ipv6(target)))
-        if entry is not None:
-            entry.mark_expired()
-
-    def mark_prefix_expired(self, target: RouteTarget) -> None:
-        if target.prefix_len >= 128:
-            return
-        entry = self._routes.get(target)
-        if entry is not None:
-            entry.mark_expired()
-
-    def entry_state(self, target: IPv6Address | str) -> Optional[RouteEntryState]:
-        entry = self._routes.get(RouteTarget.host(to_ipv6(target)))
-        return entry.state if entry is not None else None
-
-    def entry_state_for_prefix(self, target: RouteTarget) -> Optional[RouteEntryState]:
-        entry = self._routes.get(target)
-        return entry.state if entry is not None else None
+        return RouteTarget.host(target) in self._routes
 
 
 def next_hop_upward(dodag: DodagState) -> IPv6Address | None:

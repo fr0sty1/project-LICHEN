@@ -254,6 +254,12 @@ def _validate_bytes(value: object, name: str, length: int | None = None) -> byte
     return value
 
 
+def _validate_int(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer")
+    return value
+
+
 @dataclass
 class EdhocInitiator:
     """EDHOC Initiator role (RFC 9528).
@@ -588,7 +594,7 @@ class EdhocResponder:
                 raise ValueError(
                     f"Malformed message_1: expected 4 or 5 CBOR items, got {len(items)}"
                 )
-            method_corr = items[0]
+            method_corr = _validate_int(items[0], "method_corr")
             received_method = method_corr // 4
             corr = method_corr % 4
             if received_method != self.method:
@@ -598,7 +604,8 @@ class EdhocResponder:
                 )
             if corr not in (0, 1, 2, 3):
                 raise ValueError(f"Invalid corr value: {corr}")
-            if items[1] != SUITE_0:
+            suite = _validate_int(items[1], "suite")
+            if suite != SUITE_0:
                 raise ValueError(f"Unsupported cipher suite: {items[1]}")
             g_x = _validate_bytes(items[2], "G_X", X25519_KEY_LEN)
             c_i = _decode_connection_id(items[3])

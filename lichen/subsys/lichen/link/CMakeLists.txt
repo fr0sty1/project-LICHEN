@@ -14,10 +14,6 @@ zephyr_library_sources(
   tx_queue.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_CCP16_LOAD_BALANCING
-  rf_health.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_SCHNORR
   schnorr48.c
 )
@@ -26,8 +22,8 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_EPOCH_PERSIST
   epoch_persist.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_TDMA
-  tdma.c
+zephyr_library_sources_ifdef(CONFIG_LICHEN_CCP_TIME_SYNC
+  time_sync.c
 )
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

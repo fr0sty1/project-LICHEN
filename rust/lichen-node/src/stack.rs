@@ -601,7 +601,7 @@ pub fn add_rpl_source_route(
     out[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
     let transport = out[6];
     out[6] = 43;
-    out[24..40].copy_from_slice(&route[0]);
+    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&route[0]);
     out[40] = transport;
     out[41] = (routing_len / 8 - 1) as u8;
     #[cfg(feature = "std")]

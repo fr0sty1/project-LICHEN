@@ -181,9 +181,9 @@ static int lichen_l2_to_zephyr_errno(int ret)
  * (project-LICHEN-tvfm.7)
  */
 BUILD_ASSERT(LICHEN_EUI64_LEN == 8,
-	     "lichen_peer_add() eui64[8] size mismatch: update API if LICHEN_EUI64_LEN changed");
+	     "lichen_peer_add() eui64 size mismatch: update API if LICHEN_EUI64_LEN changed");
 BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
-	     "lichen_peer_add() pubkey[32] size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
+	     "lichen_peer_add() pubkey size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
 
 /* Maximum frame size for LoRa */
 #define MAX_LORA_FRAME 255
@@ -236,7 +236,7 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
 	     "LICHEN_MIN_FRAME_LEN does not match frame component sizes");
 
 /*
- * Validate LICHEN_LORA_FRAME_OVERHEAD against frame format constants.
+ * Validate LICHEN_FRAME_MAX_OVERHEAD against frame format constants.
  *
  * The overhead (55 bytes) is tuned for MTU = 200 bytes, relying on SCHC
  * compression to shrink IPv6 headers from 40 bytes to ~3-6 bytes. The
@@ -244,38 +244,38 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  * more than offset the signature cost.
  *
  * These assertions catch drift if schnorr48.h or frame format constants
- * change without updating LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h.
+ * change without updating LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h.
  *
- * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_LORA_FRAME_OVERHEAD
+ * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_FRAME_MAX_OVERHEAD
  * to ensure signed frames still fit within the LoRa PHY limit.
  *
  * Constant naming (project-LICHEN-tvfm.106, project-LICHEN-tvfm.107):
- * - LICHEN_FRAME_BASE_OVERHEAD (5 bytes): Minimum frame size for validation.
+ * - LICHEN_FRAME_MIN_HEADER_SIZE (5 bytes): Minimum frame size for validation.
  *   Used in LICHEN_MIN_FRAME_LEN to reject malformed runt frames early.
  *   Does NOT include signature (signature is conditional on has_key).
- * - LICHEN_LORA_FRAME_OVERHEAD (55 bytes): Conservative MTU overhead.
+ * - LICHEN_FRAME_MAX_OVERHEAD (55 bytes): Conservative MTU overhead.
  *   Always reserves space for signature even when not used. This is
  *   intentional: a static MTU simplifies buffer sizing and avoids
  *   dynamic MTU changes when signing keys are provisioned. The 50-byte
  *   overhead when unsigned is acceptable for the simplicity benefit.
  */
-#define LICHEN_FRAME_BASE_OVERHEAD LICHEN_FRAME_FIXED_HEADER_LEN
+#define LICHEN_FRAME_MIN_HEADER_SIZE LICHEN_FRAME_FIXED_HEADER_LEN
 
 /*
  * Assert: signature length has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD was calculated assuming 48-byte signatures.
+ * LICHEN_FRAME_MAX_OVERHEAD was calculated assuming 48-byte signatures.
  * If this assertion fails, recalculate the overhead constant.
  */
 BUILD_ASSERT(LICHEN_SIG_LEN == 48,
-	     "LICHEN_SIG_LEN changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
+	     "LICHEN_SIG_LEN changed - update LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h");
 
 /*
  * Assert: frame header size has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD is independent of the 5-byte unsigned minimum.
+ * LICHEN_FRAME_MAX_OVERHEAD is independent of the 5-byte unsigned minimum.
  * If this assertion fails, recalculate the overhead constant.
  */
-BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 5,
-	     "Frame header size changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
+BUILD_ASSERT(LICHEN_FRAME_MIN_HEADER_SIZE == 5,
+	     "Frame header size changed - update LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h");
 
 /* IPv6 base header size (RFC 8200). Does NOT include extension headers. */
 #define IPV6_BASE_HDR_LEN 40
@@ -595,7 +595,8 @@ static int peer_find_oldest_locked(void)
 	int64_t oldest_time = INT64_MAX;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
-		if (peer_table[i].active && peer_table[i].last_seen < oldest_time) {
+		if (peer_table[i].active && peer_table[i].last_seen != INT64_MAX
+		    && peer_table[i].last_seen < oldest_time) {
 			oldest_time = peer_table[i].last_seen;
 			oldest_idx = (int)i;
 		}
@@ -1448,6 +1449,16 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	}
 
 	LOG_DBG("lichen_l2: TX IPv6 %zu bytes", pkt_len);
+
+	/* DEBUG: verify first nibble is IPv6 version 6 (project-LICHEN-d7ub.38) */
+	if (IS_ENABLED(CONFIG_LICHEN_L2_TX_VERIFY_IPV6)) {
+		if ((tx_ipv6_buf[0] >> 4) != 6) {
+			LOG_ERR("lichen_l2: TX pkt not IPv6 (version=%u)",
+				tx_ipv6_buf[0] >> 4);
+			k_mutex_unlock(&tx_mutex);
+			return -EINVAL;
+		}
+	}
 
 #if HAVE_LICHEN_LINK
 	/*
@@ -2423,6 +2434,13 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
 #if HAVE_LICHEN_LINK
+	/* Guard against lora_l2 ABORTED setting rx_mutex for reinit mid-operation. */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_ERR("lichen_l2: RX rejected (reinit required after abort)");
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+
 	/*
 	 * Guard against access before initialization.
 	 * This shouldn't happen in normal operation, but could if a packet
@@ -2442,19 +2460,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * - Unsigned or Schnorr-48 frame validation
 	 * - SCHC decompression
 	 *
-	 * SECURITY: Copy link_key into a local buffer rather than capturing a
-	 * pointer to link_ctx.link_key. This ensures rx_ctx remains valid even
-	 * if a future refactor moves lichen_link_cleanup() outside the rx_mutex.
-	 * The current code is safe (cleanup holds both mutexes), but copying
-	 * eliminates a subtle lifetime dependency that could cause use-after-free
-	 * if cleanup timing changes. 16-byte copy is cheap. (project-LICHEN-ybal.7)
-	 *
-	 * INVARIANT: has_link_key is only set by key provisioning functions that
-	 * also write valid key material to link_key. If this invariant is violated,
-	 * MIC verification will fail (not silently accept).
-	 *
-	 * The retained link key is copied for API compatibility but current frames
-	 * are either unsigned or authenticated by Schnorr-48.
+	 * SECURITY: Copy key to stack to survive hypothetical cleanup reordering.
 	 */
 	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
 	const uint8_t *rx_link_key_ptr = NULL;

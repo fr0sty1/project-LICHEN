@@ -9,9 +9,9 @@ Why this exists: The link layer is the boundary between:
 This module provides:
 1. Frame construction with proper sequencing
 2. Schnorr signature generation on TX
-3. Signature verification on RX
+3. Signature verification on RX (integrity + authentication)
 4. Replay detection using per-sender sliding windows
-5. MIC handling: unsigned frames have no MIC; signed frames carry Schnorr-48
+5. Key pinning (TOFU) for change detection
 
 Threading model: Concurrent send() via per-entry TxReservations; TX serialized by _tx_lock.
 """
@@ -36,16 +36,10 @@ from ..constants import (
     CAD_SLOT_MS,
     LORA_CAD_TIMEOUT_MS,
 )
-from ..constants import (
-    CAD_MAX_BACKOFF_EXPONENT,
-    CAD_MAX_CYCLES,
-    CAD_SLOT_MS,
-    LORA_CAD_TIMEOUT_MS,
-)
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from ..gradient import MAX_ENTRIES
-from .frame import AddrMode, FrameError, LichenFrame, MicLength
+from .frame import AddrMode, FrameError, LichenFrame, MAX_FRAME_BODY, MicLength
 from .replay import ReplayProtector
 from .tx_queue import Priority, TxQueue
 
@@ -55,87 +49,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # A signed frame puts the full Schnorr-48 value in the MIC field.
+# Signed frames also include an 8-byte signer IID after the dst_addr field.
 SIGNATURE_LENGTH = 48
-
-# Placeholder MIC for unsigned development frames.
-PLACEHOLDER_MIC = b""
-
-# Track whether we've warned about MIC verification being disabled.
-# Why module-level: Log the warning once per process, not per frame.
-_mic_verify_warned = False
-
-# Track whether we've warned about key pinning being disabled.
-# Why disabled: Key pinning without MIC verification is insecure.
-# See _pin_key_stub() for details.
-_key_pin_warned = False
 
 # Track whether we've warned about encrypted frames being rejected.
 # Why reject: Encryption is not implemented. Frames claiming to be encrypted
 # cannot be decrypted, so accepting them would misinterpret the payload.
 _encrypted_frame_warned = False
-
-
-def _fnv1a_32(data: bytes) -> int:
-    h = 0x811c9dc5
-    for b in data:
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
-    return h
-
-
-def _verify_mic_stub(frame: LichenFrame) -> bool:
-    """Stub MIC verification - accepts all frames but warns once.
-
-    SECURITY WARNING: MIC verification is not implemented. All frames are
-    accepted regardless of MIC value. This allows frame forgery by any
-    attacker who can inject radio traffic.
-
-    Encrypted-frame MIC computation is unsupported. Signed frames use:
-    (LLSec || epoch || seqnum || dst_addr || payload)
-
-    Returns:
-        Always True (accepts all frames).
-    """
-    global _mic_verify_warned
-    if not _mic_verify_warned:
-        logger.warning(
-            "MIC verification DISABLED (stub) - accepting unverified frames. "
-            "This is a security risk: frames can be forged."
-        )
-        _mic_verify_warned = True
-    return True
-
-
-def _should_pin_key() -> bool:
-    """Check if key pinning should be performed.
-
-    SECURITY WARNING: Key pinning is DISABLED while MIC verification is a stub.
-
-    Why disabled: Key pinning provides TOFU (Trust On First Use) protection,
-    where the first key seen for an IID is remembered and changes are rejected.
-    However, this protection is only meaningful when combined with MIC verification.
-
-    Without MIC verification, an attacker could potentially:
-    1. Inject a frame that passes signature verification (using a valid key pair)
-    2. Have that frame's identity associated with a victim's IID
-    3. Get the attacker's key pinned for the victim's IID
-    4. Cause the real peer's frames to be rejected as 'KEY CHANGE DETECTED'
-
-    The SECURITY comment claiming "key pinning happens after MIC verification"
-    was misleading since MIC verification always returns True. Rather than
-    provide a false sense of security, key pinning is disabled until MIC
-    verification is properly implemented.
-
-    Returns:
-        False while MIC verification is a stub.
-    """
-    global _key_pin_warned
-    if not _key_pin_warned:
-        logger.warning(
-            "Key pinning DISABLED - MIC verification is a stub. "
-            "TOFU protection not available until MIC is implemented."
-        )
-        _key_pin_warned = True
-    return False
 
 
 @dataclass
@@ -240,43 +160,6 @@ class LinkLayer:
         if self.persist_path is not None:
             self._load_persisted_state()
 
-    def select_channel(
-        self,
-        dst_addr: bytes = b"",
-        peer_rx_channel: int | None = None,
-        known_peer: bool = False,
-        sfn: int = 0,
-        num_channels: int = 8,
-    ) -> int:
-        """Select TX channel per CCP-9 rendezvous logic.
-
-        Priority:
-        1. Known peer with synchronized hop: hop_channel via hash_32(IID, SFN)
-        2. Known peer with announced rx_channel: use that channel
-        3. Unknown peer: control channel CH0
-
-        Args:
-            dst_addr: Destination address (IID or empty for broadcast).
-            peer_rx_channel: Peer's announced rx_channel (from Announce).
-            known_peer: True if peer is known (has sent Announce).
-            sfn: Current superframe number for synchronized hopping.
-            num_channels: Number of data channels (default 8).
-
-        Returns:
-            Channel number (0 for control, 1..num_channels for data).
-        """
-        if known_peer and len(dst_addr) == 8:
-            data = dst_addr + sfn.to_bytes(4, "little")
-            h = _fnv1a_32(data)
-            n = max(num_channels, 3)
-            hop_ch = 1 + (h % n)
-            return hop_ch
-
-        if known_peer and peer_rx_channel is not None:
-            return peer_rx_channel
-
-        return 0
-
     def _next_seqnum(self) -> tuple[int, int]:
         """Get next (epoch, seqnum) pair and advance the counter.
 
@@ -288,19 +171,26 @@ class LinkLayer:
         """
         if self._exhausted:
             logger.error("tuple space exhausted; key rotation required before further TX")
-            raise OverflowError("link-layer sequence exhausted; rotate identity key")
+            # Fail closed per e220
+            raise OverflowError("link tuple exhaustion")
 
         epoch, seqnum = self._epoch, self._seqnum
         self._sequence_started = True
 
+        # Advance for next call
         if epoch == 0xFF and seqnum == 0xFFFF:
             self._exhausted = True
+        elif seqnum == 0xFFFF:
+            # Why wrap handling: seqnum is 16-bit, epoch is 8-bit
+            # Together they form a 24-bit monotonic counter
+            self._seqnum = 0
+            self._epoch += 1
+            logger.debug("epoch wrapped to %d", self._epoch)
+            if self._epoch == 0:
+                self._exhausted = True
+                logger.warning("24-bit tuple space exhausted; will trigger rotation on next load")
         else:
             self._seqnum += 1
-            if self._seqnum > 0xFFFF:
-                self._seqnum = 0
-                self._epoch += 1
-                logger.debug("epoch wrapped to %d", self._epoch)
 
         self._save_persisted_state()
         return epoch, seqnum
@@ -313,6 +203,7 @@ class LinkLayer:
         payload: bytes,
         length: int | None = None,
         llsec: int | None = None,
+        signer_iid: bytes = b"",
     ) -> bytes:
         """Construct the data that gets signed.
 
@@ -322,20 +213,21 @@ class LinkLayer:
 
         Signed fields follow the draft exactly with dst_addr_len domain
         separation (per j7rk): LENGTH || LLSec || EPO || SEQ || DST_LEN(1)
-        || DST || PLD.
+        || DST || SIGNER_IID(8) || PLD.
 
         Returns:
             Bytes to be signed.
         """
         if length is None:
-            length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
+            length = 4 + len(dst_addr) + 8 + len(payload) + SIGNATURE_LENGTH
         if llsec is None:
-            llsec = int(AddrMode.NONE) | (1 << 5)
+            llsec = int(AddrMode.NONE) | (1 << 5) | (1 << 7)
         return (
             bytes([length, llsec, epoch])
             + seqnum.to_bytes(2, "big")
             + bytes([len(dst_addr)])
             + dst_addr
+            + signer_iid
             + payload
         )
 
@@ -346,11 +238,10 @@ class LinkLayer:
         addr_mode: AddrMode = AddrMode.NONE,
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
-        channel: int = 0,
     ) -> bool:
         """Queue and transmit one frame while serializing TX state."""
         async with self._tx_lock:
-            return await self._send_locked(payload, dst_addr, addr_mode, priority, deadline_ms, channel)
+            return await self._send_locked(payload, dst_addr, addr_mode, priority, deadline_ms)
 
     async def _send_locked(
         self,
@@ -359,7 +250,6 @@ class LinkLayer:
         addr_mode: AddrMode = AddrMode.NONE,
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
-        channel: int = 0,
     ) -> bool:
         """Build, enqueue, and drain while the TX lock is held.
 
@@ -373,7 +263,6 @@ class LinkLayer:
             priority: Queue priority (ROUTING, ACK, URGENT, or BULK).
             deadline_ms: Absolute deadline in ms. If None, uses default
                          for the priority level.
-            channel: Radio channel for transmission (CCP-9 rendezvous).
 
         Raises:
             QueueFullError: If queue is full and cannot preempt lower priority.
@@ -388,18 +277,22 @@ class LinkLayer:
                 f"requires {expected_len} bytes"
             )
 
-        epoch, seqnum = self._epoch, self._seqnum
-
-        # Validate frame body size before signing: body ≤ MAX_FRAME_BODY (254)
-        body_len = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
-        if body_len > 254:
+        signer_iid = self.identity.iid
+        # Validate frame fits on-air size constraint BEFORE signing
+        frame_length = 4 + len(dst_addr) + 8 + len(payload) + SIGNATURE_LENGTH
+        if frame_length > MAX_FRAME_BODY:
             raise FrameError(
-                f"frame body is {body_len} bytes, exceeds 254"
+                f"frame body is {frame_length} bytes, exceeds {MAX_FRAME_BODY}"
             )
 
-        llsec = int(addr_mode) | (1 << 5)
+        # Peek at current sequence numbers without consuming
+        # Why peek first: If push() raises QueueFullError, we don't want to
+        # waste a sequence number. Only consume after successful push.
+        epoch, seqnum = self._epoch, self._seqnum
+
+        llsec = int(addr_mode) | (1 << 5) | (1 << 7)
         signable = self._build_signable_data(
-            epoch, seqnum, dst_addr, payload, body_len, llsec
+            epoch, seqnum, dst_addr, payload, frame_length, llsec, signer_iid
         )
         signature = sign(self.identity.privkey, self.identity.pubkey, signable)
 
@@ -413,6 +306,8 @@ class LinkLayer:
             mic_length=MicLength.BITS32,
             signature_present=True,
             encrypted=False,
+            signer_iid=signer_iid,
+            signer_iid_present=True,
         )
 
         frame_bytes = frame.to_bytes()
@@ -431,16 +326,11 @@ class LinkLayer:
             frame_bytes,
             priority=priority,
             deadline_ms=deadline_ms,
-            channel=channel,
             return_reservation=True,
         )
         assert reservation is not None, "push with reservation failed"
 
-        # Push succeeded - consume the sequence number
-        # Note: seqnum is NOT consumed if sign() raises (no gap from failed
-        # signing) since sign() is called before any state mutation. If push()
-        # raises QueueFullError the seqnum IS consumed (gap) because the frame
-        # was already built with that seqnum; reuse would cause replay confusion.
+        # Push succeeded - now consume the sequence number
         self._next_seqnum()
 
         # Drain (serialized via _tx_lock); our reservation will be completed when transmitted
@@ -455,19 +345,18 @@ class LinkLayer:
             self.tx_queue.expire_stale()
             if len(self.tx_queue) == 0:
                 break  # Queue empty
+            if self.cad_enabled and not await self._wait_for_clear_channel():
+                logger.warning(
+                    "TX deferred: channel busy after %d backoff cycles, "
+                    "%d packets remain queued",
+                    CAD_MAX_CYCLES,
+                    len(self.tx_queue),
+                )
+                break
             entry = self.tx_queue.reserve()
             if entry is None:
                 break
-            if self.cad_enabled and not await self._wait_for_clear_channel(channel=entry.channel):
-                logger.warning(
-                    "TX deferred: channel busy after %d backoff cycles, "
-                    "%d packets remain queued on ch%d",
-                    CAD_MAX_CYCLES,
-                    len(self.tx_queue),
-                    entry.channel,
-                )
-                break
-            if await self.radio.transmit(entry.data, channel=entry.channel):
+            if await self.radio.transmit(entry.data):
                 transmitted_any = True
                 logger.debug(
                     "TX success, %d packets remain queued",
@@ -480,7 +369,7 @@ class LinkLayer:
                 break
         return transmitted_any
 
-    async def _wait_for_clear_channel(self, channel: int = 0) -> bool:
+    async def _wait_for_clear_channel(self) -> bool:
         """Perform CAD with exponential backoff until channel is clear.
 
         Algorithm: For each cycle, attempt CAD with increasing backoff.
@@ -496,9 +385,6 @@ class LinkLayer:
         Note: radio.cad() False now documented as clear (timeout conflated per
         P4 design in project-LICHEN-b4pw); treats timeout as clear for TX.
 
-        Args:
-            channel: Radio channel to check (CCP-9 rendezvous).
-
         Returns:
             True if channel became clear, False after max retries.
         """
@@ -506,7 +392,7 @@ class LinkLayer:
 
         for cycle in range(CAD_MAX_CYCLES):
             for attempt in range(CAD_MAX_BACKOFF_EXPONENT + 1):
-                channel_busy = await self.radio.cad(LORA_CAD_TIMEOUT_MS, channel=channel)
+                channel_busy = await self.radio.cad(LORA_CAD_TIMEOUT_MS)
 
                 if not channel_busy:
                     logger.debug(
@@ -535,7 +421,7 @@ class LinkLayer:
 
         return False
 
-    async def receive(self, timeout_ms: int, channel: int = 0) -> RxFrame | ReceiveError | None:
+    async def receive(self, timeout_ms: int) -> RxFrame | ReceiveError | None:
         """Receive and validate a frame.
 
         Why async: Radio reception blocks until a packet arrives or timeout.
@@ -544,19 +430,19 @@ class LinkLayer:
         1. Parse frame structure
         2. Extract signature from mic field (when signature_present)
         3. Look up sender by IID (reject if unknown)
-        4. Verify signature (reject if invalid)
-        5. Check replay protection (reject if replay)
+        4. Verify signature (reject if invalid) — signature covers frame integrity
+        5. Pin sender key (TOFU) after successful signature verification
+        6. Check replay protection (reject if replay)
 
         Args:
             timeout_ms: Maximum time to wait for a frame, in milliseconds.
-            channel: Radio channel to listen on (CCP-9 rendezvous).
 
         Returns:
             RxFrame on success, ReceiveError on validation failure, None on timeout.
             problem where all failures collapsed to None; callers can now
             distinguish security events from malformed frames from timeouts.
         """
-        result = await self.radio.receive(timeout_ms, channel=channel)
+        result = await self.radio.receive(timeout_ms)
         if result is None:
             return None
 
@@ -598,16 +484,9 @@ class LinkLayer:
         inner_payload = frame.payload
 
         # Step 3: Look up sender
-        # Why use IID from signature verification: We need the sender's pubkey
-        # to verify. The frame itself doesn't contain the sender's IID directly;
-        # we must try known peers.
-        #
-        # TODO: For broadcast frames, we need to try multiple potential senders
-        # or have the sender IID embedded somewhere. For now, this is a
-        # limitation: we need out-of-band knowledge of who might be sending.
-        #
-        # Workaround for now: Try all known peers. This is O(n) but n is small.
-        sender = self._find_sender(frame, signature, inner_payload)
+        # The frame contains the signer IID directly (when SI=1, which is all
+        # signed frames), enabling O(1) lookup via peer_lookup(hint=iid).
+        sender = self._find_sender(frame, signature, inner_payload, signer_iid=frame.signer_iid)
         if sender is None:
             logger.warning("RX frame from unknown sender or bad signature")
             return ReceiveError.BAD_SIGNATURE
@@ -615,9 +494,8 @@ class LinkLayer:
         # Step 4 happened inside _find_sender (signature verification)
 
         # Step 4.5: Key pinning check — TOFU anchor + change detection.
-        # SECURITY: Key pinning is disabled while MIC verification is a stub.
-        # This check still runs for any previously pinned keys (from before
-        # the stub was introduced, or after MIC is implemented).
+        # Why verify: The signature in _find_sender already authenticated the
+        # sender's pubkey. Key pinning detects key changes for the same IID.
         pinned_pk = self._pinned_keys.get(sender.iid)
         if pinned_pk is not None and pinned_pk != sender.pubkey:
             logger.error(
@@ -628,23 +506,15 @@ class LinkLayer:
             )
             return ReceiveError.KEY_CHANGE
 
-        # Step 4.6: Verify MIC (stub - logs warning, always accepts)
-        # Encrypted-frame processing is unsupported by the current profile.
-        # The MIC covers: LLSec || epoch || seqnum || dst_addr || payload
-        if not _verify_mic_stub(frame):
-            logger.warning("MIC verification failed for frame from %s", sender.iid.hex())
-            return ReceiveError.MIC_FAILED
-
-        # Step 4.7: Pin key after MIC verification succeeds.
-        # SECURITY: Key pinning is disabled while MIC verification is a stub.
-        # Once MIC is implemented, uncomment this to enable TOFU protection.
-        # The pinning must happen AFTER MIC verification to prevent attackers
-        # from pinning forged keys before the MIC check rejects them.
-        if _should_pin_key():
-            self._pinned_keys[sender.iid] = sender.pubkey
-            self._pinned_keys.move_to_end(sender.iid)
-            while len(self._pinned_keys) > MAX_ENTRIES:
-                self._pinned_keys.popitem(last=False)
+        # Step 4.6: Pin key after signature verification succeeds.
+        # Why after signature: The Schnorr signature covers the payload and
+        # metadata (LLSec || epoch || seqnum || dst_addr || payload), so
+        # successful verification already provides integrity. Pinning after
+        # verification prevents attackers from injecting forged keys.
+        self._pinned_keys[sender.iid] = sender.pubkey
+        self._pinned_keys.move_to_end(sender.iid)
+        while len(self._pinned_keys) > MAX_ENTRIES:
+            self._pinned_keys.popitem(last=False)
 
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.
@@ -680,6 +550,8 @@ class LinkLayer:
             mic_length=frame.mic_length,
             signature_present=True,
             encrypted=frame.encrypted,
+            signer_iid=frame.signer_iid,
+            signer_iid_present=frame.signer_iid_present,
         )
 
         return RxFrame(
@@ -694,16 +566,13 @@ class LinkLayer:
         frame: LichenFrame,
         signature: bytes,
         payload: bytes,
+        signer_iid: bytes = b"",
     ) -> PeerIdentity | None:
-        """Find the sender by trying known peers' pubkeys.
+        """Find the sender by IID or by trying known peers.
 
-        Why brute-force: Without sender IID in the frame, we must try each
-        known peer. This is a design limitation we might address later by
-        including sender IID in a header extension.
-
-        Performance: O(n) where n = number of known peers. For mesh networks
-        with <100 peers and fast Ed25519 verification, this is acceptable.
-        If it becomes a bottleneck, we can add sender hints.
+        When signer_iid is provided (from frame.signer_iid), we do an O(1)
+        lookup first. The O(n) brute-force fallback is preserved for cases
+        where the signer IID is not available (legacy frames).
 
         Returns:
             PeerIdentity if found and signature valid, None otherwise.
@@ -713,8 +582,9 @@ class LinkLayer:
             frame.seqnum,
             frame.dst_addr,
             payload,
-            4 + len(frame.dst_addr) + len(payload) + SIGNATURE_LENGTH,
+            4 + len(frame.dst_addr) + 8 + len(payload) + SIGNATURE_LENGTH,
             frame.llsec_byte(),
+            signer_iid,
         )
 
         # Why try self first: In loopback/testing scenarios, we might receive
@@ -724,33 +594,17 @@ class LinkLayer:
             logger.debug("RX frame from self (loopback)")
             return PeerIdentity.from_pubkey(self.identity.pubkey)
 
-        # Try peer lookup for broadcast (no specific destination)
-        # TODO: This is inefficient. In production, the frame should contain
-        # sender IID so we can look up directly.
-        #
-        # For now, we rely on the peer_lookup callback to iterate candidates.
-        # The callback returns None if no match found. We pass empty bytes as
-        # the hint since current frame format lacks sender IID.
-        peer = self.peer_lookup(b"")
-        if peer is not None and verify(peer.pubkey, signable, signature):
-            return peer
+        # Direct lookup by signer IID (O(1) when the peer is known).
+        if signer_iid:
+            peer = self.peer_lookup(signer_iid)
+            if peer is not None and verify(peer.pubkey, signable, signature):
+                return peer
 
-        # Brute-force: try each known peer until signature verifies.
-        # O(n) is unavoidable without sender IID in frame format.
-        #
-        # Subtle optimization in the condition below: '(peer is None or
-        # candidate.pubkey != peer.pubkey)'. If peer_lookup(b'') returned a
-        # candidate that failed verification above, we skip re-verifying it
-        # here. This avoids redundant (expensive) signature checks.
-        #
-        # Correct interaction between peer_lookup (hint-based, often first
-        # match) and peer_lookup_all (exhaustive list). The logic ensures
-        # we don't miss valid senders while optimizing common cases.
+        # Fallback: brute-force try all known peers (e.g. when IID lookup failed
+        # or signer_iid is empty for legacy frames).
         if self.peer_lookup_all is not None:
             for candidate in self.peer_lookup_all():
-                if (peer is None or candidate.pubkey != peer.pubkey) and verify(
-                    candidate.pubkey, signable, signature
-                ):
+                if verify(candidate.pubkey, signable, signature):
                     return candidate
 
         return None

@@ -290,6 +290,41 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
 /// Convert IEEE 754 half-precision (binary16) bits to f64.
 ///
 /// Half-precision format: 1 sign bit, 5 exponent bits (bias 15), 10 mantissa bits.
+fn f32_to_f64(bits: u32) -> f64 {
+    let sign = (bits >> 31) & 1;
+    let exp = (bits >> 23) & 0xff;
+    let mant = bits & 0x7fffff;
+
+    let val = match exp {
+        0 => {
+            if mant == 0 {
+                0.0
+            } else {
+                (mant as f64) / 8388608.0
+            }
+        }
+        255 => {
+            if mant == 0 {
+                f64::INFINITY
+            } else {
+                // Preserve NaN payload: shift f32 23-bit mantissa to f64 52-bit
+                let f64_bits = ((sign as u64) << 63)
+                    | (0x7ffu64 << 52)
+                    | ((mant as u64) << 29);
+                f64::from_bits(f64_bits)
+            }
+        }
+        _ => {
+            let f64_exp = ((exp as i32) - 127 + 1023) as u64;
+            let f64_mant = (mant as u64) << 29;
+            let f64_bits = ((sign as u64) << 63) | (f64_exp << 52) | f64_mant;
+            f64::from_bits(f64_bits)
+        }
+    };
+
+    val
+}
+
 fn f16_to_f64(bits: u16) -> f64 {
     let sign = (bits >> 15) & 1;
     let exp = (bits >> 10) & 0x1f;
@@ -352,8 +387,9 @@ fn dec_f64(data: &[u8], pos: usize) -> Result<(f64, usize), CborError> {
             if pos + 5 > data.len() {
                 return Err(CborError::InvalidInput);
             }
-            let b = [data[pos + 1], data[pos + 2], data[pos + 3], data[pos + 4]];
-            Ok((f32::from_bits(u32::from_be_bytes(b)) as f64, 5))
+            let b = u32::from_be_bytes([data[pos + 1], data[pos + 2], data[pos + 3], data[pos + 4]]);
+            let f = f32_to_f64(b);
+            Ok((f, 5))
         }
         0xf9 => {
             // Half-precision float (16-bit)

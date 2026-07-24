@@ -56,7 +56,7 @@ Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmission
 
 **SF Assignment:**
 - Preferred (Gateway-assigned): Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
-- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (FNV-1a32 per project-LICHEN-eirg) from short-address DAD and CCP-15.8.3.
+- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (FNV-1a32 per project-LICHEN-eirg) from CCP-15.8.3; short-address DAD uses `crc32_ieee(key=0x4c494348454e)` instead (see 4.5).
 - Join-based: Nodes join on SF10 (common ground). Gateway assigns via DIO or join response; node switches post-assignment.
 - Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
 
@@ -75,7 +75,7 @@ Independent oracle: `test/vectors/sf-assignment.json` verified against OpenSSL a
 
 ### 3.5. Adaptive Spreading Factor (CCP-16)
 
-SF10 (or ASSIGNED_SF from gateway DIO) is the REQUIRED baseline per appendix-design-rationale.md:7.1 and 02a-coordinated-capacity.md:2a.3. Density-aware rules override this **only** on explicit thresholds (see adaptive_sf_select pseudocode there and table below); otherwise retain baseline. Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce current TX_SF in DIO options and Announce messages (1-byte field; absence means SF10). ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count.
+SF10 (or ASSIGNED_SF from gateway DIO) is the REQUIRED baseline per appendix-design-rationale.md:7.1 and 02a-coordinated-capacity.md:2a.7. Density-aware rules override this **only** on explicit thresholds (see adaptive_sf_select pseudocode there and table below); otherwise retain baseline. Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce current TX_SF in DIO options and Announce messages (1-byte field; absence means SF10). ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count.
 
 Thresholds:
 
@@ -168,6 +168,47 @@ See child issue project-LICHEN-zd2d.2 for driver implementation.
 ---
 
 
+
+### 4.5. DAD Retry Strategy
+
+When Duplicate Address Detection (DAD) indicates a collision on a 16-bit short
+address derived via `crc32_ieee(EUI-64, key=0x4c494348454e)` (CRC32-IEEE with
+initial value `0x4c494348454e` = ASCII "LICHEN", truncated to 32 bits), the
+node recomputes a candidate address using seed mixing rather than picking a
+random address, preserving deterministic derivation:
+
+```pseudocode
+fn derive_short_addr(eui64: [u8; 8]) -> u16
+    hash = crc32_ieee(eui64, key: 0x4c494348454e)
+    return (hash & 0xFFFF) as u16
+
+fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
+    // XOR the seed into the last 4 bytes of EUI-64 before hashing.
+    // This produces a different but deterministic address per seed.
+    mixed: [u8; 8] = eui64
+    mixed[4..8] ^= seed.to_le_bytes()
+    hash = crc32_ieee(mixed, key: 0x4c494348454e)
+    return (hash & 0xFFFF) as u16
+
+fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
+    addr = derive_short_addr(eui64)
+    if addr not in existing_addrs:
+        return addr
+    // Collision — try seed values 1, 2, ..., 255.
+    for seed in 1..=255:
+        addr = derive_short_addr_with_seed(eui64, seed)
+        if addr not in existing_addrs:
+            return addr
+    // All 256 candidates exhausted; fall back to EUI-64 extended addressing.
+    return None
+```
+
+If all 256 candidates are exhausted (maximum 255 seed values per 16-bit
+address space), the node MUST fall back to 64-bit extended addressing mode
+(see `02-physical-link.md:270`). Implementations MUST match
+`test/vectors/short_addr_dad.json` for the DAD retry sequence.
+
+---
 
 ## 4. Link Layer
 

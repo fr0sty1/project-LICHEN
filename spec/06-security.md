@@ -342,19 +342,11 @@ existing link-layer keypairs--no additional certificates needed.
 
 **OSCORE Context Export:**
 
-After EDHOC completes, both parties derive the OSCORE context using the
-EDHOC-KDF (RFC 9528 Section 4.2):
-
+After EDHOC completes, both parties derive:
 ```
-PRK_out      = EDHOC-KDF(PRK_4e3m, TH_4, "7", TH_4,      32)
-PRK_exporter = EDHOC-KDF(PRK_out,   TH_4, "10", h'',      32)
-MasterSecret = EDHOC-KDF(PRK_exporter, TH_4, "0",  h'',   16)
-MasterSalt   = EDHOC-KDF(PRK_exporter, TH_4, "1",  h'',    8)
+OSCORE Master Secret = EDHOC-Exporter("OSCORE Master Secret", h'', 16)
+OSCORE Master Salt   = EDHOC-Exporter("OSCORE Master Salt", h'', 8)
 ```
-
-Labels `"7"`, `"10"`, `"0"`, and `"1"` are CBOR-encoded text strings per
-RFC 9528 Section 4.1.2. The derivation chain follows the
-OSCORE context export procedure in RFC 9528 Section 4.2.
 
 **When to Run EDHOC:**
 
@@ -488,7 +480,7 @@ cryptographically derived from the Ed25519 public key (section 6.2 in Network La
 
 - Root election uses lowest IID (pubkey-derived, section 6.1 in 04-network.md).
   Rotation would destabilize DODAG.
-- Short-address assignment uses `hash_32(EUI-64 bytes, 8)` (FNV-1a32 per updated `02a-coordinated-capacity.md`; see DAD retry in `04-network.md:246` for collision resolution). Signature/replay caches keyed on stable IID.
+- Short-address assignment uses `crc32_ieee(EUI-64, key=0x4c494348454e)` (CRC32-IEEE with initial value derived from ASCII "LICHEN", see DAD retry strategy in `02-physical-link.md:172`). Signature/replay caches keyed on stable IID.
    Rotation causes constant DAD churn and cache invalidation on LoRa.
 - All security bindings (TOFU pinning, OSCORE, Schnorr signatures) rely on
   the deterministic key-to-address mapping.

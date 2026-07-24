@@ -653,17 +653,11 @@ int lichen_lora_l2_start(void)
      * sx12xx_lora_config memcpy, rylr_config field reads) and does not
      * retain a pointer.
      *
-     * Zephyr's lora_modem_config.tx selects the direction being configured.
-     * This L2 implementation is targeted at Zephyr's SX126x/SX127x path used
-     * by the supported Meshtastic-class boards. For that driver family,
-     * lora_config(... .tx = true) stores the TX parameters needed by
-     * lora_send(), while lora_recv() explicitly enters RX mode for each
-     * receive operation.
-     *
-     * Do not change this to a post-config RX pass without auditing the driver:
-     * drivers such as RYLR keep .tx as persistent direction state and reject
-     * lora_send() after an RX config. Supporting those drivers would require a
-     * per-operation config strategy around both lora_send() and lora_recv().
+     * We perform two lora_config() passes to properly initialize both RX
+     * and TX paths on Zephyr's SX126x/SX127x drivers:
+     *   pass 1 (tx=false): programs RX parameters + PA/LNA initialization
+     *   pass 2 (tx=true):  programs TX parameters + airtime cache
+     * lora_recv() then explicitly enters RX mode per receive operation.
      */
     struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
@@ -672,12 +666,20 @@ int lichen_lora_l2_start(void)
         .coding_rate = CR_4_5,     /* Zephyr enum: 4/5 coding rate */
         .preamble_len = 8,         /* LoRa default preamble symbols */
         .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
-        .tx = true,                /* SX12xx TX config cache; see note above */
+        .tx = false,
     };
 
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: config failed (%d)", ret);
+        LOG_ERR("lora_l2: RX config failed (%d)", ret);
+        k_mutex_unlock(&lora_mutex);
+        return ret;
+    }
+
+    config.tx = true;              /* pass 2: program TX + airtime cache */
+    ret = lora_config(lora_data.lora_dev, &config);
+    if (ret < 0) {
+        LOG_ERR("lora_l2: TX config failed (%d)", ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
@@ -775,7 +777,18 @@ int lichen_lora_l2_stop(void)
             LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting",
                     RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);
             k_thread_abort(&rx_thread_data);
-            k_thread_join(&rx_thread_data, K_FOREVER);
+            join_ret = k_thread_join(&rx_thread_data, K_MSEC(100));
+            if (join_ret != 0) {
+                /*
+                 * Thread struct should be joinable immediately after abort,
+                 * but if the driver ignores the abort (e.g., stuck in DMA
+                 * wait), even 100 ms is not enough. The system is in an
+                 * unrecoverable state.
+                 */
+                LOG_ERR("lora_l2: RX thread join still failing after abort "
+                        "(ret=%d), system unrecoverable", join_ret);
+                k_panic();
+            }
             /*
              * Mark module as requiring re-initialization. k_thread_abort()
              * may have terminated the thread while it held lora_mutex or
@@ -884,6 +897,16 @@ int lichen_lora_l2_deinit(void)
      * - Refusing to recover leaves the module permanently unusable
      * - The system is already in a degraded state if we reached this path
      */
+
+    if (IS_ENABLED(CONFIG_LICHEN_LORA_STRICT_RECOVERY)) {
+        LOG_ERR("lora_l2: strict recovery enabled, rebooting");
+        k_sys_reboot();
+    }
+
+    if (state == LORA_ABORTED) {
+        LOG_WRN("lora_l2: abort recovery - mutex reinit is UB, "
+                "consider CONFIG_LICHEN_LORA_STRICT_RECOVERY for safe path");
+    }
 
     /*
      * SECURITY: Reinitializing a mutex that may still be held by a dead

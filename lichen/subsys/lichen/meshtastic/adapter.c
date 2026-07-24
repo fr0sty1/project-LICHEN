@@ -1558,14 +1558,20 @@ int lichen_meshtastic_adapter_emit_text(
 		return -ENOTSUP;
 	}
 
-	from_radio_id = next_from_radio_id(adapter->from_radio_id);
 	packet = (struct lichen_meshtastic_text_packet){
 		.from = event->from,
 		.to = event->to,
-		.id = event->has_id ? event->id : from_radio_id,
+		.id = event->has_id ?
+		      event->id : next_from_radio_id(adapter->from_radio_id),
 		.payload = event->payload,
 		.payload_len = event->payload_len,
 	};
+
+	if (!event->has_id) {
+		from_radio_id = packet.id;
+	} else {
+		from_radio_id = 0;
+	}
 
 	ret = lichen_meshtastic_encode_text_packet(&packet, mesh_packet,
 						   sizeof(mesh_packet));
@@ -1585,7 +1591,9 @@ int lichen_meshtastic_adapter_emit_text(
 		return ret;
 	}
 
-	adapter->from_radio_id = from_radio_id;
+	if (!event->has_id) {
+		adapter->from_radio_id = from_radio_id;
+	}
 	adapter->stats.incoming_text_count++;
 	return 0;
 }
@@ -1610,15 +1618,21 @@ int lichen_meshtastic_adapter_emit_status(
 		return -ENOTSUP;
 	}
 
-	from_radio_id = next_from_radio_id(adapter->from_radio_id);
 	packet = (struct lichen_meshtastic_routing_packet){
 		.from = event->from,
 		.to = event->to,
-		.id = event->has_id ? event->id : from_radio_id,
+		.id = event->has_id ?
+		      event->id : next_from_radio_id(adapter->from_radio_id),
 		.request_id = event->request_id,
 		.error_reason = event->error_reason,
 		.has_error_reason = event->has_error_reason,
 	};
+
+	if (!event->has_id) {
+		from_radio_id = packet.id;
+	} else {
+		from_radio_id = 0;
+	}
 
 	ret = lichen_meshtastic_encode_routing_packet(&packet, mesh_packet,
 						      sizeof(mesh_packet));
@@ -1638,7 +1652,9 @@ int lichen_meshtastic_adapter_emit_status(
 		return ret;
 	}
 
-	adapter->from_radio_id = from_radio_id;
+	if (!event->has_id) {
+		adapter->from_radio_id = from_radio_id;
+	}
 	adapter->stats.incoming_status_count++;
 	return 0;
 }

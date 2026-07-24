@@ -242,13 +242,14 @@ Node uses link-local for control + single primary 02xx for everything else. Cons
 
 ### 12.3. Short Address Assignment
 
-16-bit short addresses optimize link-layer addressing and SCHC rule targets
-(2 bytes vs 8).
+16-bit short addresses optimise link-layer addressing and SCHC rule targets
+(2 bytes vs 8). The addressing mode field of the link-layer frame selects
+16-bit mode via `Addr Mode` value `1` (see `02-physical-link.md:215`).
 
 Assignment methods (no central authority required):
-1. **Derived from IID (Ed25519-derived):** Hash lower 16 bits of stable IID, check for collision
+1. **Derived from IID (Ed25519-derived):** `crc32_ieee(EUI-64, key=0x4c494348454e)` truncated to 16 bits (CRC32-IEEE with initial value derived from ASCII "LICHEN"); DAD retry uses seed mixing per `02-physical-link.md:172`
 2. **Self-assigned + DAD:** Pick random, verify uniqueness via DAD
-3. **DODAG root assignment:** Root allocates from pool (optional optimization)
+3. **DODAG root assignment:** Root allocates from pool (optional optimisation)
 
 Collision resolution: If DAD detects duplicate, regenerate and retry.
 

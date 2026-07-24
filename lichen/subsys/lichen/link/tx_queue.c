@@ -48,15 +48,6 @@ static int tx_queue_clock_gettime(clockid_t clock_id, struct timespec *ts)
 static int tx_queue_platform_now_ms(uint32_t *now_ms)
 {
 	struct timespec ts;
-	/* SECURITY: On failure, return 0 to avoid using uninitialized data.
-	 * This is safe: deadlines will appear not-yet-expired (signed wrap
-	 * math in deadline_expired()), preventing premature packet drops.
-	 * clock_gettime(CLOCK_MONOTONIC) should essentially never fail. */
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-		return 0;
-	}
-	return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
-}
 
 	if (tx_queue_clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
 		return -EIO;
@@ -380,60 +371,69 @@ out:
 	return ret;
 }
 
-int tx_queue_count(const struct tx_queue *queue)
+int tx_queue_count(struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return -EINVAL;
 	}
 
-	struct tx_queue *q = (struct tx_queue *)queue;
-	lock_queue(q);
+	lock_queue(queue);
 
 	int count = 0;
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (q->entries[i].valid) {
+		if (queue->entries[i].valid) {
 			count++;
 		}
 	}
 
-	unlock_queue(q);
+	unlock_queue(queue);
 	return count;
 }
 
-bool tx_queue_empty(const struct tx_queue *queue)
+bool tx_queue_empty(struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return true;
 	}
 
-	struct tx_queue *q = (struct tx_queue *)queue;
-	lock_queue(q);
+	lock_queue(queue);
 
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (q->entries[i].valid) {
-			unlock_queue(q);
+		if (queue->entries[i].valid) {
+			unlock_queue(queue);
 			return false;
 		}
 	}
 
-	unlock_queue(q);
+	unlock_queue(queue);
 	return true;
 }
 
-int tx_queue_stats_get(const struct tx_queue *queue,
+int tx_queue_stats_get(struct tx_queue *queue,
 		       struct tx_queue_stats *stats)
 {
 	if (queue == NULL || stats == NULL) {
 		return -EINVAL;
 	}
 
-	/*
-	 * Note: This read is not atomic with respect to concurrent writes.
-	 * For diagnostic purposes this is acceptable; for precise accounting
-	 * the caller should serialize access externally.
-	 */
+	lock_queue(queue);
 	*stats = queue->stats;
+	unlock_queue(queue);
 	return 0;
+}
+
+int tx_queue_destroy(struct tx_queue *queue)
+{
+	if (queue == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef __ZEPHYR__
+	(void)queue;
+	return 0;
+#else
+	return -pthread_mutex_destroy(&queue->lock);
+#endif
 }
 
 void tx_queue_clear(struct tx_queue *queue)

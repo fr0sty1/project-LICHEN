@@ -1,0 +1,97 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "lr_fhss",
+  "description": "LR-FHSS simulation model test vectors for the LICHEN simulator. Airtime is 2x standard LoRa airtime per Semtech AN1200.64. Sensitivity is -137.0 dBm (SX1262 LR-FHSS mode at CR=5/9, OCW=4). Fragment collision model: LR-FHSS recovers from up to 4 overlapping standard LoRa interferers via FEC; 5+ interferers causes total loss.",
+  "spec": "python/src/lichen/sim/transmission.py, python/src/lichen/sim/medium.py",
+  "vectors": [
+    {
+      "name": "airtime_payload_0",
+      "description": "LR-FHSS airtime for 0-byte payload is 2x LoRa airtime (413696 us)",
+      "payload_bytes": 0,
+      "lora_airtime_us": 206848,
+      "lr_fhss_airtime_us": 413696
+    },
+    {
+      "name": "airtime_payload_10",
+      "description": "LR-FHSS airtime for 10-byte payload is 2x LoRa airtime (577534 us)",
+      "payload_bytes": 10,
+      "lora_airtime_us": 288767,
+      "lr_fhss_airtime_us": 577534
+    },
+    {
+      "name": "airtime_payload_50",
+      "description": "LR-FHSS airtime for 50-byte payload is 2x LoRa airtime (1232896 us)",
+      "payload_bytes": 50,
+      "lora_airtime_us": 616448,
+      "lr_fhss_airtime_us": 1232896
+    },
+    {
+      "name": "airtime_payload_100",
+      "description": "LR-FHSS airtime for 100-byte payload is 2x LoRa airtime (2052094 us)",
+      "payload_bytes": 100,
+      "lora_airtime_us": 1026047,
+      "lr_fhss_airtime_us": 2052094
+    },
+    {
+      "name": "airtime_payload_255",
+      "description": "LR-FHSS airtime for 255-byte max payload is 2x LoRa airtime (4591616 us)",
+      "payload_bytes": 255,
+      "lora_airtime_us": 2295808,
+      "lr_fhss_airtime_us": 4591616
+    },
+    {
+      "name": "airtime_negative_rejected",
+      "description": "Negative payload length raises ValueError regardless of phy_mode",
+      "payload_bytes": -1,
+      "expect_error": true
+    },
+    {
+      "name": "sensitivity_constant",
+      "description": "LR-FHSS sensitivity is -137.0 dBm (SX1262 datasheet AN1200.64)",
+      "constant": "SENSITIVITY_LR_FHSS",
+      "value_dbm": -137.0
+    },
+    {
+      "name": "sensitivity_vs_sf12",
+      "description": "LR-FHSS sensitivity (-137 dBm) matches SF12 at 125kHz, both better than SF10 (-132 dBm)",
+      "lr_fhss_dbm": -137.0,
+      "sf12_dbm": -137.0,
+      "sf10_dbm": -132.0,
+      "expect_lr_fhss_equal_sf12": true,
+      "expect_lr_fhss_better_than_sf10": true
+    },
+    {
+      "name": "fragment_recovery_4_interferers",
+      "description": "LR-FHSS with ≤4 interferers recovers strongest signal via FEC",
+      "strong_tx_power_dbm": 14,
+      "strong_distance_m": 50,
+      "interferer_tx_power_dbm": 14,
+      "interferer_distance_m": 200,
+      "interferer_count": 4,
+      "expect_strong_wins": true
+    },
+    {
+      "name": "fragment_recovery_5_interferers",
+      "description": "LR-FHSS with 5+ interferers causes total loss",
+      "strong_tx_power_dbm": 14,
+      "strong_distance_m": 50,
+      "interferer_tx_power_dbm": 14,
+      "interferer_distance_m": 200,
+      "interferer_count": 5,
+      "expect_strong_wins": false
+    },
+    {
+      "name": "lr_fhss_rx_candidate_tagged",
+      "description": "LR-FHSS transmissions produce RxCandidate with is_lr_fhss=True",
+      "phy_mode": "lr_fhss",
+      "expect_is_lr_fhss": true
+    },
+    {
+      "name": "lora_rx_candidate_not_tagged",
+      "description": "Standard LoRa transmissions produce RxCandidate with is_lr_fhss=False",
+      "phy_mode": "lora",
+      "expect_is_lr_fhss": false
+    }
+  ]
+}

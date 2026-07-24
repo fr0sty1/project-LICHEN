@@ -32,7 +32,9 @@
 #include <zephyr/net/net_ip.h>
 #include <lichen/coap_server.h>
 #include <lichen/senml.h>
+#include <lichen/oscore.h>
 #include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
 #include <lichen/transport/slip_transport.h>
 
 LOG_MODULE_REGISTER(lichen_coap_server, CONFIG_LICHEN_COAP_SERVER_LOG_LEVEL);
@@ -114,31 +116,7 @@ static int send_ack(struct coap_resource *resource,
 	return lichen_coap_respond(resource, request, addr, addr_len, code, 0, NULL, 0);
 }
 
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-/*
- * Send an empty ACK (2.01 Created / 2.04 Changed) via OSCORE-protected
- * response. Reuses the same response path that deaddrop and confessions
- * use. The static buffer is sized per server config.
- */
-static int msg_inbox_oscore_respond(struct coap_resource *resource,
-				    struct coap_packet *request,
-				    struct sockaddr *addr, socklen_t addr_len,
-				    struct oscore_ctx *ctx,
-				    const uint8_t *piv, size_t piv_len,
-				    uint8_t code)
-{
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code,
-					       NULL, 0, &resp, buf, sizeof(buf));
-	if (ret < 0) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
-	}
-	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
-	return ret;
-}
-#endif
+
 
 
 /*
@@ -326,42 +304,64 @@ static int msg_inbox_post(struct coap_resource *resource,
 {
 	uint32_t msg_id = 0;
 	int ret;
-	struct coap_oscore_auth_result auth;
 
-	ret = coap_oscore_auth_mutating(resource, request, addr, addr_len,
-					COAP_METHOD_POST, &auth);
-	if (ret < 0) {
-		return -ret;
+	struct coap_oscore_unprotect_result oscore;
+	ret = coap_oscore_unprotect_resource_request(resource, request, addr,
+						     addr_len, COAP_METHOD_POST,
+						     &oscore);
+	if (ret != 0) return ret;
+	if (!oscore.is_protected && !lichen_coap_is_local_admin(addr, addr_len)) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_UNAUTHORIZED,
+					   0, NULL, 0);
 	}
 
 	if (s_handlers.msg_post == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
-	if (auth.payload == NULL || auth.payload_len == 0) {
+	if (oscore.payload == NULL || oscore.payload_len == 0) {
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 
-	ret = s_handlers.msg_post(auth.payload, auth.payload_len, &msg_id);
+	ret = s_handlers.msg_post(oscore.payload, oscore.payload_len, &msg_id);
 	if (ret < 0) {
 		LOG_ERR("Message POST callback failed: %d", ret);
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-		if (auth.ctx != NULL && auth.piv_len > 0) {
-			return msg_inbox_oscore_respond(resource, request, addr,
-							addr_len, auth.ctx,
-							auth.piv, auth.piv_len,
-							COAP_RESPONSE_CODE_BAD_REQUEST);
-		}
-#endif
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
+		return coap_oscore_respond_resource(resource, request, addr, addr_len,
+						    &oscore,
+						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    0, NULL, 0);
 	}
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	if (auth.ctx != NULL && auth.piv_len > 0) {
-		return msg_inbox_oscore_respond(resource, request, addr,
-						addr_len, auth.ctx,
-						auth.piv, auth.piv_len,
-						COAP_RESPONSE_CODE_CREATED);
+	if (oscore.is_protected && oscore.ctx != NULL && oscore.piv_len > 0) {
+		/* OSCORE response with Location-Path options */
+		uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+		struct coap_packet resp;
+		int r = coap_oscore_protect_response(oscore.ctx, oscore.piv,
+						     oscore.piv_len, request,
+						     COAP_RESPONSE_CODE_CREATED,
+						     NULL, 0, &resp, buf, sizeof(buf));
+		if (r < 0) {
+			return lichen_coap_respond(resource, request, addr, addr_len,
+						   COAP_RESPONSE_CODE_INTERNAL_ERROR,
+						   0, NULL, 0);
+		}
+		r = coap_packet_append_option(&resp, COAP_OPTION_LOCATION_PATH,
+					      "msg", 3);
+		if (r < 0) return r;
+		r = coap_packet_append_option(&resp, COAP_OPTION_LOCATION_PATH,
+					      "sent", 4);
+		if (r < 0) return r;
+		char id_str[12];
+		int id_len = snprintf(id_str, sizeof(id_str), "%u", msg_id);
+		if (id_len < 0 || (size_t)id_len >= sizeof(id_str)) {
+			return -EINVAL;
+		}
+		r = coap_packet_append_option(&resp, COAP_OPTION_LOCATION_PATH,
+					      id_str, id_len);
+		if (r < 0) return r;
+		return coap_resource_send(resource, &resp, addr, addr_len, NULL);
 	}
 #endif
 

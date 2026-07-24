@@ -66,13 +66,20 @@ extern "C" {
  *   - If compressed payload + rule ID exceeds 200 bytes, TX will fail at
  *     the size check in lichen_l2_send()
  *
- *   Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
+ * Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
+ *
+ * When to use each constant:
+ * - LICHEN_LORA_MTU: Use at the LoRa driver layer (lora_l2.c). This is the
+ *   payload capacity after LoRa framing overhead is subtracted.
+ * - LICHEN_L2_MTU: Use at the Zephyr network stack layer (lichen_l2.h, net_if,
+ *   net_pkt). Identical value, but defined separately to avoid coupling
+ *   consumers of lora_l2.h to Zephyr network stack headers.
  *
  * If frame format or signature size changes, update this constant.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom */
-#define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
+#define LICHEN_FRAME_MAX_OVERHEAD   55  /* 57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom */
+#define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_FRAME_MAX_OVERHEAD)
 
 /**
  * @brief Link-layer address length (EUI-64)
@@ -163,6 +170,16 @@ int lichen_lora_l2_stop(void);
  * Releases resources and resets state to allow re-initialization.
  * Required after a forced thread abort in stop() before the module can be
  * restarted. Must be called when the module is stopped (not running).
+ *
+ * RECOVERY AFTER THREAD ABORT:
+ * If the RX thread was forcibly aborted (stop() returned -ECANCELED), deinit()
+ * reinitializes mutexes that may still be held by the dead thread. This is
+ * UNDEFINED BEHAVIOR per POSIX and Zephyr semantics and may corrupt kernel
+ * data or trigger assertion failures in debug builds.
+ *
+ * The only truly safe recovery from thread-abort is a full system reset
+ * (k_sys_reboot). When CONFIG_LICHEN_LORA_STRICT_RECOVERY is enabled,
+ * deinit() calls k_sys_reboot() instead of attempting the UB reinit path.
  *
  * After deinit, lichen_lora_l2_init() must be called before any other
  * operations.

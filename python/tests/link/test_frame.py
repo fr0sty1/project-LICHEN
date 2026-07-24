@@ -210,10 +210,10 @@ class TestParseErrors:
         with pytest.raises(FrameError, match="frame is 256 bytes, exceeds 255"):
             LichenFrame.from_bytes(data)
 
-    def test_reserved_bit_set(self) -> None:
-        # Valid 12-byte body but LLSec bit 7 set (0x81).
-        data = bytes.fromhex("0c 81 01 0102 aabb 1020 deadbeef".replace(" ", ""))
-        with pytest.raises(FrameError, match="reserved bit"):
+    def test_signer_iid_without_signature_rejected(self) -> None:
+        """SI=1 without S=1 must be rejected."""
+        data = bytes.fromhex("10 80 01 1234 aabbccdd aabbccdd deadbeef".replace(" ", ""))
+        with pytest.raises(FrameError, match="signer IID present but signature is not"):
             LichenFrame.from_bytes(data)
 
     def test_reserved_mic_length(self) -> None:
@@ -283,10 +283,10 @@ class TestSpecVectors:
             error_message = {
                 "empty_frame": "frame is empty",
                 "length_mismatch": "length field says 20 but 8 body bytes present",
-                "reserved_bit_set": "LLSec reserved bit (7) must be 0",
                 "reserved_mic_length": "reserved MIC-length value: 2",
                 "frame_too_short": "frame body too short: 2 bytes",
-                "encryption_unsupported": "encrypted frames are unsupported",
+                "signed_encrypted_unsupported": "signed and encrypted frames are unsupported",
+                "signer_iid_no_signature": "signer IID present but signature is not",
                 "frame_too_large": "frame is 256 bytes, exceeds 255",
             }[expected["error_type"]]
             with pytest.raises(FrameError) as exc_info:

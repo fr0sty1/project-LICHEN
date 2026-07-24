@@ -307,7 +307,7 @@ def _decode_single_cbor(payload: bytes) -> Any:
     return cbor2.loads(payload)
 
 
-class _ReadResource(resource.Resource):
+class _ReadResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """A read-only CBOR resource advertising a resource type."""
 
     rt = "lichen"
@@ -388,7 +388,7 @@ class ConfigResource(_ReadResource):
         return Message(code=CHANGED)
 
 
-class ProxyResource(resource.Resource):
+class ProxyResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Optional CoAP forward proxy for constrained local transports.
 
     LCI clients normally address mesh nodes directly and let the local node
@@ -449,7 +449,7 @@ class ProxyResource(resource.Resource):
         return relay
 
 
-class SenMLSensorsResource(resource.ObservableResource):
+class SenMLSensorsResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Observable ``/sensors`` — SenML+CBOR pack of all current readings.
 
     Callers push new readings by calling :meth:`update`; all registered CoAP
@@ -487,7 +487,7 @@ class SenMLSensorsResource(resource.ObservableResource):
         return msg
 
 
-class SenMLLocationResource(resource.ObservableResource):
+class SenMLLocationResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Observable ``/location`` — SenML+CBOR lat/lon(/alt) pack.
 
     Callers push position fixes by calling :meth:`update`.
@@ -524,7 +524,7 @@ class SenMLLocationResource(resource.ObservableResource):
         return msg
 
 
-class SenMLMetricsResource(resource.ObservableResource):
+class SenMLMetricsResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Basic observable ``/metrics`` CoAP resource — SenML+CBOR (112)
     telemetry+battery profile (RSSI, nodecount, pps, battery, collision-rate).
 
@@ -575,7 +575,7 @@ class SenMLMetricsResource(resource.ObservableResource):
         }
 
 
-class PresenceResource(resource.ObservableResource):
+class PresenceResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Observable ``/presence`` — CBOR list of recently-heard mesh nodes.
 
     Each entry is a plain dict serialised to CBOR::
@@ -662,7 +662,7 @@ class PresenceResource(resource.ObservableResource):
         return msg
 
 
-class SosResource(resource.ObservableResource):
+class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Observable ``/sos`` — emergency (POST per spec/12-apps.md §18.4).
 
     State is a CBOR map::
@@ -749,7 +749,7 @@ class SosResource(resource.ObservableResource):
         return Message(code=aiocoap.DELETED)
 
 
-class RollcallResource(resource.ObservableResource):
+class RollcallResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Demo CoAP resource for conference rollcall use case per spec/12-apps.md §18.6.
     Supports POST to initiate, observable GET for status with SenML position data.
     Used by LCI-based conference demo application.
@@ -823,7 +823,7 @@ _MESSAGES_MAX = 100  # maximum inbox depth
 _MESSAGE_ID_MAX = (1 << 64) - 1  # u64 bound for LCI message IDs (spec 17.5.7)
 
 
-class MessagesResource(resource.ObservableResource):
+class MessagesResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Observable ``/msg/inbox`` — CBOR inbox with POST-to-send.
 
     Each message is a CBOR map::
@@ -946,7 +946,7 @@ class MessagesResource(resource.ObservableResource):
         return msg
 
 
-class SentMessagesResource(resource.Resource):
+class SentMessagesResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """``/msg/sent`` collection for messages accepted through LCI."""
 
     def __init__(self, messages: MessagesResource) -> None:
@@ -960,7 +960,7 @@ class SentMessagesResource(resource.Resource):
         return _cbor_response({"messages": self._messages.sent_messages()})
 
 
-class SentMessageDetailsResource(resource.Resource, resource.PathCapable):
+class SentMessageDetailsResource(resource.Resource, resource.PathCapable):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Stable dynamic router for retained ``/msg/sent/{id}`` records."""
 
     def __init__(self, messages: MessagesResource) -> None:
@@ -1053,7 +1053,7 @@ def _is_u64(value: Any) -> bool:
     return type(value) is int and 0 <= value <= _MESSAGE_ID_MAX
 
 
-class LegacyMessagesAliasResource(resource.ObservableResource):
+class LegacyMessagesAliasResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """Legacy/demo ``/messages`` alias for older Python simulator clients."""
 
     def __init__(self, messages: MessagesResource) -> None:
@@ -1094,7 +1094,7 @@ class _RdEntry:
     links: list[dict[str, Any]]  # decoded link descriptors
 
 
-class ResourceDirectoryResource(resource.Resource):
+class ResourceDirectoryResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """``/rd`` — CoAP Resource Directory (simplified RFC 9176).
 
     **POST** registers an endpoint; query parameters ``ep`` (required),
@@ -1238,7 +1238,7 @@ class ResourceDirectoryResource(resource.Resource):
         return resp
 
 
-class _RdRegistrationResource(resource.Resource):
+class _RdRegistrationResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """``/rd/<id>`` — per-registration management (DELETE to remove)."""
 
     def __init__(self, rd: ResourceDirectoryResource, reg_id: str) -> None:
@@ -1254,7 +1254,7 @@ class _RdRegistrationResource(resource.Resource):
         return Message(code=DELETED if removed else aiocoap.NOT_FOUND)
 
 
-class KeyResource(resource.Resource):
+class KeyResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """GET /keys (rt="keystore" per spec/11-lci.md).
 
     Response map keys:
@@ -1285,7 +1285,7 @@ class _EdhocTransientError(RuntimeError):
     """A resolver or store failure that may succeed when retried."""
 
 
-class EdhocResource(resource.Resource):
+class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
     """POST /.well-known/edhoc — EDHOC key establishment (RFC 9528, spec 8.8).
 
     Handles the responder side of EDHOC key exchange. Messages are exchanged

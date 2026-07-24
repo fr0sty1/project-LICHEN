@@ -151,8 +151,6 @@ class Node:
 
     # Peer database - nodes we know about
     peer_db: dict[bytes, PeerIdentity] = field(default_factory=dict, repr=False)
-    # Per-peer RX channel from announces (CCP-9 rendezvous)
-    _peer_rx_channel: dict[bytes, int] = field(default_factory=dict, repr=False)
 
     # Lifecycle state
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
@@ -257,11 +255,8 @@ class Node:
 
         Why a method on Node: Node owns the link layer. Scheduler calls this
         to actually send the announce bytes over the air.
-
-        Announces are sent on the control channel (CH0) per CCP-9 so that
-        unknown peers can discover this node.
         """
-        return await self.link.send(wrap_routing_payload(data), channel=0)
+        return await self.link.send(wrap_routing_payload(data))
 
     def set_on_receive(self, callback: Callable[[bytes, PeerIdentity], None]) -> None:
         """Set callback for received application data.
@@ -394,7 +389,7 @@ class Node:
         """
         while True:
             try:
-                rx = await self.link.receive(self.config.receive_timeout_ms, channel=0)
+                rx = await self.link.receive(self.config.receive_timeout_ms)
                 if rx is not None and not isinstance(rx, ReceiveError):
                     await self._process_received(rx)
                 elif isinstance(rx, ReceiveError):
@@ -455,12 +450,7 @@ class Node:
                 # Why half: amortizes eviction cost while keeping recent entries.
                 for _ in range(RELAY_SEEN_MAX_SIZE // 2):
                     self._relay_seen.popitem(last=False)
-            ch = self.link.select_channel(
-                dst_addr=rx.sender.iid,
-                peer_rx_channel=self._peer_rx_channel.get(rx.sender.iid),
-                known_peer=rx.sender.iid in self._peer_rx_channel,
-            )
-            await self.link.send(payload, channel=ch)
+            await self.link.send(payload)
 
     async def _process_announce(
         self, payload: bytes, sender: PeerIdentity, rssi_dbm: int
@@ -491,9 +481,6 @@ class Node:
             if result.peer:
                 self.add_peer(result.peer)
 
-            # Track peer's RX channel for CCP-9 rendezvous
-            self._peer_rx_channel[sender.iid] = announce.rx_channel
-
             # Relay if needed
             if result.should_relay:
                 await self._relay_announce(announce)
@@ -502,13 +489,12 @@ class Node:
         """Relay an announce to neighbors.
 
         Why separate method: Relay involves incrementing hop count and resending.
-        Relays are sent on control channel (CH0) so unknown neighbors can hear.
         """
         relay = self.announce_processor.get_relay_message(announce)
         if relay is None:
             return
 
-        success = await self.link.send(wrap_routing_payload(relay.to_bytes()), channel=0)
+        success = await self.link.send(wrap_routing_payload(relay.to_bytes()))
         if success:
             logger.debug("relayed announce from %s", announce.originator_iid.hex())
 
@@ -517,11 +503,10 @@ class Node:
 
         Why separate method: Allows testing and manual triggering.
         Delegates to scheduler for announce building (signing, seq_num).
-        Announces sent on control channel (CH0) per CCP-9.
         """
         announce = self._scheduler.build_announce()
         data = wrap_routing_payload(announce.to_bytes())
-        success = await self.link.send(data, channel=0)
+        success = await self.link.send(data)
         if success:
             logger.info("sent announce seq=%d", announce.seq_num)
 
@@ -596,13 +581,11 @@ class Node:
         delay_ms = random.randint(min_delay_ms, max_delay_ms)
 
         async def _delayed_send() -> bool:
+            await asyncio.sleep(delay_ms / 1000)
             try:
-                await asyncio.sleep(delay_ms / 1000)
-                return await self.link.send(wrap_routing_payload(data), channel=0)
-            except asyncio.CancelledError:
-                raise
+                return await self.link.send(wrap_routing_payload(data))
             except Exception:
-                logger.exception("scheduled send failed (delay=%dms)", delay_ms)
+                logger.exception("scheduled_send: link.send failed")
                 raise
 
         return asyncio.create_task(

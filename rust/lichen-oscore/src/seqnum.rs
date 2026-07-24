@@ -9,9 +9,6 @@
 
 use zeroize::Zeroize;
 
-/// Maximum Partial IV length per RFC 8613 Section 6.1 (n field max 5 bytes).
-const PIV_MAX_LEN: usize = 5;
-
 /// OSCORE sender sequence number (40-bit, monotonic).
 ///
 /// This is the Partial IV (PIV) included in OSCORE-protected messages.
@@ -92,7 +89,7 @@ impl OscoreSeqNum {
     /// Encode as variable-length big-endian PIV (1-5 bytes).
     ///
     /// OSCORE uses the minimum number of bytes needed to represent the value.
-    pub fn encode_piv(self, piv: &mut [u8; PIV_MAX_LEN]) -> usize {
+    pub fn encode_piv(self, piv: &mut [u8; 5]) -> usize {
         let seq = self.0;
         if seq == 0 {
             piv[0] = 0;
@@ -117,7 +114,7 @@ impl OscoreSeqNum {
 
     /// Decode from a 1-5 byte big-endian PIV.
     pub fn from_piv(piv: &[u8]) -> Option<Self> {
-        if piv.is_empty() || piv.len() > PIV_MAX_LEN || (piv.len() > 1 && piv[0] == 0) {
+        if piv.is_empty() || piv.len() > 5 || (piv.len() > 1 && piv[0] == 0) {
             return None;
         }
         Self::new(
@@ -188,9 +185,9 @@ mod tests {
 
     #[test]
     fn increment_near_max_succeeds() {
-        let seq = OscoreSeqNum::new(OscoreSeqNum::MAX - 1).unwrap();
+        let seq = OscoreSeqNum::new(u64::from(u32::MAX) - 1).unwrap();
         let next = seq.increment().expect("should succeed at MAX-1");
-        assert_eq!(next.get(), OscoreSeqNum::MAX);
+        assert_eq!(next.get(), u64::from(u32::MAX));
     }
 
     #[test]
@@ -215,7 +212,7 @@ mod tests {
             (0xff_ffff_ffff, &b"\xff\xff\xff\xff\xff"[..]),
         ] {
             let seq = OscoreSeqNum::new(value).unwrap();
-            let mut piv = [0u8; PIV_MAX_LEN];
+            let mut piv = [0u8; 5];
             let len = seq.encode_piv(&mut piv);
             assert_eq!(&piv[..len], encoded);
             assert_eq!(OscoreSeqNum::from_piv(encoded), Some(seq));

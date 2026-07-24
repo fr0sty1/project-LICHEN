@@ -67,6 +67,9 @@ extern "C" {
 /** Maximum destination address length (EUI-64) */
 #define LICHEN_ADDR_MAX 8
 
+/** LLSec bit flag: signer IID present after destination address */
+#define LLSEC_SIGNER_IID 0x80
+
 /**
  * @brief Address mode (LLSec bits 0-1)
  */
@@ -133,6 +136,8 @@ struct lichen_frame {
 	uint16_t seqnum;         /**< Sequence number (replay protection) */
 	uint8_t dst_addr[8];     /**< Destination address (0-8 bytes) */
 	uint8_t dst_addr_len;    /**< Destination address length */
+	uint8_t signer_iid[8];   /**< Signer IID (8 bytes when present, 0 otherwise) */
+	uint8_t signer_iid_len;  /**< Signer IID length (8 when present, 0 otherwise) */
 	const uint8_t *_Nullable payload;  /**< Inner payload */
 	size_t payload_len;      /**< Inner payload length */
 	size_t inner_payload_len; /**< Same as payload_len; signature is in MIC */
@@ -143,6 +148,7 @@ struct lichen_frame {
 	enum lichen_addr_mode addr_mode;
 	enum lichen_mic_len mic_length;
 	bool signature_present;  /**< Schnorr-48 occupies the MIC field */
+	bool signer_iid_present; /**< Signer IID present in frame */
 	bool encrypted;          /**< Encrypted frame flag; currently unsupported */
 };
 
@@ -324,6 +330,15 @@ int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *td
 bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
 uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
+
+#ifdef CONFIG_LICHEN_CCP_TIME_SYNC
+int lichen_time_sync_init(void);
+uint32_t lichen_time_sync_get_sfn(void);
+int lichen_time_sync_set_sfn(uint32_t sfn);
+bool lichen_time_sync_is_synced(void);
+void lichen_time_sync_advance_sfn(void);
+void lichen_time_sync_desync(void);
+#endif
 
 #ifdef __cplusplus
 }

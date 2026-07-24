@@ -132,9 +132,9 @@ static int lichen_l2_to_zephyr_errno(int ret)
  * (project-LICHEN-tvfm.7)
  */
 BUILD_ASSERT(LICHEN_EUI64_LEN == 8,
-	     "lichen_peer_add() eui64[8] size mismatch: update API if LICHEN_EUI64_LEN changed");
+	     "lichen_peer_add() eui64 size mismatch: update API if LICHEN_EUI64_LEN changed");
 BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
-	     "lichen_peer_add() pubkey[32] size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
+	     "lichen_peer_add() pubkey size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
 
 /* Maximum frame size for LoRa */
 #define MAX_LORA_FRAME 255
@@ -191,7 +191,7 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
 	     "LICHEN_MIN_FRAME_LEN does not match frame component sizes");
 
 /*
- * Validate LICHEN_LORA_FRAME_OVERHEAD against frame format constants.
+ * Validate LICHEN_FRAME_MAX_OVERHEAD against frame format constants.
  *
  * The overhead (55 bytes) is tuned for MTU = 200 bytes, relying on SCHC
  * compression to shrink IPv6 headers from 40 bytes to ~3-6 bytes. The
@@ -199,22 +199,22 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  * more than offset the signature cost.
  *
  * These assertions catch drift if schnorr48.h or frame format constants
- * change without updating LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h.
+ * change without updating LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h.
  *
- * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_LORA_FRAME_OVERHEAD
+ * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_FRAME_MAX_OVERHEAD
  * to ensure signed frames still fit within the LoRa PHY limit.
  *
  * Constant naming (project-LICHEN-tvfm.106, project-LICHEN-tvfm.107):
- * - LICHEN_FRAME_BASE_OVERHEAD (9 bytes): Minimum frame size for validation.
+ * - LICHEN_FRAME_MIN_HEADER_SIZE (9 bytes): Minimum frame size for validation.
  *   Used in LICHEN_MIN_FRAME_LEN to reject malformed runt frames early.
  *   Does NOT include signature (signature is conditional on has_key).
- * - LICHEN_LORA_FRAME_OVERHEAD (55 bytes): Conservative MTU overhead.
+ * - LICHEN_FRAME_MAX_OVERHEAD (55 bytes): Conservative MTU overhead.
  *   Always reserves space for signature even when not used. This is
  *   intentional: a static MTU simplifies buffer sizing and avoids
  *   dynamic MTU changes when signing keys are provisioned. The 46-byte
  *   overhead when unsigned is acceptable for the simplicity benefit.
  */
-#define LICHEN_FRAME_BASE_OVERHEAD \
+#define LICHEN_FRAME_MIN_HEADER_SIZE \
 	(LICHEN_FRAME_LENGTH_FIELD + \
 	 LICHEN_FRAME_LLSEC_FIELD + \
 	 LICHEN_FRAME_EPOCH_FIELD + \
@@ -238,19 +238,19 @@ BUILD_ASSERT(LICHEN_LORA_FRAME_OVERHEAD ==
 
 /*
  * Assert: signature length has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD was calculated assuming 48-byte signatures.
+ * LICHEN_FRAME_MAX_OVERHEAD was calculated assuming 48-byte signatures.
  * If this assertion fails, recalculate the overhead constant.
  */
 BUILD_ASSERT(LICHEN_SIG_LEN == 48,
-	     "LICHEN_SIG_LEN changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
+	     "LICHEN_SIG_LEN changed - update LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h");
 
 /*
  * Assert: frame header size has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD assumes 9-byte minimum frame (broadcast + 32-bit MIC).
+ * LICHEN_FRAME_MAX_OVERHEAD assumes 9-byte minimum frame (broadcast + 32-bit MIC).
  * If this assertion fails, recalculate the overhead constant.
  */
-BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
-	     "Frame header size changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
+BUILD_ASSERT(LICHEN_FRAME_MIN_HEADER_SIZE == 9,
+	     "Frame header size changed - update LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h");
 
 /* IPv6 base header size (RFC 8200). Does NOT include extension headers. */
 #define IPV6_BASE_HDR_LEN 40
@@ -303,7 +303,8 @@ BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
  * To support additional extension headers in the future:
  * 1. Add a dedicated SCHC rule in schc/rules.py for the specific extension
  * 2. Increase buffer sizes here (add extension header size)
- * 3. Potentially update LICHEN_L2_MTU in lora_l2.h
+ * 3. Potentially update LICHEN_L2_MTU in lichen_l2.h (and the BUILD_ASSERT
+ *    in lora_l2.h will flag any mismatch with LICHEN_LORA_MTU)
  *
  * OSCORE support (project-LICHEN-v1wq): Buffer sizing includes OSCORE_MAX_OVERHEAD.
  * Remaining integration work:
@@ -525,7 +526,8 @@ static int peer_find_oldest_locked(void)
 	int64_t oldest_time = INT64_MAX;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
-		if (peer_table[i].active && peer_table[i].last_seen < oldest_time) {
+		if (peer_table[i].active && peer_table[i].last_seen != INT64_MAX
+		    && peer_table[i].last_seen < oldest_time) {
 			oldest_time = peer_table[i].last_seen;
 			oldest_idx = (int)i;
 		}
@@ -1882,6 +1884,13 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
 #if HAVE_LICHEN_LINK
+	/* Guard against lora_l2 ABORTED setting rx_mutex for reinit mid-operation. */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_ERR("lichen_l2: RX rejected (reinit required after abort)");
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+
 	/*
 	 * Guard against access before initialization.
 	 * This shouldn't happen in normal operation, but could if a packet

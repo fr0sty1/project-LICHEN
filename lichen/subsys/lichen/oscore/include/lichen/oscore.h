@@ -19,10 +19,9 @@
  * @anchor oscore_key_rotation
  * ## Key Rotation
  *
- * OSCORE contexts have a finite lifetime bounded by the 40-bit sender sequence
- * number (RFC 8613 Section 5.2). When sender_seq reaches OSCORE_SSN_MAX,
- * oscore_protect_request() returns OSCORE_ERR_SEQ_EXHAUSTED and the context
- * can no longer send messages.
+ * OSCORE contexts have a finite lifetime bounded by the 32-bit sender sequence
+ * number. When sender_seq reaches OSCORE_SSN_MAX (2^40 - 1), oscore_protect_request() returns
+ * OSCORE_ERR_SEQ_EXHAUSTED and the context can no longer send messages.
  *
  * ### Recommended rotation pattern:
  *
@@ -106,9 +105,10 @@ extern "C" {
 #define OSCORE_NONCE_S_POS 6
 
 /**
- * Maximum Sender Sequence Number (SSN) per RFC 8613 Section 5.2.
- * The Partial IV (PIV) is encoded as a variable-length unsigned integer
- * in up to 5 bytes, giving a 40-bit range. The full range is 2^40 - 1.
+ * Maximum Sender Sequence Number (SSN) per RFC 8613 Section 7.2.1.
+ * Uses the full 40-bit range (5-byte PIV) for cross-implementation
+ * compatibility with Rust and Python implementations. Matches the
+ * OscoreSeqNum::MAX constant (1 << 40) - 1 in the Rust OSCORE crate.
  * Implementations should trigger key rotation well before exhaustion.
  */
 #define OSCORE_SSN_MAX ((1ULL << 40) - 1)
@@ -490,10 +490,17 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * oscore_ctx_persist_ssn() is called only on the success path (after option
  * construction). On OSCORE_ERR_NVM_FAILED from persist_ssn(), the
  * nvm_failed path performs *conditional* SSN rollback under mutex
- * (only if no concurrent increment occurred) before wipe and sets
- * s_seq_initialized. This prevents nonce reuse on reboot per RFC 8613
- * §7.2 and §7.2.1 without permitting SSN regression, ensuring
- * monotonicity. See detailed SECURITY comment in oscore.c:nvm_failed.
+ * (only if no concurrent increment occurred) before wipe. This prevents
+ * SSN regression (uosj), ensures monotonicity, and satisfies nonce
+ * uniqueness per RFC 8613 Appendix D.4, §7.2, §7.2.1 (see detailed
+ * security comment in oscore.c:nvm_failed).
+ *
+ * On OSCORE_ERR_NVM_FAILED from persistence (after retries+bump in
+ * oscore_ctx_persist_ssn), the nvm_failed path handles sender_seq under
+ * mutex (safe advance, no rollback - verifies the safety-margin bump or
+ * completes it, clamped at OSCORE_SSN_MAX) and synchronizes
+ * s_seq_initialized. This avoids nonce reuse on reboot per RFC 8613
+ * §7.2 and §7.2.1. See SECURITY comment in oscore_protect_request().
  *
  * @param[in]     ctx          Security context (sender_seq must be initialized)
  * @param[in]     code         CoAP request code
@@ -542,13 +549,6 @@ int oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
 
 /**
  * @brief Protect a CoAP response with OSCORE.
- *
- * May include a fresh Partial IV in the OSCORE option when:
- * - The context was restored from persisted state (prevents replay)
- * - The same request PIV has already been used for an ordinary response
- *
- * Ordinary responses (no PIV) reuse the request nonce per RFC 8613 Section 8.4.
- * Fresh-PIV responses use the responder's sender key and sequence number.
  *
  * @param[in]     ctx          Security context
  * @param[in]     request_piv  Partial IV from request

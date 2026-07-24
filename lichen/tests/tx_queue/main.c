@@ -429,6 +429,60 @@ static void *tx_queue_reader(void *arg)
 	return NULL;
 }
 
+static int test_clock_failure_preserves_queue(void)
+{
+	struct tx_queue queue;
+	uint8_t in_data[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len;
+	struct tx_queue_stats stats;
+
+	tx_queue_test_set_time(1000);
+	tx_queue_init(&queue);
+
+	/* Push a packet */
+	ASSERT_EQ(tx_queue_push(&queue, in_data, sizeof(in_data),
+				TX_PRIORITY_BULK, 60000),
+		  0, "push succeeds before clock failure");
+	ASSERT_EQ(tx_queue_count(&queue), 1, "queue has one packet");
+
+	/* Induce clock failure */
+	tx_queue_test_fail_time(true);
+
+	/* Push should fail and preserve existing queue */
+	ASSERT_EQ(tx_queue_push(&queue, in_data, sizeof(in_data),
+				TX_PRIORITY_BULK, 60000),
+		  -EIO, "push returns EIO on clock failure");
+
+	/* Queue content must be preserved */
+	ASSERT_EQ(tx_queue_count(&queue), 1, "queue count preserved after clock failure");
+
+	/* Pop should also fail */
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL),
+		  -EIO, "pop returns EIO on clock failure");
+
+	/* Queue still intact */
+	ASSERT_EQ(tx_queue_count(&queue), 1, "queue still intact after failed pop");
+
+	/* Restore clock, verify queue still usable */
+	tx_queue_test_fail_time(false);
+
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL),
+		  0, "pop succeeds after clock restored");
+	ASSERT_EQ(out_len, sizeof(in_data), "popped length matches");
+	ASSERT_TRUE(memcmp(in_data, out_data, sizeof(in_data)) == 0,
+		    "popped data matches");
+
+	/* Stats for the failed operations */
+	tx_queue_stats_get(&queue, &stats);
+	ASSERT_EQ(stats.packets_queued, 1, "failed push not counted in queued");
+	ASSERT_EQ(stats.packets_sent, 1, "only successful pop counted");
+
+	return 1;
+}
+
 static int test_concurrent_thread_safety(void)
 {
 	struct tx_queue queue;

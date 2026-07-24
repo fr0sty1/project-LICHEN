@@ -25,6 +25,10 @@
 #include "monocypher-ed25519.h"
 #endif
 
+/* SHA-256 for IID derivation in Yggdrasil address computation */
+#include <tinycrypt/sha256.h>
+#include <tinycrypt/constants.h>
+
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
 #ifdef __ZEPHYR__
@@ -425,7 +429,7 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 			 * further TX until key rotation clears the flag.
 			 */
 			ctx->nonce_exhausted = true;
-			LOG_WRN("nonce exhausted after 16M frames, TX blocked until key rotation\n");
+			LOG_WRN("CRITICAL: nonce exhausted after 16M frames, TX blocked until key rotation\n");
 		} else {
 			LOG_WRN("tx_seq wrapped - epoch incremented to %u (was %u)\n",
 				ctx->epoch, old_epoch);
@@ -564,7 +568,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 		return;
 	}
 
-	seq_lock(ctx);
+	int locked = seq_lock(ctx);
 
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
@@ -577,24 +581,14 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 
-	(void)seq_unlock(ctx);
+	if (locked == 0) {
+		(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-	pthread_mutex_destroy(&ctx->seq_lock);
+		pthread_mutex_destroy(&ctx->seq_lock);
 #endif
+	}
 }
 
-int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
-{
-	if (num_slots == 0) num_slots = 8;
-	uint8_t data[12];
-	memcpy(data, eui64, 8);
-	data[8] = (uint8_t)(epoch & 0xff);
-	data[9] = (uint8_t)((epoch >> 8) & 0xff);
-	data[10] = (uint8_t)((epoch >> 16) & 0xff);
-	data[11] = (uint8_t)((epoch >> 24) & 0xff);
-	uint32_t h = lichen_hash_32(data, 12);
-	return (uint8_t)(h % num_slots);
-}
 int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)
 {
 	if (tdma == NULL || ctx == NULL) return -EINVAL;
@@ -638,17 +632,64 @@ uint32_t lichen_hash_32(const uint8_t *data, size_t len)
 	return hash;
 }
 
-#ifdef CONFIG_LICHEN_LINK_COORDINATION
-int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {
-	if (ctx == NULL) {
-		return -EINVAL;
+	if (num_slots == 0) num_slots = 8;
+	uint8_t buf[8];
+	memcpy(buf, eui64, 8);
+	uint32_t e = epoch;
+	for (size_t i = 0; i < 8; i++) {
+		buf[i] ^= (uint8_t)e;
+		e >>= 8;
 	}
-	if (!ctx->has_key) {
-		return -ENOKEY;
-	}
+	uint32_t h = lichen_hash_32(buf, 8);
+	return (uint8_t)(h % num_slots);
+}
+
+#ifdef CONFIG_LICHEN_LINK_COORDINATION
+int lichen_coordination_negotiate(struct lichen_link_ctx *_Nonnull ctx)
+{
+	if (ctx == NULL) return -EINVAL;
+	if (!ctx->has_key) return -ENOKEY;
 	return LICHEN_COORD_HASH_BASED;
 }
 #endif /* CONFIG_LICHEN_LINK_COORDINATION */
 
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
+					  uint8_t ygg_addr[16])
+{
+	if (pubkey == NULL || ygg_addr == NULL) {
+		return -EINVAL;
+	}
 
+	uint8_t hash512[64];
+	uint8_t iid_hash[TC_SHA256_DIGEST_SIZE];
+	struct tc_sha256_state_struct sha_state;
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	crypto_sha512(hash512, pubkey, 32);
+#else
+	memset(hash512, 0, sizeof(hash512));
+	uint8_t stub_hash[32];
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(stub_hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	memcpy(hash512, stub_hash, 7);
+	memset(stub_hash, 0, sizeof(stub_hash));
+#endif
+
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(iid_hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+
+	ygg_addr[0] = 0x02;
+	memcpy(ygg_addr + 1, hash512, 7);
+	memcpy(ygg_addr + 8, iid_hash, 8);
+	ygg_addr[8] &= ~0x02U;
+
+	return 0;
+}

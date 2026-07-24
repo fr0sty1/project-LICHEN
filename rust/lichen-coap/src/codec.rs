@@ -634,18 +634,7 @@ mod tests {
     #[test]
     fn parse_with_payload() {
         // ACK 2.05 Content with payload (RFC 7252 §3, §5.2)
-        let data = [
-            ACK_HEADER,
-            MessageCode::CONTENT.0,
-            0x00,
-            0x01,
-            0xFF,
-            0x48,
-            0x65,
-            0x6C,
-            0x6C,
-            0x6F,
-        ];
+        let data = [ACK_HEADER, MessageCode::CONTENT.0, 0x00, 0x01, 0xFF, 0x48, 0x65, 0x6C, 0x6C, 0x6F];
         let pkt = CoapPacket::from_bytes(&data).unwrap();
         assert_eq!(pkt.msg_type(), MessageType::Acknowledgement);
         assert_eq!(pkt.code(), MessageCode::CONTENT);
@@ -658,15 +647,8 @@ mod tests {
         // GET /test with Uri-Path option (11) (RFC 7252 §5.4)
         // Option: delta=11, len=4, value="test"
         let data = [
-            CON_GET_HEADER,
-            MessageCode::GET.0,
-            0x00,
-            0x01, // header
-            0xB4,
-            b't',
-            b'e',
-            b's',
-            b't', // Uri-Path "test"
+            CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01, // header
+            0xB4, b't', b'e', b's', b't', // Uri-Path "test"
         ];
         let pkt = CoapPacket::from_bytes(&data).unwrap();
         let opts: Vec<_> = pkt.options().collect();
@@ -681,12 +663,8 @@ mod tests {
     fn parse_extended_delta() {
         // Option with delta=13 (extended 1 byte): delta nibble=13, ext=0 => delta=13 (RFC 7252 §5.4)
         let data = [
-            CON_GET_HEADER,
-            MessageCode::GET.0,
-            0x00,
-            0x01, // header
-            0xD0,
-            0x00, // delta=13, len=0
+            CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01, // header
+            0xD0, 0x00, // delta=13, len=0
         ];
         let pkt = CoapPacket::from_bytes(&data).unwrap();
         let opts: Vec<_> = pkt.options().collect();
@@ -749,7 +727,7 @@ mod tests {
         assert_eq!(opts[0].value, b"sensors");
         assert_eq!(opts[1].value, b"temp");
         assert_eq!(opts[2].number, OptionNumber::ContentFormat as u16);
-        assert_eq!(opts[2].as_uint().unwrap(), content_format::CBOR as u32);
+        assert_eq!(opts[2].as_uint().unwrap(), content_format::CBOR.into());
     }
 
     #[test]

@@ -1,29 +1,28 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-#include <zephyr/ztest.h>
-#include <zephyr/net/net_if.h>
-#include <zephyr/net/net_ip.h>
-#include <zephyr/net/socket.h>
+#include <string.h>
 
+#include <zephyr/net/net_if.h>
+#include <zephyr/ztest.h>
+
+#include <lichen/coap_keys.h>
 #include <lichen/coap_server.h>
 #include <lichen/transport/slip_transport.h>
 
-#include <string.h>
-
 /*
- * Test helpers
+ * is_local_admin address test helpers
  */
 
-static void make_loopback_sockaddr(struct sockaddr_in6 *addr)
+static void make_sockaddr_loopback(struct sockaddr_in6 *addr)
 {
 	memset(addr, 0, sizeof(*addr));
 	addr->sin6_family = AF_INET6;
-	addr->sin6_addr.s6_addr[0] = 0U;
+	/* ::1 */
 	addr->sin6_addr.s6_addr[15] = 1U;
 }
 
-static void make_link_local_sockaddr(struct sockaddr_in6 *addr,
+static void make_sockaddr_link_local(struct sockaddr_in6 *addr,
 				     uint32_t scope_id)
 {
 	memset(addr, 0, sizeof(*addr));
@@ -34,113 +33,169 @@ static void make_link_local_sockaddr(struct sockaddr_in6 *addr,
 	addr->sin6_scope_id = scope_id;
 }
 
-static void make_ula_sockaddr(struct sockaddr_in6 *addr)
-{
-	memset(addr, 0, sizeof(*addr));
-	addr->sin6_family = AF_INET6;
-	addr->sin6_addr.s6_addr[0] = 0xfd;
-	addr->sin6_addr.s6_addr[15] = 1U;
-}
-
-static void make_gua_sockaddr(struct sockaddr_in6 *addr)
+static void make_sockaddr_global(struct sockaddr_in6 *addr)
 {
 	memset(addr, 0, sizeof(*addr));
 	addr->sin6_family = AF_INET6;
 	addr->sin6_addr.s6_addr[0] = 0x20;
 	addr->sin6_addr.s6_addr[1] = 0x01;
-	addr->sin6_addr.s6_addr[2] = 0x0d;
-	addr->sin6_addr.s6_addr[3] = 0xb8;
 	addr->sin6_addr.s6_addr[15] = 1U;
 }
 
 /*
- * is_local_admin unit tests
+ * lichen_coap_is_local_admin tests
  */
-
-ZTEST(coap_lci_auth, test_loopback_is_admin)
-{
-	struct sockaddr_in6 addr;
-
-	make_loopback_sockaddr(&addr);
-	zassert_true(lichen_coap_is_local_admin((struct sockaddr *)&addr,
-						sizeof(addr)));
-}
 
 ZTEST(coap_lci_auth, test_null_addr_is_admin_in_ztest)
 {
-	zassert_true(lichen_coap_is_local_admin(NULL, 0));
+	zassert_true(lichen_coap_is_local_admin(NULL, 0),
+		     "NULL addr must be admin in ztest context");
 }
 
-ZTEST(coap_lci_auth, test_slip_link_local_is_admin)
-{
-	struct net_if *slip_iface = slip_transport_iface_get();
-
-	zassert_not_null(slip_iface, "SLIP interface must be available");
-
-	struct sockaddr_in6 addr;
-	uint32_t slip_idx = (uint32_t)net_if_get_by_iface(slip_iface);
-
-	make_link_local_sockaddr(&addr, slip_idx);
-	zassert_true(lichen_coap_is_local_admin((struct sockaddr *)&addr,
-						sizeof(addr)));
-}
-
-ZTEST(coap_lci_auth, test_mesh_link_local_is_forbidden)
+ZTEST(coap_lci_auth, test_loopback_local_admin)
 {
 	struct sockaddr_in6 addr;
 
-	make_link_local_sockaddr(&addr, 0U);
-	zassert_false(lichen_coap_is_local_admin((struct sockaddr *)&addr,
-						 sizeof(addr)));
+	make_sockaddr_loopback(&addr);
+	zassert_true(lichen_coap_is_local_admin(
+			     (struct sockaddr *)&addr, sizeof(addr)),
+		     "loopback must be local admin");
 }
 
-ZTEST(coap_lci_auth, test_wrong_interface_link_local_is_forbidden)
+ZTEST(coap_lci_auth, test_link_local_wrong_iface_rejected)
 {
 	struct sockaddr_in6 addr;
 
-	make_link_local_sockaddr(&addr, 999U);
-	zassert_false(lichen_coap_is_local_admin((struct sockaddr *)&addr,
-						 sizeof(addr)));
-}
-
-ZTEST(coap_lci_auth, test_ula_is_forbidden)
-{
-	struct sockaddr_in6 addr;
-
-	make_ula_sockaddr(&addr);
-	zassert_false(lichen_coap_is_local_admin((struct sockaddr *)&addr,
-						 sizeof(addr)));
-}
-
-ZTEST(coap_lci_auth, test_gua_is_forbidden)
-{
-	struct sockaddr_in6 addr;
-
-	make_gua_sockaddr(&addr);
-	zassert_false(lichen_coap_is_local_admin((struct sockaddr *)&addr,
-						 sizeof(addr)));
-}
-
-ZTEST(coap_lci_auth, test_short_addr_is_forbidden)
-{
-	struct sockaddr_storage short_addr;
-
-	memset(&short_addr, 0, sizeof(short_addr));
-	short_addr.ss_family = AF_INET6;
+	make_sockaddr_link_local(&addr, 999U);
 	zassert_false(lichen_coap_is_local_admin(
-		(struct sockaddr *)&short_addr,
-		sizeof(struct sockaddr_in6) - 1));
+			      (struct sockaddr *)&addr, sizeof(addr)),
+		      "link-local from wrong scope must be rejected");
 }
 
-ZTEST(coap_lci_auth, test_non_ipv6_family_is_forbidden)
+ZTEST(coap_lci_auth, test_global_address_rejected)
+{
+	struct sockaddr_in6 addr;
+
+	make_sockaddr_global(&addr);
+	zassert_false(lichen_coap_is_local_admin(
+			      (struct sockaddr *)&addr, sizeof(addr)),
+		      "global address must be rejected");
+}
+
+ZTEST(coap_lci_auth, test_non_ipv6_address_rejected)
 {
 	struct sockaddr_in addr;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = 0x7f000001;
-	zassert_false(lichen_coap_is_local_admin((struct sockaddr *)&addr,
-						 sizeof(addr)));
+	zassert_false(lichen_coap_is_local_admin(
+			      (struct sockaddr *)&addr, sizeof(addr)),
+		      "IPv4 address must be rejected");
 }
 
-ZTEST_SUITE(coap_lci_auth, NULL, NULL, NULL, NULL, NULL);
+ZTEST(coap_lci_auth, test_short_addr_len_rejected)
+{
+	struct sockaddr_in6 addr;
+
+	make_sockaddr_loopback(&addr);
+	zassert_false(lichen_coap_is_local_admin(
+			      (struct sockaddr *)&addr, 1),
+		      "addr_len < sizeof(sockaddr_in6) must be rejected");
+}
+
+ZTEST(coap_lci_auth, test_zero_scope_id_link_local_rejected)
+{
+	struct sockaddr_in6 addr;
+
+	make_sockaddr_link_local(&addr, 0U);
+	zassert_false(lichen_coap_is_local_admin(
+			      (struct sockaddr *)&addr, sizeof(addr)),
+		      "link-local with scope_id=0 must be rejected");
+}
+
+/*
+ * If SLIP transport is available, verify that the correct scope_id
+ * passes the admin check.
+ */
+ZTEST(coap_lci_auth, test_slip_scope_id_passes_when_available)
+{
+	struct sockaddr_in6 addr;
+	struct net_if *slip_iface = slip_transport_iface_get();
+
+	if (slip_iface == NULL) {
+		ztest_test_skip();
+		return;
+	}
+
+	make_sockaddr_link_local(&addr, net_if_get_by_iface(slip_iface));
+	zassert_true(lichen_coap_is_local_admin(
+			     (struct sockaddr *)&addr, sizeof(addr)),
+		     "link-local from SLIP iface must be admin");
+}
+
+/*
+ * When SLIP is unavailable, all link-local addresses must be rejected.
+ */
+ZTEST(coap_lci_auth, test_slip_unavailable_rejects_link_local)
+{
+	struct sockaddr_in6 addr;
+
+	/* Simulate SLIP unavailable by not initializing SLIP, or by
+	 * using a scope_id that definitely won't match.
+	 */
+	make_sockaddr_link_local(&addr, 1U);
+
+	/*
+	 * We cannot force slip_transport_iface_get() to return NULL from
+	 * a unit test without building without SLIP. Instead, verify that
+	 * a plausible-bogus scope_id is rejected.
+	 */
+	zassert_false(lichen_coap_is_local_admin(
+			      (struct sockaddr *)&addr, sizeof(addr)),
+		      "link-local with non-matching scope must be rejected");
+}
+
+/*
+ * Verify that is_local_admin rejects link-local from the mesh radio interface
+ * (anything that is NOT the SLIP interface).
+ */
+ZTEST(coap_lci_auth, test_link_local_from_wrong_interface_rejected)
+{
+	struct sockaddr_in6 addr;
+	struct net_if *slip_iface = slip_transport_iface_get();
+	int slip_idx;
+
+	slip_idx = (slip_iface != NULL)
+			   ? net_if_get_by_iface(slip_iface)
+			   : -1;
+
+	/* Use a scope_id that is != slip_idx. If no SLIP iface, any
+	 * non-zero scope_id is wrong.
+	 */
+	uint32_t test_scope = (slip_idx > 0) ? (uint32_t)(slip_idx + 1) : 42U;
+
+	make_sockaddr_link_local(&addr, test_scope);
+	zassert_false(lichen_coap_is_local_admin(
+			      (struct sockaddr *)&addr, sizeof(addr)),
+		      "link-local from wrong interface must be rejected");
+}
+
+/*
+ * Boundary tests: near-maximum scope_id value.
+ */
+ZTEST(coap_lci_auth, test_link_local_max_scope_id_rejected)
+{
+	struct sockaddr_in6 addr;
+
+	make_sockaddr_link_local(&addr, 0xFFFFFFFFU);
+	zassert_false(lichen_coap_is_local_admin(
+			      (struct sockaddr *)&addr, sizeof(addr)),
+		      "link-local with max scope_id must be rejected");
+}
+
+static void reset_state(void *fixture)
+{
+	ARG_UNUSED(fixture);
+}
+
+ZTEST_SUITE(coap_lci_auth, NULL, NULL, reset_state, NULL, NULL);

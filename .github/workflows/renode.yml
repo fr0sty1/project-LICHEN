@@ -52,6 +52,14 @@ jobs:
           # Run tests that don't require firmware - just the TCP bridge protocol
           uv run pytest -v tests/sim/test_renode_server.py --timeout=60
 
+      - name: Run Nucleo entropy reset regression test
+        working-directory: python
+        env:
+          LICHEN_RUN_RENODE_INTEGRATION: "1"
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
+        run: |
+          uv run pytest -v -k renode_entropy --timeout=30
+
       - name: Validate platform files load
         run: |
           # Test that all platform description files parse without errors
