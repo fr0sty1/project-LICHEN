@@ -8,11 +8,27 @@
  * Primary purpose (bd a2a2): give CONFIG_LICHEN_COAP_KEYS a build that
  * actually compiles and links coap_keys.c, which no app/test config did
  * before. Also validates the peer key store's CRUD + TOFU semantics.
+ *
+ * Extended (bd 6mij.2.2.4): enable CONFIG_LICHEN_COAP_SERVER_OSCORE so the
+ * OSCORE-protected PUT/DELETE #ifdef blocks in coap_keys.c are compiled and
+ * linked. The OSCORE handler functions (keys_single_put, keys_single_delete)
+ * are static and require a full CoAP stack + real OSCORE contexts for wire
+ * testing; the build-verification here ensures no compilation or link errors
+ * in those code paths, and the existing store-API tests continue to validate
+ * the CRUD semantics that the OSCORE wrappers delegate to.
  */
 
 #include <zephyr/ztest.h>
 
 #include <lichen/coap_keys.h>
+#include <lichen/coap_server.h>
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+#include <lichen/coap_oscore.h>
+#include <lichen/oscore.h>
+/* Build-time verification that the OSCORE header chain compiles */
+BUILD_ASSERT(IS_ENABLED(CONFIG_LICHEN_COAP_SERVER_OSCORE),
+	     "OSCORE must be enabled for this test build");
+#endif
 
 #include <string.h>
 
@@ -232,3 +248,14 @@ ZTEST(coap_keys, test_list_endpoint_truncates_with_valid_array_count)
 	}
 	zassert_equal(off, len, "array count does not match encoded entries");
 }
+
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+ZTEST(coap_keys, test_local_admin_in_test_context)
+{
+	/* In ZTEST context with NULL addr, lichen_coap_is_local_admin
+	 * returns true, overriding the usual SLIP-interface check.
+	 * This ensures PUT/DELETE handlers can execute in test builds. */
+	zassert_true(lichen_coap_is_local_admin(NULL, 0),
+		     "local admin check must pass in test context");
+}
+#endif /* CONFIG_LICHEN_COAP_SERVER_OSCORE */

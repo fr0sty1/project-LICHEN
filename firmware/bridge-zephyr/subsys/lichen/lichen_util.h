@@ -86,7 +86,10 @@ static inline void secure_zero(void *ptr, size_t len)
         printk("WARN: secure_zero called with NULL pointer\n");
         return;
     }
-    if (len == 0) return;
+    if (len == 0) {
+        compiler_barrier();
+        return;
+    }
     volatile uint8_t *p = ptr;
 
     /* For larger buffers, use word-aligned writes.
