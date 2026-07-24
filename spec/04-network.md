@@ -55,12 +55,19 @@ Each LICHEN LoRa mesh is a leaf cluster. Primary 02xx addresses enable seamless 
 
 ### 6.2. Interface Identifier (IID) Derivation
 
-IID is derived from Ed25519 public key via the unified normative function in 06-security.md §8.5 (MUST match test vectors exactly; see also 03-addressing.md:12-18, draft-lichen-schnorr-00, rust/lichen-link/src/identity.rs:24, python/src/lichen/crypto/identity.py):
+IID and primary 02xx address are derived from Ed25519 public key via the unified normative function in 06-security.md §8.5 (MUST match test vectors exactly; see also 03-addressing.md:12-18, draft-lichen-schnorr-00, rust/lichen-core/src/addr.rs:70, python/src/lichen/crypto/identity.py):
 
 ```
-hash = SHA-256(pubkey)  // or hash_32 variant per vectors
-IID = hash[0:8]
-IID[0] &= 0b11111101    // clear U/L bit (RFC 4291)
+// IID (8 bytes, link-local and lower half of primary address)
+hash256 = SHA-256(pubkey)
+IID = hash256[0:8]
+IID[0] &= 0b11111101                      // clear U/L bit (RFC 4291)
+
+// Primary 02xx address (16 bytes, all routable traffic)
+hash512 = SHA-512(pubkey)
+addr[0] = 0x02                             // Yggdrasil 0200::/7 prefix
+addr[1..8] = hash512[0:7]                 // upper 7 bytes for /7 dispersion
+addr[8..16] = IID                         // lower 64 bits == IID (key binding)
 ```
 
 **Stable cryptographic IIDs only.** The IID binds the IPv6 address to the Ed25519 keypair used for signatures and OSCORE (no new key material). Temporary (RFC 4941) and opaque (RFC 7217) IIDs MUST NOT be used. See 06-security.md §8.7 for full analysis and privacy considerations. Short address derivation for 6LoWPAN remains compatible but defers to the key-derived IID for identity.
