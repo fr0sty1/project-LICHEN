@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-qjo9",
   "title": "[codereview-pass3.2] added add_route delegation bypasses DAO sequence replay protection and parent_map rebuild in DaoManager.process_dao; direct table mutation bypasses security",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

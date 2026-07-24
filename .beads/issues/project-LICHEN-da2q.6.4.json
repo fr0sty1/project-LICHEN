@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.6.4",
   "title": "Vectors: hash based channel selection algorithm",
   "description": "Test vectors for CCP-6 hash functions and channel selection.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Run lora_ping on T1000-E hardware",
   "description": "Hardware backend for project-LICHEN-m5m1.3. No T1000-E CDC/UF2 device was attached during validation; only /dev/tty.usbserial-A704ESXG was present. Flashing would also overwrite device firmware and requires explicit human authorization. Build, flash through the documented serial DFU path, observe post-reset console/radio TX independently, and restore desired firmware afterward.",
   "acceptance_criteria": "1. A T1000-E is explicitly authorized and identified by its documented USB identity. 2. Current lora_ping firmware is built and flashed without touching unrelated devices. 3. Post-reset console plus independent radio/TX evidence is captured with artifact hash. 4. Device is restored if requested.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

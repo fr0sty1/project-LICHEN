@@ -3,7 +3,7 @@
   "title": "Run final RPL regression gates",
   "description": "Run formatting, direct ipv6/link/rpl/node tests, strict scoped Clippy, integrity searches, and diff checks without unrelated edits or commit.",
   "acceptance_criteria": "All requested commands pass with exact results recorded; prior canonical/full-path tests pass; git diff --check passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

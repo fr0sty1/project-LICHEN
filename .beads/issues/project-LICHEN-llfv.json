@@ -2,7 +2,7 @@
   "id": "project-LICHEN-llfv",
   "title": "codereview-P2 no tests for freq filter",
   "description": "python/src/lichen/sim/medium.py:158 - New frequency filter in get_rx_candidates has no unit test coverage in test_vectors.py or simulation tests. CCP-9 rendezvous test vectors (test/vectors/ccp9-rendezvous.json missing) would fail to validate cross-impl parity. Add test before closing da2q.9.1. P2 test integrity.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

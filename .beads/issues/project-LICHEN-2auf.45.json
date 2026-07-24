@@ -3,7 +3,7 @@
   "title": "Repair Rust CoAP block and request IDs",
   "description": "Implement RFC-aware Block2 offset validation and collision-resistant process-local MID/token generation. Do not transplant weak checkpoint wall-clock logic.",
   "acceptance_criteria": "Legal SZX changes preserve offsets; gaps/overlaps reject; concurrent requests do not reuse MID/token pairs; clock failure cannot yield fixed IDs; tests/clippy and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
