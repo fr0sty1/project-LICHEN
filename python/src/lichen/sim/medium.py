@@ -43,7 +43,8 @@ class Medium:
     """Radio medium that tracks transmissions and handles propagation.
 
     Supports multi-channel operation with independent collision/propagation
-    oracles per channel. For CCP-12 rendezvous, get_rx_candidates,
+    oracles per channel and per-channel utilization tracking for CCP-16
+    load balancing. For CCP-12 rendezvous, get_rx_candidates,
     detect_activity, and start_tx use hop channel computed from SFN/EUI
     (via node's hop_schedule or synchronized_hop_channel helper). Keeps
     LR-FHSS support via rx_frequency_hz filter.
@@ -51,6 +52,7 @@ class Medium:
     Attributes:
         propagation: The propagation model used for path loss calculations.
         noise_floor_dbm: Receiver noise floor in dBm.
+        channel_load: Dict mapping channel number to active TX count.
     """
 
     def __init__(
@@ -70,6 +72,7 @@ class Medium:
         self.density_estimate = 0.0
         self._active_transmissions: list[Transmission] = []
         self._tx_positions: dict[str, tuple[float, float, float]] = {}
+        self.channel_load: dict[int, int] = {}
 
     def start_tx(
         self,
@@ -100,6 +103,7 @@ class Medium:
         self._active_transmissions.append(tx)
         self._tx_positions[tx.id] = position
         self.density_estimate = len(self._active_transmissions) / 10.0
+        self.channel_load[channel] = self.channel_load.get(channel, 0) + 1
         return tx
 
     def end_tx(self, transmission_id: str) -> None:
@@ -108,10 +112,18 @@ class Medium:
         Args:
             transmission_id: ID of the transmission to remove.
         """
+        removed = [tx for tx in self._active_transmissions if tx.id == transmission_id]
         self._active_transmissions = [
             tx for tx in self._active_transmissions if tx.id != transmission_id
         ]
         self._tx_positions.pop(transmission_id, None)
+        for tx in removed:
+            ch = tx.channel
+            current = self.channel_load.get(ch, 0)
+            if current <= 1:
+                self.channel_load.pop(ch, None)
+            else:
+                self.channel_load[ch] = current - 1
 
     def get_active_transmissions(self, time_us: int) -> list[Transmission]:
         """Get all transmissions active at a given time.
@@ -127,6 +139,20 @@ class Medium:
         return [
             tx for tx in self._active_transmissions if tx.start_time_us <= time_us < tx.end_time_us
         ]
+
+    def get_channel_load(self, channel: int) -> int:
+        """Get the number of active transmissions on a given channel.
+
+        CCP-16 requires per-channel load awareness for balanced channel
+        selection. This provides the current active TX count per channel.
+
+        Args:
+            channel: The channel number to query.
+
+        Returns:
+            Active transmission count for the channel (0 if none).
+        """
+        return self.channel_load.get(channel, 0)
 
     def get_rx_candidates(
         self,
