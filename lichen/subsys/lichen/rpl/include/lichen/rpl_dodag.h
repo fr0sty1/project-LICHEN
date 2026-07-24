@@ -44,7 +44,7 @@ extern "C" {
 #define LICHEN_RPL_INFINITE_RANK          0xFFFF
 #define LICHEN_RPL_ROOT_RANK              256
 #define LICHEN_RPL_DEFAULT_MIN_HOP_RANK   256
-#define LICHEN_RPL_DEFAULT_MAX_RANK_INC   2048
+#define LICHEN_RPL_DEFAULT_MAX_RANK_INC   1024
 #define LICHEN_RPL_DEFAULT_SWITCH_THRESH  192
 
 /* TDMA constants synced from constants.toml; see spec/02a-coordinated-capacity.md §2a.2
