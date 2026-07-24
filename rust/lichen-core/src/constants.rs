@@ -72,3 +72,7 @@ pub const SENML_TELEMETRY_UNIT_RH: &str = "%RH";
 pub const SENML_TELEMETRY_UNIT_PA: &str = "Pa";
 pub const TDMA_GUARD_MS: u32 = 100;
 pub const TDMA_SLOT_MS: u32 = 250;
+pub const TDMA_BEACON_TIMEOUT_SUPERFRAMES: u32 = 3;
+pub const TDMA_CONTENTION_RETRIES: u32 = 5;
+pub const TDMA_CONTENTION_BACKOFF_MIN_MS: u32 = 100;
+pub const TDMA_CONTENTION_BACKOFF_MAX_MS: u32 = 1000;
