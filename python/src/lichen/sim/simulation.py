@@ -291,18 +291,21 @@ class Simulation:
         y: float,
         z: float,
         slot_range: tuple[int, int] = (0, 10),
+        gateway_centric: bool = False,
     ) -> SimNode:
         if gateway_id in self._nodes:
             raise ValueError(f"Node '{gateway_id}' already exists")
         node = SimNode(id=gateway_id, position=(x, y, z), connected=True)
         self._nodes[gateway_id] = node
-        self._gateways[gateway_id] = {
-            "node": node,
+        weakref_slot: dict[str, object] = {
             "slot_range": slot_range,
             "backbone_id": f"bb-{gateway_id}",
             "owned_nodes": set(),
             "negotiation_state": "idle",
         }
+        self._gateways[gateway_id] = weakref_slot
+        if gateway_centric:
+            self._enable_gateway_centric(gateway_id)
         self._observers.notify(
             "on_node_added",
             sim_id=self._id,
@@ -312,6 +315,59 @@ class Simulation:
             z=z,
         )
         return node
+
+    def _enable_gateway_centric(self, gateway_id: str) -> None:
+        """Mark a gateway as gateway-centric: it advertises the GC flag
+        in DIOs, and nodes that join its DODAG suppress announces."""
+        node = self._nodes.get(gateway_id)
+        if node is not None:
+            node.join_dodag(gateway_centric=True)
+        gw = self._gateways.get(gateway_id)
+        if gw is not None:
+            gw["gateway_centric"] = True
+        self._debug_log(
+            "gateway_centric_enabled",
+            sim_id=self._id,
+            gateway_id=gateway_id,
+        )
+
+    def get_gateway_centric_gateways(self) -> list[str]:
+        """Return IDs of gateways with gateway-centric mode enabled."""
+        gc_gateways: list[str] = []
+        for gid, gw in self._gateways.items():
+            if gw.get("gateway_centric"):
+                gc_gateways.append(gid)
+        return gc_gateways
+
+    def join_gateway_dodag(self, node_id: str, gateway_id: str) -> None:
+        """Simulate a node joining a gateway's DODAG.
+
+        If the gateway is gateway-centric, the node sets gateway_centric=True
+        and scales its announce interval accordingly.
+        """
+        node = self._nodes.get(node_id)
+        if node is None:
+            raise ValueError(f"Node '{node_id}' does not exist")
+        gw = self._gateways.get(gateway_id)
+        is_centric = bool(gw.get("gateway_centric")) if gw else False
+        node.join_dodag(gateway_centric=is_centric)
+        self._debug_log(
+            "node_joined_dodag",
+            sim_id=self._id,
+            node_id=node_id,
+            gateway_id=gateway_id,
+            gateway_centric=is_centric,
+        )
+
+    def leave_dodag(self, node_id: str) -> None:
+        """Simulate a node losing its DODAG connection.
+
+        Starts the grace period before normal announce interval resumes.
+        """
+        node = self._nodes.get(node_id)
+        if node is None:
+            raise ValueError(f"Node '{node_id}' does not exist")
+        node.leave_dodag(self._current_time_us)
 
     def remove_node(self, node_id: str) -> None:
         """Remove a node from the simulation.

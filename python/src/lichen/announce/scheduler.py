@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INTERVAL_MS = 300_000
 DEFAULT_JITTER_MS = 30_000
+GATEWAY_CENTRIC_INTERVAL_MS = 1_800_000  # 30 min while joined to gateway-centric DODAG
+DODAG_LOST_GRACE_MS = 60_000  # resume normal announces after 60s without DODAG
 
 
 class AnnounceTransmitter(Protocol):
@@ -74,6 +76,8 @@ class AnnounceScheduler:
     _seq_num: int = field(default=0, init=False, repr=False)
     _running: bool = field(default=False, init=False, repr=False)
     _task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
+    _gateway_centric: bool = field(default=False, init=False, repr=False)
+    _dodag_lost_time_ms: int = field(default=0, init=False, repr=False)
 
     # Callbacks for persistence (optional)
     _on_seq_change: Callable[[int], None] | None = field(
@@ -100,6 +104,52 @@ class AnnounceScheduler:
     def get_seq_num(self) -> int:
         """Get the current sequence number (for persistence save)."""
         return self._seq_num
+
+    def set_gateway_centric(self, enabled: bool, now_ms: int | None = None) -> None:
+        """Set or clear the gateway-centric flag, which scales the announce interval.
+
+        When enabled (joined to a gateway-centric DODAG), the announce interval
+        increases to GATEWAY_CENTRIC_INTERVAL_MS (30 min). When disabled
+        (DODAG lost), a grace period DODAG_LOST_GRACE_MS applies before
+        resuming the normal interval.
+
+        Args:
+            enabled: True if joined to a gateway-centric DODAG.
+            now_ms: Current monotonic time in milliseconds (or None to use asyncio loop time).
+        """
+        changed = self._gateway_centric != enabled
+        self._gateway_centric = enabled
+        if enabled:
+            self._dodag_lost_time_ms = 0
+        elif now_ms is not None and changed:
+            self._dodag_lost_time_ms = now_ms
+
+    def is_gateway_centric(self) -> bool:
+        """Whether the scheduler is in gateway-centric mode."""
+        return self._gateway_centric
+
+    def effective_interval_ms(self, now_ms: int | None = None) -> int:
+        """Return the announce interval based on gateway-centric state and grace period.
+
+        Args:
+            now_ms: Current monotonic time in milliseconds (or None to use asyncio loop time).
+
+        Returns:
+            The effective interval in milliseconds.
+        """
+        if self._gateway_centric:
+            return GATEWAY_CENTRIC_INTERVAL_MS
+        if self._dodag_lost_time_ms > 0:
+            if now_ms is None:
+                try:
+                    now_ms = int(asyncio.get_running_loop().time() * 1000)
+                except RuntimeError:
+                    now_ms = 0
+            elapsed = now_ms - self._dodag_lost_time_ms
+            if elapsed < DODAG_LOST_GRACE_MS:
+                return GATEWAY_CENTRIC_INTERVAL_MS
+            self._dodag_lost_time_ms = 0
+        return self.config.interval_ms
 
     def set_on_seq_change(self, callback: Callable[[int], None]) -> None:
         """Set callback for sequence number changes (for persistence).
@@ -241,8 +291,10 @@ class AnnounceScheduler:
             try:
                 await self._send_announce()
 
+                now_ms = int(asyncio.get_running_loop().time() * 1000)
+                interval = self.effective_interval_ms(now_ms)
                 jitter = random.randint(0, self.config.jitter_ms)
-                delay = (self.config.interval_ms + jitter) / 1000
+                delay = (interval + jitter) / 1000
                 await asyncio.sleep(delay)
 
             except asyncio.CancelledError:

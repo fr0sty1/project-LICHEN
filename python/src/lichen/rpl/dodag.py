@@ -195,6 +195,7 @@ class DodagState:
             return
 
         self.parents[neighbor_id] = ParentCandidate(neighbor_id, dio.rank, link_etx)
+        self.gateway_centric = dio.gateway_centric
         self.select_parent()
 
     def _adopt_version(self, dio: DIO) -> None:

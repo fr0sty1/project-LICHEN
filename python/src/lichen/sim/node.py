@@ -53,11 +53,14 @@ class SimNode:
     rx_callbacks: RxCallbacks | None = field(repr=False)
     metrics: NodeMetrics = field(repr=False)
     current_channel: int = 0
-    seed: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
-    seed: int = 0
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
+    dodag_member: bool = False
+    dodag_gateway_centric: bool = False
+    dodag_lost_time_us: int = 0
+    announce_interval_us: int = 300_000_000  # 5 min in microseconds
+    announce_last_time_us: int = 0
 
     def __init__(
         self,
@@ -74,9 +77,11 @@ class SimNode:
         seed: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
-        seed: int = 0,
         sfn: int = 0,
         num_channels: int = 8,
+        dodag_member: bool = False,
+        dodag_gateway_centric: bool = False,
+        announce_interval_us: int = 300_000_000,
     ) -> None:
         self.id = id
         self.position = position
@@ -88,7 +93,6 @@ class SimNode:
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.seed = seed
         self.current_channel = current_channel
-        self.seed = seed
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
@@ -102,6 +106,11 @@ class SimNode:
             transitions=NODE_STATE_TRANSITIONS,
             name=f"sim-node[{self.id}]",
         )
+        self.dodag_member = dodag_member
+        self.dodag_gateway_centric = dodag_gateway_centric
+        self.dodag_lost_time_us = 0
+        self.announce_interval_us = announce_interval_us
+        self.announce_last_time_us = 0
 
     @property
     def state(self) -> NodeState:
@@ -141,6 +150,50 @@ class SimNode:
             True if the node is connected, False otherwise.
         """
         return self.connected
+
+    def join_dodag(self, gateway_centric: bool = False) -> None:
+        """Join a DODAG, optionally gateway-centric.
+
+        When gateway-centric, the announce interval switches to 30 minutes
+        to reduce channel utilization. Resets the DODAG-lost timer.
+        """
+        self.dodag_member = True
+        self.dodag_gateway_centric = gateway_centric
+        self.dodag_lost_time_us = 0
+
+    def leave_dodag(self, now_us: int) -> None:
+        """Leave the DODAG, starting a grace period before announce rate resets."""
+        if self.dodag_member:
+            self.dodag_member = False
+            self.dodag_lost_time_us = now_us
+
+    def is_dodag_member(self) -> bool:
+        return self.dodag_member
+
+    def is_gateway_centric(self) -> bool:
+        return self.dodag_member and self.dodag_gateway_centric
+
+    def effective_announce_interval_us(self, now_us: int) -> int:
+        """Return the effective announce interval based on DODAG state.
+
+        Gateway-centric nodes use a 30-minute interval to suppress announces.
+        A 60-second grace period applies after DODAG loss before resuming
+        normal announces.
+        """
+        if self.dodag_gateway_centric:
+            self.announce_interval_us = 1_800_000_000  # 30 min
+        elif self.dodag_lost_time_us > 0:
+            elapsed = now_us - self.dodag_lost_time_us
+            if elapsed < 60_000_000:  # 60s grace
+                return self.announce_interval_us
+            self.dodag_lost_time_us = 0
+        return self.announce_interval_us
+
+    def synchronized_hop_channel(self, sfn: int | None = None) -> int:
+        """Alias for get_hop_channel, used by simulation.py for CCP-12 rendezvous.
+        Matches spec/02a-coordinated-capacity.md:120.
+        """
+        return self.get_hop_channel(sfn)
 
     def get_hop_channel(self, sfn: int | None = None) -> int:
         """Derive hop channel from hop_schedule+SFN (CCP-12) or current_channel.

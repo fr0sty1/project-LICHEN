@@ -47,6 +47,7 @@ from lichen.l2_payload import (
 )
 from lichen.link.link_layer import LinkLayer, ReceiveError, RxFrame
 from lichen.radio.base import Radio
+from lichen.rpl.dodag import DodagState
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
 from lichen.state_machine import StateMachine
@@ -148,6 +149,7 @@ class Node:
     gradient_table: GradientTable = field(default_factory=GradientTable)
     router: Router = field(init=False, repr=False)
     announce_processor: AnnounceProcessor = field(init=False, repr=False)
+    dodag: DodagState | None = field(default=None, repr=False)
 
     # Peer database - nodes we know about
     peer_db: dict[bytes, PeerIdentity] = field(default_factory=dict, repr=False)
@@ -588,6 +590,22 @@ class Node:
             _delayed_send(),
             name=f"scheduled-send-{delay_ms}ms",
         )
+
+    def update_dodag_scheduler(self) -> None:
+        """Propagate DODAG gateway-centric state to the announce scheduler.
+
+        Call whenever DODAG state changes (join, leave, DIO with new flags).
+        """
+        if self.dodag is not None:
+            try:
+                loop = asyncio.get_running_loop()
+                now_ms = int(loop.time() * 1000)
+            except RuntimeError:
+                now_ms = 0
+            self._scheduler.set_gateway_centric(
+                self.dodag.is_joined() and self.dodag.gateway_centric,
+                now_ms=now_ms,
+            )
 
     def get_status(self) -> dict[str, object]:
         """Get node status for debugging/monitoring.
