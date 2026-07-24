@@ -246,6 +246,14 @@ def _decode_cbor_sequence(data: bytes) -> list[Any]:
     return items
 
 
+def _validate_int(value: object, name: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be an integer, not bool")
+    if not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer, not {type(value).__name__}")
+    return value
+
+
 def _validate_bytes(value: object, name: str, length: int | None = None) -> bytes:
     if not isinstance(value, bytes):
         raise ValueError(f"{name} must be a byte string")
@@ -393,7 +401,7 @@ class EdhocInitiator:
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
             )
-            plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
+            plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
             pt2_items = _decode_cbor_sequence(plaintext_2)
             if len(pt2_items) != 2:
                 raise ValueError(
@@ -439,7 +447,7 @@ class EdhocInitiator:
             iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
             a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
             ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_r)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()
@@ -572,7 +580,7 @@ class EdhocResponder:
                 raise ValueError(
                     f"Malformed message_1: expected 4 or 5 CBOR items, got {len(items)}"
                 )
-            method_corr = items[0]
+            method_corr = _validate_int(items[0], "METHOD_CORR")
             received_method = method_corr // 4
             corr = method_corr % 4
             if received_method != self.method:
@@ -582,8 +590,9 @@ class EdhocResponder:
                 )
             if corr not in (0, 1, 2, 3):
                 raise ValueError(f"Invalid corr value: {corr}")
-            if items[1] != SUITE_0:
-                raise ValueError(f"Unsupported cipher suite: {items[1]}")
+            suite = _validate_int(items[1], "SUITES_I")
+            if suite != SUITE_0:
+                raise ValueError(f"Unsupported cipher suite: {suite}")
             g_x = _validate_bytes(items[2], "G_X", X25519_KEY_LEN)
             c_i = _decode_connection_id(items[3])
             if len(items) == 5:
@@ -615,7 +624,7 @@ class EdhocResponder:
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
             )
-            ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
+            ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
             th_3_input = (
                 cbor2.dumps(self._th_2)
                 + cbor2.dumps(ciphertext_2)
@@ -673,7 +682,7 @@ class EdhocResponder:
                 mac_3,
             ])
             VerifyKey(peer_pubkey).verify(m_3, signature_3)
-            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(self.identity.pubkey)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()

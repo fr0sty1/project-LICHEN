@@ -42,7 +42,6 @@ extern "C" {
  */
 
 struct lichen_announce_view {
-	uint8_t flags;
 	uint8_t hop_count;
 	uint8_t rx_channel;
 	uint16_t wire_seq_num;
@@ -210,6 +209,26 @@ uint16_t lichen_announce_sched_get_seq(void);
 int lichen_announce_sched_send_now(void);
 
 /**
+ * @brief Get the current rx_channel value announced in scheduler's announces.
+ *
+ * Returns the rx_channel (0-7) that the scheduler includes in announce
+ * messages for CCP-9 rendezvous. Queried by LCI to expose the value
+ * through the Local Client Interface.
+ *
+ * @return Current rx_channel value
+ */
+uint8_t lichen_announce_sched_get_rx_channel(void);
+
+/**
+ * @brief Set the rx_channel value for future announces.
+ *
+ * Changes take effect on the next announce transmission.
+ *
+ * @param rx_channel Channel value (0-7). Values >= 8 are clamped to 0.
+ */
+void lichen_announce_sched_set_rx_channel(uint8_t rx_channel);
+
+/**
  * @brief Update application data for future announces.
  *
  * Changes take effect on the next announce transmission.
@@ -220,6 +239,17 @@ int lichen_announce_sched_send_now(void);
  */
 int lichen_announce_sched_set_app_data(const uint8_t *_Nullable app_data,
 				       size_t app_data_len);
+
+/**
+ * @brief Notify the announce scheduler of DODAG join/leave state.
+ *
+ * When joined to a DODAG, the announce interval is suppressed
+ * (gateway-centric mode). On DODAG loss, a timer is started;
+ * if it expires without rejoining, the normal interval resumes.
+ *
+ * @param joined true if joined to a DODAG, false if left
+ */
+void lichen_announce_sched_set_dodag_state(bool joined);
 
 #endif /* CONFIG_LICHEN_ANNOUNCE_SCHEDULER */
 

@@ -453,7 +453,7 @@ static int test_signed_frame_cross_language_oracle(void)
 		"bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dc"
 		"ca3ace783caf4d3950699082eea0f5b09";
 	static const char wire_hex[] =
-		"3d21123456beef147369676e6564"
+		"3d25123456beef147369676e6564"
 		"bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dc"
 		"ca3ace783caf4d3950699082eea0f5b09";
 	uint8_t seed[32], expected_private[32], expected_public[32];

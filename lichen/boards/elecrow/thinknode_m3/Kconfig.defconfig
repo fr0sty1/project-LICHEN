@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+if BOARD_THINKNODE_M3
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_THINKNODE_M3

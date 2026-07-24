@@ -755,7 +755,7 @@ fn verify_icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> bool {
     icmpv6_checksum(src, dst, icmpv6_msg).is_ok_and(|computed| received == computed)
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn verify_udp_checksum(src: &Addr, dst: &Addr, udp_datagram: &[u8]) -> bool {
     if udp_datagram.len() < UDP_HEADER_LEN {
         return false;

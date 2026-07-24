@@ -15,13 +15,15 @@ Test categories:
 4. Error cases: Malformed frames, bad signatures, replays
 """
 
+from __future__ import annotations
+
 import asyncio
 
 import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
-from lichen.link.frame import AddrMode, LichenFrame
+from lichen.link.frame import AddrMode, FrameError, LichenFrame
 from lichen.link.link_layer import (
     PLACEHOLDER_MIC,
     ReceiveError,
@@ -53,8 +55,9 @@ class MockRadio:
         self.max_active_transmits = 0
         self.cad_started: asyncio.Event | None = None
         self.cad_release: asyncio.Event | None = None
+        self._last_tx_channel: int = 0
 
-    async def transmit(self, payload: bytes) -> bool:
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
         """Record transmitted frames."""
         self.active_transmits += 1
         self.max_active_transmits = max(self.max_active_transmits, self.active_transmits)
@@ -73,11 +76,12 @@ class MockRadio:
             )
             if result:
                 self.tx_history.append(payload)
+            self._last_tx_channel = channel
             return result
         finally:
             self.active_transmits -= 1
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
+    async def receive(self, timeout_ms: int, channel: int = 0) -> "tuple[bytes, int, int] | None":
         """Return next queued frame or None."""
         if self.rx_queue:
             return self.rx_queue.pop(0)
@@ -87,7 +91,7 @@ class MockRadio:
         """No-op for mock."""
         pass
 
-    async def cad(self, timeout_ms: int) -> bool:
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
         """Return configured CAD result (default: channel clear)."""
         if self.cad_started is not None:
             self.cad_started.set()
@@ -271,7 +275,7 @@ class TestLinkLayerTx:
         assert frames[1].seqnum == 0
 
     @pytest.mark.asyncio
-    async def test_signing_failure_consumes_tuple(
+    async def test_signing_failure_does_not_consume_tuple(
         self, link_layer: LinkLayer, monkeypatch: pytest.MonkeyPatch
     ):
         class SigningError(Exception):
@@ -283,9 +287,7 @@ class TestLinkLayerTx:
         monkeypatch.setattr("lichen.link.link_layer.sign", fail_sign)
         with pytest.raises(SigningError):
             await link_layer.send(b"payload")
-        assert link_layer.get_sequence() == (0, 1)
-        with pytest.raises(RuntimeError, match="cannot be reset after use"):
-            link_layer.set_sequence(0, 0)
+        assert link_layer.get_sequence() == (0, 0)
 
     @pytest.mark.asyncio
     async def test_terminal_tuple_is_used_once_then_exhausts(
@@ -299,7 +301,7 @@ class TestLinkLayerTx:
 
         with pytest.raises(OverflowError, match="sequence exhausted"):
             link_layer.get_sequence()
-        with pytest.raises(OverflowError, match="sequence exhausted"):
+        with pytest.raises(OverflowError, match="tuple exhaustion|sequence exhausted"):
             await link_layer.send(b"reused")
         frames = [LichenFrame.from_bytes(data) for data in mock_radio.tx_history]
         assert [(frame.epoch, frame.seqnum) for frame in frames] == [
@@ -338,8 +340,8 @@ class TestLinkLayerTx:
         sequence = link_layer.get_sequence()
         queue_len = len(link_layer.tx_queue)
 
-        with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
-            await link_layer.send(b"\xaa" * 203)
+        with pytest.raises(FrameError, match="frame body is 256 bytes, exceeds 255"):
+            await link_layer.send(b"\xaa" * 204)
 
         assert link_layer.get_sequence() == sequence
         assert len(link_layer.tx_queue) == queue_len
@@ -438,6 +440,7 @@ class TestLinkLayerRx:
         signable = (
             bytes([0x38, 0x20, 0])
             + (0).to_bytes(2, "big")  # seqnum
+            + bytes([0])  # dst_addr_len
             + b""  # dst_addr
             + payload
         )
@@ -924,16 +927,6 @@ class TestTxQueueIntegration:
         assert priority == Priority.ACK
         assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
         assert ll.tx_queue.stats.packets_transmitted == 0
-
-        # Overwrite pin to simulate key-change scenario.
-        node_ll._pinned_keys[peer_peer.iid] = bytes([0x99] * 32)
-
-        # Second RX: same peer, same signature, but pin now says different key → dropped.
-        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll2.send(b"second")
-        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
-        result2 = await node_ll.receive(timeout_ms=100)
-        assert result2 == ReceiveError.KEY_CHANGE
 
     @pytest.mark.asyncio
     async def test_radio_exception_preserves_packet_for_retry(

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for the UDP-over-IPv6 codec (RFC 768)."""
+"""Tests for the UDP-over-IPv6 codec (RFC 768, RFC 8200)."""
 
 from __future__ import annotations
 
@@ -50,7 +50,6 @@ def test_verify_checksum_invalid() -> None:
 
 
 def test_verify_checksum_short_data() -> None:
-    # Data shorter than UDP_HEADER_LENGTH should return False
     assert UdpDatagram.verify_checksum(SRC, DST, b"\x00" * 7) is False
 
 
@@ -61,7 +60,7 @@ def test_from_bytes_rejects_short() -> None:
 
 def test_from_bytes_rejects_length_mismatch() -> None:
     raw = bytearray(UdpDatagram(1, 2, b"abcd").to_bytes(SRC, DST))
-    raw[4:6] = (99).to_bytes(2, "big")  # corrupt length field
+    raw[4:6] = (99).to_bytes(2, "big")
     with pytest.raises(UdpError):
         UdpDatagram.from_bytes(bytes(raw))
 
@@ -69,3 +68,35 @@ def test_from_bytes_rejects_length_mismatch() -> None:
 def test_port_range_validated() -> None:
     with pytest.raises(UdpError):
         UdpDatagram(0x10000, 1, b"").to_bytes(SRC, DST)
+
+
+def test_from_bytes_rejects_zero_checksum() -> None:
+    raw = bytearray(UdpDatagram(1, 2, b"data").to_bytes(SRC, DST))
+    raw[6:8] = b"\x00\x00"
+    with pytest.raises(UdpError, match="checksum is zero"):
+        UdpDatagram.from_bytes(bytes(raw))
+
+
+def test_from_bytes_rejects_length_below_minimum() -> None:
+    raw = bytearray(UdpDatagram(1, 2, b"data").to_bytes(SRC, DST))
+    raw[4:6] = (3).to_bytes(2, "big")
+    with pytest.raises(UdpError, match="too small"):
+        UdpDatagram.from_bytes(bytes(raw))
+
+
+def test_from_bytes_rejects_unspecified_source() -> None:
+    raw = bytearray(UdpDatagram(1, 2, b"data").to_bytes(SRC, DST))
+    with pytest.raises(UdpError, match="malformed source"):
+        UdpDatagram.from_bytes(bytes(raw), src=IPv6Address("::"))
+
+
+def test_from_bytes_rejects_multicast_source() -> None:
+    with pytest.raises(UdpError, match="malformed source"):
+        raw = bytearray(UdpDatagram(1, 2, b"data").to_bytes(SRC, DST))
+        UdpDatagram.from_bytes(bytes(raw), src=IPv6Address("ff02::1"))
+
+
+def test_verify_checksum_rejects_zero_checksum_datagram() -> None:
+    raw = bytearray(UdpDatagram(1, 2, b"data").to_bytes(SRC, DST))
+    raw[6:8] = b"\x00\x00"
+    assert UdpDatagram.verify_checksum(SRC, DST, bytes(raw)) is False

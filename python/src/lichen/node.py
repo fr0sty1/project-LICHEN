@@ -32,7 +32,7 @@ from typing import Protocol, cast
 
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.processor import AnnounceProcessor
-from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
+from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig, StartupCoordinator
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.gradient import GradientTable
 from lichen.ipv6.addr import make_ula
@@ -157,6 +157,11 @@ class Node:
     _receive_task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
     _lifecycle_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
 
+    # Startup coordinator - density-aware listen phase
+    _startup_coordinator: StartupCoordinator = field(
+        default_factory=StartupCoordinator, init=False, repr=False
+    )
+
     # Announce scheduler - manages periodic announce transmission
     # Why separate: Single responsibility, persistence support, testability.
     _scheduler: AnnounceScheduler = field(init=False, repr=False)
@@ -211,7 +216,8 @@ class Node:
             config=SchedulerConfig(
                 interval_ms=self.config.announce_interval_ms,
                 jitter_ms=self.config.announce_jitter_ms,
-                initial_delay_ms=5_000,  # Why 5s: Let node discover peers first.
+                initial_delay_ms=0,  # StartupCoordinator handles density-aware delay
+                startup_coordinator=self._startup_coordinator,
             ),
         )
 
@@ -412,6 +418,10 @@ class Node:
 
         kind = classify_l2_payload(payload)
         body = l2_payload_body(payload)
+
+        # Track every heard node for density-aware startup delay.
+        # Why here: We want to listen to ALL traffic, not just announces.
+        self._startup_coordinator.record_heard(rx.sender.iid)
 
         if (
             kind == L2PayloadKind.ROUTING

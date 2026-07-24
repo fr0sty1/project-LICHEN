@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "CCP-9 rendezvous vectors.",
+  "description": "CCP-9 rendezvous vectors using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code).",
   "vectors": [
     {
       "name": "announce_rendezvous_channel",
@@ -30,7 +30,7 @@
     },
     {
       "name": "announce_channel_parse_roundtrip",
-      "description": "Announce packet with channel field encodes/decodes consistently. Tests L2 payload dispatch for rendezvous metadata. Independent oracle bytes from spec L2 dispatch + wire format (no code-under-test as oracle).",
+      "description": "Announce packet with channel field encodes/decodes consistently. Tests L2 payload dispatch for rendezvous metadata. Independent oracle bytes from spec L2 dispatch + wire format (no LICHEN code).",
       "channel": 2,
       "l2_dispatch": 21,
       "encoded": "15010200000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",

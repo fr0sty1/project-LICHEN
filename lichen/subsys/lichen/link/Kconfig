@@ -142,6 +142,47 @@ config LICHEN_TDMA_BEACON_SYNC
 	help
 	  Nodes sync time and slots from gateway periodic beacons.
 
+config LICHEN_TDMA_BEACON_TIMEOUT
+	int "Beacon listening timeout in superframes"
+	depends on LICHEN_TDMA_BEACON_SYNC
+	default 3
+	range 1 20
+	help
+	  Number of superframes a node waits for a valid beacon in ACQUIRING
+	  state before giving up (BEACON_TIMEOUT per 09-packets-timing.md FSM).
+	  3 superframes default matches spec; higher values tolerate longer
+	  beacon intervals at the cost of longer join time.
+
+config LICHEN_TDMA_CONTENTION_RETRIES
+	int "Maximum DAO retransmissions in contention slot"
+	depends on LICHEN_TDMA
+	default 5
+	range 1 50
+	help
+	  Maximum number of times a node retransmits its DAO (slot request)
+	  in the contention slot during ACQUIRING state. Exhaustion triggers
+	  re-scan for beacon. Default 5 balances join reliability vs. airtime.
+
+config LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS
+	int "Minimum CSMA backoff before contention TX (ms)"
+	depends on LICHEN_TDMA
+	default 100
+	range 10 5000
+	help
+	  Minimum random backoff before transmitting in the contention slot.
+	  CSMA/CA: pick uniform random in [min_ms, max_ms). Default 100 ms
+	  for SF10 250 ms slot.
+
+config LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS
+	int "Maximum CSMA backoff before contention TX (ms)"
+	depends on LICHEN_TDMA
+	default 1000
+	range 10 10000
+	help
+	  Maximum random backoff before transmitting in the contention slot.
+	  CSMA/CA: pick uniform random in [min_ms, max_ms). Default 1000 ms
+	  avoids collision storms when many nodes join simultaneously.
+
 config LICHEN_MULTI_CHANNEL_ENABLED
 	bool "Multi-channel TX/RX coordination (CCP-9/12)"
 	depends on LICHEN_LINK

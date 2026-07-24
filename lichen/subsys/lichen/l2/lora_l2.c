@@ -37,6 +37,7 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
+#include <lichen/op_class.h>
 #include <lichen/tx_queue.h>
 
 #include "lichen_util.h"
@@ -673,6 +674,11 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA);
+    if (lora_data.cca_enabled) {
+        LOG_DBG("lora_l2: CCA enabled, threshold %d dBm, timeout %d ms",
+                CONFIG_LICHEN_LORA_CCA_THRESHOLD_DBM,
+                CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS);
+    }
     lora_data.rx_channel = 0;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     lichen_duty_cycle_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
@@ -749,12 +755,23 @@ int lichen_lora_l2_start(void)
      * Matches spec; preamble 8 default. New Kconfigs enable DIO/hash SF
      * assignment and gateway CAD for multi-SF (CONFIG_LICHEN_GATEWAY_MULTI_SF).
      *
+     * RADIO CAPABILITY NOTE: Different LoRa transceivers have different SF ranges:
+     *   - SX1261/62, SX1276/77/78/79: SF5-SF12 (SX126x), SF6-SF12 (SX127x)
+     *   - LLCC68:               SF5-SF11 only (no SF12)
+     *   - LR1110:               SF5-SF12
+     * The selected SF must be supported by the board's radio hardware.
+     * lora_config() at runtime validates this and returns -EINVAL if the
+     * radio cannot support the requested datarate. See BUILD_ASSERT below
+     * for compile-time range checking.
+     *
      * Stack-local struct is safe: lora_config() copies values.
      *
      * RX then TX pass programs both directions (RX config reused by recv).
      * CAD scan added in rx_thread under multi-SF config (lr1110 IRQ extended
      * for PREAMBLEDETECTED per ASSIGNED_SF in DIO).
      */
+    BUILD_ASSERT(CONFIG_LICHEN_DEFAULT_SF >= 6 && CONFIG_LICHEN_DEFAULT_SF <= 12,
+                 "LICHEN_DEFAULT_SF must be 6-12; note LLCC68 only supports SF5-SF11");
     struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
         .bandwidth = BW_125_KHZ,
@@ -767,7 +784,9 @@ int lichen_lora_l2_start(void)
 
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: RX config failed (%d)", ret);
+        LOG_ERR("lora_l2: RX config failed with freq=%u bw=%d sf=%d cr=%d power=%d (%d)",
+                config.frequency, config.bandwidth, config.datarate,
+                config.coding_rate, config.tx_power, ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
@@ -775,12 +794,14 @@ int lichen_lora_l2_start(void)
     config.tx = true;              /* pass 2: program TX + airtime cache */
     ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: TX config failed (%d)", ret);
+        LOG_ERR("lora_l2: TX config failed with freq=%u bw=%d sf=%d cr=%d power=%d (%d)",
+                config.frequency, config.bandwidth, config.datarate,
+                config.coding_rate, config.tx_power, ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
 
-    if (lora_transition(LORA_RUNNING) != 0) {
+    if (lora_transition_from(LORA_STOPPED, LORA_RUNNING) != 0) {
         k_mutex_unlock(&lora_mutex);
         return -EIO;
     }
@@ -1032,19 +1053,18 @@ int lichen_lora_l2_deinit(void)
     }
     int mutex_ret = k_mutex_init(&lora_mutex);
     if (mutex_ret != 0) {
-        /* k_mutex_init() should not fail in kernel mode, but log if it does.
-         * There is no recovery action - we've already committed to resetting
-         * the module and proceeding is better than leaving it unusable. */
-        LOG_ERR("lora_l2: k_mutex_init failed (%d), module may be unstable", mutex_ret);
+        LOG_ERR("lora_l2: k_mutex_init failed (%d)", mutex_ret);
     }
 
-    /* Also reinitialize tx_buf_mutex for completeness during abort recovery.
-     * In normal shutdown, we already acquired/released it above to wait for TX,
-     * but in abort scenarios the mutex state may be corrupted. */
-    mutex_ret = k_mutex_init(&tx_buf_mutex);
-    if (mutex_ret != 0) {
-        LOG_ERR("lora_l2: k_mutex_init(tx_buf_mutex) failed (%d), module may be unstable",
-                mutex_ret);
+    int mutex_ret2 = k_mutex_init(&tx_buf_mutex);
+    if (mutex_ret2 != 0) {
+        LOG_ERR("lora_l2: k_mutex_init(tx_buf_mutex) failed (%d)", mutex_ret2);
+    }
+
+    if (mutex_ret != 0 || mutex_ret2 != 0) {
+        LOG_ERR("lora_l2: mutex reinit failure, module is in unstable state");
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EIO;
     }
 
     /*
@@ -1102,6 +1122,23 @@ int lichen_lora_l2_deinit(void)
 }
 
 
+bool lichen_lora_perform_cca(uint32_t timeout_ms)
+{
+    if (lora_data.lora_dev == NULL) {
+        return false;
+    }
+
+    bool busy = false;
+    int ret = lora_cad(lora_data.lora_dev, K_MSEC(timeout_ms), &busy);
+    if (ret < 0) {
+        if (ret != -ENOSYS) {
+            LOG_WRN("lora_l2: CCA failed (%d), treating as clear", ret);
+        }
+        return true;
+    }
+    return !busy;
+}
+
 int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
 {
     if (data == NULL) {
@@ -1131,19 +1168,35 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
     }
     lora_data.rx_channel = effective_channel;
 
-    /* Extend LoRa driver for channel param: reconfigure frequency for data channels.
-     * Control CH0 uses Kconfig base freq; data channels use base + ch*spacing.
-     * Matches lr1110/lora_config path and test vectors (channel field in announce).
+    /* Configure data channels via operating class lookup table (CCP-3/CCP-4).
+     * CH0 uses the base frequency from the plan; data channels use
+     * base + ch * spacing derived from the plan's channel mask.
+     * Falls back to Kconfig values when no plan entry matches.
      */
     if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED) && effective_channel > 0 && lora_data.lora_dev != NULL) {
-        uint32_t ch_freq = CONFIG_LICHEN_LORA_FREQUENCY + (uint32_t)effective_channel * 200000U;
+        uint32_t plan_freq = CONFIG_LICHEN_LORA_FREQUENCY;
+        uint32_t plan_bw = BW_125_KHZ;
+        uint8_t plan_sf = SF_10;
+        uint8_t plan_cr = CR_4_5;
+        int8_t plan_power = CONFIG_LICHEN_LORA_TX_POWER;
+
+        const struct lichen_op_class_params *oc = lichen_op_class_lookup(CONFIG_LICHEN_OP_CLASS_ID);
+        if (oc != NULL) {
+            plan_freq = oc->frequency_hz;
+            plan_bw = oc->bandwidth_hz;
+            plan_sf = oc->spreading_factor;
+            plan_cr = oc->coding_rate;
+            plan_power = oc->tx_power_dbm;
+        }
+
+        uint32_t ch_freq = plan_freq + (uint32_t)effective_channel * 200000U;
         struct lora_modem_config ch_config = {
             .frequency = ch_freq,
-            .bandwidth = BW_125_KHZ,
-            .datarate = SF_10,
-            .coding_rate = CR_4_5,
+            .bandwidth = plan_bw,
+            .datarate = plan_sf,
+            .coding_rate = plan_cr,
             .preamble_len = 8,
-            .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
+            .tx_power = plan_power,
             .tx = true,
         };
         int cfg_ret = lora_config(lora_data.lora_dev, &ch_config);
@@ -1274,31 +1327,14 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         return -EBUSY;
     }
 
-    /* Explicit runtime read of LICHEN_LORA_CCA_ENABLE state (lora_data.cca_enabled)
-     * before lora_cad() per project-LICHEN-525f. Mutex held during CAD.
-     * Busy abort path has single unlocks per mutex, returns -EBUSY correctly
-     * (verified via native_sim). Legacy lora_perform_cca block removed to
-     * eliminate duplicate abort paths and compile-time CONFIG dependency.
-     * firmware/bridge-zephyr legacy copy remains out of scope for this fix.
-     */
-    bool cca_enabled = lora_data.cca_enabled;  /* explicit runtime read */
-    if (cca_enabled) {
-        bool busy = false;
-        int cad_ret = lora_cad(lora_data.lora_dev,
-                               K_MSEC(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS),
-                               &busy);
-        if (cad_ret < 0) {
-            if (cad_ret != -ENOSYS) {
-                LOG_WRN("lora_l2: CAD failed (%d), proceeding with TX", cad_ret);
-            }
-        } else if (busy) {
-            LOG_INF("lora_l2: CCA detected busy channel, aborting TX");
-            k_mutex_unlock(&modem_mutex);
-            atomic_dec(&tx_pending);
-            secure_zero(tx_buf, sizeof(tx_buf));
-            k_mutex_unlock(&tx_buf_mutex);
-            return -EBUSY;
-        }
+    /* CCP-15 CCA: check channel before TX. Mutex held during CAD. */
+    if (lora_data.cca_enabled && !lichen_lora_perform_cca(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS)) {
+        LOG_INF("lora_l2: CCA detected busy channel, aborting TX");
+        k_mutex_unlock(&modem_mutex);
+        atomic_dec(&tx_pending);
+        secure_zero(tx_buf, sizeof(tx_buf));
+        k_mutex_unlock(&tx_buf_mutex);
+        return -EBUSY;
     }
 
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);

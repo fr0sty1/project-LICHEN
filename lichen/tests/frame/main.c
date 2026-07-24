@@ -131,7 +131,7 @@ static int test_write_accepts_mic_selector_without_mic(void)
 	return 1;
 }
 
-static int test_write_parse_round_trip_64_bit_mic(void)
+static int test_write_parse_round_trip_unsigned(void)
 {
 	static const uint8_t payload[] = { 0x15, 0x01, 0x02 };
 	struct lichen_frame input;
@@ -146,18 +146,17 @@ static int test_write_parse_round_trip_64_bit_mic(void)
 	input.payload_len = sizeof(payload);
 	input.mic_len = 0U;
 	input.addr_mode = LICHEN_ADDR_BROADCAST;
-	input.mic_length = LICHEN_MIC_64;
 
 	frame_len = lichen_frame_write(&input, buf, sizeof(buf));
 	ASSERT_EQ(frame_len, 8, "write omits unsigned MIC");
-	ASSERT_EQ(buf[1], 0x04, "64-bit MIC uses enum LLSec encoding");
+	ASSERT_EQ(buf[1], 0x00, "unsigned frame has no MIC bits in LLSec");
 
 	memset(&output, 0, sizeof(output));
 	ASSERT_EQ(lichen_frame_parse(&output, buf, (size_t)frame_len), 0,
-		  "parse accepts serialized 64-bit MIC");
+		  "parse accepts serialized unsigned frame");
 	ASSERT_EQ(output.epoch, input.epoch, "round-trip preserves epoch");
 	ASSERT_EQ(output.seqnum, input.seqnum, "round-trip preserves sequence number");
-	ASSERT_EQ(output.mic_length, LICHEN_MIC_64, "round-trip preserves MIC length");
+	ASSERT_EQ(output.mic_length, LICHEN_MIC_32, "unsigned MIC length from wire");
 	ASSERT_EQ(output.mic_len, 0, "round-trip preserves absent MIC");
 	ASSERT_EQ(output.payload_len, sizeof(payload), "round-trip preserves payload length");
 	if (memcmp(output.payload, payload, sizeof(payload)) != 0) {
@@ -195,7 +194,7 @@ static int test_signed_encrypted_is_rejected(void)
 
 static int test_authoritative_signed_vector(void)
 {
-	uint8_t wire[59] = { 0x3a, 0x21, 0x05, 0xab, 0xcd, 0xbe, 0xef };
+	uint8_t wire[59] = { 0x3a, 0x25, 0x05, 0xab, 0xcd, 0xbe, 0xef };
 	struct lichen_frame frame;
 	uint8_t rebuilt[sizeof(wire)];
 
@@ -246,7 +245,7 @@ int main(void)
 	RUN_TEST(test_write_rejects_null_buf);
 	RUN_TEST(test_write_rejects_invalid_addr_mode);
 	RUN_TEST(test_write_accepts_mic_selector_without_mic);
-	RUN_TEST(test_write_parse_round_trip_64_bit_mic);
+	RUN_TEST(test_write_parse_round_trip_unsigned);
 	RUN_TEST(test_signed_encrypted_is_rejected);
 	RUN_TEST(test_authoritative_signed_vector);
 

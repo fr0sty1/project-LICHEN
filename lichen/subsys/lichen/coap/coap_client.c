@@ -166,12 +166,17 @@ static void request_ctx_cancel_timeout_sync(struct request_ctx *ctx)
 static void request_ctx_cancel_coap_slot(struct request_ctx *ctx)
 {
 	/* WARNING: Internal Zephyr coap_client access (v3.7.0).
-	 * Relies on struct coap_client { ... struct k_mutex send_mutex; ... struct coap_client_request_state requests[CONFIG_COAP_CLIENT_MAX_INSTANCES]; ... } layout,
-	 * including request_ongoing, coap_request.cb/user_data, and is_observe fields.
+	 * Relies on struct coap_client { ... struct k_mutex send_mutex; ... struct coap_client_internal_request requests[CONFIG_COAP_CLIENT_MAX_REQUESTS]; ... } layout,
+	 * including request_ongoing, coap_request.cb/user_data, is_observe, and in_callback fields.
 	 * Used to neuter pending callback after timeout to avoid use-after-free on ctx.
+	 * After nullifying the slot, spins waiting for any in-flight callback to complete
+	 * so that the caller can safely free ctx without a concurrent use-after-free.
 	 * Update or replace with public API if Zephyr changes internals. See net/coap_client.c.
 	 * Pinned to Zephyr v3.7.0 per AGENTS.md initialization graph.
 	 */
+	size_t match_idx[ARRAY_SIZE(s_client.requests)];
+	size_t n_match = 0;
+
 	k_mutex_lock(&s_client.send_mutex, K_FOREVER);
 	for (size_t i = 0; i < ARRAY_SIZE(s_client.requests); i++) {
 		if (s_client.requests[i].request_ongoing &&
@@ -180,9 +185,24 @@ static void request_ctx_cancel_coap_slot(struct request_ctx *ctx)
 			s_client.requests[i].coap_request.user_data = NULL;
 			s_client.requests[i].request_ongoing = false;
 			s_client.requests[i].is_observe = false;
+			match_idx[n_match++] = i;
 		}
 	}
 	k_mutex_unlock(&s_client.send_mutex);
+
+	/*
+	 * Spin-wait for any in-flight callback that already read cb/user_data
+	 * before we nullified them. We set completed=1 before calling this
+	 * function, so the callback (coap_response_handler) will bail at its
+	 * completed check and return immediately. The in_callback atomic clears
+	 * after the callback returns in Zephyr's handle_response.
+	 * This wait prevents use-after-free of ctx from a concurrent callback.
+	 */
+	for (size_t j = 0; j < n_match; j++) {
+		while (atomic_get(&s_client.requests[match_idx[j]].in_callback) != 0) {
+			k_yield();
+		}
+	}
 }
 
 static int validate_path_components(const char * const *path, size_t *component_count)
@@ -319,49 +339,65 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 					      0, NULL, 0);
 			} else {
 #ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
-				if (ctx->oscore_ctx != NULL) {
-					/*
-					 * SECURITY: Unprotect OSCORE response before delivery.
-					 * The accumulated response_buf contains the OSCORE ciphertext.
-					 */
-					uint8_t plain_code;
-					uint8_t plaintext[LICHEN_COAP_MAX_PAYLOAD];
-					size_t plaintext_len = sizeof(plaintext);
-					uint8_t options[64];
-					size_t options_len = sizeof(options);
-					int ret;
+			if (ctx->oscore_ctx != NULL) {
+				uint8_t plain_code;
+				uint8_t plaintext[LICHEN_COAP_MAX_PAYLOAD];
+				size_t plaintext_len = sizeof(plaintext);
+				uint8_t options[64];
+				size_t options_len = sizeof(options);
+				/*
+				 * Response OSCORE option buffer. Start empty for ordinary
+				 * (no-PIV) responses; attempt to extract from raw recv_buf
+				 * for fresh-PIV responses.
+				 */
+				uint8_t oscore_opt[16];
+				size_t oscore_opt_len = 0;
+				int ret;
 
-					/*
-					 * Response OSCORE option (typically empty per RFC 8613 8.4).
-					 * Uses request_piv for nonce/KID binding (checkpoint fixed in oscore.c).
-					 */
-					uint8_t oscore_opt[1] = {0};
-					size_t oscore_opt_len = 0;
-
-					ret = oscore_unprotect_response(ctx->oscore_ctx,
-									ctx->request_piv,
-									ctx->request_piv_len,
-									oscore_opt, oscore_opt_len,
-									ctx->response_buf,
-									ctx->response_len,
-									&plain_code,
-									options, &options_len,
-									plaintext, &plaintext_len);
-					if (ret != OSCORE_OK) {
-						LOG_WRN("OSCORE unprotect response failed: %d", ret);
-						ctx->callback(ctx->user_data,
-							      LICHEN_COAP_ERR_OSCORE_UNPROTECT,
-							      0, NULL, 0);
-					} else {
-						ctx->callback(ctx->user_data, LICHEN_COAP_OK,
-							      plain_code, plaintext, plaintext_len);
+				/*
+				 * Attempt to extract OSCORE option from the raw response
+				 * in s_client.recv_buf (still valid after Zephyr's
+				 * handle_response). This is needed for fresh-PIV responses
+				 * where the OSCORE option contains a response PIV.
+				 */
+				struct coap_packet raw_resp;
+				ret = coap_packet_parse(&raw_resp, s_client.recv_buf,
+							sizeof(s_client.recv_buf), NULL, 0);
+				if (ret == 0) {
+					struct coap_option co_opt;
+					int nopt = coap_find_options(&raw_resp,
+								     COAP_OPTION_OSCORE,
+								     &co_opt, 1);
+					if (nopt > 0 && co_opt.len <= sizeof(oscore_opt)) {
+						memcpy(oscore_opt, co_opt.value, co_opt.len);
+						oscore_opt_len = co_opt.len;
 					}
-				} else {
-#endif
-					ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
-						      ctx->response_buf, ctx->response_len);
-#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
 				}
+
+				ret = oscore_unprotect_response(ctx->oscore_ctx,
+								ctx->request_piv,
+								ctx->request_piv_len,
+								oscore_opt, oscore_opt_len,
+								ctx->response_buf,
+								ctx->response_len,
+								&plain_code,
+								options, &options_len,
+								plaintext, &plaintext_len);
+				if (ret != OSCORE_OK) {
+					LOG_WRN("OSCORE unprotect response failed: %d", ret);
+					ctx->callback(ctx->user_data,
+						      LICHEN_COAP_ERR_OSCORE_UNPROTECT,
+						      0, NULL, 0);
+				} else {
+					ctx->callback(ctx->user_data, LICHEN_COAP_OK,
+						      plain_code, plaintext, plaintext_len);
+				}
+			} else {
+#endif
+				ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
+					      ctx->response_buf, ctx->response_len);
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+			}
 #endif
 			}
 		}

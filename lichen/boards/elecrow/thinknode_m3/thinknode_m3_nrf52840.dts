@@ -1,0 +1,189 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Elecrow ThinkNode M3 — nRF52840-QIAA + LR1110 + GPS
+ *
+ * All GPIO pin assignments verified against Meshtastic firmware:
+ *   variants/nrf52840/ELECROW-ThinkNode-M3/variant.h
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include "thinknode_m3-pinctrl.dtsi"
+
+/ {
+	model = "Elecrow ThinkNode M3";
+	compatible = "elecrow,thinknode-m3";
+
+	chosen {
+		zephyr,sram           = &sram0;
+		zephyr,flash          = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,console        = &cdc_acm_uart0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
+			label = "LED Red";
+		};
+		led1: led_1 {
+			gpios = <&gpio1 3 GPIO_ACTIVE_LOW>;
+			label = "LED Green";
+		};
+		led2: led_2 {
+			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
+			label = "LED Blue";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 12 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "User button";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	aliases {
+		led0      = &led0;
+		led1      = &led1;
+		led2      = &led2;
+		sw0       = &button0;
+		lora0     = &lora0;
+		watchdog0 = &wdt0;
+	};
+};
+
+&uicr {
+	gpio-as-nreset;
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&adc {
+	status = "okay";
+};
+
+/* PCF8563 real-time clock + sensors on I2C0 (SDA=P0.26, SCL=P0.27) */
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	pcf8563: pcf8563@51 {
+		compatible = "nxp,pcf8563";
+		reg = <0x51>;
+		status = "okay";
+	};
+};
+
+/*
+ * LR1110 on SPI2.
+ *
+ * Pin assignments verified against Meshtastic variant.h:
+ *   CS    = P1.12  SCK  = P1.13  MOSI = P1.14  MISO = P1.15
+ *   RESET = P1.10 (active-low NRESET)
+ *   BUSY  = P1.11 (active-high DIO2)
+ *   IRQ   = P1.08 (active-high DIO1/DIO9)
+ *
+ * DIO3 TCXO (3.3 V) and DIO5-DIO8 RF switch are internal to the
+ * LR1110 — no external nRF52840 GPIOs required for those signals.
+ *
+ * Node is left disabled here; enable via app overlay (status = "okay")
+ * and set zephyr,lora = &lora0 in chosen.
+ */
+&spi2 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	cs-gpios = <&gpio1 12 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi2_default>;
+	pinctrl-1 = <&spi2_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	lora0: lora@0 {
+		compatible = "semtech,lr1110";
+		reg = <0>;
+		status = "disabled";
+		reset-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+		busy-gpios  = <&gpio1 11 GPIO_ACTIVE_HIGH>;
+		dio9-gpios  = <&gpio1  8 GPIO_ACTIVE_HIGH>;
+		/* 1 MHz (from 8 MHz): conservative SPI clock — reduces USB-EasyDMA vs
+		 * SPIM-EasyDMA contention that intermittently wedges a transfer. */
+		spi-max-frequency = <1000000>;
+	};
+};
+
+/*
+ * GPS on UART1 (9600 baud) — disabled by default.
+ * Enable in app overlay for applications that use GPS.
+ *   TX = P0.22  RX = P0.20  RESET = P0.25  STANDBY = P0.21  EN = P0.14
+ */
+&uart1 {
+	compatible = "nordic,nrf-uarte";
+	status = "disabled";
+	current-speed = <9600>;
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-1 = <&uart1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/* Native USB — CDC-ACM console */
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/*
+		 * Adafruit UF2 bootloader layout for Elecrow ThinkNode M3:
+		 *   0x0000-0x0FFF  Nordic MBR (protected, not writeable via UF2)
+		 *   0x1000         APP_START_ADDR — where the Adafruit bootloader jumps
+		 *                  (no SoftDevice; LICHEN uses the Zephyr BLE stack)
+		 *   0xF4000+       Adafruit UF2 bootloader itself
+		 *   0xFF000        DFU settings (CRC + image_size)
+		 */
+		boot_partition: partition@1000 {
+			label = "mcuboot";
+			reg = <0x00001000 0x0000C000>;
+		};
+		slot0_partition: partition@d000 {
+			label = "image-0";
+			reg = <0x0000D000 0x00059000>;
+		};
+		slot1_partition: partition@66000 {
+			label = "image-1";
+			reg = <0x00066000 0x00059000>;
+		};
+		storage_partition: partition@bf000 {
+			label = "storage";
+			reg = <0x000bf000 0x00004000>;
+		};
+	};
+};

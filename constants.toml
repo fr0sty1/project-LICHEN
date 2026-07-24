@@ -109,3 +109,7 @@ telemetry_unit_pa = "Pa"
 [tdma]
 guard_ms = 100
 slot_ms = 250
+beacon_timeout_superframes = 3   # BEACON_TIMEOUT = N × superframe; node listens this many superframes for beacon before retry (09-packets-timing.md FSM)
+contention_retries = 5           # Max DAO retransmissions in contention slot during join (CSMA/CA backoff)
+contention_backoff_min_ms = 100  # Minimum CSMA backoff before contention slot TX
+contention_backoff_max_ms = 1000 # Maximum CSMA backoff before contention slot TX

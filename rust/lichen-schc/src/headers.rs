@@ -270,11 +270,11 @@ fn write_ipv6_header(
     payload_len: u16,
     next_header: u8,
     hop_limit: u8,
-    flow: (u8, u32),
+    traffic_class: u8,
+    flow_label: u32,
     src: &[u8; 16],
     dst: &[u8; 16],
 ) {
-    let (traffic_class, flow_label) = flow;
     out[0] = 0x60 | ((traffic_class >> 4) & 0x0F);
     out[1] = ((traffic_class & 0x0F) << 4) | ((flow_label >> 16) as u8 & 0x0F);
     out[2] = (flow_label >> 8) as u8;
@@ -467,7 +467,8 @@ fn build_coap_udp(
         udp_len,
         NEXT_HEADER_UDP,
         hop_limit,
-        (traffic_class, flow_label),
+        traffic_class,
+        flow_label,
         &src,
         &dst,
     );
@@ -667,7 +668,8 @@ impl PacketProfile for Icmpv6EchoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+        flow_label,
             &src,
             &dst,
         );
@@ -840,7 +842,8 @@ impl PacketProfile for RplDioProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+        flow_label,
             &src,
             &dst,
         );
@@ -991,7 +994,8 @@ impl PacketProfile for RplDaoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+        flow_label,
             &src,
             &dst,
         );

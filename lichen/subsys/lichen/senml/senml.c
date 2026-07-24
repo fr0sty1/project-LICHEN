@@ -206,10 +206,10 @@ static int encode_record(zcbor_state_t *state,
 			 bool is_first)
 
 {
-	/* Count map entries */
+	/* Count map entries (order matches encoding: BT, BN, N, U, V/VB/VS, T) */
 	size_t entries = 1; /* value always present */
-	if (is_first && pack->base_name != NULL) entries++;
 	if (is_first && pack->has_base_time) entries++;
+	if (is_first && pack->base_name != NULL) entries++;
 	if (rec->name != NULL) entries++;
 	if (rec->unit != NULL) entries++;
 	if (rec->has_time) entries++;
@@ -226,18 +226,18 @@ static int encode_record(zcbor_state_t *state,
 		return -ENOMEM;
 	}
 
-	/* Base name (first record only) */
-	if (is_first && pack->base_name != NULL) {
-		if (!zcbor_int32_put(state, SENML_LABEL_BN) ||
-		    !zcbor_tstr_put_term(state, pack->base_name, 256)) {
+	/* Base time (first record only) — encoded before base name per canonical CBOR ordering (RFC 8428 §6) */
+	if (is_first && pack->has_base_time) {
+		if (!zcbor_int32_put(state, SENML_LABEL_BT) ||
+		    !zcbor_uint64_put(state, pack->base_time)) {
 			return -ENOMEM;
 		}
 	}
 
-	/* Base time (first record only) */
-	if (is_first && pack->has_base_time) {
-		if (!zcbor_int32_put(state, SENML_LABEL_BT) ||
-		    !zcbor_uint64_put(state, pack->base_time)) {
+	/* Base name (first record only) */
+	if (is_first && pack->base_name != NULL) {
+		if (!zcbor_int32_put(state, SENML_LABEL_BN) ||
+		    !zcbor_tstr_put_term(state, pack->base_name, 256)) {
 			return -ENOMEM;
 		}
 	}

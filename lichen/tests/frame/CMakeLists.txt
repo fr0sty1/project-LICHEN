@@ -13,6 +13,10 @@ add_executable(frame_test
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/frame.c
 )
 
+target_compile_definitions(frame_test PRIVATE
+  LICHEN_MAX_FRAME_LEN=254
+  LICHEN_MAX_FRAME_BODY_LEN=250
+)
 target_compile_options(frame_test PRIVATE -Wall -Wextra -Werror)
 
 include(CTest)

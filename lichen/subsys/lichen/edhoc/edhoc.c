@@ -15,7 +15,6 @@
 
 #include <lichen/edhoc.h>
 #include <monocypher.h>
-#include <lichen/schnorr48.h>
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/hmac.h>
 #include <tinycrypt/aes.h>
@@ -44,8 +43,8 @@ BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_seed) >= EDHOC_ED25519_SK_
 	     "ed_seed too small for EDHOC_ED25519_SK_LEN");
 BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_pubkey) >= EDHOC_ED25519_PK_LEN,
 	     "ed_pubkey too small for EDHOC_ED25519_PK_LEN");
-BUILD_ASSERT(EDHOC_SIG_LEN == SCHNORR48_SIG_LEN,
-	     "EDHOC_SIG_LEN must match SCHNORR48_SIG_LEN");
+BUILD_ASSERT(EDHOC_SIG_LEN == 64,
+	     "EDHOC_SIG_LEN must be 64 for Ed25519");
 
 /* CBOR encoding buffer size */
 #define CBOR_BUF_SIZE 128
@@ -553,25 +552,19 @@ static int edhoc_sign(uint8_t sig[EDHOC_SIG_LEN],
 		      const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len)
 {
-	uint8_t privkey[SCHNORR48_PRIVKEY_LEN];
-	uint8_t computed_pub[SCHNORR48_PUBKEY_LEN];
-	schnorr48_derive_keypair(seed, privkey, computed_pub);
-	if (crypto_verify32(pubkey, computed_pub) != 0) {
-		crypto_wipe(privkey, sizeof(privkey));
-		crypto_wipe(computed_pub, sizeof(computed_pub));
-		return -EINVAL;
-	}
-	int ret = schnorr48_sign(privkey, pubkey, msg, msg_len, sig);
-	crypto_wipe(privkey, sizeof(privkey));
-	crypto_wipe(computed_pub, sizeof(computed_pub));
-	return ret;
+	uint8_t secret_key[64];
+	memcpy(secret_key, seed, 32);
+	memcpy(secret_key + 32, pubkey, 32);
+	crypto_eddsa_sign(sig, secret_key, msg, msg_len);
+	crypto_wipe(secret_key, sizeof(secret_key));
+	return 0;
 }
 
 static int edhoc_verify(const uint8_t *pubkey,
 			const uint8_t *sig,
 			const uint8_t *msg, size_t msg_len)
 {
-	return schnorr48_verify(pubkey, msg, msg_len, sig) ? 0 : -1;
+	return crypto_eddsa_check(sig, pubkey, msg, msg_len) == 0 ? 0 : -1;
 }
 
 int edhoc_initiator_init(struct edhoc_initiator *ctx,
@@ -859,7 +852,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/*
 	 * SECURITY: Constant-time signature verification.
-	 * - schnorr48_verify uses crypto_verify16 + nonzero accumulator (see schnorr48.c:156)
+	 * - crypto_eddsa_check uses Monocypher Ed25519 verification
 	 * - volatile prevents compiler from optimizing away the check
 	 * - No logging here to avoid timing variation from log backends
 	 * - Generic error hides which verification step failed
@@ -1461,7 +1454,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	/*
 	 * SECURITY: Constant-time signature verification.
-	 * - schnorr48_verify uses crypto_verify16 + nonzero accumulator (see schnorr48.c:156)
+	 * - crypto_eddsa_check uses Monocypher Ed25519 verification
 	 * - volatile prevents compiler from optimizing away the check
 	 * - No logging here to avoid timing variation from log backends
 	 * - Generic error hides which verification step failed

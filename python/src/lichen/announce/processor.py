@@ -58,6 +58,7 @@ class AnnounceResult:
     reject_reason: AnnounceRejectReason | None = None
     peer: PeerIdentity | None = None
     congestion: int | None = None
+    rx_channel: int | None = None
 
 
 @dataclass
@@ -182,6 +183,7 @@ class AnnounceProcessor:
             should_relay=should_relay,
             peer=peer,
             congestion=congestion,
+            rx_channel=announce.rx_channel,
         )
 
     def get_relay_message(self, announce: AnnounceMessage) -> AnnounceMessage | None:

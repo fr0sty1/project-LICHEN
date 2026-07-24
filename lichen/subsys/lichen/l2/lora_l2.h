@@ -260,6 +260,19 @@ bool lichen_lora_l2_needs_reinit(void);
 int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats);
 uint16_t adaptive_duty_permille(uint8_t density, uint8_t region);
 
+/**
+ * @brief Perform Clear Channel Assessment (CCA) on the LoRa radio
+ *
+ * Uses CAD (Channel Activity Detection) per CCP-15. Returns true if the
+ * channel is clear for transmission, false if busy. Threshold is set via
+ * CONFIG_LICHEN_LORA_CCA_THRESHOLD_DBM. Requires the modem mutex to be held.
+ *
+ * @param timeout_ms CAD timeout in milliseconds
+ *
+ * @return true if channel is clear, false if busy or CAD failed
+ */
+bool lichen_lora_perform_cca(uint32_t timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif

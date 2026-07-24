@@ -1173,6 +1173,16 @@ impl Router {
 
         best_neighbor
     }
+
+    /// Inject a DAO-derived route directly into the routing table (test only).
+    ///
+    /// `dst` is the target address (host route, /128). `path` is the address
+    /// sequence from the root outward (root first, dst last). Must have at least
+    /// 2 entries (root → dst).
+    #[cfg(test)]
+    pub fn inject_route(&mut self, dst: [u8; 16], path: &[[u8; 16]]) {
+        let _ = self.dao_manager.routing_table.add_route(dst, path);
+    }
 }
 
 #[cfg(feature = "std")]
@@ -2060,6 +2070,23 @@ mod tests {
 
         assert!(!root.process_dao_at_ms(&dao, target, link_local(3), 0));
         assert!(root.lookup_route(&target).is_none());
+        assert!(root.process_dao_at_ms(&dao, target, target, 0));
+        assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
+    }
+
+    #[test]
+    fn lookup_route_delegates_to_routing_table_and_guards_non_root() {
+        let root_addr = link_local(1);
+        let target = test_origin(2);
+
+        let non_root = Router::new(link_local(3), root_addr);
+        assert!(non_root.lookup_route(&target).is_none());
+
+        let mut root = Router::new_root(root_addr);
+        assert!(root.lookup_route(&target).is_none());
+
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao(root_addr);
         assert!(root.process_dao_at_ms(&dao, target, target, 0));
         assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
     }

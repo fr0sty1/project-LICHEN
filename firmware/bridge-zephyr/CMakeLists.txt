@@ -8,9 +8,7 @@ target_sources(app PRIVATE
     src/main.c
 )
 
-# LICHEN L2/common sources are built by the Zephyr module. Keep bridge-zephyr
-# as an application entrypoint so west workspaces do not link duplicate symbols
-# from the legacy vendored copy under firmware/bridge-zephyr/subsys/lichen.
+# LICHEN L2 headers from the module (needed for app includes like ipv6_addr.h, crash_info.h)
 target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../lichen/subsys/lichen/l2
 )

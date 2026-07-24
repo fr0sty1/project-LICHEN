@@ -76,7 +76,7 @@ const fn hex_digit(c: u8) -> u8 {
         b'0'..=b'9' => c - b'0',
         b'a'..=b'f' => c - b'a' + 10,
         b'A'..=b'F' => c - b'A' + 10,
-        _ => 0,
+        _ => panic!("invalid hex digit"),
     }
 }
 

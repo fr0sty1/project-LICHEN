@@ -269,6 +269,20 @@ impl Node {
 
 #[cfg(feature = "std")]
 impl RplNode {
+    /// Create a new root RPL node (DODAG root / border router).
+    ///
+    /// Uses memory-backed persistent storage for DAO replay state. Prefer
+    /// [`RplNode::provision_root`] for production use with durable storage.
+    pub fn new_root(node_id: NodeId) -> Self {
+        let mut storage = lichen_hal::storage::mem::MemStorage::new();
+        let (router, _state) = Router::provision_root(&mut storage, node_id.link_local_addr().0)
+            .expect("default root DODAG config is valid");
+        Self {
+            node: Node::new(node_id),
+            router,
+        }
+    }
+
     /// Create a new RPL-enabled node.
     #[cfg(test)]
     pub(crate) fn new(node_id: NodeId, dodag_id: [u8; 16]) -> Self {
@@ -593,6 +607,12 @@ impl RplNode {
 
     pub fn router(&self) -> &Router {
         &self.router
+    }
+
+    /// Mutable router access (test only).
+    #[cfg(test)]
+    pub fn router_mut(&mut self) -> &mut Router {
+        &mut self.router
     }
 
     /// Check if this node is the DODAG root.

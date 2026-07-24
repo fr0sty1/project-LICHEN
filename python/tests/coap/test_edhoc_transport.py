@@ -1003,10 +1003,12 @@ class TestEdhocResource:
         initiator = EdhocInitiator.create(alice_identity, c_i=b"\x00")
         message_2 = await edhoc._handle_message_1("alice", initiator.create_message_1())
         message_3 = initiator.process_message_2(message_2.payload, bob_identity.pubkey)
-        session = next(iter(edhoc._sessions.values()))
+        session_key, session = next(iter(edhoc._sessions.items()))
 
         now[0] = 22.0
-        response = await edhoc._handle_message_3("alice", message_3, session)
+        response = await edhoc._handle_message_3(
+            "alice", message_3, session_key, session
+        )
 
         assert response.code == aiocoap.BAD_REQUEST
         assert edhoc._sessions == {}
@@ -1043,11 +1045,13 @@ class TestEdhocResource:
         initiator = EdhocInitiator.create(alice_identity, c_i=b"\x00")
         response2 = await edhoc._handle_message_1("alice", initiator.create_message_1())
         msg3 = initiator.process_message_2(response2.payload, bob_identity.pubkey)
-        session = next(iter(edhoc._sessions.values()))
+        session_key, session = next(iter(edhoc._sessions.items()))
         corrupted_msg3 = bytes([msg3[0] ^ 1]) + msg3[1:]
 
         with pytest.raises(ValueError):
-            await edhoc._handle_message_3("alice", corrupted_msg3, session)
+            await edhoc._handle_message_3(
+                "alice", corrupted_msg3, session_key, session
+            )
 
         assert edhoc._sessions == {}
         assert context_store.get_sync("alice") is None
@@ -1057,8 +1061,10 @@ class TestEdhocResource:
             "alice", fresh.create_message_1()
         )
         fresh_msg3 = fresh.process_message_2(fresh_response2.payload, bob_identity.pubkey)
-        fresh_session = next(iter(edhoc._sessions.values()))
-        response3 = await edhoc._handle_message_3("alice", fresh_msg3, fresh_session)
+        fresh_key, fresh_session = next(iter(edhoc._sessions.items()))
+        response3 = await edhoc._handle_message_3(
+            "alice", fresh_msg3, fresh_key, fresh_session
+        )
 
         assert response3.code.is_successful()
         assert edhoc._sessions == {}
@@ -1077,11 +1083,11 @@ class TestEdhocResource:
         initiator = EdhocInitiator.create(alice_identity, c_i=b"\x00")
         response2 = await edhoc._handle_message_1("alice", initiator.create_message_1())
         msg3 = initiator.process_message_2(response2.payload, bob_identity.pubkey)
-        session = next(iter(edhoc._sessions.values()))
+        session_key, session = next(iter(edhoc._sessions.items()))
         responder = session["responder"]
 
         with pytest.raises(RuntimeError):
-            await edhoc._handle_message_3("alice", msg3, session)
+            await edhoc._handle_message_3("alice", msg3, session_key, session)
 
         assert responder._state.name == "FAILED"
         assert edhoc._sessions == {}

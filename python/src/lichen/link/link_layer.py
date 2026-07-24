@@ -39,7 +39,8 @@ from ..constants import (
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from ..gradient import MAX_ENTRIES
-from .frame import AddrMode, FrameError, LichenFrame, MicLength
+from .channel import select_channel
+from .frame import AddrMode, FrameError, LichenFrame, MAX_FRAME_BODY, MicLength
 from .replay import ReplayProtector
 from .tx_queue import Priority, TxQueue
 
@@ -201,6 +202,7 @@ class LinkLayer:
         default=None, repr=False
     )
     cad_enabled: bool = field(default=True)
+    num_channels: int = field(default=8)
     tx_queue: TxQueue = field(default_factory=TxQueue)
     persist_path: str | None = field(default=None, repr=False)
     # ponytail: random epoch in [128,255] for reboot resilience without flash.
@@ -214,6 +216,10 @@ class LinkLayer:
     )
     _tx_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
     _sequence_started: bool = field(default=False, init=False, repr=False)
+    _sfn: int = field(default=0, init=False, repr=False)
+    _announce_channels: dict[bytes, int] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
 
     def __post_init__(self) -> None:
@@ -239,7 +245,7 @@ class LinkLayer:
         if self._exhausted:
             logger.error("tuple space exhausted; key rotation required before further TX")
             # Fail closed per e220
-            raise RuntimeError("link tuple exhaustion")
+            raise OverflowError("link tuple exhaustion")
 
         epoch, seqnum = self._epoch, self._seqnum
         self._sequence_started = True
@@ -256,9 +262,34 @@ class LinkLayer:
             if self._epoch == 0:
                 self._exhausted = True
                 logger.warning("24-bit tuple space exhausted; will trigger rotation on next load")
+        else:
+            self._seqnum += 1
 
         self._save_persisted_state()
         return epoch, seqnum
+
+    def _tx_channel(self, dst_addr: bytes) -> int:
+        peer_eui64 = None
+        peer_known = False
+        announce_ch = None
+
+        if len(dst_addr) == 8:
+            peer_eui64 = dst_addr
+            peer = self.peer_lookup(dst_addr)
+            peer_known = peer is not None
+            announce_ch = self._announce_channels.get(dst_addr)
+
+        return select_channel(
+            peer_eui64=peer_eui64,
+            peer_known=peer_known,
+            announce_rx_channel=announce_ch,
+            sfn=self._sfn,
+            epoch=self._epoch,
+            n_channels=self.num_channels,
+        )
+
+    def _rx_channel(self) -> int:
+        return 0
 
     def _build_signable_data(
         self,
@@ -340,6 +371,13 @@ class LinkLayer:
                 f"requires {expected_len} bytes"
             )
 
+        # Validate payload size before signing (to_bytes will also validate)
+        body_len = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
+        if body_len > MAX_FRAME_BODY:
+            raise FrameError(
+                f"frame body is {body_len} bytes, exceeds {MAX_FRAME_BODY}"
+            )
+
         # Peek at current sequence numbers without consuming
         # Why peek first: If push() raises QueueFullError, we don't want to
         # waste a sequence number. Only consume after successful push.
@@ -378,6 +416,7 @@ class LinkLayer:
         # Queue with per-entry reservation for concurrent safety and specific completion
         reservation = self.tx_queue.push(
             frame_bytes,
+            dst_addr=dst_addr,
             priority=priority,
             deadline_ms=deadline_ms,
             return_reservation=True,
@@ -406,14 +445,18 @@ class LinkLayer:
                     CAD_MAX_CYCLES,
                     len(self.tx_queue),
                 )
+                # Signal all queued reservations as failed so senders don't hang
+                self.tx_queue.signal_all_pending(False)
                 break
             entry = self.tx_queue.reserve()
             if entry is None:
                 break
-            if await self.radio.transmit(entry.data):
+            ch = self._tx_channel(entry.dst_addr)
+            if await self.radio.transmit(entry.data, channel=ch):
                 transmitted_any = True
                 logger.debug(
-                    "TX success, %d packets remain queued",
+                    "TX success on channel %d, %d packets remain queued",
+                    ch,
                     len(self.tx_queue),
                 )
                 self.tx_queue.complete(entry, True)
@@ -446,7 +489,7 @@ class LinkLayer:
 
         for cycle in range(CAD_MAX_CYCLES):
             for attempt in range(CAD_MAX_BACKOFF_EXPONENT + 1):
-                channel_busy = await self.radio.cad(LORA_CAD_TIMEOUT_MS)
+                channel_busy = await self.radio.cad(LORA_CAD_TIMEOUT_MS, channel=self._rx_channel())
 
                 if not channel_busy:
                     logger.debug(
@@ -495,7 +538,7 @@ class LinkLayer:
             problem where all failures collapsed to None; callers can now
             distinguish security events from malformed frames from timeouts.
         """
-        result = await self.radio.receive(timeout_ms)
+        result = await self.radio.receive(timeout_ms, channel=self._rx_channel())
         if result is None:
             return None
 

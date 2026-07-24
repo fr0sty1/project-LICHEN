@@ -186,6 +186,19 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
         self.app_data = data;
     }
 
+    /// Set the current rx_channel for future announces (CCP-9 rendezvous).
+    ///
+    /// Changes take effect on the next announce transmission.
+    /// Values >= 8 are clamped to 0.
+    pub fn set_rx_channel(&mut self, channel: u8) {
+        self.config.rx_channel = if channel < 8 { channel } else { 0 };
+    }
+
+    /// Get the current rx_channel announced in scheduler's announces (CCP-9).
+    pub fn rx_channel(&self) -> u8 {
+        self.config.rx_channel
+    }
+
     /// Whether the scheduler is currently running.
     pub fn is_running(&self) -> bool {
         self.state.running.load(Ordering::SeqCst)

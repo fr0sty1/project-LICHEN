@@ -136,10 +136,6 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	if (frame->mic_len != mic_len) {
 		return -EINVAL;
 	}
-	if (frame->mic_length != LICHEN_MIC_32 &&
-	    frame->mic_length != LICHEN_MIC_64) {
-		return -EINVAL;
-	}
 
 	size_t non_payload_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) + mic_len;
 
@@ -158,13 +154,10 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	/* Length byte (excludes itself) */
 	buf[off++] = (uint8_t)(frame_len - 1);
 
-	/* LLSec byte */
+	/* LLSec byte — MIC length field derived solely from signature_present */
 	uint8_t llsec = frame->addr_mode & LLSEC_ADDR_MODE_MASK;
-	if (frame->mic_length == LICHEN_MIC_64) {
-		llsec |= (uint8_t)(LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT);
-	}
 	if (frame->signature_present) {
-		llsec |= LLSEC_SIG_PRESENT;
+		llsec |= (uint8_t)(LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT) | LLSEC_SIG_PRESENT;
 	}
 	if (frame->encrypted) {
 		llsec |= LLSEC_ENCRYPTED;

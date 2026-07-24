@@ -38,6 +38,8 @@ dependencies = [
     "filelock>=3.29,<3.30",
     "defusedxml>=0.7.1,<0.8",
     "intelhex>=2.3.0,<3.0",
+    "pytest>=9.1.1",
+    "jsonschema>=4.26.0",
 ]
 
 [project.optional-dependencies]
@@ -117,3 +119,9 @@ module = [
     "lichen.coap.secure",
 ]
 disable_error_code = ["misc"]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.4.0",
+]
+

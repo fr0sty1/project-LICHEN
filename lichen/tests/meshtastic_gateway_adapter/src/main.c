@@ -1527,7 +1527,6 @@ ZTEST(meshtastic_gateway_adapter,
 				    app_data, sizeof(app_data));
 
 	zassert_ok(gateway_announce_parse(announce, len, &view));
-	zassert_equal(view.flags, 0U);
 	zassert_equal(view.hop_count, 0U);
 	zassert_equal(view.seq_num, 0x1234U);
 	zassert_mem_equal(view.originator_iid, &announce[5], 8U);

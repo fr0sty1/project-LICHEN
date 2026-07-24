@@ -135,6 +135,7 @@ STATS_SECT_DECL(lichen_l2rx_stats) lichen_l2rx_stats;
 #include <lichen/link_ctx.h>
 #include <lichen/replay.h>
 #include <lichen/schc.h>
+#include <lichen/schnorr48.h>
 #define HAVE_LICHEN_LINK 1
 #else
 #define HAVE_LICHEN_LINK 0
@@ -610,7 +611,6 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 				uint8_t src_eui64[8])
 {
 	int ret;
-	size_t saved_out_len = *out_len;
 	const uint8_t *saved_peer_pubkey = ctx->peer_pubkey;
 	const uint8_t *saved_peer_eui64 = ctx->peer_eui64;
 	struct lichen_frame parsed;
@@ -628,6 +628,15 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	if (!parsed.signature_present) {
 		return -LICHEN_EAUTH;
 	}
+
+	/*
+	 * PERFORMANCE: Parse frame once, verify signature against all peers.
+	 * Previously called lichen_link_rx() per peer, which re-parsed the frame
+	 * and re-extracted the auth payload for each iteration (O(n) frame
+	 * parsing). Now uses the pre-parsed frame to call schnorr48_verify_frame()
+	 * directly per peer. Full authentication (SCHC decompress, replay check)
+	 * runs only once for the matching peer. (project-LICHEN-i1gk.100)
+	 */
 
 	/*
 	 * SECURITY: Constant-time peer iteration to prevent timing side-channel.
@@ -653,13 +662,19 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 			continue;
 		}
 
-		ctx->peer_pubkey = peer_table[i].pubkey;
-		ctx->peer_eui64 = peer_table[i].eui64;
-		*out_len = saved_out_len;
+		if (!schnorr48_pubkey_valid(peer_table[i].pubkey)) {
+			continue;
+		}
 
-		ret = lichen_link_rx(ctx, replay, frame, frame_len,
-				     out_ipv6, out_len, src_eui64);
-		if (ret == 0) {
+		int verify_result = schnorr48_verify_frame(
+			frame[0], frame[1],
+			parsed.epoch, parsed.seqnum,
+			parsed.dst_addr, parsed.dst_addr_len,
+			parsed.payload, parsed.payload_len,
+			parsed.mic,
+			peer_table[i].pubkey);
+
+		if (verify_result == 1) {
 			found_idx = (int)i;
 #ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
 			break;
@@ -667,28 +682,24 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 			continue;
 #endif
 		}
-
-		if (ret != -LICHEN_EAUTH) {
-			ctx->peer_pubkey = saved_peer_pubkey;
-			ctx->peer_eui64 = saved_peer_eui64;
-			*out_len = saved_out_len;
-			return ret;
-		}
 	}
 
 	if (found_idx >= 0) {
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
-		*out_len = saved_out_len;
-		/* Final call skips replay commit (already done in probe path) to
-		 * avoid duplicate replay_check failure. Fixes double-update and
-		 * pre-auth mutation for project-LICHEN-bbti. */
-		ret = lichen_link_rx(ctx, NULL, frame, frame_len,
+		/*
+		 * Call lichen_link_rx() for the matching peer to handle full
+		 * authentication (frame re-parse, inner payload extraction,
+		 * MIC verify, SCHC decompress, replay check/commit).
+		 * This runs exactly once, not O(n). Replay is checked here
+		 * (not in the probe loop above) so the duplicate-replay-commit
+		 * workaround from project-LICHEN-bbti is no longer needed.
+		 */
+		ret = lichen_link_rx(ctx, replay, frame, frame_len,
 				     out_ipv6, out_len, src_eui64);
 		if (ret < 0) {
 			ctx->peer_pubkey = saved_peer_pubkey;
 			ctx->peer_eui64 = saved_peer_eui64;
-			*out_len = saved_out_len;
 			return ret;
 		}
 
@@ -700,7 +711,6 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 
 	ctx->peer_pubkey = saved_peer_pubkey;
 	ctx->peer_eui64 = saved_peer_eui64;
-	*out_len = saved_out_len;
 	return -LICHEN_EAUTH;
 }
 #endif /* HAVE_LICHEN_LINK */
@@ -1403,6 +1413,22 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * L2 unicast is NOT supported. If future requirements need directed
 	 * addressing (e.g., certain RPL modes, energy optimization), extend
 	 * this to pass a non-NULL dst_eui64 based on routing decisions.
+	 *
+	 * SECURITY IMPLICATIONS of L2 broadcast-only design:
+	 * - Passive eavesdropping: all nodes in RF range receive every frame,
+	 *   including metadata (source EUI-64, frame type, sequence numbers)
+	 * - Replay attacks: attacker observes all frame sequence numbers,
+	 *   making replay easier without L2 filtering
+	 * - DoS amplification: every node must process (checksum, parse,
+	 *   decompress, route) all frames, increasing battery drain
+	 * - No L2 access control: frames reach all neighbors regardless of
+	 *   trust relationship
+	 *
+	 * MITIGATIONS (must be enforced elsewhere in the stack):
+	 * - OSCORE (CoAP E2E encryption) MANDATORY for sensitive payloads
+	 * - Ed25519 link signatures authenticate frame origin
+	 * - IPv6 destination filtering rejects non-unicast at L3
+	 * - SCHC decompression drops frames that don't match local address
 	 */
 	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len, NULL,
 			     tx_frame_buf, &frame_len);
@@ -1457,6 +1483,13 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * only receives a pointer to our static tx_frame_buf/tx_ipv6_buf,
 	 * not the net_pkt itself. The packet was linearized into that buffer
 	 * earlier via net_pkt_read(), so the pkt structure is untouched by TX.
+	 *
+	 * KNOWN LIMITATION (project-LICHEN-d7ub.40): If this thread is forcibly
+	 * aborted (k_thread_abort()) between the successful TX at line 1460 and
+	 * this net_pkt_unref(), the packet leaks. This window has no yield point
+	 * in normal operation, so it only occurs on thread abort. A memory pool
+	 * exhaustion would follow. Fixing this would require atomic packet
+	 * ownership tracking, which is disproportionate for an abort-only race.
 	 */
 	net_pkt_unref(pkt);
 	return (int)pkt_len;
@@ -1583,8 +1616,13 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * Re-register RX callback before starting.
 		 * lichen_lora_l2_stop() clears the callback (lora_l2.c:324-325),
 		 * so we must re-register it on enable. (project-LICHEN-yw7i.28)
+		 * 
+		 * Skip if already running to avoid unnecessary work on repeated
+		 * enable(true) calls (project-LICHEN-d7ub.66).
 		 */
-		ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+		if (!lichen_lora_l2_is_running()) {
+			ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+		}
 		if (ret != 0) {
 			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
 #if HAVE_LICHEN_LINK
@@ -2108,6 +2146,23 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 	lichen_iface = iface;
 
+#if HAVE_LICHEN_LINK
+	/*
+	 * Mark link_ctx as safe to access BEFORE registering the RX callback.
+	 * link_ctx was fully initialized at line ~2086 (lichen_link_init()) along
+	 * with replay_table and peer_table. Setting the flag before callback
+	 * registration eliminates a tiny window where a valid frame arriving
+	 * between callback registration and the flag being set would be dropped
+	 * by the atomic_get(&link_ctx_initialized) guard in lichen_l2_input().
+	 * (project-LICHEN-tvfm.69)
+	 *
+	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
+	 * On single-core Cortex-M, program order suffices since all prior
+	 * stores complete before this store executes.
+	 */
+	atomic_set(&link_ctx_initialized, 1);
+#endif
+
 	/* Register RX callback - must happen AFTER link_ctx is initialized */
 	ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 	if (ret != 0) {
@@ -2115,20 +2170,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
-
-#if HAVE_LICHEN_LINK
-	/*
-	 * Mark link_ctx as safe to access.
-	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
-	 * On single-core Cortex-M, program order suffices since all prior
-	 * stores complete before this store executes.
-	 *
-	 * Set AFTER RX callback registration so the flag truthfully indicates
-	 * that the full initialization sequence is complete.
-	 * (project-LICHEN-q3iy.24)
-	 */
-	atomic_set(&link_ctx_initialized, 1);
-#endif
 
 	/* Derive and log link-local address */
 	ret = lichen_log_link_local_from_eui64(eui64, NULL);
