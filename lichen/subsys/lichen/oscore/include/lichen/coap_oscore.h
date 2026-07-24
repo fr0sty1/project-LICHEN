@@ -114,6 +114,29 @@ int coap_oscore_send_unauthorized(struct coap_resource *_Nonnull resource,
 				  struct coap_packet *_Nonnull request,
 				  struct sockaddr *_Nonnull addr, socklen_t addr_len);
 
+/**
+ * @brief Build and send an OSCORE-protected CoAP response
+ *
+ * Convenience wrapper around coap_oscore_protect_response + coap_resource_send.
+ * Falls back to an unprotected 5.00 response on protect failure.
+ *
+ * @param[in] resource    CoAP resource
+ * @param[in] request     Original CoAP request
+ * @param[in] addr        Client address
+ * @param[in] addr_len    Address length
+ * @param[in] ctx         OSCORE security context (may be NULL)
+ * @param[in] piv         Request PIV
+ * @param[in] piv_len     PIV length
+ * @param[in] code        CoAP response code
+ * @return 0 on success, negative error code on failure
+ */
+int lichen_coap_oscore_respond(struct coap_resource *_Nonnull resource,
+			       struct coap_packet *_Nonnull request,
+			       struct sockaddr *_Nonnull addr, socklen_t addr_len,
+			       struct oscore_ctx *_Nonnull ctx,
+			       const uint8_t *_Nonnull piv, size_t piv_len,
+			       uint8_t code);
+
 #ifdef __cplusplus
 }
 #endif
