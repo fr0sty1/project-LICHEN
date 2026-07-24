@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-t83j",
   "title": "[review] project-LICHEN-worker6-1hbf: Python-Rust CRED_R encoding mismatch breaks interop",
   "description": "## Bug: CRED_R encoding mismatch between Python and Rust EDHOC implementations\n\n### Severity: P0 — prevents interop between Python and Rust implementations\n\n### Root cause\n\nThe two implementations encode CRED_R differently when computing protocol hashes:\n\n**Python** (`python/src/lichen/crypto/edhoc.py:414,612`):\n```python\ncred_r = peer_pubkey          # raw 32-byte Ed25519 public key\n# ...\nth_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_r)\n# cbor2.dumps(cred_r) → bstr(raw_pubkey) = 0x58 0x20 \u003c32 bytes\u003e = 34 bytes\n```\n\n**Rust** (`rust/lichen-oscore/src/edhoc.rs:1693-1705` + `transcript_4`):\n```rust\nencode_credential(\u0026mut credential_r, self.pubkey.as_bytes())?\n// → CCS: {1:1=OKP, -8:6=Ed25519, -1:bstr(pubkey)} = a2 01 01 20 06 21 58 20 \u003c32 bytes\u003e = 39 bytes\n// Then encode_bstr wraps: bstr(CCS) = 58 27 a2 01 01 20 06 21 58 20 \u003c32 bytes\u003e = 41 bytes\n```\n\n### Impact\n\n- TH_3 differs (pre-existing, uses `peer.credential` vs `cbor2.dumps(id_cred_r)`)\n- TH_4 differs (this commit now adds CRED_R, inheriting the mismatch)\n- MAC_2, m_2 all differ (context_2 uses different CRED_R encoding)\n- OSCORE export keys diverge (derived from diverged transcript hashes)\n- **Python and Rust implementations can never produce the same derived keys**, even with identical inputs\n\n### Spec compliance\n\nRFC 9528 defines CRED_R as the full COSE_Key CCS credential. The Rust implementation is spec-correct. Python must be corrected to encode CRED_R as full CCS.\n\n### Fix direction\n\n- Either fix Python to encode credential as full CCS (preferred, spec-correct)\n- Or fix Rust to send raw pubkey as credential (deviates from spec for simplicity)\n- Both must agree — cannot ship with this mismatch",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:34:34.523919569Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:19:20.288450972Z",
-  "started_at": "2026-07-24T19:19:20.288450972Z",
-  "lease_expires_at": "2026-07-24T19:24:20.288450972Z",
-  "heartbeat_at": "2026-07-24T19:19:20.288450972Z"
+  "updated_at": "2026-07-24T20:21:10.574323561Z",
+  "started_at": "2026-07-24T19:19:20.288450972Z"
 }
