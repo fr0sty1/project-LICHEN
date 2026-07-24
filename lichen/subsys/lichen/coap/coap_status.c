@@ -625,9 +625,13 @@ static void status_notify(struct coap_resource *resource,
 	}
 
 	if (status.txq_used > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ) {
+		LOG_ERR("txq_used %u exceeds MAX_TXQ %u", status.txq_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_TXQ);
 		status.txq_used = CONFIG_LICHEN_COAP_STATUS_MAX_TXQ;
 	}
 	if (status.fwd_used > CONFIG_LICHEN_COAP_STATUS_MAX_FWD) {
+		LOG_ERR("fwd_used %u exceeds MAX_FWD %u", status.fwd_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_FWD);
 		status.fwd_used = CONFIG_LICHEN_COAP_STATUS_MAX_FWD;
 	}
 
