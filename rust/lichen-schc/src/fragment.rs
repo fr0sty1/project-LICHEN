@@ -261,7 +261,12 @@ impl Ack {
         }
         let rule_id = data[0];
         let window = (data[1] >> FRAGMENT_N) & 1;
-        let complete = (data[1] & 0x01) != 0;
+        if data.len() == 2 {
+            if (data[1] & 0x40) == 0 {
+                return Err(FragmentError::MalformedAck);
+            }
+            return Ok(Self::new(rule_id, window, 0, true));
+        }
         let n = data[2] as usize;
         let body_bytes = n.div_ceil(8);
         let required = 3 + body_bytes;
