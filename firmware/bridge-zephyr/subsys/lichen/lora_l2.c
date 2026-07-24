@@ -645,9 +645,8 @@ int lichen_lora_l2_start(void)
      * These match the LICHEN spec for mesh operation. Preamble length 8
      * is the LoRa default (sufficient for synchronization at SF10).
      *
-     * Stack-local struct is safe: lora_config() copies the values (see
-     * sx12xx_lora_config memcpy, rylr_config field reads) and does not
-     * retain a pointer.
+     * Static struct: safe even if a driver retains the pointer, since
+     * lichen_lora_l2_start() holds lora_mutex and is non-re-entrant.
      *
      * Zephyr's lora_modem_config.tx selects the direction being configured.
      * This L2 implementation is targeted at Zephyr's SX126x/SX127x path used
@@ -661,7 +660,7 @@ int lichen_lora_l2_start(void)
      * lora_send() after an RX config. Supporting those drivers would require a
      * per-operation config strategy around both lora_send() and lora_recv().
      */
-    struct lora_modem_config config = {
+    static struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
         .bandwidth = BW_125_KHZ,   /* Zephyr enum: 125kHz */
         .datarate = SF_10,         /* Zephyr enum: spreading factor 10 */

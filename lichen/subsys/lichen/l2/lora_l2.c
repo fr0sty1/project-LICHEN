@@ -749,13 +749,14 @@ int lichen_lora_l2_start(void)
      * Matches spec; preamble 8 default. New Kconfigs enable DIO/hash SF
      * assignment and gateway CAD for multi-SF (CONFIG_LICHEN_GATEWAY_MULTI_SF).
      *
-     * Stack-local struct is safe: lora_config() copies values.
+     * Static struct: safe even if a driver retains the pointer, since
+     * lichen_lora_l2_start() holds lora_mutex and is non-re-entrant.
      *
      * RX then TX pass programs both directions (RX config reused by recv).
      * CAD scan added in rx_thread under multi-SF config (lr1110 IRQ extended
      * for PREAMBLEDETECTED per ASSIGNED_SF in DIO).
      */
-    struct lora_modem_config config = {
+    static struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
         .bandwidth = BW_125_KHZ,
         .datarate = IS_ENABLED(CONFIG_LICHEN_SF_ASSIGNMENT_ENABLED) ? SF_9 : SF_10,
