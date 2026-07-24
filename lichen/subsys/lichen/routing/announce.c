@@ -319,6 +319,25 @@ int lichen_announce_ingest_authenticated(
 		location_seq_num = announce.wire_seq_num;
 	}
 	if (peer == NULL) {
+		/* TOFU pins (spec 8.6) must not be silently evicted */
+		bool has_free = false;
+
+		for (size_t i = 0U; i < ARRAY_SIZE(announce_peers); i++) {
+			if (!announce_peers[i].active) {
+				has_free = true;
+				break;
+			}
+		}
+		if (!has_free) {
+			LOG_ERR("announce: TOFU pin table full, rejecting IID %02x%02x%02x%02x",
+				announce.originator_iid[0],
+				announce.originator_iid[1],
+				announce.originator_iid[2],
+				announce.originator_iid[3]);
+			k_mutex_unlock(&announce_mutex);
+			k_mutex_unlock(&ingest_mutex);
+			return -ENOSPC;
+		}
 		peer = allocate_peer_locked(observed_uptime_s);
 		if (peer == NULL) {
 			k_mutex_unlock(&announce_mutex);

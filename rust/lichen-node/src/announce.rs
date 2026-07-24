@@ -32,6 +32,7 @@ pub enum AnnounceRejectReason {
     HopLimitExceeded,
     Malformed,
     KeyChangeDetected,
+    PinTableFull,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +42,6 @@ pub struct AnnounceResult {
     pub reject_reason: Option<AnnounceRejectReason>,
     pub peer: Option<PeerIdentity>,
     pub congestion: Option<u8>,
-    pub evicted_iid: Option<[u8; 8]>,
 }
 
 impl AnnounceResult {
@@ -52,7 +52,6 @@ impl AnnounceResult {
             reject_reason: Some(reason),
             peer: None,
             congestion: None,
-            evicted_iid: None,
         }
     }
 
@@ -60,7 +59,6 @@ impl AnnounceResult {
         should_relay: bool,
         peer: PeerIdentity,
         congestion: Option<u8>,
-        evicted_iid: Option<[u8; 8]>,
     ) -> Self {
         Self {
             accepted: true,
@@ -68,7 +66,6 @@ impl AnnounceResult {
             reject_reason: None,
             peer: Some(peer),
             congestion,
-            evicted_iid,
         }
     }
 }
@@ -178,6 +175,11 @@ impl AnnounceProcessor {
         };
         self.gradient_table.update(entry, now_ms);
 
+        if !self.pinned_keys.contains_key(&iid)
+            && self.pinned_keys.len() >= self.max_entries
+        {
+            return AnnounceResult::rejected(AnnounceRejectReason::PinTableFull);
+        }
         self.pinned_keys.insert(
             iid,
             PinnedKeyEntry {
@@ -185,7 +187,6 @@ impl AnnounceProcessor {
                 last_access: access,
             },
         );
-        let evicted_iid = self.evict_pinned_if_needed();
 
         self.seen.insert(
             iid,
@@ -199,7 +200,7 @@ impl AnnounceProcessor {
         let should_relay = announce.should_relay();
 
         let peer = PeerIdentity::from_pubkey(pubkey);
-        AnnounceResult::accepted(should_relay, peer, congestion, evicted_iid)
+        AnnounceResult::accepted(should_relay, peer, congestion)
     }
 
     pub fn reset_seen(&mut self, iid: &[u8; 8]) {
@@ -246,22 +247,6 @@ impl AnnounceProcessor {
 
     pub fn gradient_table_mut(&mut self) -> &mut GradientTable {
         &mut self.gradient_table
-    }
-
-    fn evict_pinned_if_needed(&mut self) -> Option<[u8; 8]> {
-        let mut evicted = None;
-        while self.pinned_keys.len() > self.max_entries {
-            let oldest_iid = self
-                .pinned_keys
-                .iter()
-                .min_by_key(|(_, e)| e.last_access)
-                .map(|(k, _)| *k);
-            if let Some(iid) = oldest_iid {
-                self.pinned_keys.remove(&iid);
-                evicted = Some(iid);
-            }
-        }
-        evicted
     }
 
     fn evict_seen_if_needed(&mut self) {
