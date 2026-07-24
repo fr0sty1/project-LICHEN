@@ -342,11 +342,19 @@ existing link-layer keypairs--no additional certificates needed.
 
 **OSCORE Context Export:**
 
-After EDHOC completes, both parties derive:
+After EDHOC completes, both parties derive the OSCORE context using the
+EDHOC-KDF (RFC 9528 Section 4.2):
+
 ```
-OSCORE Master Secret = EDHOC-Exporter("OSCORE Master Secret", h'', 16)
-OSCORE Master Salt   = EDHOC-Exporter("OSCORE Master Salt", h'', 8)
+PRK_out      = EDHOC-KDF(PRK_4e3m, TH_4, "7", TH_4,      32)
+PRK_exporter = EDHOC-KDF(PRK_out,   TH_4, "10", h'',      32)
+MasterSecret = EDHOC-KDF(PRK_exporter, TH_4, "0",  h'',   16)
+MasterSalt   = EDHOC-KDF(PRK_exporter, TH_4, "1",  h'',    8)
 ```
+
+Labels `"7"`, `"10"`, `"0"`, and `"1"` are CBOR-encoded text strings per
+RFC 9528 Section 4.1.2. The derivation chain follows the
+OSCORE context export procedure in RFC 9528 Section 4.2.
 
 **When to Run EDHOC:**
 
