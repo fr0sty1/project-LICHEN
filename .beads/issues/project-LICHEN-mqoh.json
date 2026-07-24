@@ -3,7 +3,7 @@
   "title": "codec.rs: UDP checksum of zero not replaced with 0xFFFF per RFC 768/8200",
   "description": "File: rust/lichen-schc/src/codec.rs\nLines: 194-200 (finalize function), also affects udp_checksum at 202-211\n\nCategory: PROTOCOL\n\nThe finalize() function computes the UDP/ICMPv6 checksum as the one's complement of the one's complement sum:\n```rust\nfn finalize(sum: u32) -\u003e u16 {\n    ...\n    !(s as u16)\n}\n```\n\nPer RFC 768 and RFC 8200, if the computed checksum is zero (occurs when one's complement sum equals 0xFFFF), it must be transmitted as 0xFFFF (all ones), because a zero checksum in IPv6 UDP is invalid and indicates an error.\n\nImpact: Rare edge case where data sums to 0xFFFF would produce invalid IPv6 UDP packets with zero checksum.\n\nFix: In finalize() or at call sites, replace zero checksum with 0xFFFF:\n```rust\nlet cksum = finalize(sum);\nlet cksum = if cksum == 0 { 0xFFFF } else { cksum };\n```",
   "notes": "Fix implemented in finalize() (c == 0 -\u003e 0xFFFF). Commit: 98e5ebc3c",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

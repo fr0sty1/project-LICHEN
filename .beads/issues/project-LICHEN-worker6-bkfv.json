@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-bkfv",
   "title": "[review] project-LICHEN-worker6-i98v: OSORE crate broken — 43 compilation errors, removed RFC 8613 test vectors",
   "description": "Commit project-LICHEN-worker6-i98v: fix (9c95a869) breaks the lichen-oscore crate:\n\n**P0 - Build broken (43 compilation errors):**\n- `Context::load_existing()` removed from API but still called in lib.rs tests (`E0599`)\n- `Context::protect_request()` removed from direct API but still called (`E0599`)\n- `Context::new()` gained an `id_context` parameter (now 5 args) but 4-arg call sites left unchanged (`E0061`)\n- `protect_response()` gained an `include_piv: bool` parameter but callers not updated (`E0061`)\n- Duplicate definitions created: `context_at` x2, `TestStore` x2, `TestProtect` x2 (`E0428`, `E0119`)\n- `ContextStoreError` import removed but still used (`E0308`)\n\n**P1 - RFC 8613 test coverage removed:**\n- `test_request_protection_vectors()` deleted entirely from tests/vectors.rs\n- `test_response_protection_vectors()` deleted entirely from tests/vectors.rs\n- These were the primary integration tests validating OSCORE encrypt/decrypt against known RFC 8613 test vectors\n- Remaining tests in vectors.rs only cover decode (replay), invalid inputs, and edge cases — no end-to-end protect/unprotect validation remains\n\n**P2 - Commit quality:**\n- Commit message is just \"fix\" — no description of what was changed or why\n- No issue tracking bead linked to the commit\n\n**Impact:** The crate cannot compile (cargo test -p lichen-oscore → 43 errors). All OSCORE encryption/decryption vector tests against RFC 8613 are deleted. This regression must be fixed before any release.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:07:26.634380923Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:12:11.56773791Z",
-  "started_at": "2026-07-24T17:07:59.610519654Z"
+  "updated_at": "2026-07-24T17:07:59.610519654Z",
+  "started_at": "2026-07-24T17:07:59.610519654Z",
+  "lease_expires_at": "2026-07-24T17:12:59.610519654Z",
+  "heartbeat_at": "2026-07-24T17:07:59.610519654Z"
 }

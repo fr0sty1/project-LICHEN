@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-d8do",
   "title": "[review] project-LICHEN-worker6-69p2: Ack from_bytes_for cannot parse complete ACKs",
   "description": "Ack::from_bytes_for has multiple bugs:\n\n1. Panic on short input: Reads data[2] as n byte without checking data.len() \u003e= 3 first. A 2-byte complete ACK [rule_id, 0xc0] would cause out-of-bounds access.\n\n2. complete bit never extracted: Always creates ACK with complete: false at line 291, regardless of wire bits. The complete ACK encoding uses byte1 = (window \u003c\u003c 7) | 0x40, but from_bytes_for always reads window from bit 6 (FRAGMENT_N), not bit 7.\n\n3. Window bit misread for complete ACKs: from_bytes_for reads window from bit 6 (data[1] \u003e\u003e FRAGMENT_N \u0026 1), but complete ACKs encode window in bit 7 (window \u003c\u003c 7). A complete ACK with window=1 ([0x78, 0xc0]) would be read as window=1 ((0xc0 \u003e\u003e 6) \u0026 1 = 0b11 \u0026 1 = 1) which coincidentally gives the right value, but for the wrong reason. For window=0: [0x78, 0x40], bit 6 is 1 ((0x40 \u003e\u003e 6) \u0026 1 = 1), so window would be read as 1 instead of 0.\n\n4. Complete ACKs always rejected as NonCanonicalAck: Since from_bytes_for creates ACK with complete=false, write_to produces the non-complete encoding (with n byte), which won't match the 2-byte input, causing NonCanonicalAck error.\n\nTo fix:\n- Add length check for the complete ACK case (2 bytes) before accessing data[2]\n- Detect complete ACK format in byte 1 and decode window from correct bit position\n- Extract complete bit from wire data",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:58:32.810484162Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:12:08.313037209Z",
-  "started_at": "2026-07-24T19:12:08.313037209Z",
-  "lease_expires_at": "2026-07-24T19:17:08.313037209Z",
-  "heartbeat_at": "2026-07-24T19:12:08.313037209Z"
+  "updated_at": "2026-07-24T18:58:32.810484162Z"
 }
