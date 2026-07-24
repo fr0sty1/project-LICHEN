@@ -206,7 +206,7 @@ pub trait NonVolatile {
     ///
     /// Callers can detect truncation or size mismatch by comparing the returned
     /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
-    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
+    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
 
     /// Atomically and durably replace one value.
     ///

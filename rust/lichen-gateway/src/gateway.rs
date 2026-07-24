@@ -184,7 +184,7 @@ impl Gateway {
                 ipv6.to_vec()
             }
         };
-        let mut out = vec![0u8; to_compress.len() + 20];
+        let mut out = vec![0u8; to_compress.len() + 3];
         out[0] = L2_DISPATCH_SCHC;
         match compress(&to_compress, &mut out[1..]) {
             Ok(n) => {
@@ -306,6 +306,96 @@ mod tests {
         ];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn mesh_to_mesh_link_local_no_srh() {
+        let gw = test_gateway();
+        let src = ll(1);
+        let dst = ll(2);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst, 0x1234, 1, b"test", &mut packet);
+        let ipv6 = &packet[..n];
+
+        let result = gw.mesh_to_mesh(ipv6).expect("mesh_to_mesh should succeed");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+        assert_eq!(result[1], 2, "rule 2 for ICMPv6 echo link-local");
+
+        let mut decomp_buf = [0u8; 512];
+        let decomp_len = decompress(&result[1..], &mut decomp_buf).expect("decompress");
+        let recovered = &decomp_buf[..decomp_len];
+        assert_eq!(recovered[6], 58, "NH should be ICMPv6 (no SRH)");
+        assert_eq!(&recovered[8..24], &src.0);
+        assert_eq!(&recovered[24..40], &dst.0);
+        assert_eq!(&recovered[48..52], b"test", "payload intact");
+    }
+
+    #[test]
+    fn mesh_to_mesh_single_hop_no_srh() {
+        let mut gw = test_gateway();
+        let final_dst = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x03];
+        gw.rpl_node.add_test_route(final_dst, &[final_dst]);
+
+        let src = ll(1);
+        let dst = Ipv6Addr(final_dst);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst, 0x1234, 1, b"test", &mut packet);
+        let ipv6 = &packet[..n];
+
+        let result = gw.mesh_to_mesh(ipv6).expect("mesh_to_mesh should succeed");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+        assert_eq!(result[1], 255, "uncompressed rule (non-link-local, no SRH)");
+
+        let mut decomp_buf = [0u8; 512];
+        let decomp_len = decompress(&result[1..], &mut decomp_buf).expect("decompress");
+        let recovered = &decomp_buf[..decomp_len];
+        assert_eq!(recovered[6], 58, "NH = ICMPv6 (no SRH)");
+        assert_eq!(&recovered[8..24], &src.0);
+        assert_eq!(&recovered[24..40], &final_dst);
+        assert_eq!(&recovered[48..52], b"test", "payload intact");
+    }
+
+    #[test]
+    fn mesh_to_mesh_multi_hop_3_addresses() {
+        let mut gw = test_gateway();
+        let hop1 = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02];
+        let hop2 = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x03];
+        let final_dst = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x04];
+        gw.rpl_node
+            .add_test_route(final_dst, &[hop1, hop2, final_dst]);
+
+        let src = ll(1);
+        let dst = Ipv6Addr(final_dst);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst, 0x1234, 1, b"test", &mut packet);
+        let ipv6 = &packet[..n];
+
+        let result = gw
+            .mesh_to_mesh(ipv6)
+            .expect("mesh_to_mesh multi-hop should succeed");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+        assert_eq!(result[1], 255, "uncompressed rule");
+
+        let mut decomp_buf = [0u8; 512];
+        let decomp_len = decompress(&result[1..], &mut decomp_buf).expect("decompress");
+        let recovered = &decomp_buf[..decomp_len];
+
+        assert_eq!(recovered[6], 43, "NH = Routing");
+        assert_eq!(&recovered[24..40], &hop1, "dst = first hop");
+
+        let payload_len = u16::from_be_bytes([recovered[4], recovered[5]]) as usize;
+        assert_eq!(payload_len, 44, "payload_len = 12 ICMP + 32 ext hdr");
+
+        assert_eq!(recovered[40], 58, "transport NH = ICMPv6");
+        assert_eq!(recovered[41], 4, "HdrExtLen = 4 for routing_len=40");
+
+        assert_eq!(recovered[42], 3, "Routing Type = 3");
+        assert_eq!(recovered[43], 2, "Segments Left = 2");
+        assert_eq!(&recovered[48..64], &hop2, "SRH addr[0] = hop2");
+        assert_eq!(&recovered[64..80], &final_dst, "SRH addr[1] = final_dst");
+
+        assert_eq!(recovered[80], 128, "ICMPv6 type = Echo Request");
+        assert_eq!(&recovered[88..92], b"test", "payload intact");
     }
 
     #[test]

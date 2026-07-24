@@ -186,8 +186,8 @@ pub fn update_redundant<S: NonVolatile>(
     payload: &[u8],
     record: &mut [u8],
 ) -> Result<RedundantValue, RedundantUpdateError<S::Error>> {
-    let (parsed_a, a_present) = read_parsed_update(storage, keys[0], record, magic)?;
-    let (parsed_b, b_present) = read_parsed_update(storage, keys[1], record, magic)?;
+    let parsed_a = read_parsed_update(storage, keys[0], record, magic)?;
+    let parsed_b = read_parsed_update(storage, keys[1], record, magic)?;
     let latest = match (parsed_a, parsed_b) {
         (Some(a), Some(b)) if b.0 > a.0 => RedundantValue {
             generation: b.0,
@@ -204,7 +204,7 @@ pub fn update_redundant<S: NonVolatile>(
             slot: 1,
             len: b.1,
         },
-        (None, None) if !a_present && !b_present => return Err(RedundantUpdateError::Stale),
+        (None, None) => return Err(RedundantUpdateError::Stale),
         (None, None) => return Err(RedundantUpdateError::Corrupt),
     };
     if latest.generation != current.generation || latest.slot != current.slot {
@@ -419,12 +419,15 @@ pub mod mem {
     impl NonVolatile for MemStorage {
         type Error = MemStorageError;
 
-        fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
-            let data = self.data.get(key)?;
+        fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+            let data = match self.data.get(key) {
+                Some(d) => d,
+                None => return Ok(None),
+            };
             let stored = data.len();
             let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Some(stored)
+            Ok(Some(stored))
         }
 
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
@@ -474,16 +477,20 @@ pub mod fs {
 
     impl NonVolatile for FileStorage {
         type Error = io::Error;
-        fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
+        fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
             let p = self.key_path(key);
             let data = match fs::read(&p) {
                 Ok(d) => d,
-                Err(_) => return None,
+                Err(e) => return if e.kind() == io::ErrorKind::NotFound {
+                    Ok(None)
+                } else {
+                    Err(e)
+                },
             };
             let stored = data.len();
             let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Some(stored)
+            Ok(Some(stored))
         }
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
             let t = self.tmp_path(key);
