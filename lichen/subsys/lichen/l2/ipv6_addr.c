@@ -72,6 +72,17 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
     return 0;
 }
 
+/*
+ * Compile-time check: SHA-256 digest must be at least 8 bytes for IID.
+ * If the hash algorithm changes, this catches the buffer size mismatch.
+ */
+#ifdef __ZEPHYR__
+BUILD_ASSERT(TC_SHA256_DIGEST_SIZE >= 8,
+             "TC_SHA256_DIGEST_SIZE must be >= 8 for IID derivation");
+#else
+typedef char _sha256_iid_check[(TC_SHA256_DIGEST_SIZE >= 8) ? 1 : -1];
+#endif
+
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 {
     int ret;
