@@ -23,6 +23,30 @@
       "ema": 0.383607,
       "load_factor": 0.236068,
       "hash_32": "3c6ef372"
+    },
+    {
+      "name": "density_estimate_high",
+      "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2\u219212 with density=15, utilization=100.",
+      "assigned_sf": 10,
+      "density": 15,
+      "utilization": 100,
+      "load_factor": 0.3,
+      "neighbor_snr_ema": 5,
+      "neighbor_loss": 0.05,
+      "expected_sf": 12,
+      "tx_allowed": true
+    },
+    {
+      "name": "sf_selection_low_density_capacity",
+      "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1\u21929 with density=3, SNR_EMA=10.",
+      "assigned_sf": 10,
+      "density": 3,
+      "utilization": 50,
+      "load_factor": 0.2,
+      "neighbor_snr_ema": 10,
+      "neighbor_loss": 0.02,
+      "expected_sf": 9,
+      "tx_allowed": true
     }
   ]
 }
