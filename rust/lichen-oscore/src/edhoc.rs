@@ -28,6 +28,7 @@ use ccm::{
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
+use hmac::{Hmac, Mac};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
@@ -431,17 +432,15 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 
 fn transcript_4(
     th_3: &[u8; 32],
-    plaintext_3: &[u8],
-    cred_i: &[u8],
+    ciphertext_3: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, plaintext_3)?;
-    encode_bstr(&mut buf, cred_i)?;
+    encode_bstr(&mut buf, ciphertext_3)?;
     Ok(compute_th(&buf))
 }
 
-fn build_context_2(id_cred: &[u8], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+fn build_context_2(_c_r: &ConnectionId, id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut buf = heapless::Vec::<u8, 128>::new();
     encode_bstr(&mut buf, id_cred)?;
     encode_bstr(&mut buf, cred)?;
@@ -465,6 +464,43 @@ fn build_signature_structure(id_cred: &[u8], th: &[u8; 32], cred: &[u8], mac: &[
     encode_bstr(&mut buf, cred)?;
     encode_bstr(&mut buf, mac)?;
     Ok(buf)
+}
+
+fn build_context_2(
+    id_cred: &[u8],
+    cred: &[u8],
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut ctx = heapless::Vec::<u8, 128>::new();
+    append_cbor_bstr(&mut ctx, id_cred)?;
+    append_cbor_bstr(&mut ctx, cred)?;
+    Ok(ctx)
+}
+
+fn build_context_3(
+    id_cred: &[u8],
+    _th: &[u8; 32],
+    cred: &[u8],
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut ctx = heapless::Vec::<u8, 128>::new();
+    append_cbor_bstr(&mut ctx, id_cred)?;
+    append_cbor_bstr(&mut ctx, cred)?;
+    Ok(ctx)
+}
+
+fn build_signature_structure(
+    id_cred: &[u8],
+    th: &[u8; 32],
+    cred: &[u8],
+    mac: &[u8],
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut m = heapless::Vec::<u8, 128>::new();
+    m.push_err(0x85)?;
+    m.extend_err(b"\x6bSignature1")?;
+    append_cbor_bstr(&mut m, id_cred)?;
+    append_cbor_bstr(&mut m, th)?;
+    append_cbor_bstr(&mut m, cred)?;
+    append_cbor_bstr(&mut m, mac)?;
+    Ok(m)
 }
 
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
@@ -541,7 +577,7 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
 /// Implements EDHOC method 0 (SIGN_SIGN) with Suite 0.
 // SECURITY: SigningKey and StaticSecret must be zeroized on drop.
 // SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
-#[derive(ZeroizeOnDrop)]
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocInitiator {
     /// Our Ed25519 signing key (implements ZeroizeOnDrop).
     #[zeroize(skip)]
@@ -616,9 +652,9 @@ impl Zeroize for EdhocInitiator {
 
 impl EdhocInitiator {
     /// Create a new EDHOC initiator using caller-provided entropy.
-    pub fn new_with_rng<R: RngCore + CryptoRng>(
+    pub fn new_with_rng<R: RngCore + CryptoRng, C: Into<ConnectionId>>(
         seed: [u8; 32],
-        c_i: u8,
+        c_i: C,
         rng: &mut R,
     ) -> Result<Self, OscoreError> {
         let seed = Zeroizing::new(seed);
@@ -634,7 +670,7 @@ impl EdhocInitiator {
         Ok(Self {
             signing_key,
             pubkey,
-            c_i,
+            c_i: c_i.into(),
             eph_secret: Some(eph_secret),
             eph_public,
             state: InitiatorState::default(),
@@ -875,7 +911,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0, &credential_i)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -904,8 +940,8 @@ impl EdhocInitiator {
         export_context(
             &self.state.prk_4e3m,
             &self.state.th_4,
-            &[self.c_i],
-            self.state.c_r.as_bytes(),
+            self.c_i.as_bytes(),
+            self.c_r.as_bytes(),
         )
     }
 }
@@ -913,7 +949,7 @@ impl EdhocInitiator {
 /// EDHOC Responder (server role).
 // SECURITY: SigningKey and StaticSecret must be zeroized on drop.
 // SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
-#[derive(ZeroizeOnDrop)]
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocResponder {
     /// Our Ed25519 signing key (implements ZeroizeOnDrop).
     #[zeroize(skip)]
@@ -1000,14 +1036,14 @@ impl EdhocResponder {
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
-        Self {
+        Ok(Self {
             signing_key,
             pubkey,
-            c_r,
+            c_r: c_r.into(),
             eph_secret: Some(eph_secret),
             eph_public,
             state: ResponderState::default(),
-        }
+        })
     }
 
     /// Create a new EDHOC responder.
@@ -1114,7 +1150,12 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(&id_cred_r, &credential_r)?;
+            let context_2 = build_context_2(
+                &ConnectionId::new(&[self.c_r]).map_err(|_| EdhocError::BufferTooSmall)?,
+                &id_cred_r,
+                &self.state.th_2,
+                &credential_r,
+            )?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -1324,8 +1365,8 @@ impl EdhocResponder {
         export_context(
             &self.state.prk_4e3m,
             &self.state.th_4,
-            &[self.c_r],
-            self.state.c_i.as_bytes(),
+            self.c_r.as_bytes(),
+            self.c_i.as_bytes(),
         )
     }
 }
