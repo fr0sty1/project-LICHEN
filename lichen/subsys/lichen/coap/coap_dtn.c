@@ -126,16 +126,21 @@ static void dtn_expire_work_handler(struct k_work *work)
 int lichen_coap_deaddrop_register(
 	const struct lichen_deaddrop_provider *provider)
 {
-	if (provider == NULL) return -EINVAL;
+	if (provider == NULL) {
+		LOG_ERR("deaddrop_register: NULL provider");
+		return -EINVAL;
+	}
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	int r = lichen_coap_dtn_init();
 	if (r < 0) {
+		LOG_ERR("deaddrop_register: lichen_coap_dtn_init failed: %d", r);
 		k_mutex_unlock(&s_dtn_buf_mutex);
 		return r;
 	}
 	s_provider = provider;
 	r = lichen_dtn_init(&s_dtn_buf);
 	if (r < 0) {
+		LOG_ERR("deaddrop_register: lichen_dtn_init failed: %d", r);
 		k_mutex_unlock(&s_dtn_buf_mutex);
 		return r;
 	}
@@ -159,6 +164,7 @@ static int deaddrop_oscore_respond(struct coap_resource *resource,
 					       code, NULL, 0, &resp, buf,
 					       sizeof(buf));
 	if (ret < 0) {
+		LOG_ERR("OSCORE protect failed for deaddrop response: %d", ret);
 		return lichen_coap_respond(resource, request, addr, addr_len,
 					   code, 0, NULL, 0);
 	}
@@ -171,6 +177,7 @@ static int deaddrop_post(struct coap_resource *resource,
 			 struct sockaddr *addr, socklen_t addr_len)
 {
 	if (s_provider == NULL || s_provider->store == NULL) {
+		LOG_ERR("deaddrop POST failed: no provider registered");
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 	uint8_t dest_iid[8] = {0};
@@ -192,6 +199,7 @@ static int deaddrop_post(struct coap_resource *resource,
 	if (is_protected) {
 		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK ||
 		    ctx == NULL) {
+			LOG_WRN("deaddrop POST: no OSCORE context for peer");
 			return coap_oscore_send_unauthorized(resource, request,
 							     addr, addr_len);
 		}
@@ -204,8 +212,12 @@ static int deaddrop_post(struct coap_resource *resource,
 						      opts, &opt_len, plain,
 						      &plain_len, piv,
 						      &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		if (r != OSCORE_OK) {
+			LOG_WRN("deaddrop POST OSCORE unprotect failed: %d", r);
+			return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		}
 		if (orig_code != COAP_METHOD_POST) {
+			LOG_WRN("deaddrop POST unexpected method: %u", orig_code);
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
 		payload = plain;
@@ -213,6 +225,7 @@ static int deaddrop_post(struct coap_resource *resource,
 	} else {
 #endif
 		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			LOG_WRN("deaddrop POST denied: not local admin");
 			return lichen_coap_respond(resource, request, addr,
 						   addr_len,
 						   COAP_RESPONSE_CODE_UNAUTHORIZED,
@@ -222,7 +235,10 @@ static int deaddrop_post(struct coap_resource *resource,
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	}
 #endif
-	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	if (!payload || payload_len == 0) {
+		LOG_WRN("deaddrop POST: empty payload");
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	}
 	parse_recipient(payload, payload_len, dest_iid);
 	uint32_t now_ms = k_uptime_get_32();
 	uint8_t iid_slot = hash_from_iid(peer_eui64);
@@ -231,6 +247,7 @@ static int deaddrop_post(struct coap_resource *resource,
 	    (now_ms - s_last_deaddrop[iid_slot] <
 	     CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
+		LOG_WRN("deaddrop POST rate limited for IID slot %u", iid_slot);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 		if (is_protected && ctx != NULL) {
 			return deaddrop_oscore_respond(resource, request, addr,
@@ -248,6 +265,7 @@ static int deaddrop_post(struct coap_resource *resource,
 		int r = s_provider->store(payload, payload_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
+			LOG_ERR("deaddrop provider store failed: %d", r);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 			if (is_protected && ctx != NULL) {
 				return deaddrop_oscore_respond(resource,
@@ -268,6 +286,9 @@ static int deaddrop_post(struct coap_resource *resource,
 	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len,
 					    dest_iid, expiry, now, now_ms);
 	k_mutex_unlock(&s_dtn_buf_mutex);
+	if (!ok) {
+		LOG_ERR("lichen_dtn_buffer_message failed for deaddrop POST");
+	}
 	uint8_t resp_code = ok ? COAP_RESPONSE_CODE_CHANGED
 			       : COAP_RESPONSE_CODE_BAD_REQUEST;
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
@@ -286,6 +307,7 @@ static int deaddrop_get(struct coap_resource *resource,
 			struct sockaddr *addr, socklen_t addr_len)
 {
 	if (s_provider == NULL || s_provider->retrieve == NULL) {
+		LOG_ERR("deaddrop GET failed: no retrieve provider");
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
@@ -304,6 +326,7 @@ static int deaddrop_get(struct coap_resource *resource,
 	int len = s_provider->retrieve(buf, sizeof(buf), node);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) {
+		LOG_ERR("deaddrop GET retrieve failed: %d", len);
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
 				    0);
@@ -323,6 +346,7 @@ static int confessions_get(struct coap_resource *resource,
 	senml_add_float(&pack, SENML_KEY_CONFESSIONS, NULL, 0.0f);
 	int len = senml_encode_cbor(&pack, buf, sizeof(buf));
 	if (len < 0) {
+		LOG_ERR("confessions GET senml_encode_cbor failed: %d", len);
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
 				    0);
@@ -354,6 +378,7 @@ static int confessions_post(struct coap_resource *resource,
 	if (is_protected) {
 		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK ||
 		    ctx == NULL) {
+			LOG_WRN("confessions POST: no OSCORE context for peer");
 			return coap_oscore_send_unauthorized(resource, request,
 							     addr, addr_len);
 		}
@@ -366,8 +391,12 @@ static int confessions_post(struct coap_resource *resource,
 						      opts, &opt_len, plain,
 						      &plain_len, piv,
 						      &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (r != OSCORE_OK) {
+			LOG_WRN("confessions POST OSCORE unprotect failed: %d", r);
+			return COAP_RESPONSE_CODE_BAD_REQUEST;
+		}
 		if (orig_code != COAP_METHOD_POST) {
+			LOG_WRN("confessions POST unexpected method: %u", orig_code);
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
 		payload = plain;
@@ -378,7 +407,10 @@ static int confessions_post(struct coap_resource *resource,
 #else
 	payload = coap_packet_get_payload(request, &payload_len);
 #endif
-	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	if (!payload || payload_len == 0) {
+		LOG_WRN("confessions POST: empty payload");
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	}
 	uint32_t now_ms = k_uptime_get_32();
 	uint8_t iid_slot = hash_from_iid(peer_eui64);
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
@@ -386,6 +418,7 @@ static int confessions_post(struct coap_resource *resource,
 	    (now_ms - s_last_confession[iid_slot] <
 	     CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
+		LOG_WRN("confessions POST rate limited for IID slot %u", iid_slot);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 		if (is_protected && ctx != NULL) {
 			return deaddrop_oscore_respond(resource, request, addr,
