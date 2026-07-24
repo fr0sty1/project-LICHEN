@@ -414,9 +414,8 @@ class EdhocInitiator:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = ["Encrypt0", h'', TH_3 || CRED] per RFC 9528 §4.4.2, RFC 9052 §5.3. Use same ext_aad = TH_3 || CRED for interop.
-        ext_aad = self._th_3 + cred_i
-        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
+        # A_3 = ["Encrypt0", h'', TH_3]
+        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
 
         ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
 
@@ -630,9 +629,8 @@ class EdhocResponder:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = ["Encrypt0", h'', TH_3 || CRED] per RFC 9528 §4.4.2, RFC 9052 §5.3. Use same ext_aad = TH_3 || CRED for interop.
-        ext_aad = self._th_3 + peer_pubkey
-        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
+        # A_3 = ["Encrypt0", h'', TH_3]
+        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
 
         plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
 
