@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-apu8",
+  "title": "[review] project-LICHEN-vkag: fix test transcript_4 call",
+  "description": "Commit a05e9376b5 correctly fixes the test at line 1633: changes  to , matching the function signature at line 434 which takes . No function overload exists. The fix is correct — the test now produces the expected  test vector .\n\nHowever, a pre-existing bug exists at line 1343:  passes 3 arguments to a 2-parameter function. This would fail to compile unless behind a dead-code cfg gate. Should be investigated/fixed.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:55:38.988311449Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:55:38.988311449Z"
+}
