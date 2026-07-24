@@ -1542,6 +1542,38 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 }
 
 /**
+ * @brief Initialize link_ctx with callers already holding both mutexes.
+ *
+ * Called by lichen_l2_enable() (post-boot re-init after disable) and
+ * lichen_l2_iface_init() (boot-time init). Extracted to eliminate
+ * duplicated initialization logic between the two paths.
+ *
+ * Caller MUST hold tx_mutex and rx_mutex before calling (LOCK ORDER:
+ * tx_mutex before rx_mutex).
+ *
+ * @param eui64 8-byte EUI-64 address for this node
+ * @return 0 on success, negative errno on failure
+ */
+static int init_link_ctx_locked(const uint8_t eui64[LICHEN_EUI64_LEN])
+{
+	int ret;
+
+	secure_zero(&link_ctx, sizeof(link_ctx));
+	ret = lichen_link_init(&link_ctx, eui64);
+	if (ret < 0) {
+		LOG_ERR("lichen_link_init failed (%d)", ret);
+		secure_zero(&link_ctx, sizeof(link_ctx));
+		return ret;
+	}
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
+	lichen_link_set_epoch(&link_ctx, lichen_link_epoch_advance_for_boot());
+#endif
+	lichen_replay_table_init(&replay_table);
+	atomic_set(&link_ctx_initialized, 1);
+	return 0;
+}
+
+/**
  * @brief L2 enable/disable handler
  */
 static int lichen_l2_enable(struct net_if *iface, bool state)
@@ -1591,58 +1623,27 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * Re-initialize link_ctx if it was cleaned up by a prior disable.
 		 * (project-LICHEN-rwio.1)
 		 *
-		 * This intentionally duplicates lichen_l2_iface_init() initialization
-		 * rather than extracting a helper because:
-		 * 1. The init path runs once at boot with no concurrency concerns
-		 * 2. The enable path must hold both mutexes due to potential races
-		 *    with in-flight TX/RX from a concurrent thread
-		 * 3. Extracting a helper would require passing mutex-held state or
-		 *    adding "already_locked" parameters, obscuring the safety model
+		 * Use shared helper init_link_ctx_locked() to keep the init logic
+		 * in one place. Caller holds both mutexes (LOCK ORDER: tx_mutex
+		 * before rx_mutex). The init path (lichen_l2_iface_init) uses the
+		 * same helper during boot-time init.
 		 *
-		 * LOCK ORDER: tx_mutex before rx_mutex. See comment at mutex
-		 * definitions (~line 217) for rationale and full documentation.
+		 * NOTE (project-LICHEN-i1gk.74): Replay table is cleared here but
+		 * peer_table is NOT cleared on enable (only on disable). This is
+		 * intentional: replay protection resets for security (peers must
+		 * exceed their old sequence numbers), while peer keys persist so
+		 * EDHOC re-handshake is not required. Peers that were mid-session
+		 * will fail replay checks until their sequence numbers advance.
 		 */
 		k_mutex_lock(&tx_mutex, K_FOREVER);
 		k_mutex_lock(&rx_mutex, K_FOREVER);
 		if (!atomic_get(&link_ctx_initialized)) {
-			/* SECURITY: Defensive zero of any stale key material before re-init
-			 * (project-LICHEN-725z.9) */
-			secure_zero(&link_ctx, sizeof(link_ctx));
-			ret = lichen_link_init(&link_ctx, eui64_copy);
+			ret = init_link_ctx_locked(eui64_copy);
 			if (ret < 0) {
-				/* Entropy or mutex failure: do not mark initialized.
-				 * Unlock and propagate (2auf.35.4.2.2). Context remains
-				 * zeroed; next enable will retry. */
 				k_mutex_unlock(&rx_mutex);
 				k_mutex_unlock(&tx_mutex);
 				return ret;
 			}
-#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
-			/* Override the random boot epoch with the persisted,
-			 * monotonically-advancing one (lora_ipv6_mesh-3uhb).
-			 * Idempotent within a boot. */
-			lichen_link_set_epoch(&link_ctx,
-					      lichen_link_epoch_advance_for_boot());
-#endif
-			/*
-			 * Re-init replay table to match iface_init() behavior.
-			 * Without this, stale replay windows could persist or be
-			 * uninitialized after disable/enable cycle.
-			 *
-			 * Safe on dirty table: lichen_replay_table_init() does memset()
-			 * which clears all entries regardless of prior state. No dynamic
-			 * allocation in replay table - all entries are POD types.
-			 * (project-LICHEN-dq6n.19, project-LICHEN-tvfm.80)
-			 *
-			 * NOTE (project-LICHEN-i1gk.74): Replay table is cleared here but
-			 * peer_table is NOT cleared on enable (only on disable). This is
-			 * intentional: replay protection resets for security (peers must
-			 * exceed their old sequence numbers), while peer keys persist so
-			 * EDHOC re-handshake is not required. Peers that were mid-session
-			 * will fail replay checks until their sequence numbers advance.
-			 */
-			lichen_replay_table_init(&replay_table);
-			atomic_set(&link_ctx_initialized, 1);
 		}
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
@@ -2125,41 +2126,21 @@ void lichen_l2_iface_init(struct net_if *iface)
 		k_mutex_unlock(&tx_mutex);
 	}
 	/*
-	 * Initialize link_ctx then replay_table. Order is safe: link_ctx does not
-	 * depend on replay_table, and no async access occurs before link_ctx_initialized
-	 * is set (after RX callback registration). (project-LICHEN-i1gk.81)
+	 * Initialize link_ctx via shared helper. At boot (first call), no mutexes
+	 * are needed since no concurrent TX/RX exists. On re-init (after failed init
+	 * and cleanup), the re-init block above already held mutexes, but the boot
+	 * path also holds no mutexes at this point. The helper's secure_zero + init
+	 * is safe without mutex coverage here because no other thread can access
+	 * link_ctx before lichen_iface is set and the RX callback is registered.
+	 *
+	 * peer_table init is done separately from init_link_ctx_locked() because
+	 * the enable path intentionally does NOT clear peer_table on re-enable
+	 * (only replay table resets). The boot path clears and validates the table.
 	 */
-	int init_ret = lichen_link_init(&link_ctx, eui64);
-	if (init_ret < 0) {
-		/* Entropy failure or mutex failure: fail closed, do not mark
-		 * initialized or proceed with RX setup. (2auf.35.4.2) */
-		LOG_ERR("lichen_link_init failed (%d)", init_ret);
+	if (init_link_ctx_locked(eui64) < 0) {
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
-#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
-	/* Override the random boot epoch with the persisted, monotonically-
-	 * advancing one so a rebooted node is never seen as a replay
-	 * (lora_ipv6_mesh-3uhb). Idempotent within a boot. */
-	lichen_link_set_epoch(&link_ctx, lichen_link_epoch_advance_for_boot());
-#endif
-	lichen_replay_table_init(&replay_table);
-	/*
-	 * Explicitly initialize peer_table at boot.
-	 *
-	 * C guarantees static storage is zero-initialized (C11 6.7.9p10), so
-	 * peer_table[i].active is already false. However, explicit initialization
-	 * is defensive: it documents the invariant, survives any future move to
-	 * dynamic allocation, and costs nothing at boot (single memset).
-	 * (project-LICHEN-tvfm.66)
-	 *
-	 * On re-init, peer_table was already cleared with secure_zero above while
-	 * holding mutexes. This secure_zero is redundant in that case but harmless.
-	 *
-	 * SECURITY (project-LICHEN-i1gk.47): Use secure_zero instead of memset for
-	 * consistency with other peer_table clearing paths and to prevent compiler
-	 * optimization from eliding the clear on re-init after failed init.
-	 */
 	secure_zero(peer_table, sizeof(peer_table));
 	atomic_set(&peer_table_valid, 1);
 #endif
@@ -2196,16 +2177,11 @@ void lichen_l2_iface_init(struct net_if *iface)
 
 #if HAVE_LICHEN_LINK
 	/*
-	 * Mark link_ctx as safe to access.
-	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
-	 * On single-core Cortex-M, program order suffices since all prior
-	 * stores complete before this store executes.
-	 *
-	 * Set AFTER RX callback registration so the flag truthfully indicates
-	 * that the full initialization sequence is complete.
-	 * (project-LICHEN-q3iy.24)
+	 * link_ctx_initialized already set by init_link_ctx_locked() above.
+	 * The helper sets it after link_ctx init and replay table init, which
+	 * is before RX callback registration. This is safe: no callbacks can
+	 * fire before lichen_lora_l2_set_rx_callback() registers the handler.
 	 */
-	atomic_set(&link_ctx_initialized, 1);
 #endif
 
 	/* Derive and log link-local address */
