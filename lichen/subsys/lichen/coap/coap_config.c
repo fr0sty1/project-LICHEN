@@ -20,6 +20,7 @@
 
 #include <lichen/coap_config.h>
 #include <lichen/coap_keys.h>
+#include <lichen/coap_server.h>
 
 #if IS_ENABLED(CONFIG_SETTINGS)
 #include <zephyr/settings/settings.h>
@@ -685,6 +686,11 @@ static int config_put(struct coap_resource *resource,
 	struct lichen_config_node node_cfg;
 	int ret;
 
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+	}
+
 	const struct lichen_config_provider *p = lichen_coap_config_provider_get();
 	if (p == NULL || p->node_get == NULL ||
 	    p->node_set == NULL) {
@@ -765,6 +771,11 @@ static int config_radio_put(struct coap_resource *resource,
 	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
 	struct lichen_config_radio radio_cfg;
 	int ret;
+
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+	}
 
 	const struct lichen_config_provider *p = lichen_coap_config_provider_get();
 	if (p == NULL || p->radio_get == NULL ||

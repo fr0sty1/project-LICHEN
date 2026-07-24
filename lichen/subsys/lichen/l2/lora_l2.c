@@ -1044,19 +1044,18 @@ int lichen_lora_l2_deinit(void)
     }
     int mutex_ret = k_mutex_init(&lora_mutex);
     if (mutex_ret != 0) {
-        /* k_mutex_init() should not fail in kernel mode, but log if it does.
-         * There is no recovery action - we've already committed to resetting
-         * the module and proceeding is better than leaving it unusable. */
-        LOG_ERR("lora_l2: k_mutex_init failed (%d), module may be unstable", mutex_ret);
+        LOG_ERR("lora_l2: k_mutex_init failed (%d)", mutex_ret);
     }
 
-    /* Also reinitialize tx_buf_mutex for completeness during abort recovery.
-     * In normal shutdown, we already acquired/released it above to wait for TX,
-     * but in abort scenarios the mutex state may be corrupted. */
-    mutex_ret = k_mutex_init(&tx_buf_mutex);
-    if (mutex_ret != 0) {
-        LOG_ERR("lora_l2: k_mutex_init(tx_buf_mutex) failed (%d), module may be unstable",
-                mutex_ret);
+    int mutex_ret2 = k_mutex_init(&tx_buf_mutex);
+    if (mutex_ret2 != 0) {
+        LOG_ERR("lora_l2: k_mutex_init(tx_buf_mutex) failed (%d)", mutex_ret2);
+    }
+
+    if (mutex_ret != 0 || mutex_ret2 != 0) {
+        LOG_ERR("lora_l2: mutex reinit failure, module is in unstable state");
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EIO;
     }
 
     /*
