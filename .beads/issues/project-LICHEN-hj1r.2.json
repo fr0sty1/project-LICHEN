@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hj1r.2",
   "title": "Clean dead merge-resolution comments from xiao_s3_wio_sx1262.{conf,overlay} in worker19 worktree",
   "description": "Replace polluted RETIRED comment block containing resolved merge conflict references with canonical clean version from project-LICHEN-2u26.10 / worker12. Matches AGENTS.md no-dead-code rule.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

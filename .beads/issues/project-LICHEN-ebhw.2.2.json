@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ebhw.2.2",
   "title": "Refactor lichen-link/src/identity.rs to use lichen_core::addr::ygg_addr_from_pubkey",
   "description": "Remove local yggdrasil_addr_from_pubkey implementation. Update Identity struct, from_seed, tests, and imports to use the shared core function. Remove sha2 dep if no longer needed.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
