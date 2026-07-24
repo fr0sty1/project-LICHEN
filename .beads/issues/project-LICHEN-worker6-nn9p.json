@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-nn9p",
+  "title": "[review] project-LICHEN-worker6-tkjl: removed SHA-256 packet verification in shared vector test",
+  "description": "## Location\n\n`rust/lichen-schc/tests/fragmentation_vectors.rs:153-156`\n\n## Problem\n\nThe commit removed the `assert_eq!` that compared the SHA-256 digest of expanded test-vector packets against the expected `packet_sha256` field. The replacement code:\n\n```rust\nif let Some(packet) = \u0026vector.packet {\n    let _data = expand(packet);\n    let _expected = vector.packet_sha256.as_ref().unwrap();\n}\n```\n\nstill calls `unwrap()` (panics if sha256 field is missing) and expands the packet, but **never verifies** that the computed hash matches the expected value. This means corrupted or wrong test-vector `packet` values will not be detected, removing a data integrity guard.\n\nThe `expand(packet)` result is also dead compute — the hex-decoded bytes are discarded.\n\n## Expected\n\nEither restore the SHA-256 comparison (`assert_eq!(\u0026sha2::Sha256::digest(expand(packet))[..], decode_hex(...))`) or if the `packet_sha256` field is no longer the source of truth for format v2, remove the dead code entirely rather than retaining a no-op block.\n\n## Severity\n\nThe test vectors at `test/vectors/schc_fragmentation.json` format v2 still carry `packet_sha256` fields. Without verification, altered or corrupted vector packets would pass this test silently.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:05:22.489327184Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:05:22.489327184Z"
+}
