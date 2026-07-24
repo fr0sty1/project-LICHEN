@@ -32,9 +32,7 @@
 #include <zephyr/net/net_ip.h>
 #include <lichen/coap_server.h>
 #include <lichen/senml.h>
-#include <lichen/oscore.h>
 #include <lichen/coap_oscore.h>
-#include <lichen/l2/ipv6_addr.h>
 #include <lichen/transport/slip_transport.h>
 
 LOG_MODULE_REGISTER(lichen_coap_server, CONFIG_LICHEN_COAP_SERVER_LOG_LEVEL);
@@ -115,6 +113,33 @@ static int send_ack(struct coap_resource *resource,
 {
 	return lichen_coap_respond(resource, request, addr, addr_len, code, 0, NULL, 0);
 }
+
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+/*
+ * Send an empty ACK (2.01 Created / 2.04 Changed) via OSCORE-protected
+ * response. Reuses the same response path that deaddrop and confessions
+ * use. The static buffer is sized per server config.
+ */
+static int msg_inbox_oscore_respond(struct coap_resource *resource,
+				    struct coap_packet *request,
+				    struct sockaddr *addr, socklen_t addr_len,
+				    struct oscore_ctx *ctx,
+				    const uint8_t *piv, size_t piv_len,
+				    uint8_t code)
+{
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	struct coap_packet resp;
+	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code,
+					       NULL, 0, &resp, buf, sizeof(buf));
+	if (ret < 0) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+	}
+	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	return ret;
+}
+#endif
+
 
 /*
  * /status resource - GET returns node status as CBOR
@@ -295,99 +320,93 @@ static int msg_inbox_get(struct coap_resource *resource,
 	return ret < 0 ? ret : 0;
 }
 
-static int msg_inbox_post_respond(struct coap_resource *resource,
-				  struct coap_packet *request,
-				  struct sockaddr *addr, socklen_t addr_len,
-				  struct oscore_ctx *ctx,
-				  const uint8_t *piv, size_t piv_len,
-				  bool is_protected,
-				  uint32_t msg_id, uint8_t code)
+static int msg_inbox_post(struct coap_resource *resource,
+			  struct coap_packet *request,
+			  struct sockaddr *addr, socklen_t addr_len)
 {
-	if (is_protected && ctx != NULL && piv_len > 0) {
-		return coap_oscore_send_protected(resource, request, addr,
-						  addr_len, ctx, piv, piv_len,
-						  code);
+	uint32_t msg_id = 0;
+	int ret;
+	struct coap_oscore_auth_result auth;
+
+	ret = coap_oscore_auth_mutating(resource, request, addr, addr_len,
+					COAP_METHOD_POST, &auth);
+	if (ret < 0) {
+		return -ret;
 	}
-	static uint8_t resp_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+
+	if (s_handlers.msg_post == NULL) {
+		return COAP_RESPONSE_CODE_NOT_FOUND;
+	}
+
+	if (auth.payload == NULL || auth.payload_len == 0) {
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	}
+
+	ret = s_handlers.msg_post(auth.payload, auth.payload_len, &msg_id);
+	if (ret < 0) {
+		LOG_ERR("Message POST callback failed: %d", ret);
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (auth.ctx != NULL && auth.piv_len > 0) {
+			return msg_inbox_oscore_respond(resource, request, addr,
+							addr_len, auth.ctx,
+							auth.piv, auth.piv_len,
+							COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	}
+
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	if (auth.ctx != NULL && auth.piv_len > 0) {
+		return msg_inbox_oscore_respond(resource, request, addr,
+						addr_len, auth.ctx,
+						auth.piv, auth.piv_len,
+						COAP_RESPONSE_CODE_CREATED);
+	}
+#endif
+
+	static uint8_t response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet response;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
-	uint8_t tkl = coap_header_get_token(request, token);
-	int ret;
+	uint16_t id;
+	uint8_t tkl;
 
-	ret = coap_packet_init(&response, resp_buf, sizeof(resp_buf),
+	id = coap_header_get_id(request);
+	tkl = coap_header_get_token(request, token);
+
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
-			       code, coap_header_get_id(request));
+			       COAP_RESPONSE_CODE_CREATED, id);
 	if (ret < 0) {
 		return ret;
 	}
 
 	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					"msg", 3);
-	if (ret < 0) return ret;
+	if (ret < 0) {
+		return ret;
+	}
 
 	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					"sent", 4);
-	if (ret < 0) return ret;
+	if (ret < 0) {
+		return ret;
+	}
 
 	char id_str[12];
 	int id_len = snprintf(id_str, sizeof(id_str), "%u", msg_id);
-	if (id_len < 0 || (size_t)id_len >= sizeof(id_str)) return -EINVAL;
+	if (id_len < 0 || (size_t)id_len >= sizeof(id_str)) {
+		return -EINVAL;
+	}
 
 	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					id_str, id_len);
-	if (ret < 0) return ret;
-
-	return coap_resource_send(resource, &response, addr, addr_len, NULL);
-}
-
-static int msg_inbox_post(struct coap_resource *resource,
-			  struct coap_packet *request,
-			  struct sockaddr *addr, socklen_t addr_len)
-{
-	uint8_t peer_eui64[8] = {0};
-	uint8_t plain[LICHEN_COAP_SERVER_MAX_PAYLOAD];
-	struct oscore_ctx *oscore_ctx = NULL;
-	uint8_t piv[OSCORE_PIV_MAX_LEN];
-	size_t piv_len = 0;
-	bool is_protected = false;
-	const uint8_t *payload;
-	uint16_t payload_len;
-	uint32_t msg_id = 0;
-	int ret;
-
-	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
-		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
-		lichen_eui64_to_iid(peer_eui64, peer_eui64);
-	}
-
-	int auth_ret = coap_oscore_authorize_mutating(resource, request, addr,
-						      addr_len, COAP_METHOD_POST,
-						      plain, sizeof(plain),
-						      &payload, &payload_len,
-						      &oscore_ctx, piv, &piv_len,
-						      &is_protected);
-	if (auth_ret != 0) return auth_ret;
-
-	if (s_handlers.msg_post == NULL) {
-		return COAP_RESPONSE_CODE_NOT_FOUND;
-	}
-
-	if (payload == NULL || payload_len == 0) {
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
-	}
-
-	ret = s_handlers.msg_post(payload, payload_len, &msg_id);
 	if (ret < 0) {
-		LOG_ERR("Message POST callback failed: %d", ret);
-		return coap_oscore_send_protected(resource, request, addr, addr_len,
-						  oscore_ctx, piv, piv_len,
-						  COAP_RESPONSE_CODE_BAD_REQUEST);
+		return ret;
 	}
 
-	return msg_inbox_post_respond(resource, request, addr, addr_len,
-				      oscore_ctx, piv, piv_len, is_protected,
-				      msg_id, COAP_RESPONSE_CODE_CREATED);
+	ret = coap_resource_send(resource, &response, addr, addr_len, NULL);
+	return ret < 0 ? ret : 0;
 }
 
 static const char * const msg_inbox_path[] = { "msg", "inbox", NULL };

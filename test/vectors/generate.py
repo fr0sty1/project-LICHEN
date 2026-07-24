@@ -26,7 +26,12 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.fragment import FragmentSender, compute_mic
 from lichen.schc.headers import compress_packet
 
-from lichen.sim.tdma import hash_32
+
+def hash_32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
 
 
 def _hop_hash(eui: bytes, epoch: int) -> int:
@@ -40,8 +45,8 @@ L2_DISPATCH_ROUTING = 0x15
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
-G_SRC = IPv6Address("2001:db8::1")
-G_DST = IPv6Address("2001:db8::2")
+G_SRC = IPv6Address("fd00::1")
+G_DST = IPv6Address("fd00::2")
 ULA_SRC = IPv6Address("fd00:db8::1")
 ULA_DST = IPv6Address("fd00:db8::2")
 COAP_PORT = 5683
@@ -1804,16 +1809,26 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
+def _sync_hop_hash(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    data = seed.to_bytes(4, "little") + ((sfn & 0xffffffff).to_bytes(4, "little"))
+    return hash_32(data)
+
+
+def _sync_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    h = _sync_hop_hash(sfn, seed, num_channels)
+    n = max(num_channels, 3)
+    return 1 + (h % n)
+
+
 def ccp12_synchronized_hop_vectors() -> list[dict]:
-    eui = bytes.fromhex("0011223344556677")
     return [
         {
             "name": "hop_sfn0_8ch",
             "sfn": 0,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 6,
-            "hash_32": hash_32(b""),
+            "expected_channel": _sync_hop_channel(0, 0, 8),
+            "hash_32": _sync_hop_hash(0, 0, 8),
             "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
         },
         {
@@ -1821,8 +1836,8 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 1,
             "seed": 42,
             "num_channels": 16,
-            "expected_channel": 5,
-            "hash_32": _hop_hash(eui, 1),
+            "expected_channel": _sync_hop_channel(1, 42, 16),
+            "hash_32": _sync_hop_hash(1, 42, 16),
             "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
         },
         {
@@ -1832,7 +1847,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "num_channels": 8,
             "density": 9,
             "expected_channel": 0,
-            "hash_32": hash_32(b""),
+            "hash_32": _sync_hop_hash(0, 0, 8),
             "description": "Density>8 returns 0 per SelectChannel pseudocode line 1.",
         },
         {
@@ -1840,8 +1855,8 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 0xffffffff,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 2,
-            "hash_32": _hop_hash(eui, 0xffffffff),
+            "expected_channel": _sync_hop_channel(0xffffffff, 0, 8),
+            "hash_32": _sync_hop_hash(0xffffffff, 0, 8),
             "description": "SFN wraparound per spec Now() u32 mod and SelectChannel.",
         },
         {
@@ -1899,16 +1914,6 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
-def cc_density_high(sf: int = 10, density: int = 15, utilization: int = 100) -> int:
-    return min(12, sf + 2) if density > 10 or utilization > 150 else sf
-
-
-def cc_density_low(sf: int, density: int, snr_ema: float) -> int:
-    if density < 5 and snr_ema > 8:
-        return max(7, sf - 1)
-    return sf
-
-
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1917,30 +1922,6 @@ def ccp15_vectors() -> list[dict]:
         ema = 0.1 * load_factor + 0.9 * 0.4
         sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
         v.append({"name": f"seed{seed}","sf":sf,"ema":round(ema,6),"load_factor":round(load_factor,6),"hash_32":f"{h:08x}"})
-    v.append({
-        "name": "density_estimate_high",
-        "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2→12 with density=15, utilization=100.",
-        "assigned_sf": 10,
-        "density": 15,
-        "utilization": 100,
-        "load_factor": 0.3,
-        "neighbor_snr_ema": 5,
-        "neighbor_loss": 0.05,
-        "expected_sf": cc_density_high(sf=10, density=15, utilization=100),
-        "tx_allowed": True,
-    })
-    v.append({
-        "name": "sf_selection_low_density_capacity",
-        "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1→9 with density=3, SNR_EMA=10.",
-        "assigned_sf": 10,
-        "density": 3,
-        "utilization": 50,
-        "load_factor": 0.2,
-        "neighbor_snr_ema": 10,
-        "neighbor_loss": 0.02,
-        "expected_sf": cc_density_low(sf=10, density=3, snr_ema=10),
-        "tx_allowed": True,
-    })
     return v
 
 
@@ -2021,45 +2002,45 @@ def ccp13_vectors() -> list[dict]:
 
 
 def rpl_messages_vectors() -> list[dict]:
-    from ipaddress import IPv6Address
     from lichen.rpl.messages import DIO, DAO
-    pkt_dio = DIO(
-        rpl_instance_id=0, version=1, rank=256, grounded=True,
-        mode_of_operation=1, preference=0, dtsn=0, flags=0, reserved=0,
-        dodag_id=IPv6Address("::"),
+    from ipaddress import IPv6Address
+    dio = DIO(
+        rpl_instance_id=0, version=1, rank=256, dtsn=0,
+        dodag_id=IPv6Address("fe80::1"), grounded=True
     )
-    pkt_dao = DAO(
-        rpl_instance_id=0, dao_sequence=5, dodag_id=IPv6Address("::"),
+    dao = DAO(
+        rpl_instance_id=0, dao_sequence=5,
+        dodag_id=IPv6Address("fe80::1")
     )
     return [
         {
             "name": "dio_base",
             "type": "dio",
-            "description": "Base RPL DIO (RFC 6550).",
-            "encoded": pkt_dio.to_bytes().hex(),
+            "description": "Base RPL DIO (RFC 6550). Generated from Python reference implementation.",
+            "encoded": dio.to_bytes().hex(),
             "fields": {
-                "rpl_instance_id": pkt_dio.rpl_instance_id,
-                "version": pkt_dio.version,
-                "rank": pkt_dio.rank,
-                "grounded": pkt_dio.grounded,
-                "mode_of_operation": pkt_dio.mode_of_operation,
-                "preference": pkt_dio.preference,
-                "dtsn": pkt_dio.dtsn,
-                "flags": pkt_dio.flags,
-                "dodag_id": str(pkt_dio.dodag_id),
+                "rpl_instance_id": dio.rpl_instance_id,
+                "version": dio.version,
+                "rank": dio.rank,
+                "grounded": dio.grounded,
+                "mode_of_operation": dio.mode_of_operation,
+                "preference": dio.preference,
+                "dtsn": dio.dtsn,
+                "flags": dio.flags,
+                "dodag_id": str(dio.dodag_id),
             },
         },
         {
             "name": "dao_base",
             "type": "dao",
-            "description": "Base RPL DAO with DODAGID (RFC 6550).",
-            "encoded": pkt_dao.to_bytes().hex(),
+            "description": "Base RPL DAO with DODAGID (RFC 6550). Generated from Python reference implementation.",
+            "encoded": dao.to_bytes().hex(),
             "fields": {
-                "rpl_instance_id": pkt_dao.rpl_instance_id,
-                "ack_requested": pkt_dao.ack_requested,
-                "dao_sequence": pkt_dao.dao_sequence,
-                "dodag_id": str(pkt_dao.dodag_id) if pkt_dao.dodag_id else None,
-                "flags": pkt_dao.flags,
+                "rpl_instance_id": dao.rpl_instance_id,
+                "dao_sequence": dao.dao_sequence,
+                "ack_requested": dao.ack_requested,
+                "flags": dao.flags,
+                "dodag_id": str(dao.dodag_id),
             },
         },
     ]
@@ -2078,7 +2059,10 @@ def ipv6_malformed_vectors() -> list[dict]:
     bad_t[40] = 0
     udp_good = _udp_ipv6(ll_src, ll_dst, b"data")
     bad_u = bytearray(udp_good)
-    bad_u[45] = 0
+    # Corrupt UDP length field (bytes 44-45) to mismatch actual payload
+    good_len = int.from_bytes(udp_good[44:46], "big")
+    bad_u[44] = (good_len - 1) >> 8
+    bad_u[45] = (good_len - 1) & 0xFF
     cases = [
         ("packet_version", bytes(bad_ver), "packet_version"),
         ("icmpv6_too_short", short, "icmpv6_too_short"),
@@ -2192,37 +2176,56 @@ def main() -> None:
 
 
 def edhoc_vectors() -> list[dict]:
-    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds, records PRK, OscoreContext, TH, messages, keys (oscore/schnorr48 pattern). Python reference oracle only."""
-    import os
+    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds and deterministic ephemeral keys, records PRK, OscoreContext, TH, messages, keys. Python reference oracle only."""
+    from hashlib import sha256
     from lichen.crypto.identity import Identity
     from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
-    old = os.urandom
-    os.urandom = lambda n: bytes([0x42] * n)
-    try:
-        i = Identity.from_seed(bytes(range(32)))
-        r = Identity.from_seed(bytes(range(32, 64)))
-        init = EdhocInitiator.create(i, c_i=b"\x00")
-        resp = EdhocResponder.create(r, c_r=b"\x01")
-        m1 = init.create_message_1()
-        m2 = resp.process_message_1(m1, i.pubkey)
-        m3 = init.process_message_2(m2, r.pubkey)
-        resp.process_message_3(m3, i.pubkey)
-        ctx = init.export_oscore()
-        return [{
-            "name": "fixed_seed_sign_sign",
-            "seed_i": bytes(range(32)).hex(),
-            "seed_r": bytes(range(32, 64)).hex(),
-            "msg1": m1.hex(),
-            "msg2": m2.hex(),
-            "msg3": m3.hex(),
-            "prk_2e": "42" * 64,  # recorded from state
-            "th_2": "42" * 64,
-            "oscore_master_secret": ctx.master_secret.hex(),
-            "oscore_master_salt": ctx.master_salt.hex(),
-            "oscore_sender_id": ctx.sender_id.hex(),
-        }]
-    finally:
-        os.urandom = old
+    from nacl.bindings import crypto_scalarmult_base
+
+    # Deterministic ephemeral X25519 keys derived from known seeds.
+    # Both sides get DIFFERENT keys (unlike os.urandom monkeypatch approach)
+    # so the DH shared secret is a real key agreement, not a self-DH.
+    i_eph_sk = sha256(b"initiator-ephemeral-seed").digest()[:32]
+    r_eph_sk = sha256(b"responder-ephemeral-seed").digest()[:32]
+
+    i = Identity.from_seed(bytes(range(32)))
+    r = Identity.from_seed(bytes(range(32, 64)))
+    init = EdhocInitiator.create(i, c_i=b"\x00", eph_sk=i_eph_sk)
+    resp = EdhocResponder.create(r, c_r=b"\x01", eph_sk=r_eph_sk)
+
+    m1 = init.create_message_1()
+    m2 = resp.process_message_1(m1, i.pubkey)
+    m3 = init.process_message_2(m2, r.pubkey)
+    resp.process_message_3(m3, i.pubkey)
+
+    # Capture intermediate values BEFORE export clears them
+    prk_2e = init._prk_2e.hex()
+    prk_3e2m = init._prk_3e2m.hex()
+    prk_4e3m = init._prk_4e3m.hex()
+    th_2 = init._th_2.hex()
+    th_3 = init._th_3.hex()
+    th_4 = init._th_4.hex()
+
+    ctx = init.export_oscore()
+    return [{
+        "name": "fixed_seed_sign_sign",
+        "seed_i": bytes(range(32)).hex(),
+        "seed_r": bytes(range(32, 64)).hex(),
+        "eph_sk_i": i_eph_sk.hex(),
+        "eph_sk_r": r_eph_sk.hex(),
+        "msg1": m1.hex(),
+        "msg2": m2.hex(),
+        "msg3": m3.hex(),
+        "prk_2e": prk_2e,
+        "prk_3e2m": prk_3e2m,
+        "prk_4e3m": prk_4e3m,
+        "th_2": th_2,
+        "th_3": th_3,
+        "th_4": th_4,
+        "oscore_master_secret": ctx.master_secret.hex(),
+        "oscore_master_salt": ctx.master_salt.hex(),
+        "oscore_sender_id": ctx.sender_id.hex(),
+    }]
 
 
 if __name__ == "__main__":

@@ -61,8 +61,6 @@ fn increment_lollipop(sequence: u8) -> u8 {
 }
 
 #[cfg(feature = "std")]
-use lichen_core::addr::Ipv6Addr;
-#[cfg(feature = "std")]
 use lichen_core::error::{BufferTooSmall, TooShort};
 
 #[cfg(feature = "std")]
@@ -163,7 +161,7 @@ pub enum DaoVerifyError {
 /// semantics. Application code should use its node-level root handler.
 pub struct SignatureVerifiedDao<'a> {
     envelope: SignedDaoEnvelope<'a>,
-    origin: Ipv6Addr,
+    origin: [u8; 16],
     public_key: [u8; 32],
     signed_dao_sha256: [u8; 32],
 }
@@ -174,9 +172,9 @@ impl<'a> SignatureVerifiedDao<'a> {
     /// Packet input must never choose `pinned_key` directly.
     pub fn verify_signature(
         wire: &'a [u8],
-        origin: Ipv6Addr,
+        origin: [u8; 16],
         rpl_instance_id: u8,
-        active_dodag_id: Ipv6Addr,
+        active_dodag_id: [u8; 16],
         pinned_key: Option<PublicKey>,
     ) -> Result<Self, DaoVerifyError> {
         let dao = Dao::from_bytes(wire)
@@ -187,12 +185,12 @@ impl<'a> SignatureVerifiedDao<'a> {
         if dao.rpl_instance_id != rpl_instance_id {
             return Err(DaoVerifyError::WrongInstance);
         }
-        if dao.dodag_id.is_some_and(|dodag| dodag != active_dodag_id.0) {
+        if dao.dodag_id.is_some_and(|dodag| dodag != active_dodag_id) {
             return Err(DaoVerifyError::WrongDodag);
         }
         let envelope = SignedDaoEnvelope::from_bytes(wire).map_err(map_envelope_error)?;
         let pinned_key = pinned_key.ok_or(DaoVerifyError::UnknownKey)?;
-        if origin.iid() != iid_from_pubkey(&pinned_key) {
+        if origin[8..] != iid_from_pubkey(&pinned_key) {
             return Err(DaoVerifyError::IidMismatch);
         }
         let digest = dao_origin_digest(
@@ -217,7 +215,7 @@ impl<'a> SignatureVerifiedDao<'a> {
     }
 
     pub fn origin_iid(&self) -> [u8; 8] {
-        self.origin.iid()
+        self.origin[8..].try_into().unwrap()
     }
 }
 
@@ -236,8 +234,8 @@ fn map_envelope_error(error: DaoEnvelopeError) -> DaoVerifyError {
 
 #[cfg(feature = "std")]
 pub fn dao_origin_digest(
-    origin: Ipv6Addr,
-    dodag_id: Ipv6Addr,
+    origin: [u8; 16],
+    dodag_id: [u8; 16],
     origin_sequence: u64,
     unsigned_dao: &[u8],
 ) -> [u8; 64] {
@@ -274,9 +272,9 @@ pub enum DaoProvisionError<E> {
 pub struct DaoTxState {
     current: RedundantValue,
     public_key: [u8; 32],
-    local_origin: Ipv6Addr,
+    local_origin: [u8; 16],
     rpl_instance_id: u8,
-    dodag_id: Ipv6Addr,
+    dodag_id: [u8; 16],
     last_reserved: u64,
     last_signed_dao: Vec<u8>,
 }
@@ -286,9 +284,9 @@ impl DaoTxState {
     pub fn provision<S: NonVolatile>(
         storage: &mut S,
         expected_key: PublicKey,
-        local_origin: Ipv6Addr,
+        local_origin: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> Result<Self, DaoProvisionError<S::Error>> {
         match Self::open(
             storage,
@@ -339,9 +337,9 @@ impl DaoTxState {
     pub fn open<S: NonVolatile>(
         storage: &S,
         expected_key: PublicKey,
-        local_origin: Ipv6Addr,
+        local_origin: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> Result<Self, DaoPersistentOpenError<S::Error>> {
         let mut a = vec![0u8; DAO_TX_PAYLOAD_LEN + SLOT_OVERHEAD];
         let mut b = vec![0u8; DAO_TX_PAYLOAD_LEN + SLOT_OVERHEAD];
@@ -362,9 +360,9 @@ impl DaoTxState {
         if public_key != *expected_key.as_bytes() {
             return Err(DaoPersistentOpenError::KeyMismatch);
         }
-        if payload[32..48] != local_origin.0
+        if payload[32..48] != local_origin
             || payload[48] != rpl_instance_id
-            || payload[49..65] != dodag_id.0
+            || payload[49..65] != dodag_id
         {
             return Err(DaoPersistentOpenError::ScopeMismatch);
         }
@@ -386,9 +384,9 @@ impl DaoTxState {
     pub fn is_for_scope(
         &self,
         public_key: &PublicKey,
-        local_origin: Ipv6Addr,
+        local_origin: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> bool {
         self.public_key == *public_key.as_bytes()
             && self.local_origin == local_origin
@@ -515,9 +513,9 @@ impl DaoTxState {
 #[cfg(feature = "std")]
 fn encode_tx_state(
     public_key: &[u8; 32],
-    local_origin: Ipv6Addr,
+    local_origin: [u8; 16],
     rpl_instance_id: u8,
-    dodag_id: Ipv6Addr,
+    dodag_id: [u8; 16],
     sequence: u64,
     signed_dao: &[u8],
 ) -> Option<Vec<u8>> {
@@ -526,9 +524,9 @@ fn encode_tx_state(
     }
     let mut payload = vec![0u8; DAO_TX_HEADER_LEN + signed_dao.len()];
     payload[..32].copy_from_slice(public_key);
-    payload[32..48].copy_from_slice(&local_origin.0);
+    payload[32..48].copy_from_slice(&local_origin);
     payload[48] = rpl_instance_id;
-    payload[49..65].copy_from_slice(&dodag_id.0);
+    payload[49..65].copy_from_slice(&dodag_id);
     payload[65..73].copy_from_slice(&sequence.to_be_bytes());
     payload[73..75].copy_from_slice(&(signed_dao.len() as u16).to_be_bytes());
     payload[DAO_TX_HEADER_LEN..].copy_from_slice(signed_dao);
@@ -591,9 +589,9 @@ pub struct DaoRxState {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DaoAdmissionState {
     current: RedundantValue,
-    node_address: Ipv6Addr,
+    node_address: [u8; 16],
     rpl_instance_id: u8,
-    dodag_id: Ipv6Addr,
+    dodag_id: [u8; 16],
     admitted: HashSet<[u8; 32]>,
 }
 
@@ -611,9 +609,9 @@ pub enum DaoAdmissionUpdateError<E> {
 impl DaoAdmissionState {
     pub fn provision<S: NonVolatile>(
         storage: &mut S,
-        node_address: Ipv6Addr,
+        node_address: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> Result<Self, DaoProvisionError<S::Error>> {
         match Self::open(storage, node_address, rpl_instance_id, dodag_id) {
             Ok(_) => {
@@ -649,9 +647,9 @@ impl DaoAdmissionState {
 
     pub fn open<S: NonVolatile>(
         storage: &S,
-        node_address: Ipv6Addr,
+        node_address: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> Result<Self, DaoPersistentOpenError<S::Error>> {
         let mut a = vec![0u8; DAO_ADMISSION_PAYLOAD_LEN + SLOT_OVERHEAD];
         let mut b = vec![0u8; DAO_ADMISSION_PAYLOAD_LEN + SLOT_OVERHEAD];
@@ -739,9 +737,9 @@ impl DaoAdmissionState {
 
 #[cfg(feature = "std")]
 fn encode_admissions(
-    node_address: Ipv6Addr,
+    node_address: [u8; 16],
     rpl_instance_id: u8,
-    dodag_id: Ipv6Addr,
+    dodag_id: [u8; 16],
     admitted: &HashSet<[u8; 32]>,
 ) -> Option<Vec<u8>> {
     if admitted.len() > MAX_DAO_ORIGINS {
@@ -750,9 +748,9 @@ fn encode_admissions(
     let mut keys: Vec<_> = admitted.iter().copied().collect();
     keys.sort_unstable();
     let mut payload = vec![0u8; DAO_ADMISSION_HEADER_LEN + keys.len() * 32];
-    payload[..16].copy_from_slice(&node_address.0);
+    payload[..16].copy_from_slice(&node_address);
     payload[16] = rpl_instance_id;
-    payload[17..33].copy_from_slice(&dodag_id.0);
+    payload[17..33].copy_from_slice(&dodag_id);
     payload[33..35].copy_from_slice(&(keys.len() as u16).to_be_bytes());
     for (index, key) in keys.iter().enumerate() {
         let start = DAO_ADMISSION_HEADER_LEN + index * 32;
@@ -771,16 +769,16 @@ enum AdmissionDecodeError {
 #[cfg(feature = "std")]
 fn decode_admissions(
     payload: &[u8],
-    node_address: Ipv6Addr,
+    node_address: [u8; 16],
     rpl_instance_id: u8,
-    dodag_id: Ipv6Addr,
+    dodag_id: [u8; 16],
 ) -> Result<HashSet<[u8; 32]>, AdmissionDecodeError> {
     if payload.len() < DAO_ADMISSION_HEADER_LEN {
         return Err(AdmissionDecodeError::Corrupt);
     }
-    if payload[..16] != node_address.0
+    if payload[..16] != node_address
         || payload[16] != rpl_instance_id
-        || payload[17..33] != dodag_id.0
+        || payload[17..33] != dodag_id
     {
         return Err(AdmissionDecodeError::ScopeMismatch);
     }
@@ -821,7 +819,6 @@ pub enum DaoProcessError<E> {
     Exhausted,
     Corrupt,
     RouteRejected,
-    NotAdmitted,
 }
 
 #[cfg(feature = "std")]
@@ -861,7 +858,7 @@ pub enum DaoDiagnosticDisposition {
 #[cfg(feature = "std")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DaoDiagnosticCandidate {
-    pub parent: Ipv6Addr,
+    pub parent: [u8; 16],
     pub external: bool,
     pub path_control: u8,
     pub path_lifetime: u8,
@@ -873,9 +870,9 @@ pub struct DaoDiagnosticCandidate {
 #[cfg(feature = "std")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DaoDiagnosticSelectedCandidate {
-    pub parent: Ipv6Addr,
+    pub parent: [u8; 16],
     pub preference_subfield: u8,
-    pub path: Vec<Ipv6Addr>,
+    pub path: Vec<[u8; 16]>,
 }
 
 #[doc(hidden)]
@@ -883,9 +880,9 @@ pub struct DaoDiagnosticSelectedCandidate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DaoDiagnosticTarget {
     pub prefix_length: u8,
-    pub prefix: Ipv6Addr,
+    pub prefix: [u8; 16],
     pub descriptor: Option<u32>,
-    pub sequence_authority: Ipv6Addr,
+    pub sequence_authority: [u8; 16],
     pub path_sequence: u8,
     pub disposition: DaoDiagnosticDisposition,
     pub candidates: Vec<DaoDiagnosticCandidate>,
@@ -926,68 +923,33 @@ const DEFAULT_LIFETIME_UNIT_SECONDS: u64 = 60;
 const FRESHNESS_TOMBSTONE_RETENTION_SECONDS: u64 = 60 * 60;
 
 #[cfg(feature = "std")]
-pub const ANNOUNCE_TYPE: u8 = 0x01;
-#[cfg(feature = "std")]
-pub const MAX_ANNOUNCE_HOPS: u8 = 15;
-
-#[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AnnounceRelayAction {
-    Send { hop_count: u8 },
-    Suppress,
+struct Freshness {
+    sequence: u8,
+    active_until: Option<u64>,
+    retain_until: u64,
+    updated_at: u64,
 }
 
 #[cfg(feature = "std")]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AnnounceState {
-    local_seq: u16,
-    last_relay_map: std::collections::HashMap<[u8; 8], u16>,
-}
-
-#[cfg(feature = "std")]
-impl AnnounceState {
-    pub fn new() -> Self {
+impl Freshness {
+    fn new(sequence: u8, active_until: Option<u64>, now_seconds: u64) -> Self {
+        let retain_until = active_until
+            .unwrap_or(u64::MAX)
+            .max(now_seconds)
+            .saturating_add(FRESHNESS_TOMBSTONE_RETENTION_SECONDS);
         Self {
-            local_seq: 0,
-            last_relay_map: std::collections::HashMap::new(),
+            sequence,
+            active_until,
+            retain_until,
+            updated_at: now_seconds,
         }
     }
 
-    pub fn local_seq(&self) -> u16 {
-        self.local_seq
-    }
-
-    pub fn bump_local_seq(&mut self) -> u16 {
-        self.local_seq = self.local_seq.wrapping_add(1);
-        self.local_seq
-    }
-
-    pub fn should_relay(
-        &mut self,
-        originator_iid: &[u8; 8],
-        seq_num: u16,
-        hop_count: u8,
-    ) -> AnnounceRelayAction {
-        if hop_count >= MAX_ANNOUNCE_HOPS {
-            return AnnounceRelayAction::Suppress;
-        }
-        if let Some(&last_seq) = self.last_relay_map.get(originator_iid) {
-            let seq_gt = |a: u16, b: u16| -> bool {
-                a != b && a.wrapping_sub(b) < 1 << 15
-            };
-            if !seq_gt(seq_num, last_seq) {
-                return AnnounceRelayAction::Suppress;
-            }
-        }
-        let relay_hop = hop_count + 1;
-        self.last_relay_map.insert(*originator_iid, seq_num);
-        AnnounceRelayAction::Send { hop_count: relay_hop }
-    }
-}
-
-impl Default for AnnounceState {
-    fn default() -> Self {
-        Self::new()
+    fn is_reclaimable(self, now_seconds: u64) -> bool {
+        self.active_until
+            .is_some_and(|deadline| deadline <= now_seconds)
+            && self.retain_until <= now_seconds
     }
 }
 
@@ -1000,7 +962,7 @@ impl Default for AnnounceState {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceRoutingHeader {
     pub segments_left: u8,
-    pub addresses: Vec<Ipv6Addr>,
+    pub addresses: Vec<[u8; 16]>,
 }
 
 #[cfg(feature = "std")]
@@ -1023,7 +985,7 @@ impl SourceRoutingHeader {
         out[4] = 0; // reserved
         out[5] = 0;
         for (i, addr) in self.addresses.iter().enumerate() {
-            out[6 + i * 16..6 + (i + 1) * 16].copy_from_slice(&addr.0);
+            out[6 + i * 16..6 + (i + 1) * 16].copy_from_slice(addr);
         }
         Ok(needed)
     }
@@ -1046,9 +1008,9 @@ impl SourceRoutingHeader {
         if !addr_bytes.len().is_multiple_of(16) {
             return Err(RplError::InvalidOption);
         }
-        let addresses: Vec<Ipv6Addr> = addr_bytes
+        let addresses: Vec<[u8; 16]> = addr_bytes
             .chunks_exact(16)
-            .map(|chunk| Ipv6Addr(chunk.try_into().unwrap()))
+            .map(|chunk| chunk.try_into().unwrap())
             .collect();
         let segments_left = data[1];
         if (segments_left as usize) > addresses.len() {
@@ -1060,7 +1022,7 @@ impl SourceRoutingHeader {
         })
     }
 
-    pub fn from_route(route: &[Ipv6Addr]) -> Result<Self, RplError> {
+    pub fn from_route(route: &[[u8; 16]]) -> Result<Self, RplError> {
         let remaining = route.len().checked_sub(1).ok_or(RplError::InvalidOption)?;
         if remaining == 0 || remaining > u8::MAX as usize {
             return Err(RplError::InvalidOption);
@@ -1109,7 +1071,7 @@ pub struct InvalidRouteEntryTransition {
 #[cfg(feature = "std")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RouteEntry {
-    pub path: Vec<Ipv6Addr>,
+    pub path: Vec<[u8; 16]>,
     pub state: RouteEntryState,
 }
 
@@ -1117,13 +1079,13 @@ pub struct RouteEntry {
 #[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RouteTarget {
-    prefix: Ipv6Addr,
+    prefix: [u8; 16],
     prefix_len: u8,
 }
 
 #[cfg(feature = "std")]
 impl RouteTarget {
-    pub fn new(mut prefix: Ipv6Addr, prefix_len: u8) -> Option<Self> {
+    pub fn new(mut prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
         if prefix_len > 128 {
             return None;
         }
@@ -1131,20 +1093,20 @@ impl RouteTarget {
         let remaining_bits = prefix_len % 8;
         let used_bytes = whole_bytes + usize::from(remaining_bits != 0);
         if remaining_bits != 0 {
-            prefix.0[whole_bytes] &= u8::MAX << (8 - remaining_bits);
+            prefix[whole_bytes] &= u8::MAX << (8 - remaining_bits);
         }
-        prefix.0[used_bytes..].fill(0);
+        prefix[used_bytes..].fill(0);
         Some(Self { prefix, prefix_len })
     }
 
-    pub const fn host(address: Ipv6Addr) -> Self {
+    pub const fn host(address: [u8; 16]) -> Self {
         Self {
             prefix: address,
             prefix_len: 128,
         }
     }
 
-    pub const fn prefix(&self) -> &Ipv6Addr {
+    pub const fn prefix(&self) -> &[u8; 16] {
         &self.prefix
     }
 
@@ -1152,22 +1114,21 @@ impl RouteTarget {
         self.prefix_len
     }
 
-    pub fn contains(&self, address: &Ipv6Addr) -> bool {
+    pub fn contains(&self, address: &[u8; 16]) -> bool {
         let whole_bytes = usize::from(self.prefix_len / 8);
-        if self.prefix.0[..whole_bytes] != address.0[..whole_bytes] {
+        if self.prefix[..whole_bytes] != address[..whole_bytes] {
             return false;
         }
         let remaining_bits = self.prefix_len % 8;
         remaining_bits == 0
-            || (self.prefix.0[whole_bytes] ^ address.0[whole_bytes])
-                & (u8::MAX << (8 - remaining_bits))
+            || (self.prefix[whole_bytes] ^ address[whole_bytes]) & (u8::MAX << (8 - remaining_bits))
                 == 0
     }
 }
 
 #[cfg(feature = "std")]
 impl RouteEntry {
-    pub fn fresh(path: &[Ipv6Addr]) -> Self {
+    pub fn fresh(path: &[[u8; 16]]) -> Self {
         Self {
             path: path.to_vec(),
             state: RouteEntryState::Fresh,
@@ -1194,7 +1155,7 @@ impl RouteEntry {
         self.transition_to(RouteEntryState::Expired)
     }
 
-    pub fn refresh(&mut self, path: &[Ipv6Addr]) -> Result<(), InvalidRouteEntryTransition> {
+    pub fn refresh(&mut self, path: &[[u8; 16]]) -> Result<(), InvalidRouteEntryTransition> {
         if self.state == RouteEntryState::Expired {
             return Err(InvalidRouteEntryTransition {
                 from: self.state,
@@ -1220,8 +1181,8 @@ impl RouteEntry {
 pub struct RoutingTable {
     routes: HashMap<RouteTarget, RouteEntry>,
     prefix_route_count: usize,
-    rpl_managed_hosts: HashSet<Ipv6Addr>,
-    rpl_managed_prefixes: HashMap<RouteTarget, Ipv6Addr>,
+    rpl_managed_hosts: HashSet<[u8; 16]>,
+    rpl_managed_prefixes: HashMap<RouteTarget, [u8; 16]>,
     unavailable_managed_prefixes: HashSet<RouteTarget>,
 }
 
@@ -1232,7 +1193,7 @@ impl RoutingTable {
     }
 
     /// Add or replace a route, returning `false` if a new entry would exceed capacity.
-    pub fn add_route(&mut self, target: Ipv6Addr, path: &[Ipv6Addr]) -> bool {
+    pub fn add_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
         self.add_target_route(RouteTarget::host(target), path)
     }
 
@@ -1240,8 +1201,8 @@ impl RoutingTable {
     pub fn add_prefix_route(
         &mut self,
         target: RouteTarget,
-        egress: Ipv6Addr,
-        path: &[Ipv6Addr],
+        egress: [u8; 16],
+        path: &[[u8; 16]],
     ) -> bool {
         if target.prefix_len == 128
             || path.last() != Some(&egress)
@@ -1263,7 +1224,7 @@ impl RoutingTable {
         true
     }
 
-    fn add_target_route(&mut self, target: RouteTarget, path: &[Ipv6Addr]) -> bool {
+    fn add_target_route(&mut self, target: RouteTarget, path: &[[u8; 16]]) -> bool {
         if path.len() > MAX_ROUTE_HOPS {
             return false;
         }
@@ -1287,7 +1248,7 @@ impl RoutingTable {
         true
     }
 
-    pub fn remove_route(&mut self, target: &Ipv6Addr) {
+    pub fn remove_route(&mut self, target: &[u8; 16]) {
         self.routes.remove(&RouteTarget::host(*target));
     }
 
@@ -1301,7 +1262,7 @@ impl RoutingTable {
 
     pub fn mark_stale(
         &mut self,
-        target: &Ipv6Addr,
+        target: &[u8; 16],
     ) -> Option<Result<(), InvalidRouteEntryTransition>> {
         self.routes
             .get_mut(&RouteTarget::host(*target))
@@ -1310,14 +1271,14 @@ impl RoutingTable {
 
     pub fn mark_expired(
         &mut self,
-        target: &Ipv6Addr,
+        target: &[u8; 16],
     ) -> Option<Result<(), InvalidRouteEntryTransition>> {
         self.routes
             .get_mut(&RouteTarget::host(*target))
             .map(RouteEntry::mark_expired)
     }
 
-    pub fn entry_state(&self, target: &Ipv6Addr) -> Option<RouteEntryState> {
+    pub fn entry_state(&self, target: &[u8; 16]) -> Option<RouteEntryState> {
         self.routes
             .get(&RouteTarget::host(*target))
             .map(|entry| entry.state)
@@ -1333,7 +1294,7 @@ impl RoutingTable {
     }
 
     /// Return the longest-prefix path for `target`, or `None` if no route is known.
-    pub fn lookup(&self, target: &Ipv6Addr) -> Option<&[Ipv6Addr]> {
+    pub fn lookup(&self, target: &[u8; 16]) -> Option<&[[u8; 16]]> {
         if self.prefix_route_count == 0 {
             return self
                 .routes
@@ -1362,23 +1323,62 @@ impl RoutingTable {
 /// Builds DAOs (non-root nodes) and assembles source routes from incoming DAOs (root).
 ///
 /// On the root, `routing_table` is updated in place as DAOs arrive.
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct DaoCandidate {
+    parent: [u8; 16],
+    path_control: u8,
+    path_lifetime: u8,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy)]
+struct DaoUpdate {
+    target: [u8; 16],
+    parent: [u8; 16],
+    path_control: u8,
+    path_sequence: u8,
+    path_lifetime: u8,
+    descriptor: Option<u32>,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy)]
+struct DaoTiming {
+    now_seconds: u64,
+    lifetime_unit_seconds: u64,
+    max_deadline_seconds: u64,
+}
+
 #[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct DaoManager {
-    node_address: Ipv6Addr,
+    node_address: [u8; 16],
     is_root: bool,
     rpl_instance_id: u8,
-    dodag_id: Ipv6Addr,
+    dodag_id: [u8; 16],
     routing_table: RoutingTable,
     dao_sequence: u8,
-    parent_map: HashMap<Ipv6Addr, Vec<Ipv6Addr>>,
-    dao_seq_map: HashMap<Ipv6Addr, u8>,
+    path_sequence: u8,
+    last_built_dao: Option<([u8; 16], u8)>,
+    parent_map: HashMap<[u8; 16], Vec<[u8; 16]>>,
+    edge_expiry: HashMap<([u8; 16], [u8; 16]), Option<u64>>,
+    /// Last accepted DAOSequence and replay-retention deadline per DAO origin.
+    origin_seq_map: HashMap<[u8; 16], Freshness>,
+    /// Last accepted Transit Path Sequence per target (route freshness).
+    path_seq_map: HashMap<[u8; 16], Freshness>,
+    candidate_map: HashMap<[u8; 16], Vec<DaoCandidate>>,
+    descriptor_map: HashMap<[u8; 16], Option<u32>>,
+    /// Strict authenticated origin sequence. Never expires or evicts.
+    origin_high_water: HighWaterMap,
+    dao_seq_map: HashMap<[u8; 16], u8>,
     last_dao_ts: u32,
 }
 
 #[cfg(feature = "std")]
 impl DaoManager {
-    pub fn new(node_address: Ipv6Addr, rpl_instance_id: u8, dodag_id: Ipv6Addr) -> Self {
+    pub fn new(node_address: [u8; 16], rpl_instance_id: u8, dodag_id: [u8; 16]) -> Self {
         Self {
             node_address,
             is_root: false,
@@ -1389,12 +1389,18 @@ impl DaoManager {
             path_sequence: 240,
             last_built_dao: None,
             parent_map: HashMap::new(),
+            edge_expiry: HashMap::new(),
+            origin_seq_map: HashMap::new(),
+            path_seq_map: HashMap::new(),
+            candidate_map: HashMap::new(),
+            descriptor_map: HashMap::new(),
+            origin_high_water: HashMap::new(),
             dao_seq_map: HashMap::new(),
             last_dao_ts: 0,
         }
     }
 
-    fn as_root(node_address: Ipv6Addr, rpl_instance_id: u8, dodag_id: Ipv6Addr) -> Self {
+    fn as_root(node_address: [u8; 16], rpl_instance_id: u8, dodag_id: [u8; 16]) -> Self {
         let mut m = Self::new(node_address, rpl_instance_id, dodag_id);
         m.is_root = true;
         m
@@ -1417,14 +1423,16 @@ impl DaoManager {
             candidate_map: self.candidate_map.clone(),
             descriptor_map: self.descriptor_map.clone(),
             origin_high_water: self.origin_high_water.clone(),
+            dao_seq_map: self.dao_seq_map.clone(),
+            last_dao_ts: self.last_dao_ts,
         }
     }
 
     pub fn provision_root<S: NonVolatile>(
         storage: &mut S,
-        node_address: Ipv6Addr,
+        node_address: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> Result<(Self, DaoRxState), DaoProvisionError<S::Error>> {
         match Self::open_root(storage, node_address, rpl_instance_id, dodag_id) {
             Ok(_) => {
@@ -1462,9 +1470,9 @@ impl DaoManager {
 
     pub fn open_root<S: NonVolatile>(
         storage: &S,
-        node_address: Ipv6Addr,
+        node_address: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> Result<(Self, DaoRxState), DaoPersistentOpenError<S::Error>> {
         let mut a = vec![0u8; HIGH_WATER_PAYLOAD_LEN + SLOT_OVERHEAD];
         let mut b = vec![0u8; HIGH_WATER_PAYLOAD_LEN + SLOT_OVERHEAD];
@@ -1482,9 +1490,9 @@ impl DaoManager {
         if persisted.len() < HIGH_WATER_HEADER_LEN {
             return Err(DaoPersistentOpenError::Corrupt);
         }
-        if persisted[..16] != node_address.0
+        if persisted[..16] != node_address
             || persisted[16] != rpl_instance_id
-            || persisted[17..HIGH_WATER_SCOPE_LEN] != dodag_id.0
+            || persisted[17..HIGH_WATER_SCOPE_LEN] != dodag_id
         {
             return Err(DaoPersistentOpenError::ScopeMismatch);
         }
@@ -1504,7 +1512,6 @@ impl DaoManager {
         rx_state: &mut DaoRxState,
         storage: &mut S,
         timing: DaoProcessTiming,
-        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         self.process_signature_verified_inner(
             verified,
@@ -1513,7 +1520,6 @@ impl DaoManager {
             storage,
             timing,
             true,
-            dao_admission,
         )
     }
 
@@ -1528,7 +1534,6 @@ impl DaoManager {
         rx_state: &mut DaoRxState,
         storage: &mut S,
         timing: DaoProcessTiming,
-        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         self.process_signature_verified_inner(
             verified,
@@ -1537,7 +1542,6 @@ impl DaoManager {
             storage,
             timing,
             false,
-            dao_admission,
         )
     }
 
@@ -1549,11 +1553,7 @@ impl DaoManager {
         storage: &mut S,
         timing: DaoProcessTiming,
         skip_dao_sequence_check: bool,
-        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
-        if !dao_admission.contains(&verified.public_key) {
-            return Err(DaoProcessError::NotAdmitted);
-        }
         let sequence = verified.envelope.origin.origin_sequence;
 
         let dao = verified.envelope.dao.clone();
@@ -1648,12 +1648,12 @@ impl DaoManager {
     fn sender_is_authorized(
         updates: &[Option<DaoUpdate>; MAX_DAO_UPDATES],
         update_count: usize,
-        origin: Ipv6Addr,
-        root: Ipv6Addr,
+        origin: [u8; 16],
+        root: [u8; 16],
         sender_iid: [u8; 8],
     ) -> bool {
-        let link_local_origin = origin.0[0] == 0xfe && origin.0[1] & 0xc0 == 0x80;
-        if link_local_origin && origin.iid() != sender_iid {
+        let link_local_origin = origin[0] == 0xfe && origin[1] & 0xc0 == 0x80;
+        if link_local_origin && origin[8..] != sender_iid {
             return false;
         }
         let mut found_origin = false;
@@ -1665,14 +1665,14 @@ impl DaoManager {
             if link_local_origin && update.parent != root {
                 return false;
             }
-            if update.parent.0[8..] == root.0[8..] && origin.iid() != sender_iid {
+            if update.parent[8..] == root[8..] && origin[8..] != sender_iid {
                 return false;
             }
         }
         found_origin
     }
 
-    fn has_exact_origin_target(dao: &Dao, dao_bytes: &[u8], origin: Ipv6Addr) -> bool {
+    fn has_exact_origin_target(dao: &Dao, dao_bytes: &[u8], origin: [u8; 16]) -> bool {
         let mut target = None;
         for option in OptionIter::new(dao.options_tail(dao_bytes)) {
             let Ok(option) = option else {
@@ -1688,7 +1688,7 @@ impl DaoManager {
                 target = Some(parsed);
             }
         }
-        target.is_some_and(|target| target.prefix_len == 128 && target.prefix == origin.0)
+        target.is_some_and(|target| target.prefix_len == 128 && target.prefix == origin)
     }
 
     pub fn routing_table(&self) -> &RoutingTable {
@@ -1697,9 +1697,9 @@ impl DaoManager {
 
     #[doc(hidden)]
     pub fn diagnostic_root(
-        node_address: Ipv6Addr,
+        node_address: [u8; 16],
         rpl_instance_id: u8,
-        dodag_id: Ipv6Addr,
+        dodag_id: [u8; 16],
     ) -> Self {
         Self::as_root(node_address, rpl_instance_id, dodag_id)
     }
@@ -1708,7 +1708,7 @@ impl DaoManager {
     pub fn process_route_state_diagnostic(
         &mut self,
         dao_bytes: &[u8],
-        sequence_authority: Ipv6Addr,
+        sequence_authority: [u8; 16],
         timing: DaoProcessTiming,
         limits: DaoDiagnosticLimits,
     ) -> Result<bool, DaoDiagnosticError> {
@@ -1745,7 +1745,7 @@ impl DaoManager {
     #[doc(hidden)]
     pub fn route_state_diagnostic(
         &self,
-        sequence_authority: Ipv6Addr,
+        sequence_authority: [u8; 16],
         lifetime_unit_seconds: u64,
     ) -> Vec<DaoDiagnosticTarget> {
         let mut targets: Vec<_> = self
@@ -1823,12 +1823,12 @@ impl DaoManager {
     /// Build a DAO advertising this node with `parent_addr` as transit.
     ///
     /// Returns the encoded bytes: DAO base + RPL Target option + Transit Info option.
-    pub fn build_dao(&mut self, parent_addr: Ipv6Addr) -> Vec<u8> {
+    pub fn build_dao(&mut self, parent_addr: [u8; 16]) -> Vec<u8> {
         self.build_dao_with_lifetime(parent_addr, 255)
     }
 
     /// Build a DAO with an explicit Path Lifetime; zero creates a No-Path DAO.
-    pub fn build_dao_with_lifetime(&mut self, parent_addr: Ipv6Addr, path_lifetime: u8) -> Vec<u8> {
+    pub fn build_dao_with_lifetime(&mut self, parent_addr: [u8; 16], path_lifetime: u8) -> Vec<u8> {
         self.dao_sequence = increment_lollipop(self.dao_sequence);
         self.path_sequence = increment_lollipop(self.path_sequence);
         let wire = self.build_dao_inner(parent_addr, path_lifetime);
@@ -1840,7 +1840,7 @@ impl DaoManager {
     /// Path Sequence. The DAOSequence still advances so root replay checks remain valid.
     pub fn build_dao_copy_with_lifetime(
         &mut self,
-        parent_addr: Ipv6Addr,
+        parent_addr: [u8; 16],
         path_lifetime: u8,
     ) -> Option<Vec<u8>> {
         if self.last_built_dao != Some((parent_addr, path_lifetime)) {
@@ -1850,13 +1850,13 @@ impl DaoManager {
         Some(self.build_dao_inner(parent_addr, path_lifetime))
     }
 
-    fn build_dao_inner(&self, parent_addr: Ipv6Addr, path_lifetime: u8) -> Vec<u8> {
+    fn build_dao_inner(&self, parent_addr: [u8; 16], path_lifetime: u8) -> Vec<u8> {
         let dao = Dao {
             rpl_instance_id: self.rpl_instance_id,
             ack_requested: false,
             flags: 0,
             dao_sequence: self.dao_sequence,
-            dodag_id: Some(self.dodag_id.0),
+            dodag_id: Some(self.dodag_id),
         };
 
         let mut buf = [0u8; 64]; // DAO(20) + Target(20) + TransitInfo(22) = 62
@@ -1866,7 +1866,7 @@ impl DaoManager {
 
         let target = RplTarget {
             prefix_len: 128,
-            prefix: self.node_address.0,
+            prefix: self.node_address,
         };
         let mut tmp = [0u8; 24];
         let n = target
@@ -1879,7 +1879,7 @@ impl DaoManager {
             path_control: 0x80,
             path_sequence: self.path_sequence,
             path_lifetime,
-            parent_address: parent_addr.0,
+            parent_address: parent_addr,
         };
         pos += transit
             .write_to(&mut buf[pos..])
@@ -1934,7 +1934,7 @@ impl DaoManager {
     fn process_dao_at(
         &mut self,
         dao_bytes: &[u8],
-        origin: Ipv6Addr,
+        origin: [u8; 16],
         now_seconds: u64,
         lifetime_unit_seconds: u64,
     ) -> bool {
@@ -1986,7 +1986,7 @@ impl DaoManager {
         dao: Dao,
         updates: [Option<DaoUpdate>; MAX_DAO_UPDATES],
         update_count: usize,
-        origin: Ipv6Addr,
+        origin: [u8; 16],
         skip_dao_sequence_check: bool,
         timing: DaoTiming,
         limits: DaoStateLimits,
@@ -2002,7 +2002,7 @@ impl DaoManager {
         if dao.rpl_instance_id != self.rpl_instance_id
             || dao
                 .dodag_id
-                .is_some_and(|dodag_id| dodag_id != self.dodag_id.0)
+                .is_some_and(|dodag_id| dodag_id != self.dodag_id)
         {
             return Err(());
         }
@@ -2029,7 +2029,7 @@ impl DaoManager {
             !parents.is_empty()
         });
 
-        let mut incoming_candidates: HashMap<Ipv6Addr, Vec<DaoCandidate>> = HashMap::new();
+        let mut incoming_candidates: HashMap<[u8; 16], Vec<DaoCandidate>> = HashMap::new();
         let mut incoming_descriptors = HashMap::new();
         for update in updates[..update_count].iter().flatten() {
             if incoming_descriptors
@@ -2067,7 +2067,7 @@ impl DaoManager {
             return Err(());
         }
 
-        let incoming_targets: HashSet<Ipv6Addr> = incoming_candidates.keys().copied().collect();
+        let incoming_targets: HashSet<[u8; 16]> = incoming_candidates.keys().copied().collect();
         let mut changed_targets = HashSet::new();
         for (target, candidates) in &incoming_candidates {
             let sequence = updates[..update_count]
@@ -2237,8 +2237,8 @@ impl DaoManager {
     }
 
     fn target_active_until(
-        target: Ipv6Addr,
-        expiry: &HashMap<(Ipv6Addr, Ipv6Addr), Option<u64>>,
+        target: [u8; 16],
+        expiry: &HashMap<([u8; 16], [u8; 16]), Option<u64>>,
     ) -> Option<u64> {
         expiry
             .iter()
@@ -2256,10 +2256,10 @@ impl DaoManager {
     }
 
     fn make_freshness_room(
-        map: &mut HashMap<Ipv6Addr, Freshness>,
+        map: &mut HashMap<[u8; 16], Freshness>,
         limit: usize,
         now_seconds: u64,
-        protected: &HashSet<Ipv6Addr>,
+        protected: &HashSet<[u8; 16]>,
     ) -> bool {
         if map.len() < limit {
             return true;
@@ -2315,7 +2315,7 @@ impl DaoManager {
                     if parsed.prefix_len != 128 || target_count == MAX_DAO_UPDATES {
                         return None;
                     }
-                    targets[target_count] = Some(Ipv6Addr(parsed.prefix));
+                    targets[target_count] = Some(parsed.prefix);
                     target_count += 1;
                     descriptor_allowed = true;
                 }
@@ -2378,7 +2378,7 @@ impl DaoManager {
     fn finish_group(
         updates: &mut [Option<DaoUpdate>; MAX_DAO_UPDATES],
         update_count: &mut usize,
-        targets: &[Option<Ipv6Addr>; MAX_DAO_UPDATES],
+        targets: &[Option<[u8; 16]>; MAX_DAO_UPDATES],
         descriptors: &[Option<u32>; MAX_DAO_UPDATES],
         target_count: usize,
         transits: &[Option<TransitInfo>; MAX_DAO_UPDATES],
@@ -2414,29 +2414,117 @@ impl DaoManager {
         self.last_dao_ts = self.last_dao_ts.wrapping_add(1);
     }
 
+    /// Rebuild the full route table from the parent map, preserving existing
+    /// prefix routes and tracking managed (RPL-advertised) prefix egress.
+    ///
+    /// Returns `None` if any host-route path fails or capacity is exceeded.
+    fn rebuilt_routes(
+        root: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+        routing_table: &RoutingTable,
+        refresh_targets: &HashSet<[u8; 16]>,
+    ) -> Option<RoutingTable> {
+        let mut targets: Vec<[u8; 16]> = parent_map.keys().copied().collect();
+        targets.sort_unstable();
+        let mut routes = HashMap::with_capacity(routing_table.routes.len());
+        let mut rpl_managed_hosts = routing_table.rpl_managed_hosts.clone();
+        let mut rpl_managed_prefixes = HashMap::new();
+        let mut unavailable_managed_prefixes = HashSet::new();
+        for target in targets {
+            if let Some(path) =
+                Self::assemble_path_checked(root, parent_map, candidate_map, target).ok()?
+            {
+                rpl_managed_hosts.insert(target);
+                let route_target = RouteTarget::host(target);
+                if !routes.contains_key(&route_target)
+                    && routes.len() + routing_table.prefix_route_count >= MAX_ROUTES
+                {
+                    return None;
+                }
+                let mut entry = match routing_table.routes.get(&route_target) {
+                    Some(entry)
+                        if entry.state == RouteEntryState::Expired
+                            && !refresh_targets.contains(&target)
+                            && entry.path == path =>
+                    {
+                        entry.clone()
+                    }
+                    Some(entry) if entry.state != RouteEntryState::Expired => entry.clone(),
+                    _ => RouteEntry::fresh(&path),
+                };
+                if refresh_targets.contains(&target) || entry.path != path {
+                    entry
+                        .refresh(&path)
+                        .expect("fresh or stale route entry can refresh");
+                }
+                routes.insert(route_target, entry);
+            }
+        }
+        for (target, existing) in routing_table
+            .routes
+            .iter()
+            .filter(|(target, _)| target.prefix_len < 128)
+        {
+            let egress = existing.path.last().copied()?;
+            let was_managed = routing_table.rpl_managed_prefixes.get(target) == Some(&egress);
+            let is_managed = was_managed || rpl_managed_hosts.contains(&egress);
+            let mut entry = existing.clone();
+            if is_managed {
+                rpl_managed_prefixes.insert(*target, egress);
+                if let Some(path) =
+                    Self::assemble_path_checked(root, parent_map, candidate_map, egress).ok()?
+                {
+                    if routing_table.unavailable_managed_prefixes.contains(target) {
+                        entry = RouteEntry::fresh(&path);
+                    } else {
+                        entry.path = path;
+                    }
+                } else {
+                    entry
+                        .mark_expired()
+                        .expect("usable managed prefix can expire repeatedly");
+                    unavailable_managed_prefixes.insert(*target);
+                }
+            }
+            routes.insert(*target, entry);
+        }
+        let prefix_route_count = routes
+            .keys()
+            .filter(|target| target.prefix_len < 128)
+            .count();
+        Some(RoutingTable {
+            routes,
+            prefix_route_count,
+            rpl_managed_hosts,
+            rpl_managed_prefixes,
+            unavailable_managed_prefixes,
+        })
+    }
+
     /// Walk target → parent → … → root and return the reversed downward path.
     ///
     /// Returns `None` if the chain is incomplete or contains a loop.
     #[cfg(test)]
     fn assemble_path(
-        root: Ipv6Addr,
-        parent_map: &HashMap<Ipv6Addr, Vec<Ipv6Addr>>,
-        candidate_map: &HashMap<Ipv6Addr, Vec<DaoCandidate>>,
-        target: Ipv6Addr,
-    ) -> Option<Vec<Ipv6Addr>> {
+        root: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+        target: [u8; 16],
+    ) -> Option<Vec<[u8; 16]>> {
         Self::assemble_path_checked(root, parent_map, candidate_map, target)
             .ok()
             .flatten()
     }
 
     fn assemble_path_checked(
-        root: Ipv6Addr,
-        parent_map: &HashMap<Ipv6Addr, Vec<Ipv6Addr>>,
-        candidate_map: &HashMap<Ipv6Addr, Vec<DaoCandidate>>,
-        target: Ipv6Addr,
-    ) -> Result<Option<Vec<Ipv6Addr>>, ()> {
-        let mut chain: Vec<Ipv6Addr> = Vec::new();
-        let mut visited: HashSet<Ipv6Addr> = HashSet::new();
+        root: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+        target: [u8; 16],
+    ) -> Result<Option<Vec<[u8; 16]>>, ()> {
+        let mut chain: Vec<[u8; 16]> = Vec::new();
+        let mut visited: HashSet<[u8; 16]> = HashSet::new();
         if !Self::assemble_path_from(
             root,
             parent_map,
@@ -2452,12 +2540,12 @@ impl DaoManager {
     }
 
     fn assemble_path_from(
-        root: Ipv6Addr,
-        parent_map: &HashMap<Ipv6Addr, Vec<Ipv6Addr>>,
-        candidate_map: &HashMap<Ipv6Addr, Vec<DaoCandidate>>,
-        node: Ipv6Addr,
-        chain: &mut Vec<Ipv6Addr>,
-        visited: &mut HashSet<Ipv6Addr>,
+        root: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+        node: [u8; 16],
+        chain: &mut Vec<[u8; 16]>,
+        visited: &mut HashSet<[u8; 16]>,
     ) -> Result<bool, ()> {
         if node == root {
             return Ok(true);
@@ -2529,9 +2617,9 @@ impl DaoManager {
 
 #[cfg(feature = "std")]
 fn encode_high_water(
-    node_address: Ipv6Addr,
+    node_address: [u8; 16],
     rpl_instance_id: u8,
-    dodag_id: Ipv6Addr,
+    dodag_id: [u8; 16],
     map: &HighWaterMap,
     out: &mut [u8],
 ) -> Option<usize> {
@@ -2542,9 +2630,9 @@ fn encode_high_water(
     if out.len() < len {
         return None;
     }
-    out[..16].copy_from_slice(&node_address.0);
+    out[..16].copy_from_slice(&node_address);
     out[16] = rpl_instance_id;
-    out[17..HIGH_WATER_SCOPE_LEN].copy_from_slice(&dodag_id.0);
+    out[17..HIGH_WATER_SCOPE_LEN].copy_from_slice(&dodag_id);
     out[HIGH_WATER_SCOPE_LEN..HIGH_WATER_HEADER_LEN]
         .copy_from_slice(&(map.len() as u16).to_be_bytes());
     let mut entries: Vec<_> = map.iter().collect();
@@ -2594,12 +2682,15 @@ mod tests {
     use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
     use std::{vec, vec::Vec};
 
-    fn ll(iid: u8) -> Ipv6Addr {
-        Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
+    fn ll(iid: u8) -> [u8; 16] {
+        [0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid]
     }
 
-    fn dodag_id() -> Ipv6Addr {
-        Ipv6Addr([0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+    fn dodag_id() -> [u8; 16] {
+        let mut id = [0u8; 16];
+        id[0] = 0xfd;
+        id[15] = 1;
+        id
     }
 
     fn tx_provision(storage: &mut MemStorage, key: PublicKey) -> DaoTxState {
@@ -2613,15 +2704,15 @@ mod tests {
         DaoTxState::open(storage, key, ll(2), 0, dodag_id())
     }
 
-    fn addr(value: u16) -> Ipv6Addr {
+    fn addr(value: u16) -> [u8; 16] {
         let mut address = ll(0);
-        address.0[14..].copy_from_slice(&value.to_be_bytes());
+        address[14..].copy_from_slice(&value.to_be_bytes());
         address
     }
 
     fn candidates_for(
-        parents: &HashMap<Ipv6Addr, Vec<Ipv6Addr>>,
-    ) -> HashMap<Ipv6Addr, Vec<DaoCandidate>> {
+        parents: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+    ) -> HashMap<[u8; 16], Vec<DaoCandidate>> {
         parents
             .iter()
             .map(|(target, parents)| {
@@ -2641,8 +2732,8 @@ mod tests {
     }
 
     fn assert_freshness_maps_equal(
-        actual: &HashMap<Ipv6Addr, Freshness>,
-        expected: &HashMap<Ipv6Addr, Freshness>,
+        actual: &HashMap<[u8; 16], Freshness>,
+        expected: &HashMap<[u8; 16], Freshness>,
     ) {
         assert_eq!(actual.len(), expected.len());
         for (target, expected) in expected {
@@ -2654,10 +2745,10 @@ mod tests {
         }
     }
 
-    fn verified_dao(identity: &Identity, sequence: u64, parent: Ipv6Addr) -> (Vec<u8>, Ipv6Addr) {
-        let mut origin = Ipv6Addr::UNSPECIFIED;
-        origin.0[..2].copy_from_slice(&[0xfe, 0x80]);
-        origin.0[8..].copy_from_slice(&identity.iid);
+    fn verified_dao(identity: &Identity, sequence: u64, parent: [u8; 16]) -> (Vec<u8>, [u8; 16]) {
+        let mut origin = [0u8; 16];
+        origin[..2].copy_from_slice(&[0xfe, 0x80]);
+        origin[8..].copy_from_slice(&identity.iid);
         let mut sender = DaoManager::new(origin, 0, dodag_id());
         let unsigned = sender.build_dao(parent);
         let digest = dao_origin_digest(origin, dodag_id(), sequence, &unsigned);
@@ -2674,8 +2765,8 @@ mod tests {
         identity: &Identity,
         sequence: u64,
         path_sequence: u8,
-        parent: Ipv6Addr,
-    ) -> (Vec<u8>, Ipv6Addr) {
+        parent: [u8; 16],
+    ) -> (Vec<u8>, [u8; 16]) {
         let (wire, origin) = verified_dao(identity, sequence, parent);
         let mut unsigned = SignedDaoEnvelope::from_bytes(&wire)
             .unwrap()
@@ -2696,12 +2787,12 @@ mod tests {
         origin_sequence: u64,
         dao_sequence: u8,
         path_sequence: u8,
-        candidates: &[(Ipv6Addr, u8, u8)],
-    ) -> (Vec<u8>, Ipv6Addr) {
+        candidates: &[([u8; 16], u8, u8)],
+    ) -> (Vec<u8>, [u8; 16]) {
         let mut origin = dodag_id();
-        origin.0[8..].copy_from_slice(&identity.iid);
+        origin[8..].copy_from_slice(&identity.iid);
         let mut unsigned = vec![0, 0, 0, dao_sequence, OPT_RPL_TARGET, 18, 0, 128];
-        unsigned.extend_from_slice(&origin.0);
+        unsigned.extend_from_slice(&origin);
         for (parent, path_control, path_lifetime) in candidates {
             unsigned.extend_from_slice(&[
                 OPT_TRANSIT_INFO,
@@ -2726,26 +2817,15 @@ mod tests {
         (unsigned, origin)
     }
 
-    fn admit_test_key(
-        storage: &mut MemStorage,
-        identity: &Identity,
-    ) -> DaoAdmissionState {
-        let mut admissions =
-            DaoAdmissionState::provision(storage, ll(1), 0, dodag_id()).unwrap();
-        admissions.admit(storage, *identity.pubkey.as_bytes()).unwrap();
-        admissions
-    }
-
     fn process_verified_grouped(
         root: &mut DaoManager,
         state: &mut DaoRxState,
         storage: &mut MemStorage,
         identity: &Identity,
         wire: &[u8],
-        origin: Ipv6Addr,
+        origin: [u8; 16],
         now_seconds: u64,
     ) -> Result<DaoProcessOutcome, DaoProcessError<lichen_hal::storage::mem::MemStorageError>> {
-        let admissions = admit_test_key(storage, identity);
         let verified = SignatureVerifiedDao::verify_signature(
             wire,
             origin,
@@ -2764,14 +2844,13 @@ mod tests {
                 lifetime_unit_seconds: 1,
                 max_deadline_seconds: u64::MAX,
             },
-            &admissions,
         )
     }
 
     fn sign_unsigned_dao(
         identity: &Identity,
         origin_sequence: u64,
-        origin: Ipv6Addr,
+        origin: [u8; 16],
         unsigned: &[u8],
     ) -> Vec<u8> {
         let digest = dao_origin_digest(origin, dodag_id(), origin_sequence, unsigned);
@@ -2897,7 +2976,7 @@ mod tests {
             Some([ll(9)].as_slice())
         );
 
-        let full_parents: HashMap<Ipv6Addr, Vec<Ipv6Addr>> = (0..MAX_ROUTES as u16)
+        let full_parents: HashMap<[u8; 16], Vec<[u8; 16]>> = (0..MAX_ROUTES as u16)
             .map(|value| (addr(value), vec![root]))
             .collect();
         assert!(DaoManager::rebuilt_routes(
@@ -3066,7 +3145,7 @@ mod tests {
 
     #[test]
     fn srh_encode_decode_roundtrip() {
-        let addresses: Vec<Ipv6Addr> = [ll(2), ll(3)].into_iter().collect();
+        let addresses: Vec<[u8; 16]> = [ll(2), ll(3)].into_iter().collect();
         let srh = SourceRoutingHeader {
             segments_left: 2,
             addresses: addresses.clone(),
@@ -3084,7 +3163,7 @@ mod tests {
 
     #[test]
     fn srh_encode_buffer_too_small() {
-        let addresses: Vec<Ipv6Addr> = [ll(2), ll(3)].into_iter().collect();
+        let addresses: Vec<[u8; 16]> = [ll(2), ll(3)].into_iter().collect();
         let srh = SourceRoutingHeader {
             segments_left: 2,
             addresses,
@@ -3394,8 +3473,8 @@ mod tests {
     fn global_dao_wire_with_lifetime(
         instance: u8,
         sequence: u8,
-        target: Ipv6Addr,
-        parent: Ipv6Addr,
+        target: [u8; 16],
+        parent: [u8; 16],
         lifetime: u8,
     ) -> Vec<u8> {
         global_dao_wire_with_sequences(instance, sequence, sequence, target, parent, lifetime)
@@ -3405,18 +3484,18 @@ mod tests {
         instance: u8,
         dao_sequence: u8,
         path_sequence: u8,
-        target: Ipv6Addr,
-        parent: Ipv6Addr,
+        target: [u8; 16],
+        parent: [u8; 16],
         lifetime: u8,
     ) -> Vec<u8> {
         let mut wire = vec![instance, 0, 0, dao_sequence, OPT_RPL_TARGET, 18, 0, 128];
-        wire.extend_from_slice(&target.0);
+        wire.extend_from_slice(&target);
         wire.extend_from_slice(&[OPT_TRANSIT_INFO, 20, 0, 0x80, path_sequence, lifetime]);
-        wire.extend_from_slice(&parent.0);
+        wire.extend_from_slice(&parent);
         wire
     }
 
-    fn global_dao_wire(instance: u8, sequence: u8, target: Ipv6Addr, parent: Ipv6Addr) -> Vec<u8> {
+    fn global_dao_wire(instance: u8, sequence: u8, target: [u8; 16], parent: [u8; 16]) -> Vec<u8> {
         global_dao_wire_with_lifetime(instance, sequence, target, parent, 255)
     }
 
@@ -3775,12 +3854,12 @@ mod tests {
         };
         let assert_unchanged =
             |root: &DaoManager,
-             parents: &HashMap<Ipv6Addr, Vec<Ipv6Addr>>,
-             expiry: &HashMap<(Ipv6Addr, Ipv6Addr), Option<u64>>,
-             paths: &HashMap<Ipv6Addr, Freshness>,
-             origins: &HashMap<Ipv6Addr, Freshness>,
-             candidates: &HashMap<Ipv6Addr, Vec<DaoCandidate>>,
-             descriptors: &HashMap<Ipv6Addr, Option<u32>>,
+             parents: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+             expiry: &HashMap<([u8; 16], [u8; 16]), Option<u64>>,
+             paths: &HashMap<[u8; 16], Freshness>,
+             origins: &HashMap<[u8; 16], Freshness>,
+             candidates: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+             descriptors: &HashMap<[u8; 16], Option<u32>>,
              routes: &HashMap<RouteTarget, RouteEntry>| {
                 assert_eq!(&root.parent_map, parents);
                 assert_eq!(&root.edge_expiry, expiry);
@@ -3936,7 +4015,7 @@ mod tests {
 
     #[test]
     fn all_transit_parents_are_retained_and_selected_deterministically() {
-        fn install(parent_order: [Ipv6Addr; 2]) -> DaoManager {
+        fn install(parent_order: [[u8; 16]; 2]) -> DaoManager {
             let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
             assert!(root.process_dao(&global_dao_wire(0, 1, ll(2), ll(1))));
             assert!(root.process_dao(&global_dao_wire(0, 1, ll(3), ll(1))));
@@ -4320,7 +4399,7 @@ mod tests {
         }
         for (index, parent) in parents.into_iter().enumerate() {
             wire.extend_from_slice(&[OPT_TRANSIT_INFO, 20, 0, 0x80 >> (index * 2), 10, 0]);
-            wire.extend_from_slice(&parent.0);
+            wire.extend_from_slice(&parent);
         }
 
         let mut root = DaoManager::diagnostic_root(ll(1), 0, dodag_id());
@@ -4405,21 +4484,19 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
         storage.fail_next_write();
         assert!(matches!(
-                root.process_signature_verified(
-                    &verified,
-                    verified.origin_iid(),
-                    &mut state,
-                    &mut storage,
-                    DaoProcessTiming {
-                        now_seconds: 0,
-                        lifetime_unit_seconds: 60,
-                        max_deadline_seconds: u64::MAX,
-                    },
-                    &admissions,
-                ),
+            root.process_signature_verified(
+                &verified,
+                verified.origin_iid(),
+                &mut state,
+                &mut storage,
+                DaoProcessTiming {
+                    now_seconds: 0,
+                    lifetime_unit_seconds: 60,
+                    max_deadline_seconds: u64::MAX,
+                },
+            ),
             Err(DaoProcessError::Persistence(_))
         ));
         assert!(root.origin_high_water().is_empty());
@@ -4481,43 +4558,6 @@ mod tests {
     }
 
     #[test]
-    fn unadmitted_key_is_rejected_before_route_mutation() {
-        let identity = Identity::from_seed(Seed::new([0x42; 32]));
-        let (wire, origin) = verified_dao(&identity, 1, ll(1));
-        let verified = SignatureVerifiedDao::verify_signature(
-            &wire,
-            origin,
-            0,
-            dodag_id(),
-            Some(identity.pubkey),
-        )
-        .unwrap();
-        let mut storage = MemStorage::new();
-        let (mut root, mut state) =
-            DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let mut admissions =
-            DaoAdmissionState::provision(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        assert_eq!(admissions.len(), 0);
-        assert_eq!(
-            root.process_signature_verified(
-                &verified,
-                verified.origin_iid(),
-                &mut state,
-                &mut storage,
-                DaoProcessTiming {
-                    now_seconds: 0,
-                    lifetime_unit_seconds: 60,
-                    max_deadline_seconds: u64::MAX,
-                },
-                &admissions,
-            ),
-            Err(DaoProcessError::NotAdmitted)
-        );
-        assert!(root.origin_high_water().is_empty());
-        assert!(root.routing_table().lookup(&origin).is_none());
-    }
-
-    #[test]
     fn fresh_authenticated_sequence_persists_unchanged_path_snapshot() {
         let identity = Identity::from_seed(Seed::new([0x33; 32]));
         let (first_wire, origin) = verified_dao(&identity, 1, ll(1));
@@ -4556,7 +4596,6 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -4570,7 +4609,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -4582,7 +4620,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -4794,7 +4831,6 @@ mod tests {
         .unwrap();
         let mut storage = MemStorage::new();
         let (_, state) = DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
 
         let mut table = HashMap::new();
         table.insert(
@@ -4828,8 +4864,7 @@ mod tests {
                     now_seconds: 0,
                     lifetime_unit_seconds: 60,
                     max_deadline_seconds: u64::MAX,
-                },
-                &admissions,
+                }
             ),
             Ok(DaoProcessOutcome::Duplicate)
         );
@@ -4888,7 +4923,6 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -4902,7 +4936,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -4940,7 +4973,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -4951,7 +4983,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -4980,7 +5011,6 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &origin_identity);
         let before_a = storage.raw(DAO_RX_KEYS[0]).map(<[u8]>::to_vec);
         let before_b = storage.raw(DAO_RX_KEYS[1]).map(<[u8]>::to_vec);
         let timing = DaoProcessTiming {
@@ -4996,7 +5026,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -5021,7 +5050,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5151,7 +5179,6 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut first, mut first_state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
         let (mut stale, mut stale_state) =
             DaoManager::open_root(&storage, ll(1), 0, dodag_id()).unwrap();
         let timing = DaoProcessTiming {
@@ -5167,7 +5194,6 @@ mod tests {
                 &mut first_state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5178,7 +5204,6 @@ mod tests {
                 &mut stale_state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Err(DaoProcessError::Stale)
         );
@@ -5203,7 +5228,6 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -5216,13 +5240,12 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
 
         let mut other_prefix = origin;
-        other_prefix.0[0] ^= 0x03;
+        other_prefix[0] ^= 0x03;
         let mut sender = DaoManager::new(other_prefix, 0, dodag_id());
         let unsigned = sender.build_dao(ll(1));
         let digest = dao_origin_digest(origin, dodag_id(), 2, &unsigned);
@@ -5246,7 +5269,7 @@ mod tests {
         let before_route = root
             .routing_table()
             .lookup(&origin)
-            .map(<[Ipv6Addr]>::to_vec);
+            .map(<[[u8; 16]]>::to_vec);
         assert_eq!(
             root.process_signature_verified(
                 &changed,
@@ -5254,7 +5277,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -5299,7 +5321,6 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -5312,7 +5333,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5343,7 +5363,6 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
-                &admissions,
             ),
             Err(DaoProcessError::Replay)
         );
@@ -5352,9 +5371,9 @@ mod tests {
     #[test]
     fn replay_does_not_expire_routes_and_key_capacity_fails_closed() {
         let identity = Identity::from_seed(Seed::new([0x33; 32]));
-        let mut origin = Ipv6Addr::UNSPECIFIED;
-        origin.0[..2].copy_from_slice(&[0xfe, 0x80]);
-        origin.0[8..].copy_from_slice(&identity.iid);
+        let mut origin = [0u8; 16];
+        origin[..2].copy_from_slice(&[0xfe, 0x80]);
+        origin[8..].copy_from_slice(&identity.iid);
         let mut sender = DaoManager::new(origin, 0, dodag_id());
         let unsigned = sender.build_dao_with_lifetime(ll(1), 1);
         let sign = |unsigned: &[u8]| {
@@ -5379,7 +5398,6 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
-        let admissions = admit_test_key(&mut storage, &identity);
         assert_eq!(
             root.process_signature_verified(
                 &verified,
@@ -5391,7 +5409,6 @@ mod tests {
                     lifetime_unit_seconds: 1,
                     max_deadline_seconds: u64::MAX,
                 },
-                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5418,7 +5435,6 @@ mod tests {
                     lifetime_unit_seconds: 1,
                     max_deadline_seconds: u64::MAX,
                 },
-                &admissions,
             ),
             Err(DaoProcessError::Replay)
         );
@@ -5432,7 +5448,6 @@ mod tests {
             })
             .collect();
         let other = Identity::from_seed(Seed::new([0x34; 32]));
-        admissions.admit(&mut storage, *other.pubkey.as_bytes()).unwrap();
         let (other_wire, other_origin) = verified_dao(&other, 1, ll(1));
         let other_verified = SignatureVerifiedDao::verify_signature(
             &other_wire,
@@ -5453,7 +5468,6 @@ mod tests {
                     lifetime_unit_seconds: 1,
                     max_deadline_seconds: u64::MAX,
                 },
-                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -5469,9 +5483,9 @@ mod tests {
         assert!(DaoManager::open_root(&storage, node, 0, dodag).is_ok());
 
         let mut other_node = node;
-        other_node.0[15] ^= 1;
+        other_node[15] ^= 1;
         let mut other_dodag = dodag;
-        other_dodag.0[15] ^= 1;
+        other_dodag[15] ^= 1;
         assert!(matches!(
             DaoManager::open_root(&storage, other_node, 0, dodag),
             Err(DaoPersistentOpenError::ScopeMismatch)
@@ -5508,69 +5522,5 @@ mod tests {
             Err(DaoPersistentOpenError::Corrupt)
         ));
         assert!(DaoManager::provision_root(&mut storage, node, 0, dodag).is_err());
-    }
-
-    #[test]
-    fn is_rpl_multicast_matches_ff02_1a() {
-        assert!(crate::dodag::is_rpl_multicast(&crate::dodag::ALL_RPL_NODES));
-        assert!(!crate::dodag::is_rpl_multicast(&[0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1b]));
-        assert!(!crate::dodag::is_rpl_multicast(&[0; 16]));
-    }
-
-    #[test]
-    fn announce_state_local_seq_wraps() {
-        let mut state = AnnounceState::new();
-        assert_eq!(state.local_seq(), 0);
-        assert_eq!(state.bump_local_seq(), 1);
-        assert_eq!(state.local_seq(), 1);
-        assert_eq!(state.bump_local_seq(), 2);
-    }
-
-    #[test]
-    fn announce_relay_respects_hop_limit() {
-        let mut state = AnnounceState::new();
-        let iid = [0x01; 8];
-        assert_eq!(
-            state.should_relay(&iid, 1, MAX_ANNOUNCE_HOPS),
-            AnnounceRelayAction::Suppress
-        );
-        assert_eq!(
-            state.should_relay(&iid, 1, MAX_ANNOUNCE_HOPS - 1),
-            AnnounceRelayAction::Send { hop_count: MAX_ANNOUNCE_HOPS }
-        );
-    }
-
-    #[test]
-    fn announce_relay_suppresses_stale_sequence() {
-        let mut state = AnnounceState::new();
-        let iid = [0x01; 8];
-        assert_eq!(
-            state.should_relay(&iid, 10, 0),
-            AnnounceRelayAction::Send { hop_count: 1 }
-        );
-        assert_eq!(
-            state.should_relay(&iid, 9, 0),
-            AnnounceRelayAction::Suppress
-        );
-        assert_eq!(
-            state.should_relay(&iid, 10, 0),
-            AnnounceRelayAction::Suppress
-        );
-        assert_eq!(
-            state.should_relay(&iid, 11, 0),
-            AnnounceRelayAction::Send { hop_count: 1 }
-        );
-    }
-
-    #[test]
-    fn announce_relay_is_side_effect_free_on_routing_state() {
-        let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
-        let before_origins = root.origin_high_water().len();
-        let before_routes = root.routing_table().routes.len();
-        let mut state = AnnounceState::new();
-        let iid = [0x02; 8];
-        let _ = state.should_relay(&iid, 1, 0);
-        assert_eq!(root.origin_high_water().len(), before_origins);
-        assert_eq!(root.routing_table().routes.len(), before_routes);
     }
 }

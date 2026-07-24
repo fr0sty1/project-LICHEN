@@ -21,7 +21,7 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 | Coding Rate | CR | 4/5 | Minimal FEC overhead |
 | Preamble | - | 8 symbols | Standard LoRa |
 | Sync Word | SYNC | 0x34 | Distinct from Meshtastic (0x2B) |
-| Hop Sequence | - | SFN-seeded PRNG | CCP-12 synchronized hopping (see 02a-coordinated-capacity.md §2a.8); GPS optional |
+| Hop Sequence | - | SFN-seeded PRNG | CCP-12 synchronized hopping (see 02a-coordinated-capacity.md §2a.3 for channel agility and hash-based selection); GPS optional |
 | CRC | - | Enabled | Hardware CRC |
 
 ### 3.3. Frequency Bands and Multi-Channel Coordination
@@ -136,7 +136,7 @@ Boundary example: When delta exceeds 0.25 symbols, destructive interference occu
 
 See CCP-12 synchronized hopping in [02a-coordinated-capacity.md](02a-coordinated-capacity.md) for full multi-channel coordination via SFN/GPS, hash_32 channel selection, and rendezvous announcements in beacons/DIOs.
 
-### 3.6. LR-FHSS Optional Mode (SX1262 Only)
+### 3.7. LR-FHSS Optional Mode (SX1262 Only)
 
 LR-FHSS provides superior collision resilience by frequency hopping each packet across many channels. Collisions corrupt only fragments rather than entire packets. Optional for SX1262 devices only.
 

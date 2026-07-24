@@ -124,6 +124,10 @@ impl Radio for SimRadio {
         if payload.len() > u16::MAX as usize {
             return Err(RadioError::Protocol);
         }
+        let clear = self.cca(channel, -80).await?;
+        if !clear {
+            return Err(RadioError::ChannelBusy);
+        }
         let mut msg = Vec::with_capacity(3 + payload.len());
         msg.push(0x10);
         msg.extend_from_slice(&(payload.len() as u16).to_le_bytes());

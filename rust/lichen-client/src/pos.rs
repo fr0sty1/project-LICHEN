@@ -13,6 +13,8 @@
 //!   {n: "lat",     u: "lat", v: 37.774929},
 //!   {n: "lon",     u: "lon", v: -122.419416},
 //!   {n: "alt",     u: "m",   v: 10.5},
+//!   {n: "hacc",    u: "m",   v: 5.0},
+//!   {n: "vacc",    u: "m",   v: 10.0},
 //!   {n: "speed",   u: "m/s", v: 1.2},
 //!   {n: "heading", u: "deg", v: 45} ]
 //! ```
@@ -22,8 +24,9 @@
 //! spec contract so clients are ready once the node side lands.
 
 use lichen_core::constants::{
-    SENML_LOCATION_ALT, SENML_LOCATION_HEADING, SENML_LOCATION_LAT, SENML_LOCATION_LON,
-    SENML_LOCATION_SPEED, SENML_LOCATION_UNIT_DEG, SENML_LOCATION_UNIT_M, SENML_LOCATION_UNIT_MS,
+    SENML_LOCATION_ALT, SENML_LOCATION_HACC, SENML_LOCATION_HEADING, SENML_LOCATION_LAT,
+    SENML_LOCATION_LON, SENML_LOCATION_SPEED, SENML_LOCATION_VACC, SENML_LOCATION_UNIT_DEG,
+    SENML_LOCATION_UNIT_M, SENML_LOCATION_UNIT_MS,
 };
 use lichen_senml::cbor;
 use lichen_senml::Record;
@@ -31,9 +34,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
-/// Maximum SenML pack size for a position: 6 records, each well under 64 B.
+/// Maximum SenML pack size for a position: 8 records, each well under 64 B.
 const ENC_BUF_LEN: usize = 512;
-/// Upper bound on records decoded from a position pack (base + 5 fields, with
+/// Upper bound on records decoded from a position pack (base + 7 fields, with
 /// headroom for unexpected extras).
 const DEC_MAX_RECORDS: usize = 12;
 
@@ -55,6 +58,10 @@ pub struct Position {
     pub speed: Option<f64>,
     /// Heading in degrees (0..360, 0 = north).
     pub heading: Option<f64>,
+    /// Horizontal accuracy (CEP) in meters.
+    pub hacc: Option<f64>,
+    /// Vertical accuracy in meters.
+    pub vacc: Option<f64>,
 }
 
 impl Position {
@@ -68,12 +75,14 @@ impl Position {
             alt: None,
             speed: None,
             heading: None,
+            hacc: None,
+            vacc: None,
         }
     }
 
     /// Encode as a SenML-CBOR pack (spec §18.2 `application/senml+cbor`).
     pub fn to_senml_cbor(&self) -> Result<Vec<u8>, Error> {
-        let mut recs: [Record; 6] = [Record::empty(); 6];
+        let mut recs: [Record; 8] = [Record::empty(); 8];
         let mut n = 0;
 
         if self.device.is_some() || self.time.is_some() {
@@ -100,6 +109,14 @@ impl Position {
             recs[n] = value_record(SENML_LOCATION_HEADING, SENML_LOCATION_UNIT_DEG, heading);
             n += 1;
         }
+        if let Some(hacc) = self.hacc {
+            recs[n] = value_record(SENML_LOCATION_HACC, SENML_LOCATION_UNIT_M, hacc);
+            n += 1;
+        }
+        if let Some(vacc) = self.vacc {
+            recs[n] = value_record(SENML_LOCATION_VACC, SENML_LOCATION_UNIT_M, vacc);
+            n += 1;
+        }
 
         let mut buf = [0u8; ENC_BUF_LEN];
         let written = cbor::encode(&recs[..n], &mut buf)
@@ -123,6 +140,8 @@ impl Position {
         let mut alt = None;
         let mut speed = None;
         let mut heading = None;
+        let mut hacc = None;
+        let mut vacc = None;
 
         for rec in &recs[..count] {
             if let Some(bn) = rec.base_name {
@@ -137,6 +156,8 @@ impl Position {
                 (Some(SENML_LOCATION_ALT), Some(v)) => alt = Some(v),
                 (Some(SENML_LOCATION_SPEED), Some(v)) => speed = Some(v),
                 (Some(SENML_LOCATION_HEADING), Some(v)) => heading = Some(v),
+                (Some(SENML_LOCATION_HACC), Some(v)) => hacc = Some(v),
+                (Some(SENML_LOCATION_VACC), Some(v)) => vacc = Some(v),
                 _ => {}
             }
         }
@@ -149,6 +170,8 @@ impl Position {
             alt,
             speed,
             heading,
+            hacc,
+            vacc,
         })
     }
 }
@@ -167,7 +190,7 @@ mod tests {
     use super::*;
 
     /// Oracle: the SenML field names and units mandated by spec §18.2
-    /// (`bn`/`bt` base record, then `lat`/`lon`/`alt`/`speed`/`heading` with
+    /// (`bn`/`bt` base record, then `lat`/`lon`/`alt`/`speed`/`heading`/`hacc`/`vacc` with
     /// units `lat`/`lon`/`m`/`m/s`/`deg`). Decoded with the raw `lichen-senml`
     /// codec, independent of this module's mapping.
     #[test]
@@ -180,6 +203,8 @@ mod tests {
             alt: Some(10.5),
             speed: Some(1.2),
             heading: Some(45.0),
+            hacc: Some(5.0),
+            vacc: Some(10.0),
         };
         let bytes = p.to_senml_cbor().unwrap();
 
@@ -215,6 +240,16 @@ mod tests {
             (heading.unit, heading.value),
             (Some(SENML_LOCATION_UNIT_DEG), Some(45.0))
         );
+        let hacc = find(SENML_LOCATION_HACC).expect("hacc record");
+        assert_eq!(
+            (hacc.unit, hacc.value),
+            (Some(SENML_LOCATION_UNIT_M), Some(5.0))
+        );
+        let vacc = find(SENML_LOCATION_VACC).expect("vacc record");
+        assert_eq!(
+            (vacc.unit, vacc.value),
+            (Some(SENML_LOCATION_UNIT_M), Some(10.0))
+        );
     }
 
     /// Oracle: an explicitly built spec-shaped SenML pack (independent of the
@@ -242,6 +277,8 @@ mod tests {
         assert_eq!(p.alt, Some(5.0));
         assert_eq!(p.speed, None);
         assert_eq!(p.heading, None);
+        assert_eq!(p.hacc, None);
+        assert_eq!(p.vacc, None);
     }
 
     /// A full position survives an encode/decode round trip unchanged.
@@ -255,6 +292,8 @@ mod tests {
             alt: Some(3.5),
             speed: Some(0.0),
             heading: Some(359.0),
+            hacc: Some(2.0),
+            vacc: Some(5.0),
         };
         let bytes = p.to_senml_cbor().unwrap();
         assert_eq!(Position::from_senml_cbor(&bytes).unwrap(), p);

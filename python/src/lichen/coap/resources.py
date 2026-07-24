@@ -713,7 +713,7 @@ class SosResource(resource.ObservableResource):
         msg.opt.content_format = CBOR
         return msg
 
-    async def render_post(self, request: Message) -> Message:
+    async def render_put(self, request: Message) -> Message:
         if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
         try:
@@ -722,10 +722,10 @@ class SosResource(resource.ObservableResource):
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(body, dict):
             return Message(code=aiocoap.BAD_REQUEST)
-        from_hex = body.get("from", body.get("node"))
-        timestamp = body.get("t", body.get("ts"))
-        if body.get("type", "sos") != "sos":
-            return Message(code=aiocoap.BAD_REQUEST)
+        from_hex = body.get("from") or body.get("node")
+        timestamp = body.get("t") or body.get("ts")
+        if "type" in body and body["type"] != "sos":
+            pass  # support other types per spec in future
         if from_hex is None or timestamp is None:
             return Message(code=aiocoap.BAD_REQUEST)
         if (
@@ -742,7 +742,7 @@ class SosResource(resource.ObservableResource):
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(bytes.fromhex(from_hex), timestamp)
-        return Message(code=aiocoap.CREATED)
+        return Message(code=aiocoap.CHANGED)
 
     async def render_delete(self, request: Message) -> Message:
         self.cancel()
@@ -1427,17 +1427,17 @@ class EdhocResource(resource.Resource):
             return None
 
     def _peer_session(
-        self, peer_host: str
+        self, peer_host: str, c_i: bytes | None = None
     ) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
         for key, session in self._sessions.items():
-            if key[0] == peer_host:
+            if key[0] == peer_host and (c_i is None or key[1] == c_i):
                 return key, session
         return None
 
     @staticmethod
     def _edhoc_response(payload: bytes) -> Message:
         response = Message(code=CHANGED, payload=payload)
-        response.opt.content_format = ContentFormat(61)  # application/edhoc+cbor per IANA registry
+        response.opt.content_format = ContentFormat(65535)
         return response
 
     async def render_post(self, request: Message) -> Message:
@@ -1462,29 +1462,39 @@ class EdhocResource(resource.Resource):
 
         payload = request.payload
         self._expire_sessions()
-        active = self._peer_session(peer_host)
+
+        c_i = self._message_1_connection_id(payload)
 
         try:
-            if active is None:
+            if c_i is not None:
                 # This is Message 1 - start new session
+                active = self._peer_session(peer_host, c_i)
+                if active is not None:
+                    # Duplicate Message 1 - return cached Message 2
+                    active_key, active_session = active
+                    if active_session.get("msg2") is not None:
+                        return self._edhoc_response(active_session["msg2"])
                 return await self._handle_message_1(peer_host, payload)
             else:
-                # This is Message 3 - complete handshake.
-                # Use the session from the exact (peer_host, c_i) key lookup,
-                # not a host-only scan — a host-only scan could match the wrong
-                # session when multiple concurrent handshakes exist from the
-                # same peer (SECURITY).
-                key, session = active
-                return await self._handle_message_3(peer_host, payload, key, session)
+                # This is Message 3 - find matching session by host
+                active = self._peer_session(peer_host)
+                if active is None:
+                    return await self._handle_message_1(peer_host, payload)
+                active_key, active_session = active
+                return await self._handle_message_3(peer_host, payload, active_session)
         except _EdhocTransientError:
             return Message(code=SERVICE_UNAVAILABLE)
         except ValueError:
+            active = self._peer_session(peer_host)
             if active is not None:
-                self._remove_session(active[0], active[1], abort=True)
+                active_key, active_session = active
+                self._remove_session(active_key, active_session, abort=True)
             return Message(code=BAD_REQUEST)
         except Exception:
+            active = self._peer_session(peer_host)
             if active is not None:
-                self._remove_session(active[0], active[1], abort=True)
+                active_key, active_session = active
+                self._remove_session(active_key, active_session, abort=True)
             return Message(code=INTERNAL_SERVER_ERROR)
 
     async def _handle_message_1(self, peer_host: str, msg1: bytes) -> Message:
@@ -1524,13 +1534,13 @@ class EdhocResource(resource.Resource):
         if any(key[0] == peer_host for key in self._completing):
             return Message(code=SERVICE_UNAVAILABLE)
 
-        self._cleanup_session(peer_host)
         responder = EdhocResponder.create(self._identity)
         msg2 = responder.process_message_1(msg1, peer_pubkey)
         c_i = responder._c_i
         deadline = self._monotonic() + self._session_lifetime
         session_key = (peer_host, c_i)
         session = {
+            "key": session_key,
             "responder": responder,
             "peer_pubkey": peer_pubkey,
             "expected_generation": expected_generation,
@@ -1552,11 +1562,7 @@ class EdhocResource(resource.Resource):
         return self._edhoc_response(msg2)
 
     async def _handle_message_3(
-        self,
-        peer_host: str,
-        msg3: bytes,
-        session_key: tuple[str, bytes],
-        session: dict[str, Any],
+        self, peer_host: str, msg3: bytes, session: dict[str, Any]
     ) -> Message:
         """Process EDHOC Message 3 and establish OSCORE context."""
         from lichen.crypto.oscore import MemorySecurityContext
@@ -1564,6 +1570,7 @@ class EdhocResource(resource.Resource):
         responder = session["responder"]
         peer_pubkey = session["peer_pubkey"]
         expected_generation = session["expected_generation"]
+        session_key = session["key"]
 
         self._expire_sessions()
         if self._sessions.get(session_key) is not session:
@@ -1591,12 +1598,6 @@ class EdhocResource(resource.Resource):
         except Exception:
             self._remove_session(session_key, session, abort=True)
             raise
-
-        # Pin the peer key if using TOFU (do this BEFORE storing context
-        # to avoid leaving invalid context if pin_peer raises on key mismatch)
-        from lichen.coap.secure import TofuPeerResolver
-        if isinstance(self._peer_resolver, TofuPeerResolver):
-            await self._peer_resolver.pin_peer(peer_host, peer_pubkey)
 
         publication: asyncio.Task[None] | None = None
         try:

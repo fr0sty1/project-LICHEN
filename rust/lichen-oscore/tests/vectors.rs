@@ -4,7 +4,7 @@
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
 use lichen_oscore::{
-    validate_option, Context, ContextId, ContextStoreError, OscoreError, SenderSequenceState,
+    validate_option, Context, ContextId, OscoreError, SenderSequenceState,
     SenderStateStore,
 };
 
@@ -70,8 +70,6 @@ struct Vector {
     #[serde(default)]
     sender_seq: Option<u32>,
     #[serde(default)]
-    include_piv: Option<bool>,
-    #[serde(default)]
     request_piv: Option<String>,
     #[serde(default)]
     request_kid: Option<String>,
@@ -97,8 +95,6 @@ struct Plaintext {
 
 #[derive(Debug, Deserialize)]
 struct Expected {
-    oscore_option: Option<String>,
-    ciphertext: Option<String>,
     is_replay: Option<bool>,
 }
 
@@ -110,16 +106,10 @@ fn context_at(
     recipient_id: &[u8],
     sequence: u64,
 ) -> (Context, TestStore) {
+    let context = Context::new(master_secret, master_salt, id_context, sender_id, recipient_id)
+        .unwrap();
     let mut store = TestStore::existing(sequence);
-    let context = Context::load_existing(
-        master_secret,
-        master_salt,
-        id_context,
-        sender_id,
-        recipient_id,
-        &mut store,
-    )
-    .unwrap();
+    let context = context.restore_existing(&mut store).unwrap();
     (context, store)
 }
 
@@ -152,6 +142,7 @@ fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
         )
     })
 }
+
 
 // Replay window tests are covered by the unit tests in lib.rs since they
 // require access to private Context fields (replay_window, recipient_seq).
@@ -215,18 +206,17 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::load_existing(
+    let result = Context::new(
         &master_secret,
         None,
         None,
         &too_long_id,
         &[1],
-        &mut TestStore::existing(0),
     );
     assert!(
         matches!(
             result,
-            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
+            Err(OscoreError::InvalidParam)
         ),
         "Expected InvalidParam for 8-byte sender_id"
     );
@@ -237,18 +227,17 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::load_existing(
+    let result = Context::new(
         &master_secret,
         None,
         None,
         &[0],
         &too_long_id,
-        &mut TestStore::existing(0),
     );
     assert!(
         matches!(
             result,
-            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
+            Err(OscoreError::InvalidParam)
         ),
         "Expected InvalidParam for 8-byte recipient_id"
     );
@@ -271,17 +260,16 @@ fn present_empty_id_context_is_distinct_and_encoded() {
 
 #[test]
 fn id_context_over_implementation_capacity_is_rejected() {
-    let result = Context::load_existing(
+    let result = Context::new(
         &[0u8; 16],
         None,
         Some(&[0; 9]),
         &[0],
         &[1],
-        &mut TestStore::existing(0),
     );
     assert!(matches!(
         result,
-        Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
+        Err(OscoreError::InvalidParam)
     ));
 }
 

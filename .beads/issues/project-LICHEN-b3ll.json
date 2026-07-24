@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-b3ll",
   "title": "Codereview pass 3: add and validate test vectors in yggdrasil.json",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:20:12.56409818Z",

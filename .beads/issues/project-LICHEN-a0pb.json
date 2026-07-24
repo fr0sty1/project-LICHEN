@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a0pb",
   "title": "[codereview-pass3-declaration] coap_dtn.c: remove k_mutex_init after K_MUTEX_DEFINE per native.c pattern",
   "description": "Pass 3 review on declaration. P1 correctness: line 50 k_mutex_init(\u0026s_dtn_mutex) but mutex renamed and DEFINE already inits it; calling init on static DEFINE can be no-op or error in some configs. Remove it. Also check west build for coap/dtn after changes. All P0-P4 addressed in subsequent chunks. codereview tagged.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:46:04.54410583Z",

@@ -100,20 +100,12 @@ config LICHEN_LINK_EPOCH_TEST_HOOKS
 	  boot-epoch cache so tests can simulate a reboot and exercise the
 	  persist-and-advance behavior. Testing only.
 
-config LICHEN_LINK_COORDINATION
-	bool "Link-layer coordination (CCP-5 negotiation, rendezvous)"
-	depends on LICHEN_LINK
-	default y
-	help
-	  Enable coordination mechanism negotiation for channel/slot rendezvous
-	  per CCP-5 (spec/02a-coordinated-capacity.md). Provides
-	  lichen_coordination_negotiate() which selects among hash-based,
-	  scheduled, announce-driven, and fallback mechanisms.
-
 config LICHEN_LINK_CCP16_LOAD_BALANCING
 	bool "CCP16 density-aware load balancing"
 	depends on LICHEN_RPL
 	depends on LICHEN_LINK_EPOCH_PERSIST
+	select LICHEN_SCHC   # project-LICHEN-5l54: high-density TDMA requires SCHC to compress IPv6
+	                     # headers (48+ bytes) down to 3-6 bytes for reliable slot-sized delivery
 	help
 	  Enable CCP-16 coordinated load balancing for high-density
 	  (DEFCON-scale) deployments. References density tracking, adaptive
@@ -125,6 +117,8 @@ config LICHEN_TDMA
 	bool "TDMA slot scheduling / gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
 	depends on LICHEN_RPL
+	select LICHEN_SCHC   # project-LICHEN-5l54: fixed slot sizes need SCHC compression
+	                     # to fit IPv6 packets in LoRa slot payloads
 	help
 	  Enable TDMA struct and lichen_tdma_init() after lichen_link_load_key() per
 	  AGENTS.md init graph and spec/02a-coordinated-capacity.md §2a.2 (guard=100ms,
@@ -150,47 +144,6 @@ config LICHEN_TDMA_BEACON_SYNC
 	help
 	  Nodes sync time and slots from gateway periodic beacons.
 
-config LICHEN_TDMA_BEACON_TIMEOUT
-	int "Beacon listening timeout in superframes"
-	depends on LICHEN_TDMA_BEACON_SYNC
-	default 3
-	range 1 20
-	help
-	  Number of superframes a node waits for a valid beacon in ACQUIRING
-	  state before giving up (BEACON_TIMEOUT per 09-packets-timing.md FSM).
-	  3 superframes default matches spec; higher values tolerate longer
-	  beacon intervals at the cost of longer join time.
-
-config LICHEN_TDMA_CONTENTION_RETRIES
-	int "Maximum DAO retransmissions in contention slot"
-	depends on LICHEN_TDMA
-	default 5
-	range 1 50
-	help
-	  Maximum number of times a node retransmits its DAO (slot request)
-	  in the contention slot during ACQUIRING state. Exhaustion triggers
-	  re-scan for beacon. Default 5 balances join reliability vs. airtime.
-
-config LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS
-	int "Minimum CSMA backoff before contention TX (ms)"
-	depends on LICHEN_TDMA
-	default 100
-	range 10 5000
-	help
-	  Minimum random backoff before transmitting in the contention slot.
-	  CSMA/CA: pick uniform random in [min_ms, max_ms). Default 100 ms
-	  for SF10 250 ms slot.
-
-config LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS
-	int "Maximum CSMA backoff before contention TX (ms)"
-	depends on LICHEN_TDMA
-	default 1000
-	range 10 10000
-	help
-	  Maximum random backoff before transmitting in the contention slot.
-	  CSMA/CA: pick uniform random in [min_ms, max_ms). Default 1000 ms
-	  avoids collision storms when many nodes join simultaneously.
-
 config LICHEN_MULTI_CHANNEL_ENABLED
 	bool "Multi-channel TX/RX coordination (CCP-9/12)"
 	depends on LICHEN_LINK
@@ -208,29 +161,5 @@ config LICHEN_N_CHANNELS
 	help
 	  Matches regional plan (e.g. 8 for EU868). Used for mod N in
 	  select_channel/hash_32 and synchronized_hop_channel(CCP-12).
-
-config LICHEN_MIN_DWELL_MS
-	int "Minimum dwell time per channel (ms)"
-	depends on LICHEN_MULTI_CHANNEL_ENABLED
-	default 100
-	range 10 10000
-	help
-	  Minimum time a node stays on a data channel before hopping.
-	  Prevents excessive channel switching. Regional regulations may
-	  impose stricter minimums (e.g. EU ETSI EN 300.220 duty cycle).
-	  See spec/02a-coordinated-capacity.md §2a.3 and
-	  spec/02-physical-link.md §4.3.
-
-config LICHEN_BLACKLIST_DURATION_MS
-	int "Noisy channel blacklist duration (ms)"
-	depends on LICHEN_MULTI_CHANNEL_ENABLED
-	default 60000
-	range 1000 300000
-	help
-	  Duration a channel remains blacklisted after CCA failure
-	  or excessive noise detection. During this period the channel
-	  is excluded from select_channel() and hash-based hopping.
-	  Longer durations reduce retransmissions in congested
-	  environments. See spec/02a-coordinated-capacity.md §2a.3.
 
 endif # LICHEN_LINK

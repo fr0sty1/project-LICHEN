@@ -53,7 +53,7 @@ use esp_hal::spi::master::{Config as SpiConfig, Spi};
 use esp_hal::spi::Mode as SpiMode;
 use esp_hal::Async;
 use esp_hal::time::Rate;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 
 // ---- Radio Queue Types ----
 
@@ -187,7 +187,7 @@ async fn main(spawner: Spawner) {
     // Main loop - placeholder for USB/UART bridge
     loop {
         Timer::after_secs(10).await;
-        info!("heartbeat");
+        debug!("heartbeat");
     }
 }
 
@@ -249,7 +249,7 @@ async fn radio_task(
         // Wait for TX packet or poll timeout
         match select(tx_receiver.receive(), Timer::after_millis(100)).await {
             Either::First(pkt) => {
-                info!("radio TX {} bytes", pkt.len);
+                debug!("radio TX {} bytes", pkt.len);
                 // TODO: actual SX1262 transmit
                 Timer::after_millis(50).await; // Simulate TX time
             }

@@ -1,85 +1,75 @@
 {
-  "description": "Human-readable node address test vectors (Base32 from SHA256(Ed25519 pubkey), 13 chars with dashes per project-LICHEN-oxul). All implementations must produce identical output.",
+  "description": "Human-readable node address test vectors (Base32 from SHA-512(Ed25519 pubkey)[:8], 13 chars with dashes). All implementations must produce identical output.",
   "vectors": [
     {
       "name": "test-vector-0",
       "seed": "0000000000000000000000000000000000000000000000000000000000000000",
       "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
-      "iid": "64687aadf862bd77",
-      "human_address": "68T3-TNQW-65FBQ",
-      "description": "Derived from seed 0x00 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "5046adc1dba83886",
+      "human_address": "50HN-DR7D-TGE46"
     },
     {
       "name": "test-vector-1",
       "seed": "0101010101010101010101010101010101010101010101010101010101010101",
       "pubkey": "0101010101010101010101010101010101010101010101010101010101010101",
-      "iid": "70cd6e8422c407fb",
-      "human_address": "71KB-EGGH-C81ZV",
-      "description": "Derived from seed 0x01 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "5ce86efb75fa4e2c",
+      "human_address": "5ST3-EZDT-ZMKHC"
     },
     {
       "name": "test-vector-2",
       "seed": "0202020202020202020202020202020202020202020202020202020202020202",
       "pubkey": "0202020202020202020202020202020202020202020202020202020202020202",
-      "iid": "75877bb41d393b5f",
-      "human_address": "7B1V-VPGE-KJETZ",
-      "description": "Derived from seed 0x02 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "a83c626bc9c38c8c",
+      "human_address": "AGF3-2DF4-W734C"
     },
     {
       "name": "test-vector-3",
       "seed": "0303030303030303030303030303030303030303030303030303030303030303",
       "pubkey": "0303030303030303030303030303030303030303030303030303030303030303",
-      "iid": "648aa5c579fb30f3",
-      "human_address": "692N-5RNW-ZPC7K",
-      "description": "Derived from seed 0x03 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "98aebbb178a55187",
+      "human_address": "9HBN-VP5W-AAMC7"
     },
     {
       "name": "test-vector-4",
       "seed": "0404040404040404040404040404040404040404040404040404040404040404",
       "pubkey": "0404040404040404040404040404040404040404040404040404040404040404",
-      "iid": "9d4fb68f3e1dac82",
-      "human_address": "9TKX-PHWZ-1VB42",
-      "description": "Derived from seed 0x04 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "493e3c145d7e680a",
+      "human_address": "4JFH-W2HE-QWT0A"
     },
     {
       "name": "test-vector-5",
       "seed": "0505050505050505050505050505050505050505050505050505050505050505",
       "pubkey": "0505050505050505050505050505050505050505050505050505050505050505",
-      "iid": "f849d67325facf04",
-      "human_address": "FGJE-PECJ-ZNKR4",
-      "description": "Derived from seed 0x05 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "4d370d6146de919c",
+      "human_address": "4TDR-DC53-DX4CW"
     },
     {
       "name": "test-vector-6",
       "seed": "0606060606060606060606060606060606060606060606060606060606060606",
       "pubkey": "0606060606060606060606060606060606060606060606060606060606060606",
-      "iid": "e802086ad6a1e16b",
-      "human_address": "EG0G-8DBB-A3RBB",
-      "description": "Derived from seed 0x06 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "ac3f248f80ff04de",
+      "human_address": "ARFS-4HY0-FY16Y"
     },
     {
       "name": "test-vector-7",
       "seed": "0707070707070707070707070707070707070707070707070707070707070707",
       "pubkey": "0707070707070707070707070707070707070707070707070707070707070707",
-      "iid": "49b06f8e4e3a7715",
-      "human_address": "4KC3-FHS7-3MXRN",
-      "description": "Derived from seed 0x07 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "2dad39fefd7fa3e2",
+      "human_address": "2VB9-SZVY-QZ8Z2"
     },
     {
       "name": "test-vector-8",
       "seed": "0808080808080808080808080808080808080808080808080808080808080808",
       "pubkey": "0808080808080808080808080808080808080808080808080808080808080808",
-      "iid": "2578ccf8645b2d1d",
-      "human_address": "2AY6-CZ1J-5PB8X",
-      "description": "Derived from seed 0x08 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "3926c9c31226edde",
+      "human_address": "3J9P-9RC9-2DVEY"
     },
     {
       "name": "test-vector-9",
       "seed": "0909090909090909090909090909090909090909090909090909090909090909",
       "pubkey": "0909090909090909090909090909090909090909090909090909090909090909",
-      "iid": "8c0cc17a04942cc4",
-      "human_address": "8R36-1F82-98B64",
-      "description": "Derived from seed 0x09 repeated. Human address from SHA256(pubkey)[:8] Base32."
+      "iid": "3c8fe3ab30c0aabf",
+      "human_address": "3S3Z-3NCR-C1ANZ"
     }
   ]
 }

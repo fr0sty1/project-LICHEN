@@ -462,23 +462,23 @@ fn build_coap_udp(
     let cksum = udp_checksum(&src, &dst, src_port, dst_port, &coap_buf[..coap_len]);
 
     // Write IPv6 header
-        write_ipv6_header(
-            out,
-            udp_len,
-            NEXT_HEADER_UDP,
-            hop_limit,
-            (traffic_class, flow_label),
-            &src,
-            &dst,
-        );
+    write_ipv6_header(
+        out,
+        udp_len,
+        NEXT_HEADER_UDP,
+        hop_limit,
+        (traffic_class, flow_label),
+        &src,
+        &dst,
+    );
 
-        // Write UDP header
-        out[40..42].copy_from_slice(&src_port.to_be_bytes());
-        out[42..44].copy_from_slice(&dst_port.to_be_bytes());
-        out[44..46].copy_from_slice(&udp_len.to_be_bytes());
-        out[46..48].copy_from_slice(&cksum.to_be_bytes());
+    // Write UDP header
+    out[40..42].copy_from_slice(&src_port.to_be_bytes());
+    out[42..44].copy_from_slice(&dst_port.to_be_bytes());
+    out[44..46].copy_from_slice(&udp_len.to_be_bytes());
+    out[46..48].copy_from_slice(&cksum.to_be_bytes());
 
-        // Write CoAP
+    // Write CoAP
     out[48..48 + coap_len].copy_from_slice(&coap_buf[..coap_len]);
 
     Ok(total)

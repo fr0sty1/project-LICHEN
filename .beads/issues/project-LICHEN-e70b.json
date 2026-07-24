@@ -2,7 +2,7 @@
   "id": "project-LICHEN-e70b",
   "title": "codereview-pass1: spec/02a-coordinated-capacity.md:45 pseudocode uses Rust 'or' syntax; must be pure pseudocode",
   "notes": "Fixed Rust 'or' to OR in pseudocode at mitigate_and_transmit and select_channel. Removed duplicate 0.1 Overview section. Purged Rust-specific syntax (types like u8/Option/RfHealthMetrics, wrapping_sub, \u0026[] ) from all pseudocode and comments for pure pseudocode. Updated related sections for consistency. 3 codereview passes completed: pass1 filed project-LICHEN-2bjl (types+duplicate, fixed); pass2 found prose 'or' inconsistencies and SFN Rust example (reworded where appropriate without changing C/Rust examples); pass3: clean, zero P0-P2 findings across spec file. All findings fixed and filed as codereview beads. Bead not closed per instructions until verified 3 clean passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

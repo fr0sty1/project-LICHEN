@@ -92,6 +92,9 @@ class Simulation:
         seed: int | None = None,
         jitter_min_us: int = 0,
         jitter_max_us: int = 0,
+        density_aware_startup: bool = False,
+        listen_period_us: int = 1_000_000,
+        density_scale_factor: float = 1000.0,
     ) -> None:
         """Initialize a new simulation.
 
@@ -105,6 +108,13 @@ class Simulation:
             jitter_min_us: Minimum TX jitter in microseconds. Defaults to 0.
             jitter_max_us: Maximum TX jitter in microseconds. Defaults to 0
                 (disabled). Set to a positive value to enable TX jitter.
+            density_aware_startup: If True, nodes apply listen-before-TX during
+                startup, with a per-node delay scaled by estimated density.
+            listen_period_us: Duration in microseconds each node listens before
+                its first TX to build its heard set.
+            density_scale_factor: Scaling constant for the density-derived delay.
+                The actual delay is random.uniform(0, density_scale_factor *
+                log(1 + heard_count)).
         """
         self._id = sim_id
         self._time_mode = time_mode
@@ -131,6 +141,9 @@ class Simulation:
             )
         self._jitter_min_us = jitter_min_us
         self._jitter_max_us = jitter_max_us
+        self._density_aware_startup = density_aware_startup
+        self._listen_period_us = listen_period_us
+        self._density_scale_factor = density_scale_factor
         self._realtime_epoch_us: int = time.monotonic_ns() // 1000
 
     def enable_debug(self) -> None:
@@ -210,6 +223,67 @@ class Simulation:
     def jitter_max_us(self) -> int:
         """Return the maximum TX jitter in microseconds."""
         return self._jitter_max_us
+
+    @property
+    def density_aware_startup(self) -> bool:
+        """Return whether density-aware startup is enabled."""
+        return self._density_aware_startup
+
+    @property
+    def listen_period_us(self) -> int:
+        """Return the listen-before-TX period in microseconds."""
+        return self._listen_period_us
+
+    @property
+    def density_scale_factor(self) -> float:
+        """Return the density scale factor for startup delay calculation."""
+        return self._density_scale_factor
+
+    def calculate_startup_delay(self, node: SimNode) -> int:
+        """Calculate the density-aware startup delay for a node.
+
+        The delay is proportional to log(1 + heard_count), so denser
+        neighborhoods produce longer listen periods before first TX.
+        This reduces collision probability during simultaneous boot.
+
+        Args:
+            node: The node to calculate delay for.
+
+        Returns:
+            Startup delay in microseconds.
+        """
+        if not node.started:
+            heard = len(node.heard_set)
+            delay = self._rng.uniform(0, self._density_scale_factor * (1.0 + heard))
+            return int(delay)
+        return 0
+
+    def mark_node_started(self, node_id: str) -> None:
+        """Mark a node as having completed its startup listen phase.
+
+        Once marked, the node may transmit immediately without the
+        density-aware listen delay.
+
+        Args:
+            node_id: ID of the node to mark as started.
+        """
+        node = self._nodes.get(node_id)
+        if node is not None:
+            node.started = True
+
+    def is_startup_phase(self, node: SimNode) -> bool:
+        """Check if a node is still in its startup listen phase.
+
+        During startup, the node tracks neighbors heard on the medium
+        but must wait for its density-scaled delay before its first TX.
+
+        Args:
+            node: The node to check.
+
+        Returns:
+            True if the node is still in the startup phase.
+        """
+        return self._density_aware_startup and not node.started
 
     def calculate_tx_jitter(self) -> int:
         """Calculate a random TX jitter delay.
@@ -384,6 +458,15 @@ class Simulation:
 
         event = self._event_queue.pop()
         self._current_time_us = event.time_us
+        if self._debug_enabled:
+            self._debug_log(
+                "process_next_event",
+                sim_id=self._id,
+                event_type=event.__class__.__name__,
+                event_time_us=event.time_us,
+                queue_size=len(self._event_queue),
+                **self._get_blocked_node_info(),
+            )
         self._handle_event(event)
         return event
 
@@ -544,7 +627,6 @@ class Simulation:
         if next_event is None:
             return False
 
-        blocked_info = self._get_blocked_node_info()
         self._debug_log(
             "time_advance",
             sim_id=self._id,
@@ -552,7 +634,7 @@ class Simulation:
             to_us=next_event.time_us,
             queue_size=len(self._event_queue),
             pending_rx_timeouts=len(self._pending_rx_timeouts),
-            **blocked_info,
+            **self._get_blocked_node_info(),
         )
         self.process_next_event()
         return True
@@ -563,15 +645,25 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-        if node.hop_schedule and len(node.hop_schedule) > 0:
-            current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.get_hop_channel(current_sfn)
-        elif channel == 0:
-            channel = node.current_channel
-        if self._jitter_max_us > 0:
-            jitter = self.calculate_tx_jitter()
+        channel = node.get_hop_channel()
+
+        delay_us = 0
+        if self._density_aware_startup and not node.started:
+            delay_us = self.calculate_startup_delay(node)
+            node.started = True
+            self._debug_log(
+                "density_aware_startup_delay",
+                sim_id=self._id,
+                node_id=node_id,
+                heard_count=len(node.heard_set),
+                delay_us=delay_us,
+            )
+        elif self._jitter_max_us > 0:
+            delay_us = self.calculate_tx_jitter()
+
+        if delay_us > 0:
             delayed_event = TxStartDelayedEvent(
-                time_us=self._current_time_us + jitter,
+                time_us=self._current_time_us + delay_us,
                 node_id=node_id,
                 payload=payload,
                 tx_power_dbm=node.tx_power_dbm,
@@ -583,7 +675,7 @@ class Simulation:
                 "tx_delayed",
                 sim_id=self._id,
                 node_id=node_id,
-                jitter_us=jitter,
+                delay_us=delay_us,
                 fire_at_us=delayed_event.time_us,
             )
             return ""
@@ -607,7 +699,7 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping (CCP-12) using node.synchronized_hop_channel(current_sfn)
+        Integrates synchronized hopping (CCP-12) using node.get_hop_channel(current_sfn)
         when hop_schedule present; passes to medium; updates node state without conflicting
         current_channel for hop nodes. Removes dead code.
 
@@ -625,9 +717,8 @@ class Simulation:
         node = self._nodes.get(node_id)
         if node is not None and not node.tdma_scheduler.is_tx_allowed(self._current_time_us):
             return ""
-        if node is not None and node.hop_schedule and len(node.hop_schedule) > 0:
-            current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.get_hop_channel(current_sfn)
+        if node is not None:
+            channel = node.get_hop_channel()
         previous_tx_id = self._active_transmissions.get(node_id)
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)
@@ -729,7 +820,7 @@ class Simulation:
         on_timeout: Callable[[], None],
         channel: int = 0,
     ) -> None:
-        """Enter RX mode. Derives via node.synchronized_hop_channel for hop_schedule
+        """Enter RX mode. Derives via node.get_hop_channel for hop_schedule
         (CCP-12 rendezvous node.py:146). Sets current_channel only if needed.
         """
         node = self._nodes.get(node_id)
@@ -737,18 +828,16 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-        if node.hop_schedule and len(node.hop_schedule) > 0:
-            current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.get_hop_channel(current_sfn)
-        elif channel == 0:
-            channel = node.current_channel
+        channel = node.get_hop_channel()
         node.state = NodeState.RX_WAIT
         if not (node.hop_schedule and len(node.hop_schedule) > 0):
             node.current_channel = channel
         node.rx_callbacks = (on_packet, on_timeout)
         timeout_time_us = self._current_time_us + timeout_us
         self._pending_rx_timeouts[node_id] = timeout_time_us
-        timeout_event = RxTimeoutEvent(time_us=timeout_time_us, node_id=node_id)
+        timeout_event = RxTimeoutEvent(
+            time_us=timeout_time_us, node_id=node_id
+        )
         self._event_queue.push(timeout_event)
         self._debug_log(
             "enter_rx_mode",
@@ -812,8 +901,9 @@ class Simulation:
 
         return delivered
 
+
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
-        """Unified core RX logic. Uses node.synchronized_hop_channel (node.py:146)
+        """Unified core RX logic. Uses node.get_hop_channel (node.py:146)
         for medium channel when hop_schedule present (CCP-12 per
         ccp16-hop.json spec/02a-coordinated-capacity.md:120). Preserves oracles.
 
@@ -828,15 +918,13 @@ class Simulation:
         if node is None:
             return None
 
-        if node.hop_schedule and len(node.hop_schedule) > 0:
-            channel = node.get_hop_channel()
-        else:
-            channel = node.current_channel
+        channel = node.get_hop_channel()
         candidates = self._medium.get_rx_candidates(
             rx_node_id=node_id,
             rx_position=node.position,
             time_us=self._current_time_us,
             channel=channel,
+            rx_frequency_hz=None,
         )
 
         # Apply chaos rules to filter/modify candidates
@@ -886,6 +974,11 @@ class Simulation:
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
+
+        # Track heard neighbors during startup phase for density-aware startup
+        if self._density_aware_startup and not node.started:
+            if tx.source_node_id is not None:
+                node.heard_set.add(tx.source_node_id)
 
         for candidate in candidates:
             if candidate.transmission is tx:

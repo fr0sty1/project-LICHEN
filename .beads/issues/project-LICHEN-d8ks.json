@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d8ks",
   "title": "[codereview-pass2-security] coap_dtn.c: static buffer not protected against concurrent access from CoAP and routing threads",
   "description": "coap_dtn.c:15,22-32 - lichen_dtn_buffer is not thread-safe; CoAP handlers and router/rpl can race on buffer. Needs mutex or atomic ops per c-safety.md. P0 codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

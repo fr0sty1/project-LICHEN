@@ -207,7 +207,7 @@ fn build_signable(
     buf
 }
 
-fn clamp(mut bytes: [u8; 32]) -> [u8; 32] {
+pub(crate) fn clamp(mut bytes: [u8; 32]) -> [u8; 32] {
     bytes[0] &= 248;
     bytes[31] &= 127;
     bytes[31] |= 64;

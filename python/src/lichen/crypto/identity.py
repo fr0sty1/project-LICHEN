@@ -114,17 +114,12 @@ class Identity:
 
 
 def _pubkey_to_iid(pubkey: bytes) -> bytes:
-    """Derive 8-byte Interface Identifier from public key.
-
-    SHA-256 truncation matches ORCHID (RFC 7343). U/L bit cleared per RFC 4291
-    for locally-assigned addresses.
-    """
     if len(pubkey) != 32:
         raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
 
-    digest = sha256(pubkey).digest()
+    digest = sha512(pubkey).digest()
     iid = bytearray(digest[:8])
-    iid[0] &= 0b1111_1101  # clear U/L bit
+    iid[0] &= 0b1111_1101
     return bytes(iid)
 
 
@@ -191,7 +186,8 @@ def yggdrasil_address(pubkey: bytes) -> IPv6Address:
     if len(pubkey) != 32:
         raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
     h = sha512(pubkey).digest()
-    iid = _pubkey_to_iid(pubkey)
+    iid = bytearray(h[:8])
+    iid[0] &= 0b1111_1101
     addr_bytes = bytearray(16)
     addr_bytes[0] = 0x02
     addr_bytes[1:8] = h[0:7]

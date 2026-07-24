@@ -21,7 +21,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <lichen/rpl_messages.h>
-#include <stddef.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
@@ -45,7 +44,7 @@ extern "C" {
 #define LICHEN_RPL_INFINITE_RANK          0xFFFF
 #define LICHEN_RPL_ROOT_RANK              256
 #define LICHEN_RPL_DEFAULT_MIN_HOP_RANK   256
-#define LICHEN_RPL_DEFAULT_MAX_RANK_INC   1024
+#define LICHEN_RPL_DEFAULT_MAX_RANK_INC   2048
 #define LICHEN_RPL_DEFAULT_SWITCH_THRESH  192
 
 /* TDMA constants synced from constants.toml; see spec/02a-coordinated-capacity.md §2a.2
@@ -84,14 +83,6 @@ struct lichen_rpl_parent {
 };
 
 /**
- * @brief Callback for DODAG state changes.
- *
- * @param joined true if node joined or re-joined a DODAG, false if it left
- * @param user_data User context pointer set in dodag struct
- */
-typedef void (*lichen_rpl_dodag_state_cb)(bool joined, void *_Nullable user_data);
-
-/**
  * @brief RPL DODAG membership state for a single node
  *
  * All parent candidates are stored in a fixed-size array to avoid allocation.
@@ -111,21 +102,14 @@ struct lichen_rpl_dodag {
 	uint16_t max_rank_increase;
 	uint16_t parent_switch_threshold;
 
-	/* Whether the DODAG is in gateway-centric mode (from DODAG Config) */
-	bool is_gateway_centric;
-
 	/* Parent candidates */
 	struct lichen_rpl_parent parents[CONFIG_LICHEN_RPL_MAX_PARENTS];
-
-	/* Gateway-centric mode (from DODAG Configuration option) */
-	bool gateway_centric;
 
 	/* Lowest rank ever achieved (for MaxRankIncrease check) */
 	uint16_t lowest_rank;
 
-	/* DODAG state change notification */
-	lichen_rpl_dodag_state_cb _Nullable state_cb;
-	void *_Nullable state_cb_user_data;
+	/* Gateway-centric flag propagated from DODAG config */
+	bool gateway_centric;
 };
 
 /* ── Functions ─────────────────────────────────────────────────────────────── */
@@ -174,47 +158,15 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
  * @param now          Current timestamp for lifetime tracking
- * @return Non-zero if DTSN changed, 0 otherwise
+ * @param config       DODAG config from DIO options (may be NULL)
  */
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
-				  const struct lichen_rpl_dodag_config *_Nullable config,
 				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
-				  uint32_t now);
-
-/**
- * @brief Process a received DIO from raw message bytes.
- *
- * Parses the DIO base object, extracts the DODAG Configuration option
- * (including gateway_centric), and delegates to
- * lichen_rpl_dodag_process_dio.
- *
- * @param d             DODAG state
- * @param dio_bytes     Raw DIO message bytes (ICMPv6 body, after type/code/checksum)
- * @param dio_len       Length of dio_bytes
- * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
- * @param link_etx      Fixed-point ETX estimate (256 = perfect link)
- * @param load_factor   Load factor (0-255)
- * @param now           Current timestamp for lifetime tracking
- * @return Non-zero if DTSN changed, negative on parse error, 0 otherwise
- */
-int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *_Nonnull d,
-					const uint8_t *_Nonnull dio_bytes,
-					size_t dio_len,
-					const uint8_t *_Nonnull neighbor_addr,
-					uint16_t link_etx,
-					uint8_t load_factor,
-					uint32_t now);
-
-/**
- * @brief Check whether the DODAG is in gateway-centric mode.
- */
-static inline bool lichen_rpl_dodag_is_gateway_centric(const struct lichen_rpl_dodag *_Nonnull d)
-{
-	return d->is_gateway_centric;
-}
+				  uint32_t now,
+				  const struct lichen_rpl_dodag_config *_Nullable config);
 
 /**
  * @brief Drop a neighbor (e.g., link failure) and re-select parent.
@@ -234,20 +186,6 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *_Nonnull d);
  * @brief Force parent re-selection (e.g., after link quality change).
  */
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *_Nonnull d);
-
-/**
- * @brief Register a DODAG state change callback.
- *
- * Called whenever the node joins or leaves a DODAG (role transitions
- * between UNJOINED and JOINED/ROOT).
- *
- * @param d          DODAG state
- * @param cb         Callback, or NULL to unregister
- * @param user_data  Opaque context passed to callback
- */
-void lichen_rpl_dodag_set_state_cb(struct lichen_rpl_dodag *_Nonnull d,
-				   lichen_rpl_dodag_state_cb _Nullable cb,
-				   void *_Nullable user_data);
 
 /**
  * @brief Expire stale parent candidates.

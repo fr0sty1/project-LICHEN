@@ -245,7 +245,7 @@ Border routers with internet connectivity SHOULD:
 ### 14.7. TDMA Superframe Number (SFN)
 
 All nodes in a DODAG MUST compute TDMA slot assignments using identical hash
-function and modulo semantics as defined in 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01 (see also
+function and modulo semantics as defined in 02a-coordinated-capacity.md §2a.2.3 (see also
 Section 4.5 of this document for hash-based self-assignment precedent using
 hash_32). Nodes MUST NOT use implementation-specific variations. Slot index
 is computed as `slot = (hash_32(eui64 bytes, 8) + sfn) mod num_slots`
@@ -254,7 +254,7 @@ is computed as `slot = (hash_32(eui64 bytes, 8) + sfn) mod num_slots`
 **Time-Provider Interaction on SFN Wrap:**
 
 ```pseudocode
-// on_sfn_wrap(beacon): see docs/firmware-time-provider.md:20 for
+// on_sfn_wrap(beacon): see docs/firmware-time-provider.md:23 for
 // effective_epoch_floor definition and lichen_hal_time_submit()
 on_sfn_wrap(beacon):
     ts = beacon.timestamp
@@ -273,7 +273,7 @@ from stale or bogus time.
 
 **Desynchronization Recovery FSM:**
 
-The recovery mechanism is a finite state machine (see 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01 and project-LICHEN-i9r0.1 for full normative definition, timing parameters, and test vectors). States and transitions:
+The recovery mechanism is a finite state machine (see 02a-coordinated-capacity.md §2a.2.1 through §2a.2.3 for SFN definition and slot/hash assignment, and §2a.5 for desync recovery FSM) for full normative definition, timing parameters, and test vectors. States and transitions:
 
 | Current State | Event | Next State | Action |
 |---------------|-------|------------|--------|
@@ -281,6 +281,18 @@ The recovery mechanism is a finite state machine (see 02a-coordinated-capacity.m
 | DESYNCED | Valid beacon (ts >= floor, matching SFN) | RECOVERING | Start extended listen timer |
 | RECOVERING | 3 consecutive valid beacons | SYNCED | Resume normal TDMA slot usage |
 | RECOVERING | Timeout or invalid ts | DESYNCED | Reset listen window |
+
+```mermaid
+stateDiagram-v2
+    [*] --> SYNCED : Boot / join complete
+    SYNCED --> DESYNCED : SFN wrap + invalid time provider
+    DESYNCED --> RECOVERING : Valid beacon (ts >= floor, matching SFN)
+    RECOVERING --> SYNCED : 3 consecutive valid beacons
+    RECOVERING --> DESYNCED : Timeout or invalid ts
+    SYNCED --> SYNCED : Beacon rx in assigned slot
+```
+
+*Figure 1: Desynchronization Recovery State Machine. See table above for exact conditions and actions.*
 
 Implementations MUST implement this FSM in the TDMA subsystem (lichen_tdma_init()
 in lichen/subsys/lichen/link) and document timeout values (RECOMMENDED: 3
@@ -333,6 +345,21 @@ The computation MUST anchor to the time-provider `effective_epoch_floor` (Sectio
 All SFN edge cases including wraparound, desynchronization recovery FSM transitions, multi-root beacon conflicts, and RPL version changes during join/drift MUST be covered by test vectors (see `test/vectors/ccp16.json`, `ccp_tdma.json`). See spec/02a-coordinated-capacity.md §2a.2 and §2a.5 for full normative FSM table.
 
 **FSM for desync/rejoin robustness:** See spec/02a-coordinated-capacity.md §2a.2 and §2a.5 (normative FSM replicated from prior draft-lichen-tdma) for complete definition. Nodes MUST follow the initialization dependency graph from AGENTS.md:179 (normative for subsystem ordering to prevent use-before-init crashes) and the `lichen_node_init()` example (AGENTS.md:218). `lichen_link_init()` MUST precede `lichen_link_load_key()`, `lichen_rpl_dodag_init()`, TDMA, oscore_init(), and lichen_coap_client_init() per the graph in AGENTS.md. Rejoin timeout = 10 × superframe length (Kconfig `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT`, default 10 s).
+
+```mermaid
+stateDiagram-v2
+    [*] --> UNJOINED : Power-on / reset
+    UNJOINED --> ACQUIRING : lichen_node_init()
+    ACQUIRING --> SYNCED : Valid beacon (higher stratum/version)
+    SYNCED --> SYNCED : Beacon rx in assigned slot
+    SYNCED --> DRIFTING : >3 missed beacons or RPL version increment
+    DRIFTING --> ACQUIRING : Beacon rx or contention success
+    DRIFTING --> SYNCED : REJOINING path (DAO-ACK)
+    REJOINING --> SYNCED : DAO-ACK + slot assign
+    ACQUIRING --> ACQUIRING : Beacon timeout (3× superframe)
+```
+
+*Figure 2: Desync/Rejoin Robustness FSM. See table below for full event conditions, timers, and actions.*
 
 | Current State | Event/Condition | Timer/Timeout | Action | Next State | Reference |
 |---------------|-----------------|---------------|--------|------------|-----------|

@@ -82,10 +82,12 @@ class RouteCache:
         """
         existing = self._entries.get(entry.destination)
         if existing is not None:
-            if _is_seq_fresher(entry.seq_num, existing.seq_num):
-                return
-            if existing.seq_num == entry.seq_num and entry.metric >= existing.metric:
-                return
+            if existing.seq_num == entry.seq_num:
+                if entry.metric >= existing.metric:
+                    return
+            else:
+                if not _is_seq_fresher(existing.seq_num, entry.seq_num):
+                    return
         self._entries[entry.destination] = entry
         self._entries.move_to_end(entry.destination)
         while len(self._entries) > self.max_entries:

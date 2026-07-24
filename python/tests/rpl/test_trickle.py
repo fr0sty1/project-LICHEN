@@ -140,6 +140,56 @@ def test_invalid_parameters_rejected() -> None:
         TrickleTimer(100, -1, 2)
 
 
+def test_counter_saturates_on_overflow() -> None:
+    """RFC 6206 §4.2: counter must not wrap; saturate at maximum."""
+    t = _timer(k=10)
+    t.start(0)
+    t.counter = (1 << 32) - 1
+    t.heard_consistent()
+    assert t.counter == (1 << 32) - 1, "counter saturates at max"
+    assert not t.should_transmit(), "counter >= k: should not transmit"
+
+
+def test_zero_k_redundancy_constant() -> None:
+    """k=0: even counter=0 is never < k, so should_transmit always false.
+
+    RFC 6206 §4.2 does not explicitly forbid k=0, but it makes the
+    timer operationally inert (never transmits). The timer must not
+    crash or enter an invalid state.
+    """
+    t = TrickleTimer(100, 4, 0, rng=lambda: 0.0)
+    t.start(0)
+    assert not t.should_transmit(), "k=0: should_transmit false at start"
+    assert not t.fire_transmit(), "k=0: fire_transmit returns false"
+    t.heard_consistent()
+    assert not t.should_transmit(), "k=0: still false after hearing"
+    assert t.counter == 1, "k=0: heard_consistent still increments counter"
+
+
+def test_zero_counter_should_transmit_with_positive_k() -> None:
+    """counter=0 < k=1 is true per RFC 6206 §4.2 step 4."""
+    t = _timer(k=1)
+    t.start(0)
+    assert t.should_transmit(), "counter=0 < k=1"
+    assert t.fire_transmit(), "fire_transmit returns true when c < k"
+
+
+def test_heard_consistent_does_not_overflow_at_max_counter() -> None:
+    """heardt_consistent at UINT32_MAX must saturate, not wrap.
+
+    Regression: Python unsigned ints don't overflow, but the counter
+    must not grow past 2^32-1 to match Rust/C behavior.
+    """
+    t = _timer(k=10)
+    t.start(0)
+    t.counter = (1 << 32) - 1
+    t.heard_consistent()
+    assert t.counter == (1 << 32) - 1, "must not exceed max u32"
+
+    # Even after saturating, should_transmit must work correctly
+    assert not t.should_transmit(), "counter >= k: should not transmit"
+
+
 @pytest.mark.asyncio
 async def test_run_loop_transmits_with_fake_clock() -> None:
     # Fake clock: each sleep(ms) advances the clock by ms exactly.

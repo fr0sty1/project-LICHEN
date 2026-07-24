@@ -31,10 +31,19 @@ from lichen.senml.codec import SenmlRecord
 
 
 def location(
-    lat: float, lon: float, alt: float | None = None, speed: float | None = None
+    lat: float,
+    lon: float,
+    alt: float | None = None,
+    speed: float | None = None,
+    heading: float | None = None,
+    hacc: float | None = None,
+    vacc: float | None = None,
 ) -> list[SenmlRecord]:
     """Geographic position per spec appendix-senml (u=lat/lon)."""
-    for name, val in [("lat", lat), ("lon", lon), ("alt", alt), ("speed", speed)]:
+    for name, val in [
+        ("lat", lat), ("lon", lon), ("alt", alt), ("speed", speed),
+        ("heading", heading), ("hacc", hacc), ("vacc", vacc),
+    ]:
         if val is not None and (math.isnan(val) or math.isinf(val)):
             raise ValueError(f"{name} {val} is NaN or Inf")
     if not (-90.0 <= lat <= 90.0):
@@ -49,6 +58,12 @@ def location(
         records.append(SenmlRecord(n="alt", u="m", v=alt))
     if speed is not None:
         records.append(SenmlRecord(n="speed", u="m/s", v=speed))
+    if heading is not None:
+        records.append(SenmlRecord(n="heading", u="deg", v=heading))
+    if hacc is not None:
+        records.append(SenmlRecord(n="hacc", u="m", v=hacc))
+    if vacc is not None:
+        records.append(SenmlRecord(n="vacc", u="m", v=vacc))
     return records
 
 

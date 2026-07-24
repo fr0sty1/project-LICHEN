@@ -41,6 +41,7 @@ class AnnounceMessage:
             )
 
     def signed_data(self) -> bytes:
+        """Data covered by signature: iid[0..8] + pubkey[8..40] + seq[40..42] + rx_channel[42] + app_data[43..]."""
         return (
             self.originator_iid
             + self.pubkey

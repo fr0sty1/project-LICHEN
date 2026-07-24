@@ -15,7 +15,7 @@
 
 #include <lichen/edhoc.h>
 #include <monocypher.h>
-#include <lichen/schnorr48.h>
+
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/hmac.h>
 #include <tinycrypt/aes.h>
@@ -44,8 +44,8 @@ BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_seed) >= EDHOC_ED25519_SK_
 	     "ed_seed too small for EDHOC_ED25519_SK_LEN");
 BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_pubkey) >= EDHOC_ED25519_PK_LEN,
 	     "ed_pubkey too small for EDHOC_ED25519_PK_LEN");
-BUILD_ASSERT(EDHOC_SIG_LEN == SCHNORR48_SIG_LEN,
-	     "EDHOC_SIG_LEN must match SCHNORR48_SIG_LEN");
+BUILD_ASSERT(EDHOC_SIG_LEN == 64,
+	     "EDHOC_SIG_LEN must be 64 for Ed25519");
 
 /* CBOR encoding buffer size */
 #define CBOR_BUF_SIZE 128
@@ -553,25 +553,19 @@ static int edhoc_sign(uint8_t sig[EDHOC_SIG_LEN],
 		      const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len)
 {
-	uint8_t privkey[SCHNORR48_PRIVKEY_LEN];
-	uint8_t computed_pub[SCHNORR48_PUBKEY_LEN];
-	schnorr48_derive_keypair(seed, privkey, computed_pub);
-	if (crypto_verify32(pubkey, computed_pub) != 0) {
-		crypto_wipe(privkey, sizeof(privkey));
-		crypto_wipe(computed_pub, sizeof(computed_pub));
-		return -EINVAL;
-	}
-	int ret = schnorr48_sign(privkey, pubkey, msg, msg_len, sig);
-	crypto_wipe(privkey, sizeof(privkey));
-	crypto_wipe(computed_pub, sizeof(computed_pub));
-	return ret;
+	uint8_t secret_key[64];
+	memcpy(secret_key, seed, 32);
+	memcpy(secret_key + 32, pubkey, 32);
+	crypto_eddsa_sign(sig, secret_key, msg, msg_len);
+	crypto_wipe(secret_key, sizeof(secret_key));
+	return 0;
 }
 
 static int edhoc_verify(const uint8_t *pubkey,
 			const uint8_t *sig,
 			const uint8_t *msg, size_t msg_len)
 {
-	return schnorr48_verify(pubkey, msg, msg_len, sig, SCHNORR48_SIG_LEN) ? 0 : -1;
+	return crypto_eddsa_check(sig, pubkey, msg, msg_len) == 0 ? 0 : -1;
 }
 
 int edhoc_initiator_init(struct edhoc_initiator *ctx,
@@ -585,9 +579,6 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
 	}
 	if (c_i_len > EDHOC_CID_MAX_LEN || corr > 3) {
 		return -EINVAL;
-	}
-	if (ctx->state == EDHOC_STATE_ERROR) {
-		return -EBUSY;
 	}
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -862,7 +853,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/*
 	 * SECURITY: Constant-time signature verification.
-	 * - schnorr48_verify uses crypto_verify16 + nonzero accumulator (see schnorr48.c:156)
+	 * - crypto_eddsa_check uses Monocypher Ed25519 verification
 	 * - volatile prevents compiler from optimizing away the check
 	 * - No logging here to avoid timing variation from log backends
 	 * - Generic error hides which verification step failed
@@ -973,7 +964,6 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	return 0;
 
 err_wipe:
-	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(g_xy, sizeof(g_xy));
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
@@ -1054,7 +1044,6 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	return 0;
 
 wipe:
-	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(oscore, sizeof(*oscore));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
@@ -1075,9 +1064,6 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 	}
 	if (c_r_len > EDHOC_CID_MAX_LEN || corr > 3) {
 		return -EINVAL;
-	}
-	if (ctx->state == EDHOC_STATE_ERROR) {
-		return -EBUSY;
 	}
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -1339,7 +1325,6 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	return 0;
 
 err_wipe:
-	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(g_xy, sizeof(g_xy));
 	crypto_wipe(signature_2, sizeof(signature_2));
 	crypto_wipe(plaintext_2, sizeof(plaintext_2));
@@ -1470,7 +1455,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	/*
 	 * SECURITY: Constant-time signature verification.
-	 * - schnorr48_verify uses crypto_verify16 + nonzero accumulator (see schnorr48.c:156)
+	 * - crypto_eddsa_check uses Monocypher Ed25519 verification
 	 * - volatile prevents compiler from optimizing away the check
 	 * - No logging here to avoid timing variation from log backends
 	 * - Generic error hides which verification step failed
@@ -1499,7 +1484,6 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	return 0;
 
 err_wipe:
-	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
 	crypto_wipe(plaintext_3, sizeof(plaintext_3));
@@ -1573,7 +1557,6 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	return 0;
 
 wipe:
-	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(oscore, sizeof(*oscore));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));

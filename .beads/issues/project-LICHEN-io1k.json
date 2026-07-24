@@ -4,7 +4,7 @@
   "description": "Resolve stale board fragments/selectors and complete physical or infrastructure-dependent target validation exposed by the boot audit. Keep canonical HWMv2 target names and distinguish build support, faithful simulation, and physical proof.",
   "acceptance_criteria": "Every declared target has a canonical Zephyr mapping or approved retirement; active commands use valid selectors; every hardware-only/native32 row has retained independent evidence and cleanup.",
   "notes": "Reconciliation complete: all Zephyr targets mapped to canonical HWMv2 selectors (board/soc); stale fragments in bridge-zephyr/boards/* and puck/gateway marked with explicit BLOCKED/FAIL comments linking to audit; docs/renode-workflow.md, firmware-board-capability-matrix.md, and build selectors updated to t_echo/nrf52840, rak4631/nrf52840, heltec_wifi_lora32_v3/esp32s3/procpu, t1000_e/nrf52840 etc. Classifications applied per m5m1 audit: physical mostly BLOCKED (no hardware), sim FAIL on skeletal Renode for ESP32, build WIN for native/qemu where tested. tbeam_supreme retired as BLOCKED per w8rd. Native32 under o4yi. All children updated/closed with evidence. Matrix and docs reflect current inventory.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

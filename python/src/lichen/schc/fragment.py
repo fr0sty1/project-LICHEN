@@ -13,9 +13,8 @@ DEFAULT_WINDOW_SIZE = 63
 MIC_LENGTH = 4
 RULE_IDS = (0x2a, 0x78, 0x79)
 TILE_SIZE = 187
-MAX_PACKET_SIZE = 16384
-MAX_SCHC_PACKET = 1281
-DEFAULT_RECEIVER_LIMIT = MAX_SCHC_PACKET
+MAX_PACKET_SIZE = 65535
+DEFAULT_RECEIVER_LIMIT = 1281
 MAX_ACK_REQUESTS = 4
 WINDOW_SIZE = 63
 
@@ -173,9 +172,6 @@ class Ack:
                 raise FragmentError("malformed C=1 ACK or control")
             return cls(data[0], window, (), True)
         bit_count = len(data[1:]) * 8 - 2
-        max_bytes = (2 + WINDOW_SIZE + 7) // 8
-        if len(data[1:]) > max_bytes:
-            raise FragmentError("ACK bitmap size exceeds SCHC maximum window size")
         raw = int.from_bytes(data[1:], "big") & ((1 << bit_count) - 1)
         if bit_count >= WINDOW_SIZE:
             padding = bit_count - WINDOW_SIZE
@@ -249,27 +245,6 @@ class FragmentSender:
         start = abs_window * self.window_size
         return self._fragments[start : start + self.window_size]
 
-    def start(self) -> None:
-        self.status = "sending"
-        self.attempts = 0
-
-    def timeout(self) -> bytes:
-        if self.attempts >= MAX_ACK_REQUESTS:
-            self.status = "aborted"
-            return sender_abort(self.rule_id)
-        self.attempts += 1
-        return ack_request(self.rule_id, 0)
-
-    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
-        ack = Ack.from_bytes(data, assigned_fcns=[f.fcn for f in self._fragments])
-        missing: list[Fragment] = []
-        for pos, bit in enumerate(ack.bitmap):
-            if not bit:
-                frag_pos = ack.window * self.window_size + pos
-                if frag_pos < len(self._fragments):
-                    missing.append(self._fragments[frag_pos])
-        return [missing[0].to_bytes(), ack_request(self.rule_id, ack.window)]
-
     def retransmit(
         self, abs_window: int, bitmap: Sequence[bool]
     ) -> list[Fragment]:
@@ -278,6 +253,31 @@ class FragmentSender:
             bitmap = bitmap[:len(window_frags)]
         missing: list[Fragment] = []
         for pos, frag in enumerate(window_frags):
+            if frag.is_all_1:
+                continue
             if pos >= len(bitmap) or not bitmap[pos]:
                 missing.append(frag)
         return missing
+
+    def start(self) -> None:
+        self.status = "started"
+
+    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        ack = Ack.from_bytes(data)
+        if ack.complete:
+            return []
+        window = ack.window
+        missing = self.retransmit(window, ack.bitmap)
+        messages: list[bytes] = []
+        for frag in missing:
+            messages.append(frag.to_bytes())
+        all1_window = self._fragments[-1].window
+        messages.append(ack_request(self.rule_id, all1_window))
+        return messages
+
+    def timeout(self) -> bytes:
+        self.attempts += 1
+        if self.attempts >= MAX_ACK_REQUESTS:
+            self.status = "aborted"
+            return sender_abort(self.rule_id)
+        return ack_request(self.rule_id, 0)

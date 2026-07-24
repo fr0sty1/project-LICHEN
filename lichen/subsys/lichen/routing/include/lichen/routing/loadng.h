@@ -82,6 +82,9 @@ extern "C" {
 /** Maximum RREQ retries (spec B2.1). */
 #define LICHEN_LOADNG_RREQ_RETRIES 3U
 
+/** Half the sequence number space for RFC 1982 serial number arithmetic. */
+#define LICHEN_LOADNG_SEQ_HALF 0x8000U
+
 /** Expanding ring hop limits (spec B2.5): [4, 8, 15]. */
 #define LICHEN_LOADNG_EXPANDING_RING_0 4U
 #define LICHEN_LOADNG_EXPANDING_RING_1 8U
@@ -441,6 +444,23 @@ int lichen_loadng_process_rrep(const uint8_t our_addr[_Nonnull 16],
 			       const uint8_t from_neighbor[_Nonnull 16],
 			       uint32_t now_ms,
 			       struct lichen_loadng_rrep_result *_Nonnull result);
+
+/**
+ * @brief Compare two 16-bit sequence numbers per RFC 1982 serial number arithmetic.
+ *
+ * @param a First sequence number (existing)
+ * @param b Second sequence number (new)
+ *
+ * @return true if \p b is fresher than \p a (i.e., b arrived later in the sequence)
+ */
+static inline bool lichen_loadng_seq_is_fresher(uint16_t a, uint16_t b)
+{
+	if (a == b) {
+		return false;
+	}
+	uint16_t diff = (uint16_t)(b - a);
+	return diff < LICHEN_LOADNG_SEQ_HALF;
+}
 
 /**
  * @brief Reset all LOADng state (cache, seen table).

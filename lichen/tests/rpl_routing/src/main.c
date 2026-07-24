@@ -575,8 +575,9 @@ ZTEST(rpl_routing, test_descriptor_grammar)
 ZTEST(rpl_routing, test_dao_base_and_options_are_exact)
 {
 	uint8_t dao[512];
-	size_t len = dao_begin(dao, 1);
+	size_t len;
 
+	len = dao_begin(dao, 1);
 	add_target(dao, &len, 2);
 	add_transit(dao, &len, 1, 0x40, 1, 255);
 	dao[1] |= 0x01;

@@ -21,6 +21,8 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from ipaddress import IPv6Address
 
+import math
+
 import pytest
 
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
@@ -335,3 +337,92 @@ class TestAnnounceFlood:
         finally:
             for radio in radios:
                 await radio.close()
+
+    @pytest.mark.asyncio
+    async def test_density_aware_startup_staggering(
+        self, simulator_server: tuple[SimulatorServer, Simulation]
+    ) -> None:
+        """Verify density-aware startup produces staggered first-TX times.
+
+        A 100-node simultaneous boot in BARRIER_SYNC mode with
+        density_aware_startup enabled should show staggered first-TX times
+        and lower collision rate than baseline.
+        """
+        server, _ = simulator_server
+        n_nodes = min(SCALE_NODES, int(SCALE_CAP * 0.3))
+
+        dense_sim = Simulation(
+            sim_id="density-stagger-test",
+            time_mode=TimeMode.BARRIER_SYNC,
+            seed=42,
+            density_aware_startup=True,
+            listen_period_us=500_000,
+            density_scale_factor=2000.0,
+        )
+        server._simulations["density-stagger-test"] = dense_sim
+        await server._start_node_server_for_sim("density-stagger-test")
+        node_port = server.get_node_server_port("density-stagger-test")
+        assert node_port is not None
+
+        radios = []
+        for i in range(n_nodes):
+            pos = (i * 100.0, 0.0, 0.0)
+            radio = SimRadio("127.0.0.1", node_port, "density-stagger-test", f"node-{i}", pos)
+            await radio.connect()
+            radios.append(radio)
+
+        try:
+            identity = make_identity(0)
+            mock_tx = MockTransmitter()
+            scheduler = AnnounceScheduler(
+                identity=identity,
+                transmitter=mock_tx,
+                config=SchedulerConfig(interval_ms=1000, jitter_ms=0, initial_delay_ms=0),
+            )
+            announce = scheduler.build_announce()
+
+            for _ in range(n_nodes):
+                for radio in radios:
+                    await radio.receive(10)
+
+            start = time.time()
+            tx_tasks = [radio.transmit(announce.to_bytes()) for radio in radios]
+            await asyncio.gather(*tx_tasks)
+            tx_time = time.time() - start
+
+            first_tx_times = []
+            for i in range(n_nodes):
+                events = [
+                    e for e in list(dense_sim.event_queue)
+                    if hasattr(e, 'node_id') and e.node_id == f"node-{i}"
+                ]
+                if events:
+                    first_tx_times.append(events[0].time_us)
+
+            distinct_times = len(set(first_tx_times))
+            total_txs = dense_sim.metrics.transmissions
+            receptions = dense_sim.metrics.receptions
+            collisions = dense_sim.metrics.collisions
+
+            print(f"\nDensity-aware startup: {n_nodes} nodes")
+            print(f"  TX time: {tx_time:.3f}s")
+            print(f"  First-TX distinct times: {distinct_times}/{len(first_tx_times)}")
+            print(f"  Transmissions: {total_txs}")
+            print(f"  Receptions: {receptions}")
+            print(f"  Collisions: {collisions}")
+            collision_rate = collisions / max(collisions + receptions, 1)
+            print(f"  Collision rate: {collision_rate:.3f}")
+            sample_heard = {nid: len(n.heard_set) for nid, n in list(dense_sim._nodes.items())[:5]}
+            print(f"  Heard set samples: {sample_heard}")
+
+            if len(first_tx_times) > 1:
+                assert distinct_times >= max(2, n_nodes // 2), \
+                    f"Expected staggered first-TX, got {distinct_times} distinct out of {len(first_tx_times)}"
+
+            assert collision_rate < 0.5, f"Collision rate too high: {collision_rate:.3f}"
+
+        finally:
+            for radio in radios:
+                await radio.close()
+            await server._stop_node_server_for_sim("density-stagger-test")
+            server._simulations.pop("density-stagger-test", None)

@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Any
 
 import cbor2
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 from nacl.bindings import (
@@ -30,7 +29,7 @@ from nacl.bindings import (
     crypto_sign_ed25519_pk_to_curve25519,
     crypto_sign_ed25519_sk_to_curve25519,
 )
-from nacl.signing import SigningKey
+from nacl.signing import SigningKey, VerifyKey
 
 if TYPE_CHECKING:
     from .identity import Identity
@@ -189,7 +188,7 @@ def _encode_connection_id(c_x: bytes) -> bytes:
         val = c_x[0]
         if val <= 23:
             return cbor2.dumps(val)
-        if val >= 232:  # -24 in two's complement
+        if val >= 232:
             return cbor2.dumps(val - 256)
     return cbor2.dumps(c_x)
 
@@ -314,11 +313,20 @@ class EdhocInitiator:
 
     @classmethod
     def create(
-        cls, identity: Identity, c_i: bytes | None = None, method: Method = Method.SIGN_SIGN
+        cls,
+        identity: Identity,
+        c_i: bytes | None = None,
+        method: Method = Method.SIGN_SIGN,
+        eph_sk: bytes | None = None,
     ) -> EdhocInitiator:
+        if method is not Method.SIGN_SIGN:
+            raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_i is None:
             c_i = os.urandom(1)
-        eph_sk, eph_pk = _x25519_keypair()
+        if eph_sk is not None:
+            eph_pk = crypto_scalarmult_base(eph_sk)
+        else:
+            eph_sk, eph_pk = _x25519_keypair()
         return cls(
             identity=identity,
             c_i=c_i,
@@ -393,7 +401,7 @@ class EdhocInitiator:
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
             )
             if len(ciphertext_2) != len(keystream_2):
-                raise ValueError("ciphertext_2 and keystream_2 length mismatch")
+                raise ValueError("ciphertext/keystream length mismatch")
             plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
             pt2_items = _decode_cbor_sequence(plaintext_2)
             if len(pt2_items) != 2:
@@ -414,7 +422,7 @@ class EdhocInitiator:
                 cbor2.dumps(cred_r),
                 mac_2,
             ])
-            Ed25519PublicKey.from_public_bytes(peer_pubkey).verify(signature_2, m_2)
+            VerifyKey(peer_pubkey).verify(m_2, signature_2)
             th_3_input = (
                 cbor2.dumps(self._th_2)
                 + cbor2.dumps(ciphertext_2)
@@ -537,11 +545,20 @@ class EdhocResponder:
 
     @classmethod
     def create(
-        cls, identity: Identity, c_r: bytes | None = None, method: Method = Method.SIGN_SIGN
+        cls,
+        identity: Identity,
+        c_r: bytes | None = None,
+        method: Method = Method.SIGN_SIGN,
+        eph_sk: bytes | None = None,
     ) -> EdhocResponder:
+        if method is not Method.SIGN_SIGN:
+            raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_r is None:
             c_r = os.urandom(1)
-        eph_sk, eph_pk = _x25519_keypair()
+        if eph_sk is not None:
+            eph_pk = crypto_scalarmult_base(eph_sk)
+        else:
+            eph_sk, eph_pk = _x25519_keypair()
         return cls(
             identity=identity,
             c_r=c_r,
@@ -615,7 +632,7 @@ class EdhocResponder:
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
             )
             if len(plaintext_2) != len(keystream_2):
-                raise ValueError("plaintext_2 and keystream_2 length mismatch")
+                raise ValueError("plaintext/keystream length mismatch")
             ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
             th_3_input = (
                 cbor2.dumps(self._th_2)
@@ -673,7 +690,7 @@ class EdhocResponder:
                 cbor2.dumps(peer_pubkey),
                 mac_3,
             ])
-            Ed25519PublicKey.from_public_bytes(peer_pubkey).verify(signature_3, m_3)
+            VerifyKey(peer_pubkey).verify(m_3, signature_3)
             th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:

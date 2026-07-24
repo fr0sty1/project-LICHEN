@@ -81,6 +81,12 @@ extern "C" {
 
 /**
  * @brief Classification of IPv6 destination address (spec 7.2).
+ *
+ * - LICHEN_ADDR_LINK_LOCAL: fe80::/10 — direct neighbor delivery.
+ * - LICHEN_ADDR_MESH_LOCAL: ULA (fd00::/8) or configured GUA prefix — gradient/LOADng only.
+ * - LICHEN_ADDR_YGGDRASIL: 02xx::/7 — local-mesh-first (gradient/LOADng),
+ *   then falls through to external (Yggdrasil TUN via BR).
+ * - LICHEN_ADDR_EXTERNAL: anything else — RPL upward to border router.
  */
 enum lichen_addr_class {
 	LICHEN_ADDR_LINK_LOCAL,

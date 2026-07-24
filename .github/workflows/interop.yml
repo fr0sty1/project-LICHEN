@@ -144,7 +144,7 @@ jobs:
       - name: Install Zephyr deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc device-tree-compiler
+          sudo apt-get install -y cmake ninja-build gcc gcc-multilib device-tree-compiler
           python -m pip install west
 
       - name: Setup Zephyr workspace
@@ -162,7 +162,7 @@ jobs:
           # Run SCHC and link tests with vectors
           west twister -T lichen/tests/schc -T lichen/tests/link_crypto \
             -p native_sim --inline-logs
-        continue-on-error: true  # Until Zephyr tests are wired to JSON vectors
+        # native_sim link_crypto and SCHC tests must pass
 
   wire-format-python-to-rust:
     name: Python to Rust Wire Parsing

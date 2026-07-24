@@ -137,3 +137,53 @@ def test_seq_num_wraparound() -> None:
     cache2.add(_entry(seq_num=5, metric=100))
     cache2.add(_entry(seq_num=65530, metric=200))  # pre-wrap, stale relative to post-wrap 5
     assert cache2.lookup(DEST).seq_num == 5  # original kept
+
+
+def test_seq_half_range_0_to_32768_not_fresher() -> None:
+    """Half-range boundary: 32768 is NOT fresher than 0 (diff == half)."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=0, metric=100))
+    cache.add(_entry(seq_num=32768, metric=50))  # not fresher, should be rejected
+    assert cache.lookup(DEST).seq_num == 0
+    assert cache.lookup(DEST).metric == 100
+
+
+def test_seq_half_range_0_to_32767_fresher() -> None:
+    """Just below half-range: 32767 IS fresher than 0."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=0, metric=100))
+    cache.add(_entry(seq_num=32767, metric=200))  # fresher, accepted even with worse metric
+    assert cache.lookup(DEST).seq_num == 32767
+
+
+def test_seq_FFFF_to_0_wrap_fresher() -> None:
+    """65535 -> 0: wrapped forward, 0 is fresher."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=65535, metric=100))
+    cache.add(_entry(seq_num=0, metric=200))
+    assert cache.lookup(DEST).seq_num == 0
+
+
+def test_seq_0_to_FFFF_wrap_stale() -> None:
+    """0 -> 65535: backward wrap, 65535 is stale."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=0, metric=100))
+    cache.add(_entry(seq_num=65535, metric=50))
+    assert cache.lookup(DEST).seq_num == 0
+
+
+def test_seq_32768_to_0_half_to_zero_stale() -> None:
+    """32768 -> 0: diff=32768 (equal to half), not fresher."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=32768, metric=100))
+    cache.add(_entry(seq_num=0, metric=50))
+    assert cache.lookup(DEST).seq_num == 32768
+
+
+def test_seq_32769_to_0_half_plus_one_to_zero_fresher() -> None:
+    """32769 -> 0: wraps forward with diff=32767 < half, fresher."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=32769, metric=100))
+    cache.add(_entry(seq_num=0, metric=200))
+    assert cache.lookup(DEST).seq_num == 0
+    assert cache.lookup(DEST).metric == 200

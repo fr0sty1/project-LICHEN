@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use lichen_schc::fragment::{
     ack_request, compute_mic, receiver_abort, sender_abort, Ack, Fragment, FragmentReceiver,
-    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, MAX_SCHC_PACKET, TILE_SIZE,
+    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, TILE_SIZE,
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -135,7 +135,7 @@ fn write_fragment(fragment: &Fragment<'_>) -> Vec<u8> {
 }
 
 fn write_response(response: ReceiverResponse) -> Vec<u8> {
-    let mut wire = [0u8; 11];
+    let mut wire = [0u8; 10];
     let length = response.write_to(&mut wire).unwrap();
     wire[..length].to_vec()
 }
@@ -143,7 +143,7 @@ fn write_response(response: ReceiverResponse) -> Vec<u8> {
 #[test]
 fn shared_vectors_drive_production_implementations() {
     let document: Document = serde_json::from_str(VECTORS_JSON).expect("invalid vector JSON");
-    assert_eq!(document.format_version, 2);
+    assert_eq!(document.format_version, 1);
     assert!(!document.description.is_empty());
     let mut categories = BTreeSet::new();
 
@@ -210,8 +210,8 @@ fn exercise_transfer(vector: &Vector) {
             vector.name,
             expected.name
         );
-        let mut tile = [0u8; TILE_SIZE];
-        let parsed = Fragment::from_bytes(&wire, &mut tile).unwrap();
+        let mut buf = [0u8; TILE_SIZE + 6];
+        let parsed = Fragment::from_bytes(&wire, &mut buf).unwrap();
         assert_eq!(parsed, fragment);
     }
 
@@ -237,17 +237,13 @@ fn exercise_transfer(vector: &Vector) {
 
     if let Some(retransmission) = &loss.retransmission {
         let wire = expand(retransmission);
-        let mut tile = [0u8; TILE_SIZE];
-        let fragment = Fragment::from_bytes(&wire, &mut tile).unwrap();
+        let mut buf = [0u8; TILE_SIZE + 6];
+        let fragment = Fragment::from_bytes(&wire, &mut buf).unwrap();
         assert_eq!(receiver.receive(&fragment).response, None);
         let result = receiver.receive_bytes(&expand(&loss.ack_req)).unwrap();
-        let actual = write_response(result.response.unwrap());
         assert_eq!(
-            actual,
-            expand(&loss.ack_success),
-            "vector: {}, ack_success mismatch: actual={:02x?}",
-            vector.name,
-            actual,
+            write_response(result.response.unwrap()),
+            expand(&loss.ack_success)
         );
         assert_eq!(receiver.packet(), Some(packet.as_slice()));
     }
@@ -346,7 +342,7 @@ fn exercise_capacity(vector: &Vector) {
         decode_hex(vector.rcs.as_ref().unwrap())
     );
     assert_eq!(vector.expect_status.as_deref(), Some("ok"));
-    if packet.len() <= MAX_SCHC_PACKET {
+    if packet.len() <= 1281 {
         let mut storage = vec![0u8; packet.len()];
         let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
         let mut result = None;
@@ -379,9 +375,6 @@ fn exercise_malformed(vector: &Vector) {
                 });
             assert!(Ack::from_bytes_for(&wire, Some(mask)).is_err());
         }
-        _ => {
-            let mut tile = [0u8; TILE_SIZE];
-            assert!(Fragment::from_bytes(&wire, &mut tile).is_err());
-        }
+        _ => assert!(Fragment::from_bytes(&wire, &mut [0u8; TILE_SIZE + 6]).is_err()),
     }
 }

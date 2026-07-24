@@ -11,7 +11,7 @@ import pytest
 from aiocoap import GET, Message
 
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
-from lichen.ipv6.udp import UdpDatagram, UdpError
+from lichen.ipv6.udp import UdpDatagram
 from lichen.schc.codec import SchcError
 from lichen.schc.headers import compress_packet, decompress_packet
 
@@ -75,12 +75,12 @@ def test_hop_limit_preserved() -> None:
     assert IPv6Header.from_bytes(restored).hop_limit == 7
 
 
-def test_non_linklocal_falls_back_to_uncompressed() -> None:
-    # ULA addresses don't match the link-local rule -> fallback rule 255.
+def test_non_linklocal_ula_matches_global() -> None:
+    # ULA addresses match the global rule (rule 1), not rule 255.
     ula = IPv6Address("fd00::1")
     raw = _build_packet(_coap_request(), src=ula, dst=ula)
     compressed = compress_packet(raw)
-    assert compressed[0] == 255
+    assert compressed[0] == 1  # rule 1 (global CoAP)
     assert decompress_packet(compressed) == raw
 
 
@@ -128,19 +128,13 @@ def test_packet_with_trailing_bytes_falls_back() -> None:
 def test_packet_with_invalid_udp_length_falls_back() -> None:
     raw = bytearray(_build_packet(_coap_request()))
     raw[HEADER_LENGTH + 4 : HEADER_LENGTH + 6] = (8).to_bytes(2, "big")
-    with pytest.raises(UdpError):  # UdpDatagram.from_bytes validates UDP length
-        compress_packet(bytes(raw))
-    # Profile matches at IPv6 level but UdpDatagram.from_bytes rejects
-    # the internal UDP length mismatch; compress_packet does not silently
-    # fall back. Callers should validate before calling compress_packet.
+    assert compress_packet(bytes(raw))[0] == 255
 
 
 def test_packet_with_invalid_udp_checksum_falls_back() -> None:
     raw = bytearray(_build_packet(_coap_request()))
     raw[HEADER_LENGTH + 6] ^= 0x01
-    compressed = compress_packet(bytes(raw))
-    # CoAP profile does not validate UDP checksum during compression.
-    assert compressed[0] == 0
+    assert compress_packet(bytes(raw))[0] == 255
 
 
 def test_truncated_icmpv6_falls_back() -> None:
@@ -157,17 +151,16 @@ def test_truncated_icmpv6_falls_back() -> None:
 
 
 def test_decompress_rejects_truncated_packet_residue() -> None:
-    # Rule 0 requires exactly 1 rule-ID byte plus 25 residue bytes.
-    # 25 total bytes = 1 rule + 24 residue — too short for rule 0.
-    with pytest.raises(SchcError, match="requires 25|too short"):
+    # Rule 0 requires exactly 1 rule-ID byte plus 25 residue bytes = 26 total.
+    with pytest.raises(SchcError, match="need 26 bytes for residue of rule 0"):
         decompress_packet(bytes(25))
 
 
-def test_decompress_missing_tail_bytes_succeeds() -> None:
+def test_decompress_rejects_missing_declared_token() -> None:
     coap = bytes([0x48, 0x01, 0x12, 0x34]) + bytes(8)
-    raw = _build_packet(coap)
-    compressed = compress_packet(raw)
-    decompress_packet(compressed[:-8])
+    compressed = compress_packet(_build_packet(coap))
+    with pytest.raises(SchcError, match="does not reconstruct its packet profile"):
+        decompress_packet(compressed[:-8])
 
 
 def test_decompress_rejects_plain_content_under_oscore_rule() -> None:

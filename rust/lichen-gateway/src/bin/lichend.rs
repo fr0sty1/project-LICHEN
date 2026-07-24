@@ -13,7 +13,6 @@ use clap::Parser;
 use lichen_core::{
     addr::NodeId,
     ipv6::{field, IPV6_HEADER_LEN},
-    tx_queue::{TxPriority, TxQueue, TxQueueError, DEADLINE_CONTROL_MS, DEADLINE_ROUTING_MS, DEADLINE_USER_MS},
 };
 use lichen_gateway::{
     config::Config,
@@ -27,18 +26,14 @@ use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
 
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex, OnceLock},
-    time::Instant,
-};
+use std::{collections::VecDeque, path::PathBuf, sync::OnceLock, time::Instant};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
     sync::mpsc,
-    time::{interval, sleep, Duration, MissedTickBehavior},
+    time::{interval, sleep, Duration},
 };
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
 
 #[cfg(target_os = "linux")]
@@ -213,47 +208,6 @@ async fn main() {
     }
 }
 
-/// Push a packet into a synchronous (non-shared) TX queue with appropriate priority and deadline.
-fn push_tx_queue_sync(tx_queue: &mut TxQueue, priority: TxPriority, data: &[u8], now_ms: u64) {
-    let deadline = match priority {
-        TxPriority::Control => now_ms + DEADLINE_CONTROL_MS,
-        TxPriority::Routing => now_ms + DEADLINE_ROUTING_MS,
-        TxPriority::User | TxPriority::Bulk => now_ms + DEADLINE_USER_MS,
-    };
-    match tx_queue.push(priority, deadline, now_ms, data) {
-        Ok(()) => {
-            debug!(depth = tx_queue.len(), "TX queued");
-        }
-        Err(TxQueueError::QueueFull) => {
-            warn!(?priority, "TX queue full, dropping outbound packet");
-        }
-        Err(TxQueueError::PayloadTooLarge) => {
-            warn!(len = data.len(), "TX payload too large");
-        }
-    }
-}
-
-/// Push a packet into the shared TX queue with appropriate priority and deadline.
-fn push_tx_queue(tx_queue: &Mutex<TxQueue>, priority: TxPriority, data: &[u8], now_ms: u64) {
-    let deadline = match priority {
-        TxPriority::Control => now_ms + DEADLINE_CONTROL_MS,
-        TxPriority::Routing => now_ms + DEADLINE_ROUTING_MS,
-        TxPriority::User | TxPriority::Bulk => now_ms + DEADLINE_USER_MS,
-    };
-    match tx_queue.lock().push(priority, deadline, now_ms, data) {
-        Ok(()) => {
-            let stats = tx_queue.lock().stats();
-            debug!(depth = stats.depth, "TX queued");
-        }
-        Err(TxQueueError::QueueFull) => {
-            warn!(?priority, "TX queue full, dropping outbound packet");
-        }
-        Err(TxQueueError::PayloadTooLarge) => {
-            warn!(len = data.len(), "TX payload too large");
-        }
-    }
-}
-
 // ── forwarding helpers ────────────────────────────────────────────────────────
 
 /// Resolves to never — used in select! when TUN is absent.
@@ -315,28 +269,17 @@ where
     };
     info!(addr, sim_id, node_id, "connected to simulator");
 
-    // Shared TX queue with priority preemption and deadline expiry.
-    let tx_queue = Arc::new(Mutex::new(TxQueue::new()));
-    let rx_send: tokio::sync::mpsc::Sender<Vec<u8>>;
-    let mut rx_recv: tokio::sync::mpsc::Receiver<Vec<u8>>;
-    {
-        let (send, recv) = tokio::sync::mpsc::channel::<Vec<u8>>(8);
-        rx_send = send;
-        rx_recv = recv;
-    }
+    // Channels between the gateway task and the sim protocol task.
+    let (tx_send, mut tx_recv) = mpsc::channel::<Vec<u8>>(8);
+    let (rx_send, mut rx_recv) = mpsc::channel::<Vec<u8>>(8);
 
     // Sim protocol task: sequential TX-drain → RX(50 ms) loop.
-    let sim_tx_queue = tx_queue.clone();
     let sim_task = tokio::spawn(async move {
         loop {
             // Drain all pending TX frames before the next RX window.
-            let now_ms = {
-                let start = START_TIME.get_or_init(Instant::now);
-                start.elapsed().as_millis() as u64
-            };
-            while let Some(item) = sim_tx_queue.lock().pop(now_ms) {
-                match sim.transmit(item.data()).await {
-                    Ok(airtime_us) => info!(airtime_us, len = item.len(), "TX done"),
+            while let Ok(frame) = tx_recv.try_recv() {
+                match sim.transmit(&frame).await {
+                    Ok(airtime_us) => info!(airtime_us, "TX done"),
                     Err(e) => warn!("TX failed: {e}"),
                 }
             }
@@ -356,12 +299,8 @@ where
             }
         }
         // Final drain of any pending TX frames on shutdown (prevents lost transmissions).
-        let now_ms = {
-            let start = START_TIME.get_or_init(Instant::now);
-            start.elapsed().as_millis() as u64
-        };
-        while let Some(item) = sim_tx_queue.lock().pop(now_ms) {
-            match sim.transmit(item.data()).await {
+        while let Ok(frame) = tx_recv.try_recv() {
+            match sim.transmit(&frame).await {
                 Ok(airtime_us) => info!(airtime_us, "TX done (shutdown drain)"),
                 Err(e) => warn!("shutdown TX failed: {e}"),
             }
@@ -379,20 +318,21 @@ where
                     start.elapsed().as_millis() as u64
                 };
                 gw.maintain(now_ms);
-                // Expire stale entries from TX queue
-                tx_queue.lock().expire_before(now_ms);
-                let stats = tx_queue.lock().stats();
-                debug!(depth = stats.depth, packets_dropped = stats.packets_dropped_full, "TX queue stats");
             }
             frame_opt = rx_recv.recv() => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
                 match frame_opt {
                     Some(frame) => {
                         if let Some(reply) = forward_mesh_to_upstream(gw, &frame, &tun).await {
-                            push_tx_queue(&tx_queue, TxPriority::Control, &reply, now_ms);
+                            match tx_send.try_send(reply) {
+                                Ok(()) => {}
+                                Err(mpsc::error::TrySendError::Full(_)) => {
+                                    warn!("TX channel full, dropping reply packet");
+                                }
+                                Err(mpsc::error::TrySendError::Closed(_)) => {
+                                    error!("sim task exited, cannot send reply packets");
+                                    break;
+                                }
+                            }
                         }
                     }
                     None => {
@@ -405,14 +345,19 @@ where
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
                 None => tun_recv_none(&mut tun_buf).await,
             }} => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
                 match result {
                     Ok(n) => {
                         if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                            push_tx_queue(&tx_queue, TxPriority::User, &schc, now_ms);
+                            match tx_send.try_send(schc) {
+                                Ok(()) => {}
+                                Err(mpsc::error::TrySendError::Full(_)) => {
+                                    warn!("TX channel full, dropping outbound packet");
+                                }
+                                Err(mpsc::error::TrySendError::Closed(_)) => {
+                                    error!("sim task exited, cannot send outbound packets");
+                                    break;
+                                }
+                            }
                         }
                     }
                     Err(e) => { error!("TUN recv: {e}"); break; }
@@ -425,7 +370,8 @@ where
         }
     }
 
-    // Graceful shutdown: drop rx channel so sim_task can drain TX and exit.
+    // Graceful shutdown: drop senders so sim_task can drain TX and exit.
+    drop(tx_send);
     drop(rx_recv);
     info!("waiting for sim_task to finish draining transmissions");
     tokio::select! {
@@ -466,7 +412,6 @@ where
     };
 
     let mut slip = SlipFramer::new();
-    let mut tx_queue = TxQueue::new();
     let mut rx_buf = vec![0u8; 1500];
     let mut tun_buf = vec![0u8; 1500];
     let mut tx_buf = vec![0u8; SLIP_TX_BUF_SIZE];
@@ -480,22 +425,17 @@ where
                     start.elapsed().as_millis() as u64
                 };
                 gw.maintain(now_ms);
-                tx_queue.expire_before(now_ms);
-                let stats = tx_queue.stats();
-                debug!(depth = stats.depth, "serial TX queue stats");
             }
             result = tty.read(&mut rx_buf) => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
                 match result {
                     Ok(0) => { info!("serial port closed"); break; }
                     Ok(n) => {
                         let packets: Vec<_> = slip.feed(&rx_buf[..n]).collect();
                         for packet in packets {
                             if let Some(to_tx) = forward_mesh_to_upstream(gw, &packet, &tun).await {
-                                push_tx_queue_sync(&mut tx_queue, TxPriority::Control, &to_tx, now_ms);
+                                if let Err(e) = slip.queue_send(&to_tx) {
+                                    warn!("SLIP queue full, dropping reply packet: {e}");
+                                }
                             }
                         }
                     }
@@ -506,14 +446,12 @@ where
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
                 None => tun_recv_none(&mut tun_buf).await,
             }} => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
                 match result {
                     Ok(n) => {
                         if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                            push_tx_queue_sync(&mut tx_queue, TxPriority::User, &schc, now_ms);
+                            if let Err(e) = slip.queue_send(&schc) {
+                                warn!("SLIP queue full, dropping packet: {e}");
+                            }
                         }
                     }
                     Err(e) => { error!("TUN recv: {e}"); break; }
@@ -525,15 +463,6 @@ where
             }
         }
 
-        // Drain TxQueue into SlipFramer, then drain SlipFramer to serial
-        while let Some(item) = tx_queue.pop({
-            let start = START_TIME.get_or_init(Instant::now);
-            start.elapsed().as_millis() as u64
-        }) {
-            if let Err(e) = slip.queue_send(item.data()) {
-                warn!("SLIP queue full, dropping packet: {e}");
-            }
-        }
         while let Ok(Some(n)) = slip.try_get_tx(&mut tx_buf) {
             if let Err(e) = tty.write_all(&tx_buf[..n]).await {
                 error!("serial write: {e}");
@@ -633,14 +562,48 @@ where
     let mut conc = Sx1302Concentrator;
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
-    if let Err(e) = conc.start().await {
-        warn!("concentrator start: {:?}", e);
-    }
-    let mut tun_buf = vec![0u8; 1500];
-    let mut rx_buf = vec![0u8; 255];
-    let mut tx_queue = TxQueue::new();
+
+    let (tx_send, mut tx_recv) = mpsc::channel::<Vec<u8>>(8);
+    let (rx_send, mut rx_recv) = mpsc::channel::<Vec<u8>>(8);
+
     let mut maintenance = interval(Duration::from_millis(1000));
-    maintenance.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    // Concentrator task: polls for RX, drains TX queue.
+    let conc_task = tokio::spawn(async move {
+        let mut rx_buf = vec![0u8; 255];
+        loop {
+            // Drain all pending TX frames before the next RX window.
+            while let Ok(frame) = tx_recv.try_recv() {
+                if let Err(e) = conc.transmit(&frame).await {
+                    warn!("concentrator transmit failed: {:?}", e);
+                } else {
+                    info!(len = frame.len(), "hat TX");
+                }
+            }
+            // Poll for an incoming frame.
+            match conc.receive(&mut rx_buf, 50).await {
+                Ok(Some((n, rssi, snr))) => {
+                    info!(len = n, rssi, snr, "RX frame");
+                    if rx_send.send(rx_buf[..n].to_vec()).await.is_err() {
+                        break;
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    error!("concentrator receive error: {:?}", e);
+                    break;
+                }
+            }
+        }
+        while let Ok(frame) = tx_recv.try_recv() {
+            if let Err(e) = conc.transmit(&frame).await {
+                warn!("concentrator transmit failed (shutdown drain): {:?}", e);
+            }
+        }
+    });
+
+    let mut tun_buf = vec![0u8; 1500];
+
     loop {
         tokio::select! {
             _ = maintenance.tick() => {
@@ -649,38 +612,49 @@ where
                     start.elapsed().as_millis() as u64
                 };
                 gw.maintain(now_ms);
-                tx_queue.expire_before(now_ms);
-                let stats = tx_queue.stats();
-                debug!(depth = stats.depth, "hat TX queue stats");
             }
-            result = conc.receive(&mut rx_buf) => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
-                match result {
-                    Ok(Some(rxpkt)) => {
-                        info!(len = rxpkt.len, rssi = ?rxpkt.rssi, snr = ?rxpkt.snr, "hat RX");
-                        if let Some(reply) = forward_mesh_to_upstream(gw, &rx_buf[..rxpkt.len], &tun).await {
-                            push_tx_queue_sync(&mut tx_queue, TxPriority::Control, &reply, now_ms);
+            frame_opt = rx_recv.recv() => {
+                match frame_opt {
+                    Some(frame) => {
+                        if let Some(reply) = forward_mesh_to_upstream(gw, &frame, &tun).await {
+                            match tx_send.try_send(reply) {
+                                Ok(()) => {}
+                                Err(mpsc::error::TrySendError::Full(_)) => {
+                                    warn!("TX channel full, dropping reply packet");
+                                }
+                                Err(mpsc::error::TrySendError::Closed(_)) => {
+                                    error!("concentrator task exited, cannot send reply packets");
+                                    break;
+                                }
+                            }
                         }
                     }
-                    Ok(None) => {}
-                    Err(e) => warn!("concentrator receive: {:?}", e),
+                    None => {
+                        error!("concentrator task exited, cannot receive inbound packets");
+                        break;
+                    }
                 }
             }
             result = async { match &tun {
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
                 None => tun_recv_none(&mut tun_buf).await,
             }} => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
-                if let Ok(n) = result {
-                    if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                        push_tx_queue_sync(&mut tx_queue, TxPriority::User, &schc, now_ms);
+                match result {
+                    Ok(n) => {
+                        if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
+                            match tx_send.try_send(schc) {
+                                Ok(()) => {}
+                                Err(mpsc::error::TrySendError::Full(_)) => {
+                                    warn!("TX channel full, dropping outbound packet");
+                                }
+                                Err(mpsc::error::TrySendError::Closed(_)) => {
+                                    error!("concentrator task exited, cannot send outbound packets");
+                                    break;
+                                }
+                            }
+                        }
                     }
+                    Err(e) => { error!("TUN recv: {e}"); break; }
                 }
             }
             _ = signal::ctrl_c() => {
@@ -688,19 +662,20 @@ where
                 break;
             }
         }
-        while let Some(item) = tx_queue.pop({
-            let start = START_TIME.get_or_init(Instant::now);
-            start.elapsed().as_millis() as u64
-        }) {
-            if let Err(e) = conc.transmit(item.data()).await {
-                warn!("concentrator transmit failed: {:?}", e);
-            } else {
-                info!(len = item.len(), "hat TX");
-            }
-        }
     }
-    if let Err(e) = conc.stop().await {
-        warn!("concentrator stop: {:?}", e);
+
+    drop(tx_send);
+    drop(rx_recv);
+    info!("waiting for concentrator task to finish draining transmissions");
+    tokio::select! {
+        _ = &mut conc_task => {
+            info!("concentrator task completed");
+        }
+        _ = sleep(Duration::from_secs(5)) => {
+            warn!("concentrator task did not finish in time, aborting");
+            conc_task.abort();
+            let _ = conc_task.await;
+        }
     }
 }
 
