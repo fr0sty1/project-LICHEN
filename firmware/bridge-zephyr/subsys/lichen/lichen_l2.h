@@ -26,6 +26,8 @@
 #include <zephyr/net/net_l2.h>
 #include <zephyr/net/net_pkt.h>
 
+#include "lora_l2.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -96,18 +98,15 @@ int lichen_peer_remove(const uint8_t eui64[8]);
 /**
  * @brief MTU for LICHEN interface
  *
- * Must match LICHEN_LORA_MTU in lora_l2.h. This is the maximum IPv6 packet
- * size we can send. After SCHC compression and LICHEN framing, the on-air
- * payload fits within LoRa limits.
+ * Derived from LICHEN_LORA_MTU (lora_l2.h) to guarantee the two layers
+ * agree. LICHEN_LORA_MTU is the on-air payload capacity after LoRa framing
+ * overhead (header, Schnorr-48 signature, headroom).
  *
  * When to use each constant:
  * - LICHEN_L2_MTU: Use at the Zephyr network stack layer (net_if, net_pkt).
  *   This is the MTU reported to the IPv6 stack and controls fragmentation.
- * - LICHEN_LORA_MTU: Use at the LoRa driver layer (lora_l2.c). Identical
- *   value, but defined separately to avoid coupling header dependencies.
- *
- * Duplication note: We duplicate rather than include lora_l2.h to avoid
- * forcing consumers of lichen_l2.h to pull in LoRa driver types.
+ * - LICHEN_LORA_MTU: Use at the LoRa driver layer (lora_l2.c). Always equals
+ *   LICHEN_L2_MTU by construction.
  *
  * Note: Current SCHC rules assume no IPv6 extension headers. Packets with
  * extension headers (Hop-by-Hop, Routing, OSCORE, etc.) exceed the internal
@@ -115,7 +114,7 @@ int lichen_peer_remove(const uint8_t eui64[8]);
  * OSCORE or other extension header support is added, revisit lichen_l2.c
  * buffer sizing and define appropriate SCHC compression rules.
  */
-#define LICHEN_L2_MTU 200
+#define LICHEN_L2_MTU LICHEN_LORA_MTU
 
 /**
  * @brief Link-layer address length (EUI-64)
