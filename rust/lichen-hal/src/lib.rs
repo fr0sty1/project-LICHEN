@@ -68,6 +68,8 @@ pub enum RadioError<E> {
     Connection,
     /// Operation not supported by this radio (e.g. multi-channel on single-radio impl).
     NotSupported,
+    /// CCP-15 CCA: channel is busy, cannot transmit.
+    ChannelBusy,
 }
 
 impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
@@ -78,6 +80,7 @@ impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
             Self::Protocol => write!(f, "protocol error"),
             Self::Connection => write!(f, "connection lost"),
             Self::NotSupported => write!(f, "not supported"),
+            Self::ChannelBusy => write!(f, "channel busy"),
         }
     }
 }
