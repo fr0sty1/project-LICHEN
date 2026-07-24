@@ -45,45 +45,6 @@ pub struct FieldDescriptor {
     pub mapping: Option<&'static [u128]>,
 }
 
-impl FieldDescriptor {
-    /// Number of residue bits for an LSB action (`length_bits - mo_arg`).
-    pub fn lsb_bits(&self) -> u16 {
-        self.length_bits - self.mo_arg.unwrap_or(0)
-    }
-
-    /// Number of residue bits for a MAPPING_SENT index (ceil(log2(n)) for n >= 2).
-    /// Returns 0 when no mapping is set.
-    pub fn mapping_bits(&self) -> u16 {
-        match self.mapping {
-            Some(m) if m.len() >= 2 => ((m.len() - 1) as u16).ilog2() as u16 + 1,
-            _ => 0,
-        }
-    }
-
-    /// Whether this field requires a value for compression/matching.
-    pub fn requires_value(&self) -> bool {
-        matches!(
-            (self.mo, self.cda),
-            (Mo::Equal, _)
-                | (Mo::Msb, _)
-                | (Mo::MatchMapping, _)
-                | (_, Cda::ValueSent)
-                | (_, Cda::Lsb)
-                | (_, Cda::MappingSent)
-        )
-    }
-
-    /// Number of residue bits this field contributes, based on its CDA.
-    pub fn residue_bits(&self) -> u16 {
-        match self.cda {
-            Cda::ValueSent => self.length_bits,
-            Cda::Lsb => self.lsb_bits(),
-            Cda::MappingSent => self.mapping_bits(),
-            Cda::NotSent | Cda::Compute => 0,
-        }
-    }
-}
-
 /// A SCHC rule: an ordered list of field descriptors keyed by a rule ID.
 ///
 /// Rule IDs 0-127 are compression rules; 255 is the uncompressed fallback.
@@ -91,18 +52,6 @@ impl FieldDescriptor {
 pub struct Rule {
     pub rule_id: u8,
     pub fields: &'static [FieldDescriptor],
-}
-
-impl Rule {
-    /// Total number of residue bits for this rule (sum over all field CDA contributions).
-    pub fn residue_bit_length(&self) -> u16 {
-        self.fields.iter().map(|fd| fd.residue_bits()).sum()
-    }
-
-    /// Number of bytes needed for the residue (ceil of residue_bit_length / 8).
-    pub fn residue_byte_length(&self) -> usize {
-        (self.residue_bit_length() as usize + 7) >> 3
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -218,46 +167,6 @@ const NEXT_ICMPV6: FieldDescriptor = FieldDescriptor {
     mapping: None,
 };
 
-const COAP_UDP_FIELDS: &[FieldDescriptor] = &[
-    FieldDescriptor {
-        field_id: "UDP.src_port",
-        length_bits: 16,
-        mo: Mo::Msb,
-        cda: Cda::Lsb,
-        target_value: 5683,
-        mo_arg: Some(12),
-        mapping: None,
-    },
-    FieldDescriptor {
-        field_id: "UDP.dst_port",
-        length_bits: 16,
-        mo: Mo::Msb,
-        cda: Cda::Lsb,
-        target_value: 5683,
-        mo_arg: Some(12),
-        mapping: None,
-    },
-    FieldDescriptor {
-        field_id: "UDP.length",
-        length_bits: 16,
-        mo: Mo::Ignore,
-        cda: Cda::Compute,
-        target_value: 0,
-        mo_arg: None,
-        mapping: None,
-    },
-    FieldDescriptor {
-        field_id: "UDP.checksum",
-        length_bits: 16,
-        mo: Mo::Ignore,
-        cda: Cda::Compute,
-        target_value: 0,
-        mo_arg: None,
-        mapping: None,
-    },
-];
-
-// UDP fields for non-CoAP rules (MQTT-SN, etc.) — full port values sent.
 const UDP_FIELDS: &[FieldDescriptor] = &[
     FieldDescriptor {
         field_id: "UDP.src_port",
@@ -498,24 +407,24 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
     },
 ];
 
-/// RPL option type values common in DIO messages.
-const RPL_OPTION_TYPE_MAPPING: &[u128] = &[0, 3, 2, 5, 6, 7];
-
-/// PIO (Prefix Information Option) field descriptors for RPL DIO.
-///
-/// Uses MatchMapping on RPL.Option.Type, with PIO-specific sub-fields.
-const RPL_PIO_FIELDS: &[FieldDescriptor] = &[
+/// RPL DIO option field descriptors per appendix-schc.md A.4.
+/// RPL.Option.Type uses MATCH_MAPPING (prioritized: 0=Pad1,3=PIO,2=DagMetric,...).
+/// PIO-specific fields follow for type=3.
+/// Defined as a constant for documentation and future codec integration;
+/// currently options pass as tail verbatim, so this const is unused.
+#[allow(dead_code)]
+const RPL_DIO_OPTION_FIELDS: &[FieldDescriptor] = &[
     FieldDescriptor {
         field_id: "RPL.Option.Type",
         length_bits: 8,
         mo: Mo::MatchMapping,
         cda: Cda::MappingSent,
-        target_value: 3,
+        target_value: 0,
         mo_arg: None,
-        mapping: Some(RPL_OPTION_TYPE_MAPPING),
+        mapping: Some(&[0, 3, 2, 5, 6, 7]),
     },
     FieldDescriptor {
-        field_id: "RPL.Option.Length",
+        field_id: "RPL.Option.Len",
         length_bits: 8,
         mo: Mo::Equal,
         cda: Cda::NotSent,
@@ -524,7 +433,7 @@ const RPL_PIO_FIELDS: &[FieldDescriptor] = &[
         mapping: None,
     },
     FieldDescriptor {
-        field_id: "PIO.Prefix Length",
+        field_id: "PIO.PrefixLen",
         length_bits: 8,
         mo: Mo::Equal,
         cda: Cda::NotSent,
@@ -542,8 +451,8 @@ const RPL_PIO_FIELDS: &[FieldDescriptor] = &[
         mapping: None,
     },
     FieldDescriptor {
-        field_id: "PIO.Lifetime",
-        length_bits: 32,
+        field_id: "PIO.ValidPreferred",
+        length_bits: 64,
         mo: Mo::Ignore,
         cda: Cda::ValueSent,
         target_value: 0,
@@ -621,10 +530,10 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
         IPV6_BASE[4],
         LINK_LOCAL_ADDR[0],
         LINK_LOCAL_ADDR[1],
-        COAP_UDP_FIELDS[0],
-        COAP_UDP_FIELDS[1],
-        COAP_UDP_FIELDS[2],
-        COAP_UDP_FIELDS[3],
+        UDP_FIELDS[0],
+        UDP_FIELDS[1],
+        UDP_FIELDS[2],
+        UDP_FIELDS[3],
         COAP_FIELDS[0],
         COAP_FIELDS[1],
         COAP_FIELDS[2],
@@ -643,10 +552,10 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
         IPV6_BASE[4],
         GLOBAL_ADDR[0],
         GLOBAL_ADDR[1],
-        COAP_UDP_FIELDS[0],
-        COAP_UDP_FIELDS[1],
-        COAP_UDP_FIELDS[2],
-        COAP_UDP_FIELDS[3],
+        UDP_FIELDS[0],
+        UDP_FIELDS[1],
+        UDP_FIELDS[2],
+        UDP_FIELDS[3],
         COAP_FIELDS[0],
         COAP_FIELDS[1],
         COAP_FIELDS[2],
@@ -702,12 +611,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
         RPL_DIO_FIELDS[5],
         RPL_DIO_FIELDS[6],
         RPL_DIO_FIELDS[7],
-        RPL_PIO_FIELDS[0],
-        RPL_PIO_FIELDS[1],
-        RPL_PIO_FIELDS[2],
-        RPL_PIO_FIELDS[3],
-        RPL_PIO_FIELDS[4],
-        RPL_PIO_FIELDS[5],
     ],
 };
 pub const RPL_DAO_RULE: Rule = Rule {
@@ -750,10 +653,10 @@ pub const LINK_LOCAL_OSCORE_RULE: Rule = Rule {
         IPV6_BASE[4],
         LINK_LOCAL_ADDR[0],
         LINK_LOCAL_ADDR[1],
-        COAP_UDP_FIELDS[0],
-        COAP_UDP_FIELDS[1],
-        COAP_UDP_FIELDS[2],
-        COAP_UDP_FIELDS[3],
+        UDP_FIELDS[0],
+        UDP_FIELDS[1],
+        UDP_FIELDS[2],
+        UDP_FIELDS[3],
         COAP_FIELDS[0],
         COAP_FIELDS[1],
         COAP_FIELDS[2],
@@ -772,10 +675,10 @@ pub const GLOBAL_OSCORE_RULE: Rule = Rule {
         IPV6_BASE[4],
         GLOBAL_ADDR[0],
         GLOBAL_ADDR[1],
-        COAP_UDP_FIELDS[0],
-        COAP_UDP_FIELDS[1],
-        COAP_UDP_FIELDS[2],
-        COAP_UDP_FIELDS[3],
+        UDP_FIELDS[0],
+        UDP_FIELDS[1],
+        UDP_FIELDS[2],
+        UDP_FIELDS[3],
         COAP_FIELDS[0],
         COAP_FIELDS[1],
         COAP_FIELDS[2],
@@ -792,7 +695,7 @@ pub const MQTT_SN_RULE: Rule = Rule {
         IPV6_BASE[3],
         NEXT_UDP,
         IPV6_BASE[4],
-        GLOBAL_ADDR[0], // use global (Ignore) to support both link-local and global addresses in one rule
+        GLOBAL_ADDR[0],  // use global (Ignore) to support both link-local and global addresses in one rule
         GLOBAL_ADDR[1],
         UDP_FIELDS[0],
         UDP_FIELDS[1],

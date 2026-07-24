@@ -330,6 +330,24 @@ _DIO_BASE_FIELDS = (
     FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
     FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT),
 )
+# RPL option fields per appendix-schc.md A.4:
+# RPL.Option.Type uses MATCH_MAPPING (prioritized: 0=Pad1,3=PIO,2=DagMetric,...).
+# PIO-specific fields follow for type=3. Defined as a constant for documentation
+# and future codec integration; currently options pass as tail verbatim.
+# The RPL_DIO_RULE below includes only base fields to maintain backward
+# compatibility with existing test vectors and codec behavior.
+_DIO_OPTION_FIELDS = (
+    FieldDescriptor(
+        "RPL.Option.Type", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT,
+        mapping=(0, 3, 2, 5, 6, 7),
+    ),
+    FieldDescriptor("RPL.Option.Len", 8, MO.EQUAL, CDA.NOT_SENT, target_value=30),
+    FieldDescriptor("PIO.PrefixLen", 8, MO.EQUAL, CDA.NOT_SENT, target_value=64),
+    FieldDescriptor("PIO.Flags", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0xC0),
+    FieldDescriptor("PIO.ValidPreferred", 64, MO.IGNORE, CDA.VALUE_SENT),
+    FieldDescriptor("PIO.Prefix", 128, MO.MSB, CDA.LSB, mo_arg=64,
+                     target_value=0xfe800000000000000000000000000000),
+)
 RPL_DIO_RULE = Rule(
     rule_id=3,
     fields=_ipv6_header_fields(58, link_local=True) + _icmpv6_rpl_fields(1) + _DIO_BASE_FIELDS,
