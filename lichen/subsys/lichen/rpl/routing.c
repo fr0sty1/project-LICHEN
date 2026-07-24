@@ -378,20 +378,96 @@ int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *dm,
 	return lichen_rpl_dao_ack_write(&ack, buf, len);
 }
 
+/* ── Static helpers ────────────────────────────────────────────────────────── */
+
+static bool time_reached(uint32_t now, uint32_t deadline)
+{
+	return (int32_t)(now - deadline) >= 0;
+}
+
+static uint32_t retain_deadline(uint32_t now)
+{
+	return now + LICHEN_RPL_TOMBSTONE_RETENTION;
+}
+
+static bool candidate_equal(const struct lichen_rpl_dao_candidate *a,
+			    const struct lichen_rpl_dao_candidate *b)
+{
+	return rpl_addr_eq(a->parent, b->parent) &&
+	       a->path_control == b->path_control &&
+	       a->path_lifetime == b->path_lifetime &&
+	       a->external == b->external;
+}
+
+static bool snapshot_equal(const struct lichen_rpl_dao_snapshot *a,
+			   const struct lichen_rpl_dao_snapshot *b)
+{
+	if (a->path_sequence != b->path_sequence ||
+	    a->candidate_count != b->candidate_count ||
+	    a->active != b->active ||
+	    a->valid != b->valid ||
+	    !rpl_addr_eq(a->target, b->target)) {
+		return false;
+	}
+	for (int i = 0; i < a->candidate_count; i++) {
+		if (!candidate_equal(&a->candidates[i], &b->candidates[i])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool finish_group(struct lichen_rpl_dao_stage *staged, int *staged_count,
+			 struct lichen_rpl_dao_parsed_target *targets, int target_count,
+			 struct lichen_rpl_dao_candidate *candidates, int candidate_count,
+			 uint8_t path_sequence)
+{
+	if (target_count == 0 || candidate_count == 0) {
+		return false;
+	}
+	for (int t = 0; t < target_count; t++) {
+		for (int s = 0; s < *staged_count; s++) {
+			if (rpl_addr_eq(staged[s].snapshot.target, targets[t].target)) {
+				return false;
+			}
+		}
+		for (int c = 0; c < candidate_count; c++) {
+			int slot = *staged_count;
+			if (slot >= CONFIG_LICHEN_RPL_MAX_ROUTES) {
+				return false;
+			}
+			memset(&staged[slot], 0, sizeof(staged[slot]));
+			rpl_addr_copy(staged[slot].snapshot.target, targets[t].target);
+			staged[slot].snapshot.has_descriptor = targets[t].has_descriptor;
+			staged[slot].snapshot.descriptor = targets[t].descriptor;
+			staged[slot].snapshot.path_sequence = path_sequence;
+			staged[slot].snapshot.candidate_count = 1;
+			staged[slot].snapshot.candidates[0] = candidates[c];
+			staged[slot].snapshot.active = candidates[c].path_lifetime != 0;
+			staged[slot].snapshot.valid = true;
+			staged[slot].slot = -1;
+			staged[slot].changed = false;
+			(*staged_count)++;
+		}
+	}
+	return true;
+}
+
 /**
- * Extract target → parent edge from DAO options.
+ * Extract target → parent updates from DAO options.
  *
  * Per RFC 6550 Section 6.7.7, Transit Information options apply to the
  * immediately preceding RPL Target option(s). This function extracts
- * the first valid (Target, Transit Info) pair.
+ * all valid (Target, Transit Info) pairs into the workspace staging area.
  *
- * Note: Multiple targets may share a single Transit Info. This function
- * returns only the first target; a more complete implementation would
- * return all targets for the same transit info.
+ * Non-Storing Mode MUST: DAO must contain at least the DAO Origin Signature
+ * option (type 0x12) as the terminal option before semantic parsing proceeds.
+ * If the signature option is missing, the DAO is rejected. This enforces that
+ * all DAOs are authenticated before any state mutation occurs.
  */
-static bool extract_edge(const uint8_t *dao_bytes, size_t len,
-			 uint8_t *target_out, uint8_t *parent_out,
-			 uint8_t *lifetime_out)
+static bool extract_updates(const uint8_t *dao_bytes, size_t len,
+			    struct lichen_rpl_dao_workspace *workspace,
+			    int *staged_count)
 {
 	const uint8_t *opts = lichen_rpl_dao_options(dao_bytes, len);
 	size_t opts_len = lichen_rpl_dao_options_len_ex(dao_bytes, len);
@@ -402,10 +478,8 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 	int candidate_count = 0;
 	uint8_t path_sequence = 0;
 	uint8_t path_lifetime = 0;
-	bool external = false;
 	bool have_transit = false;
 	bool last_was_target = false;
-	bool routes_closed = false;
 
 	if (opts == NULL || opts_len == 0) {
 		return false;
@@ -427,10 +501,6 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 		}
 		if (opt.opt_type == LICHEN_RPL_OPT_RPL_TARGET) {
 			struct lichen_rpl_target target;
-
-			if (routes_closed) {
-				return false;
-			}
 
 			if (candidate_count > 0) {
 				if (!finish_group(staged, staged_count, targets, target_count,
@@ -457,7 +527,7 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 			target_count++;
 			last_was_target = true;
 		} else if (opt.opt_type == LICHEN_RPL_OPT_RPL_TARGET_DESCRIPTOR) {
-			if (routes_closed || !last_was_target || candidate_count > 0 ||
+			if (!last_was_target || candidate_count > 0 ||
 			    opt.data_len != 4) {
 				return false;
 			}
@@ -471,7 +541,7 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 		} else if (opt.opt_type == LICHEN_RPL_OPT_TRANSIT_INFO) {
 			struct lichen_rpl_transit_info transit;
 
-			if (routes_closed || target_count == 0 ||
+			if (target_count == 0 ||
 			    opt.data_len != LICHEN_RPL_TRANSIT_INFO_DATA_LEN ||
 			    opt.data[0] != 0 ||
 			    lichen_rpl_transit_info_parse(&transit, opt.data, opt.data_len) !=
@@ -490,7 +560,6 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 			if (!have_transit) {
 				path_sequence = transit.path_sequence;
 				path_lifetime = transit.path_lifetime;
-				external = false;
 				have_transit = true;
 			}
 
@@ -518,23 +587,18 @@ duplicate_candidate:
 		} else if (opt.opt_type == 0x12) {
 			/* DAO Origin Signature (0x12). Per draft-lichen-rpl-lora-00.md §§7.3,7.5:
 			 * MUST contain exactly one terminal option, Data Length=56 (u64 seq +
-			 * Schnorr48). Root MUST send success DAO-ACK after replay-floor
-			 * persistence for newly-accepted ack_requested DAOs. Equal-seq exact
-			 * digest = idempotent retransmission (MAY resend ACK, MUST NOT rewrite
-			 * floor). Matches Rust. Reference project-LICHEN-et78.2 */
+			 * Schnorr48). Skip it — already verified by caller before we get here.
+			 * The unsigned DAO body (after stripping the signature option) is what
+			 * extract_updates operates on. Matches Rust. Reference
+			 * project-LICHEN-et78.2 */
 			if (opt.data_len != 56) {
 				return false;
 			}
-			/* Signature verification + replay floor update done by caller (link/OSCORE).
-			 * Enforces MUST before semantic parsing. */
 		} else {
 			return false;
 		}
 	}
 
-	if (routes_closed) {
-		return *staged_count > 0;
-	}
 	return finish_group(staged, staged_count, targets, target_count,
 			    candidates, candidate_count, path_sequence);
 }
