@@ -2,12 +2,14 @@
   "id": "project-LICHEN-worker6-p6n9",
   "title": "[review] project-LICHEN-worker6-5a2y: Python edhoc interop break — TH_2 encoding mismatch",
   "description": "Rust commit 04376863 fixes transcript_2 to use bstr(G_Y) || bstr(H(message_1)) per RFC 9528 Section 3.2, matching the encode_bstr pattern already used in transcript_3/transcript_4. However, the Python reference implementation in python/src/lichen/crypto/edhoc.py still computes TH_2 via raw concatenation (g_y + h_msg1 at lines 395 and 605), without cbor2.dumps() bstr encoding. This creates an interop break: Rust and Python produce different TH_2, PRK_2e, KEYSTREAM_2, and all downstream values. Additionally, test/vectors/edhoc.json contains placeholder values (all 0x42 repeating) and needs regeneration after the Python fix.\n\nFix: In edhoc.py, change th_2_input = g_y + h_msg1 to th_2_input = cbor2.dumps(g_y) + cbor2.dumps(h_msg1) at both lines 395 (initiator path) and 605 (responder path), then regenerate test/vectors/edhoc.json and update Rust test vectors to match.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:08:52.691236916Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:21:42.59109294Z",
-  "started_at": "2026-07-24T20:06:50.250137474Z"
+  "updated_at": "2026-07-24T20:27:14.70949465Z",
+  "started_at": "2026-07-24T20:06:50.250137474Z",
+  "closed_at": "2026-07-24T20:27:14.70949465Z",
+  "close_reason": "Superseded by project-LICHEN-worker6-243t"
 }
