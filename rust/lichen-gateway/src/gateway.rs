@@ -51,6 +51,16 @@ impl Gateway {
                     warn!(len = out.len(), "decompressed frame is not IPv6");
                     return None;
                 }
+                // RFC 4291 §2.7: Source MUST NOT be multicast.
+                // Unspecified source MUST NOT be forwarded to upstream.
+                if out[8] == 0xff {
+                    warn!("mesh_to_upstream: multicast source — dropping");
+                    return None;
+                }
+                if out[8..24].iter().all(|&b| b == 0) {
+                    warn!("mesh_to_upstream: unspecified source — dropping");
+                    return None;
+                }
                 let payload_len = u16::from_be_bytes([out[4], out[5]]);
                 info!(payload_len, "mesh → upstream");
                 Some(out)
@@ -87,6 +97,17 @@ impl Gateway {
                 len = ipv6_packet.len(),
                 "upstream packet is not IPv6 — dropping"
             );
+            return None;
+        }
+        // RFC 4291 §2.7: Source MUST NOT be multicast. Unspecified source
+        // MUST NOT be forwarded into the mesh (only valid for DAD/NDP).
+        let src_first = ipv6_packet[8];
+        if src_first == 0xff {
+            warn!("upstream packet has multicast source — dropping");
+            return None;
+        }
+        if ipv6_packet[8..24].iter().all(|&b| b == 0) {
+            warn!("upstream packet has unspecified source — dropping");
             return None;
         }
         let mut dst = [0u8; 16];
@@ -144,6 +165,16 @@ impl Gateway {
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
         if ipv6.len() < 40 || ipv6[0] >> 4 != 6 {
             warn!(len = ipv6.len(), "mesh_to_mesh: not IPv6");
+            return None;
+        }
+        // RFC 4291 §2.7: Source MUST NOT be multicast.
+        if ipv6[8] == 0xff {
+            warn!("mesh_to_mesh: multicast source — dropping");
+            return None;
+        }
+        // RFC 4443 §2.2: Unspecified source MUST NOT be forwarded.
+        if ipv6[8..24].iter().all(|&b| b == 0) {
+            warn!("mesh_to_mesh: unspecified source — dropping");
             return None;
         }
         let mut dst = [0u8; 16];

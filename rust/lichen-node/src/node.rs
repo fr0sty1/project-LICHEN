@@ -147,6 +147,24 @@ impl Node {
             return 0;
         }
 
+        // RFC 4291 §2.7: Source MUST NOT be multicast.
+        // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
+        let src_first = ipv6[field::SRC_OFFSET];
+        if src_first == 0xff {
+            return 0;
+        }
+        // Check for unspecified source (::) — all 16 bytes must be zero.
+        let mut all_zero = true;
+        for &b in &ipv6[field::SRC_OFFSET..field::DST_OFFSET] {
+            if b != 0 {
+                all_zero = false;
+                break;
+            }
+        }
+        if all_zero {
+            return 0;
+        }
+
         let nh = ipv6[6];
         let min_icmpv6_len = IPV6_HEADER_LEN + ICMPV6_HEADER_LEN;
         if nh == next_header::ICMPV6
@@ -684,7 +702,17 @@ pub(crate) fn valid_ipv6_envelope(ipv6: &[u8]) -> bool {
         return false;
     }
     let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
-    IPV6_HEADER_LEN.checked_add(payload_len) == Some(ipv6.len())
+    if IPV6_HEADER_LEN.checked_add(payload_len) != Some(ipv6.len()) {
+        return false;
+    }
+    // RFC 4291 §2.7: Source address MUST NOT be multicast.
+    // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
+    let src = Addr(
+        ipv6[field::SRC_OFFSET..field::DST_OFFSET]
+            .try_into()
+            .unwrap(),
+    );
+    !src.is_multicast() && src != Addr::UNSPECIFIED
 }
 
 #[cfg(feature = "std")]

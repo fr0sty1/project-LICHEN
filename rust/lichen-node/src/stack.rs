@@ -12,6 +12,7 @@ use std::vec::Vec;
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::{L2_DISPATCH_SCHC, PORT_COAP};
+use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -106,6 +107,8 @@ pub enum RxError {
     InvalidSourceRoute,
     /// IPv6 Hop Limit was exhausted while forwarding.
     HopLimitExceeded,
+    /// IPv6 source address is invalid (multicast or unspecified).
+    InvalidSourceAddress,
     /// Timeout waiting for frame.
     Timeout,
 }
@@ -121,6 +124,7 @@ impl core::fmt::Display for RxError {
             Self::MalformedSecureCoap => write!(f, "malformed secure CoAP"),
             Self::InvalidSourceRoute => write!(f, "invalid RPL source route"),
             Self::HopLimitExceeded => write!(f, "IPv6 Hop Limit exceeded"),
+            Self::InvalidSourceAddress => write!(f, "invalid IPv6 source address (multicast or unspecified)"),
             Self::Timeout => write!(f, "receive timeout"),
         }
     }
@@ -414,6 +418,26 @@ impl<R: Radio> Stack<R> {
         let n = codec::decompress(l2_payload_body(&l2.payload), &mut ipv6)
             .map_err(|_| RxError::SchcDecompress)?;
         ipv6.truncate(n);
+
+        // RFC 4291 §2.7: Source MUST NOT be multicast.
+        // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
+        if ipv6.len() >= IPV6_HEADER_LEN {
+            let src_first = ipv6[field::SRC_OFFSET];
+            if src_first == 0xff {
+                return Err(RxError::InvalidSourceAddress);
+            }
+            // Check for unspecified source (::)
+            let mut all_zero = true;
+            for &b in &ipv6[field::SRC_OFFSET..field::DST_OFFSET] {
+                if b != 0 {
+                    all_zero = false;
+                    break;
+                }
+            }
+            if all_zero {
+                return Err(RxError::InvalidSourceAddress);
+            }
+        }
 
         Ok(Some(ReceivedIpv6 {
             ipv6,
