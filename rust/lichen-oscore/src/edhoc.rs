@@ -2166,6 +2166,11 @@ mod tests {
             verified_message_3.is_ok(),
             "RFC 9529 Message 2 failed: {verified_message_3:?}"
         );
+        assert_eq!(
+            verified_message_3.as_ref().unwrap().as_slice(),
+            message_3,
+            "RFC 9529 Message 3 output mismatch"
+        );
 
         let prk_out = hex!("58d63451a37723659b8574e47296cc1563b8253b55565069f050af7be96dd5cf");
         assert_eq!(
