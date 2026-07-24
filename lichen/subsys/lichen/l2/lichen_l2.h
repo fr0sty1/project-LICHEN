@@ -71,7 +71,7 @@ extern "C" {
  *         -ENOSPC if peer table is internally inconsistent (should not happen;
  *                 LRU eviction normally prevents table-full condition)
  */
-int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);
+int lichen_peer_add(const uint8_t *eui64, const uint8_t *pubkey);
 
 /**
  * @brief Remove a peer from the peer table.
@@ -92,7 +92,7 @@ int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);
  * @return -ECANCELED if LoRa L2 requires re-initialization
  * @return -ENOTSUP if LICHEN link support is not enabled
  */
-int lichen_peer_remove(const uint8_t eui64[8]);
+int lichen_peer_remove(const uint8_t *eui64);
 
 /**
  * @brief Read the L2 TX outcome counters.

@@ -705,8 +705,8 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 }
 #endif /* HAVE_LICHEN_LINK */
 
-int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
-		    const uint8_t pubkey[LICHEN_L2_PUBKEY_LEN])
+int lichen_peer_add(const uint8_t *eui64,
+		    const uint8_t *pubkey)
 {
 #if HAVE_LICHEN_LINK
 	/*
@@ -836,7 +836,7 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 #endif
 }
 
-int lichen_peer_remove(const uint8_t eui64[8])
+int lichen_peer_remove(const uint8_t *eui64)
 {
 #if HAVE_LICHEN_LINK
 	if (eui64 == NULL) {
