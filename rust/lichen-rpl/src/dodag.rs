@@ -22,7 +22,7 @@ use crate::message::Dio;
 pub const INFINITE_RANK: u16 = 0xFFFF;
 pub const MIN_HOP_RANK_INCREASE: u16 = 256;
 pub const ROOT_RANK: u16 = MIN_HOP_RANK_INCREASE;
-pub const MAX_RANK_INCREASE: u16 = 2048;
+pub const MAX_RANK_INCREASE: u16 = 1024;
 pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 pub const MAX_PARENT_CANDIDATES: usize = 16;
 
