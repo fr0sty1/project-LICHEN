@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-3f84",
   "title": "[rereview] project-LICHEN-y0vp: Rust DAO-ACK uses wrong IPv6 source address (dodag_id instead of root's link-local)",
   "description": "In commit fdaffad86, rust/lichen-node/src/rpl_stack.rs line 1355 calls rpl_ipv6_packet(dodag_id, source, rpl_code::DAO_ACK, \u0026ack_body). The 'source' parameter for the DAO-ACK IPv6 header is set to 'dodag_id' (a ULA prefix like fd00::...), which is not an address configured on the root node. Per RFC 6550 and basic IPv6, the source address in the outer IPv6 header MUST be an address actually assigned to the sending interface — the root's link-local address (fe80::/10). Using the DODAG ID as source will cause the recipient to drop the packet (it doesn't match any configured interface address) or misattribute the sender.\n\nThe fix is to use self.local_rpl_addr instead of self.rpl.router.dodag_id() for the IPv6 source.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
