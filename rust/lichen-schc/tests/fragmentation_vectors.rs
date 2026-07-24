@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use lichen_schc::fragment::{
     ack_request, compute_mic, receiver_abort, sender_abort, Ack, Fragment, FragmentReceiver,
-    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, TILE_SIZE,
+    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, MAX_SCHC_PACKET, TILE_SIZE,
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -342,7 +342,7 @@ fn exercise_capacity(vector: &Vector) {
         decode_hex(vector.rcs.as_ref().unwrap())
     );
     assert_eq!(vector.expect_status.as_deref(), Some("ok"));
-    if packet.len() <= 1281 {
+    if packet.len() <= MAX_SCHC_PACKET {
         let mut storage = vec![0u8; packet.len()];
         let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
         let mut result = None;
