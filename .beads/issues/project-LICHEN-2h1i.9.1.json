@@ -2,14 +2,14 @@
   "id": "project-LICHEN-2h1i.9.1",
   "title": "codereview-pass1-sales-playbook",
   "description": "Review of docs/sales-playbook.md: Pitch accurate, inventory script functional but add error handling for CSV append. No critical issues. Sales differentiators match spec.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:04:16.73642421Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:04:55.401631368Z",
-  "closed_at": "2026-07-22T15:04:55.401631368Z",
-  "close_reason": "3 codereview passes complete, script tested and fixed, playbook developed and integrated into epic. All tests pass for sales chunk.",
+  "updated_at": "2026-07-24T04:08:01.9471884Z",
+  "closed_at": "2026-07-24T04:08:01.9471884Z",
+  "close_reason": "codereview-pass1 done, merged into parent",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2h1i.9.1",
