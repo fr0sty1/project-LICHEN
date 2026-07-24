@@ -320,7 +320,7 @@ class EdhocInitiator:
 
         # TH_2 = H(G_Y, C_R, H(message_1))
         h_msg1 = _compute_th(self._msg1)
-        th_2_input = cbor2.dumps([self._g_y, self._c_r, h_msg1])
+        th_2_input = cbor2.dumps(self._g_y) + cbor2.dumps(self._c_r) + cbor2.dumps(h_msg1)
         self._th_2 = _compute_th(th_2_input)
 
         # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
@@ -565,7 +565,7 @@ class EdhocResponder:
 
         # TH_2 = H(G_Y, C_R, H(message_1))
         h_msg1 = _compute_th(msg1)
-        th_2_input = cbor2.dumps([self._eph_pk, self.c_r, h_msg1])
+        th_2_input = cbor2.dumps(self._eph_pk) + cbor2.dumps(self.c_r) + cbor2.dumps(h_msg1)
         self._th_2 = _compute_th(th_2_input)
 
         # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
