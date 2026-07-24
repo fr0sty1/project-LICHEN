@@ -31,9 +31,21 @@ impl NodeId {
     /// Reconstruct a NodeId from the interface identifier in an IPv6 address.
     ///
     /// Reverses the U/L bit flip (XOR 0x02 on first IID byte) performed by
-    /// `link_local_addr` and `ula_addr`. Works for both link-local and ULA/GUA
-    /// addresses per spec §6.1. Independent roundtrip oracle used in tests.
+    /// `link_local_addr` and `ula_addr`. Works for link-local, ULA, and GUA
+    /// addresses per spec §6.1 — all of which embed an EUI-64-derived IID in
+    /// the low 64 bits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `addr` is neither link-local, ULA, nor GUA (e.g. multicast,
+    /// loopback, or unspecified), since those address types do not carry an
+    /// EUI-64-derived IID.
     pub fn from_ipv6(addr: Ipv6Addr) -> Self {
+        assert!(
+            addr.is_link_local() || addr.is_ula() || addr.is_gua(),
+            "NodeId::from_ipv6 requires a link-local, ULA, or GUA address; got {:x?}",
+            addr.as_bytes(),
+        );
         let mut iid = addr.iid();
         iid[0] ^= 0x02;
         NodeId(iid)

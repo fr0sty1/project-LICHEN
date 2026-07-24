@@ -535,7 +535,7 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
 
-                        if !is_ula_or_global(&sender_addr) || !is_ula_or_global(&dst) {
+                        if !is_yggdrasil_address(&sender_addr) || !is_yggdrasil_address(&dst) {
                             return (0, RplEvent::None);
                         }
 
@@ -659,9 +659,8 @@ fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
 }
 
 #[cfg(feature = "std")]
-fn is_ula_or_global(address: &[u8; 16]) -> bool {
-    let address = Ipv6Addr(*address);
-    address.is_ula() || address.is_gua()
+fn is_yggdrasil_address(address: &[u8; 16]) -> bool {
+    address[0] & 0xfe == 0x02
 }
 
 #[cfg(feature = "std")]
