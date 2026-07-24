@@ -50,8 +50,8 @@ class FragmentReceiver:
 
     def __init__(
         self,
-        window_size: int = WINDOW_SIZE,
         max_size: int = DEFAULT_RECEIVER_LIMIT,
+        window_size: int = WINDOW_SIZE,
     ) -> None:
         if not 1 <= window_size <= ALL_1:
             raise FragmentError(f"window_size must be integer 1..{ALL_1}")

@@ -24,7 +24,7 @@ LICHEN uses RPLInstanceID 0 and Non-Storing mode (MOP=1) per spec B.2.
 """
 
 RPL_ICMPV6_TYPE = 155
-DIO_BASE_LENGTH = 24
+DIO_BASE_LENGTH = 20
 DODAGID_LENGTH = 16
 
 
@@ -185,6 +185,10 @@ class DIO:
         if data[7] != 0:
             raise RplError(f"DIO reserved field must be zero per RFC 6550 §6.3, got {data[7]}")
         gmop_prf = data[4]
+        dodag_bytes = data[8:24]
+        if len(dodag_bytes) < DODAGID_LENGTH:
+            dodag_bytes = dodag_bytes + b"\x00" * (DODAGID_LENGTH - len(dodag_bytes))
+        options_start = 8 + DODAGID_LENGTH
         return cls(
             rpl_instance_id=data[0],
             version=data[1],
@@ -195,8 +199,8 @@ class DIO:
             dtsn=data[5],
             flags=data[6],
             reserved=data[7],
-            dodag_id=IPv6Address(data[8:24]),
-            options=_parse_options(data[24:]),
+            dodag_id=IPv6Address(dodag_bytes),
+            options=_parse_options(data[options_start:]),
         )
 
 

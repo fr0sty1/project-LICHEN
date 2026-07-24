@@ -708,8 +708,8 @@ int lichen_lora_l2_start(void)
 
     k_mutex_unlock(&lora_mutex);
 
-    LOG_INF("lora_l2: started (%u MHz, %d dBm, SF10)",
-            CONFIG_LICHEN_LORA_FREQUENCY / 1000000, CONFIG_LICHEN_LORA_TX_POWER);
+    LOG_INF("lora_l2: started (%u.%03u MHz, %d dBm, SF10)",
+            CONFIG_LICHEN_LORA_FREQUENCY / 1000000, CONFIG_LICHEN_LORA_FREQUENCY % 1000000 / 1000, CONFIG_LICHEN_LORA_TX_POWER);
     return 0;
 }
 
