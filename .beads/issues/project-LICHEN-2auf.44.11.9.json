@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.9",
   "title": "Add integration test for periodic RPL maintenance and idle expiry",
   "description": "Add test verifying that production RplRuntime calls maintain() periodically, expiring stale neighbors and finite DAO routes without inbound messages. Must use monotonic u64, respect configured timeout, pass all reviews.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

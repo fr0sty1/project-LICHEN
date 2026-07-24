@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ftvd.1",
   "title": "Reconcile xiao_s3_wio_sx1262.overlay in worktree-worker18 with main retired comment",
   "description": "Ensure the overlay file in worker18 branch matches the current main version with RETIRED/BLOCKED note from project-LICHEN-2u26.10 and no-dead-code cleanup from 44ku.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
