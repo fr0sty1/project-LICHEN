@@ -150,7 +150,58 @@ Procedure AdaptiveSFSelect(AssignedSF, Neighbor, Density, Utilization, LoadFacto
 
 EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neighbor state on every RX. Integrate with RPL DIO capability signaling. No dead code.
 
-(The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
+### 2a.5. Desync Recovery State Machine
+
+Nodes maintain an explicit state machine for time synchronization recovery, multi-root beacon conflict resolution, and RPL DODAG version interaction. All transitions MUST produce behavior matching test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `ccp16-desync.json`.
+
+**State Transition Table:**
+
+| Current State | Event/Condition | Timer/Timeout | Action | Next State | Reference |
+|---------------|-----------------|---------------|--------|------------|-----------|
+| UNJOINED | Power-on / reset | - | `lichen_node_init(eui64, seed)` per init graph | ACQUIRING | AGENTS.md:218 |
+| ACQUIRING | Valid beacon (stratum >= current, ts >= epoch_floor) | BEACON_TIMEOUT = 3×superframe | Sync SFN, adopt time/adjust stratum, DAO confirm, load key | SYNCED | `lichen_rpl_dodag_init()` |
+| ACQUIRING | Beacon timeout with no valid root | BEACON_TIMEOUT expiry | Double listen window, CH0 scan | ACQUIRING | backoff cap at 5× |
+| SYNCED | Beacon rx in assigned slot | superframe_timer | TX in slot, maintain RPL adjacencies | SYNCED | Guard 100 ms enforced per §2a.2 |
+| SYNCED | >3 missed beacons | rejoin_timeout = 10×superframe | Reset SFN to 0, clear stale neighbor state, clear key cache | DRIFTING | desync recovery |
+| SYNCED | RPL DODAG version increment received | immediate | Adopt new version, reset SFN relative to new root, update time-provider stratum | DRIFTING | version change forces re-acquisition |
+| DRIFTING | Valid beacon rx (same root, stratum OK) | REJOIN_TIMEOUT = 10×superframe | Re-init DODAG if needed, TOFU key pin | ACQUIRING | `oscore_init()` ordering |
+| DRIFTING | Valid beacon rx (different root, higher stratum) | immediate | Switch root, update DODAG, adopt new epoch/SFN | ACQUIRING | multi-root resolution |
+| DRIFTING | REJOIN_TIMEOUT expiry | REJOIN_TIMEOUT expiry | Deep scan all channels, reset to UNJOINED | UNJOINED | full rejoin required |
+| REJOINING | DAO-ACK + slot assignment | - | Enter assigned slot, report LCI status | SYNCED | `lichen_coap_client_init()` |
+
+**Multi-Root Beacon Conflict Resolution:**
+
+A node MUST track the most recent beacon from each distinct root (identified by RPL DODAG ID + RPLInstanceID). When multiple roots are heard within one superframe:
+
+1. The root with the **highest stratum** (lowest numeric value) is preferred.
+2. If strata are equal, the root with the **highest RPL DODAG version** is preferred.
+3. If both stratum and version are equal, the root with the **most recent timestamp** is preferred.
+4. The losing root's beacons MUST NOT trigger state transitions unless the winning root is lost for ≥3 consecutive superframes.
+5. All roots' beacons MUST be used for drift compensation and guard computation regardless of preference.
+
+A node in SYNCED state that receives a beacon from a different root with higher stratum MUST transition to DRIFTING and then to ACQUIRING (re-evaluating which root to follow).
+
+**RPL DODAG Version Increment Interaction with TDMA SFN Reset:**
+
+When the current root advertises an RPL DODAG version increment:
+
+1. The node MUST treat this as a desync event (equivalent to >3 missed beacons) and enter DRIFTING.
+2. Upon receiving the next valid beacon at the new version, the node MUST:
+   - Reset its local SFN to the SFN in that beacon.
+   - Adopt the new epoch and num_slots from the beacon.
+   - Update its time-provider stratum from the beacon's stratum field.
+   - Clear stale per-neighbor EMA state (RF metrics remain valid but scheduling context is reset).
+3. Nodes MUST NOT transmit in their old slot during the version increment gap. The transition from DRIFTING through ACQUIRING to SYNCED enforces this suppression.
+
+**Time-Provider Stratum Update on Desync Recovery:**
+
+See `docs/firmware-time-provider.md` for stratum definitions. On any DRIFTING→ACQUIRING transition:
+
+- If the new root's stratum is **higher** (worse) than the current, the node MUST accept it and downgrade accordingly.
+- If the new root's stratum is **lower** (better), the node MUST upgrade and recompute guard time (better stratum allows reduced guard, but never below 50 ms).
+- A node MUST NOT increase its own stratum independently; stratum is always root-advertised.
+
+All timers MUST be reset on every state transition. Multi-root and version-change edge cases MUST produce identical output across all implementations as verified against `test/vectors/ccp16-desync.json`.
 
 ## Regional Channel Plans and CH0 Rules
 
