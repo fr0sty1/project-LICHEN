@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ik0q",
+  "title": "[rereview] project-LICHEN-da2q.16.3: tdma_tx_allowed unsigned wraparound when slot=0 at first superframe (now_ms \u003c guard)",
+  "description": "**Severity: P1 (correctness bug, first 100ms of boot)**\n\nIn  at link_ctx.c:708 and tdma.c:66:\n\n\n\nWhen  and , . Then  with  wraps to  (4294967196). The comparison  is  for any , so the function returns  for the first ~100ms of the first superframe for slot-0 nodes.\n\n**Impact:** At cold boot with SFN=0, a node assigned to slot 0 cannot transmit for the first 100ms. Self-corrects when  (guard time passes without wraparound). For SFN \u003e 0,  is large enough that  doesn't wrap.\n\n**Fix:** Add underflow guard:\n\n\nAlso exists in Python is_tx_allowed() at tdma.py:61 (same bug pattern).\n\n**Files:** link_ctx.c:708, tdma.c:66, python/tdma.py:61",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:20:19.907038071Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:20:19.907038071Z"
+}
