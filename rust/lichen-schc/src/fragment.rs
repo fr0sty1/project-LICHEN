@@ -284,7 +284,7 @@ impl Ack {
             return Err(TooShort::new(2, data.len()).into());
         }
         let rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
+        let window = (data[1] >> 7) & 1;
         let complete = (data[1] & 0x40) != 0;
         if complete {
             if data.len() > 2 {
