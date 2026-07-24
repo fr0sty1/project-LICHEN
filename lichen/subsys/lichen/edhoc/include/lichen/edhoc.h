@@ -46,7 +46,7 @@ extern "C" {
 #define EDHOC_NONCE_LEN            13   /* AES-CCM nonce */
 #define EDHOC_TAG_LEN              8    /* AES-CCM-16-64-128 tag */
 #define EDHOC_X25519_KEY_LEN       32
-#define EDHOC_SIG_LEN              48 /* Schnorr48 per draft-lichen-schnorr-00.md */
+#define EDHOC_SIG_LEN              64 /* Ed25519 per RFC 9528 Suite 0 */
 #define EDHOC_ED25519_PK_LEN       32
 #define EDHOC_ED25519_SK_LEN       32
 
