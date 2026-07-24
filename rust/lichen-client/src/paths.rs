@@ -35,6 +35,11 @@ pub fn keys_iid(iid: &str) -> String {
     format!("/keys/{iid}")
 }
 
+// --- Confessions / anonymous board (spec §18.9) -----------------------------
+
+/// Post or read confessions (POST text/SenML, GET SenML count). §18.9.
+pub const CONFESSIONS: &str = "/confessions";
+
 // --- Position sharing (spec §18.2) -----------------------------------------
 
 /// Query a node's current position (GET, `application/senml+cbor`). §18.2.2.

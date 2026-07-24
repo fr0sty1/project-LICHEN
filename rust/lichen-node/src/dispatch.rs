@@ -290,7 +290,7 @@ impl<const N: usize> Dispatcher<N> {
 
 /// Well-known core resource (RFC 6690 discovery).
 pub fn handle_well_known_core(_req: &Request) -> Response {
-    Response::content(b"</sensors>,</config>")
+    Response::content(b"</sensors>,</config>,</confessions>")
 }
 
 /// Example sensors resource handler.
@@ -310,14 +310,30 @@ pub fn handle_config_put(req: &Request) -> Response {
     Response::changed()
 }
 
-/// Default dispatcher with /sensors and /config resources.
-pub const fn default_dispatcher() -> Dispatcher<3> {
+/// Handle GET /confessions — return SenML with zero count (no persistent storage in Rust ref).
+pub fn handle_confessions_get(_req: &Request) -> Response {
+    Response::content(b"{\"count\":0}")
+}
+
+/// Handle POST /confessions — accept a text or SenML confession.
+pub fn handle_confessions_post(req: &Request) -> Response {
+    if req.payload.is_empty() {
+        return Response::bad_request();
+    }
+    Response::changed()
+}
+
+/// Default dispatcher with /sensors, /config, and /confessions resources.
+pub const fn default_dispatcher() -> Dispatcher<4> {
     Dispatcher::new([
         Resource::new(&[b".well-known", b"core"]).get(handle_well_known_core),
         Resource::new(&[b"sensors"]).get(handle_sensors_get),
         Resource::new(&[b"config"])
             .get(handle_config_get)
             .put(handle_config_put),
+        Resource::new(&[b"confessions"])
+            .get(handle_confessions_get)
+            .post(handle_confessions_post),
     ])
 }
 
@@ -437,5 +453,68 @@ mod tests {
         let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
         assert_eq!(pkt.code(), MessageCode::CONTENT);
         assert!(pkt.payload().starts_with(b"</sensors>"));
+        assert!(pkt.payload().contains(&b"</confessions>"[..]));
+    }
+
+    #[test]
+    fn confessions_get() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 64];
+        let req_len = build_get(&["confessions"], &mut req_buf);
+
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::CONTENT);
+        assert!(pkt.payload().starts_with(b"{"));
+    }
+
+    #[test]
+    fn confessions_post() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 128];
+        let mut builder = CoapBuilder::new(
+            &mut req_buf,
+            MessageType::Confirmable,
+            MessageCode::POST,
+            0x1234,
+            &[],
+        )
+        .unwrap();
+        builder.uri_path("confessions").unwrap();
+        builder.payload(b"I use spaces not tabs").unwrap();
+        let req_len = builder.finish();
+
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::CHANGED);
+    }
+
+    #[test]
+    fn confessions_post_empty_rejected() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 128];
+        let mut builder = CoapBuilder::new(
+            &mut req_buf,
+            MessageType::Confirmable,
+            MessageCode::POST,
+            0x1234,
+            &[],
+        )
+        .unwrap();
+        builder.uri_path("confessions").unwrap();
+        let req_len = builder.finish();
+
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::BAD_REQUEST);
     }
 }
