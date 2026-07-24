@@ -13,6 +13,7 @@ const SLOT_HEADER_LEN: usize = 20;
 const SLOT_TRAILER_LEN: usize = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RedundantOpenError<E> {
     Missing,
     Corrupt,
@@ -28,12 +29,14 @@ pub struct RedundantValue {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RedundantProvisionError<E> {
     Exists,
     Storage(E),
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RedundantUpdateError<E> {
     Storage(E),
     Stale,

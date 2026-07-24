@@ -12,6 +12,7 @@ pub const DEFAULT_MAINTENANCE_INTERVAL_MS: u64 = 1_000;
 pub const DEFAULT_NEIGHBOR_TIMEOUT_MS: u64 = 10_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RplRuntimeConfigError {
     ZeroMaintenanceInterval,
     ZeroNeighborTimeout,
@@ -60,6 +61,7 @@ pub enum RplRuntimeAction {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RplRuntimeActionError {
     ExpectedReceive,
     ExpectedTrickleTransmit,

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 ANNOUNCE_TYPE = 0x01
 SIGNATURE_LENGTH = 48
 MAX_ANNOUNCE_HOPS = 15
-_FIXED_LENGTH = 1 + 1 + 1 + 2 + 8 + 32 + 48
+_FIXED_LENGTH = 1 + 1 + 2 + 8 + 32 + 48 + 1
 
 
 class AnnounceError(Exception):
@@ -56,11 +56,12 @@ class AnnounceMessage:
                 f"{len(self.signature)}, expected {SIGNATURE_LENGTH})"
             )
         return (
-            bytes([ANNOUNCE_TYPE, self.rx_channel, self.hop_count])
+            bytes([ANNOUNCE_TYPE, self.hop_count])
             + self.seq_num.to_bytes(2, "big")
             + self.originator_iid
             + self.pubkey
             + self.signature
+            + self.rx_channel.to_bytes(1, "big")
             + self.app_data
         )
 
@@ -72,16 +73,16 @@ class AnnounceMessage:
             )
         if data[0] != ANNOUNCE_TYPE:
             raise AnnounceError(f"wrong message type: expected {ANNOUNCE_TYPE}, got {data[0]}")
-        rx_channel = data[1]
+        rx_channel = data[92]
         if rx_channel >= 8:
             raise AnnounceError(f"invalid rx_channel: {rx_channel} (must be 0-7)")
         return cls(
-            originator_iid=data[5:13],
-            pubkey=data[13:45],
-            seq_num=int.from_bytes(data[3:5], "big"),
-            hop_count=data[2],
+            originator_iid=data[4:12],
+            pubkey=data[12:44],
+            seq_num=int.from_bytes(data[2:4], "big"),
+            hop_count=data[1],
             rx_channel=rx_channel,
-            signature=data[45:93],
+            signature=data[44:92],
             app_data=data[93:],
         )
 

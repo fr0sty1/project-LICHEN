@@ -96,6 +96,22 @@ int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nonnull srh,
 			 const uint8_t *_Nonnull data, size_t len);
 
 /**
+ * @brief Validate SRH for Non-Storing Mode (RFC 6554 + LICHEN profile).
+ *
+ * In Non-Storing mode, the SRH MUST be uncompressed (checked by parse),
+ * segments_left <= num_addresses (checked by parse), and the first address
+ * MUST NOT be the local node (self-target would cause a loop).
+ *
+ * @param srh          Parsed SRH (must not be NULL)
+ * @param node_addr    Local node IPv6 address (16 bytes, must not be NULL)
+ * @return 0 on success, LICHEN_RPL_ERR_BAD_RT if self-target detected,
+ *         LICHEN_RPL_ERR_INVALID on NULL input.
+ */
+LICHEN_WARN_UNUSED_RESULT
+int lichen_rpl_srh_check_nonstoring(const struct lichen_rpl_srh *_Nonnull srh,
+				    const uint8_t *_Nonnull node_addr);
+
+/**
  * @brief Hdr Ext Len for uncompressed RFC 6554 SRH (n*2).
  */
 static inline uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses)

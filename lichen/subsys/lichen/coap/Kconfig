@@ -289,12 +289,12 @@ config LICHEN_COAP_DEADDROP_MAX_STORAGE
 	help
 	  Maximum messages in DTN deaddrop buffer.
 
-config LICHEN_COAP_DEADDROP_LOG_LEVEL
-	int "CoAP deaddrop log level"
+config LICHEN_COAP_DTN_LOG_LEVEL
+	int "CoAP DTN (deaddrop) log level"
 	depends on LICHEN_COAP_DEADDROP
 	default 3
 	range 0 4
 	help
-	  Log level for LICHEN CoAP deaddrop handler: 0=off, 1=error, 2=warning, 3=info, 4=debug
+	  Log level for LICHEN CoAP DTN handler: 0=off, 1=error, 2=warning, 3=info, 4=debug
 
 endif # LICHEN_COAP

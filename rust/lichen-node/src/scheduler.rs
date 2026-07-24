@@ -59,6 +59,7 @@ impl Default for SchedulerConfig {
 
 /// Error returned by scheduler operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SchedulerError {
     /// Scheduler is not running.
     NotRunning,

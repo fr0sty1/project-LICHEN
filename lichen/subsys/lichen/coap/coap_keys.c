@@ -38,12 +38,6 @@
 #include <lichen/l2/ipv6_addr.h>
 #endif
 
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-#include <lichen/oscore.h>
-#include <lichen/coap_oscore.h>
-#include <lichen/l2/ipv6_addr.h>
-#endif
-
 #ifdef CONFIG_TINYCRYPT_SHA256
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/constants.h>
@@ -1245,12 +1239,24 @@ static int keys_single_delete(struct coap_resource *resource,
 
 	if (!lichen_coap_is_local_admin(addr, addr_len)) {
 		LOG_WRN("DELETE /keys rejected: not local admin");
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_UNAUTHORIZED);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	opt_count = coap_find_options(request, COAP_OPTION_URI_PATH, options, ARRAY_SIZE(options));
 	if (opt_count < 2) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
@@ -1258,6 +1264,12 @@ static int keys_single_delete(struct coap_resource *resource,
 	char iid_str[LICHEN_KEY_IID_STR_LEN];
 
 	if (options[1].len >= LICHEN_KEY_IID_STR_LEN) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
@@ -1266,6 +1278,12 @@ static int keys_single_delete(struct coap_resource *resource,
 
 	ret = lichen_key_str_to_iid(iid_str, iid);
 	if (ret < 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}

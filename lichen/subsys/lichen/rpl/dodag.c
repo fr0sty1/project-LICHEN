@@ -277,13 +277,18 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const uint8_t *neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
-				  uint32_t now)
+				  uint32_t now,
+				  bool authenticated)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
 		return 0;
 	}
 
 	if (d->role == LICHEN_RPL_ROOT) {
+		return 0;
+	}
+
+	if (!authenticated) {
 		return 0;
 	}
 

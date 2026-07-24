@@ -247,7 +247,7 @@ class TestSerialization:
         assert wire[0] == ANNOUNCE_TYPE
 
     def test_wire_format_hop_count_position(self):
-        """Hop count is at byte offset 2."""
+        """Hop count is at byte offset 1."""
         # Why test: Relays may want to read hop_count before full parse.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
@@ -257,7 +257,7 @@ class TestSerialization:
             signature=bytes(SIGNATURE_LENGTH),
         )
         wire = msg.to_bytes()
-        assert wire[2] == 7
+        assert wire[1] == 7
 
     def test_wire_format_seq_num_big_endian(self):
         msg = AnnounceMessage(
@@ -268,7 +268,7 @@ class TestSerialization:
             rx_channel=0,
         )
         wire = msg.to_bytes()
-        assert wire[3:5] == bytes([0xAB, 0xCD])
+        assert wire[2:4] == bytes([0xAB, 0xCD])
 
     def test_to_bytes_rejects_unsigned(self):
         msg = AnnounceMessage(
@@ -288,7 +288,7 @@ class TestSerialization:
 
     def test_from_bytes_rejects_wrong_type(self):
         """Rejects messages with wrong type byte."""
-        wire = bytes([0xFF]) + bytes(92)
+        wire = bytes([0xFF]) + bytes(93)
         with pytest.raises(AnnounceError, match="wrong message type"):
             AnnounceMessage.from_bytes(wire)
 
@@ -374,10 +374,10 @@ class TestKnownVectors:
         wire = msg.to_bytes()
 
         assert wire[0] == ANNOUNCE_TYPE
-        assert wire[1] == 7
-        assert wire[2] == 3
-        assert wire[3:5] == bytes([0x12, 0x34])
-        assert wire[5:13] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
-        assert wire[13:45] == bytes([0xAA] * 32)
-        assert wire[45:93] == bytes([0xBB] * SIGNATURE_LENGTH)
+        assert wire[1] == 3
+        assert wire[2:4] == bytes([0x12, 0x34])
+        assert wire[4:12] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
+        assert wire[12:44] == bytes([0xAA] * 32)
+        assert wire[44:92] == bytes([0xBB] * SIGNATURE_LENGTH)
+        assert wire[92] == 7
         assert len(wire) == 93

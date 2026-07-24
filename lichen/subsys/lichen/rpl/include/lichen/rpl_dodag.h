@@ -155,13 +155,18 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
  * @param now          Current timestamp for lifetime tracking
+ * @param authenticated True if the DIO was received with a valid frame signature
+ *
+ * @note All RPL control messages MUST be received over an authenticated link
+ *       (S=1 per LICHEN link-layer spec). Unauthenticated DIOs are rejected.
  */
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
 				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
-				  uint32_t now);
+				  uint32_t now,
+				  bool authenticated);
 
 /**
  * @brief Drop a neighbor (e.g., link failure) and re-select parent.
