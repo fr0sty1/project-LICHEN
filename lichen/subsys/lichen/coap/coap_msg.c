@@ -313,50 +313,6 @@ void lichen_msg_inbox_notify(void)
 }
 
 /* --------------------------------------------------------------------------
- * CoAP response helper
- * -------------------------------------------------------------------------- */
-
-static int coap_respond(struct coap_resource *resource,
-			struct coap_packet *request,
-			struct sockaddr *addr, socklen_t addr_len,
-			uint8_t resp_code,
-			const uint8_t *payload, size_t payload_len)
-{
-	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	uint8_t token[COAP_TOKEN_MAX_LEN];
-	uint8_t tkl = coap_header_get_token(request, token);
-	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON)
-		       ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
-	int r;
-
-	r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1,
-			     type, tkl, token, resp_code,
-			     coap_header_get_id(request));
-	if (r < 0) {
-		return r;
-	}
-
-	if (payload != NULL && payload_len > 0) {
-		r = coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT,
-					   CBOR_CONTENT_FORMAT);
-		if (r < 0) {
-			return r;
-		}
-		r = coap_packet_append_payload_marker(&resp);
-		if (r < 0) {
-			return r;
-		}
-		r = coap_packet_append_payload(&resp, payload, payload_len);
-		if (r < 0) {
-			return r;
-		}
-	}
-
-	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
-}
-
-/* --------------------------------------------------------------------------
  * CBOR decoding helpers
  * -------------------------------------------------------------------------- */
 
@@ -417,21 +373,21 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 	int ret;
 
 	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	if (payload == NULL || payload_len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	/* Decode CBOR payload */
 	ZCBOR_STATE_D(zsd, 2, payload, payload_len, 1, 0);
 
 	if (!zcbor_map_start_decode(zsd)) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	while (!zcbor_array_at_end(zsd)) {
@@ -483,9 +439,9 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 	/* Queue the message */
 	ret = lichen_msg_send(to_addr, body, body_len, ack, &msg_id);
 	if (ret < 0) {
-		return coap_respond(resource, request, addr, addr_len,
+		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE,
-				    NULL, 0);
+				    0, NULL, 0);
 	}
 
 	/* Build response with Location-Path */
@@ -534,8 +490,8 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 
 bad_request:
 	(void)zcbor_list_map_end_force_decode(zsd);
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 }
 
 /* --------------------------------------------------------------------------
@@ -558,8 +514,8 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 
 	opt_count = coap_find_options(request, COAP_OPTION_URI_PATH, opts, 4);
 	if (opt_count < 3) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	{
@@ -567,15 +523,15 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 		size_t id_len = opts[2].len;
 
 		if (id_len >= sizeof(id_buf) || id_len == 0) {
-			return coap_respond(resource, request, addr, addr_len,
-					    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+			return lichen_coap_respond(resource, request, addr, addr_len,
+					    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 		}
 		memcpy(id_buf, opts[2].value, id_len);
 		id_buf[id_len] = '\0';
 
 		if (!isdigit((unsigned char)id_buf[0])) {
-			return coap_respond(resource, request, addr, addr_len,
-					    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+			return lichen_coap_respond(resource, request, addr, addr_len,
+					    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 		}
 
 		char *endptr;
@@ -583,16 +539,16 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 		unsigned long val = strtoul(id_buf, &endptr, 10);
 
 		if (errno == ERANGE || endptr == id_buf || *endptr != '\0' || val > UINT32_MAX) {
-			return coap_respond(resource, request, addr, addr_len,
-					    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+			return lichen_coap_respond(resource, request, addr, addr_len,
+					    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 		}
 		msg_id = (uint32_t)val;
 	}
 
 	ret = lichen_msg_sent_get(msg_id, &msg);
 	if (ret < 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	/* Encode response CBOR */
@@ -615,8 +571,8 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 	}
 
 	if (lichen_coap_format_ipv6(msg.peer_addr, addr_str, sizeof(addr_str)) < 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	cbor_put_map_header(cbor_buf, &off, 5);
@@ -631,8 +587,8 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 	cbor_put_key(cbor_buf, &off, "status");
 	cbor_put_tstr(cbor_buf, &off, status_str, strlen(status_str));
 
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, off);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, off);
 }
 
 /* --------------------------------------------------------------------------
@@ -687,12 +643,12 @@ int lichen_msg_inbox_get_handler(struct coap_resource *resource,
 
 	len = encode_inbox_cbor(cbor_buf, sizeof(cbor_buf));
 	if (len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
 }
 
 void lichen_msg_inbox_notify_cb(struct coap_resource *resource,
@@ -757,21 +713,21 @@ int lichen_msg_ack_post(struct coap_resource *resource,
 	int ret;
 
 	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	if (payload == NULL || payload_len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	/* Decode CBOR: {"id": <uint>} */
 	ZCBOR_STATE_D(zsd, 2, payload, payload_len, 1, 0);
 
 	if (!zcbor_map_start_decode(zsd)) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	while (!zcbor_array_at_end(zsd)) {
@@ -800,21 +756,21 @@ int lichen_msg_ack_post(struct coap_resource *resource,
 
 	ret = lichen_msg_ack(msg_id);
 	if (ret == -ENOENT) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 	if (ret < 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CHANGED, NULL, 0);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CHANGED, 0, NULL, 0);
 
 bad_request:
 	(void)zcbor_list_map_end_force_decode(zsd);
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 }
 
 /* --------------------------------------------------------------------------
