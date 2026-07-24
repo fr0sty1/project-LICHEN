@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-jwl1",
+  "title": "[rereview] project-LICHEN-da2q.16.3: Python hash_slot() uses XOR while validate_vector() uses CONCAT (inconsistent)",
+  "description": "**Severity: P2 (test infrastructure inconsistency, undetected discrepancy)**\n\nIn :\n\n-  (line 41-45) uses XOR-epoch-into-first-4-bytes:\n  \n\n-  (line 73) uses CONCAT-LE:\n  \n\nThese produce different results for non-zero epoch. No existing test vectors use epoch != 0, so this goes undetected.\n\nThe test vectors'  field says , confirming CONCAT is the intended approach.  should use CONCAT to match.\n\n (line 61) also has the same unsigned wraparound bug described in the tdma_tx_allowed issue.\n\n**File:** python/src/lichen/sim/tdma.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:20:26.618937253Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:20:26.618937253Z"
+}
