@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 import cbor2
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 from nacl.bindings import (
@@ -29,7 +30,7 @@ from nacl.bindings import (
     crypto_sign_ed25519_pk_to_curve25519,
     crypto_sign_ed25519_sk_to_curve25519,
 )
-from nacl.signing import SigningKey, VerifyKey
+from nacl.signing import SigningKey
 
 if TYPE_CHECKING:
     from .identity import Identity
@@ -413,7 +414,7 @@ class EdhocInitiator:
                 cbor2.dumps(cred_r),
                 mac_2,
             ])
-            VerifyKey(peer_pubkey).verify(m_2, signature_2)
+            Ed25519PublicKey.from_public_bytes(peer_pubkey).verify(signature_2, m_2)
             th_3_input = (
                 cbor2.dumps(self._th_2)
                 + cbor2.dumps(ciphertext_2)
@@ -672,7 +673,7 @@ class EdhocResponder:
                 cbor2.dumps(peer_pubkey),
                 mac_3,
             ])
-            VerifyKey(peer_pubkey).verify(m_3, signature_3)
+            Ed25519PublicKey.from_public_bytes(peer_pubkey).verify(signature_3, m_3)
             th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
