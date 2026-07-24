@@ -2797,6 +2797,38 @@ mod tests {
     }
 
     #[test]
+    fn forged_request_does_not_poison_replay_window() {
+        let master_secret = [0x5a; KEY_LEN];
+        let attacker_secret = [0x5b; KEY_LEN];
+        let mut attacker =
+            Context::new_ephemeral(&attacker_secret, None, &[0], &[1]).unwrap();
+        let mut legitimate =
+            Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut recipient =
+            Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
+
+        attacker.sender_seq = seq(5);
+        let (forged_ct, forged_opt) =
+            attacker.protect_request(0x01, &[], b"forged").unwrap();
+
+        legitimate.sender_seq = seq(5);
+        let (valid_ct, valid_opt) =
+            legitimate.protect_request(0x01, &[], b"valid").unwrap();
+
+        assert_eq!(
+            recipient
+                .unprotect_request(&forged_opt, &forged_ct)
+                .unwrap_err(),
+            OscoreError::DecryptFailed
+        );
+
+        let result = recipient
+            .unprotect_request(&valid_opt, &valid_ct)
+            .unwrap();
+        assert_eq!(result.2.as_slice(), b"valid");
+    }
+
+    #[test]
     fn crash_after_reservation_skips_sequence_after_restore() {
         let secret = [0x24; KEY_LEN];
         let mut crashed = Context::restore(&secret, None, &[0], &[1], 3, false).unwrap();
