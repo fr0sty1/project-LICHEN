@@ -586,6 +586,9 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
 	if (c_i_len > EDHOC_CID_MAX_LEN || corr > 3) {
 		return -EINVAL;
 	}
+	if (ctx->state == EDHOC_STATE_ERROR) {
+		return -EBUSY;
+	}
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->state = EDHOC_STATE_IDLE;
@@ -970,6 +973,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	return 0;
 
 err_wipe:
+	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(g_xy, sizeof(g_xy));
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
@@ -1050,6 +1054,7 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	return 0;
 
 wipe:
+	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(oscore, sizeof(*oscore));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
@@ -1070,6 +1075,9 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 	}
 	if (c_r_len > EDHOC_CID_MAX_LEN || corr > 3) {
 		return -EINVAL;
+	}
+	if (ctx->state == EDHOC_STATE_ERROR) {
+		return -EBUSY;
 	}
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -1331,6 +1339,7 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	return 0;
 
 err_wipe:
+	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(g_xy, sizeof(g_xy));
 	crypto_wipe(signature_2, sizeof(signature_2));
 	crypto_wipe(plaintext_2, sizeof(plaintext_2));
@@ -1490,6 +1499,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	return 0;
 
 err_wipe:
+	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
 	crypto_wipe(plaintext_3, sizeof(plaintext_3));
@@ -1563,6 +1573,7 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	return 0;
 
 wipe:
+	ctx->state = EDHOC_STATE_ERROR;
 	crypto_wipe(oscore, sizeof(*oscore));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
