@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-eu0i",
   "title": "[review] project-LICHEN-2auf.44.11.1.1: test suite doesn't compile (26 errors)",
   "description": "## Summary\n`cargo test -p lichen-oscore` fails with 26 compilation errors across:\n- `tests/vectors.rs` (10 errors): `restore_existing` signature mismatch (old 6-arg call sites not updated), `protect_request` no longer exists on `Context`, `Context::new` changed from 4 to 5 args, duplicate `#[test]` attribute\n- `src/lib.rs` test module (16 errors): `Option\u003cOscoreSeqNum\u003e` changed to `OscoreSeqNum` breaking `fetch_increment`/`increment`/`encode_piv`/`get` calls, `restore_existing` signature mismatch, mismatched types",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T16:52:11.924190087Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:52:11.924190087Z"
+  "updated_at": "2026-07-24T17:11:22.209166692Z",
+  "closed_at": "2026-07-24T17:11:22.209166692Z",
+  "close_reason": "Closed"
 }
