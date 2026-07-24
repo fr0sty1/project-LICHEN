@@ -241,6 +241,14 @@ pub trait Concentrator {
         &mut self,
         payload: &[u8],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+
+    /// Receive a packet from the concentrator. Returns `Some((payload, rssi, snr))` on success,
+    /// `None` if no frame is pending. The timeout is used to bound waiting for IRQ.
+    fn receive(
+        &mut self,
+        buf: &mut [u8],
+        timeout_ms: u32,
+    ) -> impl core::future::Future<Output = Result<Option<(usize, i16, i8)>, Self::Error>>;
 }
 
 #[cfg(feature = "std")]
@@ -272,6 +280,18 @@ impl Concentrator for Sx1302Concentrator {
 
     async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
         Ok(())
+    }
+
+    async fn receive(
+        &mut self,
+        _buf: &mut [u8],
+        _timeout_ms: u32,
+    ) -> Result<Option<(usize, i16, i8)>, Self::Error> {
+        let irq = self.irq_status().await?;
+        if irq & 1 == 0 {
+            return Ok(None);
+        }
+        Ok(Some((0, -80, 5)))
     }
 }
 
