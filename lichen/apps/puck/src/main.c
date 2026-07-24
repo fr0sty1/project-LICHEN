@@ -15,8 +15,6 @@
 #endif
 
 #include <lichen/hal.h>
-#include "../../../subsys/lichen/l2/lichen_util.h"
-#include "../../../subsys/lichen/l2/crash_info.h"
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
@@ -27,20 +25,9 @@
 #if IS_ENABLED(CONFIG_LICHEN_L2)
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/socket.h>
-#include <zephyr/net/coap_service.h>
 #include <lichen/coap_client.h>
-#include <lichen/coap_server.h>
 #include "lichen_l2.h"
 #include "ipv6_addr.h"
-#endif
-
-#if IS_ENABLED(CONFIG_LICHEN_COAP_LOCATION)
-static uint16_t s_coap_server_port = 5683;
-
-/* Puck owns this app service; gateway defines its own service with the same
- * resource section, while standalone builds use lichen_coap_server instead. */
-COAP_SERVICE_DEFINE(lichen_coap, NULL, &s_coap_server_port,
-		    COAP_SERVICE_AUTOSTART);
 #endif
 
 /* Stall-marker uses the nRF GPREGRET2 retention register (nRF boards only). */
@@ -51,48 +38,23 @@ COAP_SERVICE_DEFINE(lichen_coap, NULL, &s_coap_server_port,
 
 LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 
-#if IS_ENABLED(CONFIG_LICHEN_L2) && IS_ENABLED(CONFIG_STATS)
-#include <zephyr/stats/stats.h>
-
-/*
- * CoAP round-trip counters, exported over SMP as the "coap" STATS group so
- * the round trip can be confirmed on the console-less T1000-E via if02
- * (qpc0 end-to-end validation): sent GETs vs successful 2.05 responses vs
- * errors/timeouts.
- */
-STATS_SECT_START(lichen_coap_stats)
-STATS_SECT_ENTRY32(sent)
-STATS_SECT_ENTRY32(ok)
-STATS_SECT_ENTRY32(err)
-STATS_SECT_END;
-
-STATS_NAME_START(lichen_coap_stats)
-STATS_NAME(lichen_coap_stats, sent)
-STATS_NAME(lichen_coap_stats, ok)
-STATS_NAME(lichen_coap_stats, err)
-STATS_NAME_END(lichen_coap_stats);
-
-STATS_SECT_DECL(lichen_coap_stats) lichen_coap_stats;
-#define COAP_STAT_INC(f) STATS_INC(lichen_coap_stats, f)
-#else
-#define COAP_STAT_INC(f) do { } while (0)
-#endif
-
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5 @ 915 MHz (US915). */
 #define LORA_FREQ_HZ       915000000U
 #define LORA_MAX_FRAME     255
 #define BEACON_INTERVAL_MS CONFIG_LICHEN_PUCK_BEACON_INTERVAL_MS
 
 /*
- * Unsigned LICHEN neighbor beacon.
- *   [0] length = 4   (body length; total frame size is 5)
- *   [1] llsec  = 0x00  (AddrMode=0, no signature, no encryption)
+ * Unsigned LICHEN announce frame.
+ *   [0] length = 4   (bytes following the length field)
+ *   [1] llsec  = 0x00  (AddrMode=0, no sig, no enc)
  *   [2] epoch  = 0
  *   [3] seqhi  = 0
  *   [4] seqlo  = incremented on each TX
  */
 #define BEACON_HDR_LEN 5
-#define BEACON_TOTAL_LEN BEACON_HDR_LEN
+static uint8_t s_beacon[BEACON_HDR_LEN];
+static uint8_t s_seqnum;
+static uint8_t s_epoch;
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 /* Placeholder IID — in production derive from nRF52840 FICR. */
@@ -186,19 +148,15 @@ static inline void set_phase(enum stall_phase ph)
 #if !IS_ENABLED(CONFIG_LICHEN_L2)
 static void send_beacon(const struct device *dev)
 {
-	/* Build beacon header. Static state persists across calls. */
-	static uint8_t beacon[BEACON_TOTAL_LEN];
-	static uint8_t seqnum;
-	static uint8_t epoch;
-
-	beacon[0] = BEACON_TOTAL_LEN - 1U;
-	beacon[1] = 0x00;  /* LLSec: broadcast, unsigned, plaintext */
-	if (++seqnum == 0) {
-		epoch++;  /* Increment epoch on seqnum wrap */
+	/* Build beacon header */
+	s_beacon[0] = BEACON_HDR_LEN - 1;
+	s_beacon[1] = 0x00;  /* LLSec: AddrMode=0, no sig, no enc */
+	if (++s_seqnum == 0) {
+		s_epoch++;  /* Increment epoch on seqnum wrap */
 	}
-	beacon[2] = epoch;   /* epoch */
-	beacon[3] = 0x00;      /* seqhi */
-	beacon[4] = seqnum;  /* seqlo */
+	s_beacon[2] = s_epoch;   /* epoch */
+	s_beacon[3] = 0x00;      /* seqhi */
+	s_beacon[4] = s_seqnum;  /* seqlo */
 
 	set_phase(PH_CFG_TX);
 	if (lora_set_mode(dev, true) < 0) {
@@ -206,11 +164,11 @@ static void send_beacon(const struct device *dev)
 		return;
 	}
 	set_phase(PH_TX);
-	int ret = lora_send(dev, beacon, sizeof(beacon));
+	int ret = lora_send(dev, s_beacon, sizeof(s_beacon));
 	if (ret < 0) {
 		LOG_ERR("beacon TX failed: %d", ret);
 	} else {
-		LOG_INF("beacon seq=%u", seqnum);
+		LOG_INF("beacon seq=%u", s_seqnum);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		s_radio_stats.tx_pkts++;
 #endif
@@ -228,10 +186,8 @@ static void on_coap_response(void *user_data, int status, uint8_t code,
 
 	if (status != LICHEN_COAP_OK) {
 		LOG_WRN("CoAP response error: %d", status);
-		COAP_STAT_INC(err);
 		return;
 	}
-	COAP_STAT_INC(ok);
 	LOG_INF("CoAP %u.%02u response, %u B payload",
 		code >> 5, code & 0x1F, (unsigned int)payload_len);
 	if (payload_len > 0) {
@@ -270,12 +226,6 @@ static void on_coap_response(void *user_data, int status, uint8_t code,
 #define WDT_STALL_MS     4000   /* feeder withholds the feed after no progress this long */
 #define WDT_FEED_MS      500    /* feeder cadence */
 #define RX_WINDOW_MS     2000   /* per-iteration RX listen window */
-#define WDT_PROGRESS_FRESH(now, last) \
-	((uint32_t)((uint32_t)(now) - (uint32_t)(last)) < WDT_STALL_MS)
-
-BUILD_ASSERT(WDT_PROGRESS_FRESH(0x00000010U, 0xfffffff0U));
-BUILD_ASSERT(WDT_PROGRESS_FRESH(0x00000f8fU, 0xfffffff0U));
-BUILD_ASSERT(!WDT_PROGRESS_FRESH(0x00000f90U, 0xfffffff0U));
 
 static const struct device *s_wdt;
 static int s_wdt_channel = -1;
@@ -285,17 +235,16 @@ static atomic_t s_last_progress_ms;
  * stub, so the driver's poll loops bump this heartbeat too. */
 void lichen_radio_progress(void)
 {
-	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get_32());
+	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get());
 }
 
 /* Runs in system-clock ISR context — feed only while progress is fresh. */
 static void wdt_feed_timer_fn(struct k_timer *t)
 {
 	ARG_UNUSED(t);
-	uint32_t now = k_uptime_get_32();
-	uint32_t last = (uint32_t)atomic_get(&s_last_progress_ms);
+	int64_t age = k_uptime_get() - (int64_t)atomic_get(&s_last_progress_ms);
 
-	if (s_wdt && WDT_PROGRESS_FRESH(now, last)) {
+	if (s_wdt && age < WDT_STALL_MS) {
 		wdt_feed(s_wdt, s_wdt_channel);
 	}
 	/* else: no forward progress → withhold feed → SoC resets */
@@ -332,14 +281,10 @@ static void wdt_init(void)
 		return;
 	}
 
-	int ret = wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG);
-	if (ret < 0) {
-		LOG_ERR("wdt_setup failed: %d", ret);
-		crash_info_store(CRASH_WDT_SETUP_FAILURE, __LINE__, (uint32_t)ret);
-		if (!IS_ENABLED(CONFIG_IWDG_STM32)) {
-			s_wdt = NULL;
-			return;
-		}
+	if (wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG) < 0) {
+		LOG_WRN("wdt_setup failed");
+		s_wdt = NULL;
+		return;
 	}
 
 	k_timer_start(&s_wdt_timer, K_MSEC(WDT_FEED_MS), K_MSEC(WDT_FEED_MS));
