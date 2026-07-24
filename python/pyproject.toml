@@ -120,3 +120,8 @@ module = [
 ]
 disable_error_code = ["misc"]
 
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.4.0",
+]
+
