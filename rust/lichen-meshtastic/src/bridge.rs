@@ -75,6 +75,7 @@ pub enum RoutingErrorCode {
     NotAuthorized,
     PkiFailed,
     PkiUnknownPubkey,
+    Unknown(i32),
 }
 
 impl From<i32> for RoutingErrorCode {
@@ -94,7 +95,29 @@ impl From<i32> for RoutingErrorCode {
             33 => Self::NotAuthorized,
             34 => Self::PkiFailed,
             35 => Self::PkiUnknownPubkey,
-            _ => Self::None,
+            _ => Self::Unknown(val),
+        }
+    }
+}
+
+impl RoutingErrorCode {
+    fn to_i32(self) -> i32 {
+        match self {
+            Self::None => 0,
+            Self::NoRoute => 1,
+            Self::GotNak => 2,
+            Self::Timeout => 3,
+            Self::NoInterface => 4,
+            Self::MaxRetransmit => 5,
+            Self::NoChannel => 6,
+            Self::TooLarge => 7,
+            Self::NoResponse => 8,
+            Self::DutyCycleLimit => 9,
+            Self::BadRequest => 32,
+            Self::NotAuthorized => 33,
+            Self::PkiFailed => 34,
+            Self::PkiUnknownPubkey => 35,
+            Self::Unknown(v) => v,
         }
     }
 }
@@ -248,7 +271,7 @@ impl MeshtasticBridge {
                             let error_code = RoutingErrorCode::from(e);
                             Ok(IncomingResult::RoutingResponse {
                                 request_id: data.request_id,
-                                error: if error_code == RoutingErrorCode::None {
+                                error: if matches!(error_code, RoutingErrorCode::None) {
                                     None
                                 } else {
                                     Some(error_code)
@@ -402,7 +425,7 @@ impl MeshtasticBridge {
         use prost::Message;
 
         let routing = Routing {
-            variant: Some(routing::Variant::ErrorReason(error as i32)),
+            variant: Some(routing::Variant::ErrorReason(error.to_i32())),
         };
 
         let payload = routing.encode_to_vec();
@@ -600,7 +623,7 @@ mod tests {
         assert_eq!(RoutingErrorCode::from(1), RoutingErrorCode::NoRoute);
         assert_eq!(RoutingErrorCode::from(3), RoutingErrorCode::Timeout);
         assert_eq!(RoutingErrorCode::from(32), RoutingErrorCode::BadRequest);
-        assert_eq!(RoutingErrorCode::from(999), RoutingErrorCode::None); // Unknown
+        assert_eq!(RoutingErrorCode::from(999), RoutingErrorCode::Unknown(999));
     }
 
     #[test]
