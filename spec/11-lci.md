@@ -674,12 +674,12 @@ Response: `2.01 Created` with `Location-Path: /confessions/8a4f2b`
 
 ```
 GET coap://[fe80::1]/confessions?count=5
-Content-Format: application/cbor
+Content-Format: application/senml+cbor
 
 {
   "count": 1,
   "confessions": [
-    {"id": "8a4f2b", "ts": 1721654321, "age_s": 900}
+    {"id": "8a4f2b", "content": "...", "ts": 1721654321, "age_s": 900}
   ],
   "rate_remaining": 11,
   "rate_reset_s": 29
