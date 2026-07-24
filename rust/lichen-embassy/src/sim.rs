@@ -245,11 +245,31 @@ impl Radio for SimRadio {
         let timeout_us = (timeout_ms as u64) * 1000;
         let timeout_us = timeout_us.min(u32::MAX as u64) as u32;
 
+        let prev_timeout = self.stream.read_timeout().map_err(RadioError::Bus)?;
         let read_timeout = Duration::from_millis(timeout_ms as u64 + 1000);
         self.stream
             .set_read_timeout(Some(read_timeout))
             .map_err(RadioError::Bus)?;
 
+        let result = self.receive_inner(channel, buf, timeout_us);
+
+        if let Err(_) = &result {
+            let _ = self.stream.set_read_timeout(prev_timeout);
+        } else {
+            self.stream
+                .set_read_timeout(prev_timeout)
+                .map_err(RadioError::Bus)?;
+        }
+
+        result
+    }
+
+    fn receive_inner(
+        &mut self,
+        channel: u8,
+        buf: &mut [u8],
+        timeout_us: u32,
+    ) -> Result<Option<RxPacket>, SimError> {
         let mut msg = [0u8; 5];
         msg[0] = 0x24;
         msg[1..5].copy_from_slice(&timeout_us.to_le_bytes());
