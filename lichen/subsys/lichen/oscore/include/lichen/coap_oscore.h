@@ -114,6 +114,85 @@ int coap_oscore_send_unauthorized(struct coap_resource *_Nonnull resource,
 				  struct coap_packet *_Nonnull request,
 				  struct sockaddr *_Nonnull addr, socklen_t addr_len);
 
+/**
+ * @brief LCI mutating operation authorization result
+ *
+ * Returned by lichen_coap_oscore_authorize_mutating() to provide
+ * the caller with all data needed to proceed or send an error.
+ *
+ * The caller provides the plaintext buffer; after a successful call,
+ * payload points into plaintext_buf and payload_len is set.
+ */
+struct lichen_coap_oscore_auth_result {
+	struct oscore_ctx *_Nullable ctx;      /**< OSCORE context, NULL if not OSCORE */
+	uint8_t piv[OSCORE_PIV_MAX_LEN];       /**< Request PIV for response */
+	size_t piv_len;                         /**< PIV length */
+	const uint8_t *_Nullable payload;      /**< Decrypted payload (points into caller's plaintext_buf) */
+	uint16_t payload_len;                  /**< Payload length */
+	bool is_protected;                     /**< True if OSCORE-protected */
+};
+
+/**
+ * @brief Authorize a mutating LCI CoAP operation.
+ *
+ * Combines the common OSCORE ctx-lookup + unprotect pattern shared by
+ * /keys PUT/DELETE, /msg/inbox POST, /deaddrop POST, and /confessions POST.
+ *
+ * The caller MUST provide a plaintext buffer (plaintext_buf / plaintext_buf_len)
+ * that the function writes decrypted (or passes-through) payload into.
+ * After a successful return, result->payload points into plaintext_buf.
+ *
+ * When OSCORE is enabled (CONFIG_LICHEN_COAP_SERVER_OSCORE):
+ *   1. Checks if request is OSCORE-protected
+ *   2. Extracts peer EUI-64 from sockaddr
+ *   3. Looks up OSCORE context via oscore_ctx_get_by_eui64()
+ *   4. Calls coap_oscore_unprotect_request() into plaintext_buf
+ *   5. Validates original method code matches expected_method
+ *   6. On any failure, sends 4.01 Unauthorized
+ *
+ * When OSCORE is disabled or request is unprotected:
+ *   - Copies payload data from the raw CoAP packet into plaintext_buf
+ *
+ * @param[in]     resource        CoAP resource
+ * @param[in]     request         CoAP request packet
+ * @param[in]     addr            Client address
+ * @param[in]     addr_len        Address length
+ * @param[in]     expected_method Expected CoAP method code (e.g. COAP_METHOD_PUT)
+ * @param[out]    result          Authorization result (payload points into plaintext_buf)
+ * @param[out]    plaintext_buf   Caller-provided buffer for decrypted/raw payload
+ * @param[in]     plaintext_buf_len Size of plaintext_buf
+ * @return 0 on success (caller may proceed with result->payload/ctx/piv),
+ *         negative on failure (caller MUST return immediately)
+ */
+int lichen_coap_oscore_authorize_mutating(struct coap_resource *_Nonnull resource,
+					  struct coap_packet *_Nonnull request,
+					  struct sockaddr *_Nonnull addr, socklen_t addr_len,
+					  uint8_t expected_method,
+					  struct lichen_coap_oscore_auth_result *_Nonnull result,
+					  uint8_t *_Nonnull plaintext_buf,
+					  size_t plaintext_buf_len);
+
+/**
+ * @brief Send an OSCORE-protected or plain CoAP response for a mutating operation.
+ *
+ * If result->is_protected and result->ctx is non-NULL, sends an OSCORE-protected
+ * response using coap_oscore_protect_response(). Otherwise falls back to
+ * lichen_coap_respond().
+ *
+ * @param[in] resource      CoAP resource
+ * @param[in] request       CoAP request packet
+ * @param[in] addr          Client address
+ * @param[in] addr_len      Address length
+ * @param[in] result        Authorization result from authorize_mutating()
+ * @param[in] resp_code     CoAP response code
+ * @return 0 on success, negative error code on failure
+ */
+int lichen_coap_oscore_respond(struct coap_resource *_Nonnull resource,
+			       struct coap_packet *_Nonnull request,
+			       struct sockaddr *_Nonnull addr, socklen_t addr_len,
+			       const struct lichen_coap_oscore_auth_result *_Nonnull result,
+			       uint8_t resp_code);
+
 #ifdef __cplusplus
 }
 #endif
