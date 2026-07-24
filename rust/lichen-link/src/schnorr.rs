@@ -487,6 +487,7 @@ mod tests {
         let frame = LichenFrame {
             epoch,
             seqnum,
+            src_addr: &[],
             dst_addr: &dst_addr,
             payload: inner_payload,
             mic: &sig,

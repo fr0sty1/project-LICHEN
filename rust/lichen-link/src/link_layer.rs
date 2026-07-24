@@ -247,13 +247,13 @@ impl ReplayProtector {
             }
             Some(state) => {
                 state.last_access = access;
-                let epoch_diff = epoch.wrapping_sub(state.last_epoch) as i8;
-
-                if epoch_diff > 0 {
+                // Epochs are monotonic counters that never wrap (spec §5).
+                // Exhausting all 256 epochs requires link-key rotation.
+                if epoch > state.last_epoch {
                     state.last_epoch = epoch;
                     state.window = ReplayWindow::new();
                     state.window.accept(seqnum)
-                } else if epoch_diff < 0 {
+                } else if epoch < state.last_epoch {
                     false
                 } else {
                     state.window.accept(seqnum)
@@ -307,12 +307,12 @@ struct PinnedKey {
 /// sender. Unknown senders are rejected (no TOFU auto-enrolment — callers
 /// handle that via the Announce layer).
 ///
-/// # Signature Verification Cost
+/// # Signature Verification
 ///
-/// Since frames do not include the sender IID, RX must scan peers to find
-/// whose public key verifies the signature. Worst-case is O(n) Schnorr
-/// verifications where n = peer count. Keep peer count low (e.g., <20 direct
-/// neighbors) or implement sender IID hints in upper layers for larger networks.
+/// Frames carry the sender's short address (lower 2 bytes of IID) in the
+/// header (R bit set). This enables O(1) peer lookup via `short_addr_to_iid`
+/// followed by a single Schnorr verification. Frames without a source address
+/// (legacy/unsigned) fall back to an O(n) scan.
 ///
 /// # Key Pinning
 ///
@@ -322,6 +322,7 @@ struct PinnedKey {
 pub struct LinkLayer {
     identity: Identity,
     peers: HashMap<[u8; 8], TrackedPeer>,
+    short_addr_to_iid: HashMap<[u8; 2], [u8; 8]>,
     replay: ReplayProtector,
     pinned: HashMap<[u8; 8], PinnedKey>,
     access_counter: u64,
@@ -344,6 +345,7 @@ impl LinkLayer {
         LinkLayer {
             identity,
             peers: HashMap::new(),
+            short_addr_to_iid: HashMap::new(),
             replay: ReplayProtector::new(),
             pinned: HashMap::new(),
             access_counter: 0,
@@ -374,46 +376,33 @@ impl LinkLayer {
     pub fn add_peer(&mut self, peer: PeerIdentity) {
         self.access_counter = self.access_counter.wrapping_add(1);
         let access = self.access_counter;
+        let short_addr = peer.short_addr();
+        let iid = peer.iid;
         let tracked = TrackedPeer {
             identity: peer,
             last_access: access,
         };
-        self.peers.insert(tracked.identity.iid, tracked);
+        self.short_addr_to_iid.insert(short_addr, iid);
+        self.peers.insert(iid, tracked);
         self.evict_if_needed();
     }
 
     pub fn remove_peer(&mut self, iid: &[u8; 8]) {
         if let Some(tracked) = self.peers.remove(iid) {
             self.replay.reset_peer(&tracked.identity.pubkey);
+            self.short_addr_to_iid.remove(&tracked.identity.short_addr());
         }
         self.pinned.remove(iid);
     }
 
     /// Atomically remove a peer's configured key, pin, and replay window.
     pub fn forget_peer(&mut self, iid: &[u8; 8]) {
-        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
-        let pinned_key = self.pinned.remove(iid);
-        if let Some(key) = peer_key {
-            self.replay.reset_peer(&key);
+        if let Some(peer) = self.peers.remove(iid) {
+            self.replay.reset_peer(&peer.identity.pubkey);
+            self.short_addr_to_iid.remove(&peer.identity.short_addr());
         }
-        if let Some(key) = pinned_key {
-            if Some(key) != peer_key {
-                self.replay.reset_peer(&key);
-            }
-        }
-    }
-
-    /// Atomically remove a peer's configured key, pin, and replay window.
-    pub fn forget_peer(&mut self, iid: &[u8; 8]) {
-        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
-        let pinned_key = self.pinned.remove(iid);
-        if let Some(key) = peer_key {
-            self.replay.reset_peer(&key);
-        }
-        if let Some(key) = pinned_key {
-            if Some(key) != peer_key {
-                self.replay.reset_peer(&key);
-            }
+        if let Some(key) = self.pinned.remove(iid) {
+            self.replay.reset_peer(&key.pubkey);
         }
     }
 
@@ -423,14 +412,16 @@ impl LinkLayer {
 
     fn evict_if_needed(&mut self) {
         while self.peers.len() > self.max_peers {
-            let oldest_iid = self
+            let oldest = self
                 .peers
                 .iter()
                 .min_by_key(|(_, e)| e.last_access)
                 .map(|(k, _)| *k);
-            if let Some(iid) = oldest_iid {
+            if let Some(iid) = oldest {
                 if let Some(tracked) = self.peers.remove(&iid) {
                     self.replay.reset_peer(&tracked.identity.pubkey);
+                    self.short_addr_to_iid
+                        .remove(&tracked.identity.short_addr());
                     self.pinned.remove(&iid);
                 }
             } else {
@@ -445,7 +436,7 @@ impl LinkLayer {
     ///
     /// Returns `FrameError::FrameTooLarge` if body > 254 bytes.
     /// Returns `FrameError::BufferTooSmall` if `out` is too small.
-    /// Callers must provide a buffer of at least `inner_payload.len() + 53`
+    /// Callers must provide a buffer of at least `inner_payload.len() + 55`
     /// bytes.
     pub fn build_frame(
         &self,
@@ -468,6 +459,10 @@ impl LinkLayer {
     /// destination passed to `build_frame` remains broadcast (`AddrMode::None`)
     /// for compatibility with existing callers.
     ///
+    /// The sender's short address (lower 2 bytes of the IID) is included in
+    /// the frame header (R bit set) so receivers can O(1) look up the sender
+    /// instead of scanning the peer table.
+    ///
     /// Returns `FrameError::FrameTooLarge` if body > 254 bytes,
     /// `FrameError::BufferTooSmall` if `out` too small, or
     /// [`FrameError::AddrLenMismatch`] on bad `dst_addr`.
@@ -483,8 +478,9 @@ impl LinkLayer {
         if addr_mode.addr_len() != dst_addr.len() {
             return Err(FrameError::AddrLenMismatch);
         }
-        let llsec = (addr_mode as u8) | (1 << 5);
-        let frame_length = 4 + dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
+        let src_addr: [u8; 2] = self.identity.iid[6..].try_into().unwrap();
+        let llsec = (addr_mode as u8) | (1 << 5) | (1 << 7);
+        let frame_length = 4 + 2 + dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
         if frame_length > MAX_FRAME_BODY {
             return Err(FrameError::FrameTooLarge);
         }
@@ -501,6 +497,7 @@ impl LinkLayer {
         let frame = LichenFrame {
             epoch,
             seqnum,
+            src_addr: &src_addr[..],
             dst_addr,
             payload: inner_payload,
             mic: &sig,
@@ -526,29 +523,57 @@ impl LinkLayer {
         }
 
         let inner_payload = frame.payload;
-        let frame_length = 4 + frame.dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
+        let src_len = if frame.has_src() { 2 } else { 0 };
+        let frame_length = 4 + src_len + frame.dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
 
-        // O(n) scan — try every known peer
-        let Some(sender) = self
-            .peers
-            .values()
-            .find(|p| {
-                schnorr::verify_frame(
-                    frame_length as u8,
-                    frame.llsec_byte(),
-                    frame.epoch,
-                    frame.seqnum,
-                    frame.dst_addr,
-                    frame.payload,
-                    frame.mic,
-                    &p.identity.pubkey,
-                )
-            })
-            .map(|p| p.identity.clone())
-        else {
-            #[cfg(feature = "log")]
-            debug!("link_layer: frame from unknown sender");
-            return Err(LinkRxError::UnknownSender);
+        let sender = if frame.has_src() && frame.src_addr.len() == 2 {
+            let short_addr: [u8; 2] = [frame.src_addr[0], frame.src_addr[1]];
+            self.short_addr_to_iid
+                .get(&short_addr)
+                .and_then(|iid| self.peers.get(iid))
+                .filter(|p| {
+                    schnorr::verify_frame(
+                        frame_length as u8,
+                        frame.llsec_byte(),
+                        frame.epoch,
+                        frame.seqnum,
+                        frame.dst_addr,
+                        frame.payload,
+                        frame.mic,
+                        &p.identity.pubkey,
+                    )
+                })
+                .map(|p| p.identity.clone())
+        } else {
+            None
+        };
+        let sender = match sender {
+            Some(s) => s,
+            None => {
+                // Fallback: O(n) scan for legacy frames without source address
+                let Some(sender) = self
+                    .peers
+                    .values()
+                    .find(|p| {
+                        schnorr::verify_frame(
+                            frame_length as u8,
+                            frame.llsec_byte(),
+                            frame.epoch,
+                            frame.seqnum,
+                            frame.dst_addr,
+                            frame.payload,
+                            frame.mic,
+                            &p.identity.pubkey,
+                        )
+                    })
+                    .map(|p| p.identity.clone())
+                else {
+                    #[cfg(feature = "log")]
+                    debug!("link_layer: frame from unknown sender");
+                    return Err(LinkRxError::UnknownSender);
+                };
+                sender
+            }
         };
 
         let old_state = self.peer_auth_state(&sender.iid);
@@ -898,8 +923,9 @@ mod tests {
             .build_frame(1, seq(1), &[], b"hello", &mut wire)
             .unwrap();
 
-        // Flip a bit in the inner payload region
-        wire[6] ^= 0xFF;
+        // Flip a bit in the inner payload region (payload starts at offset 7
+        // due to 2-byte source address in the header)
+        wire[7] ^= 0xFF;
         assert_eq!(
             ll_bob.receive_frame(&wire[..n]).unwrap_err(),
             LinkRxError::UnknownSender

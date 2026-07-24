@@ -29,3 +29,6 @@ zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../schc/include)
 
 # Include shared crypto headers for Schnorr-48 and AES-CCM MIC computation
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../crypto)
+
+# Include L2 utility headers for lichen_hash_32, etc.
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)

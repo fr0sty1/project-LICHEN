@@ -103,6 +103,11 @@ impl PeerIdentity {
         let iid = iid_from_pubkey(&pubkey);
         PeerIdentity { pubkey, iid }
     }
+
+    /// Lower 2 bytes of the IID (short address used in frame header).
+    pub fn short_addr(&self) -> [u8; 2] {
+        [self.iid[6], self.iid[7]]
+    }
 }
 
 #[cfg(test)]
