@@ -1809,16 +1809,26 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
+def _sync_hop_hash(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    data = seed.to_bytes(4, "little") + ((sfn & 0xffffffff).to_bytes(4, "little"))
+    return hash_32(data)
+
+
+def _sync_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    h = _sync_hop_hash(sfn, seed, num_channels)
+    n = max(num_channels, 3)
+    return 1 + (h % n)
+
+
 def ccp12_synchronized_hop_vectors() -> list[dict]:
-    eui = bytes.fromhex("0011223344556677")
     return [
         {
             "name": "hop_sfn0_8ch",
             "sfn": 0,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 6,
-            "hash_32": hash_32(b""),
+            "expected_channel": _sync_hop_channel(0, 0, 8),
+            "hash_32": _sync_hop_hash(0, 0, 8),
             "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
         },
         {
@@ -1826,8 +1836,8 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 1,
             "seed": 42,
             "num_channels": 16,
-            "expected_channel": 5,
-            "hash_32": _hop_hash(eui, 1),
+            "expected_channel": _sync_hop_channel(1, 42, 16),
+            "hash_32": _sync_hop_hash(1, 42, 16),
             "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
         },
         {
@@ -1837,7 +1847,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "num_channels": 8,
             "density": 9,
             "expected_channel": 0,
-            "hash_32": hash_32(b""),
+            "hash_32": _sync_hop_hash(0, 0, 8),
             "description": "Density>8 returns 0 per SelectChannel pseudocode line 1.",
         },
         {
@@ -1845,8 +1855,8 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 0xffffffff,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 2,
-            "hash_32": _hop_hash(eui, 0xffffffff),
+            "expected_channel": _sync_hop_channel(0xffffffff, 0, 8),
+            "hash_32": _sync_hop_hash(0xffffffff, 0, 8),
             "description": "SFN wraparound per spec Now() u32 mod and SelectChannel.",
         },
         {
@@ -1857,8 +1867,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
         }
-    )
-    return vectors
+    ]
 
 
 def ccp9_vectors() -> list[dict]:

@@ -637,11 +637,7 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-        if node.hop_schedule and len(node.hop_schedule) > 0:
-            current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.get_hop_channel(current_sfn)
-        elif channel == 0:
-            channel = node.current_channel
+        channel = node.get_hop_channel()
 
         delay_us = 0
         if self._density_aware_startup and not node.started:
@@ -713,9 +709,8 @@ class Simulation:
         node = self._nodes.get(node_id)
         if node is not None and not node.tdma_scheduler.is_tx_allowed(self._current_time_us):
             return ""
-        if node is not None and node.hop_schedule and len(node.hop_schedule) > 0:
-            current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.get_hop_channel(current_sfn)
+        if node is not None:
+            channel = node.get_hop_channel()
         previous_tx_id = self._active_transmissions.get(node_id)
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)
@@ -825,11 +820,7 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-        if node.hop_schedule and len(node.hop_schedule) > 0:
-            current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.get_hop_channel(current_sfn)
-        elif channel == 0:
-            channel = node.current_channel
+        channel = node.get_hop_channel()
         node.state = NodeState.RX_WAIT
         if not (node.hop_schedule and len(node.hop_schedule) > 0):
             node.current_channel = channel
@@ -919,10 +910,7 @@ class Simulation:
         if node is None:
             return None
 
-        if node.hop_schedule and len(node.hop_schedule) > 0:
-            channel = node.get_hop_channel()
-        else:
-            channel = node.current_channel
+        channel = node.get_hop_channel()
         candidates = self._medium.get_rx_candidates(
             rx_node_id=node_id,
             rx_position=node.position,

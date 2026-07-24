@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from lichen.sim.metrics import NodeMetrics
-from lichen.sim.tdma import TDMAScheduler, hash_32
+from lichen.sim.tdma import TDMAScheduler, synchronized_hop_channel
 from lichen.state_machine import StateMachine
 
 # Type alias for RX callbacks: (on_packet, on_timeout)
@@ -54,6 +54,7 @@ class SimNode:
     metrics: NodeMetrics = field(repr=False)
     current_channel: int = 0
     seed: int = 0
+    num_channels: int = 8
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
     started: bool = False
@@ -89,17 +90,14 @@ class SimNode:
         self.rx_callbacks = rx_callbacks
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.seed = seed
+        self.num_channels = num_channels
         self.current_channel = current_channel
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         self.started = started
         self.heard_set = heard_set if heard_set is not None else set()
-        data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
-        h = hash_32(data)
-        n = max(num_channels, 3)
         if current_channel == 0:
-            self.current_channel = 1 + (h % n)
-        self.hop_schedule = tuple(1 + (hash_32(seed.to_bytes(8, "big") + (((sfn + i) & 0xffffffff).to_bytes(4, "little"))) % n) for i in range(8))
+            self.current_channel = synchronized_hop_channel(sfn, seed, max(num_channels, 3))
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,
@@ -146,11 +144,13 @@ class SimNode:
         return self.connected
 
     def get_hop_channel(self, sfn: int | None = None) -> int:
-        """Derive hop channel from hop_schedule+SFN (CCP-12) or current_channel.
+        """Derive hop channel from synchronized_hop_channel (CCP-12) or current_channel.
         Matches spec/02a-coordinated-capacity.md:120, ccp16-hop.json:7.
         """
         if sfn is None:
             sfn = self.tdma_scheduler.clock.sfn
         if self.hop_schedule and len(self.hop_schedule) > 0:
             return self.hop_schedule[sfn % len(self.hop_schedule)]
+        if self.seed != 0 or self.num_channels > 0:
+            return synchronized_hop_channel(sfn, self.seed, self.num_channels)
         return self.current_channel
