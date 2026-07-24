@@ -69,8 +69,6 @@ class SourceRoutingHeader:
             raise RoutingError("source route exceeds maximum hop count")
         if not 0 <= segments_left <= len(addresses):
             raise RoutingError("segments_left exceeds address count")
-        if segments_left == 0:
-            addresses = []
         return cls(segments_left=segments_left, addresses=addresses)
 
     def to_extension_header(self) -> ExtensionHeader:
