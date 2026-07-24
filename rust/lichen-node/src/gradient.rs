@@ -55,8 +55,10 @@ impl GeoCoords {
     pub fn from_app_data(data: &[u8]) -> Option<Self> {
         for i in 0..data.len().saturating_sub(8) {
             if data[i] == 0x01 {
-                let lat_e7 = i32::from_be_bytes([data[i+1], data[i+2], data[i+3], data[i+4]]);
-                let lon_e7 = i32::from_be_bytes([data[i+5], data[i+6], data[i+7], data[i+8]]);
+                let lat_e7 =
+                    i32::from_be_bytes([data[i + 1], data[i + 2], data[i + 3], data[i + 4]]);
+                let lon_e7 =
+                    i32::from_be_bytes([data[i + 5], data[i + 6], data[i + 7], data[i + 8]]);
                 return Some(Self {
                     lat: lat_e7 as f32 / 1e7,
                     lon: lon_e7 as f32 / 1e7,

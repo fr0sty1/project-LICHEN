@@ -15,12 +15,8 @@ use lichen_hal::storage::mem::MemStorage;
 use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_node::{
-    announce::AnnounceProcessor,
-    gradient::GradientTable,
-    rpl_stack::RplStack,
-    secure::SecureStack,
-    stack::add_rpl_source_route,
-    RplEvent,
+    announce::AnnounceProcessor, gradient::GradientTable, rpl_stack::RplStack, secure::SecureStack,
+    stack::add_rpl_source_route, RplEvent,
 };
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
@@ -50,7 +46,8 @@ impl Gateway {
         let dodag_id = root_addr;
         let (radio, _peer) = LoopbackRadio::pair();
         let stack = SecureStack::from_radio(radio, identity, 128);
-        let announces = AnnounceProcessor::new(GradientTable::new(64), dodag_id[..8].try_into().unwrap());
+        let announces =
+            AnnounceProcessor::new(GradientTable::new(64), dodag_id[..8].try_into().unwrap());
         let storage = MemStorage::new();
         let rpl_stack = RplStack::provision_root(stack, root_addr, dodag_id, announces, storage)
             .expect("gateway RPL root provision");
@@ -134,13 +131,39 @@ impl Gateway {
         }
     }
 
+    /// Check if a destination address is reachable within the local mesh.
+    ///
+    /// Per spec §7.2: 02xx::/7 addresses are Yggdrasil-derived primaries.
+    /// Local mesh check uses RPL route lookup. Yggdrasil-only addresses
+    /// (02xx not in RPL table) are NOT local mesh and should go to the
+    /// Yggdrasil TUN.
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        // Link-local: always local
+        if dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80 {
+            return true;
+        }
+
+        // Exclude magic discard prefix
         if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
             return false;
         }
-        (dst[0] == 0xfe && dst[1] == 0x80)
-            || dst[0] == 0xfd
-            || self.rpl_stack.rpl_node().router().lookup_route(dst).is_some()
+
+        // 02xx::/7: local if in RPL route table, otherwise Yggdrasil
+        if dst[0] & 0xfe == 0x02 {
+            return self
+                .rpl_stack
+                .rpl_node()
+                .router()
+                .lookup_route(dst)
+                .is_some();
+        }
+
+        // Unknown/non-02xx: fallback to RPL check
+        self.rpl_stack
+            .rpl_node()
+            .router()
+            .lookup_route(dst)
+            .is_some()
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {

@@ -121,7 +121,11 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		return LICHEN_ADDR_LINK_LOCAL;
 	}
 
-	if (is_ula(dst_addr) || dst_addr[0] == 0x02) {
+	if ((dst_addr[0] & 0xfe) == 0x02) {
+		return LICHEN_ADDR_YGGDRASIL;
+	}
+
+	if (is_ula(dst_addr)) {
 		return LICHEN_ADDR_MESH_LOCAL;
 	}
 

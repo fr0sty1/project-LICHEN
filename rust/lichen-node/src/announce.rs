@@ -203,7 +203,13 @@ impl AnnounceProcessor {
         let should_relay = announce.should_relay();
 
         let peer = PeerIdentity::from_pubkey(pubkey);
-        AnnounceResult::accepted(should_relay, peer, congestion, evicted_iid, announce.rx_channel)
+        AnnounceResult::accepted(
+            should_relay,
+            peer,
+            congestion,
+            evicted_iid,
+            announce.rx_channel,
+        )
     }
 
     pub fn reset_seen(&mut self, iid: &[u8; 8]) {

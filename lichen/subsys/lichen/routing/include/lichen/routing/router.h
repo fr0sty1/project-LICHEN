@@ -7,8 +7,8 @@
  *
  * The Router decides how to forward each packet based on destination address:
  * 1. Link-local (fe80::/10): Direct neighbor delivery
- * 2. Mesh-local (Yggdrasil 02xx or configured GUA): Gradient lookup -> LOADng
- * 3. External/Yggdrasil-remote: Forward to border router/gateway
+ * 2. Yggdrasil (02xx::/7 - primary address): Gradient lookup -> LOADng -> RPL fallback
+ * 3. External/other: Forward to border router/gateway
  *
  * Why separate Router from LOADng/RPL: Each protocol has its own state machine.
  * The Router orchestrates them based on address classification and route
