@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-wcjb",
+  "title": "[rereview] project-LICHEN-da2q.16.3: rf_health.c counters use wrapping ++ instead of saturating, diverging from Rust reference",
+  "description": "In lichen/subsys/lichen/link/rf_health.c, all counters (packets_tx, packets_rx, tx_failures) use plain ++ which wraps on overflow at u32::MAX. The Rust reference at rust/lichen-core/src/rf_health.rs uses saturating_add(1) for all counters, including snr.count. The AGENTS.md mandates both implementations produce identical output for test vectors. While 2^32 packets is unlikely in practice, this is a correctness divergence.\n\nFiles affected:\n- lichen/subsys/lichen/link/rf_health.c:26 (record_tx: wrapping ++), :32 (record_rx: wrapping ++), :47 (record_tx_fail: wrapping ++)  \n- lichen/subsys/lichen/link/include/lichen/rf_health.h: SnrStats.count is uint32_t, ++ in record_rx\n\nFix: Use conditional saturating add (if count \u003c UINT32_MAX) or accept the divergence per platform constraints after documenting in AGENTS.md.\n\nAdditionally, the EMA diff computation in rf_health.c:39-40 uses plain int32_t subtraction/addition instead of saturating variants. While SNR ranges [-128,127]*2^16 won't overflow int32_t, this is a further divergence from Rust's saturating_sub/saturating_add.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:16:04.501977303Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:16:04.501977303Z"
+}
