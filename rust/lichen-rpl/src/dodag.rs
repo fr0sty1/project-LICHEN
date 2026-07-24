@@ -26,6 +26,15 @@ pub const MAX_RANK_INCREASE: u16 = 2048;
 pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 pub const MAX_PARENT_CANDIDATES: usize = 16;
 
+pub const ALL_RPL_NODES: [u8; 16] = [
+    0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a,
+];
+
+pub fn is_rpl_multicast(addr: &[u8; 16]) -> bool {
+    *addr == ALL_RPL_NODES
+}
+
 #[cfg(feature = "std")]
 fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
     if a == b {
