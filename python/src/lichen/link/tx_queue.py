@@ -104,6 +104,7 @@ class TxQueueEntry:
     """
 
     data: bytes
+    dst_addr: bytes
     priority: Priority
     deadline_ms: int
     enqueue_time_ms: int
@@ -210,6 +211,7 @@ class TxQueue:
     def push(
         self,
         data: bytes,
+        dst_addr: bytes = b"",
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
         return_reservation: bool = False,
@@ -252,6 +254,7 @@ class TxQueue:
 
         entry = TxQueueEntry(
             data=data,
+            dst_addr=dst_addr,
             priority=priority,
             deadline_ms=deadline_ms,
             enqueue_time_ms=now,
@@ -436,6 +439,16 @@ class TxQueue:
                 "TX re-queued after failure, preserved deadline=%d",
                 entry.deadline_ms,
             )
+
+    def signal_all_pending(self, success: bool) -> None:
+        """Signal all queued reservations as complete (for CAD failure case).
+
+        Prevents senders from hanging when drain_tx_queue exits without
+        attempting transmission. Signals all entries in the queue.
+        """
+        for entry in self._entries:
+            if entry.reservation is not None:
+                entry.reservation.set_result(success)
 
     def _insert_sorted(self, entry: TxQueueEntry) -> None:
         """Insert entry maintaining sort order (priority ASC, time ASC).
