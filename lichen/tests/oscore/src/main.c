@@ -67,12 +67,43 @@ static void mock_nvm_reset(void)
 	mock_nvm_write_count = 0;
 	mock_nvm_read_count = 0;
 	mock_nvm_write_fails = false;
+	mock_nvm_fail_count_before_success = 0;
+	mock_nvm_fail_remaining = 0;
 }
 
 static void mock_nvm_set_write_fail(bool fail)
 {
 	mock_nvm_write_fails = fail;
 	mock_nvm_write_count = 0;
+}
+
+static int mock_nvm_fail_count_before_success;
+static int mock_nvm_fail_remaining;
+
+static void mock_nvm_set_write_fail_then_succeed(int fail_count)
+{
+	mock_nvm_fail_count_before_success = fail_count;
+	mock_nvm_fail_remaining = fail_count;
+	mock_nvm_write_fails = false;
+	mock_nvm_write_count = 0;
+}
+
+static int mock_nvm_write_retry(const uint8_t *eui64, uint64_t ssn)
+{
+	mock_nvm_write_count++;
+	if (mock_nvm_fail_remaining > 0) {
+		mock_nvm_fail_remaining--;
+		return -1;
+	}
+	if (mock_nvm_write_fails) {
+		return -1;
+	}
+	if (eui64 != NULL) {
+		memcpy(mock_nvm_eui64, eui64, OSCORE_EUI64_LEN);
+	}
+	mock_nvm_ssn = ssn;
+	mock_nvm_has_data = true;
+	return 0;
 }
 
 static void *oscore_ctx_setup(void)
@@ -363,6 +394,122 @@ ZTEST(oscore_ctx, test_nvm_protect_request_nvm_failure)
 	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0, ciphertext, &ct_len, oscore_opt, &opt_len), OSCORE_OK);
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
 	zassert_equal(ssn, 101U);
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+}
+
+ZTEST(oscore_ctx, test_persist_ssn_retry_fails_twice_then_succeeds)
+{
+	struct oscore_ctx *ctx = NULL;
+
+	oscore_nvm_register_callbacks(mock_nvm_write_retry, mock_nvm_read);
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 42), OSCORE_OK);
+	zassert_equal(mock_nvm_write_count, 1);
+	zassert_equal(mock_nvm_ssn, 42U);
+
+	mock_nvm_set_write_fail_then_succeed(2);
+
+	zassert_equal(oscore_ctx_persist_ssn(ctx), OSCORE_OK);
+	zassert_equal(mock_nvm_write_count, 3);
+	zassert_equal(mock_nvm_ssn, 42U);
+
+	mock_nvm_set_write_fail_then_succeed(0);
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+}
+
+ZTEST(oscore_ctx, test_persist_ssn_retry_all_three_fail)
+{
+	struct oscore_ctx *ctx = NULL;
+
+	oscore_nvm_register_callbacks(mock_nvm_write_retry, mock_nvm_read);
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 99), OSCORE_OK);
+	zassert_equal(mock_nvm_write_count, 1);
+
+	mock_nvm_set_write_fail_then_succeed(3);
+
+	zassert_equal(oscore_ctx_persist_ssn(ctx), OSCORE_ERR_NVM_FAILED);
+	zassert_equal(mock_nvm_write_count, 4);
+
+	mock_nvm_set_write_fail_then_succeed(0);
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+}
+
+ZTEST(oscore_ctx, test_reboot_simulation_ssn_persistence)
+{
+	struct oscore_ctx *ctx = NULL;
+	uint64_t ssn;
+	uint8_t ciphertext[64];
+	size_t ct_len = sizeof(ciphertext);
+	uint8_t oscore_opt[32];
+	size_t opt_len = sizeof(oscore_opt);
+
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 10), OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 10U);
+
+	ct_len = sizeof(ciphertext); opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_OK);
+	zassert_equal(mock_nvm_write_count, 2);
+	zassert_equal(mock_nvm_ssn, 10U);
+
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 11U);
+	oscore_ctx_free(ctx);
+
+	mock_nvm_has_data = true;
+	mock_nvm_write_count = 0;
+	mock_nvm_read_count = 0;
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+
+	zassert_equal(mock_nvm_read_count, 1);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 10U);
+
+	ct_len = sizeof(ciphertext); opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_OK);
+
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 11U);
+
 	oscore_ctx_free(ctx);
 	oscore_nvm_register_callbacks(NULL, NULL);
 }
