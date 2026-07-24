@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-n1e2",
+  "title": "[review] project-LICHEN-worker6-xy4c: std_ext FragmentReceiver has 3 type errors (Vec\u003cbool\u003e vs u64 bitmap) preventing --features std build",
+  "description": "The std_ext FragmentReceiver at rust/lichen-schc/src/fragment.rs:1226-1282 has three mismatched-type errors where `window_bitmap()` returns `Vec\u003cbool\u003e` but `Ack::new()` expects `u64`. Lines 1237, 1254, 1281 all pass `\u0026bitmap` (`\u0026Vec\u003cbool\u003e`) where a `u64` bitmap is required. Additionally, line 1057 (`pub use std_ext::*`) triggers an unused-import warning. This prevents building lichen-schc with `--features std`. The no_std FragmentReceiver at line 722 uses `[u64; 2]` bitmaps and works correctly — the std_ext variant needs to either convert the Vec\u003cbool\u003e to u64 or use the same packed bitmap approach.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:57:13.862401978Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:57:13.862401978Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n1e2",
+      "depends_on_id": "project-LICHEN-worker6-xy4c",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T18:57:14.010263288Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
