@@ -35,6 +35,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <lichen/schnorr48.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -54,11 +56,12 @@ extern "C" {
  *     Subtotal:                            5 bytes
  *
  *   Unsigned MIC:                           0 bytes
- *   Schnorr-48 signature MIC:              48 bytes (SCHNORR48_SIG_LEN)
+ *   Schnorr-48 signature MIC:              SCHNORR48_SIG_LEN
  *   ----------------------------------------
- *   Total fixed overhead:                 57 bytes
+ *   Total fixed overhead:            5 + SCHNORR48_SIG_LEN
  *
- *   We use 55 rather than 57 (project-LICHEN-tvfm.95):
+ *   We use 5 + SCHNORR48_SIG_LEN + 2 rather than 5 + SCHNORR48_SIG_LEN + 4
+ *   (project-LICHEN-tvfm.95):
  *   The MTU computation is: 255 - FRAME_OVERHEAD = MTU.
  *   Using 55 yields MTU=200 (vs 198 with 57). The 2-byte "savings" means:
  *   - SCHC rule ID (1-2 bytes) is accounted for in the 57-byte real overhead
@@ -68,10 +71,10 @@ extern "C" {
  *
  *   Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
  *
- * If frame format or signature size changes, update this constant.
+ * If frame format or signature size changes, update these constants.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom */
+#define LICHEN_LORA_FRAME_OVERHEAD   (5 + SCHNORR48_SIG_LEN + 2)  /* header + sig + 2-byte headroom */
 #define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
 
 /**

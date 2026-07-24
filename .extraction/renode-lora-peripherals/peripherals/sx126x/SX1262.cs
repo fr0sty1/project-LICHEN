@@ -60,8 +60,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
             get => simPort;
             set
             {
-                Disconnect();
-                simPort = value;
+                lock (connectionLock)
+                {
+                    Disconnect();
+                    simPort = value;
+                }
                 this.Log(LogLevel.Info, "SimPort set to {0}", value);
             }
         }
@@ -71,8 +74,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
             get => simHost;
             set
             {
-                Disconnect();
-                simHost = value;
+                lock (connectionLock)
+                {
+                    Disconnect();
+                    simHost = value;
+                }
                 this.Log(LogLevel.Info, "SimHost set to {0}", value);
             }
         }
@@ -101,27 +107,36 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         public void Reset()
         {
-            state = State.Idle;
-            opcode = 0;
-            byteIndex = 0;
-            bufferOffset = 0;
-            txLen = 0;
-            rxLen = 0;
-            rxRssi = 0;
-            rxSnr = 0;
-            irqFlags = 0;
-            rxMode = false;
-            Array.Clear(txBuffer, 0, txBuffer.Length);
-            Array.Clear(rxBuffer, 0, rxBuffer.Length);
-            Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
-            Busy.Set(false);
-            IRQ.Set(false);
+            lock (stateLock)
+            {
+                state = State.Idle;
+                opcode = 0;
+                byteIndex = 0;
+                bufferOffset = 0;
+                txLen = 0;
+                rxLen = 0;
+                rxRssi = 0;
+                rxSnr = 0;
+                irqFlags = 0;
+                latchedIrqFlags = 0;
+                clearIrqMask = 0;
+                rxMode = false;
+                rxOneShot = false;
+                Array.Clear(txBuffer, 0, txBuffer.Length);
+                Array.Clear(rxBuffer, 0, rxBuffer.Length);
+                Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
+                Busy.Set(false);
+                IRQ.Set(false);
+            }
         }
 
         public void FinishTransmission()
         {
-            state = State.Idle;
-            byteIndex = 0;
+            lock (stateLock)
+            {
+                state = State.Idle;
+                byteIndex = 0;
+            }
         }
 
         public byte Transmit(byte data)
@@ -168,7 +183,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     else
                     {
                         var idx = bufferOffset + (byteIndex - 2);
-                        result = idx < rxBuffer.Length ? rxBuffer[idx] : (byte)0;
+                        lock (stateLock)
+                        {
+                            result = idx < rxBuffer.Length ? rxBuffer[idx] : (byte)0;
+                        }
                         byteIndex++;
                     }
                     break;
@@ -176,10 +194,22 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 case State.SetTx:
                 case State.SetPacketParams:
                 case State.SetModulationParams:
-                case State.ClearIrqStatus:
                 case State.SetDioIrqParams:
                     // Consume parameter bytes, ignore values
                     byteIndex++;
+                    break;
+
+                case State.ClearIrqStatus:
+                    clearIrqMask = (ushort)((clearIrqMask << 8) | data);
+                    byteIndex++;
+                    if (byteIndex == 2)
+                    {
+                        lock (stateLock)
+                        {
+                            irqFlags &= (ushort)~clearIrqMask;
+                            IRQ.Set(irqFlags != 0);
+                        }
+                    }
                     break;
 
                 case State.SetRx:
@@ -190,33 +220,40 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         byteIndex++;
                         if (byteIndex == 3)
                         {
-                            EnterRxMode();
+                            SendRxEnter();
                         }
                     }
                     break;
 
                 case State.GetStatus:
-                    // Return status: bits [6:4]=mode, bits [3:1]=cmd_status
-                    // Mode: 0x2=STDBY_RC, 0x5=RX, 0x6=TX
-                    result = 0x22; // STDBY_RC, command OK
+                    lock (stateLock)
+                    {
+                        if (rxMode)
+                            result = 0x52;
+                        else
+                            result = 0x62;
+                    }
                     break;
 
                 case State.GetIrqStatus:
                     if (byteIndex == 0)
                     {
-                        result = (byte)((irqFlags >> 8) & 0xFF);
+                        result = (byte)((latchedIrqFlags >> 8) & 0xFF);
                         byteIndex++;
                     }
                     else
                     {
-                        result = (byte)(irqFlags & 0xFF);
+                        result = (byte)(latchedIrqFlags & 0xFF);
                     }
                     break;
 
                 case State.GetRxBufferStatus:
                     if (byteIndex == 0)
                     {
-                        result = (byte)rxLen;
+                        lock (stateLock)
+                        {
+                            result = (byte)rxLen;
+                        }
                         byteIndex++;
                     }
                     else
@@ -229,12 +266,18 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     // Return RSSI, SNR for LoRa
                     if (byteIndex == 0)
                     {
-                        result = (byte)((-rxRssi / 2) & 0xFF); // SX1262 RSSI format
+                        lock (stateLock)
+                        {
+                            result = (byte)((-rxRssi / 2) & 0xFF); // SX1262 RSSI format
+                        }
                         byteIndex++;
                     }
                     else if (byteIndex == 1)
                     {
-                        result = (byte)((rxSnr / 4) & 0xFF); // SX1262 SNR format
+                        lock (stateLock)
+                        {
+                            result = (byte)((rxSnr / 4) & 0xFF); // SX1262 SNR format
+                        }
                         byteIndex++;
                     }
                     else
@@ -261,17 +304,29 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case 0x83: // SetTx
+                {
                     state = State.SetTx;
-                    if (rxMode)
+                    bool exitRx;
+                    lock (stateLock)
                     {
-                        ExitRxMode();
+                        exitRx = rxMode;
+                        if (exitRx)
+                        {
+                            rxMode = false;
+                            rxOneShot = false;
+                        }
+                    }
+                    if (exitRx)
+                    {
+                        SendRxExit();
                     }
                     TriggerTx();
                     break;
+                }
 
                 case 0x82: // SetRx
                     state = State.SetRx;
-                    // Timeout bytes collected in Transmit(), then EnterRxMode() called
+                    // Timeout bytes collected in Transmit(), then SendRxEnter() called
                     break;
 
                 case 0xC0: // GetStatus
@@ -280,12 +335,15 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                 case 0x12: // GetIrqStatus
                     state = State.GetIrqStatus;
+                    lock (stateLock)
+                    {
+                        latchedIrqFlags = irqFlags;
+                    }
                     break;
 
                 case 0x02: // ClearIrqStatus
                     state = State.ClearIrqStatus;
-                    irqFlags = 0;
-                    IRQ.Set(false);
+                    clearIrqMask = 0;
                     break;
 
                 case 0x13: // GetRxBufferStatus
@@ -310,12 +368,24 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case 0x80: // SetStandby
-                    if (rxMode)
+                {
+                    bool leaveRx;
+                    lock (stateLock)
                     {
-                        ExitRxMode();
+                        leaveRx = rxMode;
+                        if (leaveRx)
+                        {
+                            rxMode = false;
+                            rxOneShot = false;
+                        }
+                    }
+                    if (leaveRx)
+                    {
+                        SendRxExit();
                     }
                     state = State.Idle;
                     break;
+                }
 
                 case 0x84: // SetCad
                 case 0x94: // SetSleep
@@ -341,21 +411,51 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         private void TriggerTx()
         {
-            this.Log(LogLevel.Debug, "TX: {0} bytes", txLen);
-            Busy.Set(true);
-
             if (loopbackMode)
             {
                 TriggerTxLoopback();
-            }
-            else
-            {
-                TriggerTxBridge();
+                return;
             }
 
-            Busy.Set(false);
+            EnsureConnected();
+            if (stream == null)
+            {
+                this.Log(LogLevel.Warning, "TX failed: not connected to simulator");
+                lock (stateLock)
+                {
+                    irqFlags |= 0x0040; // TxDone with implicit error
+                    IRQ.Set(true);
+                }
+                return;
+            }
+
+            this.Log(LogLevel.Debug, "TX: {0} bytes", txLen);
+
+            try
+            {
+                // Protocol: [len:4][type:1][payload_len:2][payload]
+                var msgLen = 3 + txLen;
+                var msg = new byte[4 + msgLen];
+                WriteLE32(msg, 0, (uint)msgLen);
+                msg[4] = 0x10; // MSG_TX
+                WriteLE16(msg, 5, txLen);
+                Array.Copy(txBuffer, 0, msg, 7, txLen);
+
+                lock (writeLock)
+                {
+                    stream.Write(msg, 0, msg.Length);
+                }
+                // TX_DONE (0x11) and the TxDone IRQ are handled asynchronously by
+                // the reader thread, so this SPI transaction returns immediately
+                // instead of blocking on the socket.
+            }
+            catch (Exception e)
+            {
+                this.Log(LogLevel.Warning, "TX error: {0}", e.Message);
+                Disconnect();
+            }
+
             txLen = 0;
-            IRQ.Set(irqFlags != 0);
         }
 
         private void TriggerTxLoopback()
@@ -383,75 +483,79 @@ namespace Antmicro.Renode.Peripherals.Wireless
             }
         }
 
-        private void TriggerTxBridge()
+        private void SendRxEnter()
         {
-            EnsureConnected();
-            if (stream == null)
+            if (loopbackMode)
             {
-                this.Log(LogLevel.Warning, "TX failed: not connected to simulator");
-                irqFlags |= 0x0040; // TxDone with implicit error
+                SendRxEnterLoopback();
                 return;
             }
 
-            try
+            EnsureConnected();
+            if (stream == null)
             {
-                // Protocol: [len:4][type:1][payload_len:2][payload]
-                var msgLen = 3 + txLen;
-                var msg = new byte[4 + msgLen];
-                WriteLE32(msg, 0, (uint)msgLen);
-                msg[4] = 0x10; // MSG_TX
-                WriteLE16(msg, 5, txLen);
-                Array.Copy(txBuffer, 0, msg, 7, txLen);
-
-                stream.Write(msg, 0, msg.Length);
-
-                var resp = ReadMessage();
-                if (resp != null && resp.Length >= 5 && resp[0] == 0x11)
-                {
-                    this.Log(LogLevel.Debug, "TX done, airtime={0}us", ReadLE32(resp, 1));
-                    irqFlags |= 0x0001; // TxDone
-                }
-                else
-                {
-                    this.Log(LogLevel.Warning, "TX failed");
-                }
+                this.Log(LogLevel.Warning, "RX_ENTER failed: not connected to simulator");
+                return;
             }
-            catch (Exception e)
-            {
-                this.Log(LogLevel.Warning, "TX error: {0}", e.Message);
-                Disconnect();
-            }
-        }
 
-        private void EnterRxMode()
-        {
             // Convert SX1262 24-bit timeout (big-endian, 15.625us steps) to microseconds
             uint timeoutSteps = (uint)((rxTimeoutBytes[0] << 16) | (rxTimeoutBytes[1] << 8) | rxTimeoutBytes[2]);
             uint timeoutUs;
+            bool oneShot = timeoutSteps != 0xFFFFFF;
             if (timeoutSteps == 0xFFFFFF)
             {
-                timeoutUs = 0xFFFFFFFF; // Continuous RX
+                // Continuous RX
+                timeoutUs = 0xFFFFFFFF;
             }
             else
             {
+                // 15.625us per step = 15625/1000
                 timeoutUs = (uint)((timeoutSteps * 15625UL) / 1000UL);
             }
 
-            rxMode = true;
-            this.Log(LogLevel.Debug, "RX enter: timeout={0}us", timeoutUs == 0xFFFFFFFF ? "continuous" : timeoutUs.ToString());
-
-            if (loopbackMode)
+            lock (stateLock)
             {
-                EnterRxModeLoopback();
+                rxMode = true;
+                rxOneShot = oneShot;
             }
-            else
+            this.Log(LogLevel.Debug, "RX_ENTER: timeout={0}us oneShot={1}", timeoutUs == 0xFFFFFFFF ? "continuous" : timeoutUs.ToString(), oneShot);
+
+            try
             {
-                EnterRxModeBridge(timeoutUs);
+                // Protocol: [len:4][type:1][timeout_us:4]
+                var msg = new byte[9];
+                WriteLE32(msg, 0, 5); // message length
+                msg[4] = 0x24; // RX_ENTER
+                WriteLE32(msg, 5, timeoutUs);
+
+                lock (writeLock)
+                {
+                    stream.Write(msg, 0, msg.Length);
+                }
+                // RX_PACKET / RX_TIMEOUT arrive asynchronously and are handled by
+                // the reader thread. Do NOT block the SPI bus here — blocking in
+                // RX mode would prevent the node from ever leaving RX to transmit.
+            }
+            catch (Exception e)
+            {
+                this.Log(LogLevel.Warning, "RX_ENTER error: {0}", e.Message);
+                Disconnect();
+                lock (stateLock)
+                {
+                    rxMode = false;
+                    rxOneShot = false;
+                }
             }
         }
 
-        private void EnterRxModeLoopback()
+        private void SendRxEnterLoopback()
         {
+            lock (stateLock)
+            {
+                rxMode = true;
+                rxOneShot = true;
+            }
+
             // In loopback mode, check if there's queued data from a previous TX
             if (loopbackDataAvailable)
             {
@@ -459,6 +563,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 irqFlags |= 0x0002; // RxDone
                 loopbackDataAvailable = false;
                 rxMode = false;
+                rxOneShot = false;
                 IRQ.Set(true);
                 this.Log(LogLevel.Debug, "Loopback: immediate RX, {0} bytes", rxLen);
             }
@@ -470,53 +575,31 @@ namespace Antmicro.Renode.Peripherals.Wireless
             }
         }
 
-        private void EnterRxModeBridge(uint timeoutUs)
-        {
-            EnsureConnected();
-            if (stream == null)
-            {
-                this.Log(LogLevel.Warning, "RX enter failed: not connected to simulator");
-                return;
-            }
-
-            try
-            {
-                // Protocol: [len:4][type:1][timeout_us:4]
-                var msg = new byte[9];
-                WriteLE32(msg, 0, 5); // message length
-                msg[4] = 0x24; // RX_ENTER
-                WriteLE32(msg, 5, timeoutUs);
-
-                stream.Write(msg, 0, msg.Length);
-
-                // Block waiting for RX_PACKET or RX_TIMEOUT from simulation
-                WaitForRxResponse();
-            }
-            catch (Exception e)
-            {
-                this.Log(LogLevel.Warning, "RX enter error: {0}", e.Message);
-                Disconnect();
-                rxMode = false;
-            }
-        }
-
-        private void ExitRxMode()
+        private void SendRxExit()
         {
             if (loopbackMode)
             {
-                pendingLoopbackRx = false;
-                rxMode = false;
+                lock (stateLock)
+                {
+                    pendingLoopbackRx = false;
+                    rxMode = false;
+                    rxOneShot = false;
+                }
                 this.Log(LogLevel.Debug, "Loopback: RX exit");
                 return;
             }
 
             if (stream == null)
             {
-                rxMode = false;
+                lock (stateLock)
+                {
+                    rxMode = false;
+                    rxOneShot = false;
+                }
                 return;
             }
 
-            this.Log(LogLevel.Debug, "RX exit");
+            this.Log(LogLevel.Debug, "RX_EXIT");
 
             try
             {
@@ -525,95 +608,21 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 WriteLE32(msg, 0, 1); // message length = 1 (just the type byte)
                 msg[4] = 0x26; // MSG_RX_EXIT
 
-                stream.Write(msg, 0, msg.Length);
+                lock (writeLock)
+                {
+                    stream.Write(msg, 0, msg.Length);
+                }
             }
             catch (Exception e)
             {
-                this.Log(LogLevel.Warning, "RX exit error: {0}", e.Message);
+                this.Log(LogLevel.Warning, "RX_EXIT error: {0}", e.Message);
                 Disconnect();
             }
 
-            rxMode = false;
-        }
-
-        private void WaitForRxResponse()
-        {
-            // Block until we receive RX_PACKET (0x27) or RX_TIMEOUT (0x28)
-            if (stream == null)
-                return;
-
-            Busy.Set(true);
-
-            try
+            lock (stateLock)
             {
-                // Remove receive timeout - we need to block until response
-                socket.ReceiveTimeout = 0;
-
-                var resp = ReadMessage();
-                if (resp == null || resp.Length < 1)
-                {
-                    this.Log(LogLevel.Warning, "RX: no response from simulation");
-                    rxMode = false;
-                    Busy.Set(false);
-                    return;
-                }
-
-                byte msgType = resp[0];
-
-                if (msgType == 0x27) // RX_PACKET
-                {
-                    // Format: type(1) + payload_len(2 LE) + payload + rssi(2 LE signed) + snr(2 LE signed)
-                    if (resp.Length < 5)
-                    {
-                        this.Log(LogLevel.Warning, "RX_PACKET: message too short");
-                        rxMode = false;
-                        Busy.Set(false);
-                        return;
-                    }
-
-                    rxLen = ReadLE16(resp, 1);
-                    int payloadEnd = 3 + rxLen;
-
-                    if (resp.Length < payloadEnd + 4)
-                    {
-                        this.Log(LogLevel.Warning, "RX_PACKET: payload/metadata truncated");
-                        rxMode = false;
-                        Busy.Set(false);
-                        return;
-                    }
-
-                    Array.Copy(resp, 3, rxBuffer, 0, Math.Min(rxLen, (ushort)256));
-                    rxRssi = (short)ReadLE16(resp, payloadEnd);
-                    rxSnr = (short)ReadLE16(resp, payloadEnd + 2);
-
-                    this.Log(LogLevel.Debug, "RX_PACKET: {0} bytes, RSSI={1}, SNR={2}", rxLen, rxRssi, rxSnr);
-                    irqFlags |= 0x0002; // RxDone
-                }
-                else if (msgType == 0x28) // RX_TIMEOUT
-                {
-                    this.Log(LogLevel.Debug, "RX_TIMEOUT");
-                    irqFlags |= 0x0200; // Timeout
-                }
-                else
-                {
-                    this.Log(LogLevel.Warning, "RX: unexpected message type 0x{0:X2}", msgType);
-                }
-
                 rxMode = false;
-                Busy.Set(false);
-                IRQ.Set(irqFlags != 0);
-            }
-            catch (Exception e)
-            {
-                this.Log(LogLevel.Warning, "WaitForRxResponse error: {0}", e.Message);
-                Disconnect();
-                rxMode = false;
-                Busy.Set(false);
-            }
-            finally
-            {
-                if (socket != null)
-                    socket.ReceiveTimeout = 100;
+                rxOneShot = false;
             }
         }
 
@@ -622,41 +631,166 @@ namespace Antmicro.Renode.Peripherals.Wireless
             if (loopbackMode)
                 return;
 
-            if (socket != null && socket.Connected)
-                return;
+            lock (connectionLock)
+            {
+                if (socket != null && socket.Connected)
+                    return;
 
-            try
-            {
-                socket?.Close();
-                socket = new TcpClient();
-                socket.NoDelay = true;
-                socket.ReceiveTimeout = 100;
-                socket.Connect(simHost, simPort);
-                stream = socket.GetStream();
-                this.Log(LogLevel.Info, "Connected to simulator at {0}:{1}", simHost, simPort);
-            }
-            catch (Exception e)
-            {
-                this.Log(LogLevel.Warning, "Connect failed: {0}", e.Message);
-                socket = null;
-                stream = null;
+                try
+                {
+                    Disconnect();
+                    socket = new TcpClient();
+                    socket.NoDelay = true;
+                    socket.ReceiveTimeout = 100;
+                    socket.Connect(simHost, simPort);
+                    stream = socket.GetStream();
+                    this.Log(LogLevel.Info, "Connected to simulator at {0}:{1}", simHost, simPort);
+                    StartReader(socket, stream);
+                }
+                catch (Exception e)
+                {
+                    this.Log(LogLevel.Warning, "Connect failed: {0}", e.Message);
+                    socket = null;
+                    stream = null;
+                }
             }
         }
 
         private void Disconnect()
         {
-            stream = null;
-            socket?.Close();
-            socket = null;
+            lock (connectionLock)
+            {
+                var oldReader = readerThread;
+                var oldSocket = socket;
+
+                readerThread = null;
+                stream = null;
+                socket = null;
+                oldSocket?.Close();
+                if (oldReader != null && oldReader != System.Threading.Thread.CurrentThread)
+                {
+                    oldReader.Join();
+                }
+            }
         }
 
-        private byte[] ReadMessage()
+        // Start the background reader for the current connection. Reads block
+        // (ReceiveTimeout = 0); Disconnect() closes the socket to break out.
+        private void StartReader(TcpClient readerSocket, NetworkStream readerStream)
+        {
+            var thread = new System.Threading.Thread(
+                () => ReaderLoop(readerSocket, readerStream))
+            {
+                IsBackground = true,
+                Name = "sx1262-sim-reader",
+            };
+            readerThread = thread;
+            thread.Start();
+        }
+
+        private void ReaderLoop(TcpClient readerSocket, NetworkStream readerStream)
+        {
+            try
+            {
+                readerSocket.ReceiveTimeout = 0; // block for full messages
+            }
+            catch (Exception)
+            {
+                // socket already gone
+            }
+
+            while (true)
+            {
+                byte[] resp;
+                try
+                {
+                    resp = ReadMessage(readerStream);
+                }
+                catch (Exception)
+                {
+                    break; // socket closed / error
+                }
+
+                if (resp == null)
+                {
+                    break; // peer closed
+                }
+                if (resp.Length < 1)
+                {
+                    continue;
+                }
+                DispatchMessage(resp);
+            }
+        }
+
+        // Dispatch an async message from the simulator to IRQ flags.
+        // Runs on the reader thread, NOT the SPI/emulation thread.
+        private void DispatchMessage(byte[] resp)
+        {
+            lock (stateLock)
+            {
+                switch (resp[0])
+                {
+                    case 0x11: // TX_DONE
+                        this.Log(LogLevel.Debug, "TX done (async)");
+                        irqFlags |= 0x0001; // TxDone
+                        IRQ.Set(true);
+                        break;
+
+                    case 0x27: // RX_PACKET (async push)
+                    case 0x21: // RX_POLL response
+                    {
+                        if (resp.Length < 5 || !rxMode)
+                        {
+                            break;
+                        }
+                        var packetLen = ReadLE16(resp, 1);
+                        int payloadEnd = 3 + packetLen;
+                        if (packetLen > rxBuffer.Length || resp.Length < payloadEnd + 4)
+                        {
+                            break;
+                        }
+                        rxLen = packetLen;
+                        Array.Copy(resp, 3, rxBuffer, 0, rxLen);
+                        rxRssi = (short)ReadLE16(resp, payloadEnd);
+                        rxSnr = (short)ReadLE16(resp, payloadEnd + 2);
+                        if (rxOneShot)
+                        {
+                            rxMode = false;
+                            rxOneShot = false;
+                        }
+                        this.Log(LogLevel.Debug, "RX_PACKET {0} bytes (async) oneShot={1}", rxLen, rxOneShot);
+                        irqFlags |= 0x0002; // RxDone
+                        IRQ.Set(true);
+                        break;
+                    }
+
+                    case 0x28: // RX_TIMEOUT
+                        if (!rxMode)
+                        {
+                            break;
+                        }
+                        rxMode = false;
+                        rxOneShot = false;
+                        this.Log(LogLevel.Debug, "RX_TIMEOUT (async)");
+                        irqFlags |= 0x0200; // Timeout
+                        IRQ.Set(true);
+                        break;
+
+                    default:
+                        this.Log(LogLevel.Warning, "reader: unexpected message 0x{0:X2}", resp[0]);
+                        break;
+                }
+            }
+        }
+
+        private byte[] ReadMessage(NetworkStream readerStream)
         {
             var lenBuf = new byte[4];
             int read = 0;
             while (read < 4)
             {
-                int n = stream.Read(lenBuf, read, 4 - read);
+                int n = readerStream.Read(lenBuf, read, 4 - read);
                 if (n <= 0) return null;
                 read += n;
             }
@@ -669,7 +803,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             read = 0;
             while (read < len)
             {
-                int n = stream.Read(data, read, len - read);
+                int n = readerStream.Read(data, read, len - read);
                 if (n <= 0) return null;
                 read += n;
             }
@@ -737,11 +871,37 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private short rxRssi;
         private short rxSnr;
         private ushort irqFlags;
+        private ushort latchedIrqFlags;
+        private ushort clearIrqMask;
         private bool rxMode;
+        private bool rxOneShot;
         private byte[] rxTimeoutBytes = new byte[3];
 
         // Loopback mode state
         private bool loopbackDataAvailable;
         private bool pendingLoopbackRx;
+
+        // Background reader: ALL socket reads happen here so the SPI Transmit()
+        // path never blocks. A blocking read on the RX-enter path (the old
+        // WaitForRxResponse) froze the SPI bus while the radio was in RX, which
+        // meant a node could never leave RX to transmit — both test nodes then
+        // deadlocked waiting for a packet neither could send. Messages from
+        // the simulator (TX_DONE, RX_PACKET, RX_TIMEOUT) are now dispatched to
+        // the IRQ flags asynchronously.
+        //
+        // One-shot RX contract:
+        // - SendRxEnter with timeout != 0xFFFFFF sets rxMode=true, rxOneShot=true.
+        // - On RX_PACKET: if (rxOneShot) { rxMode=false; rxOneShot=false; } (exits after 1st packet);
+        //   continuous mode (0xFFFFFF timeout, rxOneShot=false) keeps rxMode=true to accept multiple packets.
+        // - RX_TIMEOUT always clears both rxMode and rxOneShot.
+        // - SetTx/SetStandby/SendRxExit clear both flags.
+        // - GetStatus reflects current rxMode under lock.
+        // - ALL rxMode/rxOneShot/irqFlags/rxLen/etc accesses use lock(stateLock)
+        //   to eliminate races between SPI Transmit(), reader thread, OnGPIO CS
+        //   FinishTransmission(), and SetRx state machine.
+        private System.Threading.Thread readerThread;
+        private readonly object writeLock = new object();
+        private readonly object stateLock = new object();
+        private readonly object connectionLock = new object();
     }
 }

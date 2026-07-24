@@ -185,6 +185,24 @@ Run in CI:
 clang-tidy --config-file=.clang-tidy lichen/subsys/lichen/**/*.c
 ```
 
+### cppcheck (Mandatory)
+
+cppcheck is the secondary static analyzer, complementary to clang-tidy. It
+catches classes that clang-tidy misses: uninitialized variables, buffer
+overflows, null pointer dereferences, and style issues.
+
+Run in CI with curated suppressions for vendored code and Zephyr macro
+noise:
+```bash
+cppcheck --error-exitcode=1 --enable=warning,style,performance \
+  --suppress=missingIncludeSystem --inline-suppr \
+  --suppressions-list=lichen/.cppcheck-suppressions lichen/
+```
+
+Suppressions are documented in `lichen/.cppcheck-suppressions`. Each entry
+includes a rationale. Correctness classes (uninitvar, comparePointers,
+syntaxError outside known files) always fail the build.
+
 ### Coverity Scan (Weekly)
 
 Coverity Scan provides deeper static analysis than clang-tidy. It is free for

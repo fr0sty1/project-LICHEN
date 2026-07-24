@@ -440,6 +440,145 @@ class TestCaptureEffect:
         assert result is None
 
 
+class TestFrequencyFilter:
+    """Test frequency filtering for LR-FHSS support."""
+
+    def test_frequency_filter_matches(self) -> None:
+        """rx_frequency_hz filter includes transmission on matching frequency."""
+        medium = Medium()
+
+        tx = medium.start_tx(
+            node_id="tx_node",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+        )
+
+        # Override the default frequency
+        tx.frequency_hz = 920_000_000
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(100.0, 0.0, 0.0),
+            time_us=tx.start_time_us + 1000,
+            rx_frequency_hz=920_000_000,
+        )
+
+        assert len(candidates) == 1
+        assert candidates[0].transmission is tx
+
+    def test_frequency_filter_excludes_nonmatching(self) -> None:
+        """rx_frequency_hz filter excludes transmission on different frequency."""
+        medium = Medium()
+
+        tx = medium.start_tx(
+            node_id="tx_node",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+        )
+
+        # Override the default frequency
+        tx.frequency_hz = 920_000_000
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(100.0, 0.0, 0.0),
+            time_us=tx.start_time_us + 1000,
+            rx_frequency_hz=915_000_000,
+        )
+
+        assert len(candidates) == 0
+
+    def test_frequency_filter_combined_with_channel(self) -> None:
+        """rx_frequency_hz filter works alongside channel filter."""
+        medium = Medium()
+
+        # Same channel but different frequency
+        tx1 = medium.start_tx(
+            node_id="tx1",
+            payload=b"hello1",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            channel=1,
+        )
+        tx1.frequency_hz = 920_000_000
+
+        tx2 = medium.start_tx(
+            node_id="tx2",
+            payload=b"hello2",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            channel=1,
+        )
+        tx2.frequency_hz = 915_000_000
+
+        # Should only match tx1 by frequency
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(100.0, 0.0, 0.0),
+            time_us=1000 + 1000,
+            channel=1,
+            rx_frequency_hz=920_000_000,
+        )
+
+        assert len(candidates) == 1
+        assert candidates[0].transmission is tx1
+
+    def test_detect_activity_frequency_filter(self) -> None:
+        """detect_activity respects rx_frequency_hz filter."""
+        medium = Medium()
+
+        tx = medium.start_tx(
+            node_id="tx_node",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+        )
+        tx.frequency_hz = 920_000_000
+
+        # Matching frequency
+        assert medium.detect_activity(
+            position=(100.0, 0.0, 0.0),
+            time_us=1000 + 1000,
+            rx_frequency_hz=920_000_000,
+        )
+
+        # Non-matching frequency
+        assert not medium.detect_activity(
+            position=(100.0, 0.0, 0.0),
+            time_us=1000 + 1000,
+            rx_frequency_hz=915_000_000,
+        )
+
+    def test_frequency_filter_nonexcluded(self) -> None:
+        """No frequency filter passes all transmissions regardless of frequency."""
+        medium = Medium()
+
+        tx = medium.start_tx(
+            node_id="tx_node",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+        )
+        tx.frequency_hz = 920_000_000
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(100.0, 0.0, 0.0),
+            time_us=tx.start_time_us + 1000,
+        )
+
+        assert len(candidates) == 1
+        assert candidates[0].transmission is tx
+
+
 class TestSelfTransmission:
     """Test that nodes don't receive their own transmissions."""
 

@@ -287,7 +287,7 @@ mod tests {
                 assert_eq!(code, 4);
                 assert_eq!(message.as_ref(), "hello");
             }
-            _ => panic!("wrong variant"),
+            _ => assert!(matches!(e, SimError::Server { .. })),
         }
     }
 
