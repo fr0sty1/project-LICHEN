@@ -135,7 +135,7 @@ fn write_fragment(fragment: &Fragment<'_>) -> Vec<u8> {
 }
 
 fn write_response(response: ReceiverResponse) -> Vec<u8> {
-    let mut wire = [0u8; 10];
+    let mut wire = [0u8; 11];
     let length = response.write_to(&mut wire).unwrap();
     wire[..length].to_vec()
 }
@@ -143,7 +143,7 @@ fn write_response(response: ReceiverResponse) -> Vec<u8> {
 #[test]
 fn shared_vectors_drive_production_implementations() {
     let document: Document = serde_json::from_str(VECTORS_JSON).expect("invalid vector JSON");
-    assert_eq!(document.format_version, 1);
+    assert_eq!(document.format_version, 2);
     assert!(!document.description.is_empty());
     let mut categories = BTreeSet::new();
 
@@ -274,7 +274,7 @@ fn exercise_controls(controls: &Controls) {
     for (rule_id, set) in [(0x78, &controls.rule_78), (0x79, &controls.rule_79)] {
         for (window, expected) in [(0, &set.ack_success_w0), (1, &set.ack_success_w1)] {
             let ack = Ack::new(rule_id, window, 0, true);
-            let mut wire = [0u8; 10];
+    let mut wire = [0u8; 11];
             let length = ack.write_to(&mut wire).unwrap();
             assert_eq!(&wire[..length], expand(expected));
             assert_eq!(Ack::from_bytes(&wire[..length]).unwrap(), ack);
@@ -293,7 +293,7 @@ fn exercise_controls(controls: &Controls) {
 }
 
 fn exercise_retry(vector: &Vector) {
-    assert_eq!(vector.attempts_before, Some(4));
+    assert_eq!(vector.attempts_before, Some(3));
     assert_eq!(vector.expect_status.as_deref(), Some("aborted"));
     let rule_id = vector.rule_id.unwrap();
     let expected = expand(vector.expected_message.as_ref().unwrap());
@@ -305,7 +305,7 @@ fn exercise_retry(vector: &Vector) {
         let packet = [0xa5];
         let mut sender = FragmentSender::new(&packet, rule_id, 1).unwrap();
         sender.start().unwrap();
-        for _ in 1..4 {
+        for _ in 1..3 {
             sender.timeout().unwrap();
         }
         let mut output = sender.timeout().unwrap();
@@ -316,7 +316,7 @@ fn exercise_retry(vector: &Vector) {
     } else {
         let mut storage = [0u8; 1];
         let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
-        for _ in 0..4 {
+        for _ in 0..3 {
             receiver.receive_bytes(&[rule_id, 0x80]).unwrap();
         }
         let result = receiver.receive_bytes(&[rule_id, 0x80]).unwrap();

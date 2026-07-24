@@ -30,7 +30,7 @@ fn sender_receiver_literal_recovery() {
     };
     let mut wire = [0u8; 193];
     let length = ack.write_to(&mut wire).unwrap();
-    assert_eq!(&wire[..length], &[0x78, 0x20, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(&wire[..length], &[0x78, 0x00, 0x3e, 0x80, 0, 0, 0, 0, 0, 0, 0]);
 
     let mut output = sender.handle_ack(ack);
     sender.write_next(&mut output, &mut wire).unwrap().unwrap();
@@ -208,10 +208,10 @@ fn ack_request_after_completion_starts_empty_context() {
     assert_eq!(result.packet_len, None);
     assert_eq!(receiver.packet(), None);
     assert!(!receiver.is_done());
-    let mut wire = [0xff; 10];
+    let mut wire = [0xff; 11];
     let length = result.response.unwrap().write_to(&mut wire).unwrap();
-    assert_eq!(length, 10);
-    assert_eq!(&wire[..length], &[0x78, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(length, 11);
+    assert_eq!(&wire[..length], &[0x78, 0, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]);
 }
 
 #[test]

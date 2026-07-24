@@ -19,7 +19,7 @@ pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 pub const TILE_SIZE: usize = 187;
 pub const WINDOW_SIZE: usize = 63;
 pub const BITMAP_MASK: u64 = (1u64 << 63) - 1;
-pub const MAX_PACKET_SIZE: usize = 16384;
+pub const MAX_PACKET_SIZE: usize = 23562;
 pub const DEFAULT_RECEIVER_LIMIT: usize = 1281;
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
@@ -212,6 +212,9 @@ impl<'a> Fragment<'a> {
             }
             if window == 1 && fcn == 0 {
                 return Err(FragmentError::InvalidFcn);
+            }
+            if data[data.len() - 1] & 1 != 0 {
+                return Err(FragmentError::NonZeroPadding);
             }
             if out.len() < TILE_SIZE {
                 return Err(BufferTooSmall::new(TILE_SIZE, out.len()).into());
