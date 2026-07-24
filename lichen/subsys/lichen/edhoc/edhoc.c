@@ -388,7 +388,13 @@ static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 			       uint8_t *out, size_t out_size, size_t *out_len)
 {
 	/* external_aad = << TH, CRED >> */
-	uint8_t ext_aad[96];
+	/* Buffer large enough for TH (32 bytes + ~3 CBOR header) plus
+	 * credentials up to 1024 bytes (~1027 with CBOR header).
+	 * Callers with larger credentials (e.g. full X.509 certs per RFC 9528)
+	 * must use the non-stack alternative; zcbor will fail gracefully
+	 * if ext_aad overflows.
+	 */
+	uint8_t ext_aad[1056];
 	ZCBOR_STATE_E(zse_ext, 0, ext_aad, sizeof(ext_aad), 0);
 	if (!zcbor_bstr_encode_ptr(zse_ext, th, 32)) {
 		return -EINVAL;
