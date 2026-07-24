@@ -644,6 +644,11 @@ class LinkLayer:
         with <100 peers and fast Ed25519 verification, this is acceptable.
         If it becomes a bottleneck, we can add sender hints.
 
+        SEMANTICS: This method uses peer_lookup_all() for exhaustive search.
+        It does NOT call peer_lookup() with an empty hint (b""), because
+        empty bytes is not a valid IID and the callback's behavior for that
+        input is undefined. See project-LICHEN-3skp.
+
         Returns:
             PeerIdentity if found and signature valid, None otherwise.
         """
@@ -663,33 +668,18 @@ class LinkLayer:
             logger.debug("RX frame from self (loopback)")
             return PeerIdentity.from_pubkey(self.identity.pubkey)
 
-        # Try peer lookup for broadcast (no specific destination)
-        # TODO: This is inefficient. In production, the frame should contain
-        # sender IID so we can look up directly.
-        #
-        # For now, we rely on the peer_lookup callback to iterate candidates.
-        # The callback returns None if no match found. We pass empty bytes as
-        # the hint since current frame format lacks sender IID.
-        peer = self.peer_lookup(b"")
-        if peer is not None and verify(peer.pubkey, signable, signature):
-            return peer
-
-        # Brute-force: try each known peer until signature verifies.
+        # Exhaustive search: try each known peer until signature verifies.
         # O(n) is unavoidable without sender IID in frame format.
         #
-        # Subtle optimization in the condition below: '(peer is None or
-        # candidate.pubkey != peer.pubkey)'. If peer_lookup(b'') returned a
-        # candidate that failed verification above, we skip re-verifying it
-        # here. This avoids redundant (expensive) signature checks.
-        #
-        # Correct interaction between peer_lookup (hint-based, often first
-        # match) and peer_lookup_all (exhaustive list). The logic ensures
-        # we don't miss valid senders while optimizing common cases.
+        # peer_lookup_all() returns the complete list of known peers;
+        # the signature itself disambiguates the sender.
+        # peer_lookup(hint) is reserved for future hint-based lookups when
+        # the frame format includes a sender IID. It MUST NOT be called
+        # with b"" as a sentinel — that creates ambiguous semantics
+        # (see project-LICHEN-3skp).
         if self.peer_lookup_all is not None:
             for candidate in self.peer_lookup_all():
-                if (peer is None or candidate.pubkey != peer.pubkey) and verify(
-                    candidate.pubkey, signable, signature
-                ):
+                if verify(candidate.pubkey, signable, signature):
                     return candidate
 
         return None
