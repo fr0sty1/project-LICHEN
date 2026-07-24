@@ -1588,6 +1588,7 @@ class NativeClientApp(App[None]):
         self.diagnostics = DiagnosticsState()
         self.radio_tui = RadioTuiState()
         self.rf_health = RFHealthState()
+        self._connection_lock = asyncio.Lock()
         self._observe_task: asyncio.Task[None] | None = None
         self._log_task: asyncio.Task[None] | None = None
         self._raw_rx_task: asyncio.Task[None] | None = None
@@ -1963,29 +1964,30 @@ class NativeClientApp(App[None]):
             self.query_one("#native-status", NativeStatusBar).set_status(self.status)
             self.query_one("#active-pane", ActivePane).set_mode(self.status.context)
             return
-        try:
-            await self._disconnect_current_client()
-        except Exception as exc:
-            if next_client is not None and candidate_ready:
-                with suppress(Exception):
-                    await self._disconnect_client(next_client)
-            detail = f"{mode.value} switch failed: {exc}"
-            self.prompt_mode = None
-            self.status = ShellStatus(
-                context=self.status.context,
-                mode=self.status.mode,
-                state=UiState.ERROR,
-                device=self.status.device,
-                battery=self.status.battery,
-                time=self.status.time,
-                unread=self.status.unread,
-                target=self.status.target,
-            )
-            self.query_one("#native-status", NativeStatusBar).set_status(self.status)
-            self.query_one("#active-pane", ActivePane).set_connection_error(detail)
-            return
-        await self._cancel_live_tasks()
-        self.client = next_client
+        async with self._connection_lock:
+            try:
+                await self._disconnect_current_client()
+            except Exception as exc:
+                if next_client is not None and candidate_ready:
+                    with suppress(Exception):
+                        await self._disconnect_client(next_client)
+                detail = f"{mode.value} switch failed: {exc}"
+                self.prompt_mode = None
+                self.status = ShellStatus(
+                    context=self.status.context,
+                    mode=self.status.mode,
+                    state=UiState.ERROR,
+                    device=self.status.device,
+                    battery=self.status.battery,
+                    time=self.status.time,
+                    unread=self.status.unread,
+                    target=self.status.target,
+                )
+                self.query_one("#native-status", NativeStatusBar).set_status(self.status)
+                self.query_one("#active-pane", ActivePane).set_connection_error(detail)
+                return
+            self.client = next_client
+            await self._cancel_live_tasks()
         self.prompt_mode = None
         self.status = ShellStatus(
             context=self.status.context,
