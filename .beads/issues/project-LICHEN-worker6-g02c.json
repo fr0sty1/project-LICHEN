@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-g02c",
+  "title": "[review] project-LICHEN-worker6-cjbc: Ack::from_bytes_for extracts window bit from wrong position (FRAGMENT_N=6, should be 7)",
+  "description": "In `rust/lichen-schc/src/fragment.rs` line 287, `Ack::from_bytes_for` extracts the W (window) bit via:\n```rust\nlet window = (data[1] \u003e\u003e FRAGMENT_N) \u0026 1;  // FRAGMENT_N = 6, i.e. \u003e\u003e 6\n```\nBut `write_to` (line 252, 264) writes the window bit at position 7 via `self.window \u003c\u003c 7`. This means `0x40` (window 0, C=1) is incorrectly parsed as window=1 because `(0x40 \u003e\u003e 6) \u0026 1 == 1`.\n\n**Fix**: Change line 287 to `let window = (data[1] \u003e\u003e 7) \u0026 1;`\n\n**Impact**: The `exercise_controls` test in `fragmentation_vectors.rs` fails at line 284 for window=0 ACK success (`7840`). This is pre-existing (reproduces on parent commit). The test currently fails on both the reviewed commit and its parent.\n\n**Verification**: `cargo test -p lichen-schc --test fragmentation_vectors` reproduces the failure.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:38:57.316194505Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:38:57.316194505Z"
+}
