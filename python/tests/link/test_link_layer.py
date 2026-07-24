@@ -538,6 +538,43 @@ class TestLinkLayerRoundTrip:
         assert result.frame.payload == original_payload
         assert result.sender.pubkey == peer_identity.pubkey
 
+    @pytest.mark.asyncio
+    async def test_key_change_detection(
+        self,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+        peer_identity: Identity,
+    ):
+        """Overwriting pinned key then receiving from same peer yields KEY_CHANGE."""
+        peer_radio = MockRadio()
+
+        def peer_lookup(hint: bytes) -> PeerIdentity | None:
+            return PeerIdentity.from_pubkey(peer_identity.pubkey)
+
+        node_ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=peer_lookup,
+        )
+
+        peer_ll = LinkLayer(
+            radio=peer_radio,
+            identity=peer_identity,
+            peer_lookup=lambda h: None,
+        )
+
+        await peer_ll.send(b"first")
+        mock_radio.queue_rx(peer_radio.tx_history[0])
+        result = await node_ll.receive(timeout_ms=100)
+        assert isinstance(result, RxFrame)
+
+        node_ll._pinned_keys[peer_identity.iid] = bytes([0x99] * 32)
+
+        await peer_ll.send(b"second")
+        mock_radio.queue_rx(peer_radio.tx_history[0])
+        result2 = await node_ll.receive(timeout_ms=100)
+        assert result2 == ReceiveError.KEY_CHANGE
+
 
 class TestSequenceManagement:
     """Tests for sequence number management."""

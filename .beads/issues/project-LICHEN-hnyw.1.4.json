@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-hnyw.1.4",
   "title": "Remove or update outdated merge-conflict comments in lichen-hal/src/lib.rs and related files",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

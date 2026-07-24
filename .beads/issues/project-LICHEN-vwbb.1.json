@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vwbb.1",
   "title": "Canonicalize L2/CoAP comments in lichen/apps/gateway/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "description": "Adopt the consolidated Full L2 + CoAP path comments, radio arbitration notes, and TDMA/TINYCRYPT details from the puck canonical version. Remove any outdated merge artifacts. Ensure gateway-specific settings (WiFi, RPL root, stacks) remain.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

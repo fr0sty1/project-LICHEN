@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.4",
   "title": "Add reboot/NVM failure test coverage for OSCORE SSN persistence",
   "description": "Extend lichen/tests/oscore/src/main.c and test vectors to cover reboot scenarios, NVM callback failures, SSN restore after NVM error, and verify no nonce reuse. Update test vectors if needed for persistence edge cases. Must pass all interop tests.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

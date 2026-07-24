@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-o424",
+  "title": "[review] project-LICHEN-5pe7: dead import crypto_scalarmult_base in generate.py",
+  "description": "In test/vectors/generate.py line 2183, 'from nacl.bindings import crypto_scalarmult_base' is imported but never used in the edhoc_vectors() function. The ephemeral keys are now passed in directly from deterministic seeds rather than derived via scalarmult. Remove the unused import.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:00:40.614053292Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:00:40.614053292Z"
+}

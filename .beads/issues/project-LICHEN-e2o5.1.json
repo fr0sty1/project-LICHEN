@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-e2o5.1",
   "title": "coap_dtn.c: implement deaddrop_get using DTN retrieve_for + senml_encode_deaddrop per spec 12-apps and LCI",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

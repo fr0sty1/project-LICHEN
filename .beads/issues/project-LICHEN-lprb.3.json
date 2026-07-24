@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-lprb.3",
   "title": "Update lichen-node/src/lib.rs to reflect deferred boardconfig changes from worker1 merge",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

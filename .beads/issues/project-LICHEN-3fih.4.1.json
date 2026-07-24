@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3fih.4.1",
   "title": "Add strict bounds checking and error handling to all snprintf calls in lichen/coap/",
   "description": "Audit and fix remaining snprintf in coap_config.c, coap_keys.c, coap_location.c, coap_msg.c, coap_server.c with proper return value checks to prevent truncation or stack issues. Follow pattern from routes prefix.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

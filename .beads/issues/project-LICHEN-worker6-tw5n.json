@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-tw5n",
+  "title": "[rereview] project-LICHEN-zt3c.13: stale ULA/GUA reference in spec/03-adaptation.md line 71",
+  "description": "Commit e9528d8e5 addressed stale ULA/GUA in 5 spec files but missed one: spec/03-adaptation.md line 71 still reads 'ULA/GUA with /64 prefix MSB match' for Rule 1 description. Should say '02xx with /64 prefix MSB match' (or 'mesh prefix with /64 prefix MSB match') to align with single-primary 02xx model. The same file's Rule 4 entry was correctly updated to '02xx' (line 74) but Rule 1 (line 71) was overlooked.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:15:47.014127571Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:15:47.014127571Z"
+}

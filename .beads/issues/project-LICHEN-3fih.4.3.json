@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3fih.4.3",
   "title": "Fix routes prefix snprintf, CBOR partial write prevention in encode_routes_cbor and related encoders",
   "description": "Strengthen snprintf check for prefix_buf in lichen_coap_encode_routes_cbor (already partial check exists), ensure prefix_buf size is sufficient for IPv6+/len (update if needed), propagate errors strictly to avoid any partial CBOR output in status/neighbors/routes. Align with CCP-17 capacity rules.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

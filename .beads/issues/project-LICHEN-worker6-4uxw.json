@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-4uxw",
+  "title": "[review] project-LICHEN-6mij.2.4: confessions_post unchanged — still uses old inline OSCORE pattern",
+  "description": "In coap_dtn.c:238-314, confessions_post() was NOT refactored to use coap_oscore_auth_mutating(). It still replicates the old inline OSCORE unprotect/peer_eui64/ifdef pattern that the commit claims to have extracted into the shared helper. This is a consistency and maintainability issue — deaddrop_post and msg_inbox_post were updated but confessions_post was left behind. Fix: convert confessions_post to use coap_oscore_auth_mutating() like the other two mutating resources.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:23.630787493Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:23.630787493Z"
+}

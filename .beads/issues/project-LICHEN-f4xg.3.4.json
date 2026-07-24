@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-f4xg.3.4",
   "title": "Consolidate duplicate SENML_CBOR_CONTENT_FORMAT definition between senml.h and coap_server.h",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

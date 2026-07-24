@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-gzws",
+  "title": "[review] project-LICHEN-5pe7: empty payload file committed",
+  "description": "An empty file `payload` (0 bytes) was committed in this change. No purpose, license header, or documentation. Likely an accidental `git add .$ artifact. Should be removed. File: `payload`",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:59:13.308376393Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:59:13.308376393Z"
+}

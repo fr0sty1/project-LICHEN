@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kudc.7",
   "title": "Python simulator: align CCP-16, TDMA, load balancing, CBOR signaling, test vector validation with spec/02a",
   "description": "Update python/src/lichen/sim/ (tdma.py, node.py, medium.py) and test runners to exactly match spec tables for thresholds, density/load_factor/EMA metrics, adaptive SF, desync recovery. Ensure all ccp*.json vectors pass with independent oracles. Fix any signaling/CBOR mismatches.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

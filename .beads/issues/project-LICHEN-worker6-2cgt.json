@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-2cgt",
+  "title": "[review] project-LICHEN-636h.3: SX1262.cs ReaderLoop DispatchMessage can silently die (P3)",
+  "description": "File: .extraction/renode-lora-peripherals/peripherals/sx126x/SX1262.cs:723\n\nDispatchMessage(resp) is called from ReaderLoop without a try/catch. If DispatchMessage throws (e.g., IndexOutOfRangeException from a malformed simulator message), the exception propagates to ReaderLoop catch (Exception) { break; } at line 710, which exits the reader loop. No error is logged.\n\nImpact: Subsequent RX_PACKET/TX_DONE notifications from the simulator are lost. TX operations write to a live socket but receive no responses, leaving the simulated radio in an inconsistent state.\n\nFix: Wrap DispatchMessage(resp) in a try/catch that logs the error and continues the loop instead of breaking.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:00:19.593004423Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:00:19.593004423Z"
+}

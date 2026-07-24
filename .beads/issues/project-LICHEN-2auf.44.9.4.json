@@ -4,7 +4,7 @@
   "description": "Preserve canonical prefix length through Python DAO state, owner path, grouped updates, longest-prefix lookup, lifecycle, capacity, and authorization using shared vectors.",
   "acceptance_criteria": "Python passes canonical prefix routing vectors and rejects malformed or unauthorized advertisements atomically.",
   "notes": "THE RIGHT THING:\n1. Read spec/05-routing.md section on prefix DAO\n2. Reference impl: rust/lichen-rpl/src/routing.rs (already passes vectors)\n3. Test vectors: rust/lichen-rpl/tests/dao_origin_vectors.rs\n4. Python target: python/src/lichen/rpl/routing.py\n5. Key: preserve canonical prefix length, owner path, longest-prefix lookup\n6. Run: uv run pytest python/tests/rpl/ after changes",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "feature",
   "owner": "me@mark.atwood.name",

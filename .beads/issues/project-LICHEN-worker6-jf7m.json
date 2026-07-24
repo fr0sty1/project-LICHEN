@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-jf7m",
+  "title": "[review] project-LICHEN-6mij.2.4: stale #include removed from coap_server.c may cause build failure",
+  "description": "In coap_server.c, the commit removes #include \u003clichen/oscore.h\u003e and #include \u003clichen/l2/ipv6_addr.h\u003e. However, msg_inbox_oscore_respond() and the OSCORE-protected response path still pass 'struct oscore_ctx *' parameters (coap_server.c:126). If lichen/oscore.h defined or forward-declared struct oscore_ctx, removing this include could cause an incomplete type error unless lichen/coap_oscore.h (which remains included) itself includes lichen/oscore.h. Verify that lichen/coap_oscore.h includes lichen/oscore.h (it does at line 16), but also confirm lichen/l2/ipv6_addr.h is no longer needed. This is a build-safety concern.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:27.492222451Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:27.492222451Z"
+}

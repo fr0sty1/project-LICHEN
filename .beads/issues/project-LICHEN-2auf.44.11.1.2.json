@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2auf.44.11.1.2",
   "title": "Implement Trickle-suppression-safe neighbor liveness policy before 10s eviction",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

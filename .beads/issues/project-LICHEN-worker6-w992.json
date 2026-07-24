@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-w992",
+  "title": "[review] project-LICHEN-n8c6: TOFU key-change integration test removed",
+  "description": "In python/tests/link/test_link_layer.py, the test_key_change_scenario section was deleted from TestTxQueueIntegration. This removal deleted the test that simulated a TOFU pin override (injecting a different key in _pinned_keys) and verified that a subsequent frame from the same peer triggers ReceiveError.KEY_CHANGE. This was the only integration-level test covering key-change detection, a security-critical behavior per spec section 8.5 (TOFU baseline). No replacement test was added.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:47:16.293371492Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:47:16.293371492Z"
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-wlgu.2.3.4",
   "title": "Verify regeneration with pytest test_vectors.py and update validation if needed",
   "description": "After generator run, execute PYTHONPATH=python/src python -m pytest python/tests/test_vectors.py -q --tb=no to confirm all ccp vectors pass schema, hash matches, no placeholders. Fix any test integrity issues without weakening tests. Close when bd ready empty for this epic.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:24:54.512213584Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:24:54.512213584Z",
+  "updated_at": "2026-07-24T09:16:31.888734376Z",
+  "closed_at": "2026-07-24T09:16:31.888734376Z",
+  "close_reason": "All 205 test_vectors.py tests pass. Fixed: MAX_WINDOW_SIZE, zip(strict) for Py3.9, generate.py G_SRC/G_DST addresses, bad_udp_length vector, rpl_messages vectors, FragmentSender methods, FragmentReceiver test bug, MAX_PACKET_SIZE. Regenerated all vectors.",
   "labels": [
     "defer-boardconfig"
   ],

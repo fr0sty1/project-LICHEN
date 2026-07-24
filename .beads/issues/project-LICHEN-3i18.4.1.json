@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3i18.4.1",
   "title": "Define scheduler.current_channel() API and default channel behavior",
   "description": "Specify what value the scheduler should announce as current_channel (current RX for rendezvous pinning), default channel (e.g. 0 or CONFIG_LICHEN_DEFAULT_CHANNEL), and API contract for LCI/processor.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

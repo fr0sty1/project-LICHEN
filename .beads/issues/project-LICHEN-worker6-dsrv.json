@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-dsrv",
+  "title": "[review] project-LICHEN-6mij.2.4: config_put still uses local_admin check, not coap_oscore_auth_mutating",
+  "description": "In coap_server.c:209-239, config_put() uses the old pattern: lichen_coap_is_local_admin() check followed by raw payload read. Unlike deaddrop_post and msg_inbox_post, it was NOT updated to use coap_oscore_auth_mutating(). Per spec/17 (LCI), /config is a mutating resource that should support both local admin and OSCORE-protected mesh peers. Fix: convert to coap_oscore_auth_mutating().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:25.214314422Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:25.214314422Z"
+}
