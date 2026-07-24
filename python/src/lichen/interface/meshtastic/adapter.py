@@ -200,11 +200,11 @@ class MeshtasticAdapter:
 
         # Queue status feedback
         queue_len = len(self.from_radio_queue)
-        free_slots = max(0, MAX_TX_QUEUE - queue_len)
+        free_slots = max(0, MAX_QUEUE_SIZE - queue_len)
         qs = build_queue_status(
             packet_id=pkt.id,
             free=free_slots,
-            maxlen=MAX_TX_QUEUE,
+            maxlen=MAX_QUEUE_SIZE,
             result=0,
         )
         self.queue_from_radio(qs.to_bytes())
