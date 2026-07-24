@@ -338,6 +338,15 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
 uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
 
+#ifdef CONFIG_LICHEN_CCP_TIME_SYNC
+int lichen_time_sync_init(void);
+uint32_t lichen_time_sync_get_sfn(void);
+int lichen_time_sync_set_sfn(uint32_t sfn);
+bool lichen_time_sync_is_synced(void);
+void lichen_time_sync_advance_sfn(void);
+void lichen_time_sync_desync(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
