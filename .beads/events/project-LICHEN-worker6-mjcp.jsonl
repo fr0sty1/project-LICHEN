@@ -1,2 +1,1 @@
 {"id":"019f9564-0747-76b8-893f-52be55a3639c","issue_id":"project-LICHEN-worker6-mjcp","event_type":"created","actor":"AI Agent","old_value":"","new_value":"","created_at":"2026-07-24T18:29:48.487440915Z"}
-{"id":"019f9587-1f75-7965-98ca-9ea7cc6aea50","issue_id":"project-LICHEN-worker6-mjcp","event_type":"closed","actor":"AI Agent","old_value":"","new_value":"Library compiles cleanly (0 errors). Test errors (DEFAULT_RECEIVER_LIMIT, receiver_abort) filed as separate issues.","created_at":"2026-07-24T19:08:08.437616318Z"}

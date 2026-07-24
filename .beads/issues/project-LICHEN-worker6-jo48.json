@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-jo48",
   "title": "[review] project-LICHEN-worker6-69p2: Ack::from_bytes panics on 2-byte complete ACK",
   "description": "## Bug: `Ack::from_bytes_for` crashes on 2-byte input\n\n**Location:** `rust/lichen-schc/src/fragment.rs:260-265`\n\n`Ack::from_bytes_for` checks `data.len() \u003c 2` at line 261 but then unconditionally reads `data[2]` at line 265. When a complete ACK is serialized by `Ack::write_to` (lines 224-234), it produces exactly 2 bytes: `[rule_id, (window\u003c\u003c7) | 0x40]`. Passing this back to `from_bytes` causes an out-of-bounds panic.\n\nThis is a 2-way round-trip break:\n1. `write_to` for `complete=true` emits 2 bytes\n2. `from_bytes` always expects \u003e= 3 bytes (reads `data[2]` for `n`)\n\n**Old code behavior:** The old `Ack::from_bytes` correctly handled 2-byte complete ACKs via early return at the `complete` check:\n```rust\nlet complete = (data[1] \u0026 0x40) != 0;\nif complete {\n    if data.len() != 2 || data[1] \u0026 0x3f != 0 {\n        return Err(FragmentError::MalformedAck);\n    }\n    return Ok(Self::new(rule_id, window, 0, true));\n}\n```\n\n**Security impact:** Fuzzer input will trigger a panic, causing process abort in production. This is reachable from `receive_bytes` path in `FragmentReceiver`.\n\n**Fix:** Add `data.len() \u003c 3` guard before reading `data[2]`, and add complete ACK detection at the top of `from_bytes_for` that checks `(data[1] \u0026 0x01) != 0` (the new complete bit position) and/or handles the 2-byte format from `write_to`.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:53:52.831730479Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:53:52.831730479Z"
+  "updated_at": "2026-07-24T19:08:47.647132552Z",
+  "started_at": "2026-07-24T19:08:47.647132552Z",
+  "lease_expires_at": "2026-07-24T19:13:47.647132552Z",
+  "heartbeat_at": "2026-07-24T19:08:47.647132552Z"
 }
