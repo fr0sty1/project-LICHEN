@@ -1365,6 +1365,9 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * net_pkt_read() handles multi-fragment packets transparently: the cursor
 	 * iterates across all net_buf fragments, copying data contiguously into
 	 * tx_ipv6_buf. This is the standard Zephyr pattern for linearizing packets.
+	 * Despite the name, net_pkt_cursor_init + net_pkt_read works correctly across
+	 * multi-fragment packets - Zephyr's cursor API handles fragment iteration
+	 * transparently. (project-LICHEN-tvfm.58)
 	 *
 	 * NOTE (project-LICHEN-i1gk.112): net_pkt_cursor_init() is void and cannot
 	 * fail. We trust net_pkt_get_len() matches actual fragment data. If Zephyr's
@@ -1807,7 +1810,7 @@ static enum net_l2_flags lichen_l2_flags(struct net_if *iface)
 	/*
 	 * NET_L2_MULTICAST: Tells Zephyr this L2 can deliver IP multicast frames.
 	 * LoRa is inherently broadcast - all transmissions reach all receivers,
-	 * so multicast delivery works by default.
+	 * so multicast delivery works by default. (project-LICHEN-tvfm.78)
 	 *
 	 * NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE: Skip joining solicited-node
 	 * multicast groups (ff02::1:ffXX:XXXX). This relies on LoRa being a true
@@ -1945,6 +1948,13 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  */
 void lichen_l2_iface_init(struct net_if *iface)
 {
+	/*
+	 * Clear init-failed flag at the start of every init attempt so that a
+	 * re-init (e.g., after a partial or transient failure) starts fresh.
+	 * (project-LICHEN-tvfm.84)
+	 */
+	atomic_set(&iface_init_failed, 0);
+
 	if (iface == NULL) {
 		LOG_ERR("lichen_l2: iface is NULL");
 		atomic_set(&iface_init_failed, 1);
@@ -1958,25 +1968,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 		LOG_ERR("lichen_l2: refusing retry after failed initialization");
 		return;
 	}
-
-	/*
-	 * Do NOT clear iface_init_failed here (project-LICHEN-i1gk.63).
-	 *
-	 * Clearing optimistically at the start creates confusing control flow:
-	 * if a previous init partially succeeded (e.g., lora_l2_init passed but
-	 * get_eui64 failed), clearing the flag here and then having lichen_lora_l2_init()
-	 * return 0 (idempotent success) would temporarily show success before a later
-	 * check re-sets the flag.
-	 *
-	 * The iface_init_failed flag is:
-	 * - Set on any failure path (via atomic_set(&iface_init_failed, 1))
-	 * - Never explicitly cleared here; first boot starts at 0 (static init)
-	 * - Checked by send/recv/enable to reject operations on half-initialized state
-	 *
-	 * After a failed init, the check above rejects retry attempts, ensuring
-	 * failure is permanent until system restart.
-	 * This is fail-safe by design.
-	 */
 
 	/* Initialize LoRa driver */
 	ret = lichen_lora_l2_init();
@@ -2117,14 +2108,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 	lichen_iface = iface;
 
-	/* Register RX callback - must happen AFTER link_ctx is initialized */
-	ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
-		atomic_set(&iface_init_failed, 1);
-		return;
-	}
-
 #if HAVE_LICHEN_LINK
 	/*
 	 * Mark link_ctx as safe to access.
@@ -2132,12 +2115,19 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * On single-core Cortex-M, program order suffices since all prior
 	 * stores complete before this store executes.
 	 *
-	 * Set AFTER RX callback registration so the flag truthfully indicates
-	 * that the full initialization sequence is complete.
-	 * (project-LICHEN-q3iy.24)
+	 * Set BEFORE RX callback registration so the callback finds fully
+	 * initialized state. (project-LICHEN-tvfm.69)
 	 */
 	atomic_set(&link_ctx_initialized, 1);
 #endif
+
+	/* Register RX callback - must happen AFTER link_ctx is marked initialized */
+	ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
+		atomic_set(&iface_init_failed, 1);
+		return;
+	}
 
 	/* Derive and log link-local address */
 	ret = lichen_log_link_local_from_eui64(eui64, NULL);
@@ -2186,25 +2176,25 @@ fail_late_init:
 	 * SECURITY (project-LICHEN-3pun.15): Hold BOTH mutexes during link_ctx cleanup
 	 * to synchronize with any in-flight RX callback and maintain consistent lock
 	 * ordering with lichen_l2_enable(). The race scenario:
-	 * 1. RX callback is registered (line ~898)
-	 * 2. link_ctx_initialized is set (line ~910)
+	 * 1. link_ctx_initialized is set (before callback registration in current code)
+	 * 2. RX callback is registered
 	 * 3. lichen_log_link_local_from_eui64() fails -> goto fail_late_init
 	 * 4. Meanwhile, an RX callback is in-flight and has passed the
-	 *    atomic_get(&link_ctx_initialized) check in lichen_l2_input()
+	 *    atomic_get(&iface_init_failed) check in lora_rx_callback()
+	 *    (iface_init_failed was still 0 when the callback started)
 	 * 5. Without mutex, cleanup could race with the in-flight callback
 	 *
 	 * LOCK ORDER (project-LICHEN-tvfm.56): tx_mutex before rx_mutex, matching
 	 * lichen_l2_enable() enable/disable paths. See mutex definition comments
-	 * (~line 217) for the canonical ordering rule. Although iface_init runs at
-	 * boot with no concurrent TX, maintaining consistent ordering prevents
-	 * future deadlock if init/enable sequences ever overlap.
+	 * for the canonical ordering rule. Although iface_init runs at boot with
+	 * no concurrent TX, maintaining consistent ordering prevents future
+	 * deadlock if init/enable sequences ever overlap.
 	 *
 	 * SECURITY (project-LICHEN-tvfm.36): Set iface_init_failed FIRST, before
-	 * unregistering the callback. This ensures any callback invoked between
-	 * registration (line ~1106) and cleanup sees the flag and bails out
-	 * immediately in lora_rx_callback() (line ~1013). Without this ordering,
-	 * a callback could pass the iface_init_failed check before the flag is set
-	 * and proceed into lichen_l2_input() while cleanup is in progress.
+	 * unregistering the callback. This ensures any callback invoked after
+	 * registration and before cleanup sees the flag and bails out
+	 * immediately in lora_rx_callback(). Without this ordering,
+	 * a callback could proceed into lichen_l2_input() while cleanup is in progress.
 	 */
 	atomic_set(&iface_init_failed, 1);
 	(void)lichen_lora_l2_set_rx_callback(NULL, NULL);

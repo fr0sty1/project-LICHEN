@@ -124,7 +124,12 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
     iid[0] &= ~UL_BIT;  /* Clear U/L bit */
 
 cleanup:
-    /* SECURITY: Zero hash on all paths (sha_state zeroed by helper) */
+    /*
+     * SECURITY: Zero hash on all paths (sha_state zeroed by helper).
+     * Zeroing on success is harmless — hash is a stack-local buffer that
+     * goes out of scope immediately after. This is intentional to avoid
+     * branching (no separate success/error cleanup paths).
+     */
     secure_zero(hash, sizeof(hash));
     return ret;
 }
