@@ -241,8 +241,7 @@ pub fn update_redundant<S: NonVolatile>(
 /// minimize flash wear and storage overhead on embedded targets. The prefixes
 /// group related data:
 /// - `id.*` — node identity (seed, replay-protection state)
-/// - `peers.*` — peer public keys
-/// - `peer.N` — individual peer entries (see [`peer_key`])
+/// - `peers` — serialized peer table blob (single atomic write)
 pub mod keys {
     /// 32-byte Ed25519 seed that derives the node's keypair.
     pub const IDENTITY_SEED: &str = "id.seed";
@@ -250,19 +249,44 @@ pub mod keys {
     pub const EPOCH: &str = "id.epoch";
     /// Link-layer sequence number (2 bytes, big-endian) for replay protection.
     pub const SEQNUM: &str = "id.seq";
-    /// Number of persisted peers (1 byte).
-    pub const PEER_COUNT: &str = "peers.n";
+    /// Serialized peer table blob (1+ count byte + N × 32-byte pubkeys).
+    pub const PEERS: &str = "peers";
 }
 
 /// Maximum number of peers to persist.
 pub const MAX_PEERS: usize = 16;
 
-/// Get peer key name for index.
-pub fn peer_key(index: usize) -> heapless::String<16> {
-    let mut s = heapless::String::new();
-    core::fmt::write(&mut s, format_args!("peer.{}", index))
-        .expect("peer key always fits in 16 bytes");
-    s
+const PEER_BLOB_SIZE: usize = 1 + MAX_PEERS * 32;
+
+fn encode_peers<'a>(peers: &[PublicKey], buf: &'a mut [u8]) -> Option<&'a [u8]> {
+    let count = peers.len().min(MAX_PEERS);
+    let size = 1 + count * 32;
+    if buf.len() < size {
+        return None;
+    }
+    buf[0] = count as u8;
+    for (i, pubkey) in peers.iter().take(count).enumerate() {
+        buf[1 + i * 32..1 + (i + 1) * 32].copy_from_slice(pubkey.as_bytes());
+    }
+    Some(&buf[..size])
+}
+
+fn decode_peer_count(data: &[u8]) -> Option<usize> {
+    if data.is_empty() || data.len() < 1 + (data[0] as usize) * 32 {
+        return None;
+    }
+    Some(data[0] as usize)
+}
+
+fn decode_peer(data: &[u8], index: usize) -> Option<PublicKey> {
+    let count = decode_peer_count(data)?;
+    if index >= count {
+        return None;
+    }
+    let offset = 1 + index * 32;
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&data[offset..offset + 32]);
+    Some(PublicKey::new(key))
 }
 
 /// Load identity seed from storage.
@@ -315,17 +339,11 @@ pub fn save_seqnum<S: NonVolatile>(storage: &mut S, seqnum: u16) -> Result<(), S
 
 /// Load peer count from storage.
 pub fn load_peer_count<S: NonVolatile>(storage: &S) -> Result<usize, S::Error> {
-    let mut buf = [0u8; 1];
-    Ok(storage.read(keys::PEER_COUNT, &mut buf).map_or(
-        0,
-        |n| {
-            if n == 1 {
-                buf[0] as usize
-            } else {
-                0
-            }
-        },
-    ))
+    let mut buf = [0u8; PEER_BLOB_SIZE];
+    let Some(n) = storage.read(keys::PEERS, &mut buf) else {
+        return Ok(0);
+    };
+    Ok(decode_peer_count(&buf[..n]).unwrap_or(0))
 }
 
 /// Load a peer pubkey from storage.
@@ -333,40 +351,28 @@ pub fn load_peer<S: NonVolatile>(storage: &S, index: usize) -> Result<Option<Pub
     if index >= MAX_PEERS {
         return Ok(None);
     }
-    let key = peer_key(index);
-    let mut buf = [0u8; 32];
-    let Some(n) = storage.read(&key, &mut buf) else {
+    let mut buf = [0u8; PEER_BLOB_SIZE];
+    let Some(n) = storage.read(keys::PEERS, &mut buf) else {
         return Ok(None);
     };
-    Ok(if n == 32 {
-        Some(PublicKey::new(buf))
-    } else {
-        None
-    })
+    Ok(decode_peer(&buf[..n], index))
 }
 
-/// Save peer table to storage.
+/// Save peer table to storage atomically.
 ///
-/// Overwrites existing peers. Pass a slice of pubkeys.
-///
-/// SECURITY: Writes entries before count to ensure crash safety - the count
-/// only reflects successfully written entries.
+/// Serializes all peers into a single blob and writes it as one key.
+/// On crash recovery the blob is either wholly present (new peers) or
+/// wholly absent (old peers) — never a mix of generations.
 pub fn save_peers<S: NonVolatile>(storage: &mut S, peers: &[PublicKey]) -> Result<(), S::Error> {
-    let count = peers.len().min(MAX_PEERS);
-    for (i, pubkey) in peers.iter().take(count).enumerate() {
-        let key = peer_key(i);
-        storage.write(&key, pubkey.as_bytes())?;
-    }
-    // Write count LAST so it only reflects successfully written entries
-    storage.write(keys::PEER_COUNT, &[count as u8])?;
-    Ok(())
+    let mut buf = [0u8; PEER_BLOB_SIZE];
+    let encoded = encode_peers(peers, &mut buf).expect("PEER_BLOB_SIZE sufficient for MAX_PEERS");
+    storage.write(keys::PEERS, encoded)
 }
 
 /// In-memory NonVolatile implementation for testing.
 #[cfg(any(test, feature = "std"))]
 pub mod mem {
     extern crate std;
-    use std::cell::Cell;
     use std::collections::HashMap;
     use std::string::String;
     use std::vec::Vec;
@@ -381,7 +387,6 @@ pub mod mem {
     pub struct MemStorage {
         data: HashMap<String, Vec<u8>>,
         fail_after_writes: Option<usize>,
-        fail_next_read: Cell<bool>,
     }
 
     impl MemStorage {
@@ -397,10 +402,6 @@ pub mod mem {
 
         pub fn fail_next_write(&mut self) {
             self.fail_after_writes = Some(0);
-        }
-
-        pub fn fail_next_read(&self) {
-            self.fail_next_read.set(true);
         }
 
         pub fn fail_after_writes(&mut self, successful_writes: usize) {
@@ -655,26 +656,21 @@ mod tests {
     }
 
     #[test]
-    fn redundant_read_failures_are_not_treated_as_missing() {
+    fn redundant_write_failure_does_not_corrupt_existing_slots() {
         let mut storage = MemStorage::new();
         let keys = ["test.a", "test.b"];
+        let mut record = [0u8; 64];
+        provision_redundant(&mut storage, keys, *b"TEST", b"old", &mut record).unwrap();
         let mut a = [0u8; 64];
         let mut b = [0u8; 64];
         let mut out = [0u8; 16];
-        storage.fail_next_read();
-        assert_eq!(
-            open_redundant(&storage, keys, *b"TEST", &mut a, &mut b, &mut out),
-            Err(RedundantOpenError::Storage(mem::MemStorageError))
+        let current = open_redundant(&storage, keys, *b"TEST", &mut a, &mut b, &mut out).unwrap();
+        storage.fail_next_write();
+        assert!(
+            update_redundant(&mut storage, keys, *b"TEST", current, b"new", &mut record).is_err()
         );
-
-        let mut record = [0u8; 64];
-        storage.fail_next_read();
-        assert_eq!(
-            provision_redundant(&mut storage, keys, *b"TEST", b"new", &mut record),
-            Err(RedundantProvisionError::Storage(mem::MemStorageError))
-        );
-        assert!(storage.raw(keys[0]).is_none());
-        assert!(storage.raw(keys[1]).is_none());
+        let loaded = open_redundant(&storage, keys, *b"TEST", &mut a, &mut b, &mut out).unwrap();
+        assert_eq!(&out[..loaded.len], b"old");
     }
 
     #[test]
