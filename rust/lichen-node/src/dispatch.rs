@@ -52,6 +52,10 @@ pub struct Response {
 impl Response {
     pub fn content(payload: &[u8]) -> Self {
         let payload_len = payload.len().min(256);
+        if payload.len() > 256 {
+            #[cfg(any(feature = "defmt", feature = "log"))]
+            warn!("Response::content: payload truncated from {} to 256 bytes", payload.len());
+        }
         let mut resp = Self {
             code: MessageCode::CONTENT,
             content_format: Some(CBOR),
