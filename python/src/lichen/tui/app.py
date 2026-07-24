@@ -108,9 +108,14 @@ class ConnectionStatus(Static):
         super().__init__("Status: Disconnected")
         self.add_class("disconnected")
 
+    @staticmethod
+    def _sanitize(text: str) -> str:
+        from rich.markup import escape
+        return escape(text)
+
     def set_connected(self, host: str, port: int, sim_id: str, node_id: str) -> None:
         """Update to show connected state."""
-        self.update(f"Connected: {node_id}@{sim_id} via {host}:{port}")
+        self.update(f"Connected: {self._sanitize(node_id)}@{self._sanitize(sim_id)} via {self._sanitize(host)}:{port}")
         self.remove_class("disconnected")
         self.add_class("connected")
 

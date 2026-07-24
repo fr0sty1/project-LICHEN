@@ -773,6 +773,17 @@ uint16_t lichen_announce_sched_get_seq(void)
 	return seq;
 }
 
+uint8_t lichen_announce_sched_get_channel(void)
+{
+	uint8_t ch;
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	ch = sched.rx_channel;
+	k_mutex_unlock(&sched.mutex);
+
+	return ch;
+}
+
 int lichen_announce_sched_send_now(void)
 {
 	k_mutex_lock(&sched.mutex, K_FOREVER);

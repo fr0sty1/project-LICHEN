@@ -1,0 +1,55 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "CCP-15 interference score (busy_pct + PER*100) and backoff jitter vectors with independent math oracles per spec/02a-coordinated-capacity.md. Matches ccp15.json structure for CCP-15 interference mitigation.",
+  "vectors": [
+    {
+      "name": "idle_channel",
+      "description": "No activity, zero PER: interference_score = 0 + 0*100 = 0.",
+      "busy_pct": 0.0,
+      "per": 0.0,
+      "interference_score": 0.0,
+      "backoff_jitter_ms": 0.0
+    },
+    {
+      "name": "moderate_busy_low_per",
+      "description": "30% channel busy with 0.05 PER: score = 30 + 5 = 35.",
+      "busy_pct": 30.0,
+      "per": 0.05,
+      "interference_score": 35.0,
+      "backoff_jitter_ms": 50.0
+    },
+    {
+      "name": "high_busy_high_per",
+      "description": "80% channel busy with 0.20 PER: score = 80 + 20 = 100.",
+      "busy_pct": 80.0,
+      "per": 0.2,
+      "interference_score": 100.0,
+      "backoff_jitter_ms": 200.0
+    },
+    {
+      "name": "saturated_channel",
+      "description": "95% busy with 0.50 PER: score = 95 + 50 = 145.",
+      "busy_pct": 95.0,
+      "per": 0.5,
+      "interference_score": 145.0,
+      "backoff_jitter_ms": 500.0
+    },
+    {
+      "name": "low_busy_moderate_per",
+      "description": "10% busy with 0.15 PER: score = 10 + 15 = 25.",
+      "busy_pct": 10.0,
+      "per": 0.15,
+      "interference_score": 25.0,
+      "backoff_jitter_ms": 25.0
+    },
+    {
+      "name": "clean_channel_high_per",
+      "description": "5% busy but 0.60 PER (interference not channel load): score = 5 + 60 = 65.",
+      "busy_pct": 5.0,
+      "per": 0.6,
+      "interference_score": 65.0,
+      "backoff_jitter_ms": 150.0
+    }
+  ]
+}

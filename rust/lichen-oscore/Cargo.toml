@@ -28,6 +28,7 @@ zeroize = { version = "1.8", default-features = false, features = ["derive"] }
 x25519-dalek = { version = "2.0", default-features = false, features = ["static_secrets", "zeroize"], optional = true }
 ed25519-dalek = { version = "2.1", default-features = false, features = ["zeroize"], optional = true }
 rand_core = { version = "0.6", default-features = false, optional = true }
+subtle = { version = "2.6", default-features = false }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
