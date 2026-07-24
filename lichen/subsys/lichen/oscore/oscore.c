@@ -1547,9 +1547,10 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	 *
 	 * Class 2 - post-transmittable NVM failure (persist_ssn failing
 	 * after ciphertext and OSCORE option are fully built and returned
-	 * to the caller): goes to the distinct nvm_failed path, which takes
-	 * extra measures (safety-margin SSN bump inside persist_ssn,
-	 * s_seq_initialized sync) because the packet may still be sent.
+	 * to the caller): goes to the distinct nvm_failed path, which
+	 * conditionally rolls back sender_seq to the pre-increment value
+	 * (if no concurrent increment occurred) and sets s_seq_initialized
+	 * to maintain nonce uniqueness on reboot per RFC 8613 §7.2.
 	 */
 
 	/*
