@@ -474,13 +474,7 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(
-            master_secret,
-            master_salt,
-            id_context,
-            sender_id,
-            recipient_id,
-        )?;
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -533,13 +527,7 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(
-            master_secret,
-            master_salt,
-            id_context,
-            sender_id,
-            recipient_id,
-        )?;
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -750,13 +738,7 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -954,37 +936,49 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+        if request_kid.len() > NONCE_ID_LEN
+            || OscoreSeqNum::from_piv(request_piv).is_none()
+            || request_kid != self.recipient_id()
+        {
+            return Err(OscoreError::InvalidParam);
+        }
+        if !self.active {
+            return Err(OscoreError::InvalidParam);
+        }
+        if !self.allow_no_piv_response {
+            return Err(OscoreError::InvalidParam);
+        }
+
         // Determine PIV for nonce: own sequence if including, else request's PIV
-        let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
-            if include_piv {
-                // Generate own PIV.
-                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
-                let seq = self
-                    .sender_seq
-                    .fetch_increment()
-                    .ok_or(OscoreError::SeqExhausted)?;
-                let mut piv = [0u8; PIV_MAX_LEN];
-                let len = seq.encode_piv(&mut piv);
-                (piv, len, Some(len))
-            } else {
-                // Reuse the request nonce (no new sequence generated).
-                if !self.allow_no_piv_response {
-                    return Err(OscoreError::InvalidParam);
-                }
-                if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                    return Err(OscoreError::InvalidParam);
-                }
-                let mut piv = [0u8; PIV_MAX_LEN];
-                piv[..request_piv.len()].copy_from_slice(request_piv);
-                (piv, request_piv.len(), None)
-            };
+        let (nonce_piv, piv_len, piv_for_option, resp_seq): (
+            [u8; PIV_MAX_LEN],
+            usize,
+            Option<usize>,
+            Option<OscoreSeqNum>,
+        ) = if include_piv {
+            // Generate own PIV.
+            // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
+            let seq = self
+                .sender_seq
+                .fetch_increment()
+                .ok_or(OscoreError::SeqExhausted)?;
+            let mut piv = [0u8; PIV_MAX_LEN];
+            let len = seq.encode_piv(&mut piv);
+            (piv, len, Some(len), None)
+        } else {
+            let seq = OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
+            if self.is_response_reuse(seq) {
+                return Err(OscoreError::Replay);
+            }
+            // Reuse the request nonce (no new sequence generated).
+            if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
+                return Err(OscoreError::InvalidParam);
+            }
+            let mut piv = [0u8; PIV_MAX_LEN];
+            piv[..request_piv.len()].copy_from_slice(request_piv);
+            (piv, request_piv.len(), None, Some(seq))
+        };
 
         let nonce_id = if include_piv {
             self.sender_id()
@@ -1037,6 +1031,10 @@ impl Context {
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
             opt.extend_from_slice(&nonce_piv[..len])
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
+        }
+
+        if let Some(seq) = resp_seq {
+            self.mark_response_used(seq);
         }
 
         Ok((ct_out, opt))
@@ -2033,26 +2031,31 @@ mod tests {
             let sender_id = json_hex(&v["sender_id"]);
             let recipient_id = json_hex(&v["recipient_id"]);
             let id_context = if v["id_context"].is_string() {
-                Some(json_hex(&v["id_context"]))
+                json_hex(&v["id_context"])
             } else {
-                None
+                std::vec::Vec::new()
             };
             let salt = salt.as_deref().unwrap_or(&[]);
+            let id_context_opt: Option<&[u8]> = if id_context.is_empty() {
+                None
+            } else {
+                Some(id_context.as_slice())
+            };
 
             assert_eq!(
-                derive_key(&secret, salt, &sender_id, id_context.as_deref())
+                derive_key(&secret, salt, &sender_id, id_context_opt)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["sender_key"])
             );
             assert_eq!(
-                derive_key(&secret, salt, &recipient_id, id_context.as_deref())
+                derive_key(&secret, salt, &recipient_id, id_context_opt)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["recipient_key"])
             );
             assert_eq!(
-                derive_iv(&secret, salt, id_context.as_deref()).unwrap().as_slice(),
+                derive_iv(&secret, salt, id_context_opt).unwrap().as_slice(),
                 json_hex(&v["expected"]["common_iv"])
             );
         }
@@ -2083,15 +2086,19 @@ mod tests {
                 .as_str()
                 .map(|_| json_hex(&v["master_salt"]));
             let id_context = if v["id_context"].is_string() {
-                Some(json_hex(&v["id_context"]))
+                json_hex(&v["id_context"])
             } else {
+                std::vec::Vec::new()
+            };
+            let id_context2_opt: Option<&[u8]> = if id_context.is_empty() {
                 None
+            } else {
+                Some(id_context.as_slice())
             };
             let derived_iv =
-                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context.as_deref()).unwrap();
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context2_opt).unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
-            let piv = piv.unwrap();
-            let piv_len = piv.encode_piv(&mut piv_bytes);
+            let piv_len = piv.unwrap().encode_piv(&mut piv_bytes);
 
             assert_eq!(
                 compute_nonce(&sender_id, &piv_bytes[..piv_len], &derived_iv),
@@ -2207,6 +2214,7 @@ mod tests {
                 .protect_response_with_piv(code, options, payload, request_kid, request_piv)
         }
     }
+
     #[test]
     fn test_piv_encode_decode() {
         let mut piv = [0u8; PIV_MAX_LEN];
@@ -2446,7 +2454,7 @@ mod tests {
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3], false)
+                .protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2454,7 +2462,7 @@ mod tests {
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
         assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3], false)
+            .protect_response(0x45, &[], b"response", &[0], &[3], true)
             .is_ok());
     }
 
@@ -2469,14 +2477,13 @@ mod tests {
                 exhausted: false,
             },
         };
-        let context =
-            Context::new(&secret, None, None, &[1], &[0]).unwrap();
-        let mut context = context.restore_existing(&mut store).unwrap();
+        let mut context =
+            Context::new(&secret, None, None, &[1], &[0]).unwrap().restore_existing(&mut store).unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3], false)
+                .protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2507,9 +2514,7 @@ mod tests {
         }
 
         assert!(matches!(
-            Context::new(&[0x44; KEY_LEN], None, None, &[1], &[0])
-                .unwrap()
-                .restore_existing(&mut EmptyStore),
+            Context::new(&[0x44; KEY_LEN], None, None, &[1], &[0]).unwrap().restore_existing(&mut EmptyStore),
             Err(ContextStoreError::Missing)
         ));
     }
@@ -2566,9 +2571,9 @@ mod tests {
         };
         let mut second_store = first_store.clone();
         let mut first =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
+            Context::new(&secret, None, None, &[0], &[1]).unwrap().restore_existing(&mut first_store).unwrap();
         let mut second =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
+            Context::new(&secret, None, None, &[0], &[1]).unwrap().restore_existing(&mut second_store).unwrap();
 
         let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
         let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());
@@ -2753,7 +2758,7 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
