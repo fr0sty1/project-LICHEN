@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-hmhz",
+  "title": "[review] project-LICHEN-worker6-tkjl: Ack/MSG header bit layout incompatible with test vectors",
+  "description": "## Bug: Ack and MSG control header bit layout doesn't match test vectors\n\n**File:** `rust/lichen-schc/src/fragment.rs:255,274,284`\n\n**Severity:** P1 — interop failure\n\nThe shared test vectors use:\n- **Bit 7**: window bit for both Ack and Fragment headers\n- **Bit 6**: complete bit for Ack, part of FCN for Fragment\n\nOur Ack `write_to` (line 255):\n```rust\nout[1] = ((self.window \u0026 1) \u003c\u003c FRAGMENT_N) | (if self.complete { 1 } else { 0 });\n// Window at bit 6, complete at bit 0\n```\n\nTest vectors show:\n- `ack_success: 7840` → `0x40` has bit 6 set (window=0, complete=1). Window should be at bit 7 → 0x80, complete at bit 6 → 0x40. So `0x40` = complete=1 ✓, window at bit 6... ambiguous.\n- `ack_failure: 7820...` → `0x20` has bit 5 set. Our expected would be `0x00` for window=0, complete=0, bitmap=0.\n\nThe Ack/control message encoding in the test vectors also differs from our code.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:05:28.943972779Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:05:28.943972779Z"
+}
