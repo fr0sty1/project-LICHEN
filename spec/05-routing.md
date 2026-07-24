@@ -920,8 +920,8 @@ When multiple next-hops have equal hop count:
 
 ```
 def select_next_hop(candidates):
-    # Prefer least-congested path. See spec/02a-coordinated-capacity.md §2a.2
-    # for TDMA channel selection + now() SFN wrap semantics (unsigned modular arithmetic per ccp16.json).
+    // Prefer least-congested path. See spec/02a-coordinated-capacity.md §2a.2
+    // for TDMA channel selection + now() SFN wrap semantics (unsigned modular arithmetic per ccp16.json).
     return min(candidates, key=lambda n: n.queue_depth)
 ```
 

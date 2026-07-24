@@ -254,7 +254,7 @@ is computed as `slot = (hash_32(eui64) + sfn) mod num_slots`
 **Time-Provider Interaction on SFN Wrap:**
 
 ```pseudocode
-// on_sfn_wrap(beacon): see docs/firmware-time-provider.md:20 for
+// on_sfn_wrap(beacon): see docs/firmware-time-provider.md:23 for
 // effective_epoch_floor definition and lichen_hal_time_submit()
 on_sfn_wrap(beacon):
     ts = beacon.timestamp
