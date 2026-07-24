@@ -1257,7 +1257,21 @@
         "queue_peak": {"type": "integer", "minimum": 0},
         "etx": {"type": "number", "minimum": 0},
         "score": {"type": "number"},
-        "action": {"type": "string"}
+        "action": {"type": "string"},
+        "now": {
+          "type": "integer",
+          "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
+        },
+        "select_channel": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Channel selected via hash_32(now() ^ iid) % num_channels"
+        },
+        "num_channels": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of channels for select_channel modulo"
+        }
       }
     },
     "deaddrop_vector": {
