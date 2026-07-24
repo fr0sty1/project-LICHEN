@@ -40,13 +40,13 @@ struct oscore_ctx {
 	uint8_t sender_id[OSCORE_ID_MAX_LEN];   /**< Sender ID */
 	uint8_t sender_id_len;                  /**< Sender ID length */
 	uint8_t sender_key[OSCORE_KEY_LEN];     /**< Sender Key */
-	uint32_t sender_seq;                    /**< Sender Sequence Number */
+	uint64_t sender_seq;                    /**< Sender Sequence Number (40-bit, RFC 8613) */
 
 	/* Recipient context */
 	uint8_t recipient_id[OSCORE_ID_MAX_LEN]; /**< Recipient ID */
 	uint8_t recipient_id_len;                /**< Recipient ID length */
 	uint8_t recipient_key[OSCORE_KEY_LEN];   /**< Recipient Key */
-	uint32_t recipient_seq;                  /**< Last received seq */
+	uint64_t recipient_seq;                  /**< Last received seq (40-bit) */
 	uint32_t replay_window;                  /**< Replay window bitmap */
 
 	/* Peer identity (optional EUI-64 for per-peer lookup) */
@@ -73,7 +73,7 @@ static oscore_nvm_read_cb s_nvm_read_cb;
 struct oscore_replay_pending {
 	bool active;
 	int ctx_idx;
-	uint32_t seq;
+	uint64_t seq;
 };
 
 static struct oscore_replay_pending s_replay_pending[OSCORE_REPLAY_PENDING_MAX];
@@ -203,7 +203,7 @@ static void replay_clear_pending_context_locked(int ctx_idx);
 
 /*
  * Replay window implementation uses a 32-bit bitmap. The configurable
- * window size must not exceed what can be tracked in uint32_t.
+ * window size must not exceed 32 entries.
  * (Fixes python-ano.55)
  */
 #if CONFIG_LICHEN_OSCORE_REPLAY_WINDOW > 32
@@ -771,7 +771,7 @@ int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
 
 	/* Try to restore SSN from NVM if callback is registered */
 	if (s_nvm_read_cb != NULL) {
-		uint32_t stored_ssn;
+		uint64_t stored_ssn;
 		ret = s_nvm_read_cb(peer_eui64, &stored_ssn);
 		if (ret == 0) {
 			ctx_idx = ctx_get_index(ctx);
@@ -844,7 +844,7 @@ int oscore_ctx_get_by_eui64(const uint8_t peer_eui64[OSCORE_EUI64_LEN],
 	return ret;
 }
 
-int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
+int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint64_t sender_seq)
 {
 	if (ctx == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
@@ -896,7 +896,7 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
  *       oscore_ctx pointer including copies from oscore_ctx_lookup().
  *       The mutex protects only the read operation, not pointer validity.
  */
-int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq)
+int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint64_t *sender_seq)
 {
 	if (ctx == NULL || sender_seq == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
@@ -909,14 +909,14 @@ int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq
 	return OSCORE_OK;
 }
 
-int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint32_t *remaining)
+int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint64_t *remaining)
 {
 	if (ctx == NULL || remaining == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-	*remaining = UINT32_MAX - ctx->sender_seq;
+	*remaining = OSCORE_SSN_MAX - ctx->sender_seq;
 	k_mutex_unlock(&s_ctx_mutex);
 
 	return OSCORE_OK;
@@ -925,14 +925,14 @@ int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint32_t *remaini
 int oscore_ctx_check_freshness(const struct oscore_ctx *ctx,
 			       enum oscore_freshness *status)
 {
-	uint32_t remaining;
+	uint64_t remaining;
 
 	if (ctx == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-	remaining = UINT32_MAX - ctx->sender_seq;
+	remaining = OSCORE_SSN_MAX - ctx->sender_seq;
 	k_mutex_unlock(&s_ctx_mutex);
 
 	enum oscore_freshness result;
@@ -971,7 +971,7 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 {
 	int ret;
 	oscore_nvm_write_cb write_cb;
-	uint32_t ssn;
+	uint64_t ssn;
 	uint8_t eui64_copy[OSCORE_EUI64_LEN];
 	const uint8_t *eui64 = NULL;
 
@@ -1266,17 +1266,17 @@ static void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,
 /*
  * Encode PIV (sequence number) as variable-length big-endian.
  */
-static size_t encode_piv(uint32_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
+static size_t encode_piv(uint64_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
 {
 	if (seq == 0) {
 		piv[0] = 0;
 		return 1;
 	}
 
-	/* Find number of bytes needed */
+	/* Find number of bytes needed (max 5 for 40-bit PIV) */
 	size_t len = 0;
-	uint32_t tmp = seq;
-	while (tmp > 0) {
+	uint64_t tmp = seq;
+	while (tmp > 0 && len < OSCORE_PIV_MAX_LEN) {
 		len++;
 		tmp >>= 8;
 	}
@@ -1293,9 +1293,9 @@ static size_t encode_piv(uint32_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
 /*
  * Decode PIV to sequence number.
  */
-static uint32_t decode_piv(const uint8_t *piv, size_t piv_len)
+static uint64_t decode_piv(const uint8_t *piv, size_t piv_len)
 {
-	uint32_t seq = 0;
+	uint64_t seq = 0;
 	for (size_t i = 0; i < piv_len; i++) {
 		seq = (seq << 8) | piv[i];
 	}
@@ -1306,9 +1306,9 @@ static uint32_t decode_piv(const uint8_t *piv, size_t piv_len)
  * Check if sequence number would be acceptable (without updating state).
  * Returns true if acceptable, false if replay or too old.
  */
-static bool replay_check_acceptable(const struct oscore_ctx *ctx, uint32_t seq)
+static bool replay_check_acceptable(const struct oscore_ctx *ctx, uint64_t seq)
 {
-	uint32_t window_size = CONFIG_LICHEN_OSCORE_REPLAY_WINDOW;
+	uint64_t window_size = CONFIG_LICHEN_OSCORE_REPLAY_WINDOW;
 
 	if (seq > ctx->recipient_seq) {
 		/* New highest seq - always acceptable */
@@ -1316,14 +1316,14 @@ static bool replay_check_acceptable(const struct oscore_ctx *ctx, uint32_t seq)
 	}
 
 	/* seq <= recipient_seq: check if within window */
-	uint32_t diff = ctx->recipient_seq - seq;
+	uint64_t diff = ctx->recipient_seq - seq;
 	if (diff >= window_size) {
 		/* Too old */
 		return false;
 	}
 
 	/* Check if already seen */
-	uint32_t mask = 1U << diff;
+	uint32_t mask = 1UL << ((uint32_t)diff);
 	if (ctx->replay_window & mask) {
 		/* Replay detected */
 		return false;
@@ -1339,7 +1339,7 @@ static bool replay_check_acceptable(const struct oscore_ctx *ctx, uint32_t seq)
  *
  * Caller must hold s_ctx_mutex.
  */
-static int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uint32_t seq)
+static int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uint64_t seq)
 {
 	int free_idx = -1;
 
@@ -1373,7 +1373,7 @@ static int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_i
 /*
  * Clear a pending reservation. Caller must hold s_ctx_mutex.
  */
-static void replay_clear_pending_locked(int ctx_idx, uint32_t seq)
+static void replay_clear_pending_locked(int ctx_idx, uint64_t seq)
 {
 	for (int i = 0; i < OSCORE_REPLAY_PENDING_MAX; i++) {
 		if (s_replay_pending[i].active &&
@@ -1411,15 +1411,15 @@ static void replay_clear_pending_context_locked(int ctx_idx)
  * processing, even though decryption succeeded. This is conservative
  * but necessary to avoid gaps in replay protection.
  */
-static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
+static bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq)
 {
 	if (seq > ctx->recipient_seq) {
 		/* New highest seq - shift window */
-		uint32_t shift = seq - ctx->recipient_seq;
+		uint64_t shift = seq - ctx->recipient_seq;
 		if (shift >= 32) {
 			ctx->replay_window = 0;
 		} else {
-			ctx->replay_window <<= shift;
+			ctx->replay_window <<= (uint32_t)shift;
 		}
 		ctx->replay_window |= 1; /* Mark current as seen */
 		ctx->recipient_seq = seq;
@@ -1427,7 +1427,7 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 	}
 
 	/* seq <= recipient_seq: check if still within window */
-	uint32_t diff = ctx->recipient_seq - seq;
+	uint64_t diff = ctx->recipient_seq - seq;
 	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
 		/*
 		 * SECURITY: Seq fell outside window while we were decrypting -
@@ -1446,7 +1446,7 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 	}
 
 	/* Check if already marked by another thread */
-	uint32_t mask = 1U << diff;
+	uint32_t mask = 1UL << ((uint32_t)diff);
 	if (ctx->replay_window & mask) {
 		return false;
 	}
@@ -1476,7 +1476,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	int opt_len;
 	int ret;
 	int ctx_idx;
-	uint32_t seq;
+	uint64_t seq;
 
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
 	    oscore_opt == NULL || oscore_opt_len == NULL) {
@@ -1515,7 +1515,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	}
 
 	/* Check for sender sequence number exhaustion before use */
-	if (ctx->sender_seq == UINT32_MAX) {
+	if (ctx->sender_seq >= OSCORE_SSN_MAX) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender sequence exhausted - key rotation required");
 		ret = OSCORE_ERR_SEQ_EXHAUSTED;
@@ -1723,7 +1723,7 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	uint8_t nonce[OSCORE_NONCE_LEN];
 	uint8_t plaintext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
 	int ret;
-	uint32_t seq;
+	uint64_t seq;
 	int ctx_idx;
 	bool replay_reserved = false;
 

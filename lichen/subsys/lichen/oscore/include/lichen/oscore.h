@@ -19,9 +19,10 @@
  * @anchor oscore_key_rotation
  * ## Key Rotation
  *
- * OSCORE contexts have a finite lifetime bounded by the 32-bit sender sequence
- * number. When sender_seq reaches UINT32_MAX, oscore_protect_request() returns
- * OSCORE_ERR_SEQ_EXHAUSTED and the context can no longer send messages.
+ * OSCORE contexts have a finite lifetime bounded by the 40-bit sender sequence
+ * number (RFC 8613 Section 5.2). When sender_seq reaches OSCORE_SSN_MAX,
+ * oscore_protect_request() returns OSCORE_ERR_SEQ_EXHAUSTED and the context
+ * can no longer send messages.
  *
  * ### Recommended rotation pattern:
  *
@@ -105,12 +106,12 @@ extern "C" {
 #define OSCORE_NONCE_S_POS 6
 
 /**
- * Maximum Sender Sequence Number (SSN) per RFC 8613 Section 7.2.1.
- * AES-CCM-16-64-128 limits the SSN to 2^23 - 1 per RFC 9053 Section 4.2.1.
- * We use the full 32-bit range since the PIV can be up to 5 bytes, but
- * implementations should trigger key rotation well before exhaustion.
+ * Maximum Sender Sequence Number (SSN) per RFC 8613 Section 5.2.
+ * The Partial IV (PIV) is encoded as a variable-length unsigned integer
+ * in up to 5 bytes, giving a 40-bit range. The full range is 2^40 - 1.
+ * Implementations should trigger key rotation well before exhaustion.
  */
-#define OSCORE_SSN_MAX UINT32_MAX
+#define OSCORE_SSN_MAX ((1ULL << 40) - 1)
 
 /**
  * Recommended SSN threshold for proactive key rotation warning.
@@ -182,7 +183,7 @@ enum oscore_freshness {
  * @param[in] ssn    Sender sequence number to persist
  * @return 0 on success, any negative on failure (maps to OSCORE_ERR_NVM_FAILED)
  */
-typedef int (*oscore_nvm_write_cb)(const uint8_t *_Nullable eui64, uint32_t ssn);
+typedef int (*oscore_nvm_write_cb)(const uint8_t *_Nullable eui64, uint64_t ssn);
 
 /**
  * @brief NVM read callback for SSN restoration (read_cb).
@@ -195,7 +196,7 @@ typedef int (*oscore_nvm_write_cb)(const uint8_t *_Nullable eui64, uint32_t ssn)
  * @param[out] ssn    Receives restored SSN on success
  * @return 0 on success (ssn valid), negative on failure
  */
-typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint32_t *_Nonnull ssn);
+typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint64_t *_Nonnull ssn);
 
 /**
  * @brief OSCORE security context (opaque)
@@ -372,7 +373,7 @@ void oscore_ctx_free(struct oscore_ctx *_Nullable ctx);
  * @return OSCORE_OK on success, OSCORE_ERR_INVALID_PARAM if ctx NULL,
  *         OSCORE_ERR_NVM_FAILED on NVM write error
  */
-int oscore_ctx_set_sender_seq(struct oscore_ctx *_Nonnull ctx, uint32_t sender_seq);
+int oscore_ctx_set_sender_seq(struct oscore_ctx *_Nonnull ctx, uint64_t sender_seq);
 
 /**
  * @brief Get the current sender sequence number for persistence.
@@ -382,12 +383,12 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *_Nonnull ctx, uint32_t sender_s
  * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx or sender_seq is NULL
  */
 int oscore_ctx_get_sender_seq(const struct oscore_ctx *_Nonnull ctx,
-			      uint32_t *_Nonnull sender_seq);
+			      uint64_t *_Nonnull sender_seq);
 
 /**
  * @brief Get remaining sender sequence budget before exhaustion.
  *
- * Returns UINT32_MAX - sender_seq, the number of messages that can be sent
+ * Returns OSCORE_SSN_MAX - sender_seq, the number of messages that can be sent
  * before OSCORE_ERR_SEQ_EXHAUSTED is returned. Integrators should monitor
  * this value and trigger key rotation before it reaches zero.
  *
@@ -402,7 +403,7 @@ int oscore_ctx_get_sender_seq(const struct oscore_ctx *_Nonnull ctx,
  * @see @ref oscore_key_rotation "Key Rotation" for the complete rotation pattern
  */
 int oscore_ctx_get_seq_remaining(const struct oscore_ctx *_Nonnull ctx,
-				 uint32_t *_Nonnull remaining);
+				 uint64_t *_Nonnull remaining);
 
 /**
  * @brief Check security context freshness per RFC 8613 Section 7.2.1.
