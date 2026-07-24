@@ -318,13 +318,19 @@ static int confessions_post(struct coap_resource *resource,
 						      opts, &opt_len, plain,
 						      &plain_len, piv,
 						      &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
 		if (orig_code != COAP_METHOD_POST) {
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return lichen_coap_respond(resource, request, addr,
+						   addr_len,
+						   COAP_RESPONSE_CODE_UNAUTHORIZED,
+						   0, NULL, 0);
+		}
 		payload = coap_packet_get_payload(request, &payload_len);
 	}
 #else
