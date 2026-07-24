@@ -38,6 +38,7 @@ dependencies = [
     "filelock>=3.29,<3.30",
     "defusedxml>=0.7.1,<0.8",
     "intelhex>=2.3.0,<3.0",
+    "pytest>=9.1.1",
 ]
 
 [project.optional-dependencies]
