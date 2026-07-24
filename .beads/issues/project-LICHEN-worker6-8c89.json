@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-8c89",
+  "title": "[review] project-LICHEN-worker6-oke1: 6 test call sites use stale 2-arg Fragment::from_bytes",
+  "description": "Commit e68d331ac9 correctly updates fuzz_fragment.rs to call Fragment::from_bytes(data) with a single argument (matching the actual API at fragment.rs:160). However, 6 other call sites in test files still use the old 2-argument signature Fragment::from_bytes(\u0026wire, \u0026mut tile), which will cause compilation failures:\n\n- tests/fragmentation.rs:123 — malformed_codec_inputs_are_rejected\n- tests/fragmentation.rs:125 — malformed_codec_inputs_are_rejected\n- tests/fragmentation.rs:236 — multi_fragment_single_window\n- tests/fragmentation_vectors.rs:214 — vector test\n- tests/fragmentation_vectors.rs:241 — retransmission test\n- tests/fragmentation_vectors.rs:379 — invalid fragment test\n\nThe `tile` local variables may also become unused once the calls are fixed (if they are only consumed by from_bytes). Each call site needs:\n1. Remove `\u0026mut tile` arg from `Fragment::from_bytes(...)` call\n2. Remove `let mut tile = [0u8; TILE_SIZE]` declaration if `tile` is unused elsewhere in scope\n3. Remove unused `TILE_SIZE` import if no longer referenced in the file",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:31:07.5980802Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:31:07.5980802Z"
+}

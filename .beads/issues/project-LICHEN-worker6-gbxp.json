@@ -9,10 +9,10 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:21:41.820875547Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:34:14.878278667Z",
-  "started_at": "2026-07-24T17:34:14.878278667Z",
-  "lease_expires_at": "2026-07-24T17:39:14.878278667Z",
-  "heartbeat_at": "2026-07-24T17:34:14.878278667Z",
+  "updated_at": "2026-07-24T18:24:35.12201265Z",
+  "started_at": "2026-07-24T18:24:35.12201265Z",
+  "lease_expires_at": "2026-07-24T18:29:35.12201265Z",
+  "heartbeat_at": "2026-07-24T18:24:35.12201265Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-gbxp",

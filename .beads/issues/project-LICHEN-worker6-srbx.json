@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-srbx",
+  "title": "[review] project-LICHEN-worker6-ojt7: unused import std_ext::* warning in fragment.rs",
+  "description": "In rust/lichen-schc/src/fragment.rs, line 997:\npub use std_ext::*; triggers unused import warning.\nLikely caused by the std_ext module's code not compiling, making the re-export appear unused.\nFix: resolve the compilation errors in std_ext; the warning should disappear.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:32:58.919037309Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:32:58.919037309Z"
+}

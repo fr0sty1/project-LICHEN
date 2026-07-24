@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-b6iw",
   "title": "[review] project-LICHEN-worker6-1ror: Fragment::from_bytes signature changed but test/fuzz callers not updated",
   "description": "## Issue\n\nCommit 0309a17 changed `Fragment::from_bytes` signature from 2-argument (`data, tile`) to 1-argument (`data`), removing the tile buffer parameter. The internal implementation now slices into `data` directly instead of copying into a tile.\n\nHowever, 6 call sites in test and fuzz files still call the old 2-argument signature and will fail to compile:\n\n- `rust/lichen-schc/tests/fragmentation_vectors.rs:214` — `Fragment::from_bytes(\u0026wire, \u0026mut tile)`\n- `rust/lichen-schc/tests/fragmentation_vectors.rs:241` — `Fragment::from_bytes(\u0026wire, \u0026mut tile)`\n- `rust/lichen-schc/tests/fragmentation_vectors.rs:379` — `Fragment::from_bytes(\u0026wire, \u0026mut tile)`\n- `rust/lichen-schc/tests/fragmentation.rs:123` — `Fragment::from_bytes(\u0026[...], \u0026mut tile)`\n- `rust/lichen-schc/tests/fragmentation.rs:125` — `Fragment::from_bytes(\u0026regular_nonzero_padding, \u0026mut tile)`\n- `rust/lichen-schc/tests/fragmentation.rs:236` — `Fragment::from_bytes(\u0026wire[..length], \u0026mut tile)`\n- `rust/lichen-schc/fuzz/fuzz_targets/fuzz_fragment.rs:8` — `Fragment::from_bytes(data, \u0026mut tile)`\n\n## Additionally\n\nThe `write_to` (encode) function was changed from bit-shifting encoding to direct `copy_from_slice`. If tests expected the old bit-shifted wire format, they will also fail. The encode/decode round-trip is now identity (correct), but existing test expectations may be stale.\n\n## Fix needed\n\n1. Update all callers to use the new 1-argument `from_bytes` signature\n2. Update test expectations for the `write_to` output if they expected old bit-shifted format\n3. Verify full test suite passes",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:01:45.282536124Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:01:45.282536124Z"
+  "updated_at": "2026-07-24T18:25:11.785397986Z",
+  "started_at": "2026-07-24T18:25:11.785397986Z",
+  "lease_expires_at": "2026-07-24T18:30:11.785397986Z",
+  "heartbeat_at": "2026-07-24T18:25:11.785397986Z"
 }

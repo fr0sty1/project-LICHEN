@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-vmbv",
   "title": "[review] project-LICHEN-worker6-mbm7: fuzz_fragment calls Fragment::from_bytes with wrong arity",
   "description": "File: rust/lichen-schc/fuzz/fuzz_targets/fuzz_fragment.rs\n\nThe diff removed the `tile` buffer and changed `Fragment::from_bytes(data, \u0026mut tile)` to `Fragment::from_bytes(data)`. However, `Fragment::from_bytes` (fragment.rs:175) still has the signature `pub fn from_bytes(data: \u0026[u8], out: \u0026'a mut [u8]) -\u003e Result\u003cSelf, FragmentError\u003e` requiring two arguments. The method signature was NOT updated in this commit. This will cause a compile error when building the fuzz target.\n\nThe fragment.rs changes were limited to `check_rule` widening and 2-byte Ack canonical validation; `Fragment::from_bytes` was untouched.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:06:16.040223866Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:06:16.040223866Z"
+  "updated_at": "2026-07-24T18:25:11.05876441Z",
+  "started_at": "2026-07-24T18:25:11.05876441Z",
+  "lease_expires_at": "2026-07-24T18:30:11.05876441Z",
+  "heartbeat_at": "2026-07-24T18:25:11.05876441Z"
 }

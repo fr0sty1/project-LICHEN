@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-0s59",
   "title": "[review] project-LICHEN-worker6-9n2n: lichen-oscore test suite does not compile (43 errors)",
   "description": "cargo test -p lichen-oscore fails with 43 compilation errors. Issues include:\n- Duplicate definitions (context_at, TestStore, TestProtect, etc.)\n- Missing load_existing API on Context\n- protect_response callers not updated for include_piv: bool parameter\n- SenderSeqCounter refactoring not reflected in test code (Option conversions)\n- 'Multiple applicable items in scope' E0034 errors\n\nThese span multiple recent commits. The test suite needs to be brought back to compilation to validate the ongoing changes.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:29:12.642228015Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:29:12.642228015Z"
+  "updated_at": "2026-07-24T18:24:32.927962384Z",
+  "started_at": "2026-07-24T18:24:32.927962384Z",
+  "lease_expires_at": "2026-07-24T18:29:32.927962384Z",
+  "heartbeat_at": "2026-07-24T18:24:32.927962384Z"
 }
