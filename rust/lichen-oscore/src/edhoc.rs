@@ -2303,7 +2303,6 @@ mod tests {
                 resp_payload,
                 request_kid,
                 request_piv,
-                false,
             )
             .expect("responder protect_response failed");
 
