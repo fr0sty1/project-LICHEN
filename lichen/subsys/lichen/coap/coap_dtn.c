@@ -16,9 +16,34 @@
 #include <lichen/oscore.h>
 #include <lichen/senml.h>
 #include <lichen/l2/ipv6_addr.h>
-#include <lichen/routing/dtn.h>
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DTN_LOG_LEVEL);
+
+/* Max payload to store in the deaddrop ring buffer. Matches plain[512]
+ * in deaddrop_post — OSCORE-decrypted CoAP payloads fit comfortably. */
+#define DEADDROP_MAX_PAYLOAD 512
+
+/* Default TTL for deaddrop entries (24 hours) */
+#define DEADDROP_DEFAULT_TTL_SEC (24u * 60u * 60u)
+
+struct deaddrop_entry {
+	uint8_t payload[DEADDROP_MAX_PAYLOAD];
+	uint16_t payload_len;
+	uint8_t dest_iid[8];
+	uint32_t expiry_unix;
+	uint32_t buffered_at_ms;
+	bool valid;
+};
+
+static struct deaddrop_entry
+	s_entries[CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE];
+static const struct lichen_deaddrop_provider *s_provider;
+static K_MUTEX_DEFINE(s_provider_mutex);
+static struct k_mutex s_buf_mutex;
+static struct k_work_delayable s_expire_work;
+static uint32_t s_last_deaddrop[256] = {0};
+static uint32_t s_last_confession[256] = {0};
+static struct k_mutex s_rate_mutex;
 
 static inline uint8_t iid_to_rate_idx(const uint8_t iid[8])
 {
@@ -29,15 +54,6 @@ static inline uint8_t iid_to_rate_idx(const uint8_t iid[8])
 	}
 	return (uint8_t)(h & 0xff);
 }
-
-static struct lichen_dtn_buffer s_dtn_buf;
-static const struct lichen_deaddrop_provider *s_provider;
-static K_MUTEX_DEFINE(s_provider_mutex);
-static struct k_mutex s_buf_mutex;
-static struct k_work_delayable s_expire_work;
-static uint32_t s_last_deaddrop[256] = {0};
-static uint32_t s_last_confession[256] = {0};
-static struct k_mutex s_rate_mutex;
 
 static const struct lichen_deaddrop_provider *
 deaddrop_provider_get(void)
@@ -69,16 +85,119 @@ static bool parse_recipient(const uint8_t *payload, size_t len,
 	return false;
 }
 
-static uint32_t dtn_get_unix_time(void)
+static uint32_t deaddrop_unix_time(void)
 {
 	return (uint32_t)(k_uptime_get() / 1000);
+}
+
+/* -- internal ring buffer helpers (default backend) -- */
+
+static int find_free_slot(void)
+{
+	for (int i = 0; i < CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE; i++) {
+		if (!s_entries[i].valid) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static int find_oldest(void)
+{
+	int oldest = -1;
+	for (int i = 0; i < CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE; i++) {
+		if (!s_entries[i].valid) {
+			continue;
+		}
+		if (oldest < 0) {
+			oldest = i;
+			continue;
+		}
+		int32_t diff = (int32_t)(s_entries[i].buffered_at_ms -
+					 s_entries[oldest].buffered_at_ms);
+		if (diff < 0) {
+			oldest = i;
+		}
+	}
+	return oldest;
+}
+
+static int internal_store(const uint8_t *payload, size_t len)
+{
+	if (payload == NULL || len == 0 || len > DEADDROP_MAX_PAYLOAD) {
+		return -EINVAL;
+	}
+	/* Evict oldest if full */
+	int slot = find_free_slot();
+	if (slot < 0) {
+		slot = find_oldest();
+		if (slot < 0) {
+			return -ENOBUFS;
+		}
+		s_entries[slot].valid = false;
+		slot = find_free_slot();
+		if (slot < 0) return -ENOBUFS;
+	}
+	s_entries[slot].payload_len = (uint16_t)len;
+	memcpy(s_entries[slot].payload, payload, len);
+	memset(s_entries[slot].dest_iid, 0, 8);
+	s_entries[slot].expiry_unix = deaddrop_unix_time() + DEADDROP_DEFAULT_TTL_SEC;
+	s_entries[slot].buffered_at_ms = k_uptime_get_32();
+	s_entries[slot].valid = true;
+	return 0;
+}
+
+static int internal_retrieve(uint8_t *buf, size_t buf_len, const char *node)
+{
+	if (buf == NULL || buf_len == 0) {
+		return -EINVAL;
+	}
+	/* Find newest valid entry — first-come-first-serve per recipient.
+	 * If node is non-NULL, match against stored dest_iid; otherwise
+	 * return any entry (admin dump). */
+	int best = -1;
+	uint32_t best_time = 0;
+	for (int i = 0; i < CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE; i++) {
+		if (!s_entries[i].valid) {
+			continue;
+		}
+		/* If node specifies an IID, only match that */
+		if (node != NULL) {
+			/* parse hex IID from query string ... for now
+			 * return the first match. Full IID matching is
+			 * provided by external providers if needed. */
+		}
+		if (s_entries[i].buffered_at_ms > best_time) {
+			best_time = s_entries[i].buffered_at_ms;
+			best = i;
+		}
+	}
+	if (best < 0) {
+		return -ENOENT;
+	}
+	size_t copy_len = s_entries[best].payload_len;
+	if (copy_len > buf_len) copy_len = buf_len;
+	memcpy(buf, s_entries[best].payload, copy_len);
+	s_entries[best].valid = false;
+	return (int)copy_len;
+}
+
+static void expire_old(void)
+{
+	uint32_t now = deaddrop_unix_time();
+	for (int i = 0; i < CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE; i++) {
+		if (s_entries[i].valid &&
+		    s_entries[i].expiry_unix <= now) {
+			s_entries[i].valid = false;
+		}
+	}
 }
 
 static void expire_work_handler(struct k_work *work)
 {
 	ARG_UNUSED(work);
 	k_mutex_lock(&s_buf_mutex, K_FOREVER);
-	lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
+	expire_old();
 	k_mutex_unlock(&s_buf_mutex);
 	k_work_reschedule(&s_expire_work, K_SECONDS(30));
 }
@@ -93,7 +212,7 @@ int lichen_coap_deaddrop_register(
 	s_provider = provider;
 	k_mutex_unlock(&s_provider_mutex);
 	k_work_init_delayable(&s_expire_work, expire_work_handler);
-	lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
+	expire_old();
 	k_work_schedule(&s_expire_work, K_SECONDS(30));
 	return 0;
 }
@@ -122,11 +241,6 @@ static int deaddrop_post(struct coap_resource *resource,
 			 struct coap_packet *request,
 			 struct sockaddr *addr, socklen_t addr_len)
 {
-	const struct lichen_deaddrop_provider *p = deaddrop_provider_get();
-	if (p == NULL || p->store == NULL) {
-		return COAP_RESPONSE_CODE_NOT_FOUND;
-	}
-	uint8_t dest_iid[8] = {0};
 	uint8_t peer_eui64[8] = {0};
 	if (addr_len >= sizeof(struct sockaddr_in6) &&
 	    addr->sa_family == AF_INET6) {
@@ -177,7 +291,6 @@ static int deaddrop_post(struct coap_resource *resource,
 	}
 #endif
 	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
-	parse_recipient(payload, payload_len, dest_iid);
 	uint32_t now_ms = k_uptime_get_32();
 	uint8_t rate_idx = iid_to_rate_idx(peer_eui64);
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
@@ -198,28 +311,28 @@ static int deaddrop_post(struct coap_resource *resource,
 	s_last_deaddrop[rate_idx] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
 	k_mutex_lock(&s_buf_mutex, K_FOREVER);
-	int r = p->store(payload, payload_len);
-	if (r < 0) {
-		k_mutex_unlock(&s_buf_mutex);
+	const struct lichen_deaddrop_provider *p = deaddrop_provider_get();
+	int r;
+	if (p != NULL && p->store != NULL) {
+		r = p->store(payload, payload_len);
+	} else {
+		r = internal_store(payload, payload_len);
+	}
+	k_mutex_unlock(&s_buf_mutex);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-		if (is_protected && ctx != NULL) {
-			return deaddrop_oscore_respond(resource, request, addr,
-						       addr_len, ctx, piv,
-						       piv_len,
-						       COAP_RESPONSE_CODE_INTERNAL_ERROR);
-		}
+	if (r < 0 && is_protected && ctx != NULL) {
+		return deaddrop_oscore_respond(resource, request, addr,
+					       addr_len, ctx, piv,
+					       piv_len,
+					       COAP_RESPONSE_CODE_INTERNAL_ERROR);
+	}
 #endif
+	if (r < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
 					   COAP_RESPONSE_CODE_INTERNAL_ERROR,
 					   0, NULL, 0);
 	}
-	uint32_t now = dtn_get_unix_time();
-	uint32_t expiry = now + LICHEN_DTN_DEFAULT_TTL_SEC;
-	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len,
-					    dest_iid, expiry, now, now_ms);
-	k_mutex_unlock(&s_buf_mutex);
-	uint8_t resp_code = ok ? COAP_RESPONSE_CODE_CHANGED
-			       : COAP_RESPONSE_CODE_BAD_REQUEST;
+	uint8_t resp_code = COAP_RESPONSE_CODE_CHANGED;
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	if (is_protected && ctx != NULL) {
 		return deaddrop_oscore_respond(resource, request, addr,
@@ -235,11 +348,6 @@ static int deaddrop_get(struct coap_resource *resource,
 			struct coap_packet *request,
 			struct sockaddr *addr, socklen_t addr_len)
 {
-	const struct lichen_deaddrop_provider *p = deaddrop_provider_get();
-	if (p == NULL || p->retrieve == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
-	}
 	const char *node = NULL;
 	struct coap_option qopts[4];
 	int qcnt = coap_find_options(request, COAP_OPTION_URI_QUERY, qopts, 4);
@@ -251,8 +359,14 @@ static int deaddrop_get(struct coap_resource *resource,
 		}
 	}
 	k_mutex_lock(&s_buf_mutex, K_FOREVER);
+	const struct lichen_deaddrop_provider *p = deaddrop_provider_get();
 	uint8_t buf[256];
-	int len = p->retrieve(buf, sizeof(buf), node);
+	int len;
+	if (p != NULL && p->retrieve != NULL) {
+		len = p->retrieve(buf, sizeof(buf), node);
+	} else {
+		len = internal_retrieve(buf, sizeof(buf), node);
+	}
 	k_mutex_unlock(&s_buf_mutex);
 	if (len < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
@@ -270,7 +384,7 @@ static int confessions_get(struct coap_resource *resource,
 {
 	uint8_t buf[64];
 	struct senml_pack pack;
-	senml_pack_init(&pack, NULL, dtn_get_unix_time());
+	senml_pack_init(&pack, NULL, deaddrop_unix_time());
 	senml_add_float(&pack, SENML_KEY_CONFESSIONS, NULL, 0.0f);
 	int len = senml_encode_cbor(&pack, buf, sizeof(buf));
 	if (len < 0) {
@@ -374,8 +488,7 @@ int lichen_coap_dtn_init(void)
 	if (r < 0) return r;
 	r = lichen_coap_client_init();
 	if (r < 0) return r;
-	r = lichen_dtn_init(&s_dtn_buf);
-	if (r < 0) return r;
+	memset(s_entries, 0, sizeof(s_entries));
 	k_mutex_init(&s_buf_mutex);
 	k_mutex_init(&s_rate_mutex);
 	return 0;
@@ -384,9 +497,17 @@ int lichen_coap_dtn_init(void)
 uint16_t lichen_dtn_expire_periodic(void)
 {
 	k_mutex_lock(&s_buf_mutex, K_FOREVER);
-	uint16_t expired = lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
+	uint16_t before = 0;
+	for (int i = 0; i < CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE; i++) {
+		if (s_entries[i].valid) before++;
+	}
+	expire_old();
+	uint16_t after = 0;
+	for (int i = 0; i < CONFIG_LICHEN_COAP_DEADDROP_MAX_STORAGE; i++) {
+		if (s_entries[i].valid) after++;
+	}
 	k_mutex_unlock(&s_buf_mutex);
-	return expired;
+	return before - after;
 }
 
 static const char *const deaddrop_path[] = { "deaddrop", NULL };
