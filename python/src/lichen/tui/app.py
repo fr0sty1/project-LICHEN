@@ -85,7 +85,7 @@ def format_payload(data: bytes) -> str:
     return hex_str
 
 
-class ConnectionStatus(Static):
+class ConnectionStatus(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Widget showing connection status."""
 
     DEFAULT_CSS = """
@@ -124,7 +124,7 @@ class ConnectionStatus(Static):
         self.add_class("disconnected")
 
 
-class SimTimeDisplay(Static):
+class SimTimeDisplay(Static):  # type: ignore[misc]  # textual lacks py.typed
     """Widget showing current simulation time."""
 
     DEFAULT_CSS = """
@@ -144,7 +144,7 @@ class SimTimeDisplay(Static):
         self.update(f"Sim Time: {format_time_us(time_us)}")
 
 
-class SimNodeApp(App[None]):
+class SimNodeApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
     """TUI application for a simulated LICHEN node.
 
     Connects to a simulator server and provides an interactive interface
