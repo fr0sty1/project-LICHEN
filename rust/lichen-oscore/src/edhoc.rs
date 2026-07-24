@@ -539,12 +539,12 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext_3: &[u8],
     cred: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext_3)?;
     encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
