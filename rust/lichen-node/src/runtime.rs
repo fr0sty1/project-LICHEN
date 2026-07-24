@@ -5,8 +5,8 @@
 
 use lichen_rpl::trickle::TrickleEvent;
 
-use crate::{RplMaintenanceOutcome, RplNode};
 use crate::routing::TrickleSafeLivenessPolicy;
+use crate::{RplMaintenanceOutcome, RplNode};
 
 pub const DEFAULT_MAINTENANCE_INTERVAL_MS: u64 = 1_000;
 pub const DEFAULT_NEIGHBOR_TIMEOUT_MS: u64 = 10_000;
@@ -328,11 +328,10 @@ mod tests {
         let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 100);
 
         let p1 = runtime.poll(&mut node, 100, 1).unwrap();
-        assert_eq!(
-            p1.action,
-            RplRuntimeAction::Receive { timeout_ms: 4 }
-        );
-        let _ = runtime.complete_receive(&mut node, p1.action, 104, 1).unwrap();
+        assert_eq!(p1.action, RplRuntimeAction::Receive { timeout_ms: 4 });
+        let _ = runtime
+            .complete_receive(&mut node, p1.action, 104, 1)
+            .unwrap();
         let p2 = runtime.poll(&mut node, 104, 1).unwrap();
         assert_eq!(p2.action, RplRuntimeAction::TrickleTransmit);
     }
@@ -357,14 +356,15 @@ mod tests {
 
         let p1 = runtime.poll(&mut node, 999, 1).unwrap();
         assert_eq!(p1.maintenance, None);
-        let _ = runtime.complete_receive(&mut node, p1.action, 999, 1).unwrap();
+        let _ = runtime
+            .complete_receive(&mut node, p1.action, 999, 1)
+            .unwrap();
 
         let p2 = runtime.poll(&mut node, 1_000, 1).unwrap();
-        assert_eq!(
-            p2.maintenance,
-            Some(RplMaintenanceOutcome::default())
-        );
-        let _ = runtime.complete_receive(&mut node, p2.action, 1_000, 1).unwrap();
+        assert_eq!(p2.maintenance, Some(RplMaintenanceOutcome::default()));
+        let _ = runtime
+            .complete_receive(&mut node, p2.action, 1_000, 1)
+            .unwrap();
 
         let delayed = runtime.poll(&mut node, 2_500, 1).unwrap();
         assert_eq!(delayed.maintenance, Some(RplMaintenanceOutcome::default()));
@@ -381,15 +381,16 @@ mod tests {
         let mut runtime = RplRuntime::new(config, u64::MAX - 20);
 
         let p1 = runtime.poll(&mut node, u64::MAX - 11, 1).unwrap();
-        assert_eq!(
-            p1.action,
-            RplRuntimeAction::Receive { timeout_ms: 1 }
-        );
-        let _ = runtime.complete_receive(&mut node, p1.action, u64::MAX - 11, 1).unwrap();
+        assert_eq!(p1.action, RplRuntimeAction::Receive { timeout_ms: 1 });
+        let _ = runtime
+            .complete_receive(&mut node, p1.action, u64::MAX - 11, 1)
+            .unwrap();
 
         let p2 = runtime.poll(&mut node, u64::MAX - 10, 1).unwrap();
         assert!(p2.maintenance.is_some());
-        let _ = runtime.complete_receive(&mut node, p2.action, u64::MAX - 10, 1).unwrap();
+        let _ = runtime
+            .complete_receive(&mut node, p2.action, u64::MAX - 10, 1)
+            .unwrap();
 
         let terminal = runtime.poll(&mut node, u64::MAX, 1).unwrap();
         assert!(terminal.maintenance.is_some());
@@ -399,7 +400,9 @@ mod tests {
                 timeout_ms: u32::MAX
             }
         );
-        let _ = runtime.complete_receive(&mut node, terminal.action, u64::MAX, 1).unwrap();
+        let _ = runtime
+            .complete_receive(&mut node, terminal.action, u64::MAX, 1)
+            .unwrap();
         let repeated = runtime.poll(&mut node, u64::MAX, 1).unwrap();
         assert_eq!(repeated.maintenance, None);
         assert_eq!(repeated.action, terminal.action);
@@ -421,12 +424,16 @@ mod tests {
 
         let p1 = runtime.poll(&mut node, 1_999, 1).unwrap();
         assert_eq!(p1.maintenance, None);
-        let _ = runtime.complete_receive(&mut node, p1.action, 1_999, 1).unwrap();
+        let _ = runtime
+            .complete_receive(&mut node, p1.action, 1_999, 1)
+            .unwrap();
         assert!(node.router.lookup_route(&target).is_some());
 
         let p2 = runtime.poll(&mut node, 2_000, 1).unwrap();
         assert!(p2.maintenance.unwrap().routes_expired);
-        let _ = runtime.complete_receive(&mut node, p2.action, 2_000, 1).unwrap();
+        let _ = runtime
+            .complete_receive(&mut node, p2.action, 2_000, 1)
+            .unwrap();
         assert!(node.router.lookup_route(&target).is_none());
     }
 
@@ -452,11 +459,155 @@ mod tests {
 
         let p1 = runtime.poll(&mut node, 10_000, 1).unwrap();
         assert!(!p1.maintenance.unwrap().neighbors_pruned);
-        let _ = runtime.complete_receive(&mut node, p1.action, 10_000, 1).unwrap();
+        let _ = runtime
+            .complete_receive(&mut node, p1.action, 10_000, 1)
+            .unwrap();
         assert_eq!(node.router.neighbors().count(), 1);
         let p2 = runtime.poll(&mut node, 10_001, 1).unwrap();
         assert!(p2.maintenance.unwrap().neighbors_pruned);
-        let _ = runtime.complete_receive(&mut node, p2.action, 10_001, 1).unwrap();
+        let _ = runtime
+            .complete_receive(&mut node, p2.action, 10_001, 1)
+            .unwrap();
         assert_eq!(node.router.neighbors().count(), 0);
+    }
+
+    #[test]
+    fn periodic_maintenance_expires_stale_neighbor_and_dao_route() {
+        let mut node = root();
+        let root_addr = node.node().node_id.link_local_addr().0;
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: crate::routing::ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root_addr,
+        };
+        let mut wire = [0u8; Dio::BASE_LEN];
+        dio.write_to(&mut wire).unwrap();
+        assert!(node.router.process_dio(&dio, &wire, root_addr, -40, 0));
+        assert_eq!(node.router.neighbors().count(), 1);
+
+        let identity = Identity::from_seed(Seed::new([2; 32]));
+        let mut target = [0u8; 16];
+        target[..2].copy_from_slice(&[0xfe, 0x80]);
+        target[8..].copy_from_slice(&identity.iid);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 2);
+        assert!(node.router.set_dao_lifetime_unit(1));
+        assert!(node.router.process_dao_at_ms(&dao, target, target, 1_000));
+        assert!(node.router.lookup_route(&target).is_some());
+
+        let maint_interval = 1_000;
+        let neigh_timeout = 10_000;
+        let config = RplRuntimeConfig::new(maint_interval, neigh_timeout).unwrap();
+        let mut runtime = RplRuntime::new(config, 0);
+
+        let mut t = 0u64;
+        let dao_deadline_s = 3u64;
+
+        for cycle in 1..=12 {
+            t += maint_interval / 2;
+            let _ = runtime
+                .complete_receive(
+                    &mut node,
+                    runtime.poll(&mut node, t, 1).unwrap().action,
+                    t,
+                    1,
+                )
+                .unwrap();
+
+            t += maint_interval / 2;
+            let poll = runtime.poll(&mut node, t, 1).unwrap();
+
+            let expired_before =
+                dao_deadline_s * 1_000 + 1 <= t && node.router.lookup_route(&target).is_none();
+            let pruned_before = neigh_timeout + 1 <= t && node.router.neighbors().count() == 0;
+
+            match cycle {
+                1 => {
+                    assert!(
+                        poll.maintenance.is_some(),
+                        "cycle {cycle}: maintenance should fire"
+                    );
+                    assert_eq!(
+                        poll.maintenance.unwrap(),
+                        RplMaintenanceOutcome::default(),
+                        "cycle {cycle}: nothing should expire yet"
+                    );
+                }
+                2 => {
+                    assert!(
+                        poll.maintenance.is_some(),
+                        "cycle {cycle}: maintenance should fire"
+                    );
+                    assert_eq!(
+                        poll.maintenance.unwrap(),
+                        RplMaintenanceOutcome::default(),
+                        "cycle {cycle}: nothing should expire yet"
+                    );
+                }
+                3 => {
+                    let m = poll
+                        .maintenance
+                        .expect("cycle {cycle}: maintenance should fire");
+                    assert!(
+                        m.routes_expired,
+                        "cycle {cycle}: DAO should expire at t={t}"
+                    );
+                    assert!(
+                        !m.neighbors_pruned,
+                        "cycle {cycle}: neighbor should not yet be pruned at t={t}"
+                    );
+                }
+                4..=9 => {
+                    if expired_before || pruned_before {
+                        continue;
+                    }
+                    let m = poll
+                        .maintenance
+                        .expect("cycle {cycle}: maintenance should fire at t={t}");
+                    assert!(
+                        !m.routes_expired,
+                        "cycle {cycle}: DAO already expired at t={t}"
+                    );
+                    assert!(
+                        !m.neighbors_pruned,
+                        "cycle {cycle}: neighbor should not yet be pruned at t={t}"
+                    );
+                }
+                10 => {
+                    let m = poll
+                        .maintenance
+                        .expect("cycle {cycle}: maintenance should fire at t={t}");
+                    assert!(
+                        !m.routes_expired,
+                        "cycle {cycle}: DAO already expired at t={t}"
+                    );
+                    assert!(
+                        m.neighbors_pruned,
+                        "cycle {cycle}: neighbor should be pruned at t={t}"
+                    );
+                }
+                _ => {}
+            }
+
+            let _ = runtime
+                .complete_receive(&mut node, poll.action, t, 1)
+                .unwrap();
+        }
+
+        assert_eq!(
+            node.router.neighbors().count(),
+            0,
+            "neighbor should be pruned"
+        );
+        assert!(
+            node.router.lookup_route(&target).is_none(),
+            "DAO route should be expired"
+        );
     }
 }
