@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-g9pz",
+  "title": "[review] project-LICHEN-6mij.2.4: use-after-free in coap_oscore_auth_mutating -\u003e auth.payload points to stack",
+  "description": "CRITICAL bug: coap_oscore_auth_mutating() stores a pointer to its stack-allocated 'plain' buffer in result-\u003epayload. All callers (deaddrop_post, msg_inbox_post) then dereference this pointer after coap_oscore_auth_mutating has returned, when the stack frame no longer exists.\n\nLocation: lichen/subsys/lichen/oscore/coap_oscore.c:249 — uint8_t plain[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX] on stack, result-\u003epayload = plain on line ~266. Used at coap_dtn.c:123-124 (parse_recipient, store), coap_server.c:341-345 (null check, msg_post callback).\n\nFix options: (a) have the caller pass a pre-allocated buffer, (b) use a static buffer, (c) use inversion-of-control (callback pattern).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:56:53.759614192Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:56:53.759614192Z"
+}
