@@ -33,6 +33,7 @@ pub const RULE_RPL_DAO: u8 = 4;
 pub const RULE_LINK_LOCAL_OSCORE: u8 = 5;
 pub const RULE_GLOBAL_OSCORE: u8 = 6;
 pub const RULE_MQTT_SN: u8 = 7;
+pub const RULE_SRH: u8 = 8;
 pub const RULE_UNCOMPRESSED: u8 = 255;
 
 // Authenticated L2 inner-payload dispatch bytes.

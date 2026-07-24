@@ -17,6 +17,7 @@ See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T
 | 5 | Link-local IPv6 + UDP + OSCORE | ~6 bytes residue | + OSCORE tail |
 | 6 | Global IPv6 + UDP + OSCORE | ~14 bytes residue | + OSCORE tail |
 | 7 | MQTT-SN (port 10883) | ~6 bytes | Exact port match |
+| 8 | SRH wrapper (NH=43) | routing_hdr + inner_residue | Strips RPL SRH, compresses inner transport |
 | 255 | No compression | Full headers | Version mismatch or unknown rule fallback |
 
 Current constants (Rust/C synchronized):
@@ -31,6 +32,7 @@ Current constants (Rust/C synchronized):
 | 5 | LINK_LOCAL_OSCORE | Link-local IPv6 + UDP + OSCORE-protected CoAP |
 | 6 | GLOBAL_OSCORE | Global IPv6 + UDP + OSCORE-protected CoAP |
 | 7 | MQTT_SN | IPv6 + UDP + MQTT-SN (port 10883) |
+| 8 | SRH | RPL Source Routing Header wrapper (NH=43) |
 | 255 | UNCOMPRESSED | No compression (full headers passthrough) |
 
 See rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/include/lichen/schc.h:93, constants.toml:29-36, and test/vectors/schc_compression.json for exact matching logic and test vectors. Fragmentation uses [schc.fragment]: M=1, N=6, T=0, RCS=4 bytes, RETX=10s, MAX_ACK=3, INACTIVITY=60s (MSB-first bitmap).
