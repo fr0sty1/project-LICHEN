@@ -510,8 +510,11 @@ impl HybridRouter {
     }
 
     /// Update neighbor coordinates (from their announce).
+    /// Silently ignores invalid coordinates (NaN, inf, null island, out-of-range).
     pub fn update_neighbor_coords(&mut self, neighbor: [u8; 16], coords: GeoCoords) {
-        self.neighbor_coords.insert(neighbor, coords);
+        if is_valid_coords(&coords) {
+            self.neighbor_coords.insert(neighbor, coords);
+        }
     }
 
     /// Get this node's address.
@@ -533,19 +536,15 @@ impl HybridRouter {
 #[cfg(feature = "std")]
 /// Validate geographic coordinates.
 #[cfg(feature = "std")]
+const NULL_ISLAND_EPSILON: f32 = 0.001;
+
 fn is_valid_coords(coords: &GeoCoords) -> bool {
-    if coords.lat.is_nan()
-        || coords.lat.is_infinite()
-        || coords.lon.is_nan()
-        || coords.lon.is_infinite()
-    {
+    if !coords.lat.is_finite() || !coords.lon.is_finite() {
         return false;
     }
-    // Reject null island (0, 0) as likely invalid GPS data
-    if coords.lat == 0.0 && coords.lon == 0.0 {
+    if coords.lat.abs() < NULL_ISLAND_EPSILON && coords.lon.abs() < NULL_ISLAND_EPSILON {
         return false;
     }
-    // Valid range
     coords.lat >= -90.0 && coords.lat <= 90.0 && coords.lon >= -180.0 && coords.lon <= 180.0
 }
 
