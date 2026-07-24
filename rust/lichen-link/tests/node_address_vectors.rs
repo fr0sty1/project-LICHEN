@@ -1,96 +1,123 @@
 //! Tests against shared test vectors from test/vectors/node_address.json
 //!
 //! These vectors are the source of truth for cross-implementation compatibility.
-//! If this test fails, the Rust implementation doesn't match the Python reference.
+//! All implementations (Rust, C, Python) must produce identical output.
 
-#![cfg(feature = "schnorr")]
+#[cfg(feature = "schnorr")]
+mod node_address_tests {
+    use std::fs;
+    use std::path::Path;
 
-use std::fs;
-use std::path::Path;
+    use serde::Deserialize;
 
-use serde::Deserialize;
+    use lichen_link::identity::{human_address_from_pubkey, iid_from_pubkey};
+    use lichen_link::PublicKey;
 
-use lichen_link::identity::{human_address_from_pubkey, iid_from_pubkey};
-use lichen_link::PublicKey;
-
-#[derive(Deserialize)]
-struct VectorFile {
-    #[allow(dead_code)]
-    description: String,
-    vectors: Vec<NodeAddressVector>,
-}
-
-#[derive(Deserialize)]
-struct NodeAddressVector {
-    name: String,
-    #[allow(dead_code)]
-    seed: String,
-    pubkey: String,
-    iid: String,
-    human_address: String,
-    #[allow(dead_code)]
-    description: String,
-}
-
-fn hex_decode_32(s: &str) -> [u8; 32] {
-    let mut bytes = [0u8; 32];
-    for i in 0..32 {
-        bytes[i] = u8::from_str_radix(&s[2 * i..2 * i + 2], 16).unwrap();
+    #[derive(Deserialize)]
+    struct VectorFile {
+        vectors: Vec<NodeAddressVector>,
     }
-    bytes
-}
 
-fn hex_decode_8(s: &str) -> [u8; 8] {
-    let mut bytes = [0u8; 8];
-    for i in 0..8 {
-        bytes[i] = u8::from_str_radix(&s[2 * i..2 * i + 2], 16).unwrap();
+    #[derive(Deserialize)]
+    struct NodeAddressVector {
+        name: String,
+        pubkey: String,
+        iid: String,
+        human_address: String,
     }
-    bytes
-}
 
-#[test]
-fn test_node_address_vectors() {
-    let vectors_path =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/node_address.json");
+    fn hex_decode(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
 
-    assert!(
-        vectors_path.exists(),
-        "Vectors file not found at {:?}",
-        vectors_path
-    );
+    #[test]
+    fn test_node_address_vectors() {
+        let vectors_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/node_address.json");
 
-    let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
-    let vf: VectorFile =
-        serde_json::from_str(&content).expect("Failed to parse node_address.json");
+        assert!(
+            vectors_path.exists(),
+            "Vectors file not found at {:?}",
+            vectors_path
+        );
 
-    let mut failures = Vec::new();
+        let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
+        let vectors: VectorFile =
+            serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
-    for vector in &vf.vectors {
-        let pubkey = PublicKey::new(hex_decode_32(&vector.pubkey));
-        let expected_iid = hex_decode_8(&vector.iid);
+        let mut failures = Vec::new();
 
-        let got_iid = iid_from_pubkey(&pubkey);
-        let got_human = human_address_from_pubkey(&pubkey);
+        for vector in &vectors.vectors {
+            let pubkey_bytes: [u8; 32] = match hex_decode(&vector.pubkey).try_into() {
+                Ok(b) => b,
+                Err(_) => {
+                    failures.push(format!(
+                        "Vector '{}': pubkey not 32 bytes",
+                        vector.name
+                    ));
+                    continue;
+                }
+            };
+            let expected_iid: [u8; 8] = match hex_decode(&vector.iid).try_into() {
+                Ok(b) => b,
+                Err(_) => {
+                    failures.push(format!(
+                        "Vector '{}': iid not 8 bytes",
+                        vector.name
+                    ));
+                    continue;
+                }
+            };
+            let expected_human = vector.human_address.as_bytes();
 
-        let human_str = core::str::from_utf8(&got_human).unwrap();
+            let pubkey = PublicKey::new(pubkey_bytes);
+            let iid = iid_from_pubkey(&pubkey);
+            let human = human_address_from_pubkey(&pubkey);
 
-        if got_iid != expected_iid {
-            failures.push(format!(
-                "{}: IID mismatch: got {:02x?}, expected {:02x?}",
-                vector.name, got_iid, expected_iid
-            ));
+            if iid != expected_iid {
+                failures.push(format!(
+                    "Vector '{}': IID mismatch (got {:02x?}, expected {:02x?})",
+                    vector.name, iid, expected_iid
+                ));
+            }
+
+            if &human[..] != expected_human {
+                let got_str = core::str::from_utf8(&human).unwrap_or("(invalid utf8)");
+                failures.push(format!(
+                    "Vector '{}': human_address mismatch (got '{}', expected '{}')",
+                    vector.name, got_str, vector.human_address
+                ));
+            }
+
+            // Verify U/L bit is cleared
+            if iid[0] & 0x02 != 0 {
+                failures.push(format!(
+                    "Vector '{}': IID U/L bit must be cleared",
+                    vector.name
+                ));
+            }
+
+            println!(
+                "Vector '{}': iid={:02x?}, human_address='{}'",
+                vector.name,
+                iid,
+                core::str::from_utf8(&human).unwrap_or("(invalid utf8)")
+            );
         }
-        if human_str != vector.human_address {
-            failures.push(format!(
-                "{}: human_address mismatch: got {}, expected {}",
-                vector.name, human_str, vector.human_address
-            ));
-        }
-    }
 
-    assert!(
-        failures.is_empty(),
-        "Node address vector failures:\n{}",
-        failures.join("\n")
-    );
+        if !failures.is_empty() {
+            for f in &failures {
+                eprintln!("FAIL: {}", f);
+            }
+            panic!("{} node address vector(s) failed", failures.len());
+        }
+
+        println!(
+            "Validated {} node address vectors",
+            vectors.vectors.len()
+        );
+    }
 }
