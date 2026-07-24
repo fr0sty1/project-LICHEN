@@ -9,9 +9,9 @@ A LoRa mesh protocol built entirely on IETF standards. Real IPv6. Real routing. 
 
 ## Why LICHEN?
 
-Meshtastic, MeshCore, and LoRaWAN are neat. They're also deeply flawed.
+Meshtastic, MeshCore, and LoRaWAN are useful. They also hit limits that matter for some use cases.
 
-| Problem | Meshtastic | MeshCore | LoRaWAN |
+| Limitation | Meshtastic | MeshCore | LoRaWAN |
 |---------|------------|----------|---------|
 | Addressing | Proprietary 32-bit IDs | Proprietary | DevEUI (not routable) |
 | Routing | Naive flooding | Source routing blobs | Star topology only |
