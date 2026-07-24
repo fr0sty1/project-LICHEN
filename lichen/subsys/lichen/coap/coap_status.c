@@ -586,7 +586,7 @@ static int status_get(struct coap_resource *resource,
 	len = lichen_coap_encode_status_cbor(cbor_buf, sizeof(cbor_buf), &status);
 	if (len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
+					   COAP_RESPONSE_CODE_TOO_MANY_REQUESTS, 0, NULL, 0);
 	}
 
 	return lichen_coap_respond(resource, request, addr, addr_len,
@@ -696,7 +696,7 @@ static int neighbors_get(struct coap_resource *resource,
 						neighbors, (size_t)count);
 	if (len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
+					   COAP_RESPONSE_CODE_TOO_MANY_REQUESTS, 0, NULL, 0);
 	}
 
 	return lichen_coap_respond(resource, request, addr, addr_len,
@@ -801,7 +801,7 @@ static int routes_get(struct coap_resource *resource,
 					     has_default ? default_route : NULL);
 	if (len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
+					   COAP_RESPONSE_CODE_TOO_MANY_REQUESTS, 0, NULL, 0);
 	}
 
 	return lichen_coap_respond(resource, request, addr, addr_len,
