@@ -104,15 +104,47 @@ pub struct RplMaintenanceOutcome {
     pub topology_changed: bool,
 }
 
-#[cfg(feature = "std")]
 pub trait TrickleSafeLivenessPolicy {
-    fn confirmation(&self, now_ms: u64, last_seen_ms: u64, max_age_ms: u64) -> bool;
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, heard_consistent: u32) -> bool;
 }
 
 #[cfg(feature = "std")]
 impl TrickleSafeLivenessPolicy for () {
-    fn confirmation(&self, _now_ms: u64, _last_seen_ms: u64, _max_age_ms: u64) -> bool {
-        true
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
+        now.saturating_sub(last_seen) <= timeout
+    }
+}
+
+/// Trickle-aware liveness policy that scales the effective timeout based on
+/// the Trickle `heard_consistent` counter (RFC 6206 suppression awareness).
+///
+/// When `counter >= k` (full suppression), the effective timeout scales up to
+/// 3× the base timeout, preventing premature eviction of neighbors whose DIOs
+/// are suppressed in dense networks.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TrickleAwareNeighborLiveness {
+    /// Minimum base timeout that must elapse before scaling applies.
+    pub min_base_timeout_ms: u64,
+}
+
+#[cfg(feature = "std")]
+impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, heard_consistent: u32) -> bool {
+        let age = now.saturating_sub(last_seen);
+        if age <= timeout {
+            return true;
+        }
+        if age <= self.min_base_timeout_ms {
+            return false;
+        }
+        let k: u64 = 10;
+        if k == 0 {
+            return false;
+        }
+        let c = u64::from(heard_consistent.min(k as u32));
+        let scale = 1 + (2 * c / k);
+        age <= timeout * scale
     }
 }
 
@@ -171,14 +203,6 @@ pub type LinkEtx = f32;
 
 /// Geographic coordinates (latitude, longitude) in decimal degrees.
 pub type GeoCoords = (f64, f64);
-
-pub trait TrickleSafeLivenessPolicy {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
-        now.saturating_sub(last_seen) <= timeout
-    }
-}
-
-impl TrickleSafeLivenessPolicy for () {}
 
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
@@ -314,12 +338,12 @@ impl NeighborTable {
         }
     }
 
+    #[cfg(feature = "std")]
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
         let policy = TrickleAwareNeighborLiveness::default();
         self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
     }
 
-    #[cfg(feature = "std")]
     fn prune_with_removed<P: TrickleSafeLivenessPolicy>(
         &mut self,
         policy: &P,
@@ -327,7 +351,6 @@ impl NeighborTable {
         max_age_ms: u64,
         heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
-        policy: &P,
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
@@ -1050,10 +1073,14 @@ impl Router {
         self.prune_neighbors_at(now_ms, max_age_ms, policy).1
     }
 
-    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+    pub fn maintain<P: TrickleSafeLivenessPolicy>(
+        &mut self,
+        now_ms: u64,
+        neighbor_timeout_ms: u64,
+        policy: &P,
+    ) -> RplMaintenanceOutcome {
         let now_ms = self.observe_now(now_ms);
         let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
-        let policy = TrickleAwareNeighborLiveness::default();
         let (neighbors_pruned, topology_changed) =
             self.prune_neighbors_at(now_ms, neighbor_timeout_ms, policy);
         RplMaintenanceOutcome {
@@ -1079,7 +1106,7 @@ impl Router {
             .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
-            }, policy);
+            });
         if removed_len != 0 {
             self.dodag.remove_parents(&removed[..removed_len]);
         }
@@ -2499,6 +2526,145 @@ mod tests {
         assert_eq!(router.neighbors.count(), 1);
         assert!(router.maintain(15_001, 10_000, &()).neighbors_pruned);
         assert_eq!(router.neighbors.count(), 0);
+    }
+
+    #[test]
+    fn trickle_suppression_prevents_premature_eviction_through_policy() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let neighbor = link_local(1);
+        router.neighbors.update(&neighbor, 1.0, -40, 5_000);
+
+        for _ in 0..10 {
+            router.trickle_consistent();
+        }
+
+        let policy = TrickleAwareNeighborLiveness::default();
+
+        assert!(!router.maintain(15_000, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 1);
+    }
+
+    #[test]
+    fn trickle_suppression_evicts_after_policy_allows_timeout() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let neighbor = link_local(1);
+        router.neighbors.update(&neighbor, 1.0, -40, 5_000);
+
+        for _ in 0..10 {
+            router.trickle_consistent();
+        }
+
+        let policy = TrickleAwareNeighborLiveness::default();
+
+        let max_extended = 10_000 * (1 + 2 * 10 / 10);
+        assert!(!router.maintain(5_000 + max_extended, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 1);
+
+        assert!(router.maintain(5_000 + max_extended + 1, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 0);
+    }
+
+    #[test]
+    fn no_trickle_suppression_evicts_at_literal_timeout() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let neighbor = link_local(1);
+        router.neighbors.update(&neighbor, 1.0, -40, 5_000);
+
+        let policy = TrickleAwareNeighborLiveness::default();
+        assert!(!router.maintain(15_000, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 1);
+        assert!(router.maintain(15_001, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 0);
+    }
+
+    #[test]
+    fn trickle_suppression_keeps_neighbor_alive_across_both_rounds() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let neighbor = link_local(1);
+        router.neighbors.update(&neighbor, 1.0, -40, 5_000);
+
+        for _ in 0..10 {
+            router.trickle_consistent();
+        }
+
+        let policy = TrickleAwareNeighborLiveness::default();
+        assert!(!router.maintain(14_000, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 1);
+        assert!(!router.maintain(29_000, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 1);
+        assert!(router.maintain(29_001, 10_000, &policy).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 0);
+    }
+
+    #[test]
+    fn prune_neighbors_trickle_safe_extends_timeout_under_suppression() {
+        let mut table = NeighborTable::new();
+        let addr = link_local(1);
+        table.update(&addr, 1.0, -50, 1_000);
+
+        let mut trickle = TrickleTimer::new(1000, 4, 10);
+        trickle.start(0, 0);
+        for _ in 0..10 {
+            trickle.heard_consistent();
+        }
+
+        table.prune_trickle_safe(14_000, 10_000, &trickle, |_| {});
+        assert_eq!(table.count(), 1);
+
+        table.prune_trickle_safe(29_000, 10_000, &trickle, |_| {});
+        assert_eq!(table.count(), 1);
+
+        table.prune_trickle_safe(29_001, 10_000, &trickle, |_| {});
+        assert_eq!(table.count(), 0);
+    }
+
+    #[test]
+    fn is_trickle_aware_live_without_suppression_uses_literal_timeout() {
+        let mut table = NeighborTable::new();
+        let addr = link_local(1);
+        table.update(&addr, 1.0, -50, 1_000);
+
+        let mut trickle = TrickleTimer::new(1000, 4, 10);
+        trickle.start(0, 0);
+
+        assert!(table.is_trickle_aware_live(&addr, &trickle, 11_000, 10_000));
+        assert!(!table.is_trickle_aware_live(&addr, &trickle, 11_001, 10_000));
+    }
+
+    #[test]
+    fn is_trickle_aware_live_with_max_suppression_scales_to_3x() {
+        let mut table = NeighborTable::new();
+        let addr = link_local(1);
+        table.update(&addr, 1.0, -50, 1_000);
+
+        let mut trickle = TrickleTimer::new(1000, 4, 10);
+        trickle.start(0, 0);
+        for _ in 0..10 {
+            trickle.heard_consistent();
+        }
+
+        assert!(table.is_trickle_aware_live(&addr, &trickle, 30_000, 10_000));
+        assert!(!table.is_trickle_aware_live(&addr, &trickle, 30_001, 10_000));
+    }
+
+    #[test]
+    fn is_trickle_aware_live_partial_suppression_scales_proportionally() {
+        let mut table = NeighborTable::new();
+        let addr = link_local(1);
+        table.update(&addr, 1.0, -50, 1_000);
+
+        let mut trickle = TrickleTimer::new(1000, 4, 10);
+        trickle.start(0, 0);
+        for _ in 0..5 {
+            trickle.heard_consistent();
+        }
+
+        assert!(table.is_trickle_aware_live(&addr, &trickle, 20_000, 10_000));
+        assert!(!table.is_trickle_aware_live(&addr, &trickle, 20_001, 10_000));
     }
 
     // --- DTN Buffer Tests ---
