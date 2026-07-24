@@ -18,7 +18,6 @@ use lichen_core::addr::Ipv6Addr;
 use lichen_core::rf_health::RfHealthMetrics;
 
 /// Maximum payload size for IPv6 tunnel packets.
-
 /// Meshtastic Data payload is limited to ~237 bytes.
 pub const MAX_TUNNEL_PAYLOAD: usize = 237;
 

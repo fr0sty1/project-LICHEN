@@ -166,32 +166,36 @@ pub trait Rng {
 #[cfg(feature = "rand")]
 use rand_core::{CryptoRng, RngCore};
 
+/// Newtype wrapper that bridges LICHEN's [`Rng`] to [`RngCore`] + [`CryptoRng`].
 #[cfg(feature = "rand")]
-impl<T: Rng + ?Sized> RngCore for T {
+pub struct RngWrapper<T: Rng>(pub T);
+
+#[cfg(feature = "rand")]
+impl<T: Rng> RngCore for RngWrapper<T> {
     fn next_u32(&mut self) -> u32 {
         let mut buf = [0u8; 4];
-        self.fill_bytes(&mut buf);
+        self.0.fill_bytes(&mut buf);
         u32::from_ne_bytes(buf)
     }
 
     fn next_u64(&mut self) -> u64 {
         let mut buf = [0u8; 8];
-        self.fill_bytes(&mut buf);
+        self.0.fill_bytes(&mut buf);
         u64::from_ne_bytes(buf)
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        <Self as Rng>::fill_bytes(self, dest);
+        self.0.fill_bytes(dest);
     }
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.fill_bytes(dest);
+        self.0.fill_bytes(dest);
         Ok(())
     }
 }
 
 #[cfg(feature = "rand")]
-impl<T: Rng + ?Sized> CryptoRng for T {}
+impl<T: Rng> CryptoRng for RngWrapper<T> {}
 
 /// Non-volatile storage for persistent state.
 ///
@@ -259,11 +263,16 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn irq_status(&mut self) -> Result<u32, Self::Error> {
-        Ok(1)  // simulate pending packet for RX
+        Ok(1) // simulate pending packet for RX
     }
 
     fn pps_timestamp(&self) -> Option<u64> {
-        Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as u64)
+        Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as u64,
+        )
     }
 
     async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {
