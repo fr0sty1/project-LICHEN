@@ -304,7 +304,6 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 	cbor_put_key(&ctx, "uptime_s");
 	cbor_put_uint(&ctx, status->uptime_s);
 
-
 	if (status->battery_pct_valid) {
 		cbor_put_key(&ctx, "battery_pct");
 		cbor_put_uint(&ctx, status->battery_pct);
