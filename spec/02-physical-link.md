@@ -60,7 +60,7 @@ Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmission
 
 **SF Assignment:**
 - Preferred (Gateway-assigned): Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
-- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (FNV-1a32 per project-LICHEN-eirg) from short-address DAD and CCP-15.8.3.
+- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (FNV-1a32 per project-LICHEN-eirg) from CCP-15.8.3; short-address DAD uses `crc32_ieee(key=0x4c494348454e)` instead (see 4.5).
 - Join-based: Nodes join on SF10 (common ground). Gateway assigns via DIO or join response; node switches post-assignment.
 - Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
 
@@ -176,23 +176,23 @@ See child issue project-LICHEN-zd2d.2 for driver implementation.
 ### 4.5. DAD Retry Strategy
 
 When Duplicate Address Detection (DAD) indicates a collision on a 16-bit short
-address derived via `hash_32(EUI-64, 0)` (FNV-1a32, basis `0x811c9dc5`, see
-`02a-coordinated-capacity.md:119` and `test/vectors/hash_32.json`), the node
-recomputes a candidate address using seed mixing rather than picking a random
-address, preserving deterministic derivation:
+address derived via `crc32_ieee(EUI-64, key=0x4c494348454e)` (CRC32-IEEE with
+initial value `0x4c494348454e` = ASCII "LICHEN", truncated to 32 bits), the
+node recomputes a candidate address using seed mixing rather than picking a
+random address, preserving deterministic derivation:
 
 ```pseudocode
 fn derive_short_addr(eui64: [u8; 8]) -> u16
-    hash = fnv1a32(eui64, basis: 0x811C9DC5)
-    return hash & 0xFFFF
+    hash = crc32_ieee(eui64, key: 0x4c494348454e)
+    return (hash & 0xFFFF) as u16
 
 fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
     // XOR the seed into the last 4 bytes of EUI-64 before hashing.
     // This produces a different but deterministic address per seed.
     mixed: [u8; 8] = eui64
     mixed[4..8] ^= seed.to_le_bytes()
-    hash = fnv1a32(mixed, basis: 0x811C9DC5)
-    return hash & 0xFFFF
+    hash = crc32_ieee(mixed, key: 0x4c494348454e)
+    return (hash & 0xFFFF) as u16
 
 fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
     addr = derive_short_addr(eui64)
@@ -210,7 +210,6 @@ fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
 If all 256 candidates are exhausted (maximum 255 seed values per 16-bit
 address space), the node MUST fall back to 64-bit extended addressing mode
 (see `02-physical-link.md:270`). Implementations MUST match
-`test/vectors/hash_32.json` for the base `hash_32` function and
 `test/vectors/short_addr_dad.json` for the DAD retry sequence.
 
 ---
