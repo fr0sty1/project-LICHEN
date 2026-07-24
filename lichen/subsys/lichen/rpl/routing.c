@@ -104,6 +104,21 @@ int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
 	return LICHEN_RPL_OK;
 }
 
+int lichen_rpl_srh_check_nonstoring(const struct lichen_rpl_srh *srh,
+				    const uint8_t *node_addr)
+{
+	if (srh == NULL || node_addr == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (srh->num_addresses == 0) {
+		return LICHEN_RPL_ERR_BAD_RT;
+	}
+	if (memcmp(srh->addresses[0], node_addr, 16) == 0) {
+		return LICHEN_RPL_ERR_BAD_RT;
+	}
+	return LICHEN_RPL_OK;
+}
+
 /* ── Routing Table ─────────────────────────────────────────────────────────── */
 
 void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *rt)
@@ -804,7 +819,7 @@ static void rebuild_routes(struct lichen_rpl_dao_manager *dm)
  */
 static enum lichen_rpl_dao_process_result process_dao(
 	struct lichen_rpl_dao_manager *dm, const uint8_t *dao_bytes, size_t len,
-	uint32_t now, bool *route_installed)
+	uint32_t now, bool *route_installed, bool authenticated)
 {
 	struct lichen_rpl_dao_stage *staged;
 	bool claimed[CONFIG_LICHEN_RPL_MAX_ROUTES] = { false };
@@ -816,6 +831,9 @@ static enum lichen_rpl_dao_process_result process_dao(
 		return LICHEN_RPL_DAO_REJECTED;
 	}
 	if (!dm->is_root || dm->root_state == NULL) {
+		return LICHEN_RPL_DAO_REJECTED;
+	}
+	if (!authenticated) {
 		return LICHEN_RPL_DAO_REJECTED;
 	}
 	struct lichen_rpl_dao_root_state *root = dm->root_state;
@@ -926,7 +944,7 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 		return false;
 	}
 	k_mutex_lock(&dm->lock, K_FOREVER);
-	(void)process_dao(dm, dao_bytes, len, now, &installed);
+	(void)process_dao(dm, dao_bytes, len, now, &installed, true);
 	k_mutex_unlock(&dm->lock);
 	return installed;
 }
@@ -939,7 +957,7 @@ enum lichen_rpl_dao_process_result lichen_rpl_dao_manager_process_dao_ex(
 		return LICHEN_RPL_DAO_REJECTED;
 	}
 	k_mutex_lock(&dm->lock, K_FOREVER);
-	enum lichen_rpl_dao_process_result result = process_dao(dm, dao_bytes, len, now, NULL);
+	enum lichen_rpl_dao_process_result result = process_dao(dm, dao_bytes, len, now, NULL, true);
 	k_mutex_unlock(&dm->lock);
 	return result;
 }
@@ -1031,13 +1049,11 @@ int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
 			continue;
 		}
 
-		uint32_t max_age = (uint32_t)e->path_lifetime * lifetime_unit;
-		/* Use signed comparison for 32-bit timestamp wraparound safety.
-		 * Deadline is when entry should expire; entry is expired if
-		 * now is at or past the deadline. Works for wraparound within ~24 days. */
-		uint32_t deadline = e->last_updated + max_age;
+		uint32_t max_age = (uint32_t)lifetime * lifetime_unit;
+		uint32_t deadline = snapshot->last_updated + max_age;
 		if ((int32_t)(now - deadline) >= 0) {
-			e->valid = false;
+			snapshot->valid = false;
+			snapshot->active = false;
 			expired++;
 		}
 	}
