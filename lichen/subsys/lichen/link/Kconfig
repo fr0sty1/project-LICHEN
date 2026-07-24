@@ -104,7 +104,6 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	bool "CCP16 density-aware load balancing"
 	depends on LICHEN_RPL
 	depends on LICHEN_LINK_EPOCH_PERSIST
-	select LICHEN_SCHC
 	help
 	  Enable CCP-16 coordinated load balancing for high-density
 	  (DEFCON-scale) deployments. References density tracking, adaptive
@@ -116,7 +115,6 @@ config LICHEN_TDMA
 	bool "TDMA slot scheduling / gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
 	depends on LICHEN_RPL
-	select LICHEN_SCHC
 	help
 	  Enable TDMA struct and lichen_tdma_init() after lichen_link_load_key() per
 	  AGENTS.md init graph and spec/02a-coordinated-capacity.md §2a.2 (guard=100ms,

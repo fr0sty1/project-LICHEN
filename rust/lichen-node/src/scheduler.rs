@@ -26,9 +26,9 @@ use lichen_core::announce::AnnounceBuilder;
 use lichen_link::identity::Identity;
 use lichen_link::schnorr::sign;
 
-#[cfg(feature = "defmt")]
+#[cfg(all(feature = "defmt", not(feature = "log")))]
 use defmt::{info, warn};
-#[cfg(all(feature = "log", not(feature = "defmt")))]
+#[cfg(feature = "log")]
 use log::{info, warn};
 
 /// Default announce interval in milliseconds (spec 9.4: 5 minutes).

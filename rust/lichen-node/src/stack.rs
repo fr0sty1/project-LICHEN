@@ -307,13 +307,13 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall => TxError::BufferTooSmall,
+                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 
         // Radio TX
         self.radio
-            .transmit(&wire[..wire_len])
+            .transmit(0, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 
@@ -373,12 +373,12 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_payload, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall => TxError::BufferTooSmall,
+                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 
         self.radio
-            .transmit(&wire[..wire_len])
+            .transmit(0, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 

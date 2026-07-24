@@ -4,8 +4,7 @@
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
 use lichen_oscore::{
-    validate_option, Context, ContextId, OscoreError, SenderSequenceState,
-    SenderStateStore,
+    validate_option, Context, ContextId, OscoreError, SenderSequenceState, SenderStateStore,
 };
 
 struct TestStore(SenderSequenceState);
@@ -146,12 +145,9 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let bytes = hex_to_bytes(hex);
     let len = bytes.len();
-    bytes.try_into().unwrap_or_else(|_| {
-        panic!(
-            "hex_to_array: expected {} bytes, got {}",
-            N, len
-        )
-    })
+    bytes
+        .try_into()
+        .unwrap_or_else(|_| panic!("hex_to_array: expected {} bytes, got {}", N, len))
 }
 
 #[test]
@@ -181,9 +177,15 @@ fn test_request_protection_vectors() {
         let options = hex_to_bytes(&pt.options);
         let payload = hex_to_bytes(&pt.payload);
         let target_seq = v.sender_seq.unwrap_or(0);
-        while ctx.sender_seq().is_some_and(|s| s.get() < target_seq as u64) {
+        while ctx
+            .sender_seq()
+            .is_some_and(|s| s.get() < target_seq as u64)
+        {
             let mut store = TestStore::existing(ctx.sender_seq().unwrap().get());
-            ctx.reserve_sender(&mut store).unwrap().protect_request(1, &[], &[]).unwrap();
+            ctx.reserve_sender(&mut store)
+                .unwrap()
+                .protect_request(1, &[], &[])
+                .unwrap();
         }
 
         let mut store = TestStore::existing(ctx.sender_seq().unwrap().get());
@@ -240,7 +242,10 @@ fn test_response_protection_vectors() {
         let initial_seq = ctx.sender_seq().unwrap().get();
         for _ in initial_seq..v.sender_seq.unwrap() as u64 {
             let mut store = TestStore::existing(ctx.sender_seq().unwrap().get());
-            ctx.reserve_sender(&mut store).unwrap().protect_request(1, &[], &[]).unwrap();
+            ctx.reserve_sender(&mut store)
+                .unwrap()
+                .protect_request(1, &[], &[])
+                .unwrap();
         }
 
         let (ciphertext, oscore_opt) = ctx
@@ -331,18 +336,9 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::new_fresh(
-        &master_secret,
-        None,
-        None,
-        &too_long_id,
-        &[1],
-    );
+    let result = Context::new_fresh(&master_secret, None, None, &too_long_id, &[1]);
     assert!(
-        matches!(
-            result,
-            Err(OscoreError::InvalidParam)
-        ),
+        matches!(result, Err(OscoreError::InvalidParam)),
         "Expected InvalidParam for 8-byte sender_id"
     );
 }
@@ -352,18 +348,9 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::new_fresh(
-        &master_secret,
-        None,
-        None,
-        &[0],
-        &too_long_id,
-    );
+    let result = Context::new_fresh(&master_secret, None, None, &[0], &too_long_id);
     assert!(
-        matches!(
-            result,
-            Err(OscoreError::InvalidParam)
-        ),
+        matches!(result, Err(OscoreError::InvalidParam)),
         "Expected InvalidParam for 8-byte recipient_id"
     );
 }
@@ -385,17 +372,8 @@ fn present_empty_id_context_is_distinct_and_encoded() {
 
 #[test]
 fn id_context_over_implementation_capacity_is_rejected() {
-    let result = Context::new_fresh(
-        &[0u8; 16],
-        None,
-        Some(&[0; 9]),
-        &[0],
-        &[1],
-    );
-    assert!(matches!(
-        result,
-        Err(OscoreError::InvalidParam)
-    ));
+    let result = Context::new_fresh(&[0u8; 16], None, Some(&[0; 9]), &[0], &[1]);
+    assert!(matches!(result, Err(OscoreError::InvalidParam)));
 }
 
 #[test]

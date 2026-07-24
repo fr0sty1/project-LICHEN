@@ -615,7 +615,7 @@ mod tests {
         assert_eq!(pkt.msg_type(), MessageType::Confirmable);
         assert_eq!(pkt.code(), MessageCode::GET);
         assert_eq!(pkt.message_id(), 1);
-        assert_eq!(pkt.token(), &[]);
+        assert_eq!(pkt.token(), &[][..]);
         assert_eq!(pkt.payload(), &[]);
         assert!(pkt.is_request());
     }
@@ -749,7 +749,7 @@ mod tests {
         assert_eq!(opts[0].value, b"sensors");
         assert_eq!(opts[1].value, b"temp");
         assert_eq!(opts[2].number, OptionNumber::ContentFormat as u16);
-        assert_eq!(opts[2].as_uint().unwrap(), content_format::CBOR);
+        assert_eq!(opts[2].as_uint().unwrap(), content_format::CBOR as u32);
     }
 
     #[test]

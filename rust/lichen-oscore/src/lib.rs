@@ -2092,8 +2092,12 @@ mod tests {
             } else {
                 None
             };
-            let derived_iv =
-                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context.as_deref()).unwrap();
+            let derived_iv = derive_iv(
+                &secret,
+                salt.as_deref().unwrap_or(&[]),
+                id_context.as_deref(),
+            )
+            .unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
             let piv_len = piv.unwrap().encode_piv(&mut piv_bytes);
 

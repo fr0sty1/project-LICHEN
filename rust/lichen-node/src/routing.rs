@@ -103,18 +103,6 @@ pub struct RplMaintenanceOutcome {
 }
 
 #[cfg(feature = "std")]
-pub trait TrickleSafeLivenessPolicy {
-    fn confirmation(&self, now_ms: u64, last_seen_ms: u64, max_age_ms: u64) -> bool;
-}
-
-#[cfg(feature = "std")]
-impl TrickleSafeLivenessPolicy for () {
-    fn confirmation(&self, _now_ms: u64, _last_seen_ms: u64, _max_age_ms: u64) -> bool {
-        true
-    }
-}
-
-#[cfg(feature = "std")]
 impl DioProcessOutcome {
     fn accepted(inconsistent: bool) -> Self {
         if inconsistent {
@@ -170,13 +158,35 @@ pub type LinkEtx = f32;
 /// Geographic coordinates (latitude, longitude) in decimal degrees.
 pub type GeoCoords = (f64, f64);
 
+/// Liveness policy aware of Trickle timer consistency (RFC 6206).
+///
+/// Extends basic timeout-based liveness with the requirement that a neighbor
+/// has been heard from at least once during a Trickle interval. When
+/// `heard_consistent == 0`, falls back to the base timeout check.
+#[derive(Default)]
+pub struct TrickleAwareNeighborLiveness;
+
+impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, heard_consistent: u32) -> bool {
+        if heard_consistent == 0 {
+            now.saturating_sub(last_seen) <= timeout
+        } else {
+            true
+        }
+    }
+}
+
 pub trait TrickleSafeLivenessPolicy {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
         now.saturating_sub(last_seen) <= timeout
     }
 }
 
-impl TrickleSafeLivenessPolicy for () {}
+impl TrickleSafeLivenessPolicy for () {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
+        now.saturating_sub(last_seen) <= timeout
+    }
+}
 
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
@@ -325,7 +335,6 @@ impl NeighborTable {
         max_age_ms: u64,
         heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
-        policy: &P,
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;

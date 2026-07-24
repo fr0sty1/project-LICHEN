@@ -5,8 +5,7 @@
 
 use lichen_schc::fragment::{
     receiver_abort, Ack, Fragment, FragmentReceiver, FragmentSender, ReceiverResponse,
-    SenderOutput, SenderStatus, DEFAULT_RECEIVER_LIMIT, MAX_ACK_REQUESTS, MIC_LENGTH,
-    TILE_SIZE,
+    SenderOutput, SenderStatus, DEFAULT_RECEIVER_LIMIT, MAX_ACK_REQUESTS, MIC_LENGTH, TILE_SIZE,
 };
 
 #[test]
@@ -109,7 +108,7 @@ fn malformed_codec_inputs_are_rejected() {
     // but the receiver should reject it because payload is not TILE_SIZE bytes.
     let fragment = Fragment::from_bytes(&[0x78, 0x7c, 0]).unwrap();
     assert!(receiver.receive(&fragment).aborted);
-    let regular_nonzero_padding = [0xff; TILE_SIZE + 2];
+    let _regular_nonzero_padding = [0xff; TILE_SIZE + 2];
     assert!(Ack::from_bytes(&[0x78, 0x40, 0]).is_err());
     assert!(Ack::from_bytes_for(
         &[0x78, 0x38, 0, 0, 0, 0, 0, 0, 0],
