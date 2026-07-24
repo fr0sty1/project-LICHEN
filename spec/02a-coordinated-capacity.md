@@ -7,9 +7,10 @@
 
 The Coordinated Capacity Protocol (CCP) defines mechanisms for coordinated capacity management in LICHEN LoRa meshes. This includes TDMA slot assignment, channel agility via select_channel with density-aware fallback, adaptive spreading factor selection via adaptive_sf_select (incorporating EMA-smoothed SNR and load_factor), time synchronization via now(), CH0 control channel rules, signed rx_channel for CCP-9 da2q rendezvous, density/load rules, capability signaling in DIOs, and desynchronization recovery.
 
-All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, and `l2_payload.json`:
+All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `ccp_load_balancing.json`, `link_frame.json`, and `l2_payload.json`:
 - TDMA beacon byte layout, CDDL, SCHC rule 0x08, slot/hash, SFN wrap, join flows, epoch/num_slots per 2a.2
 - vectors for CCP-16/14 slot, SF, channel, tx_allowed, Multi-RX, capacity metrics (independent oracle: FNV-1a + SX126x airtime + multi-channel sim).
+- Test vectors for desync recovery (`ccp16-desync.json`), multi-hop forwarding (`ccp16-hop.json`), rendezvous (`ccp9.json`, `ccp9-rendezvous.json`), and capacity negotiation (`ccp13.json`, `ccp15.json`) also apply per the relevant sections below.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
@@ -154,7 +155,7 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 
 ## Regional Channel Plans and CH0 Rules
 
-- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
+- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `ccp_load_balancing.json`, `link_frame.json`, `l2_payload.json`, and the full vector suite listed under References below.
 - Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
 - Adaptive SF, desync FSM, channel plans, Multi-RX gateway support implemented and tested.
 - All codereview passes closed. Capacity gains verified in simulation per independent oracles.
@@ -165,7 +166,13 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 
 - [RFC 2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
 
-- `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
+- `test/vectors/ccp16.json`, `ccp_tdma.json`, `ccp_load_balancing.json`, `link_frame.json`, `l2_payload.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
+- `test/vectors/ccp16-desync.json` — desynchronization recovery FSM (Section 2a.5)
+- `test/vectors/ccp16-hop.json` — multi-hop forwarding and slot relay
+- `test/vectors/ccp9.json` — rendezvous signing (CCP-9 da2q, Section 9.2 of spec/05-routing.md)
+- `test/vectors/ccp9-rendezvous.json` — CCP-9.2 rendezvous reply with rx_channel
+- `test/vectors/ccp13.json` — capacity metric calculation and density signaling
+- `test/vectors/ccp15.json` — slot adjustment and slot_adjust_ticks validation
 
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/drafts/draft-lichen-schc-lora-00.md`
