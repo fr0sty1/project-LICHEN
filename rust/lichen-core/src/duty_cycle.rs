@@ -270,7 +270,6 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// - `now_ms`: Current timestamp in milliseconds.
     /// - `duration_ms`: Desired transmission duration.
     pub fn can_transmit(&mut self, now_ms: u64, duration_ms: u32) -> bool {
-        self.check_monotonic(now_ms);
         self.remaining_ms(now_ms) >= duration_ms
     }
 
@@ -297,6 +296,7 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// Clear all records.
     pub fn clear(&mut self) {
         self.records.clear();
+        self.last_now = 0;
     }
 }
 

@@ -69,8 +69,8 @@ extern "C" {
  * If frame format or signature size changes, update this constant.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 53-byte signed overhead plus 2 bytes headroom */
-#define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
+#define LICHEN_FRAME_MAX_OVERHEAD   55  /* 53-byte signed overhead plus 2 bytes headroom */
+#define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_FRAME_MAX_OVERHEAD)
 
 /**
  * @brief Link-layer address length (EUI-64)

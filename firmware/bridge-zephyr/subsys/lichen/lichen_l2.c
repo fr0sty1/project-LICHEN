@@ -191,7 +191,7 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
 	     "LICHEN_MIN_FRAME_LEN does not match frame component sizes");
 
 /*
- * Validate LICHEN_LORA_FRAME_OVERHEAD against frame format constants.
+ * Validate LICHEN_FRAME_MAX_OVERHEAD against frame format constants.
  *
  * The overhead (55 bytes) is tuned for MTU = 200 bytes, relying on SCHC
  * compression to shrink IPv6 headers from 40 bytes to ~3-6 bytes. The
@@ -199,22 +199,22 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  * more than offset the signature cost.
  *
  * These assertions catch drift if schnorr48.h or frame format constants
- * change without updating LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h.
+ * change without updating LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h.
  *
- * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_LORA_FRAME_OVERHEAD
+ * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_FRAME_MAX_OVERHEAD
  * to ensure signed frames still fit within the LoRa PHY limit.
  *
  * Constant naming (project-LICHEN-tvfm.106, project-LICHEN-tvfm.107):
- * - LICHEN_FRAME_BASE_OVERHEAD (9 bytes): Minimum frame size for validation.
+ * - LICHEN_FRAME_MIN_HEADER_SIZE (9 bytes): Minimum frame size for validation.
  *   Used in LICHEN_MIN_FRAME_LEN to reject malformed runt frames early.
  *   Does NOT include signature (signature is conditional on has_key).
- * - LICHEN_LORA_FRAME_OVERHEAD (55 bytes): Conservative MTU overhead.
+ * - LICHEN_FRAME_MAX_OVERHEAD (55 bytes): Conservative MTU overhead.
  *   Always reserves space for signature even when not used. This is
  *   intentional: a static MTU simplifies buffer sizing and avoids
  *   dynamic MTU changes when signing keys are provisioned. The 46-byte
  *   overhead when unsigned is acceptable for the simplicity benefit.
  */
-#define LICHEN_FRAME_BASE_OVERHEAD \
+#define LICHEN_FRAME_MIN_HEADER_SIZE \
 	(LICHEN_FRAME_LENGTH_FIELD + \
 	 LICHEN_FRAME_LLSEC_FIELD + \
 	 LICHEN_FRAME_EPOCH_FIELD + \
@@ -223,19 +223,19 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
 
 /*
  * Assert: signature length has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD was calculated assuming 48-byte signatures.
+ * LICHEN_FRAME_MAX_OVERHEAD was calculated assuming 48-byte signatures.
  * If this assertion fails, recalculate the overhead constant.
  */
 BUILD_ASSERT(LICHEN_SIG_LEN == 48,
-	     "LICHEN_SIG_LEN changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
+	     "LICHEN_SIG_LEN changed - update LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h");
 
 /*
  * Assert: frame header size has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD assumes 9-byte minimum frame (broadcast + 32-bit MIC).
+ * LICHEN_FRAME_MAX_OVERHEAD assumes 9-byte minimum frame (broadcast + 32-bit MIC).
  * If this assertion fails, recalculate the overhead constant.
  */
-BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
-	     "Frame header size changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
+BUILD_ASSERT(LICHEN_FRAME_MIN_HEADER_SIZE == 9,
+	     "Frame header size changed - update LICHEN_FRAME_MAX_OVERHEAD in lora_l2.h");
 
 /* IPv6 base header size (RFC 8200). Does NOT include extension headers. */
 #define IPV6_BASE_HDR_LEN 40
