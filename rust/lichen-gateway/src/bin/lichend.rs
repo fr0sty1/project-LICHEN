@@ -482,11 +482,19 @@ async fn forward_mesh_to_upstream<T: TunLike>(
         start.elapsed().as_millis() as u64
     };
     let (reply_opt, event) = gw.process_rpl(frame, now_ms);
-    if let RplEvent::DaoReceived {
-        route_updated: true,
-    } = event
-    {
-        info!("DAO event: route updated");
+    match event {
+        RplEvent::DaoReceived {
+            route_updated: true,
+        } => {
+            info!("DAO event: route updated");
+        }
+        RplEvent::DisReceived => {
+            info!("DIS received, DIO scheduled by RPL stack");
+        }
+        RplEvent::DaoForwarded { next_hop } => {
+            info!(next_hop = ?next_hop, "DAO forwarded through gateway");
+        }
+        _ => {}
     }
     if let Some(reply) = reply_opt {
         info!(len = reply.len(), "mesh reply ready for SLIP TX queue");
