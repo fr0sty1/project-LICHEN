@@ -202,6 +202,39 @@ static void replay_clear_pending_context_locked(int ctx_idx);
 #define CBOR_NULL         0xf6  /* simple value null */
 
 /*
+ * OSCORE option flags (RFC 8613 Section 6.1):
+ *   Bit 7 (0x80): Reserved, MUST be 0
+ *   Bit 5 (0x20), Bit 6 (0x40): Reserved
+ *   Bit 4 (0x10): h flag (KID Context present)
+ *   Bit 3 (0x08): k flag (KID present)
+ *   Bits 2-0 (0x07): n field (PIV length, 3 bits)
+ */
+#define OSCORE_FLAG_RESERVED   0x80  /* Reserved bit mask */
+#define OSCORE_FLAG_KID_CONTEXT 0x10 /* KID Context present */
+#define OSCORE_FLAG_KID        0x08  /* KID present */
+#define OSCORE_FLAG_N_MASK     0x07  /* PIV length mask (lower 3 bits) */
+
+/* OSCORE version in AAD (RFC 8613 Section 5.4) */
+#define OSCORE_VERSION         0x01
+
+/*
+ * CBOR array-header helpers (RFC 8949 Section 3.1):
+ *   array(n) = CBOR_ARRAY_BASE | n, for n <= 23
+ */
+#define CBOR_ARRAY_1  (CBOR_ARRAY_BASE | 1)  /* 1-element array */
+#define CBOR_ARRAY_3  (CBOR_ARRAY_BASE | 3)  /* 3-element array */
+#define CBOR_ARRAY_5  (CBOR_ARRAY_BASE | 5)  /* 5-element array */
+
+/* Internal CBOR buffer capacity for AAD and HKDF-info structures */
+#define CBOR_BUF_CAP 64
+
+/*
+ * CBOR tstr helpers (RFC 8949 Section 3.1):
+ *   tstr(n) = CBOR_TSTR_BASE | n, for n <= 23
+ */
+#define CBOR_TSTR_8   (CBOR_TSTR_BASE | 8)   /* tstr of length 8 */
+
+/*
  * Replay window implementation uses a 32-bit bitmap. The configurable
  * window size must not exceed 32 entries.
  * (Fixes python-ano.55)
@@ -242,20 +275,14 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	 * RFC 8949 Section 3.1: array(n) = 0x80 | n for n <= 23
 	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x85;
+	buf[off++] = CBOR_ARRAY_5;
 
-	/*
-	 * id: bstr (RFC 8613 Section 3.2.1, first element)
-	 * CBOR bstr: major type 2 (0x40) + length
-	 *   0x40-0x57: length 0-23 inline (0x40 | len)
-	 *   0x58: 1-byte length follows
-	 */
 	if (id_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x40 | (uint8_t)id_len;
+		buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_len;
 	} else {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = 0x58;
+		buf[off++] = CBOR_BSTR_1BYTE;
 		buf[off++] = (uint8_t)id_len;
 	}
 	if (off + id_len > buf_len) return -1;
@@ -273,14 +300,14 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	 */
 	if (id_context_len == 0) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0xf6;
+		buf[off++] = CBOR_NULL;
 	} else {
 		if (id_context_len <= 23) {
 			if (off >= buf_len) return -1;
-			buf[off++] = 0x40 | (uint8_t)id_context_len;
+			buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_context_len;
 		} else {
 			if (off + 1 >= buf_len) return -1;
-			buf[off++] = 0x58;
+			buf[off++] = CBOR_BSTR_1BYTE;
 			buf[off++] = (uint8_t)id_context_len;
 		}
 		if (off + id_context_len > buf_len) return -1;
@@ -288,26 +315,15 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		off += id_context_len;
 	}
 
-	/*
-	 * alg_aead: int (RFC 8613 Section 3.2.1, third element)
-	 * Value 10 = AES-CCM-16-64-128 (COSE Algorithm ID from RFC 9053)
-	 * CBOR uint: major type 0, values 0-23 encode directly (no prefix)
-	 */
 	if (off >= buf_len) return -1;
 	buf[off++] = OSCORE_ALG_AEAD;
 
-	/*
-	 * type: tstr (RFC 8613 Section 3.2.1, fourth element)
-	 * One of "Key", "IV", or "Info"
-	 * CBOR tstr: major type 3 (0x60) + length
-	 *   0x60-0x77: length 0-23 inline (0x60 | len)
-	 */
 	size_t type_len = strlen(type);
 	if (type_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x60 | (uint8_t)type_len;
+		buf[off++] = CBOR_TSTR_BASE | (uint8_t)type_len;
 	} else {
-		return -1; /* type shouldn't be > 23 chars */
+		return -1;
 	}
 	if (off + type_len > buf_len) return -1;
 	memcpy(buf + off, type, type_len);
@@ -325,7 +341,7 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		buf[off++] = (uint8_t)out_len;
 	} else if (out_len <= 255) {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = 0x18;
+		buf[off++] = CBOR_UINT_1BYTE;
 		buf[off++] = (uint8_t)out_len;
 	} else {
 		return -1; /* L shouldn't be > 255 for OSCORE */
@@ -378,37 +394,20 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	 * We build the inner structure in a temp buffer, then encode it
 	 * as a bstr inside the Enc_structure.
 	 */
-	uint8_t inner[64];
+	uint8_t inner[CBOR_BUF_CAP];
 	size_t inner_off = 0;
 
-	/*
-	 * aad_array: 5-element array
-	 * CBOR array: major type 4 (0x80) + 5 items = 0x85
-	 */
-	inner[inner_off++] = 0x85;
+	inner[inner_off++] = CBOR_ARRAY_5;
 
-	/*
-	 * oscore_version: uint = 1 (RFC 8613 Section 5.4, first element)
-	 * CBOR uint: values 0-23 encode directly
-	 */
-	inner[inner_off++] = 0x01;
+	inner[inner_off++] = OSCORE_VERSION;
 
-	/*
-	 * algorithms: 1-element array containing alg_aead (second element)
-	 * 0x81 = array of 1 item (0x80 | 1)
-	 * Value 10 = AES-CCM-16-64-128 (COSE Algorithm ID from RFC 9053)
-	 */
-	inner[inner_off++] = 0x81;
+	inner[inner_off++] = CBOR_ARRAY_1;
 	inner[inner_off++] = OSCORE_ALG_AEAD;
 
-	/*
-	 * request_kid: bstr (RFC 8613 Section 5.4, third element)
-	 * CBOR bstr: 0x40 | len for len <= 23
-	 */
 	if (request_kid_len <= 23) {
-		inner[inner_off++] = 0x40 | (uint8_t)request_kid_len;
+		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_kid_len;
 	} else {
-		return -1; /* shouldn't happen with OSCORE_ID_MAX_LEN */
+		return -1;
 	}
 	if (request_kid_len > 0) {
 		if (inner_off + request_kid_len > sizeof(inner)) {
@@ -418,12 +417,8 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		inner_off += request_kid_len;
 	}
 
-	/*
-	 * request_piv: bstr (RFC 8613 Section 5.4, fourth element)
-	 * CBOR bstr: 0x40 | len for len <= 23
-	 */
 	if (request_piv_len <= 23) {
-		inner[inner_off++] = 0x40 | (uint8_t)request_piv_len;
+		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_piv_len;
 	} else {
 		return -1;
 	}
@@ -434,50 +429,23 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		memcpy(inner + inner_off, request_piv, request_piv_len);
 		inner_off += request_piv_len;
 	}
-	/*
-	 * options: empty bstr (RFC 8613 Section 5.4, fifth element)
-	 * Class I options - not used in this implementation
-	 * 0x40 = bstr of length 0
-	 */
-	inner[inner_off++] = 0x40;
+	inner[inner_off++] = CBOR_BSTR_BASE | 0;
 
-	/*
-	 * Now build Enc_structure (RFC 9052 Section 5.3):
-	 *   ["Encrypt0", h'', external_aad]
-	 * where external_aad = bstr .cbor aad_array (the inner buffer)
-	 */
-
-	/*
-	 * 3-element array
-	 * CBOR array: 0x83 = 0x80 | 3
-	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x83;
+	buf[off++] = CBOR_ARRAY_3;
 
-	/*
-	 * "Encrypt0" as tstr (8 chars)
-	 * CBOR tstr: 0x68 = 0x60 | 8 (tstr of length 8)
-	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x68;
+	buf[off++] = CBOR_TSTR_8;
 	if (off + 8 > buf_len) return -1;
 	memcpy(buf + off, "Encrypt0", 8);
 	off += 8;
 
-	/*
-	 * empty bstr (protected header per RFC 9052 Section 5.3)
-	 * 0x40 = bstr of length 0
-	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x40;
+	buf[off++] = CBOR_BSTR_BASE | 0;
 
-	/*
-	 * external_aad as bstr wrapping the inner CBOR
-	 * CBOR bstr: 0x40 | len for len <= 23, 0x58 + len for len 24-255
-	 */
 	if (inner_off <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x40 | (uint8_t)inner_off;
+		buf[off++] = CBOR_BSTR_BASE | (uint8_t)inner_off;
 	} else {
 		if (off + 1 >= buf_len) return -1;
 		buf[off++] = 0x58;
@@ -1078,13 +1046,13 @@ int oscore_option_parse(const uint8_t *data, size_t len,
 	remaining--;
 
 	/* Reserved bit must be 0 */
-	if (flags & 0x80) {
+	if (flags & OSCORE_FLAG_RESERVED) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	bool h_flag = (flags & 0x10) != 0; /* KID Context present */
-	bool k_flag = (flags & 0x08) != 0; /* KID present */
-	uint8_t n = flags & 0x07;          /* PIV length */
+	bool h_flag = (flags & OSCORE_FLAG_KID_CONTEXT) != 0;
+	bool k_flag = (flags & OSCORE_FLAG_KID) != 0;
+	uint8_t n = (flags & OSCORE_FLAG_N_MASK);
 
 	/* Parse PIV */
 	if (n > 0) {
@@ -1157,13 +1125,13 @@ int oscore_option_build(const struct oscore_option *option,
 	/* Flags byte */
 	uint8_t flags = 0;
 	if (option->has_kid_context) {
-		flags |= 0x10;
+		flags |= OSCORE_FLAG_KID_CONTEXT;
 	}
 	if (option->has_kid) {
-		flags |= 0x08;
+		flags |= OSCORE_FLAG_KID;
 	}
 	if (option->has_piv) {
-		flags |= (option->piv_len & 0x07);  /* Lower 3 bits per RFC 8613 */
+		flags |= (option->piv_len & OSCORE_FLAG_N_MASK);
 	}
 
 	if (off >= buflen) {
@@ -1606,7 +1574,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 
 	/* Build OSCORE option */
 	opt.has_piv = true;
-	opt.piv_len = (uint8_t)(piv_len & 0x07);
+	opt.piv_len = (uint8_t)(piv_len & OSCORE_FLAG_N_MASK);
 	opt.has_kid = true;
 	opt.kid_len = ctx->sender_id_len;
 	memcpy(opt.piv, piv, piv_len);
