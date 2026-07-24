@@ -160,6 +160,37 @@ int lichen_gradient_expire(struct lichen_gradient_table *table, uint32_t now_ms)
  */
 bool lichen_seq_newer(uint16_t a, uint16_t b);
 
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+/**
+ * @brief Update per-neighbor SNR EWMA and adapt SF based on link quality.
+ *
+ * Updates the gradient entry for the given neighbor IID with a new SNR
+ * sample. The SNR EWMA (exponential weighted moving average) uses alpha=1/4:
+ *   ewma = (3 * ewma + sample) / 4
+ *
+ * SF adjustment (zrh2.2):
+ * - If EWMA > SNR_HIGH_THRESHOLD for UPGRADE_THRESHOLD consecutive samples,
+ *   decrease SF by 1 (faster, min SF7).
+ * - If EWMA < SNR_LOW_THRESHOLD for DOWNGRADE_THRESHOLD consecutive samples,
+ *   increase SF by 1 (more robust, max SF12).
+ *
+ * @param table         Gradient table
+ * @param neighbor_iid  8-byte IID of the neighbor
+ * @param snr_db        Current SNR sample in dB (int8_t)
+ * @param now_ms        Current uptime in milliseconds
+ */
+void lichen_gradient_update_sf(struct lichen_gradient_table *table,
+			       const uint8_t neighbor_iid[8],
+			       int8_t snr_db,
+			       uint32_t now_ms);
+
+void lichen_gradient_set_default_table(struct lichen_gradient_table *table);
+
+void lichen_gradient_update_sf_default(const uint8_t neighbor_iid[8],
+				       int8_t snr_db,
+				       uint32_t now_ms);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -27,6 +27,9 @@
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 #include <lichen/app_identity/app_identity.h>
 #endif
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+#include <lichen/routing/gradient.h>
+#endif
 
 #include <string.h>
 #ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
@@ -2434,6 +2437,11 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		return;
 	}
 	L2RX_STAT_INC(verified);
+
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+	/* Update per-neighbor SNR EWMA and SF tracking for authenticated peer */
+	lichen_gradient_update_sf_default(src_eui64, snr, k_uptime_get_32());
+#endif
 
 	/* SECURITY: Validate ipv6_len before using it (project-LICHEN-3pun.5) */
 	if (ipv6_len > sizeof(rx_ipv6_buf)) {

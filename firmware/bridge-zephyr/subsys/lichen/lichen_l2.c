@@ -23,6 +23,10 @@
 
 #include <string.h>
 
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+#include <lichen/routing/gradient.h>
+#endif
+
 /*
  * Compile-time assertion: MTU constants must match between layers.
  * LICHEN_L2_MTU (lichen_l2.h) is the IPv6 MTU exposed to the network stack.
@@ -1934,6 +1938,11 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
+
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+	/* Update per-neighbor SNR EWMA and SF tracking for authenticated peer */
+	lichen_gradient_update_sf_default(src_eui64, snr, k_uptime_get_32());
+#endif
 
 	/* SECURITY: Validate ipv6_len before using it (project-LICHEN-3pun.5) */
 	if (ipv6_len > sizeof(rx_ipv6_buf)) {
