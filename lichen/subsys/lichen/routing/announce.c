@@ -670,16 +670,16 @@ static void sched_work_handler(struct k_work *work)
 	ARG_UNUSED(work);
 
 	k_mutex_lock(&sched.mutex, K_FOREVER);
-	bool running = sched.running;
 
-	k_mutex_unlock(&sched.mutex);
-
-	if (!running) {
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
 		return;
 	}
 
 	(void)send_announce();
 	schedule_next();
+
+	k_mutex_unlock(&sched.mutex);
 }
 
 int lichen_announce_sched_start(
