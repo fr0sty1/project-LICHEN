@@ -254,6 +254,46 @@ def _validate_bytes(value: object, name: str, length: int | None = None) -> byte
     return value
 
 
+def _encode_cose_key(pubkey: bytes) -> bytes:
+    """Encode Ed25519 public key as COSE_Key (RFC 9053).
+
+    Matches Rust encode_credential() output:
+    {1: 1, -1: 1, -2: bstr(pubkey), -3: null}
+    """
+    return (
+        b"\xa4"           # map(4)
+        b"\x01\x01"       # 1 (kty): 1 (OKP)
+        b"\x20\x01"       # -1 (crv): 1 (Ed25519)
+        b"\x21"           # -2 (x)
+        b"\x58\x20"       # bstr(32)
+        + pubkey          # 32-byte Ed25519 public key
+        + b"\x22\xf6"     # -3 (y): null
+    )
+
+
+def _encode_id_cred(pubkey: bytes) -> bytes:
+    """Encode ID_CRED as {4: bstr(kid)} where kid = truncated SHA-256 of pubkey.
+
+    Matches Rust encode_id_cred() output.
+    """
+    kid_hash = sha256(pubkey).digest()[:8]
+    return (
+        b"\xa1"           # map(1)
+        b"\x04"           # key 4 (kid)
+        b"\x48"           # bstr(8)
+        + kid_hash        # truncated SHA-256
+    )
+
+
+def _load_raw_cbor_item(data: bytes) -> tuple[object, bytes, int]:
+    """Load single CBOR item and return (parsed_value, raw_bytes, total_consumed)."""
+    fp = io.BytesIO(data)
+    value = cbor2.load(fp)
+    consumed = fp.tell()
+    raw = data[:consumed]
+    return value, raw, consumed
+
+
 @dataclass
 class EdhocInitiator:
     """EDHOC Initiator role (RFC 9528).
@@ -394,23 +434,24 @@ class EdhocInitiator:
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
             )
             plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
-            pt2_items = _decode_cbor_sequence(plaintext_2)
-            if len(pt2_items) != 2:
-                raise ValueError(
-                    f"Malformed PLAINTEXT_2: expected 2 CBOR items, got {len(pt2_items)}"
-                )
-            id_cred_r = _validate_bytes(pt2_items[0], "ID_CRED_R", ED25519_SIG_LEN // 2)
-            signature_2 = _validate_bytes(pt2_items[1], "Signature_2", ED25519_SIG_LEN)
-            if id_cred_r != peer_pubkey:
+            _, id_cred_r_raw, id_cred_len = _load_raw_cbor_item(plaintext_2)
+            sig_items = _decode_cbor_sequence(plaintext_2[id_cred_len:])
+            if not sig_items:
+                raise ValueError("Malformed PLAINTEXT_2: missing signature")
+            if len(sig_items) > 1:
+                raise ValueError(f"Malformed PLAINTEXT_2 trailing items: {len(sig_items) - 1}")
+            signature_2 = _validate_bytes(sig_items[0], "Signature_2", ED25519_SIG_LEN)
+            expected_id_cred = _encode_id_cred(peer_pubkey)
+            if id_cred_r_raw != expected_id_cred:
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
-            cred_r = peer_pubkey
-            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+            cred_r = _encode_cose_key(peer_pubkey)
+            context_2 = cbor2.dumps(id_cred_r_raw) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
                 "Signature1",
-                cbor2.dumps(id_cred_r),
+                id_cred_r_raw,
                 self._th_2,
-                cbor2.dumps(cred_r),
+                cred_r,
                 mac_2,
             ])
             VerifyKey(peer_pubkey).verify(m_2, signature_2)
@@ -421,25 +462,23 @@ class EdhocInitiator:
             )
             self._th_3 = _compute_th(th_3_input)
             self._prk_4e3m = self._prk_3e2m
-            id_cred_i = _validate_bytes(
-                self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
-            )
-            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(id_cred_i)
+            cred_i = _encode_cose_key(self.identity.pubkey)
+            id_cred_i = _encode_id_cred(self.identity.pubkey)
+            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
             m_3 = cbor2.dumps([
                 "Signature1",
-                cbor2.dumps(id_cred_i),
+                id_cred_i,
                 self._th_3,
-                cbor2.dumps(id_cred_i),
+                cred_i,
                 mac_3,
             ])
             signature_3 = SigningKey(self.identity.seed).sign(m_3).signature
-            plaintext_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(signature_3)
+            plaintext_3 = id_cred_i + cbor2.dumps(signature_3)
             k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
             iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
             a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
             ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-            cred_i = self.identity.pubkey
             th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
@@ -462,10 +501,10 @@ class EdhocInitiator:
         """
         self._require_state(_InitiatorState.COMPLETE, "export_oscore")
         try:
-            prk_out = _edhoc_kdf(self._prk_4e3m, self._th_4, 7, self._th_4, 32)
-            prk_exporter = _edhoc_kdf(prk_out, self._th_4, 10, b"", 32)
-            master_secret = _edhoc_kdf(prk_exporter, self._th_4, 0, b"", oscore_key_len)
-            master_salt = _edhoc_kdf(prk_exporter, self._th_4, 1, b"", oscore_salt_len)
+            prk_out = _edhoc_kdf(self._prk_4e3m, self._th_4, "7", self._th_4, 32)
+            prk_exporter = _edhoc_kdf(prk_out, self._th_4, "10", b"", 32)
+            master_secret = _edhoc_kdf(prk_exporter, self._th_4, "0", b"", oscore_key_len)
+            master_salt = _edhoc_kdf(prk_exporter, self._th_4, "1", b"", oscore_salt_len)
             context = OscoreContext(master_secret, master_salt, self._c_i, self._c_r)
         except Exception:
             self._fail()
@@ -600,19 +639,19 @@ class EdhocResponder:
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
             self._prk_3e2m = self._prk_2e
-            id_cred_r = self.identity.pubkey
-            cred_r = self.identity.pubkey
+            id_cred_r = _encode_id_cred(self.identity.pubkey)
+            cred_r = _encode_cose_key(self.identity.pubkey)
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
                 "Signature1",
-                cbor2.dumps(id_cred_r),
+                id_cred_r,
                 self._th_2,
-                cbor2.dumps(cred_r),
+                cred_r,
                 mac_2,
             ])
             signature_2 = SigningKey(self.identity.seed).sign(m_2).signature
-            plaintext_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(signature_2)
+            plaintext_2 = id_cred_r + cbor2.dumps(signature_2)
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
             )
@@ -654,27 +693,28 @@ class EdhocResponder:
             iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
             a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
             plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
-            pt3_items = _decode_cbor_sequence(plaintext_3)
-            if len(pt3_items) != 2:
-                raise ValueError(
-                    f"Malformed PLAINTEXT_3: expected 2 CBOR items, got {len(pt3_items)}"
-                )
-            id_cred_i = _validate_bytes(pt3_items[0], "ID_CRED_I", ED25519_SIG_LEN // 2)
-            signature_3 = _validate_bytes(pt3_items[1], "Signature_3", ED25519_SIG_LEN)
-            if id_cred_i != peer_pubkey:
+            _, id_cred_i_raw, id_cred_len = _load_raw_cbor_item(plaintext_3)
+            sig_items = _decode_cbor_sequence(plaintext_3[id_cred_len:])
+            if not sig_items:
+                raise ValueError("Malformed PLAINTEXT_3: missing signature")
+            if len(sig_items) > 1:
+                raise ValueError(f"Malformed PLAINTEXT_3 trailing items: {len(sig_items) - 1}")
+            signature_3 = _validate_bytes(sig_items[0], "Signature_3", ED25519_SIG_LEN)
+            expected_id_cred = _encode_id_cred(peer_pubkey)
+            if id_cred_i_raw != expected_id_cred:
                 raise ValueError("ID_CRED_I does not match the authenticated peer")
             self._prk_4e3m = self._prk_3e2m
-            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_pubkey)
+            cred_i = _encode_cose_key(peer_pubkey)
+            context_3 = cbor2.dumps(id_cred_i_raw) + cbor2.dumps(cred_i)
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
             m_3 = cbor2.dumps([
                 "Signature1",
-                cbor2.dumps(id_cred_i),
+                id_cred_i_raw,
                 self._th_3,
-                cbor2.dumps(peer_pubkey),
+                cred_i,
                 mac_3,
             ])
             VerifyKey(peer_pubkey).verify(m_3, signature_3)
-            cred_i = peer_pubkey
             th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
@@ -692,10 +732,10 @@ class EdhocResponder:
         """
         self._require_state(_ResponderState.COMPLETE, "export_oscore")
         try:
-            prk_out = _edhoc_kdf(self._prk_4e3m, self._th_4, 7, self._th_4, 32)
-            prk_exporter = _edhoc_kdf(prk_out, self._th_4, 10, b"", 32)
-            master_secret = _edhoc_kdf(prk_exporter, self._th_4, 0, b"", oscore_key_len)
-            master_salt = _edhoc_kdf(prk_exporter, self._th_4, 1, b"", oscore_salt_len)
+            prk_out = _edhoc_kdf(self._prk_4e3m, self._th_4, "7", self._th_4, 32)
+            prk_exporter = _edhoc_kdf(prk_out, self._th_4, "10", b"", 32)
+            master_secret = _edhoc_kdf(prk_exporter, self._th_4, "0", b"", oscore_key_len)
+            master_salt = _edhoc_kdf(prk_exporter, self._th_4, "1", b"", oscore_salt_len)
             context = OscoreContext(master_secret, master_salt, self._c_r, self._c_i)
         except Exception:
             self._fail()

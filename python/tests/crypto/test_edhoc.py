@@ -451,9 +451,9 @@ class TestEdhocValidation:
         monkeypatch.setattr(edhoc_module, "_x25519_shared_secret", unexpected_dh)
         responder = EdhocResponder.create(Identity.generate())
 
-        with pytest.raises(ValueError, match="METHOD_CORR"):
+        with pytest.raises(ValueError, match="Method mismatch"):
             responder.process_message_1(
-                _sequence(0, 0, b"x" * 32, b"\x00"),
+                _sequence(4, 0, b"x" * 32, b"\x00"),
                 Identity.generate().pubkey,
             )
 
@@ -537,3 +537,127 @@ class TestEdhocValidation:
             responder.process_message_3(msg3, initiator_id.pubkey)
         with pytest.raises(ValueError):
             responder.export_oscore()
+
+
+class TestRfc9529TraceVectors:
+    """Cross-validate EDHOC against published RFC 9529 trace vectors.
+
+    Per project policy, test vectors must be validated against an
+    independent implementation.  This class verifies that the Python
+    EDHOC helper functions produce bit-identical results to the Rust
+    implementation for the published RFC 9529 Appendix C.1.1 trace.
+    """
+
+    def test_th2_rfc9529(self) -> None:
+        """TH_2 = H(G_Y || H(message_1)) matches RFC 9529."""
+        from lichen.crypto.edhoc import _compute_th
+
+        message_1 = bytes.fromhex(
+            "0000582031f82c7b5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1c0701e237f042d"
+        )
+        g_y = bytes.fromhex(
+            "dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c"
+        )
+        th_2 = _compute_th(g_y + _compute_th(message_1))
+        assert th_2 == bytes.fromhex(
+            "c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4"
+        )
+
+    def test_keystream2_rfc9529(self) -> None:
+        """KEYSTREAM_2 matches RFC 9529 trace."""
+        from lichen.crypto.edhoc import _edhoc_kdf
+
+        prk_2e = bytes.fromhex(
+            "e998b69d67c5856ceb6812f20590d0cd55ab25e24bf53348f35915883e94b694"
+        )
+        th_2 = bytes.fromhex(
+            "c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4"
+        )
+        keystream = _edhoc_kdf(prk_2e, th_2, "KEYSTREAM_2", b"", 82)
+        assert keystream == bytes.fromhex(
+            "c8419a8f1cae45674cf4c7ba021a110538c7fa2639ae70f316e8c3c34a0faf5d"
+            "bf68cf835ec76f8f532fda302c647b303f02397f72710d072bd962118e35c6fe"
+            "6d3f0a46a4160fba02a12eeec59e54135c3d"
+        )
+
+    def test_th3_rfc9529(self) -> None:
+        """TH_3 matches RFC 9529 trace."""
+        from lichen.crypto.edhoc import _compute_th
+
+        th_2 = bytes.fromhex(
+            "c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4"
+        )
+        plaintext_2 = bytes.fromhex(
+            "4118a11822822e4879f2a41b510c1f9b"
+            "5840c3b5bd44d1e44a085c03d3aede4e1e6c11c572a1968cc3629b505f98c681"
+            "608d3d1de793d1c40eb5dd5d89acf1966aea07022b48cdc99870ebc40374e8fa"
+            "6e09"
+        )
+        cred_r = bytes.fromhex(
+            "58f13081ee3081a1a003020102020462319ec4300506032b6570301d311b3019"
+            "06035504030c124544484f4320526f6f742045643235353139301e170d323230"
+            "3331363038323433365a170d3239313233313233303030305a30223120301e06"
+            "035504030c174544484f4320526573706f6e6465722045643235353139302a30"
+            "0506032b6570032100a1db47b95184854ad12a0c1a354e418aace33aa0f2c662"
+            "c00b3ac55de92f9359300506032b6570034100b723bc01eab0928e8b2b6c98de"
+            "19cc3823d46e7d6987b032478fecfaf14537a1af14cc8be829c6b73044101837"
+            "eb4abc949565d86dce51cfae52ab82c152cb02"
+        )
+        th_3 = _compute_th(cbor2.dumps(th_2) + cbor2.dumps(plaintext_2) + cbor2.dumps(cred_r))
+        assert th_3 == bytes.fromhex(
+            "093c4bed6f1f679d7ef8c6dada0f631b75cf19d8a6eea88b2a5ac1a9fb9e5986"
+        )
+
+    def test_th4_rfc9529(self) -> None:
+        """TH_4 matches RFC 9529 trace."""
+        from lichen.crypto.edhoc import _compute_th
+
+        th_3 = bytes.fromhex(
+            "093c4bed6f1f679d7ef8c6dada0f631b75cf19d8a6eea88b2a5ac1a9fb9e5986"
+        )
+        plaintext_3 = bytes.fromhex(
+            "a11822822e48c24ab2fd7643c79f584096e1cd5fceadfac1b5af819443f70924"
+            "f5719955957fd02655beb4775e1a73186a0d1d3ea683f08f8d03dcecb9cf154e"
+            "1c6f555a1e12ca118ce42bdba6878907"
+        )
+        cred_i = bytes.fromhex(
+            "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b3019"
+            "06035504030c124544484f4320526f6f742045643235353139301e170d323230"
+            "3331363038323430305a170d3239313233313233303030305a30223120301e06"
+            "035504030c174544484f4320496e69746961746f722045643235353139302a30"
+            "0506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f"
+            "23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ea"
+            "d4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f6721"
+            "2267dd05eeff27b9e7a813fa574b72a00b430b"
+        )
+        th_4 = _compute_th(cbor2.dumps(th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i))
+        assert th_4 == bytes.fromhex(
+            "ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d"
+        )
+
+    def test_prk_exporter_rfc9529(self) -> None:
+        """PRK_out, PRK_exporter, and exporter secrets match RFC 9529 trace."""
+        from lichen.crypto.edhoc import _edhoc_kdf
+
+        prk_2e = bytes.fromhex(
+            "e998b69d67c5856ceb6812f20590d0cd55ab25e24bf53348f35915883e94b694"
+        )
+        th_4 = bytes.fromhex(
+            "ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d"
+        )
+
+        prk_out = _edhoc_kdf(prk_2e, th_4, "PRK_out", b"", 32)
+        assert prk_out == bytes.fromhex(
+            "77da318df09d26aa4cc69be602930750c32b5551d7a053d52000265d3c180eac"
+        )
+
+        prk_exporter = _edhoc_kdf(prk_out, th_4, "10", b"", 32)
+        assert prk_exporter == bytes.fromhex(
+            "a0ef8465a68d81f448c85ea6118170d1f65fa03ef4277250b74a599b3353ab02"
+        )
+
+        exporter_0 = _edhoc_kdf(prk_exporter, th_4, "0", b"", 16)
+        assert exporter_0 == bytes.fromhex("240e728a7ef8fe1129c26da390ce9954")
+
+        exporter_1 = _edhoc_kdf(prk_exporter, th_4, "1", b"", 8)
+        assert exporter_1 == bytes.fromhex("32d1a820b919523a")
