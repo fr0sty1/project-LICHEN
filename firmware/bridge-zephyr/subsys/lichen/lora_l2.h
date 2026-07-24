@@ -71,7 +71,7 @@ extern "C" {
  * If frame format or signature size changes, update this constant.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom */
+#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 (header+MIC+sig) minus 2 for SCHC rule ID headroom */
 #define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
 
 /**
