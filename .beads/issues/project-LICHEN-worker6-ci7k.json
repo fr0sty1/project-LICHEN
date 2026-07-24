@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ci7k",
+  "title": "[review] project-LICHEN-worker6-sj6v: dead code in no-PIV response path",
+  "description": "In protect_response(), the else branch (no-PIV response path) calls OscoreSeqNum::from_piv(request_piv) on line 970 which succeeds, then on lines 975-976 checks if request_piv.is_empty() or request_piv.len() \u003e PIV_MAX_LEN. Both conditions are already validated by from_piv (seqnum.rs:117 rejects empty and len\u003e5). This is unreachable dead code. Remove the redundant bounds check.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:08:40.318681275Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:08:40.318681275Z"
+}
