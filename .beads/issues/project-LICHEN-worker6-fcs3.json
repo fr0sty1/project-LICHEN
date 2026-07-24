@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-fcs3",
   "title": "[review] project-LICHEN-worker6-zvp7: duplicate definitions cause 43 compile errors in lib.rs and vectors.rs",
   "description": "The commit added duplicate definitions of context_at (vectors.rs:105,126), TestStore, TestProtect, for_context, test_request_protection_vectors, and test_response_protection_vectors. These collide with existing definitions already present in the codebase, causing 43 compilation errors. Also: calls to nonexistent Context::load_existing, Context::new called with wrong arity (4 vs 5), Context::protect_request doesn't exist on the public API, protect_response calls missing the new include_piv bool parameter, and various type mismatches (u32 vs u64, Option unwrapping, borrow-after-move).",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:54:23.703355316Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:19:18.554261112Z",
-  "started_at": "2026-07-24T19:19:18.554261112Z",
-  "lease_expires_at": "2026-07-24T19:24:18.554261112Z",
-  "heartbeat_at": "2026-07-24T19:19:18.554261112Z"
+  "updated_at": "2026-07-24T20:20:48.143686402Z",
+  "started_at": "2026-07-24T19:19:18.554261112Z"
 }
