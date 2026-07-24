@@ -20,15 +20,16 @@ use tracing::{error, info, warn};
 pub struct Gateway {
     rpl_node: RplNode,
     runtime: RplRuntime,
+    stack_generation: u64,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
-        let addr = node_id.link_local_addr().0;
         Self {
             rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
+            stack_generation: 1,
         }
     }
 
@@ -113,7 +114,7 @@ impl Gateway {
         if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
             return false;
         }
-        (dst[0] == 0xfe && dst[1] == 0x80)
+        (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80)
             || dst[0] == 0xfd
             || self.rpl_node.router().lookup_route(dst).is_some()
     }
@@ -137,7 +138,7 @@ impl Gateway {
     /// monotonic time from Instant::elapsed(). Respects defer-external;
     /// does not auto-admit by TOFU (admission requires explicit pin).
     pub fn maintain(&mut self, now_ms: u64) {
-        let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
+        let _ = self.runtime.poll(&mut self.rpl_node, now_ms, self.stack_generation);
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
@@ -147,7 +148,8 @@ impl Gateway {
         }
         let mut dst = [0u8; 16];
         dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
-        let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
+        let is_mesh_local_addr = (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80) || dst[0] == 0xfd;
+        let to_compress = if is_mesh_local_addr {
             ipv6.to_vec()
         } else {
             let route = match self.rpl_node.router().lookup_route(&dst) {
