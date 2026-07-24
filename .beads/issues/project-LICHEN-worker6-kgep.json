@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-kgep",
   "title": "[rereview] project-LICHEN-y0vp: Rust DAO-ACK not sent for idempotent Duplicate outcome",
   "description": "In commit fdaffad86, the Rust side (rpl_stack.rs:1344) sends a DAO-ACK only on DaoHandlingOutcome::Applied, but the C side (routing.c:process_dao_ex) sends a DAO-ACK on any non-rejected result (APPLIED or IDEMPOTENT).\n\nPer RFC 6550 §6.5: 'If the 'K' flag is set, the recipient of the DAO SHOULD (if it is the target of the DAO) or MUST (if it is a DAG root) respond with a DAO-ACK.' The spec does not carve out an exception for idempotent DAOs (accepted but no state change). The Rust handle_dao returns DaoHandlingOutcome::Duplicate for Ok(DaoProcessOutcome::Duplicate), which is the semantic equivalent of LICHEN_RPL_DAO_IDEMPOTENT.\n\nFix: change the condition from outcome == DaoHandlingOutcome::Applied to also include Duplicate, or match on !Malformed \u0026\u0026 !Rejected \u0026\u0026 !Mismatch etc. to align with the C side.\n\nFiles: rust/lichen-node/src/rpl_stack.rs:1344",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.38",
   "title": "LICHEN_MIN_FRAME_LEN derivation spread across multiple constants without static assert",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hwup.3",
   "title": "Integrate TX queue (lichen_core::tx_queue or SlipFramer.queue) in gateway to prevent buffer overflows on downlink",
   "description": "Add proper TX queue handling in the Rust gateway (mesh-gateway crate) for packets coming from border router to mesh nodes. See lichen-core/src/tx_queue.rs. Critical for preventing drops.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

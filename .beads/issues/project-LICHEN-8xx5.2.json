@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8xx5.2",
   "title": "Verify and align CONFIG options in t_deck_esp32s3_procpu.conf across worker17 and main",
   "description": "Compare CONFIG_* settings in lichen/apps/gateway/boards/t_deck_esp32s3_procpu.conf between project-LICHEN-worker17 and main worker7. Apply any missing tunings (stacks, heap, WiFi buffers, NVS, RPL, etc.) to ensure consistency. Check puck variant too.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

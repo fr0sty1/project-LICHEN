@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-pc1w",
   "title": "[rereview] project-LICHEN-da2q.16.3: Rust tdma_scheduler::slot_for ignores epoch, hardcodes 16 slots",
   "description": "**Severity: P2 (Rust implementation not interoperable with C)**\n\nIn :\n\n\nTwo bugs:\n1. **Missing epoch parameter**: The C implementation incorporates epoch via concatenation (link_ctx.c:666-677). The Rust version hashes only the bare 8-byte EUI64. Without epoch, slot assignments never change across superframes, breaking the spec requirement that epoch rotates slot assignments for load balancing.\n\n2. **Hardcoded **: The C implementation takes  as a parameter. The Rust hardcodes 16 regardless of the beacon's configured number of slots. The test  passes by coincidence because  for this specific EUI.\n\n**Fix:** Add  and  parameters; match the CONCAT-LE construction used in C.\n\n**File:** rust/lichen-node/src/tdma_scheduler.rs",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

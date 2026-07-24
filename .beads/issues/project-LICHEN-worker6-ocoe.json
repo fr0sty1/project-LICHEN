@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-ocoe",
   "title": "[rereview] project-LICHEN-ow1e.208: test does not compile - wrong call signatures for protect_request and unprotect_request",
   "description": "Commit 1444000dc adds test `wrong_key_does_not_poison_replay_window` that calls:\n\n1. `protect_request(0x02, \u0026[], b\"fake\")` — but the actual API requires output buffers: `protect_request(code, options, payload, ct_out: \u0026mut [u8], opt_out: \u0026mut [u8]) -\u003e Result\u003c(usize, usize)\u003e`. Missing `ct_out` and `opt_out` args.\n\n2. `unprotect_request(\u0026attacker_option, \u0026attacker_ciphertext)` — but the actual API requires `unprotect_request(oscore_option, ciphertext, options_out: \u0026mut [u8], payload_out: \u0026mut [u8]) -\u003e Result\u003c(u8, usize, usize)\u003e`. Missing `options_out` and `payload_out` args.\n\nBoth calls will fail to compile. The test was never verified with `cargo test` before commit.\n\nAffected file: rust/lichen-oscore/src/lib.rs",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

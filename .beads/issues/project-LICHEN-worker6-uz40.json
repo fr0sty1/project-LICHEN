@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-uz40",
   "title": "[rereview] project-LICHEN-a4n2.3: TX queue packets_sent incremented before radio TX succeeds",
   "description": "In commit 1a774fce5, tx_queue_pop() increments queue-\u003estats.packets_sent at tx_queue.c:367 before the actual radio transmission (lichen_lora_l2_tx / lora_send). If the radio TX subsequently fails (e.g., -EBUSY from CCA, -EIO from SPI), packets_sent is permanently inflated — it counts frames that were dequeued but never actually transmitted.\n\nAffected call sites:\n- lichen/subsys/lichen/l2/lichen_l2.c:1578 (pop before lichen_lora_l2_tx at line 1585)\n- lichen/subsys/lichen/l2/lora_l2.c:1312 (pop before lora_send at line 1358)\n\nFix options:\n(a) Move radio TX before the queue pop (reorder in lichen_l2.c; lora_l2.c would need deeper restructuring),\n(b) Only increment packets_sent on successful radio TX return, or\n(c) Add a separate 'packets_dequeued' stat so packets_sent accurately reflects over-the-air completions.\n\nThis is a diagnostic/monitoring integrity issue — does not affect data correctness, but makes TX failure statistics unreliable.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
