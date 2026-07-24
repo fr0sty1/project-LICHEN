@@ -2,14 +2,16 @@
   "id": "project-LICHEN-worker6-0tde",
   "title": "[review] project-LICHEN-worker6-jjhj: schc/fragment.rs from_bytes called with 2 args at line 776 but signature takes 1",
   "description": "FragmentReceiver::receive_bytes line 776 calls `Fragment::from_bytes(data, \u0026mut tile)` passing a tile output buffer, but the live Fragment::from_bytes signature at line 167 takes only `data: \u0026[u8]`. The deleted dead code expected the 2-arg form (unpacking into out buffer). The call site and function signature are mismatched. Fix must align both: either add output buffer parameter to from_bytes with bit-unpacking, or remove the tile buffer from the call site and use the borrowed-from-data approach.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:21:46.610659129Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:20:33.34665353Z",
+  "updated_at": "2026-07-24T20:27:34.56356833Z",
   "started_at": "2026-07-24T17:21:56.861910678Z",
+  "closed_at": "2026-07-24T20:27:34.56356833Z",
+  "close_reason": "Superseded by project-LICHEN-worker6-4n5v",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0tde",
