@@ -181,7 +181,9 @@ impl core::error::Error for EdhocError {}
 enum Lifecycle {
     Created,
     Message1Created,
+    PendingMessage2,
     AwaitingMessage3,
+    PendingMessage3,
     Complete,
     Failed,
     Zeroized,
@@ -626,7 +628,7 @@ fn encode_credential<const N: usize>(
 ) -> Result<(), EdhocError> {
     // CCS (COSE_Key) for an Ed25519 public key
     // {1: 1 (OKP), 3: -8 (Ed25519), -1: 6 (EdDSA), -2: pubkey}
-    let mut ccs = heapless::Vec::<u8, 80>::new();
+    let mut ccs = heapless::Vec::<u8, 128>::new();
     ccs.push_err(0xa4)?; // map(4)
     ccs.push_err(0x01)?; // 1 (kty)
     ccs.push_err(0x01)?; // OKP
@@ -634,6 +636,8 @@ fn encode_credential<const N: usize>(
     ccs.push_err(0x26)?; // -8 (Ed25519) CBOR negative
     ccs.push_err(0x20)?; // -1 (key_ops)
     ccs.push_err(0x06)?; // 6 (EdDSA)
+    ccs.push_err(0x21)?; // -2 (the x-coordinate / public key)
+    encode_bstr(&mut ccs, pubkey)?;
     encode_bstr(buf, &ccs)?;
     Ok(())
 }
@@ -1332,15 +1336,14 @@ impl EdhocResponder {
             gx.copy_from_slice(&msg1[g_x_start + 2..g_x_start + 2 + 32]);
             gx
         };
-        self.state.g_x = g_x;
 
         // Parse C_I
         let rest = &msg1[g_x_start + 2 + 32..];
         let c_i = if !rest.is_empty() {
             if rest[0] <= 23 {
-                rest[0]
+                ConnectionId::from(rest[0])
             } else if rest[0] == 0x41 && rest.len() > 1 {
-                rest[1]
+                ConnectionId::from(rest[1])
             } else {
                 return Err(EdhocError::InvalidMessage);
             }
@@ -1359,7 +1362,7 @@ impl EdhocResponder {
         drop(eph_secret);
         self.state.msg1 = stored_msg1;
         self.state.g_x = g_x;
-        self.state.c_i = c_i.into();
+        self.state.c_i = c_i;
         // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
         // prevent cryptographic weakness from ephemeral key reuse if this function
         // is called multiple times (e.g., due to retransmission handling bugs).
@@ -1383,12 +1386,7 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(
-                &ConnectionId::new(&[self.c_r]).map_err(|_| EdhocError::BufferTooSmall)?,
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-            )?;
+            let context_2 = build_context_2(&id_cred_r, &credential_r)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
