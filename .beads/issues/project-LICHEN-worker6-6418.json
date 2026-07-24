@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-6418",
+  "title": "[rereview] project-LICHEN-dk3c.5: TOCTOU race in dodag_loss_resume_handler",
+  "description": "## Description\\n\\nIn  (), the handler reads  under the mutex (line 707) but releases the lock before calling  (line 712). Between the unlock and  re-acquiring the lock, a concurrent call to  could change  back to . The handler would then schedule the GATEWAY interval instead of the intended NORMAL interval.\\n\\nAdditionally,  schedules the loss-resume timer outside the mutex (lines 744-752). A concurrent call could change  between the unlock and , causing a spurious timer.\\n\\n## Impact\\n- Transient: after DODAG loss, if the node rapidly rejoins before  acquires the lock, the timer fires and incorrectly schedules the next announce at the GATEWAY interval\\n- Under heavy load with rapid DODAG join/leave cycles, the announce interval may be left in the wrong state\\n\\n## Files\\n-  - dodag_loss_resume_handler\\n-  - timer scheduling outside mutex\\n\\n## Fix\\n- Pass the resolved interval to  instead of having it re-read the state\\n- Or hold the mutex across the full timer schedule in \\n- Or re-check  inside the mutex after  completes",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:38:53.200211722Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:38:53.200211722Z"
+}
