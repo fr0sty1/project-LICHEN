@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-s0cc",
   "title": "[review] project-LICHEN-worker6-yotd: TH_2 includes C_R but RFC 9528 excludes it",
   "description": "## Spec deviation: TH_2 composition\n\n**File:** python/src/lichen/crypto/edhoc.py  \n**Lines:** 323 (initiator), 568 (responder)\n\n**What the code does:**\n```python\nth_2_input = cbor2.dumps(self._g_y) + cbor2.dumps(self._c_r) + cbor2.dumps(h_msg1)\n```\nIncludes 3 elements: G_Y, C_R, H(message_1)\n\n**What RFC 9528 §5.3.2 requires:**\n\u003e Compute the transcript hash TH_2 = H(G_Y, H(message_1)), where\n\u003e H() is the EDHOC hash algorithm... The input to the hash function\n\u003e is a CBOR Sequence.\n\nOnly 2 elements: G_Y and H(message_1). **C_R is NOT included in TH_2.**\n\nThis would produce a different transcript hash value than other implementations following the RFC, breaking interop and failing against RFC 9529 test vectors.\n\n**Severity:** P1 - correctness/security/spec-compliance. All transcript hashes must match exactly for protocol interop.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:47:46.326343513Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:48:01.362148636Z",
-  "started_at": "2026-07-24T19:48:01.362148636Z",
-  "lease_expires_at": "2026-07-24T19:53:01.362148636Z",
-  "heartbeat_at": "2026-07-24T19:48:01.362148636Z"
+  "updated_at": "2026-07-24T20:21:43.60784092Z",
+  "started_at": "2026-07-24T19:48:01.362148636Z"
 }
