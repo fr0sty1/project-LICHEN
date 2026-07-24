@@ -834,7 +834,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             })
     }
 
-    pub fn last_signed_dao(&self) -> Option<&[u8]> {
+    pub(crate) fn last_signed_dao(&self) -> Option<&[u8]> {
         match &self.role {
             RplRole::Leaf(state) => state.last_signed_dao(),
             RplRole::Root(_) => None,
