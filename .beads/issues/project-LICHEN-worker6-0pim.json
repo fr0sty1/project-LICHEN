@@ -8,5 +8,15 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T15:55:28.348598166Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T15:55:28.348598166Z"
+  "updated_at": "2026-07-24T15:55:28.348598166Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0pim",
+      "depends_on_id": "project-LICHEN-6mij.2.4",
+      "type": "blocks",
+      "created_at": "2026-07-24T15:55:31.057796504Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
 }
