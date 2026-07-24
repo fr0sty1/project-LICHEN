@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-jryt",
   "title": "[review] project-LICHEN-worker6-0s59: Replay protection removed from OSCORE response decryption",
   "description": "Commit ebeed30 replaces `find_payload_marker` with `parse_inner_body` (good) but also removes all replay protection from `Context::decrypt_response` (P0 bug).\n\n**What was removed:**\n1. `OscoreSeqNum::from_piv(piv)` result is discarded — no seq bound to variable (line 1221)\n2. `self.is_replay(seq)` check — replayed responses are silently accepted\n3. `self.update_replay_window(seq)` — replay window never advances for responses\n\n**RFC 8613 Section 3.3.2** requires replay protection for both requests and responses. The request path retains it (lines 876, 935). The response path now has none.\n\n**Impact:** An attacker who captures a valid OSCORE response can replay it against the same context, bypassing the replay window. The decryption succeeds because the nonce/tag is still valid for the original plaintext.\n\n**File:** `rust/lichen-oscore/src/lib.rs`, lines 1219-1222 and removed lines 1254-1255.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:58:23.560481948Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:20:52.798834518Z",
-  "started_at": "2026-07-24T18:00:28.679933641Z"
+  "updated_at": "2026-07-24T20:43:17.384210683Z",
+  "started_at": "2026-07-24T18:00:28.679933641Z",
+  "lease_expires_at": "2026-07-24T20:48:17.384210683Z",
+  "heartbeat_at": "2026-07-24T20:43:17.384210683Z"
 }
