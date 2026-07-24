@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-9jzd",
+  "title": "[review] project-LICHEN-6mij.2.4: _Nonnull annotations on coap_oscore_auth_result fields are incorrect",
+  "description": "P1 correctness — `struct coap_oscore_auth_result` at `coap_oscore.h:124-130` declares `struct oscore_ctx *_Nonnull ctx` and `const uint8_t *_Nonnull payload`, but:\n\n1. `ctx` is explicitly set to NULL at `coap_oscore.c:301` for the local-admin (non-OSCORE) path\n2. `payload` is not set at all when `coap_packet_get_payload` returns NULL (line 297-300, only sets when non-NULL)\n\nA `_Nonnull` pointer that is actually NULL violates the contract and can cause static analyzer false negatives. On Clang with `-Wnullability`, this may produce warnings.\n\n**Fix:**\n- Change `ctx` to `_Nullable` (it IS legitimately NULL for local admin)\n- Change `payload` to `_Nullable` (it CAN be NULL for empty payloads)\nOR ensure both are always non-NULL on success (initialize `payload` to empty/sentinel).\nThe callers already check `auth.payload == NULL` appropriately.\n\n**Affected:**\n- `lichen/subsys/lichen/oscore/include/lichen/coap_oscore.h:125`\n- `lichen/subsys/lichen/oscore/include/lichen/coap_oscore.h:126`\n- `lichen/subsys/lichen/oscore/coap_oscore.c:301` (ctx = NULL)\n- `lichen/subsys/lichen/oscore/coap_oscore.c:297-300` (payload left unset if coap_packet_get_payload returns NULL)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:55:22.024368281Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:55:22.024368281Z"
+}
