@@ -399,7 +399,7 @@ class TestEdhocValidation:
             b"",
             b"\x58",
             _sequence(1, 0, b"x" * 32),
-            _sequence(0, 0, b"x" * 32, b"\x00"),
+            _sequence(4, 0, b"x" * 32, b"\x00"),
             _sequence(True, 0, b"x" * 32, b"\x00"),
             _sequence(1.0, 0, b"x" * 32, b"\x00"),
             _sequence(1, 1, b"x" * 32, b"\x00"),
@@ -453,7 +453,7 @@ class TestEdhocValidation:
 
         with pytest.raises(ValueError, match="METHOD_CORR"):
             responder.process_message_1(
-                _sequence(0, 0, b"x" * 32, b"\x00"),
+            _sequence(4, 0, b"x" * 32, b"\x00"),
                 Identity.generate().pubkey,
             )
 
