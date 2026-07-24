@@ -35,6 +35,10 @@ pub fn keys_iid(iid: &str) -> String {
     format!("/keys/{iid}")
 }
 
+/// Node telemetry (GET, `application/senml+cbor`). Returns packet TX/RX counts,
+/// TX failures, RX accept/drop rates, packet rate, uptime, density.
+pub const METRICS: &str = "/metrics";
+
 // --- Position sharing (spec §18.2) -----------------------------------------
 
 /// Query a node's current position (GET, `application/senml+cbor`). §18.2.2.
