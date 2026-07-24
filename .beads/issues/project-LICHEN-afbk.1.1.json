@@ -3,11 +3,7 @@
   "title": "RAK2287 research",
   "description": "Research",
   "notes": "Commit: 8f28f480a",
-<<<<<<< Updated upstream
   "status": "in_progress",
-=======
-  "status": "open",
->>>>>>> Stashed changes
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
