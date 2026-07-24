@@ -710,22 +710,17 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
+	/* TH_2 = H(G_Y || H(message_1)) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
 	ret = sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
 	if (ret != 0) {
 		goto err_wipe;
 	}
 
-	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
-	size_t th2_input_len = 0;
-	memcpy(th2_input + th2_input_len, h_msg1, 32);
-	th2_input_len += 32;
-	memcpy(th2_input + th2_input_len, ctx->g_y, 32);
-	th2_input_len += 32;
-	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
-	th2_input_len += ctx->c_r_len;
-	ret = sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	uint8_t th2_input[64];  /* 32 (G_Y) + 32 (H(message_1)) */
+	memcpy(th2_input, ctx->g_y, 32);
+	memcpy(th2_input + 32, h_msg1, 32);
+	ret = sha256_hash(th2_input, 64, ctx->th_2);
 	if (ret != 0) {
 		goto err_wipe;
 	}
@@ -1156,22 +1151,17 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
+	/* TH_2 = H(G_Y || H(message_1)) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
 	ret = sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
 	if (ret != 0) {
 		goto err_wipe;
 	}
 
-	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
-	size_t th2_input_len = 0;
-	memcpy(th2_input + th2_input_len, h_msg1, 32);
-	th2_input_len += 32;
-	memcpy(th2_input + th2_input_len, ctx->eph_pk, 32);  /* G_Y = our eph_pk */
-	th2_input_len += 32;
-	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
-	th2_input_len += ctx->c_r_len;
-	ret = sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	uint8_t th2_input[64];  /* 32 (G_Y) + 32 (H(message_1)) */
+	memcpy(th2_input, ctx->eph_pk, 32);             /* G_Y */
+	memcpy(th2_input + 32, h_msg1, 32);
+	ret = sha256_hash(th2_input, 64, ctx->th_2);
 	if (ret != 0) {
 		goto err_wipe;
 	}
