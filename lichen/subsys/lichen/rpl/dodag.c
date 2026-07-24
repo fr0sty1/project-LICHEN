@@ -367,6 +367,55 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	return ret;
 }
 
+int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
+					const uint8_t *dio_bytes,
+					size_t dio_len,
+					const uint8_t *neighbor_addr,
+					uint16_t link_etx,
+					uint8_t load_factor,
+					uint32_t now)
+{
+	if (d == NULL || dio_bytes == NULL || neighbor_addr == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+
+	struct lichen_rpl_dio dio;
+	int ret = lichen_rpl_dio_parse(&dio, dio_bytes, dio_len);
+	if (ret != LICHEN_RPL_OK) {
+		return ret;
+	}
+
+	const uint8_t *opts = lichen_rpl_dio_options(dio_bytes, dio_len);
+	size_t opts_len = lichen_rpl_dio_options_len(dio_len);
+
+	/* Parse DODAG Configuration option to extract gateway_centric */
+	struct lichen_rpl_opt_iter it;
+	struct lichen_rpl_raw_opt opt;
+	lichen_rpl_opt_iter_init(&it, opts, opts_len);
+	d->is_gateway_centric = false;
+
+	for (;;) {
+		int oret = lichen_rpl_opt_iter_next(&it, &opt);
+		if (oret == 1) {
+			break;
+		}
+		if (oret != LICHEN_RPL_OK) {
+			break;
+		}
+		if (opt.opt_type == LICHEN_RPL_OPT_DODAG_CONFIG) {
+			struct lichen_rpl_dodag_config cfg;
+			ret = lichen_rpl_dodag_config_parse(&cfg, opt.data, opt.data_len);
+			if (ret == LICHEN_RPL_OK) {
+				d->is_gateway_centric = cfg.gateway_centric;
+			}
+			break;
+		}
+	}
+
+	return lichen_rpl_dodag_process_dio(d, &dio, neighbor_addr,
+					    link_etx, load_factor, now);
+}
+
 void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 				    const uint8_t *addr)
 {

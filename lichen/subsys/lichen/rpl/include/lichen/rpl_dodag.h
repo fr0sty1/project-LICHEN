@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <lichen/rpl_messages.h>
+#include <stddef.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
@@ -102,6 +103,9 @@ struct lichen_rpl_dodag {
 	uint16_t max_rank_increase;
 	uint16_t parent_switch_threshold;
 
+	/* Whether the DODAG is in gateway-centric mode (from DODAG Config) */
+	bool is_gateway_centric;
+
 	/* Parent candidates */
 	struct lichen_rpl_parent parents[CONFIG_LICHEN_RPL_MAX_PARENTS];
 
@@ -155,6 +159,7 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
  * @param now          Current timestamp for lifetime tracking
+ * @return Non-zero if DTSN changed, 0 otherwise
  */
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
@@ -162,6 +167,38 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
 				  uint32_t now);
+
+/**
+ * @brief Process a received DIO from raw message bytes.
+ *
+ * Parses the DIO base object, extracts the DODAG Configuration option
+ * (including gateway_centric), and delegates to
+ * lichen_rpl_dodag_process_dio.
+ *
+ * @param d             DODAG state
+ * @param dio_bytes     Raw DIO message bytes (ICMPv6 body, after type/code/checksum)
+ * @param dio_len       Length of dio_bytes
+ * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
+ * @param link_etx      Fixed-point ETX estimate (256 = perfect link)
+ * @param load_factor   Load factor (0-255)
+ * @param now           Current timestamp for lifetime tracking
+ * @return Non-zero if DTSN changed, negative on parse error, 0 otherwise
+ */
+int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *_Nonnull d,
+					const uint8_t *_Nonnull dio_bytes,
+					size_t dio_len,
+					const uint8_t *_Nonnull neighbor_addr,
+					uint16_t link_etx,
+					uint8_t load_factor,
+					uint32_t now);
+
+/**
+ * @brief Check whether the DODAG is in gateway-centric mode.
+ */
+static inline bool lichen_rpl_dodag_is_gateway_centric(const struct lichen_rpl_dodag *_Nonnull d)
+{
+	return d->is_gateway_centric;
+}
 
 /**
  * @brief Drop a neighbor (e.g., link failure) and re-select parent.
