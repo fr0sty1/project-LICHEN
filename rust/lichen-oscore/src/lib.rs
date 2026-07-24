@@ -1287,13 +1287,7 @@ impl Context {
         }
         let rest = &plaintext[1..];
 
-        // Find payload marker using proper CoAP option parsing.
-        // SECURITY: Cannot just search for 0xFF - it may appear in option values.
-        // Must parse options with delta-length encoding to find the true marker.
-        let (options_slice, payload_slice) = match find_payload_marker(rest) {
-            Some(pos) => (&rest[..pos], &rest[pos + 1..]),
-            None => (rest, &[][..]),
-        };
+        let (options_slice, payload_slice) = parse_inner_body(rest)?;
 
         const OUT_CAP: usize = 128;
         let mut options = heapless::Vec::<u8, OUT_CAP>::new();
