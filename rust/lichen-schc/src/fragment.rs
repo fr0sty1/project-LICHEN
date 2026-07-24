@@ -1086,6 +1086,12 @@ mod std_ext {
 
     impl StdFragmentReceiver {
         pub fn new(window_size: usize) -> Self {
+            debug_assert!(
+                window_size <= WINDOW_SIZE,
+                "window_size {} exceeds SCHC maximum {}",
+                window_size,
+                WINDOW_SIZE
+            );
             StdFragmentReceiver {
                 window_size,
                 rule_id: None,
