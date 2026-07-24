@@ -162,6 +162,7 @@ pub struct DodagState {
     pub min_hop_rank_increase: u16,
     pub max_rank_increase: u16,
     pub parent_switch_threshold: u16,
+    pub is_gateway_centric: bool,
     parents: HashMap<[u8; 16], ParentCandidate>,
     lowest_rank: u16,
 }
@@ -180,6 +181,7 @@ impl DodagState {
             min_hop_rank_increase: MIN_HOP_RANK_INCREASE,
             max_rank_increase: MAX_RANK_INCREASE,
             parent_switch_threshold: PARENT_SWITCH_THRESHOLD,
+            is_gateway_centric: false,
             parents: HashMap::new(),
             lowest_rank: INFINITE_RANK,
         }
@@ -218,6 +220,7 @@ impl DodagState {
             min_hop_rank_increase,
             max_rank_increase,
             parent_switch_threshold: PARENT_SWITCH_THRESHOLD,
+            is_gateway_centric: false,
             parents: HashMap::new(),
             lowest_rank: min_hop_rank_increase,
         })
@@ -251,6 +254,17 @@ impl DodagState {
 
     pub fn is_root(&self) -> bool {
         self.role == DodagRole::Root
+    }
+
+    /// Set the gateway-centric flag for the DODAG this node is part of.
+    /// Returns true if the value changed.
+    #[must_use]
+    pub fn set_gateway_centric(&mut self, gc: bool) -> bool {
+        if self.is_gateway_centric == gc {
+            return false;
+        }
+        self.is_gateway_centric = gc;
+        true
     }
 
     pub fn is_joined(&self) -> bool {

@@ -723,6 +723,8 @@ impl Router {
         self.dodag = staged_dodag;
         self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
+        self.dodag
+            .set_gateway_centric(self.dodag_config.gateway_centric);
 
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
@@ -1018,12 +1020,27 @@ impl Router {
         self.dodag.is_joined()
     }
 
+    pub fn is_gateway_centric(&self) -> bool {
+        self.dodag.is_gateway_centric
+    }
+
     pub fn rank(&self) -> u16 {
         self.dodag.rank
     }
 
     pub fn preferred_parent(&self) -> Option<[u8; 16]> {
         self.dodag.preferred_parent
+    }
+
+    /// Set the gateway-centric flag on this DODAG.
+    /// The next DIO transmission will advertise this flag via the DODAG Config option.
+    /// Any caller (e.g. scheduler integration) should also update the announce interval.
+    pub fn set_gateway_centric(&mut self, gc: bool) -> bool {
+        let changed = self.dodag.set_gateway_centric(gc);
+        if changed {
+            self.dodag_config.gateway_centric = gc;
+        }
+        changed
     }
 
     pub fn dodag(&self) -> &DodagState {
