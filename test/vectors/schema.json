@@ -943,10 +943,12 @@
       "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
-        "sf": {"type": "integer", "enum": [7, 10, 12]},
+        "sf": {"type": "integer", "minimum": 7, "maximum": 12},
         "ema": {"type": "number"},
         "load_factor": {"type": "number"},
-        "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
+        "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "interference_score": {"type": "number"},
+        "backoff_jitter_ms": {"type": "integer", "minimum": 0}
       }
     },
     "ccp13_vector": {
