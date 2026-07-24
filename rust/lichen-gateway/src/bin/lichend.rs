@@ -482,19 +482,8 @@ async fn forward_mesh_to_upstream<T: TunLike>(
         start.elapsed().as_millis() as u64
     };
     let (reply_opt, event) = gw.process_rpl(frame, now_ms);
-    match event {
-        RplEvent::DaoReceived {
-            route_updated: true,
-        } => {
-            info!("DAO event: route updated");
-        }
-        RplEvent::DisReceived => {
-            info!("DIS received, DIO scheduled by RPL stack");
-        }
-        RplEvent::DaoForwarded { next_hop } => {
-            info!(next_hop = ?next_hop, "DAO forwarded through gateway");
-        }
-        _ => {}
+    if matches!(event, RplEvent::DaoReceived { .. }) {
+        info!("DAO processed; mesh routes may have been updated");
     }
     if let Some(reply) = reply_opt {
         info!(len = reply.len(), "mesh reply ready for SLIP TX queue");
@@ -570,48 +559,8 @@ where
     let mut conc = Sx1302Concentrator;
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
-
-    let (tx_send, mut tx_recv) = mpsc::channel::<Vec<u8>>(8);
-    let (rx_send, mut rx_recv) = mpsc::channel::<Vec<u8>>(8);
-
-    let mut maintenance = interval(Duration::from_millis(1000));
-
-    // Concentrator task: polls for RX, drains TX queue.
-    let conc_task = tokio::spawn(async move {
-        let mut rx_buf = vec![0u8; 255];
-        loop {
-            // Drain all pending TX frames before the next RX window.
-            while let Ok(frame) = tx_recv.try_recv() {
-                if let Err(e) = conc.transmit(&frame).await {
-                    warn!("concentrator transmit failed: {:?}", e);
-                } else {
-                    info!(len = frame.len(), "hat TX");
-                }
-            }
-            // Poll for an incoming frame.
-            match conc.receive(&mut rx_buf, 50).await {
-                Ok(Some((n, rssi, snr))) => {
-                    info!(len = n, rssi, snr, "RX frame");
-                    if rx_send.send(rx_buf[..n].to_vec()).await.is_err() {
-                        break;
-                    }
-                }
-                Ok(None) => {}
-                Err(e) => {
-                    error!("concentrator receive error: {:?}", e);
-                    break;
-                }
-            }
-        }
-        while let Ok(frame) = tx_recv.try_recv() {
-            if let Err(e) = conc.transmit(&frame).await {
-                warn!("concentrator transmit failed (shutdown drain): {:?}", e);
-            }
-        }
-    });
-
     let mut tun_buf = vec![0u8; 1500];
-
+    let mut tx_queue: VecDeque<Vec<u8>> = VecDeque::new();
     loop {
         tokio::select! {
             _ = maintenance.tick() => {
@@ -621,48 +570,15 @@ where
                 };
                 gw.maintain(now_ms);
             }
-            frame_opt = rx_recv.recv() => {
-                match frame_opt {
-                    Some(frame) => {
-                        if let Some(reply) = forward_mesh_to_upstream(gw, &frame, &tun).await {
-                            match tx_send.try_send(reply) {
-                                Ok(()) => {}
-                                Err(mpsc::error::TrySendError::Full(_)) => {
-                                    warn!("TX channel full, dropping reply packet");
-                                }
-                                Err(mpsc::error::TrySendError::Closed(_)) => {
-                                    error!("concentrator task exited, cannot send reply packets");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    None => {
-                        error!("concentrator task exited, cannot receive inbound packets");
-                        break;
-                    }
-                }
-            }
             result = async { match &tun {
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
                 None => tun_recv_none(&mut tun_buf).await,
             }} => {
-                match result {
-                    Ok(n) => {
-                        if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                            match tx_send.try_send(schc) {
-                                Ok(()) => {}
-                                Err(mpsc::error::TrySendError::Full(_)) => {
-                                    warn!("TX channel full, dropping outbound packet");
-                                }
-                                Err(mpsc::error::TrySendError::Closed(_)) => {
-                                    error!("concentrator task exited, cannot send outbound packets");
-                                    break;
-                                }
-                            }
-                        }
+                if let Ok(n) = result {
+                    if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
+                        tx_queue.push_back(schc);
+                        info!(len = schc.len(), "hat TX queued");
                     }
-                    Err(e) => { error!("TUN recv: {e}"); break; }
                 }
             }
             _ = signal::ctrl_c() => {
@@ -670,19 +586,12 @@ where
                 break;
             }
         }
-    }
-
-    drop(tx_send);
-    drop(rx_recv);
-    info!("waiting for concentrator task to finish draining transmissions");
-    tokio::select! {
-        _ = &mut conc_task => {
-            info!("concentrator task completed");
-        }
-        _ = sleep(Duration::from_secs(5)) => {
-            warn!("concentrator task did not finish in time, aborting");
-            conc_task.abort();
-            let _ = conc_task.await;
+        while let Some(payload) = tx_queue.pop_front() {
+            if let Err(e) = conc.transmit(&payload).await {
+                warn!("concentrator transmit failed: {:?}", e);
+            } else {
+                info!(len = payload.len(), "hat TX");
+            }
         }
     }
 }
