@@ -1658,14 +1658,14 @@ fn raw_key_credential(
     }
     id_cred.extend_err(&kid[..8])?;
 
-    // CCS: COSE_Key with crv=Ed25519, kty=OKP, x=pubkey
+    // CCS: COSE_Key with kty=OKP, crv=Ed25519, x=pubkey
     let mut ccs = heapless::Vec::<u8, 80>::new();
-    ccs.push_err(0xa2)?; // map(2)
-    ccs.push_err(0x01)?; // kty
-    ccs.push_err(0x01)?; // OKP
-    ccs.push_err(0x20)?; // crv (-8 as uint)
-    ccs.push_err(0x06)?; // Ed25519
-    ccs.push_err(0x21)?; // x (label -1 as uint 21)
+    ccs.push_err(0xa3)?; // map(3)
+    ccs.push_err(0x01)?; // kty (label 1)
+    ccs.push_err(0x01)?; // OKP (kty=1)
+    ccs.push_err(0x20)?; // crv (label -1)
+    ccs.push_err(0x06)?; // Ed25519 (crv=6)
+    ccs.push_err(0x21)?; // x (label -2)
     encode_bstr(&mut ccs, pubkey)?;
 
     Ok((id_cred, ccs))
@@ -1694,7 +1694,7 @@ fn encode_credential<const N: usize>(
     buf: &mut heapless::Vec<u8, N>,
     pubkey: &[u8; 32],
 ) -> Result<(), EdhocError> {
-    buf.push_err(0xa2)?;
+    buf.push_err(0xa3)?;
     buf.push_err(0x01)?;
     buf.push_err(0x01)?;
     buf.push_err(0x20)?;
@@ -1851,7 +1851,7 @@ fn validate_peer_credential(peer: PeerCredential<'_>) -> Result<(), EdhocError> 
     // Check the credential contains the expected public key.
     // For raw CCS: the x-value must match peer.public_key.
     let data = peer.credential;
-    if data.is_empty() || data[0] != 0xa2 {
+    if data.is_empty() || data[0] != 0xa3 {
         // Non-CCS credentials (CWT, X.509 cert, application) are valid
         // as long as they are valid CBOR. The application-layer trust
         // model (TOFU, DANE, PKIX) handles verification.
@@ -1861,7 +1861,7 @@ fn validate_peer_credential(peer: PeerCredential<'_>) -> Result<(), EdhocError> 
     if data.len() < 2 {
         return Err(EdhocError::InvalidMessage);
     }
-    if data[0] != 0xa2 {
+    if data[0] != 0xa3 {
         return Err(EdhocError::InvalidMessage);
     }
     if data[1] != 0x01 || data.get(2) != Some(&0x01) {
