@@ -673,7 +673,7 @@ fn encode_credential<const N: usize>(buf: &mut heapless::Vec<u8, N>, public_key:
     buf.push_err(0x01)?; // kty
     buf.push_err(0x01)?; // OKP
     buf.push_err(0x20)?; // crv
-    buf.push_err(0x01)?; // Ed25519
+    buf.push_err(0x06)?; // Ed25519
     buf.push_err(0x21)?; // x (public key coordinate)
     encode_bstr(buf, public_key)?;
     buf.push_err(0x22)?; // y (place holder for sign)
