@@ -201,8 +201,13 @@ fn exercise_transfer(vector: &Vector) {
         assert_eq!(fragment.window, expected.window);
         assert_eq!(fragment.fcn, expected.fcn);
         let wire = expand(&expected.wire);
+        let got = write_fragment(&fragment);
+        if got != wire {
+            eprintln!("MISMATCH {} {}: got[..6]={:02x?} wire[..6]={:02x?}",
+                vector.name, expected.name, &got[..6.min(got.len())], &wire[..6.min(wire.len())]);
+        }
         assert_eq!(
-            write_fragment(&fragment),
+            got,
             wire,
             "{} {}",
             vector.name,
