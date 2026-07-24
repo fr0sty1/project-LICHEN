@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.4",
   "title": "Recover RPL DAO/DODAG/source-route validation with E-flag and lollipop counters",
   "description": "Add validation for RPL DAO, DODAG ID, source routing headers: check E flag handling, lollipop sequence boundaries (0-127 wrap), malformed routes drop. Ensure vectors cover all edge cases. Focused tests for each.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
