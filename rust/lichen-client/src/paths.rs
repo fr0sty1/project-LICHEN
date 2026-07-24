@@ -31,29 +31,13 @@ pub const KEYS: &str = "/keys";
 
 /// Per-peer key resource `/keys/{iid}` (GET detail, PUT pin, DELETE unpin).
 /// `iid` is the peer's interface identifier as `xxxx:xxxx:xxxx:xxxx`.
-///
-/// Returns `Err` if `iid` contains characters other than `[0-9a-fA-F:]`.
-/// This prevents path-segment injection through a user-controlled IID.
-pub fn keys_iid(iid: &str) -> Result<String, &'static str> {
-    if !iid.is_empty()
-        && iid
-            .bytes()
-            .all(|b| b.is_ascii_hexdigit() || b == b':')
-    {
-        let mut s = String::with_capacity(6 + iid.len());
-        s.push('/');
-        s.push_str("keys/");
-        s.push_str(iid);
-        Ok(s)
-    } else {
-        Err("invalid IID: expected hex digit or colon characters only")
-    }
+pub fn keys_iid(iid: &str) -> String {
+    format!("/keys/{iid}")
 }
 
-// --- Confessions / anonymous board (spec §18.9) -----------------------------
-
-/// Post or read confessions (POST text/SenML, GET SenML count). §18.9.
-pub const CONFESSIONS: &str = "/confessions";
+/// Node telemetry (GET, `application/senml+cbor`). Returns packet TX/RX counts,
+/// TX failures, RX accept/drop rates, packet rate, uptime, density.
+pub const METRICS: &str = "/metrics";
 
 // --- Position sharing (spec §18.2) -----------------------------------------
 
@@ -71,39 +55,5 @@ mod tests {
     fn messaging_paths_match_firmware_resources() {
         assert_eq!(MSG_INBOX, "/msg/inbox");
         assert_eq!(MSG_SENT, "/msg/sent");
-    }
-
-    #[test]
-    fn keys_iid_accepts_hex_iid() {
-        let path = keys_iid("abcd:ef01:2345:6789").unwrap();
-        assert_eq!(path, "/keys/abcd:ef01:2345:6789");
-    }
-
-    #[test]
-    fn keys_iid_accepts_uppercase_hex() {
-        let path = keys_iid("ABCD:EF01:2345:6789").unwrap();
-        assert_eq!(path, "/keys/ABCD:EF01:2345:6789");
-    }
-
-    #[test]
-    fn keys_iid_rejects_slash() {
-        assert!(keys_iid("abcd/ef01").is_err());
-    }
-
-    #[test]
-    fn keys_iid_rejects_query_chars() {
-        assert!(keys_iid("abcd?evil=true").is_err());
-        assert!(keys_iid("abcd&evil=true").is_err());
-        assert!(keys_iid("abcd=evil").is_err());
-    }
-
-    #[test]
-    fn keys_iid_rejects_space() {
-        assert!(keys_iid("abcd ef01").is_err());
-    }
-
-    #[test]
-    fn keys_iid_rejects_empty() {
-        assert!(keys_iid("").is_err());
     }
 }

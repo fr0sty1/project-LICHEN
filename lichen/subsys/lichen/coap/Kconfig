@@ -268,6 +268,28 @@ config LICHEN_COAP_LOCATION
 	  or 4.04 when it has no valid fix. Requires the SenML encoder, the HAL
 	  location provider, and the LoRa L2 (for the node EUI-64 base name).
 
+config LICHEN_COAP_METRICS
+	bool "CoAP /metrics resource (SenML telemetry)"
+	depends on LICHEN_COAP_SERVER
+	depends on LICHEN_SENML
+	depends on LICHEN_L2
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  Serve GET /metrics as a SenML pack (application/senml+cbor) with
+	  node telemetry: packet TX/RX counts, TX failures, RX accept/drop rates,
+	  packet rate, uptime, and density. Observable. Uses L2 TX/RX stats and
+	  the SenML encoder.
+
+config LICHEN_COAP_METRICS_LOG_LEVEL
+	int "CoAP metrics log level"
+	depends on LICHEN_COAP_METRICS
+	default 3
+	range 0 4
+	help
+	  Log level for the LICHEN CoAP metrics handler:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
 config LICHEN_COAP_LOCATION_LOG_LEVEL
 	int "CoAP location log level"
 	depends on LICHEN_COAP_LOCATION
