@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-r2t1",
+  "title": "[review] project-LICHEN-worker6-69p2: Fragment::from_bytes missing rule and length validation",
+  "description": "Fragment::from_bytes was simplified to remove the check_rule() call and the shifting-based NonZeroPadding check, but lost important validation:\n\n1. No rule_id validation: check_rule(data[0])? was removed. from_bytes now accepts any rule_id byte without validating it's RULE_ID_A_TO_B or RULE_ID_B_TO_A. While FragmentReceiver::receive_bytes still calls check_rule first, the standalone from_bytes is a public API.\n\n2. No payload length validation: For non-All-1 fragments, from_bytes takes all remaining bytes as payload without checking payload.len() == TILE_SIZE. For All-1 fragments, there's no minimum payload length check (should be \u003e= 1 byte). A constructed/malformed fragment would parse but fail silently when written via write_to.\n\n3. No NonZeroPadding check: The old code checked the last bit of data for zero padding, but the new simpler wire format doesn't need this (no bit shifting). However, excess trailing bytes in the input become part of the unvalidated payload.\n\nTo fix:\n- Add check_rule(data[0])? back to from_bytes\n- Add payload length validation: TILE_SIZE for regular, 1..=TILE_SIZE for All-1\n- Optionally reject inputs with excess trailing bytes\n\nAffected: rust/lichen-schc/src/fragment.rs lines 167-197",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:58:37.876828654Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:58:37.876828654Z"
+}
