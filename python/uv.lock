@@ -785,6 +785,12 @@ native-client = [
     { name = "textual" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aiocoap", specifier = "==0.4.17" },
@@ -820,6 +826,12 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.49,<0.50" },
 ]
 provides-extras = ["dev", "meshtastic", "ble", "coap", "native-client"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-asyncio", specifier = ">=1.4.0" },
+]
 
 [[package]]
 name = "linkify-it-py"
