@@ -3,7 +3,7 @@
   "title": "codereview-pass2: SNR update still uses old alpha=1/8, inconsistent with RSSI CCP-15 change",
   "description": "Update SnrStats::update similarly for symmetry in interference detection. Tag: codereview",
   "notes": "Reopened for codereview-pass2: EMA convergence test failing with -61 instead of -60 due to fixed-point bias in negative SNR/RSSI averaging after CCP-15 alpha change. Will fix SNR update consistency and rounding in avg().",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

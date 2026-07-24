@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jwsl",
   "title": "codereview pass 2: no validation for current_channel in Rust Announce",
   "description": "rust/lichen-core/src/announce.rs:101 - Python validates 0 \u003c= current_channel \u003c 8 in __post_init__, Rust Announce/Builder has no equivalent. Add to prevent invalid rendezvous per CCP-9. P1 correctness/security. codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

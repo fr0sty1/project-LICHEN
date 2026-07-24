@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4cfe",
   "title": "[codereview] outdated fd12 example in coap_config.h comment",
   "description": "Header comment still showed old ula/fd12 despite LCI spec update to primary/0200. Fixed in edit. Verify other docs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

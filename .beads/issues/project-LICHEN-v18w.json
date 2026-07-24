@@ -2,7 +2,7 @@
   "id": "project-LICHEN-v18w",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: 6366bd447 (worker23 worktree cleanup of dead resolution comments in xiao_s3_wio_sx1262.{overlay,conf})",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

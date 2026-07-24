@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.25",
   "title": "sys_rand_get() fallback may not be CSPRNG",
   "description": "In generate_eui64() at lora_l2.c:99-101, sys_rand_get() is used as fallback when hardware ID is unavailable:\n\n    sys_rand_get(eui64, 8);\n\nZephyr's sys_rand_get() is only cryptographically secure if CONFIG_CSPRNG_ENABLED is set. Without this config, it may use a weak PRNG (xoroshiro128+ or hardware RNG without conditioning).\n\nImpact: On boards without hwinfo and without CONFIG_CSPRNG_ENABLED, the EUI-64 would be derived from a weak random source. While EUI-64 is not a secret, predictable addresses enable address prediction attacks and could affect protocols that use EUI-64 for key derivation.\n\nFix: Either:\n1. Add a Kconfig dependency: select ENTROPY_GENERATOR or CSPRNG_ENABLED when LICHEN_LORA_L2 is enabled, OR\n2. Document at the call site that this fallback requires CONFIG_CSPRNG_ENABLED, with a build-time check\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:100",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

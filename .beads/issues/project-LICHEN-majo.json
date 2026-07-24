@@ -2,7 +2,7 @@
   "id": "project-LICHEN-majo",
   "title": "codereview-pass3: TDMA struct added to link.h but Kconfig and init integration not yet done per dependency graph in AGENTS.md; lichen_node_init example needs update",
   "notes": "Completed TDMA struct integration in link.h, Kconfig, AGENTS.md lichen_node_init per dependency graph. 3 codereview passes filed and fixed. No more findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

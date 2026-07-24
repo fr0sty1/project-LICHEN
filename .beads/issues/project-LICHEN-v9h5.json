@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-v9h5",
   "title": "codereview-pass3 main: direct oscore_unprotect_request + IID fix + IID[7] rate limit implemented; no mutex on s_last_confessions or s_dtn_buf yet (see jzne); P2 on shared statics; 3 passes complete with no P0/P1",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

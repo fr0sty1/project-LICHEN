@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-yd9a",
   "title": "Update simulator tests for LR-FHSS with independent oracle test vectors",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

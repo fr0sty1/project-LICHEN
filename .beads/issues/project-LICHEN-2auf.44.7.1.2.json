@@ -3,7 +3,7 @@
   "title": "Broadcast multicast RPL control at L2",
   "description": "Use broadcast/elided L2 destination for any IPv6 multicast RPL destination while retaining IID-to-EUI mapping for unicast.",
   "acceptance_criteria": "Parsed-wire DIO and DIS tests show multicast uses broadcast/elided addressing, unicast remains addressed, and receive behavior succeeds.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

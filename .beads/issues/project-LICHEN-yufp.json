@@ -3,7 +3,7 @@
   "title": "codereview-pass1: Gateway.routes map never populated (add_route still unused)",
   "description": "Despite integration, gw.add_route is never invoked. The routes HashMap stays empty forever. Either remove it, populate from DAO targets by deriving NodeId from IPv6 IID (xor 0x02 on byte 8), or call from announce/ LCI path. is_local_mesh falls back to it but it's dead code. P2 dead-code / maintainability. discovered-from:project-LICHEN-3k6w.2",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "chore",
   "assignee": "ec2-user",

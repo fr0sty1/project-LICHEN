@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2dpe",
   "title": "[codereview-pass2] coap_dtn.c:56 rate limit uses uint32_t uptime without overflow handling; can be bypassed after ~49 days",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:55 - confessions_post does not handle uint32_t wraparound on k_uptime_get(). Potential DoS bypass after 49.7 days. Security finding. CODEREVIEW",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

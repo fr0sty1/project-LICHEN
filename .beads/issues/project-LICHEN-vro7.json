@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vro7",
   "title": "[codereview-pass3] ygg addr derivation bit selection not verified against Rust",
   "description": "addr[0] = 0x02 | (addr[0] \u0026 0x01); must be confirmed to match Rust yggdrasil_address and test vectors exactly. Add cross-test or update vectors. P1 correctness. discovered-from:project-LICHEN-quo6",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

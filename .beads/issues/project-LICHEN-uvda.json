@@ -3,7 +3,7 @@
   "title": "dispatch.rs: Response::content silently truncates payloads over 128 bytes",
   "description": "File: rust/lichen-node/src/dispatch.rs:62-70\n\nResponse::content silently truncates payloads exceeding the 128-byte buffer without warning:\n\n```rust\npub fn content(payload: \u0026[u8]) -\u003e Self {\n    let mut resp = Self {\n        code: MessageCode::CONTENT,\n        content_format: Some(content_format::APPLICATION_CBOR),\n        payload: [0u8; 128],\n        payload_len: payload.len().min(128),  // Silent truncation\n    };\n    resp.payload[..resp.payload_len].copy_from_slice(\u0026payload[..resp.payload_len]);\n    resp\n}\n```\n\nImpact: Resource handlers returning data \u003e128 bytes will silently lose data. Callers have no indication that truncation occurred.\n\nFix: Either increase buffer size, return Result\u003cResponse, Error\u003e, or log a warning when truncation occurs.",
   "notes": "Commit: bd14eccb6\nResponse payload buffer increased to 256 bytes (struct + all constructors + local bufs). Eliminates truncation for typical SenML/CoAP payloads. No silent loss. Matches CoAP practical limits. P2 fixed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -3,7 +3,7 @@
   "title": "Integration test: 2-node Renode RX via DIO1 interrupt",
   "description": "End-to-end test proving push-based RX works: (1) Start lichen-sim in BARRIER_SYNC mode, (2) Launch 2 Renode instances with T-Echo firmware, (3) Node A transmits a frame, (4) Assert: sim time advances past TX airtime, (5) Assert: Node B DIO1 fires (check Renode log or GPIO trace), (6) Assert: Node B firmware logs received frame, (7) Assert: sim metrics show exactly 1 rx_success for the tx_id. Can be a pytest that orchestrates Renode headlessly or a manual test script with clear pass/fail criteria.",
   "acceptance_criteria": "Test script exists and passes; demonstrates interrupt-driven RX path works end-to-end",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

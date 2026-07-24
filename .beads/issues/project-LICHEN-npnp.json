@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-npnp",
   "title": "[codereview] pass2 rust-idiom: returning Option\u003cVec\u003cu8\u003e\u003e for reply is good but consider using smallvec or array if size known; reply_buf stack alloc is fine. mesh_to_mesh return now used - good. Check if RplEvent variants for reply needed. No security issue. P3 style.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:56:10.382982327Z",

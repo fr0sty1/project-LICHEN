@@ -3,7 +3,7 @@
   "title": "Vectors: CCP-12 requirements from da2q context",
   "description": "Vectors implementation for CCP-12 Synchronized Hopping requirements from da2q context.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

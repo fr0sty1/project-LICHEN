@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.2",
   "title": "Align lichen-rpl and lichen-schc with CCP-9 test vectors and no_std compliance",
   "description": "Update parsing/builder in announce.rs or equivalent for rx_channel offset per generate.py oracle. Implement exact FNV-1a32 hash. Fix for heapless, no dead code, clippy clean.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b10q",
   "title": "Update test vectors for new SF selection, EMA, load_factor, hash_32, select_channel/now() in CCP spec",
   "description": "Child of the codereview beads. Add vectors for EMA calculation, load_factor=0.5/1.0 overrides, SNR boundary tests matching new table, hash_32 outputs, select_channel with ts=now(), density rationale cases. Parallel with spec edit. Must match all impls. bd create children for sf-ema, hash-consistency, channel-select if \u003e5 cases.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-39m1",
   "title": "codereview pass 3: announce.rs no hop_count validation in from_bytes or AnnounceBuilder (Python raises for out of range)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:31:27.35483373Z",

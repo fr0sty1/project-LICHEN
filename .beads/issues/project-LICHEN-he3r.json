@@ -2,7 +2,7 @@
   "id": "project-LICHEN-he3r",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.conf",
   "notes": "Resolved merge conflict in firmware/bridge-zephyr/boards/xiao_s3_wio_sx1262.conf by selecting canonical BLOCKED/RETIRED comment block with SPDX headers. Matches matrix and other retired board fragments. project-LICHEN-he3r: fix",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-oh58",
   "title": "Create simulation infrastructure deployment documentation",
   "description": "Create docs/simulation-infrastructure-deployment.md that details: 1) Overview and Architecture, 2) Components (lichen-sim coordinator, implementation nodes), 3) Deployment Methods (heterogeneous mesh testing, Renode-based Zephyr cluster), 4) Scaling Strategies, 5) AWS Resource Requirements, 6) Best Practices, 7) Automation Commands, 8) Troubleshooting, 9) Performance Optimization, 10) Testing Scenarios, 11) Maintenance Procedures.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

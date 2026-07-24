@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.14",
   "title": "HAVE_LICHEN_LINK preprocessor flag vs config name inconsistency",
   "description": "lichen_l2.c:28-35 defines HAVE_LICHEN_LINK based on CONFIG_LICHEN_LINK, then uses HAVE_LICHEN_LINK throughout. This adds indirection between Kconfig symbol and code without adding clarity.\n\nWhat goes wrong as-is: Reader must trace HAVE_LICHEN_LINK back to understand what config controls it. The #define doesn't add value since it's a direct 1:1 mapping.\n\nRewrite: Use #if defined(CONFIG_LICHEN_LINK) directly at each usage site, or if the name 'HAVE_LICHEN_LINK' is preferred for readability, document why in the comment. Current comment just says 'Include LICHEN link layer if available' which doesn't explain the alias.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

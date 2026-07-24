@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k2u4",
   "title": "[codereview-P2] generator.py ccp16_vectors missing independent oracle cross-check for new expected_hash value",
   "description": "Review pass 2: the numeric value 2346401271 must be verified against Python reference impl of hash_32 and C/Rust. Add assertion or comment with oracle command. File as P2 until verified.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

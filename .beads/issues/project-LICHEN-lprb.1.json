@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lprb.1",
   "title": "Audit lib.rs files in worker1 worktree and main for merge artifacts from boardconfig changes",
   "notes": "Audit completed: No git merge conflict markers (\u003c\u003c\u003c\u003c\u003c\u003c\u003c, =======, \u003e\u003e\u003e\u003e\u003e\u003e\u003e) found in any **/lib.rs files across main worktree and worker1 worktree (verified via grep and git diff main..worktree-worker1). lichen-hal/src/lib.rs and lichen-node/src/lib.rs are identical and clean. References to deferred BoardConfig are isolated to bead titles for lprb.2/3; hal/lib.rs comment on UI removal is intentional per no-dead-code (project-LICHEN-nafo + bpu5). No merge artifacts present. Related subtasks lprb.2-4 remain open.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

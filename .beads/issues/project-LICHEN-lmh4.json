@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lmh4",
   "title": "Rust: duty_cycle permille conversion may lose precision for fractional percentages",
   "description": "In rust/lichen-core/src/duty_cycle.rs, duty cycle was changed from f32 fraction to u16 permille:\n\n    // Before: duty_cycle: f32 = 0.01 (1%)\n    // After: duty_permille: u16 = 10 (1%)\n\nWhile avoiding float on embedded is good, permille cannot represent duty cycles finer than 0.1% (1 permille). Some regulations allow 0.01% duty cycle in certain bands, which would round to 0 permille.\n\nLocation: rust/lichen-core/src/duty_cycle.rs:29, 53\nRisk: Low - 0.1% granularity is sufficient for EU868 regulations.\nFix: Document the precision limitation; consider using micropercentage (parts per 100,000) if finer resolution needed.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

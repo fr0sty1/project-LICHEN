@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.23",
   "title": "Well-done: Idempotent init with mutex protection",
   "description": "lora_l2.c:229-233 makes lichen_lora_l2_init() idempotent (returns success if already initialized) and the check is inside the mutex to prevent TOCTOU races. The SECURITY comment explains why: two threads could both pass an unprotected check and generate different EUI-64 values. This is correct defensive programming for an init function that might be called from multiple paths.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

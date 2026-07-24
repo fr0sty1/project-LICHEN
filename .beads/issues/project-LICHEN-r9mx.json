@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r9mx",
   "title": "[codereview-pass1] coap_dtn.c declaration chunk: s_dtn_buf and mutexes",
   "description": "Review of static declarations in lichen/subsys/lichen/coap/coap_dtn.c:1-20. Findings: 1. s_senml_pack declared and initialized but never used (dead code violation). 2. K_MUTEX_DEFINE(s_dtn_mutex) + k_mutex_init() is redundant; native.c uses only DEFINE without runtime init. 3. No separate mutex for s_senml_pack as required. 4. Missing include for senml if not present. All P0-P2 filed as codereview. Tagged codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:45:44.174058875Z",

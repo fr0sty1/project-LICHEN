@@ -2,7 +2,7 @@
   "id": "project-LICHEN-50at",
   "title": "[codereview] coap_dtn.c: deaddrop_post uses source IID as destination_iid in buffer_message and has_messages_for; semantic mismatch for DTN dead drop",
   "description": "Extracted IID from peer addr is source for rate limit/auth, but DTN API expects destination IID for the buffered message. Payload likely contains target or full packet to parse. Unprotect success path does not set original_code usage. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

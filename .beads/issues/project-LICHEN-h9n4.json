@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-h9n4",
   "title": "[codereview-pass3.1] gateway add_route calls rpl.router.dao_manager.routing_table but path construction uses only single link-local addr; multi-hop paths and full route assembly from DAO not used",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

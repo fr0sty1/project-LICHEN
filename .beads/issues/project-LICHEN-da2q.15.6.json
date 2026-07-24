@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-da2q.15.6",
   "title": "CCP-15.1: Define interference metrics (RSSI, SNR, PER, channel busy time)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

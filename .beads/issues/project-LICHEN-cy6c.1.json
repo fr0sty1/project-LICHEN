@@ -3,7 +3,7 @@
   "title": "Complete ESP32-S3 Renode execution model",
   "description": "Replace the skeletal ESP32-S3 surrogate behavior used by Heltec V3 and T-Deck with correct ELF address mapping, executable CPU behavior, UART, interrupts/timers, SPI/GPIO, and SX1262 integration sufficient for canonical LICHEN applications.",
   "acceptance_criteria": "Canonical Heltec V3 and T-Deck bridge/gateway plus Heltec puck ELFs load without unmapped segments and reach app-specific late markers with independently observed simulator TX; model limits are documented; no surrogate result is called physical proof.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uiff",
   "title": "Schnorr48 constant-time audit per draft-lichen-schnorr-00 §5.3",
   "description": "Research scalar mult, verify, comparison in Rust lichen-link and C schnorr48.c/Monocypher. Check for memcmp, vartime ops, secret-dependent branches. Report locations and fixes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

@@ -3,7 +3,7 @@
   "title": "Simplify DAO send lifecycle and freshness",
   "description": "Remove manual confirm_dao/pending-only semantics with K=0 explicit. Each logical send allocates an update, while failed radio TX retains safe retry bytes. Make authenticated 64-bit origin sequence authoritative for signed route/path freshness so lollipop loss cannot strand updates; retain raw component lollipop checks.",
   "acceptance_criteria": "Twenty lost sends followed by delivery applies at root; replay remains rejected; TX failure safely retries exact reserved bytes once or equivalent fail-closed behavior; no manual confirm API remains.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

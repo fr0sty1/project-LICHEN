@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw",
   "title": "Resolve merge conflicts across Rust crates",
   "description": "Fix all \u003c\u003c\u003c\u003c\u003c\u003c\u003c conflict markers in lichen-core, lichen-hal, lichen-gateway, lichen-rpl, lichen-meshtastic, lichen-schc and related files. Ensure clean git state post-resolution.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.81",
   "title": "[cross-file] constant-time peer iteration doesn't prevent replay window timing leak",
   "description": "Interaction: lichen_l2.c:peer_try_all_pubkeys \u003c-\u003e lichen_link_rx.c:lichen_link_rx\n\nBug: peer_try_all_pubkeys() (lines 518-575) claims constant-time iteration to prevent timing side-channel. It iterates all peers even after finding a match.\n\nHowever, inside the loop, lichen_link_rx() is called for each peer. The lichen_link_rx() function at line 256-261 calls lichen_replay_get() which modifies the replay table (updates last_used counter at replay.h:51).\n\nEach lichen_replay_get() call for a different peer_eui64 creates/updates a different replay entry. The replay table modification (access_counter increment, potential LRU eviction) may have observable timing effects (cache behavior, memory access patterns).\n\nSo even though peer_try_all_pubkeys loops through all peers, the replay table side effects differ based on which peer matches. An attacker could potentially infer the matching peer index from cache timing.\n\nThe comment at lines 529-533 acknowledges this limitation for iteration order but doesn't address the replay table timing.\n\nMore critically: on non-auth errors (line 569), the function returns early, NOT constant-time. The comment says this is intentional (non-auth errors don't leak peer identity), but combined with replay table modifications, early return on -ENOMEM (replay table full) does leak timing info about table state.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

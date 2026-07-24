@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.12",
   "title": "Drain or close lora_sim socket on oversized frame",
   "description": "Trigger: the simulator sends a length-prefixed frame larger than the local response buffer. lichen/drivers/lora/lora_sim.c:120 returns -ENOMEM without consuming the oversized frame payload or closing the socket. Impact: the TCP stream remains desynchronized, so subsequent simulator operations read leftover bytes as frame headers and fail unpredictably. Drain the frame safely or close/reconnect the simulator socket on oversize.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

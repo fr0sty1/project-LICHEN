@@ -3,7 +3,7 @@
   "title": "EDHOC: edhoc_kdf label max length may truncate labels",
   "description": "CORRECTNESS: edhoc_kdf uses zcbor_tstr_put_term with max_len=32, which may truncate labels silently.\n\nLocation: lichen/subsys/lichen/edhoc/edhoc.c:199\n\nif (!zcbor_tstr_put_term(zse, label, 32)) {\n    return -EINVAL;\n}\n\nCurrent EDHOC labels (RFC 9528) are short:\n- 'KEYSTREAM_2' (11 chars)\n- 'MAC_2', 'MAC_3' (5 chars)\n- 'K_3', 'IV_3' (3-4 chars)\n- 'OSCORE_Master_Secret' (20 chars)\n- 'OSCORE_Master_Salt' (18 chars)\n\nAll current labels fit within 32 bytes. However, if EDHOC is extended with longer labels, this could cause silent truncation and key derivation failures.\n\nImpact: Low currently, but potential future bug if labels exceed 32 chars.\n\nFix: Use strlen(label) instead of hardcoded 32, or validate label length explicitly.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:199",
   "notes": "Commit: 40a822d (edhoc_kdf now uses strlen(label)+1)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

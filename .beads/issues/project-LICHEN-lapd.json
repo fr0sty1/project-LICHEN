@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lapd",
   "title": "Synchronize Zephyr/C SCHC implementation (lichen/subsys/schc/ and lichen/subsys/lichen/schc/)",
   "description": "Update C code in lichen/subsys/schc/schc.c, headers, link_schc.h to match exact ACK-on-Error profile (M=1 N=6 T=0 params, bitmap, MIC, retries, padding). Ensure matches Rust/Python output on vectors. Update fuzz tests, Zephyr Kconfig, init order per AGENTS.md. No weakening of tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

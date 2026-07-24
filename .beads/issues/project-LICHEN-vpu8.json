@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vpu8",
   "title": "codereview-P2: No adaptive_duty_permille function defined yet despite constants; must match density\u003e8=5, \u003c3=20 logic and integrate per-region base from standards/",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

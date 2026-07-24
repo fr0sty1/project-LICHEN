@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ujjj",
   "title": "Trickle counter overflow in heard_consistent",
   "description": "File: rust/lichen-rpl/src/trickle.rs\nLine: 127-128\n\nThe heard_consistent() method increments counter without overflow protection:\n```rust\npub fn heard_consistent(\u0026mut self) {\n    self.counter += 1;\n}\n```\n\nImpact: In extremely long-running scenarios with many consistent transmissions, the counter could overflow u32. While unlikely in practice (would require \u003e4 billion consistent messages in one Trickle interval), this violates the principle of no silent overflows in safety-critical networking code.\n\nMore importantly, an attacker could flood a node with consistent messages to trigger this overflow, potentially causing the counter to wrap to 0 and enabling suppressed transmissions (counter \u003c k would become true again).\n\nFix: Use saturating_add:\n```rust\npub fn heard_consistent(\u0026mut self) {\n    self.counter = self.counter.saturating_add(1);\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

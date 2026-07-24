@@ -3,7 +3,7 @@
   "title": "FragmentReceiver missing window_size validation",
   "description": "File: python/src/lichen/schc/reassembly.py:49\n\nFragmentReceiver.__init__ accepts window_size but does not validate it. If window_size is 0 or negative, the position calculations in receive() will produce incorrect results.\n\nSpecifically:\n- pos = self.window_size - 1 - frag.fcn (line 140) would produce wrong positions\n- _window_bitmap() would produce empty or incorrect bitmaps\n- _window_full() would behave incorrectly\n\nFragmentSender correctly validates window_size at line 155-156, but FragmentReceiver does not.\n\nFix: Add validation in __init__:\n  if window_size \u003c 1:\n      raise ValueError('window_size must be positive')\n\nCategory: CORRECTNESS",
   "notes": "Commit: 88bd6bb08",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

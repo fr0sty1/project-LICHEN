@@ -3,7 +3,7 @@
   "title": "[codereview-pass3-round2] draft-lichen-schc-lora-00.md - table duplication with appendix-schc.md; consider moving full tables to appendix-schc.md and keep summary only here per I-D best practices",
   "description": "spec/drafts/draft-lichen-schc-lora-00.md:328 - A.4 adds detail but duplicates appendix-schc.md content. Docs consistency P3. discovered-from:project-LICHEN-ahmj",
   "notes": "Commit: e1f08c02e",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

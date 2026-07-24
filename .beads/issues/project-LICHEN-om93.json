@@ -3,7 +3,7 @@
   "title": "BLE transport: callbacks access transport_state after disconnect could race",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 97-140, 142-161\n\nThe BLE callbacks access transport_state.config.user_ctx without synchronization:\n\nIn connected_cb():\n    if (transport_state.config.conn_cb) {\n        transport_state.config.conn_cb(LICHEN_BLE_CONNECTED,\n                                       transport_state.config.user_ctx);\n    }\n\nIn disconnected_cb():\n    if (transport_state.config.conn_cb) {\n        transport_state.config.conn_cb(LICHEN_BLE_DISCONNECTED,\n                                       transport_state.config.user_ctx);\n    }\n\nIf the transport is deinitialized while a BLE connection/disconnection is in progress:\n1. Deinit could clear config or free user_ctx\n2. Callback fires and reads stale config pointer\n3. user_ctx points to freed memory -\u003e use-after-free\n\nWhile deinit calls transport_stop() first, the BLE stack callbacks are asynchronous and may fire after stop() returns.\n\nFix: Check transport_state.initialized before invoking user callbacks, or copy callbacks/ctx under mutex before invoking.",
   "notes": "Fixed race by guarding callback pointer copy with `if (transport_state.initialized)` under mutex in connected_cb:130, disconnected_cb:159, security_changed_cb:197 (lichen/subsys/lichen/transport/ble_ipsp_transport.c). Prevents stale ctx access post-deinit. Test builds pass (Kconfig aside). Commit in 1bf33f2c7.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

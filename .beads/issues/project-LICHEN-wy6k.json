@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wy6k",
   "title": "[codereview-pass1] coap_dtn.c: s_last_confession array added but not used in rate limit checks; still using per-function last_post_ms globals",
   "description": "After edit, rate limit remains global per static in each POST handler. Per-IID not yet wired to use s_last_confession[slot] from IID hash. Also no init of array. P0 correctness for starvation fix. Mimic extract_iid from router.c.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:26:05.836720684Z",

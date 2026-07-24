@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.8",
   "title": "[lora_l2.c:700-710] rx_callback+user_data update order could race",
   "description": "In lichen_lora_l2_set_rx_callback(), user_data is set before rx_callback (lines 708-709). The comment says 'ensure atomic update of callback + user_data pair' via mutex. However, if the RX thread reads the callback pointer between the two assignments (before mutex is released), it snapshots NULL callback with new user_data. This is benign since cb==NULL short-circuits the call, but the comment implies atomic semantics that aren't quite achieved. Setting callback=NULL first, then user_data, then callback=cb would ensure the old callback never sees new user_data.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

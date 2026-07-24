@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.95",
   "title": "[lichen_l2.c:263-268] TX/RX buffers are not cache-line aligned",
   "description": "Completeness: Performance/DMA alignment category.\n\nStatic buffers at lines 263-268:\n- tx_ipv6_buf[240]\n- tx_frame_buf[255]\n- rx_ipv6_buf[240]\n\nThese are used with hardware drivers that may use DMA. On Cortex-M with cache (M7, M33), non-cache-aligned DMA buffers can cause:\n1. Cache coherency issues if CPU caches overlap DMA buffer\n2. False sharing with adjacent variables\n\nMost Cortex-M0/M3/M4 have no cache, so this is not currently an issue. But portability to M7 (e.g., STM32H7) would require:\n- __attribute__((aligned(32))) or K_HEAP_DEFINE with alignment\n- Cache maintenance operations before/after DMA\n\nThe current code works because the LoRa driver abstracts DMA details. But if porting to a platform with CPU cache, review buffer alignment.\n\nThis is P4 informational for future portability.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

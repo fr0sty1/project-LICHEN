@@ -2,7 +2,7 @@
   "id": "project-LICHEN-c7qm",
   "title": "codereview pass 1: 02a-coordinated-capacity.md TOC omits new 2a.7.1 Normative Metric Sampling subsection",
   "description": "Scope section line 18 TOC must list 2a.7 and 2a.7.1 explicitly per document style in other sections. Also update any other TOCs or cross-refs. This is correctness issue for spec completeness.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

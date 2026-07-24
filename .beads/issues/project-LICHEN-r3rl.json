@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-r3rl",
   "title": "[codereview-pass1-chunk1] coap_dtn.c:20 deaddrop_post duplicates OSCORE option extraction, PIV parsing, and payload retrieval logic that is now encapsulated in coap_oscore_unprotect_request (coap_oscore.c:99-142). Violates DRY and LCI spec 17.5 OSCORE requirement for consistent protection. P1 correctness.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

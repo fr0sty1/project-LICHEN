@@ -2,7 +2,7 @@
   "id": "project-LICHEN-x1h3",
   "title": "Data race in tx_queue_count and tx_queue_empty",
   "description": "File: lichen/subsys/lichen/link/tx_queue.c\nLines: 311-341\n\ntx_queue_count() and tx_queue_empty() read queue-\u003eentries[i].valid without holding the queue lock:\n\n```c\nint tx_queue_count(const struct tx_queue *queue)\n{\n    // ... no lock_queue(queue) call\n    for (int i = 0; i \u003c TX_QUEUE_SIZE; i++) {\n        if (queue-\u003eentries[i].valid) {  // Data race\n            count++;\n        }\n    }\n    return count;\n}\n```\n\nSimilarly for tx_queue_empty() at lines 328-341.\n\nWhile individual bool reads may be atomic on most architectures, the iteration over multiple entries without synchronization can yield inconsistent results - e.g., counting an entry that was just invalidated while missing one that was just added.\n\nImpact: Inconsistent queue state reporting in concurrent scenarios. May affect backpressure decisions if callers rely on accurate counts.\n\nFix: Acquire lock before iteration, or document that these functions provide approximate values only (the stats read already has such documentation).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

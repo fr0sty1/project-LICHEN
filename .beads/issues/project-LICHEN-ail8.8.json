@@ -3,7 +3,7 @@
   "title": "Follow-up from worker15 merge of 8be870f9d",
   "description": "Any new issues discovered during 3 codereview passes on merged changes from worker15",
   "notes": "No new issues discovered during 3 codereview passes; all P0-P4 fixed previously. Quality gates passed (cargo fmt/clippy/test, ruff, pytest, Zephyr native_sim).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

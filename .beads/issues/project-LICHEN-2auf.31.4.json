@@ -3,7 +3,7 @@
   "title": "Build native_sim application rows",
   "description": "Scope under project-LICHEN-2auf.31: build and package the recovered Puck and Gateway applications for every declared native_sim selector, including native_sim/native/64 where supported, from a fresh clean EBS worktree. This is whole-application build/package coverage, not the subsystem runtime tests in .59 or link gates in .35.6. Use AWS_PROFILE=personal, account 210337117346, AWS_REGION=us-west-2, an owned builder in us-west-2c, and exact EBS vol-0a95eee8d1d8461eb. Record base/applied commit and patch hashes, exact app/board qualifiers/configs, west manifest, Zephyr/SDK/host compiler versions, full pristine commands/exits, package/binary hashes, logs, and size deltas. Unsupported selectors, omitted app variants, ignored packaging failure, stale output, warning/nonzero exit, or dirty-worktree verification fails closed. Hash evidence before sync, unmount, ownership-checked detach, wait-available, and tagged-instance cleanup.",
   "acceptance_criteria": "Puck and Gateway build/package successfully for each declared native_sim and native_sim/native/64 selector without fallback, omission, or test substitution. Exact source/patch/tool/command/exit/log/artifact/size provenance is retained and hashed; no .59 or .35.6 gate is duplicated; clean-worktree and account/AZ/volume checks pass; log collection precedes explicit EBS unmount, detach, wait-volume-available, and ownership-checked instance termination.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

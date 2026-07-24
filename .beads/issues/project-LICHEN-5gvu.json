@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5gvu",
   "title": "P0: cbor_put_tstr incorrect header for strings \u003e65535",
   "description": "lichen/subsys/lichen/coap/coap_status.c:102-122 - len \u003e UINT16_MAX uses 0x79 (u16) with only 2 length bytes and wrong header_len=3; leads to invalid CBOR and potential memcpy overrun. Incremental check or proper 0x7a for u32 length needed. codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Missing STALE case in hal_location_fix_state_from_app switch",
   "description": "File: lichen/subsys/lichen/app_interface/hal_bridge.c:118-134\n\nThe switch statement mapping app fix states to HAL fix states is missing LICHEN_APP_LOCATION_FIX_STALE:\n\n  static enum lichen_hal_location_fix_state\n  hal_location_fix_state_from_app(enum lichen_app_location_fix_state fix_state)\n  {\n      switch (fix_state) {\n      case LICHEN_APP_LOCATION_FIX_NO_FIX:\n          return LICHEN_HAL_LOCATION_FIX_NO_FIX;\n      case LICHEN_APP_LOCATION_FIX_2D:\n          return LICHEN_HAL_LOCATION_FIX_2D;\n      case LICHEN_APP_LOCATION_FIX_3D:\n          return LICHEN_HAL_LOCATION_FIX_3D;\n      case LICHEN_APP_LOCATION_FIX_ERROR:\n          return LICHEN_HAL_LOCATION_FIX_ERROR;\n      case LICHEN_APP_LOCATION_FIX_NONE:\n      default:\n          return LICHEN_HAL_LOCATION_FIX_NONE;\n      }\n  }\n\nLICHEN_APP_LOCATION_FIX_STALE falls through to default, mapping to NONE.\n\nWhile valid_app_location_fix_state() (line 136-142) and submit_to_hal_as() (lines 319-323) reject STALE before calling this function, the missing case is a maintainability hazard:\n- If validation logic changes, STALE would silently map to NONE\n- Compiler -Wswitch warnings are suppressed by the default case\n- Code intent is unclear (is STALE meant to be NONE or is it an oversight?)\n\nFix: Add explicit case for STALE that either returns a HAL equivalent or triggers an assertion.",
   "notes": "Fixed: explicit STALE case with __ASSERT in hal_location_fix_state_from_app (matches description)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

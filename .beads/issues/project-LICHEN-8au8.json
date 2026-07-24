@@ -3,7 +3,7 @@
   "title": "[epic] RAK WisGate Developer gateway support",
   "description": "RAK WisGate Developer (RAK7268/RAK7289) as border router. Outdoor-ready enclosure, PoE, optional cellular. LoRaWAN-focused but runs OpenWrt - could run LICHEN. $150+. Pros: weatherproof, professional. Cons: pricey, may need firmware work to run mesh instead of LoRaWAN.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

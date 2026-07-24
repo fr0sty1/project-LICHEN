@@ -3,7 +3,7 @@
   "title": "headers.rs: Fixed 256-byte buffer panics on large tail payloads",
   "description": "File: rust/lichen-schc/src/headers.rs\nLines: 407, 571, 716, 841\n\nCategory: CORRECTNESS\n\nThe build functions (build_coap_udp, Icmpv6EchoProfile::build, RplDioProfile::build, RplDaoProfile::build) use fixed 256-byte stack buffers (coap_buf, icmp_buf) but do not validate that the tail payload fits before copying.\n\nExample at line 407:\n```rust\nlet mut coap_buf = [0u8; 256];\n...\ncoap_buf[COAP_FIXED_HEADER..COAP_FIXED_HEADER + tail.len()].copy_from_slice(tail);\n```\n\nIf tail.len() \u003e 252 (for CoAP) or \u003e 248 (for ICMPv6), this will panic with index out of bounds.\n\nImpact: Any CoAP payload larger than 252 bytes causes a panic during packet reconstruction.\n\nFix: Add bounds check before copy, or use a dynamically-sized buffer, or return an error if tail exceeds limit.",
   "notes": "Commit: 6baf2409a",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

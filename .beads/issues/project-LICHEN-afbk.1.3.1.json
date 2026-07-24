@@ -3,7 +3,7 @@
   "title": "HAL trait extension for SX1302 multi-channel",
   "description": "Extend the Radio trait in lichen-hal/src/lib.rs to support multi-channel receive and CCP (Concentrator Chip Packet) metadata for SX1302 gateways. Mimic SX126x wrapper patterns from lichen-embassy. First subtask of SX1302 driver. Do not create new files.",
   "notes": "Commit: f471555f6",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

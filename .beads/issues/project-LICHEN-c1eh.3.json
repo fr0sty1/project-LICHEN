@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-c1eh.3",
   "title": "coap_dtn.c: prevent rate limit collision by using full IID or better hash instead of IID[7]",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

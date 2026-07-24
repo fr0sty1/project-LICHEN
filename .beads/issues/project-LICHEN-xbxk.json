@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xbxk",
   "title": "[codereview-P3] No test cases yet for ccp9 in test_vectors.py",
   "description": "Add to parametrized test_vector_file_schema and specific test function for rendezvous vectors with independent oracle (cross validation not self-oracle). da2q context requires exact match to spec 2a.3 mechanisms.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T17:11:16.715769376Z",

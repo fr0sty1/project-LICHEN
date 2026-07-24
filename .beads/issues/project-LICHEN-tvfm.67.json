@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.67",
   "title": "[lichen_l2.c:117] LICHEN_MIN_FRAME_LEN assumes minimum MIC size",
   "description": "Gap found: Frame size constant derivation not verified against all MIC sizes.\n\nWhy this was missed: MIC size variability not considered in Round 1.\n\nThe actual bug: LICHEN_MIN_FRAME_LEN (line 117) is set to 9 bytes, calculated using LICHEN_MIC_32_LEN (4 bytes) as the minimum MIC. The comment explains this is for 'broadcast, 32-bit MIC, empty payload'.\n\nThe frame format (spec section 4) supports different MIC sizes:\n- 32-bit MIC: 4 bytes\n- 64-bit MIC: 8 bytes\n\nIf the protocol ever REQUIRES 64-bit MIC minimum, LICHEN_MIN_FRAME_LEN would need to increase. The BUILD_ASSERT at lines 137-144 validates the current calculation.\n\nThe actual issue: if lichen_link_rx() requires a larger MIC for certain security levels and the frame only has a 32-bit MIC, the frame would be accepted for length checking but fail MIC verification. This is correct behavior - the length check is a fast early-reject, not the final validation.\n\nVerified correct. Priority 4 - design documentation.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

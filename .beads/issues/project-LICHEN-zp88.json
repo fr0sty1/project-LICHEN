@@ -3,7 +3,7 @@
   "title": "Rust: include current_channel in Announce::signed_data() and update codec for CCP-9",
   "description": "Add current_channel field to Announce and AnnounceBuilder. Update signed_data_len, write_signed_data to include it after seq_num (to bind announced channel per security review). Update parse, tests, wire format to match Python (add rx_channel byte after hop_count, adjust offsets, FIXED_LENGTH=94). Update L2 payload tests if affected. Security consistency with Python/C. --parent=project-LICHEN-3i18 --type=task --priority=1 --labels=codereview",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

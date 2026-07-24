@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1960",
   "title": "Integrate RPL DODAG root and DAO routing table into lichen-gateway",
   "description": "Ensure lichen-gateway uses lichen_rpl::DaoManager or lichen_node::Node's root mode for processing DAOs from mesh nodes, populating the routes map. Handle prefix advertisement in DIOs (even if prefix is optional per updated notes). Make root configurable in config.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

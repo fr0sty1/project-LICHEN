@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-nsej",
   "title": "codereview pass 2: missing cross-ref to draft-lichen-tdma in select_channel; now() SFN wrap semantics unclear per 2a.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

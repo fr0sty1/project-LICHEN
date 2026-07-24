@@ -3,7 +3,7 @@
   "title": "unprotect_response doesn't update replay window for response PIV",
   "description": "File: rust/lichen-oscore/src/lib.rs\nLines: 602-614\n\nIn unprotect_response, when a response includes its own PIV (not using request_piv), the code does NOT update the replay window:\n```rust\n// SECURITY: No replay check for responses - they're correlated with requests\nlet tag_start = ciphertext.len() - TAG_LEN;\n...\ncipher.decrypt_in_place_detached(...)\n```\n\nPer RFC 8613 Section 7.4.2, responses are correlated with requests, so traditional replay protection isn't needed. However, if a server sends multiple responses with different PIVs (e.g., for observe notifications), the client should track these.\n\nFor simple request-response, no issue. For CoAP Observe (RFC 7641), the same OSCORE context may receive multiple notifications with incrementing PIVs. Without tracking, a replayed notification could be accepted.\n\nImpact: Potential replay of observe notifications.\n\nFix: For observe support, add optional replay tracking for responses with PIV.",
   "notes": "Commit: abdfba676 (replay protection added for response PIVs in unprotect_response)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

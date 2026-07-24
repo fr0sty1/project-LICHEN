@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.8",
   "title": "Automate Nucleo entropy reset regression test",
   "description": "Add script or test in tests/ or CI that boots Nucleo firmware in Renode, exercises STM32 entropy init, asserts RNG IRQ handling, uses canonical reset macro to clear IRQ without regression, verifies post-reset entropy progress. Keep fully deterministic/offline. Update Renode platform if needed. Link to project-LICHEN-oqv7.9.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

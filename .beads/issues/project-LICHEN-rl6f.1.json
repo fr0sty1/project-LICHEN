@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rl6f.1",
   "title": "Define TDMA time slots, frequency agility, rendezvous in CCP-1 scope",
   "description": "Write the coordinated capacity section for spec/02a-coordinated-capacity.md covering TDMA slot definition (slot duration, guard times, synchronization), channel agility (hopping sequences, control vs data channels), and rendezvous mechanisms (beacon-based, hash-based slot/channel selection). Include diagrams, tables for parameters, compatibility notes. Update TOC in spec/README.md if needed. Follow IETF spec style. After writing, run codereview process 3 times.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

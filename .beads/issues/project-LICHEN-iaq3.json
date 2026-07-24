@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iaq3",
   "title": "Validate Python TX queue capacity",
   "description": "TxQueue accepts capacity \u003c= 0, then push() calls max() on an empty entry list and raises an incidental ValueError. Validate positive capacity at construction or define zero-capacity backpressure, with boundary tests and unchanged normal behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

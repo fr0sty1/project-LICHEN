@@ -2,7 +2,7 @@
   "id": "project-LICHEN-czx2",
   "title": "codereview-pass3 coap_status.c",
   "description": "Confirmed no dead code in notify funcs, ENOBUFS validation complete with capacity handling, tests pass, 3 clean passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T16:12:25.351174184Z",

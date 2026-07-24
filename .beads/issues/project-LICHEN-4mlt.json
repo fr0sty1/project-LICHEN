@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-4mlt",
   "title": "Zephyr: per-neighbor SF tracking in gradient and L2 TX/RX",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-l5ym",
   "title": "Missing check for has_portnum before using portnum value",
   "description": "In `parse_data()` (lichen/subsys/lichen/meshtastic/adapter.c), portnum handling correctly checks `info->has_portnum` before use. Good.\n\nThe `unsupported_operations` table entries with `has_portnum=true` and `lichen_meshtastic_adapter_unsupported_operations()` (which returns static table) rely on caller following the contract clarified in adapter.h: check `has_portnum` before using `portnum`; when false, `portnum` is unset.\n\nNot a bug. The docs(meshtastic) commit clarified the has_portnum contract.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

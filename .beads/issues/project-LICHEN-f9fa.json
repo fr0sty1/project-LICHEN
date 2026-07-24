@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f9fa",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.overlay",
   "notes": "Fixed xiao_s3_wio_sx1262.overlay and .conf with canonical BLOCKED/RETIRED comment from worker18 version matching tbeam_supreme pattern and matrix doc. Removed all merge markers. Commit would be in project-LICHEN.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

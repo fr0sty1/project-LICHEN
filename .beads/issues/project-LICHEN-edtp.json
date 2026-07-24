@@ -2,7 +2,7 @@
   "id": "project-LICHEN-edtp",
   "title": "codereview-pass3-chunk4-security",
   "description": "Pass 3/3: all references now consistent across specs. No further findings. 3 passes done for hash_32/dodag fixes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

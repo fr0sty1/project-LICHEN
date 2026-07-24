@@ -3,7 +3,7 @@
   "title": "[kimi-review] bc2213b: [SEVERITY: low] **Compiler portability**: `#pragma GCC diagn",
   "description": "Commit: bc2213b8\nMessage: fix(hal): isolate upstream sign warning\n\nFinding: [SEVERITY: low] **Compiler portability**: `#pragma GCC diagnostic` is honored by GCC and Clang (including armclang), but toolchains that don't recognize it will emit an \"unknown pragma\" warning — which can become a build failure under `-Werror`, the exact problem this commit is trying to solve. Since Zephyr supports multiple toolchains, consider guarding with `#if defined(__GNUC__) || defined(__clang__)`, or use Zephyr's toolchain abstraction (e.g. the `TOOLCHAIN_*` / `__diag_push`/`__diag_ignore`-style macros available in some Zephyr versions) for consistency.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

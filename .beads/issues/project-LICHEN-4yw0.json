@@ -3,7 +3,7 @@
   "title": "Rust: add channel to Radio trait and coordination module",
   "description": "Per da2q.2: extend lichen-hal Radio trait with channel support, implement channel coordination in lichen-link or new module using hash_32 and CCP-9/12 logic from vectors. Update node/scheduler. Add tests.",
   "notes": "Commit: 3c057ed",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "AI Agent",

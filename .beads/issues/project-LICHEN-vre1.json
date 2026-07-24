@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vre1",
   "title": "codereview-pass-3 post-TOC-edit: Appendix A. Complete Rule Set and B still contain TODO/outdated list; must align exactly with current Rule Set Version 2 from appendix-schc.md:10 and test/vectors/",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

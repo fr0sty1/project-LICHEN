@@ -3,7 +3,7 @@
   "title": "admin_payload_variant_field may have outdated field number ranges",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:658-671\n\nThe admin_payload_variant_field function hardcodes Meshtastic AdminMessage field number ranges:\n  return (field \u003e= 1U \u0026\u0026 field \u003c= 8U) ||\n         (field \u003e= 10U \u0026\u0026 field \u003c= 27U) ||\n         (field \u003e= 32U \u0026\u0026 field \u003c= 49U) ||\n         (field \u003e= 64U \u0026\u0026 field \u003c= 67U) ||\n         (field \u003e= 94U \u0026\u0026 field \u003c= 100U) ||\n         (field \u003e= ADMIN_OTA_REQUEST_FIELD \u0026\u0026 field \u003c= ADMIN_LOCKDOWN_AUTH_FIELD);\n\nThese ranges must match the Meshtastic proto definition (referenced at line 29: LICHEN_MESHTASTIC_PROTOBUF_COMMIT).\n\nIf Meshtastic adds new admin fields outside these ranges, they won't be recognized as variant fields, potentially causing incorrect parsing behavior.\n\nFix: Add a comment documenting which proto version these ranges correspond to, or generate these ranges from the proto definition.",
   "notes": "Comment updated to document protobuf commit 032b7dfd68e875c4323e6ac67590c6fc616b1714. The ranges match the pinned Meshtastic admin.proto. Commit: 7af20eab9",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

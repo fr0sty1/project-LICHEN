@@ -3,7 +3,7 @@
   "title": "LichenTransport._on_datagram only catches UnparsableMessage",
   "description": "File: python/src/lichen/coap/transport.py:159-163\n\nThe datagram handler only catches aiocoap.error.UnparsableMessage:\n```python\ndef _on_datagram(self, data: bytes, source: str) -\u003e None:\n    try:\n        message = Message.decode(data, LichenRemote(source))\n    except error.UnparsableMessage:\n        return  # drop malformed datagrams\n    self._mm.dispatch_message(message)\n```\n\nMessage.decode can raise other exceptions (struct.error, ValueError, IndexError) on severely malformed data. These would propagate and crash the event loop callback, potentially taking down the node.\n\nFix: Catch Exception or a broader set of parse-related exceptions:\n```python\nexcept (error.UnparsableMessage, ValueError, struct.error, IndexError):\n    return  # drop malformed datagrams\n```",
   "notes": "Commit: fa8e1de36",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8b8u.4",
   "title": "Update cross-language test harness and verify all impls match node_address.json vectors",
   "description": "Ensure Python tests, Rust tests, and new C tests all load and validate against the same test/vectors/node_address.json. Add interop test if missing (e.g. via FFI or script). Run full test suite for identity/addressing after fixes. Close when all three languages produce identical outputs.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

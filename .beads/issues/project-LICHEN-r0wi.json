@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r0wi",
   "title": "[CODEREVIEW-P1] Inconsistent hash function mention (fnv1a32 vs hash_32)",
   "description": "spec/02a-coordinated-capacity.md:10+ and bead project-LICHEN-da2q.12.6 - Current impl mentions fnv1a32(eui64 ^ t ^ epoch) but CCP-15 uses hash_32(crc32_ieee with LICHEN seed). Must standardize on one (prefer hash_32 per existing vectors). Security/collision analysis missing for hopping. Pass 2 correctness review. tagged codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

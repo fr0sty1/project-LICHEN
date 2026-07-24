@@ -2,7 +2,7 @@
   "id": "project-LICHEN-71t9",
   "title": "codereview pass 2: frequency agility pseudocode",
   "description": "Findings: 1. Missing update to ccp_load_balancing.json test vectors for new select_channel logic (P1). 2. No mention of MIN_DWELL_MS or BLACKLIST_DURATION_MS in Kconfig or beacon params (P2). 3. Should cross-ref draft-lichen-link-01.md for CCA metrics source. Label codereview, discovered-from project-LICHEN-da2q.15.8.3.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

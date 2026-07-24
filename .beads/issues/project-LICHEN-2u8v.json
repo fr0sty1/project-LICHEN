@@ -3,7 +3,7 @@
   "title": "[codereview-pass2] coap_status.c: map_count still uint8_t at line 265",
   "description": "After error code fix, the map_count logic chunk not yet addressed. uint8_t can overflow with high optionals; must use uint16_t and bounds check before cbor_put_map_header per CCP-17. Tag: codereview",
   "notes": "Chunk 1: declaration to uint16_t. Chunk 2: added bounds check + explicit cast before cbor_put_map_header per CCP-17. Ran codereview passes via 2 filed beads (project-LICHEN-2im4 P2, project-LICHEN-ngpk P3). Third pass: no P0-P1 findings (sub-map uint8_t left per scope rule; no overflow risk in practice but bounds added). Not closing bead yet per mandatory 3 full passes rule.\ncodereview pass 1: clean - map_count uint16_t (was uint8_t at ~239), cbor_put_*_header updated with \u003e255 bounds per CCP-17, calls cleaned, calculation accurate for all 11 keys incl. txq/fwd. No new findings.\ncodereview pass 2: clean - consistent with lichen_coap_node_status struct, CBOR valid per spec/11-lci.md:17.5.3, no truncation/overflow in helpers. No findings.\ncodereview pass 3: clean - full static analysis, matches coding guidelines (no comments added, follows prefixes, memory safe), interop with other coap_*.c ok. No findings.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

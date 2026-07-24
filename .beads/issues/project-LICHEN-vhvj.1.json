@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.1",
   "title": "Add synchronized_hop_channel() using hash_32 oracle from ccp16-hop.json and hash_32.json",
   "description": "Implement in python/src/lichen/sim/ (update tdma.py or add to protocol.py/simulation.py). Use independent FNV-1a32 oracle, not self-test. Match SelectChannel pseudocode in spec/02a-coordinated-capacity.md:2a.3.1. Add unit test.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a5wa",
   "title": "task",
   "description": "routing.rs:80-87 - NeighborTable::update eviction uses min_by_key(|_, t| *t) to find oldest entry, but this fails after u32 timestamp wraparound (~49 days). Example: Entry A at last_seen_ms=0xFFFFFF00 (old, before wrap) vs Entry B at last_seen_ms=0x00000100 (recent, after wrap). B's raw value is smaller so it gets evicted despite being newer. Fix: use wrapping_sub comparison like prune() does. Failure scenario: After 49+ days uptime with full neighbor table, newest neighbor is evicted instead of oldest.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

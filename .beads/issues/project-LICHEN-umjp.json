@@ -2,7 +2,7 @@
   "id": "project-LICHEN-umjp",
   "title": "coap_dtn.c: coap_respond duplicated from coap_location.c - consider shared helper per codereview",
   "description": "Duplicated coap_respond function violates DRY. Spec requires robustness and error logging in all handlers. Add to acceptance: 3 codereview passes with all findings fixed before closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:26:21.995141988Z",

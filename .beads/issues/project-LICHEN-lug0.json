@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lug0",
   "title": "[codereview] Implement mesh_to_mesh in Gateway using is_local_mesh, RPL SRH insertion, SCHC recompress and TX queue",
   "description": "Current forward_mesh_to_upstream unconditionally tunnels all decompressed mesh packets to TUN. Per spec/05-routing.md:7.2, must classify dst using RPL routing_table.lookup. If local_mesh, insert SourceRoutingHeader (from lichen_rpl::routing::SourceRoutingHeader), re-compress with RPL-aware SCHC rule, queue to sim/SLIP TX instead of TUN. Gateway.rpl.router.lookup_route or routes map. Update lichend.rs forward fn to branch on is_local_mesh. Add tests. This is the core of project-LICHEN-3k6w.1. codereview-tagged. P0 until implemented.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

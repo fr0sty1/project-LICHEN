@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w4cp",
   "title": "codereview-pass1: hardcoded now_ms=0 in handle_frame_rpl call",
   "description": "0 for now_ms means all neighbors get timestamp 0, breaking prune, ETX updates, and trickle in process_dio (even if DAO path doesn't use it, data path does indirectly). Use Instant::now() or pass monotonic time from tokio. P1. discovered-from:project-LICHEN-3k6w.2",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

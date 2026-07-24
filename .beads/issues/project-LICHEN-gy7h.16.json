@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.16",
   "title": "lichen_link_strerror switch has gaps - several LICHEN error codes not mapped",
   "description": "Location: lichen_util.h:60-90\n\n**What goes wrong:** The switch statement covers EINVAL, ENOMEM, EMSGSIZE, EOVERFLOW, EALREADY, and LICHEN_EAUTH, but LICHEN link layer likely defines additional error codes. Any unmapped error falls through to \"unknown error\", making debugging harder.\n\n**Impact:** User sees \"Frame RX failed: unknown error (-42)\" in logs and has to grep the source to figure out what -42 means.\n\n**Fix:** Add a comment documenting which LICHEN error codes exist and ensure all are covered. Or change the default case to print the numeric value: \"error %d\" so at least the number is visible.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

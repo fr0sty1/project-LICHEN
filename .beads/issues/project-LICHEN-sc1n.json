@@ -3,7 +3,7 @@
   "title": "copy_tmp_payload casts size_t to int without overflow check",
   "description": "File: lichen/subsys/lichen/meshtastic/codec.c:430-446\n\n  static int copy_tmp_payload(const uint8_t *tmp, size_t len,\n                              uint8_t *buf, size_t buflen)\n  {\n      if (buf == NULL) {\n          return -EINVAL;\n      }\n      if (len \u003e LICHEN_MESHTASTIC_FROM_RADIO_MAX) {\n          return -EMSGSIZE;\n      }\n      if (buflen \u003c len) {\n          return -ENOMEM;\n      }\n      if (len \u003e 0U) {\n          memcpy(buf, tmp, len);\n      }\n      return (int)len;  // Cast size_t to int\n  }\n\nThe function returns (int)len. LICHEN_MESHTASTIC_FROM_RADIO_MAX is 510, which fits in int. So this is technically safe.\n\nHowever, the check 'len \u003e LICHEN_MESHTASTIC_FROM_RADIO_MAX' depends on the macro value being smaller than INT_MAX. If CONFIG_LICHEN_MESHTASTIC_MAX_FROM_RADIO is defined to a large value (\u003eINT_MAX), the cast would overflow.\n\nAdd a static assertion:\n  BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX \u003c= INT_MAX, 'max must fit in int');",
   "notes": "Commit: a8dedb766",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

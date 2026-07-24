@@ -3,7 +3,7 @@
   "title": "station_g2 overlay omits dio3-tcxo-voltage despite DIO3 TCXO wiring",
   "description": "Code review finding from unreviewed Zephyr/C paths. firmware/bridge-zephyr/boards/station_g2.overlay documents SX1262 DIO3 as the 1.8V TCXO supply and sets tcxo-power-startup-delay-ms, but it never sets dio3-tcxo-voltage. The Zephyr sx126x binding exposes dio3-tcxo-voltage as the property that tells the driver to power/configure the DIO3-controlled TCXO; other TCXO boards in this tree set both properties. On Station G2, the radio can be configured with the TCXO delay but without enabling the TCXO supply. Evidence: station_g2.overlay:17 and :85-86; zephyr/dts/bindings/lora/semtech,sx126x-base.yaml:51-61; comparable overlays rak4631_nrf52840.overlay:34-35 and heltec_t114.overlay:87-88. Acceptance: include the sx126x dt-bindings header and set dio3-tcxo-voltage to the documented Station G2 TCXO voltage, then build the target configuration that uses this overlay.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

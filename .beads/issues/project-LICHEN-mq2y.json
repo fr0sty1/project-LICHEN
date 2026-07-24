@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mq2y",
   "title": "[codereview P1] draft-lichen-schc-lora-00.md:293 table line refs (rules.rs:59) will bit-rot; use symbolic names like LINK_LOCAL_COAP_RULE instead",
   "description": "After Appendix A update, comments reference specific line numbers in rules.rs that are fragile. Also Rule 5/6 line refs point to const but should verify against current implementation. File: spec/drafts/draft-lichen-schc-lora-00.md:300",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T14:56:33.435436962Z",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.30",
   "title": "main.c ipv6_addr functions' return values unchecked",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

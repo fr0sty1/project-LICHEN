@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.14.1",
   "title": "Python: CCP-14 requirements from da2q context",
   "description": "Python implementation for CCP-14 Gateway Multi-RX requirements from da2q context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

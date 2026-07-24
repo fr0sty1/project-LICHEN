@@ -3,7 +3,7 @@
   "title": "KISS transport: RX thread not stopped in deinit causes potential use-after-free",
   "description": "File: lichen/subsys/lichen/transport/kiss_transport.c\nLines: 545-563\n\nkiss_transport_deinit() disables UART interrupts but does not stop the RX thread:\n\n    void kiss_transport_deinit(void)\n    {\n        ...\n        /* Disable UART interrupts */\n        if (ctx-\u003euart_dev != NULL) {\n            uart_irq_rx_disable(ctx-\u003euart_dev);\n        }\n\n        /* Note: k_thread_abort() would be needed to stop the RX thread,\n         * but that can cause issues. In practice, deinit is rarely called. */\n\n        ctx-\u003einitialized = false;\n        ...\n    }\n\nThe RX thread (kiss_rx_thread_fn) continues running and accessing ctx after deinit:\n- Reads from rx_ring (line 387)\n- Accesses stats_mutex (line 388)\n- Calls dispatch_frame which accesses config callbacks (line 397)\n\nIf the transport is deinitialized and then reinitialized (or memory reused), this is a use-after-free/race.\n\nFix: Use a flag + semaphore pattern to gracefully stop the thread, or use k_thread_join() after signaling shutdown.",
   "notes": "Commit: 7f46d1898",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

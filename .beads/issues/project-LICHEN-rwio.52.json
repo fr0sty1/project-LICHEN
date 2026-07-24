@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.52",
   "title": "GOOD: Static scratch buffers avoid per-packet heap allocation in TX/RX paths",
   "description": "lichen_l2.c lines 57-62: tx_ipv6_buf, tx_frame_buf, rx_ipv6_buf are static arrays protected by mutexes. This avoids k_malloc/k_free on every packet, which is important for embedded systems with limited heap and deterministic timing requirements. The comment (lines 44-56) explains buffer sizing rationale including SCHC assumptions.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Missing privkey/pubkey/sig NULL checks in schnorr48_sign_frame",
   "description": "File: lichen/subsys/lichen/link/schnorr48.c\nLines: 259-298\n\nschnorr48_sign_frame() validates dst_addr and payload but not privkey, pubkey, or sig parameters:\n\n```c\nint schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,\n                         const uint8_t *dst_addr, size_t dst_addr_len,\n                         const uint8_t *payload, size_t payload_len,\n                         const uint8_t *privkey,   // Not validated\n                         const uint8_t *pubkey,    // Not validated\n                         uint8_t *sig)             // Not validated\n{\n    // Validates dst_addr_len and dst_addr/payload NULL checks\n    // But privkey, pubkey, sig are used without checks\n```\n\nWhile these parameters are marked _Nonnull in the header, no runtime validation exists. A NULL privkey would cause crypto_sha512_update to hash garbage, and a NULL sig would cause memcpy to crash.\n\nImpact: Crash if caller violates _Nonnull contracts. Less critical than verify since signing is internal code path, but defensive checks are good practice for C code.\n\nFix: Add NULL checks at function entry for privkey, pubkey, and sig parameters.",
   "notes": "Fixed in commit 805599c (project-LICHEN-vbex: added NULL checks for privkey, pubkey, sig in schnorr48_sign_frame per review). Working tree clean for this change.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

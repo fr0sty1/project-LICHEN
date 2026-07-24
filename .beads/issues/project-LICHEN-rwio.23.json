@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.23",
   "title": "lichen_l2_iface_init missing doc comment",
   "description": "The public function lichen_l2_iface_init() declared in lichen_l2.h has a doc comment in the header, but the implementation in lichen_l2.c:360 has no comment block.\n\nLocation: \n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.h:58-59 (has doc comment)\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:360 (no doc comment at impl)\n\nWhat goes wrong: Maintainers reading the .c file miss context about thread-safety assumptions, error handling, and side effects. The header comment is minimal (just says 'Sets up the LoRa driver and link context').\n\nThe implementation has important behaviors not documented in the header:\n- Sets iface_init_failed flag on error\n- Copies EUI-64 to iface_link_addr\n- Registers RX callback AFTER link_ctx init (ordering matters)\n- Logs link-local address\n\nConsider adding implementation notes at the .c definition site.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

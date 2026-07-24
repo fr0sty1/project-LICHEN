@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7r87",
   "title": "[codereview-pass2-declaration] coap_dtn.c: s_senml_pack_mutex added but s_senml_pack has no access paths yet",
   "description": "Pass 2 of codereview on declaration chunk. P2: dead code risk for senml_pack and its mutex if not used in access paths. Per 'No dead code' rule. Also confirm all dtn_buf renamed (none left as plain dtn_buf). Must protect all accesses. Tagged codereview. Depends on project-LICHEN-r9mx.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:46:04.519447499Z",

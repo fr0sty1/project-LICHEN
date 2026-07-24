@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ofrf.3",
   "title": "codereview: imprecise RFC2119 usage in multi-root section",
   "description": "Specify MUST/SHOULD for each rule in multi-root beacon conflict. Add what happens on signature fail vs overlap.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

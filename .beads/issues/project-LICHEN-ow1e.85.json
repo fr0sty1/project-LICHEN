@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.85",
   "title": "reassembly.py: window number tracking logic is non-obvious",
   "description": "src/lichen/schc/reassembly.py:61-64 has _abs_window() logic relating 1-bit wire window to absolute window number. The relationship is implicit. Add comment explaining that wire W bit alternates 0/1 while _current_window is monotonic.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

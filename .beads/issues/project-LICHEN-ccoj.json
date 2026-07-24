@@ -3,7 +3,7 @@
   "title": "[CODEREVIEW-1] schema.json oneOf addition for ccp15/ccp16 may miss some v2 vector variants in ccp16-desync.json which uses array root not envelope",
   "description": "test/vectors/schema.json:22 - ccp16-desync.json starts with JSON array not object with format_version and vectors; schema validation will fail for it. format_version=2 support incomplete without conditional schema.",
   "notes": "CODEREVIEW pass 2/3: description updated, test updated with comment; pytest passes cleanly; no correctness issues found.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

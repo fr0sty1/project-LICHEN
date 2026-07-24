@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f7km",
   "title": "encode_pli: Missing buffer bounds check before writing subtype byte",
   "description": "In rust/lichen-core/src/compact_cot.rs, the new encode_pli() helper writes buf[0] = subtype as u8 without first checking that the buffer has at least 1 byte available. If called with an empty buffer, this will panic on out-of-bounds access. The fix is to add a bounds check at the start: if buf.is_empty() { return Err(EncodeError::BufferTooSmall(...)); }",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-h24v",
   "title": "codereview-p3: generator must call _write for ccp15.json after adding vector; update description too",
   "description": "After editing ccp15_vectors(), main() must regenerate ccp15.json. Also update the top level description in JSON and spec cross-ref. Run tests after. Tag codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

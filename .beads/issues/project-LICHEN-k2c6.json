@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k2c6",
   "title": "[codereview-1] spec/02a-coordinated-capacity.md:18 scope update - verify appendix A mentions drift constant explicitly",
   "description": "After scope edit adding cross-refs to Appendix A, §2a.5 and drift constant/slot_adjust_ticks=8. Check if Appendix A updated to define drift constant and slot_adjust_ticks. Cross-ref consistency with other sections. P2 codereview. discovered-from:project-LICHEN-5mh9",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:31:13.914109462Z",

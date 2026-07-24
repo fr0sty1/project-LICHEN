@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-pa6h.1",
   "title": "[codereview-pass-1 correctness] rules.rs FieldDescriptor population for LINK_LOCAL/GLOBAL_COAP/RPL_DIO/DAO/OSCORE/MQTT_SN",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "chore",
   "created_at": "2026-07-22T14:57:20.996411145Z",

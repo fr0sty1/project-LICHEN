@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ijuw",
   "title": "[codereview] reply not queued after process_rpl",
   "description": "process_rpl and forward_mesh_to_upstream now use reply_len but drop the reply_buf content instead of queuing to SLIP TX (sim tx_send or slip.queue_send). Echo replies and potential DIS responses are lost. Must return reply or provide TX callback. P2. discovered-from:project-LICHEN-r83o",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

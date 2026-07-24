@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.5",
   "title": "lora_l2.c: RX thread reads lora_dev without synchronization during potential init race",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lora_l2.c:206\n\n## Issue\nThe RX thread accesses lora_state.lora_dev without holding lora_mutex:\n\nThe RX thread loop calls lora_recv(lora_state.lora_dev, ...) without mutex protection.\n\nWhile lora_dev is documented as set once during init, there is a race window:\n1. lichen_lora_l2_start() acquires mutex at line 334\n2. lichen_lora_l2_start() sets running = 1 at line 367\n3. lichen_lora_l2_start() starts RX thread at line 372\n4. RX thread starts and reads lora_state.running (sees 1)\n5. RX thread reads lora_state.lora_dev\n6. lichen_lora_l2_start() releases mutex at line 382\n\nIn this window, the RX thread reads lora_dev while the calling thread still holds the mutex.\n\n## What goes wrong\n- Currently benign because lora_dev is set in init(), not start(), and init() must complete before start() can succeed\n- However, the code comment at line 93-98 says lora_dev is Mutex-protected: device pointer set once during init but the RX thread violates this by reading without mutex\n- A future refactor that moves device initialization into start() would introduce a real data race\n- The inconsistency between the documented access pattern and actual code creates maintainer confusion\n\n## Fix\nEither:\n1. Read lora_dev under mutex once at RX thread start and cache it as a local variable, or\n2. Add a comment clarifying that the mutex documentation is for writers only and RX thread relies on the init-before-start invariant",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

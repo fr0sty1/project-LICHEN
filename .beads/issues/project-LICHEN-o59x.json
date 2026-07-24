@@ -2,7 +2,7 @@
   "id": "project-LICHEN-o59x",
   "title": "[codereview-pass2-security] coap_config.c and coap_dtn.c: s_provider still has TOCTOU in some handlers; s_last_confession not protected in all paths",
   "description": "s_provider protection only in register; handlers in coap_config.c still direct access without lock/copy. Potential race on provider swap. Fix all uses with locked get pattern like in coap_client.c. qh6l not fully addressed.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

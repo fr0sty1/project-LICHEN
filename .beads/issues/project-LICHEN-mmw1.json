@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mmw1",
   "title": "codereview-P2 pass 3/3: Update 06-security.md:481 to reference new hash_32 instead of CRC16 for short-address binding",
   "description": "P2 finding in security considerations: Short-address assignment still says binds CRC16(EUI-64). Must update to consistent link-layer hash_32 per the CCP-15.8.3 change. Also check for impacts on DAD pseudocode and any Rust/Python impls of address derivation. Do not close project-LICHEN-9qjs until all 3 codereview passes filed and addressed. Discovered-from:project-LICHEN-9qjs",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

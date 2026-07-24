@@ -3,7 +3,7 @@
   "title": "CCP-1: Scope - TDMA time slots and frequency/channel agility",
   "description": "Defines scope for CCP-1: TDMA time slot structure (hash(EUI64 ^ epoch) % num_slots, guard=50ms, slot_duration based on SF/airtime, superframe/SFN with u32 wrap per RFC1982, desync FSM with SYNCED/DRIFTING/RECOVERING states, now() monotonic timestamp), frequency/channel agility (select_channel using density/load_factor/EMA-SNR from per-neighbor RF metrics, CH0 dedicated control, multi-channel rendezvous via signed rx_channel per CCP-9 da2q, adaptive SF selection thresholds, integration with SCHC rule 0x08 beacons and RPL DIOs). All MUST match test/vectors/ccp_tdma.json, ccp16.json, ccp_load_balancing.json exactly. Zephyr impl in lichen/subsys/lichen/link/ must satisfy init graph from AGENTS.md and lichen_link_set_slot()/tdma_tx_allowed(). Defer full FSM/beacon parser to follow-on tasks (project-LICHEN-rl6f.* closed). See spec/02a-coordinated-capacity.md and 09-packets-timing.md:315.",
   "notes": "Commit: b6173d8c2",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

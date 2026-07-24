@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rmns.1",
   "title": "Add is_local_mesh method to Gateway using routes map for link-local/ULA detection",
   "description": "Implement fn is_local_mesh(\u0026self, dst: \u0026[u8;16]) -\u003e bool in gateway.rs that checks routes.contains_key or fe80::/10 or fd00::/8. Link to epic project-LICHEN-rmns and project-LICHEN-1877. No comments.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

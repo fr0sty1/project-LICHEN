@@ -3,7 +3,7 @@
   "title": "Recover Python announce state ordering",
   "description": "Recover checkpoint announce processor and scheduler fixes without publishing seen/TOFU state before route installation succeeds. Validate interval and jitter configuration.",
   "acceptance_criteria": "Gradient/address failure leaves seen and pinned state unchanged; retry remains possible; nonpositive intervals and negative jitter reject; focused tests, Ruff, mypy, and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

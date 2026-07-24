@@ -3,7 +3,7 @@
   "title": "node.rs: reply_echo_ipv6 doesn't validate packet length for echo fields",
   "description": "File: rust/lichen-node/src/node.rs:130-155\n\nreply_echo_ipv6 accesses echo fields at fixed offsets without verifying the packet is long enough:\n\n```rust\nfn reply_echo_ipv6(\u0026self, ipv6: \u0026[u8], out: \u0026mut [u8]) -\u003e usize {\n    // ... \n    let id_offset = icmpv6_start + echo_field::ID_OFFSET;\n    let seq_offset = icmpv6_start + echo_field::SEQ_OFFSET;\n    let data_offset = icmpv6_start + echo_field::DATA_OFFSET;\n\n    let id = u16::from_be_bytes([ipv6[id_offset], ipv6[id_offset + 1]]);\n    let seq = u16::from_be_bytes([ipv6[seq_offset], ipv6[seq_offset + 1]]);\n    let data = \u0026ipv6[data_offset..];\n    // ...\n}\n```\n\nWhile handle_ipv6 checks `n \u003e= min_icmpv6_len`, this relies on ICMPV6_HEADER_LEN being \u003e= 8. If the constant is wrong or changes, this could panic.\n\nImpact: Low - ICMPV6_HEADER_LEN should always be 8, but defense in depth suggests explicit bounds checking.\n\nFix: Add explicit length check at the start of reply_echo_ipv6.",
   "notes": "Fix already present in node.rs:137 (length check added in vx09). Explicit bounds check prevents potential panic on malformed short ICMPv6 echo packets. Tests pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

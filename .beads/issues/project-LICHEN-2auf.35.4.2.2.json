@@ -4,7 +4,7 @@
   "description": "Update canonical and bridge Zephyr L2 initialization/re-enable callers to stop on lichen_link_init failure without marking context initialized, and add deterministic Zephyr sys_csrand_get failure coverage. Preserve existing dirty bridge migration changes and stage only coherent recovery work.",
   "acceptance_criteria": "All L2 callers handle init errors before replay/RX setup; failed init never sets link_ctx_initialized; Zephyr fault test covers entropy failure; focused local gates and Linux Zephyr gates pass; three reviews pass.",
   "notes": "Canonical implementation preserved in 40dcb4c2f: both L2 paths propagate link-init failure, latch boot failure, reject retries, and link_crypto wraps Zephyr CSPRNG for deterministic failure/non-mutation coverage. Host link_ctx CTest passes and three static reviews found no code issues. Remains open: identical vendored bridge hunks are preserved in its dirty .35.5 migration file; Linux native_sim compile/runtime and caller-level L2 fault execution blocked by expired AWS personal SSO.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

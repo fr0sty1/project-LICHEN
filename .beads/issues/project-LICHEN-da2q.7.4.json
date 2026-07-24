@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.7.4",
   "title": "Vectors: time synchronization for channel hopping",
   "description": "Test vectors for CCP-7 sync and hopping coordination.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zrew",
   "title": "Complete SCHC Rules 5=OSCORE link-local and 6=global per project-LICHEN-vsiw",
   "description": "Normative definitions, full field descriptors (TV/MO/CDA), residue examples in spec/appendix-schc.md and draft-lichen-schc-lora-00.md. Add/update test vectors in test/vectors/schc_compression.json and related. Update lichen-schc Rust, Python, C implementations only for these rules. Update rule versioning. Run full vector validation, interop tests, quality gates. Close bead at end. Strictly lane: only these files and this bead. No Worker 2 changes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

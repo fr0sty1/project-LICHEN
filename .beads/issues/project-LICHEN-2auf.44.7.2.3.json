@@ -3,7 +3,7 @@
   "title": "Fix lichen-ipv6 no_std unit tests",
   "description": "Enable/import std correctly for crate unit tests while retaining no_std production behavior.",
   "acceptance_criteria": "Direct cargo test -p lichen-ipv6 succeeds under crate configuration.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

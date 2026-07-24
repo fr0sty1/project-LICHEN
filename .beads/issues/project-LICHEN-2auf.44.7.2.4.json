@@ -3,7 +3,7 @@
   "title": "Reconcile managed prefix route egress",
   "description": "Track whether prefix-route egress is or was RPL-managed. Rebuild managed prefix paths on host-route reparent and fail closed when managed egress disappears, while preserving never-managed static prefixes.",
   "acceptance_criteria": "Reparent and disappear tests pass; static-prefix preservation tests remain; no stale managed path survives.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cna0",
   "title": "[codereview-pass2] coap_status.c capacity validation updated to allow reporting over-capacity state",
   "description": "Security/edge review: removed used\u003ecap guard but MAX checks remain. Overflow state now visible in CBOR (good for clients). No buffer overflow risk as cbor_ctx bounds checked. ENOBUFS now reportable via status callback returning negative. No comments. Pass 2 clean.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:07:28.026994917Z",

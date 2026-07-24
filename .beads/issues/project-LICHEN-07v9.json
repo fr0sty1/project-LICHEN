@@ -2,7 +2,7 @@
   "id": "project-LICHEN-07v9",
   "title": "[codereview] coap_status.c has excessive comments violating no-comments rule",
   "description": "coap_status.c contains many /* */ and // comments and doxygen blocks beyond SPDX. Per task, strip all non-SPDX comments. Zephyr style prefers minimal docs in .c files.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:00:40.796688664Z",

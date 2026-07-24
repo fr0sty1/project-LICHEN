@@ -2,7 +2,7 @@
   "id": "project-LICHEN-emwi",
   "title": "task",
   "description": "cbor.rs:242 - dec_f64() only accepts 0xfa (float32) and 0xfb (float64), rejecting integer-encoded values. SenML v/bt/t fields are JSON numbers which CBOR encodes as integers when no fractional part. A peer encoding {'n':'temp','v':23} as CBOR integer (0x17) causes decode() to fail with InvalidInput. Fix: dec_f64 should also handle major types 0 (positive int) and 1 (negative int), converting to f64.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

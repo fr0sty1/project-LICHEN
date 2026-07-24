@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-qsr0",
   "title": "codereview-P1: MAX_TX_MS still hardcoded to DEFAULT after density constants added; should be computed from current duty_permille",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

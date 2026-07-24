@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fy9q",
   "title": "codereview: Gateway.routes map still not populated by DAO even after integration",
   "description": "Adding handle_frame_rpl triggers RoutingTable::add_route but Gateway's own routes HashMap at line 16 remains unused and add_route at :88 never called from DAO path. is_local_mesh (if implemented using self.routes) will still always be false. Need explicit sync or remove duplicate map. P0. discovered-from:project-LICHEN-3k6w.2",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-cqmo",
   "title": "codereview: 06-security.md new 8.5 section inserted inside 8.6 Key Management; needs proper placement and header levels; cross-refs to §8.8 will be invalid",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:13:45.732630751Z",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-zt3c.17.1",
   "title": "Add mesh-to-Yggdrasil forwarding in rpl_dodag.c and routing",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dk3c.2",
   "title": "Simulator: Model gateway-centric mode",
   "description": "Update Python simulator to model gateway-centric announce suppression.\n\n## Files to modify\n- python/src/lichen/sim/ (as needed)\n\n## Changes\n1. Simulated gateway advertises gateway-centric flag in DIO\n2. Nodes track DODAG membership state\n3. Announce interval scales based on DODAG state\n4. Model transition: DODAG lost -\u003e resume normal announces\n\n## Testing\n- Verify announce rate drops when nodes join DODAG\n- Verify announce rate recovers when DODAG lost\n- Measure channel utilization with/without gateway",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "me@mark.atwood.name",

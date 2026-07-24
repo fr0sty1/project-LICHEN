@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.7",
   "title": "secure_zero word-aligned path has redundant alignment check",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_util.h:51-52\n\n## Finding\nThe word-aligned write loop in `secure_zero()` checks alignment twice:\n```c\nwhile (len \u003e= sizeof(unsigned long) \u0026\u0026\n       ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) == 0) {\n```\n\nThe alignment check in the inner while condition is always true after the initial alignment loop (lines 46-49) completes. This is harmless but redundant.\n\n## What goes wrong\nNothing - the code is correct. The redundant check adds a few extra cycles per iteration on the hot path. For security-critical code paths holding mutexes (as noted in project-LICHEN-gy7h.18), this could be optimized.\n\n## Recommendation\nLow priority. If optimizing, remove the redundant alignment check from the while condition:\n```c\n/* At this point p is word-aligned due to the loop above */\nwhile (len \u003e= sizeof(unsigned long)) {\n    *(volatile unsigned long *)p = 0;\n    ...\n}\n```\n\nOr add a comment explaining why the check is there (e.g., defensive coding).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -4,7 +4,7 @@
   "description": "Recover recipient-ID bounds, empty-ID rejection, persistence copy ordering, context wipe, PIV validation, response PIV selection, and restored-SSN warnings.",
   "acceptance_criteria": "RFC vectors pass; response nonce uses correct PIV; invalid IDs do not mutate state; contexts wipe in callers; native Linux Zephyr matrix and three reviews pass.",
   "notes": "Rust .48.2 review also identified C parity work for this bead: lichen/subsys/lichen/oscore/oscore.c ordinary responses are repeatable with same request nonce; fresh-PIV responses do not reserve/update notification replay state; request KID is parsed but not bound to recipient ID; coap_client.c discards response OSCORE option and always passes empty, blocking fresh-PIV notifications. Add these to C OSCORE acceptance and Linux .59.1 matrix; no AWS source work attempted.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

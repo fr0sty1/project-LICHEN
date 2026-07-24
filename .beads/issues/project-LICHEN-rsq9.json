@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rsq9",
   "title": "Add comprehensive rx_success logging",
   "description": "Modify _get_rx_result_internal and get_rx_result methods in python/src/lichen/sim/simulation.py to add detailed debug logging for reception with: node_id, tx_id, rssi, snr, time_us, node_state, queue_size, candidate_count when debug is enabled.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2j8r",
   "title": "[merge-conflict] worker8: coap_dtn.c",
   "description": "Resolve merge conflict in lichen/subsys/lichen/coap/coap_dtn.c between main and integration/worker8-20260722. Keep BOTH sets of changes - do not discard work.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -4,7 +4,7 @@
   "description": "Discovered during project-LICHEN-2auf.44.10 review: Router::prune_neighbors and idle DAO route expiry are caller-driven, but no repository production scheduler invokes them periodically. Integrate one monotonic u64 maintenance tick through the production node/runtime path with a configured neighbor timeout, expire finite DAO routes while idle, and preserve Trickle behavior.",
   "design": "Production completion requires lichend to instantiate one authenticated RplStack root in a single-owner event loop. The loop uses one injected monotonic u64 millisecond epoch, bounds receive waits by maintenance and Trickle deadlines, expires idle DAO routes, prunes stale neighbors, and services Trickle without a second mutable task. Prerequisites are durable Linux NonVolatile storage and identity/epoch lifecycle; an authenticated raw-radio or metadata-preserving puck transport plus simulator Radio adapter; and an explicit durable DAO admission policy. Do not route bare SCHC payloads into RPL or auto-admit origins by TOFU.",
   "acceptance_criteria": "A production runtime calls RPL maintenance on a bounded interval using the same monotonic u64 epoch as receive processing; stale neighbors and finite DAO routes expire without inbound traffic; literal integration tests and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2.8.1",
   "title": "Extend key management for OSCORE group keys and per-peer E2E (TOFU/DANE updates)",
   "description": "Update lichen-client, firmware coap_keys, and key storage to support OSCORE master secrets derived from peer keys for dead drops and group keys for confessions. Support trust levels for group contexts.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

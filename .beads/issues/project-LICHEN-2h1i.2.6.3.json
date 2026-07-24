@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2.6.3",
   "title": "Add /deaddrop CoAP resource for encrypted store-and-forward",
   "description": "Implement POST /deaddrop to store message for later pickup by target node (DTN), GET to retrieve pending drops. Use OSCORE E2E encryption. Content-Format for payload. Update coap, apps, add to test vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

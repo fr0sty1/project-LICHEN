@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rkgx",
   "title": "Missing #include \u003czephyr/sys/util.h\u003e for BUILD_ASSERT in link.h",
   "description": "The BUILD_ASSERT for LICHEN_TDMA_Slot size requires zephyr/sys/util.h which is not included in link.h. This will cause compile error. Add it after std includes. Also guard struct with #ifdef CONFIG_LICHEN_TDMA per Kconfig.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

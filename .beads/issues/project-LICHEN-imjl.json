@@ -2,7 +2,7 @@
   "id": "project-LICHEN-imjl",
   "title": "identity: x25519_private derivation differs from EDHOC module's approach",
   "description": "File: python/src/lichen/crypto/identity.py\nLines: 89-103\n\nvs\n\nFile: python/src/lichen/crypto/edhoc.py\nLines: 130-135\n\nThere are two different approaches to deriving X25519 keys from Ed25519 seeds:\n\nidentity.py (line 101-103):\n```python\ndef x25519_private(self) -\u003e bytes:\n    return sha512(self.seed).digest()[:32]\n```\nThis takes SHA-512(seed)[0:32] directly.\n\nedhoc.py (lines 130-135):\n```python\ndef _ed25519_to_x25519_private(ed_seed: bytes) -\u003e bytes:\n    signing_key = SigningKey(ed_seed)\n    ed_sk = signing_key.encode() + signing_key.verify_key.encode()\n    return crypto_sign_ed25519_sk_to_curve25519(ed_sk)\n```\nThis uses libsodium's conversion function which handles the birational map correctly.\n\nThe two approaches produce DIFFERENT X25519 private keys from the same seed because:\n1. identity.py: raw SHA-512 truncation (Ed25519 scalar before clamping)\n2. edhoc.py: libsodium's crypto_sign_ed25519_sk_to_curve25519 applies proper conversion\n\nImpact: If Identity.x25519_private is used for ECDH, it will produce different shared secrets than code using _ed25519_to_x25519_private. This breaks key agreement interoperability.\n\nEither both should use the same derivation, or document clearly which method is canonical.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

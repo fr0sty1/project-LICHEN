@@ -3,7 +3,7 @@
   "title": "PHY: Multi-channel coordination",
   "description": "## Problem\n\nSingle channel = single point of contention. LoRa radios can hop frequencies, but without coordination, nodes miss each other.\n\n## Hardware requirement\n\n**Works on ALL hardware.** Any LoRa chip can change frequency. Coordination is pure software.\n\n## Solution\n\nSplit traffic across multiple channels:\n1. **Control channel**: Announces, DIO, beacons (all nodes listen)\n2. **Data channels**: Application traffic (hash-based or assigned)\n\nOr: time-synchronized channel hopping (all nodes hop together).\n\n## Channel plan (EU868 example)\n- Control: 868.1 MHz\n- Data 1: 868.3 MHz\n- Data 2: 868.5 MHz\n- Data 3: 867.1 MHz\n(8 channels available in EU868 band)\n\n## Coordination methods\n\n1. **Static split**: Control on CH0, data on CH1-7 round-robin\n2. **Hash-based**: data_channel = hash(src_iid, dst_iid) mod N\n3. **Rendezvous**: Announce includes preferred RX channel\n4. **Synchronized hopping**: All nodes follow same hop sequence\n\n## Tradeoffs\n\n- Nodes must coordinate or miss packets\n- Gateway needs multi-channel RX (or fast hopping)\n- Increases complexity but multiplies capacity\n\n## Acceptance criteria\n\n- Spec defines channel plan and coordination method\n- Control/data split implemented\n- 8-channel deployment shows ~8x capacity vs single channel",
   "notes": "Commit: 63d4c1112",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "AI Agent",

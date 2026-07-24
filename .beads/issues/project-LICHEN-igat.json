@@ -2,7 +2,7 @@
   "id": "project-LICHEN-igat",
   "title": "[merge-conflict] integration/worker15-20260722: xiao_s3_wio_sx1262.overlay",
   "notes": "Cleaned dead merge-conflict resolution meta-comment from xiao_s3_wio_sx1262.overlay and .conf per AGENTS.md no-dead-code rule and patterns from other retired fragments. Matches matrix doc. No literal conflict markers found.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

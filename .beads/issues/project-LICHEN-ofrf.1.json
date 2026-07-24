@@ -3,7 +3,7 @@
   "title": "Spec chunk 1: CCP-16 file creation and overview",
   "description": "Create spec/02a-coordinated-capacity.md with header, intro to CCP-16, multi-root beacon conflict section using strict RFC2119. Parallel with desync state machine research.",
   "notes": "Completed chunk 1: created and populated spec/02a-coordinated-capacity.md with header, overview, TDMA/hash, channel agility, time sync, multi-root conflict, desync stub per parent. Addressed 3 codereview beads (P1-P3) via edit. 3 review passes filed. Consistent IETF/RFC2119 style matching schc/rpl drafts. No P0-P2 in final passes. No dead code/meta. Ready for next chunks on FSM details.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

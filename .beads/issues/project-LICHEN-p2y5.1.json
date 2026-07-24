@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p2y5.1",
   "title": "Gateway: RPL DODAG root implementation",
   "description": "## Overview\n\nImplement RPL DODAG root functionality in gateway firmware. The root:\n- Originates DIO messages (advertises the DODAG)\n- Accepts DAO messages (learns routes to mesh nodes)\n- Maintains downward routing table\n- Assigns IPv6 prefixes to the mesh\n\n## Implementation\n\n### DIO origination\n- Trickle timer for DIO transmission\n- Include: DODAGID, rank=256 (root), prefix info option\n- Include: GATEWAY_CENTRIC flag (from project-LICHEN-dk3c)\n\n### DAO processing\n- Parse DAO from mesh nodes\n- Install route: node IID → LoRa L2\n- Send DAO-ACK\n- Handle DAO lifetime/refresh\n\n### Routing table\n- Map: IPv6 address → next-hop (or direct if 1-hop)\n- Expire entries based on DAO lifetime\n- Support non-storing mode (source routing header for downward)\n\n### Prefix management\n- Receive prefix from upstream (DHCPv6-PD or static config)\n- Advertise prefix in DIO Prefix Information Option\n- Track which prefix is active\n\n## Files to modify\n- lichen/apps/gateway/src/ (add rpl_root.c)\n- lichen/subsys/lichen/ (if shared RPL code exists)\n\n## Spec reference\n- spec/05-routing.md section 8\n- spec/drafts/draft-lichen-rpl-lora-00.md",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

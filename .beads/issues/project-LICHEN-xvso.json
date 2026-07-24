@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xvso",
   "title": "codereview pass 1 after Kconfig chunk: missing select LICHEN_HAS_LORA_CAD or driver dep",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

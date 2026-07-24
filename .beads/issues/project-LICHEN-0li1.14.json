@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.14",
   "title": "[lora_l2.c:476] Callback invoked with stale data if thread aborted",
   "description": "What: The rx_thread() invokes the callback (line 477) with rx_buf data after releasing lora_mutex but before the callback returns. If k_thread_abort() is called on this thread during callback execution, the callback may not complete properly.\n\nWhy it matters: If stop() calls k_thread_abort() while the callback (lichen_l2_input) is executing, the callback may be:\n1. Mid-way through net_pkt allocation\n2. Holding rx_mutex (acquired at line 1656 of lichen_l2.c)\n3. Have partially written to net_pkt\n\nThe thread abort leaves the system in inconsistent state. This is acknowledged in the code (stop() sets ABORTED state), but the actual cleanup path relies on best-effort mutex reinitialization which is UB.\n\nEvidence:\n```c\n// rx_thread after mutex unlock\nif (cb) {\n    cb(rx_buf, ret, rssi, snr, cb_user_data);  // can be aborted here\n}\n```\n\nThis is a known architectural limitation documented extensively, so marking as P2 code smell.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

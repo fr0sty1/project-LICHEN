@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-96pv",
   "title": "[codereview-pass1-chunk1] coap_dtn.c:202 s_confession_mutex referenced in lichen_coap_deaddrop_register but only s_dtn_mutex is defined (line 18); will not compile. Also rate limit static not protected consistently. P0 build/runtime. discovered-from:project-LICHEN-vh1t",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

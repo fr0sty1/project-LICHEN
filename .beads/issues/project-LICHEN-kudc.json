@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kudc",
   "title": "Review CCP-16 implementations against spec/02 section 3.5 and spec/02a",
   "description": "Spec section 3.5 now points to spec/02a-coordinated-capacity.md for CCP-16 (TDMA, load balancing, multi-channel). Review all implementations for conformance. Check: metrics match spec tables, thresholds correct, signaling formats match CBOR structures, test vectors pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

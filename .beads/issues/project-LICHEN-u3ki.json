@@ -3,7 +3,7 @@
   "title": "EDHOC: Missing sensitive data wipe in export_oscore error paths",
   "description": "SECURITY: edhoc_*_export_oscore functions don't wipe oscore output on error, potentially leaking partial key material.\n\nLocations:\n- edhoc_initiator_export_oscore (lines 733-771)\n- edhoc_responder_export_oscore (lines 1148-1184)\n\nIf edhoc_kdf fails at line 746-748 (master_secret), the function returns early without wiping the partially-filled oscore struct.\n\nIf edhoc_kdf fails at line 752-754 (master_salt), master_secret has been written but oscore is not wiped.\n\nImpact: On error, caller receives partially-initialized oscore struct with some derived key material. If caller doesn't check return value or doesn't wipe on error, key material may leak.\n\nFix: Wipe oscore struct on error before returning:\nerr:\n    crypto_wipe(oscore, sizeof(*oscore));\n    return ret;\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:733-771,1148-1184",
   "notes": "Commit: 0c8bd7e5f",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

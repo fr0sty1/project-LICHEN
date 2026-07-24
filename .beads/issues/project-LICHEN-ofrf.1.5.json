@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ofrf.1.5",
   "title": "codereview-pass2: Incomplete CCP-16 coverage",
   "description": "spec/02a-coordinated-capacity.md lacks dedicated sections for TDMA slots calculation (fnv1a32 details, modulo), channel agility, time sync (epoch_floor, stratum, wall_clock_valid), hash selection per test vectors and parent epic. Overview paragraph is present but full sections required before closing. P2. Consistent with schc/rpl drafts which have detailed subsections. Parallel desync FSM research needed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:24:54.706660459Z",

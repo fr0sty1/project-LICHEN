@@ -3,7 +3,7 @@
   "title": "SecureDatagramChannel._process_incoming may use wrong Direction",
   "description": "File: python/src/lichen/coap/secure.py:296-297\n\nWhen decoding incoming datagrams, Direction.INCOMING is set:\n```python\nremote = LichenRemote(source)\nmsg = Message.decode(data, remote)\nmsg.direction = Direction.INCOMING\n```\n\nBut when OSCORE protection is not detected (line 316-324), for EDHOC-in-progress peers, the raw data is dispatched:\n```python\nif self._edhoc_channel is not None:\n    self._edhoc_channel.dispatch(data, source)\n```\n\nThis bypasses the direction setting and sends raw bytes instead of the decoded message. The EDHOC channel then re-decodes the data. This is inconsistent - some code paths decode twice, others set direction inconsistently.\n\nFix: Ensure consistent handling - either always pass raw bytes to receivers, or always pass decoded messages with proper direction.",
   "notes": "Commit: 148968598",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

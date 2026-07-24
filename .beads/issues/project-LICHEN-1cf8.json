@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1cf8",
   "title": "codereview-pass2: cbor_put_* void funcs ignore overflow propagation in encode paths leading to partial CBOR",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T16:01:21.960968362Z",

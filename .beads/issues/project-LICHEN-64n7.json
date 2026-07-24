@@ -3,7 +3,7 @@
   "title": "Make root provisioning resumable",
   "description": "Provision DAD1 before DRX2 and make root provisioning idempotently resume matching empty partial state without overwriting nonempty or mismatched records. Add deterministic failures at each write boundary and retry/open tests.",
   "acceptance_criteria": "Every write-boundary failure is retryable; matching empty partial states resume; mismatched or nonempty partial states fail closed; open requires both records; no deletion API.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

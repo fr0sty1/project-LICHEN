@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1l9q",
   "title": "[merge-conflict] worktree-worker24: coap_config.c",
   "notes": "Commit: b5d987a (aligned coap_config.c with canonical mutex-protected provider access, validation bounds, parser safety, base64 check, and resource server name)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

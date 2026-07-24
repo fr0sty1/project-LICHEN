@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5uhj",
   "title": "[codereview-pass3] Kconfig: new selects TIMER/ATOMIC may need verification in Zephyr",
   "description": "lichen/subsys/lichen/coap/Kconfig: new selects for rate limit. Check if symbols are correct (perhaps SYS_CLOCK or K_TIMER). Build test needed. codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:03:46.959739844Z",

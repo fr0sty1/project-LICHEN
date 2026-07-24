@@ -3,7 +3,7 @@
   "title": "Make Announce relay retry-safe",
   "description": "Do not irreversibly commit Announce acceptance before required relay transmission succeeds. On failure, clean transient bootstrap state so the same origin sequence can be retried, or use a bounded explicit pending relay.",
   "acceptance_criteria": "Transmit failure followed by fresh L2 retry succeeds; no replay/pin leak blocks retry; peer/bootstrap/pending state remains bounded.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

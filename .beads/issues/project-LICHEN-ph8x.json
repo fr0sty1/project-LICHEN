@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ph8x",
   "title": "codereview: forward_mesh_to_upstream will need real monotonic time for handle_frame_rpl",
   "description": "Calling handle_frame_rpl with hardcoded 0 for now_ms will break neighbor ETX/last_seen and trickle timing in process_dio. Need to thread through a proper clock (Instant or SystemTime). P1 correctness for routing state. discovered-from:project-LICHEN-3k6w.2",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

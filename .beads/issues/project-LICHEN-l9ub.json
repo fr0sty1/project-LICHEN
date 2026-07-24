@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-l9ub",
   "title": "P1: routes_get default_route detection by scanning for non-zero bytes is fragile (all-zero IPv6 is valid in some contexts); callback should return bool or use sentinel",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jxth",
   "title": "[kimi-review] 544b4fc: [SEVERITY: high] **Commit message does not match the diff.**",
   "description": "Commit: 544b4fc4\nMessage: fix(announce): publish state after routing\n\nFinding: [SEVERITY: high] **Commit message does not match the diff.** The message claims a behavioral fix (\"publish state after routing\"), but the diff contains no behavioral changes at all — only an import relocation and two type-annotation tweaks. Either the actual fix was left out of this commit (likely, given the message), or the message is wrong. If the intent was to reorder state publication relative to routing in the announce path, that change is missing and the",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

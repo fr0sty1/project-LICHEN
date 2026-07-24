@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6km8",
   "title": "coap_msg.c: inbox array header truncates count \u003e 255",
   "description": "File: lichen/subsys/lichen/coap/coap_msg.c\nLines: 648-649\n\nCBOR array header encoding truncates count to uint8_t:\n```c\ncbor_put_array_header(buf, \u0026off, (uint8_t)count);\n```\n\nWhile LICHEN_MSG_INBOX_MAX is 8 by default, if the config changes to allow \u003e 255 messages, the array header would advertise wrong count.\n\nAlso applies to encode_keys_list_cbor in coap_keys.c:646.\n\nImpact: Malformed CBOR response if message count exceeds 255.\n\nCategory: CORRECTNESS - silent truncation",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybf4",
   "title": "[codereview-pass1] Gateway struct uses bare Node instead of RplNode for root; no DAO handling",
   "description": "Gateway.new uses Node but as border router must be root with full RPL state to process DAOs and populate routes. handle_frame_rpl is the entrypoint for DaoReceived events. P2 architecture. discovered-from:project-LICHEN-fy9q",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

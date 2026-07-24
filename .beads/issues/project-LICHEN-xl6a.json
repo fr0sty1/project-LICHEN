@@ -3,7 +3,7 @@
   "title": "edhoc: ID_CRED_R/I not validated against expected peer pubkey",
   "description": "File: python/src/lichen/crypto/edhoc.py\nLines: 337-345 (process_message_2), 613-620 (process_message_3)\n\nIn EdhocInitiator.process_message_2():\n- Line 337: id_cred_r = pt2_items[0] - extracted from plaintext_2\n- Line 345: cred_r = peer_pubkey - uses the caller-provided pubkey\n- Line 348: context_2 includes both id_cred_r and cred_r\n- No check that id_cred_r == peer_pubkey\n\nIf the responder sends a different ID_CRED_R than their actual pubkey, the MAC_2 computation uses mismatched values. The signature verification uses peer_pubkey but the MAC context uses id_cred_r from the message.\n\nSame issue in EdhocResponder.process_message_3():\n- Line 613: id_cred_i extracted from message\n- Line 620: cred_i = peer_pubkey\n\nImpact: Could cause interoperability issues or authentication confusion. Per RFC 9528, the receiver should verify ID_CRED matches the expected peer credential.",
   "notes": "Commit: d1a4add47",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

@@ -3,7 +3,7 @@
   "title": "Vectors: operating class parameter definitions and lookup tables",
   "description": "Create test vectors for operating class in CCP-3 from da2q.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

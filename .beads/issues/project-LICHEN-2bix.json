@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] coap_status.c comment removal",
   "description": "Reviewed lichen/subsys/lichen/coap/coap_status.c after removing all non-SPDX comments. Findings: P0 - cbor_put_map_header still truncates count\u003e255 to uint8_t without setting overflow (violates 'ensure no truncation'). P1 - map_count calculations in encode_status_cbor can overflow uint16_t if many optionals (though unlikely). P2 - format_ipv6 snprintf return value ignored, potential truncation not detected. P3 - LOG_ macros left but no comments. All P0-P4 addressed in this pass? No, defer P0 to validation chunk. Tagged codereview.",
   "notes": "Commit: 7138d8f78",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

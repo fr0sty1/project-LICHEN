@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qh6l",
   "title": "[codereview-pass2-security] coap_dtn.c: s_last_confession and s_provider unprotected",
   "description": "coap_dtn.c:22,68,144 s_last_confession array accessed without mutex in post handlers; s_provider declared but unused. Potential TOCTOU race or rate limit bypass. P1. codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

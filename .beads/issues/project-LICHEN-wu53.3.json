@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wu53.3",
   "title": "Standardize metrics JSON interop between lichen-client and hetero_node",
   "description": "lichen-client/src/status.rs uses structured serde::Serialize/Deserialize with x10 scaling for radio metrics (duty_cycle_pct_x10, snr_db_x10, etx_x10) + accessor methods. hetero_node.rs uses ad-hoc serde_json::json!() for METRICS and TELEMETRY with raw counts and different schema ('lichen.telemetry.v1'). Inconsistent with client status, test vectors, and cross-impl (Python/Zephyr). Add shared metrics struct in lichen-client or core with proper derives, align schemas for JSON interop. P1 consistency. References lichen-client/status.rs:14, hetero_node.rs:238, status.rs:91,110,113. Parent: project-LICHEN-wu53",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

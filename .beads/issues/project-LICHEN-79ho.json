@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-79ho",
   "title": "codereview procurement.md: HS code 8517.62.00xx needs exact 10-digit HTS verification via CBP CROSS for T-Echo specifics; update model if tariff list changes",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "chore",
   "assignee": "ec2-user",

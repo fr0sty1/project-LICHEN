@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.20",
   "title": "lora_config return checked but lora_send may have different error semantics",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:312-317,513-518\n\nlora_config() and lora_send() returns are checked, but the error handling assumes all negative returns are errors. Zephyr LoRa API may return specific codes (-EBUSY, -EINVAL, etc.) that could benefit from specific handling.\n\nWhat goes wrong: Generic error logging (-EBUSY vs -EINVAL) provides less debugging information. A busy radio might be retried, while an invalid config requires code fix.\n\nLow priority since current error propagation is correct, but specific error handling could improve debuggability.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

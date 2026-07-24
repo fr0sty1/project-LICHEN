@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vu0o",
   "title": "codereview1: lichen_link_channel_select missing full doxygen and PHY time sync link",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:17:02.187257868Z",

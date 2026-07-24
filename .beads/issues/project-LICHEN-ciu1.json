@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ciu1",
   "title": "codereview-pass3-chunk3-physical-link",
   "description": "Reviewed edit to 02-physical-link.md:199 updating hash_32 call for new param order. Pass 1/3: matches new definition, no DAD breakage. discovered-from:project-LICHEN-00ov",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

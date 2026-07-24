@@ -3,7 +3,7 @@
   "title": "Gather Zephyr runtime defect diagnostics",
   "description": "Collect targeted traces for audit failures that are reproducible but not yet localized to an offending function, write, register transaction, or scheduler dependency. Diagnostics must preserve the original failing configuration and produce evidence usable by the linked repair Beads.",
   "acceptance_criteria": "Each child captures a deterministic reproduction, instrumentation method, timestamped trace/log, source and artifact identity, and a narrowed root-cause statement or explicit next discriminating experiment; no failure is masked by increasing stacks or disabling production features.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

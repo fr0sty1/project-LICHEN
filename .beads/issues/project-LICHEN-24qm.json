@@ -2,7 +2,7 @@
   "id": "project-LICHEN-24qm",
   "title": "[policy] Dispatch byte compliance",
   "description": "Policy: spec/02-physical-link.md §4.1. MUST NOT: infer payload namespace from first byte (0x14=SCHC, 0x15=LICHEN routing). MUST: check dispatch byte explicitly before parsing body. When executing: grep for payload parsing in RX path, create compliance bead per code section.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

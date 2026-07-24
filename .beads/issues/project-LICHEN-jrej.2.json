@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jrej.2",
   "title": "Implement compact CoT encoder/decoder",
   "description": "Binary CoT codec per spec/07-transport-app.md Section 10.1.1. PLI encoding (18 bytes), chat with dest_type (broadcast/team/direct), team enumeration. Software-only: pure codec work with test vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

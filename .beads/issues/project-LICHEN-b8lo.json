@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b8lo",
   "title": "codereview-pass3-clean: all findings resolved, 3 clean passes complete",
   "description": "Final review pass confirms SFN subsection now has explicit MUSTs for hash/modulo semantics with draft-lichen-tdma cross-ref, detailed time-provider epoch_floor validation on wrap with pseudocode, and full FSM with table. No remaining P0-P2 issues. All codereview beads (umzk,5xk2,76d1,m94e,1i8s,sldu) addressed and ready for close. Main bead project-LICHEN-y139 not closed per instructions. Tagged codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:25:55.226874347Z",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7l5w",
   "title": "[codereview-pass2] spec/02a-coordinated-capacity.md: SF selection incomplete - missing full function, SNR table, EMA formula, load_factor",
   "description": "Pass 2 review after first pseudocode edit. The adaptive SF section §4 is still high-level. Must add complete select_sf() pseudocode with explicit SNR thresholds table (SF7:-6dB etc), EMA_snr = α·snr + (1-α)·ema_prev with α=0.25 recommended, load_factor override from DIO (0.0-1.0 multiplier on density), and rationale for when it overrides appendix SF10 default. P2. codereview. discovered-from:8gac",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

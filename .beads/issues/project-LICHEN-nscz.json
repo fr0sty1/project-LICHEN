@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nscz",
   "title": "[codereview-pass2.6] draft chunk 2 A.5: test vector and codec integration plan",
   "description": "Third review for second chunk. Must update shared_vectors.rs, schc_compression.json with new PIO example. codec.rs and headers.rs need RPL option parser extension for FieldId like 'RPL.Option.Type'. Ensure 3 independent passes before closing ftlq. discovered-from:project-LICHEN-ftlq",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

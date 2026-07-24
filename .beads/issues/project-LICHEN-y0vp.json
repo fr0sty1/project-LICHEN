@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-y0vp",
   "title": "codereview P2: no DAO-ACK generated for ack_requested DAOs in handle_frame_rpl",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

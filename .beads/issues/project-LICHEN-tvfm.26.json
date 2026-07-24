@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.26",
   "title": "[main.c:86] init_standalone_lora no cleanup on lichen_log_link_local_from_eui64 failure",
   "description": "Function: init_standalone_lora (static). Error handling: If lichen_log_link_local_from_eui64() fails (line 117-120), the function returns the error but leaves LoRa L2 running. The LoRa driver was started at line 99 (lichen_lora_l2_start) but is not stopped on this late failure. Compare with line 107-109 which stops LoRa on get_eui64 failure. Should either stop LoRa on line 119 or document that LoRa remains running on this error. Priority 2 because resource leak (running thread with partial init) affects system state.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

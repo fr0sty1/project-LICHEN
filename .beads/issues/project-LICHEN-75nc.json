@@ -2,7 +2,7 @@
   "id": "project-LICHEN-75nc",
   "title": "[codereview1/3] RPL option table in draft-lichen-schc-lora-00.md:210-260: HopLimit TV missing, compressed size estimate inaccurate (rules.py shows ~40B+ for value-sent fields), PIO mapping assumes 4 entries but verify against RFC6550 common PIOs",
   "description": "P2: table does not exactly match _DIO_BASE_FIELDS and _ipv6_header_fields. Size reduction for PIO type 3: with 4 mappings, mapping_bits()=2. Update mapping table and reference rules.py:81. discovered-from:project-LICHEN-bsof",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:08:50.722111794Z",

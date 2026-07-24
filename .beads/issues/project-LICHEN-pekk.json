@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-pekk",
   "title": "Rust: per-neighbor SF tracking in GradientEntry and TX path",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

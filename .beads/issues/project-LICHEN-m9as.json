@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m9as",
   "title": "[codereview] coap_dtn.c: deaddrop_post hardcoded decrypted[256] and opt_buf sizes risk overflow; no validation of decrypted_len",
   "description": "Fixed sizes may not match CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX or request. PIV and options not used after unprotect. Should use proper constants and bounds checking. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:45:22.698661175Z",

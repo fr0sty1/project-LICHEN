@@ -3,7 +3,7 @@
   "title": "[codereview-pass2-chunk1] Scope still references 'MUST produce identical behavior' without full test vector cross-refs",
   "description": "Expand test vector list and add appendix for vectors. Arbitrary constant 'identical within 1 tick' in drift section not yet addressed. P2. Discovered-from:project-LICHEN-ofrf.1.2",
   "notes": "Completed 3 codereview passes on scope (chunk1), vector table+CCP-14 vectors (chunk2), references (chunk3). All P0-P4 findings filed as codereview beads (nnsr and 2 others addressed/closed), test integrity preserved with independent oracles (FNV+Semtech+external sim), no dead code, updated relevant spec 02a-coordinated-capacity.md (serves as draft-lichen-ccp). 3 clean passes achieved.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

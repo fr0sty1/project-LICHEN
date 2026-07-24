@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vr81",
   "title": "Implement lr_fhss_airtime_us function with independent test vectors",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

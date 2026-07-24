@@ -3,7 +3,7 @@
   "title": "Add T1000-E Renode model",
   "description": "Compose a faithful-enough T1000-E model from nRF52840, LR1110, board GPIO/SPIM wiring, deterministic AG3335 UART behavior, USB CDC/SMP endpoints, and stable FICR identity.",
   "acceptance_criteria": "Canonical T1000-E gateway and puck firmware reach late app oracles and simulator-observed LR1110 TX; model boundaries explicitly exclude UF2 layout, GNSS RF, USB electrical behavior, and real LoRa RF proof.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

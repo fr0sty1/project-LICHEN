@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qcx2",
   "title": "Implement enhanced logging in process_next_event method",
   "description": "Modify python/src/lichen/sim/simulation.py process_next_event() method to add debug logging that includes: sim_id, event_type, event_time_us, queue_size, and nodes_blocked information when debug is enabled.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

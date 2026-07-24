@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-cyag",
   "title": "codereview: rpl_routing_lookup should integrate with Yggdrasil TUN forward fallback",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

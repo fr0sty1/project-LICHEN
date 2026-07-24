@@ -2,7 +2,7 @@
   "id": "project-LICHEN-g9tf",
   "title": "[codereview-pass3-style] coap_dtn.c init block: k_work_delayable requires handler func and Zephyr work API include if not present; no periodic schedule yet per spec 9.8 and bead 576f",
   "description": "P1: missing handler and schedule for s_dtn_expire_work. Must have expiry timer chunk separate. No comments added per style. All P0-P4 must be addressed or tracked before register func chunk. discovered-from:project-LICHEN-576f",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

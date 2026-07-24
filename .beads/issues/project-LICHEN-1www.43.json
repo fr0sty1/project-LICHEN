@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.43",
   "title": "Magic numbers 100 and 10 in lichen_lora_l2_stop/deinit join timeouts",
   "description": "lora_l2.c uses unexplained timeout constants:\n\nLine 376: `k_thread_join(\u0026rx_thread_data, K_MSEC(RX_THREAD_QUICK_JOIN_MS));`\n- RX_THREAD_QUICK_JOIN_MS is defined at line 46 as 100\n\nLine 427: `k_thread_join(\u0026rx_thread_data, K_MSEC(10));`\n- Hardcoded 10ms with inline comment explaining rationale\n\nThe 100ms value at line 46 has no comment explaining why 100ms was chosen. The comment at lines 369-375 explains it's 'ample time for a thread that checked running between lora_recv() calls' but doesn't justify the specific value.\n\nThe 10ms at line 427 has good inline explanation.\n\nWhat goes wrong: A maintainer tuning timeouts cannot verify if 100ms is tight or has headroom. \n\nImprovement: Either document the 100ms derivation (e.g., 'worst-case context switch time on ARM M4 at 64MHz') or make it a Kconfig with help text.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.8",
   "title": "ipv6_addr.c: snprintf writes 39 constant-width hex chars but still checks truncation",
   "description": "Location: ipv6_addr.c:159-185\n\nlichen_ipv6_addr_to_str() uses snprintf to format an IPv6 address. The output is exactly 39 chars (8 groups * 4 hex + 7 colons). The function already checks buflen \u003e= LICHEN_IPV6_ADDR_STR_LEN (40) at line 152, so the truncation check at line 181-185 can never trigger.\n\nWhat goes wrong: Defensive coding is fine, but unreachable code paths add cognitive load. A reader wonders 'is there a case where this triggers?' and must trace the math to conclude 'no'.\n\nSuggested fix: Remove the truncation check and add an assertion or BUILD_ASSERT that LICHEN_IPV6_ADDR_STR_LEN \u003e= 40. The early-return at line 152-157 already guarantees sufficient space.\n\nAlternatively: keep the check but add a comment /* cannot happen: output is fixed 39 chars */ to signal intent.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

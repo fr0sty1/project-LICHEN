@@ -2,7 +2,7 @@
   "id": "project-LICHEN-636h.2",
   "title": "Fix opcode comment 0x17 to 0x12 in SX1262.cs header and extraction README",
   "description": "Change comment from 0x17 to correct 0x12 for GetIrqStatus in both the CS file header and .extraction/renode-lora-peripherals/README.md. Verify in code too.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-szmi.2",
   "title": "codereview: guard_time and drift numbers inconsistent with formula in description",
   "description": "The example numbers for 1% drift should be cross-checked against 2*drift_rate*interval formula. Update vectors or description for exact match.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:21:04.21315824Z",

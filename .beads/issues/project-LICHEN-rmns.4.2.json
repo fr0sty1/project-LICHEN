@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rmns.4.2",
   "title": "[codereview-2] forward_mesh_to_upstream: Rust idiom and style pass on control_plane flag, pattern matching, no unused vars",
   "description": "Pass 2 rusty review. Variable naming follows existing style (control_plane not snake_case issue since local). if-let patterns preserved. No early returns in event path prevented scope drop as required. No findings. Follows no-comment rule.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:11:44.882731082Z",

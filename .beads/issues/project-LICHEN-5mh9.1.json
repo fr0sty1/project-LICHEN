@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-5mh9.1",
   "title": "[codereview-P1] spec/02a-coordinated-capacity.md scope update: TOC not updated for Appendix A, CCP-15.2 section missing",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

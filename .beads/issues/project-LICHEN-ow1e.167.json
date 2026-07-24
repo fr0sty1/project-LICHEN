@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.167",
   "title": "Node.get_neighbors returns hardcoded RSSI -100 for all peers",
   "description": "**Location:** python/src/lichen/node.py:551-565\n\n**Risk:** The `get_neighbors()` method returns `'rssi': -100` for every peer (line 563 comment: 'no per-peer RSSI tracking yet'). Applications or UIs that display neighbor quality will show all neighbors as equally weak.\n\n**Trigger:** Any call to `get_neighbors()` or the CoAP /neighbors resource.\n\n**Bad behavior:** Users cannot distinguish between strong and weak neighbors. Link quality metrics are useless.\n\n**Maintainer burden:** Users will report 'RSSI always shows -100' as a bug.\n\n**Note:** This is a known limitation (ponytail comment), but there's no tracking issue or TODO in the codebase.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

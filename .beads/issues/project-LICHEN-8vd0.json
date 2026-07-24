@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8vd0",
   "title": "task",
   "description": "python/src/lichen/link/replay.py:79-93. All frames rejected after wrap.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

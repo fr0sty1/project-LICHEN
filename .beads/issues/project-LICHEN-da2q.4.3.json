@@ -3,7 +3,7 @@
   "title": "Zephyr impl: multi-channel frequency allocation plans",
   "description": "Zephyr implementation for CCP-4 channel plans inferred from da2q.",
   "notes": "Working Zephyr lora_l2 hash_32 channel selection per CCP-4; rx_channel name",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

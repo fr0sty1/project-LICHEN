@@ -2,7 +2,7 @@
   "id": "project-LICHEN-u51k",
   "title": "task",
   "description": "rust/lichen-core/src/icmpv6.rs:66-103. build() panics on undersized output buffer.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

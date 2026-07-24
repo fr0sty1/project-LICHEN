@@ -2,7 +2,7 @@
   "id": "project-LICHEN-exr6",
   "title": "[codereview-pass1.5 robustness] rf_health.rs: EMA fixed-point can overflow on extreme values; add saturating_add",
   "description": "For rssi_fp = i16::MIN \u003c\u003c 16 could underflow i32. Although practical range is limited, use saturating arithmetic for robustness in rf_health. file: rust/lichen-core/src/rf_health.rs:147",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

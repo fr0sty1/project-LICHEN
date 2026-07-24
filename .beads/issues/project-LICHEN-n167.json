@@ -2,7 +2,7 @@
   "id": "project-LICHEN-n167",
   "title": "CCP-9: current_channel field added but validation, serialization missing",
   "description": "Codereview finding P1: __post_init__, to_bytes, from_bytes, signed_data, with_incremented_hop_count not updated for new field. Must fix before closing bead. Tagged codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

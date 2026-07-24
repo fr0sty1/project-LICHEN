@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.24",
   "title": "[lichen_l2.c:1473-1700] lichen_l2_input: pkt not unreffed if net_pkt_write succeeds but later fails",
   "description": "Contract violation: error handling - memory leak impossible but code structure confusing\n\n**Issue:** Looking at the code flow:\n1. pkt allocated at line 1654\n2. net_pkt_write at line 1672\n3. If write fails (line 1673), unref and return (line 1675-1676)\n4. Unlock mutex (line 1680)\n5. net_recv_data at line 1691\n6. If recv fails, unref (line 1694)\n\n**Assessment:** Actually the code is correct. All error paths properly unref the packet:\n- Write failure: lines 1674-1676\n- recv_data failure: lines 1693-1695\n\n**No fix needed** - error handling is correct, ownership is properly managed.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

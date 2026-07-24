@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-zt3c.16.1",
   "title": "C: lichen_identity_ygg_addr_from_ed25519 matching test vectors",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

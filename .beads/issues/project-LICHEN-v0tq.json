@@ -3,7 +3,7 @@
   "title": "Reject foreign unicast DIO and DIS",
   "description": "After authenticated decompression and before mutation, accept DIO/DIS only for exact local RPL unicast or ff02::1a; preserve DAO DODAG destination handling.",
   "acceptance_criteria": "Broadcast-wrapped foreign-unicast DIO/DIS cause no mutation and no response; local unicast and ff02::1a continue to work; DAO forwarding remains intact.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

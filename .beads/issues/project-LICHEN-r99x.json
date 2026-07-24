@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-r99x",
   "title": "codereview: section numbering broken after inserting 8.5 Unified Derivation in 06-security.md (old 8.6+ now off-by-one)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

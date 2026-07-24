@@ -3,7 +3,7 @@
   "title": "Rust impl: multi-channel frequency allocation plans",
   "description": "Rust implementation for CCP-4 channel plans inferred from da2q.",
   "notes": "Working Rust multi-channel freq plans with rx_channel per query; parallel with Zephyr/Python",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

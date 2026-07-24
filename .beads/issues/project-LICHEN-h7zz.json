@@ -2,7 +2,7 @@
   "id": "project-LICHEN-h7zz",
   "title": "[merge-conflict] worktree-worker20: t_deck_esp32s3_procpu.conf",
   "notes": "Fixed t_deck_esp32s3_procpu.conf merge conflict in worker20 worktree by syncing to canonical resolved version with standardized resolution comment from project-LICHEN-worker7. Working tree now clean. Commit reference: 87e07b2f4",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

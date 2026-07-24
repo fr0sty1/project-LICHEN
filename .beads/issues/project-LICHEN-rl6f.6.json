@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rl6f.6",
   "title": "CCP-1.4: Rendezvous and synchronization for TDMA slots",
   "description": "Define how nodes discover and synchronize to TDMA schedule. Include beacon formats, drift compensation, initial join procedure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

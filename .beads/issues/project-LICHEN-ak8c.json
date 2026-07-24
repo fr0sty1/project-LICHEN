@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ak8c",
   "title": "[codereview P1] FragmentReceiver import fails in lichen-schc test",
   "description": "rust/lichen-schc/tests/fragmentation.rs:7: use lichen_schc::fragment::FragmentReceiver fails to compile with 'no FragmentReceiver in fragment' because it's under cfg(feature = \"std\") in fragment.rs:451 and pub use only when std enabled. cargo test -p lichen-schc --quiet fails (default features=[] ). cargo test -p lichen-schc --features std works. Fix by making available for tests or updating test config. Matches 'fix EVERY one' and test integrity rules. discovered-from:project-LICHEN-illv.1",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s7t8",
   "title": "[CODEREVIEW2] capacity validation pass - encode and handler",
   "description": "lichen/subsys/lichen/coap/coap_status.c: updated encode_status_cbor and neighbors_get with capacity check on count \u003e MAX_NEIGHBORS returning error. Removed all non-SPDX comments. Follows Zephyr style with direct LOG and coap_ calls. Needs similar for routes and DTN.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

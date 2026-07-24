@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.9.3.2",
   "title": "[codereview-P2] lichen_hash_32 loop unrolling and const",
   "description": "link_ctx.c:517-520 hash loops use int i and non-const. For embedded, use size_t or uint8_t counter, mark params const. Matches C coding guidelines in AGENTS.md for no dynamic alloc, C11. P2 readability. Child of project-LICHEN-da2q.9.3.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T17:12:19.157023622Z",

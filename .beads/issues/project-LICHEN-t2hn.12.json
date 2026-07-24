@@ -2,7 +2,7 @@
   "id": "project-LICHEN-t2hn.12",
   "title": "Document Meshtastic app compatibility support matrix for R1 MVP",
   "description": "Why this exists: users must understand that LICHEN supports a local Meshtastic app interface but not Meshtastic RF mesh compatibility. What needs to be done: produce the compatibility matrix consumed by project-LICHEN-ev5b.7: supported app discovery/pairing screens, node info/status/config fields, send/receive message flows, unsupported app features, known placeholders, and troubleshooting symptoms. Acceptance criteria: docs match implemented and smoke-tested behavior; unsupported features are explicit; RF non-compatibility is unambiguous; every remaining gap has a Bead.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

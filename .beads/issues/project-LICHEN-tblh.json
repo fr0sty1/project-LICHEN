@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tblh",
   "title": "[codereview] op_ref lint in lichen-schc/tests/shared_vectors.rs:121",
   "description": "Clippy found needless taken reference of both operands in the decompress mismatch check. Fix by removing unnecessary \u0026 operators on slice comparisons. This was discovered in post-edit review pass 1 for project-LICHEN-882t. Follows test vectors discipline and no comments added.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "chore",
   "created_at": "2026-07-22T14:46:38.165752469Z",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-zmvs",
   "title": "coap_dtn.c: global s_last_confession rate limit violates per-IID requirement (one node can starve all others)",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

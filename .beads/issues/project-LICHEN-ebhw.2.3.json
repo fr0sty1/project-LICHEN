@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ebhw.2.3",
   "title": "Align tests and ensure ygg address derivation matches across Rust core, lichen-link, C link_crypto test, and vectors",
   "description": "Update tests in identity.rs, add tests to addr.rs, verify lichen/tests/link_crypto still passes after refactor. Fix any IID/Ygg inconsistencies noted in vectors vs tests.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3gqi",
   "title": "Complete Simulation Infrastructure Enhancement Epic",
   "description": "Complete Simulation Infrastructure Enhancement Epic - Epic to track all enhancements to LICHEN simulation infrastructure including debugging capabilities, validation tests, and documentation for distributed testing without hardware requirements. This epic encompasses all the foundational work needed to validate the heterogeneous mesh network approach before requiring actual hardware deployment.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

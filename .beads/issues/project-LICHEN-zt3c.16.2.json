@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-zt3c.16.2",
   "title": "Rust: NodeId::ygg_addr_from_pubkey matching vectors + update IID to SHA-512",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

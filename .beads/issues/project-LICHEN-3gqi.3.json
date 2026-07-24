@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3gqi.3",
   "title": "Parallel test suite and validation for enhanced Renode models (BLE, USBD, GNSS, LoRa)",
   "description": "Develop and run integration tests for all new peripherals in Renode. Use python/tests/sim/ and Renode test scripts. Validate fidelity against real hardware traces where possible. Update renode-workflow.md with new capabilities. Close when all tests pass and fidelity confirmed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

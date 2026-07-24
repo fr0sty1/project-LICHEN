@@ -3,7 +3,7 @@
   "title": "coap_client.c: coap_client internal structure access is fragile",
   "description": "File: lichen/subsys/lichen/coap/coap_client.c\nLines: 151-164\n\nThe function request_ctx_cancel_coap_slot directly accesses Zephyr's internal coap_client structure:\n```c\nk_mutex_lock(\u0026s_client.send_mutex, K_FOREVER);\nfor (size_t i = 0; i \u003c ARRAY_SIZE(s_client.requests); i++) {\n    if (s_client.requests[i].request_ongoing \u0026\u0026\n        s_client.requests[i].coap_request.user_data == ctx) {\n        s_client.requests[i].coap_request.cb = NULL;\n        s_client.requests[i].coap_request.user_data = NULL;\n        s_client.requests[i].request_ongoing = false;\n        s_client.requests[i].is_observe = false;\n    }\n}\nk_mutex_unlock(\u0026s_client.send_mutex);\n```\n\nThis relies on:\n1. Internal structure layout of struct coap_client\n2. send_mutex field existing and being the right mutex\n3. requests[] array and its fields\n\nIf Zephyr updates the coap_client internals, this code breaks silently. Should use public API if available, or document the Zephyr version dependency.\n\nCategory: API MISUSE - internal structure access",
   "notes": "Commit: c321e7e26",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

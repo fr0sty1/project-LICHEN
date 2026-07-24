@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-84s5",
   "title": "codereview: missing update to Appendix A and test/vectors/ccp15.json hash output test after adding now()",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:41:22.816839185Z",

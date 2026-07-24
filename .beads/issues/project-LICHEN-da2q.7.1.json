@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.7.1",
   "title": "Python impl: time synchronization for channel hopping",
   "description": "Python implementation for CCP-7 synchronization requirements from da2q context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

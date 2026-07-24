@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.9.2",
   "title": "codereview-pass2-sales-playbook",
   "description": "Second independent review: GPL compliance note clear. Pricing consistent with f2ga. Suggest adding sample QR generation command. Minor: fix inventory.sh shebang portability. Fixed in edit.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:04:16.755796278Z",

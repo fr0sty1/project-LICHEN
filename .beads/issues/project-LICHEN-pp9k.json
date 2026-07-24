@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pp9k",
   "title": "[codereview-pass2] coap_dtn.c: no SenML usage after include; storage still raw bytes instead of SenML pack for DTN",
   "description": "SenML header included but senml_encode_* never called. Per coap_location.c and spec, payloads must be SenML CBOR for interoperability. Add encode for message string value. P1. discovered-from:project-LICHEN-zt3c.18.1",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

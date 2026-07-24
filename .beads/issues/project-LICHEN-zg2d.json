@@ -3,7 +3,7 @@
   "title": "coap_oscore_protect_response uses unbounded stack allocation",
   "description": "File: lichen/subsys/lichen/oscore/coap_oscore.c\nLines: 149-151\n\nThe coap_oscore_protect_response function allocates a large buffer on the stack:\n\n```c\nuint8_t ciphertext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX + OSCORE_TAG_LEN];\nsize_t ciphertext_len = sizeof(ciphertext);\nuint8_t oscore_opt[16];\n```\n\nCONFIG_LICHEN_OSCORE_PLAINTEXT_MAX is a configurable value. If set to a large value (e.g., 4096), this consumes 4104 bytes of stack per call.\n\nThe same pattern exists in oscore.c for oscore_protect_request (line 1398) and oscore_unprotect_request (line 1610), but those are the core functions that need the buffer.\n\nFor coap_oscore_protect_response, the ciphertext buffer could potentially be:\n1. Passed in by the caller\n2. Allocated from a heap/pool\n3. Made static with mutex protection\n\nOn constrained devices with limited stack (e.g., 1KB), this could cause stack overflow.\n\nThe hkdf.h header at lines 12-14 documents ~500 bytes for key derivation, but this function adds another ~4KB potentially.\n\nSeverity: Medium - can cause stack overflow on constrained devices with large CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX.",
   "notes": "Commit: 334f2a279\nMoved large ciphertext buffer to static in coap_oscore.c to eliminate stack usage on constrained devices (e.g. STM32WL 64KB). Matches project patterns for no-heap hot paths. oscore_opt/token remain on stack (small).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

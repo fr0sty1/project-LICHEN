@@ -3,7 +3,7 @@
   "title": "Missing default case in value type switch allows invalid CBOR",
   "description": "File: lichen/subsys/lichen/senml/senml.c\nLines: 225-244\n\nCATEGORY: CORRECTNESS\n\nThe switch statement on rec-\u003etype has cases for SENML_VALUE_FLOAT, SENML_VALUE_BOOL, SENML_VALUE_STRING, and SENML_VALUE_DATA, but no default case.\n\nIf rec-\u003etype contains an invalid value (memory corruption, uninitialized struct, API misuse), the switch falls through without error. The function will:\n1. Start a CBOR map expecting a value entry\n2. Never encode the value\n3. Successfully end the map\n\nThis produces a malformed SenML record - a CBOR map that promised N entries but only has N-1.\n\nIMPACT:\n- Malformed CBOR output\n- RFC 8428 violation (record must have a value)\n- Silent failure - no error returned\n\nFIX: Add default case that returns -EINVAL or -ENOTSUP for unknown value types:\n  default:\n      return -EINVAL;",
   "notes": "Commit: 8033ada6c",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

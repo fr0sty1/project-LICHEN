@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f4xg.1.1",
   "title": "[coap] Add RFC 7252 constants module to lichen-coap",
   "description": "Define COAP_VERSION, HEADER_ACK_NO_TOKEN (0x60), PAYLOAD_MARKER (already present), update message.rs comments, reference project-LICHEN-f4xg.1",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

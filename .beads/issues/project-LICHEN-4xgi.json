@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4xgi",
   "title": "[codereview-pass2.7] rules.rs FieldDescriptor mapping field addition - check all instantiations and Default derive",
   "description": "Code chunk: added mapping to struct. All ~20 FieldDescriptor { ... } must now include mapping: None. Derive may need update. Review for compile errors and no_std compatibility. discovered-from:project-LICHEN-ftlq",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

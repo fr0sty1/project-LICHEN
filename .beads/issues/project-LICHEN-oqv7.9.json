@@ -3,7 +3,7 @@
   "title": "Automate Nucleo entropy reset regression",
   "description": "Follow-up from project-LICHEN-oqv7.8 reviews. Existing Renode integration tests exercise raw SubGHz MMIO but do not boot Nucleo firmware through STM32 entropy initialization or verify the reset macro clears a previously asserted RNG IRQ. Add automated coverage using a canonical firmware artifact/build path without hardcoded test results.",
   "acceptance_criteria": "Automated Renode coverage boots Nucleo firmware through entropy initialization and asserts no IRQ stall/storm; a reset-path check activates/asserts RNG IRQ, invokes canonical reset, and proves normal post-reset entropy progress; test remains offline and deterministic.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

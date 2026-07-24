@@ -3,7 +3,7 @@
   "title": "Missing null-terminator space check in long_name sanitization",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1067-1075\n\n  static void sanitize_peer_snapshot(struct lichen_meshtastic_peer_snapshot *peer)\n  {\n      if (peer-\u003ehas_long_name) {\n          peer-\u003elong_name[sizeof(peer-\u003elong_name) - 1U] = '\\0';\n          if (peer-\u003elong_name[0] == '\\0') {\n              peer-\u003ehas_long_name = false;\n          }\n      }\n  }\n\nThis forces NUL-termination at the last byte, which is correct. But it assumes long_name has at least 1 byte capacity.\n\nLooking at the struct definition in adapter.h:214:\n  char long_name[LICHEN_MESHTASTIC_NODE_NAME_MAX];\n\nAnd in codec.h:46:\n  #define LICHEN_MESHTASTIC_NODE_NAME_MAX 32U\n\nSo there's space. But if NODE_NAME_MAX were ever configured to 0, this would be out of bounds.\n\nAdd: BUILD_ASSERT(LICHEN_MESHTASTIC_NODE_NAME_MAX \u003e= 1, 'name buffer must have space for terminator');",
   "notes": "Fix already present in adapter.c:1045 (BUILD_ASSERT added previously). Closing as completed. Commit: 6140574ad",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rcnx",
   "title": "[codereview-P0] Missing ccp9_rendezvous_vectors definition after adding write call in generate.py",
   "description": "The edit added call to undefined ccp9_rendezvous_vectors(). This breaks generate.py. Must implement function before running. Independent oracle required per test integrity. File as codereview-tagged per mandatory instruction.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6o8m",
   "title": "[codereview] Duplicate SHA256 digest in hetero_node.rs TX/RX paths and emit closure",
   "description": "The packet_hash string is computed via format!(\"{:x}\", Sha256::digest(..)) in three places (TX metrics, RX metrics, emit closure). This violates DRY and could lead to divergence if one changes. Suggest extracting a helper fn packet_hash_prefix(payload: \u0026[u8]) -\u003e String. P3. Related to project-LICHEN-14hl consistency fix.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T14:46:16.457099353Z",

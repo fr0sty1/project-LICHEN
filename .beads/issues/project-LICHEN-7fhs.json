@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7fhs",
   "title": "codereview: current_channel vs rx_channel naming inconsistency",
   "description": "rust/lichen-core/src/announce.rs:88 and python/src/lichen/announce/messages.py:70 use different field names for the same wire byte (spec uses rx_channel per 02a-coordinated-capacity.md:74). Update to match. codereview P2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

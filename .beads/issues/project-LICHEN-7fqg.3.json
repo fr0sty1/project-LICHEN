@@ -4,7 +4,7 @@
   "description": "Run complete locked Python, Rust, host C, Zephyr/Twister, canonical-vector, simulator/fleet, and production-board gates on the convergence branch. Perform workspace API review and three independent final reviews, reconcile Beads exports, audit residual branches, and prepare the final merge boundary.",
   "acceptance_criteria": "All required gates pass with zero unexpected skips or stale generated files; three reviews converge; every residual blocker and branch disposition is recorded; worktree is clean except approved artifacts; final branch/commit hashes are documented.",
   "notes": "Commit: 6858c37e0",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

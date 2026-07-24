@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rmns.1.2",
   "title": "codereview-pass3: is_local_mesh branching prep",
   "description": "Review integration readiness for forward_mesh_to_upstream branching. Verify no deadcode (avoid let _ = ), version check prep. File P0-P2 if any. Complete only after clean. Parent project-LICHEN-rmns.1",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T16:03:01.953534888Z",

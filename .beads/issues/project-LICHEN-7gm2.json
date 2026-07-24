@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-7gm2",
   "title": "[codereview-pass-3 Python] rules.py:290 RPL_DAO uses kd_flags but adaptation.md and Rust codec use different DAO base fields - needs sync",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

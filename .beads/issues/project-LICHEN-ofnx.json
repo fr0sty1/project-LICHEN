@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ofnx",
   "title": "PacketCoapResourceTransport.close() suppresses all exceptions during cleanup",
   "description": "File: python/src/lichen/client/packet_coap.py, lines 92-105\n\nThe close() method uses overly broad exception suppression:\n\n```python\nasync def close(self) -\u003e None:\n    transport = self._resource_transport\n    self._resource_transport = None\n    if transport is not None:\n        with suppress(Exception):  # ALL exceptions suppressed\n            await transport.close()\n    channel = self._channel\n    self._channel = None\n    if channel is not None:\n        await channel.aclose()\n    else:\n        with suppress(Exception):  # ALL exceptions suppressed\n            await self.packet_transport.close()\n```\n\nIssue: Using suppress(Exception) during cleanup hides potentially important errors:\n- Memory corruption\n- System-level failures\n- Bugs in the close() implementation itself\n\nWhile it's correct to avoid failing on cleanup, suppress(BaseException) or suppress(Exception) is too broad.\n\nImpact: Bugs in cleanup code go undetected. For debugging, the actual cause of a failed shutdown is lost.\n\nFix: Suppress only expected exceptions, log others:\n```python\nexcept (CoapTransportError, OSError, asyncio.CancelledError):\n    pass  # Expected during cleanup\nexcept Exception:\n    logger.exception('unexpected error during cleanup')\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

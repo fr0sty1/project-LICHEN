@@ -2,7 +2,7 @@
   "id": "project-LICHEN-anra",
   "title": "codereview pass 2/3: signed_data() docstring",
   "description": "Pass 2 review of python/src/lichen/announce/messages.py after update. Finding P3: Docstring now excellent on layout and security rationale. Minor: could reference exact offset in signed_data (after seq at byte 40). Test in test_messages.py:436 still assumes 93 bytes ignoring current_channel byte (now makes MIN_LEN=94). Update test to match. Also check Rust scheduler.rs for matching comment. Tagged codereview. discovered-from:project-LICHEN-gnxq discovered-from:project-LICHEN-si3k",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:27:54.035924094Z",

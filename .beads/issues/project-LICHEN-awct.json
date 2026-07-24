@@ -3,7 +3,7 @@
   "title": "gradient.c: lichen_gradient_table_init doesn't return error for NULL",
   "description": "File: lichen/subsys/lichen/routing/gradient.c\nLines: 106-112\n\nIn lichen_gradient_table_init():\n\n    void lichen_gradient_table_init(struct lichen_gradient_table *table)\n    {\n        if (table == NULL) {\n            return;  // \u003c-- Silent failure\n        }\n        memset(table, 0, sizeof(*table));\n    }\n\nThe function silently returns on NULL input instead of reporting the error. Compare with:\n- lichen_dtn_init(): returns -EINVAL on NULL\n- lichen_router_init(): returns -EINVAL on NULL\n\nInconsistent error handling across the codebase. Either:\n1. Change return type to int and return -EINVAL on NULL\n2. Use __builtin_trap() / assert for programming errors\n3. Document that NULL is undefined behavior",
   "notes": "Commit: 3c057ed23",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

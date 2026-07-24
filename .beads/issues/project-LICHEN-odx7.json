@@ -3,7 +3,7 @@
   "title": "[merge-conflict] worker8: router.py",
   "description": "Resolve merge conflict in python/src/lichen/routing/router.py between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Commit: 9642ec005 - Added _cached_size field to DtnMessage with lazy size() caching for DTN performance; merged worker8 DTN doc and struct with current routing/DTN buffer/eviction logic.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

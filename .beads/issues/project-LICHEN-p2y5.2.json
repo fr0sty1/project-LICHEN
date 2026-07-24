@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p2y5.2",
   "title": "Gateway: IPv6 forwarding between mesh and backhaul",
   "description": "## Overview\n\nForward IPv6 packets between mesh (LoRa L2) and backhaul (WiFi/Ethernet). This is the core border router data plane.\n\n## Packet flow\n\n### Mesh → Internet\n1. Receive packet from LoRa L2\n2. Decompress (SCHC)\n3. Check destination:\n   - If dest is mesh node → forward via LoRa (not this path)\n   - If dest is off-mesh → forward to backhaul interface\n4. Transmit on backhaul (WiFi/Ethernet)\n\n### Internet → Mesh\n1. Receive packet on backhaul interface\n2. Lookup destination in RPL routing table\n3. If found → compress (SCHC) and transmit via LoRa L2\n4. If not found → ICMPv6 Destination Unreachable\n\n## Implementation\n\n### Zephyr networking\n- Register as IPv6 router (net_if)\n- Enable forwarding between interfaces\n- Hook into Zephyr net stack or custom forwarding\n\n### Interface binding\n- LoRa L2 as one net_if\n- Backhaul (WiFi/Eth) as another net_if\n- Route between them based on destination\n\n### MTU handling\n- Backhaul MTU: 1500 (Ethernet) or 1280 (minimum IPv6)\n- Mesh MTU: ~200 bytes (LoRa payload)\n- SCHC handles compression, not fragmentation\n- Packets too large after compression → ICMPv6 Packet Too Big\n\n## Files\n- lichen/apps/gateway/src/forwarding.c\n- Integration with Zephyr net stack",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

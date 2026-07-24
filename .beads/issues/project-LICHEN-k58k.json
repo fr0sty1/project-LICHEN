@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k58k",
   "title": "codereview-pass1-sfn-kconfig",
   "description": "Reviewed SFN paragraph+example and Kconfig chunk. Findings: P3 wording in delta example could reference exact test vector ID; Kconfig help references DEFCON but could link specific section. No P0-P2. Tagged codereview. Addressed in follow-up.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:26:22.522105674Z",

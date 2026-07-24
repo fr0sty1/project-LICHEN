@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5xrr",
   "title": "[codereview] rules.rs FieldDescriptor arrays remain empty (lines 59-96); must populate const fields matching Python rules.py and codec behavior before md can truly derive 'exact field descriptors from rules.rs'",
   "description": "rules.rs defines the struct at line 31 but rules are placeholder empty slices. This violates the intent of the task. Populate with const arrays for each Rule using the FieldDescriptor {field_id, length_bits, mo: Mo::..., cda: Cda::..., target_value, mo_arg}. This is core to making Rust rules the source of truth. P1 for correctness. Discovered in codereview pass 1 for upk9.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "router.c: Missing NULL check for dst_iid parameter in route_mesh_local path",
   "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 230-249\n\nIn lichen_router_route(), the function validates dst_addr but not dst_iid:\n\n    if (router == NULL || dst_addr == NULL || result == NULL) {\n        return -EINVAL;\n    }\n\nThen at line 249:\n    return route_mesh_local(router, dst_iid, now_ms, result);\n\nIf dst_iid is NULL and the address is classified as LICHEN_ADDR_MESH_LOCAL, the code passes NULL to route_mesh_local() which then passes it to lichen_gradient_lookup() where it will be dereferenced by memcmp.\n\nThe dst_iid parameter should be validated at the top of the function along with the other pointer parameters.",
   "notes": "Commit: 1bef7e208",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

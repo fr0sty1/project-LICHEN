@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-rq3t",
   "title": "[codereview-pass3] coap_dtn.c: fix deaddrop_post IID lookup, add string.h for memcpy, rate limit collision from IID[7], direct oscore_unprotect_request, update confessions_post",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "LoopbackRadio::receive ignores timeout_ms parameter",
   "description": "File: rust/lichen-hal/src/loopback.rs:91-107\n\nThe receive() function ignores the timeout_ms parameter entirely (marked with underscore as _timeout_ms). When no packet is available, it returns None immediately instead of waiting for the specified timeout.\n\nThis violates the Radio trait contract and creates inconsistent behavior - MockRadio in lichen-embassy/mock.rs correctly sleeps for timeout_ms, but LoopbackRadio does not.\n\nImpact: Tests using LoopbackRadio behave differently than production code. A test passing with LoopbackRadio might fail with real hardware if it depends on timing/timeout behavior.\n\nFix: Add async sleep/wait for timeout_ms before returning None, or at minimum poll with timeout.",
   "notes": "Commit: 43f8b5c",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

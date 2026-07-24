@@ -2,7 +2,7 @@
   "id": "project-LICHEN-e6n0",
   "title": "Validate SenML numeric encodings",
   "description": "RFC 8428 decoded numeric policy follow-up discovered during project-LICHEN-2auf.42 review: reject non-finite floats and determine whether CBOR Tag 5 bigfloats must be rejected while Tag 4 decimal fractions remain accepted. Add independent literal CBOR vectors; do not derive vectors from the codec.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

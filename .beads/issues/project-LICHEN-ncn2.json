@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ncn2",
   "title": "codereview pass 2: announce.rs InvalidChannel message says 0-7 but Python uses 0-15 for CCP-9",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:31:25.612932935Z",

@@ -3,7 +3,7 @@
   "title": "Resolve orphaned T-Beam Supreme puck target",
   "description": "lichen/apps/puck/boards/tbeam_supreme.conf and .overlay declare a stub target, but Zephyr 3.7 has no canonical T-Beam Supreme board definition in this tree. Add and validate an explicitly approved canonical board mapping or retire the stale fragments; do not present the stub as supported.",
   "acceptance_criteria": "tbeam_supreme has a valid canonical Zephyr board target with puck build/runtime validation, or its stale puck fragments are explicitly retired.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

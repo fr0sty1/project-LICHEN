@@ -2,7 +2,7 @@
   "id": "project-LICHEN-64um",
   "title": "Update Medium for multi-channel support and rendezvous",
   "description": "Extend Medium.start_tx, get_rx_candidates, detect_activity to accept channel param. Implement rendezvous logic so RX only on expected hop channel at given SFN/time. Independent oracle for collision/propagation per channel. codereview tagged. Child of da2q.12.8",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

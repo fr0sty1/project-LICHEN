@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nrfg",
   "title": "codereview pass 3: post-Kconfig CCA",
   "description": "Third review pass after Kconfig edits: 1. No corresponding changes in lora_l2.c to read the Kconfig and implement the CCA call before lora_send(). 2. Link layer (lichen_link_tx.c) untouched as per task. 3. No test vectors updated for CCA behavior. 4. Zephyr lora driver (lichen/drivers/lora/*) needs CAD impl for LR1110/SX126x. All findings filed per mandatory workflow. Ready for next chunk. (project-LICHEN-da2q.15.7)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

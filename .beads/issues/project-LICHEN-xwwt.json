@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xwwt",
   "title": "codereview pass 1: hash_32 endianness and dodag_id width unspecified",
   "description": "The added hash_32 assumes u64 for dodag_id but RPL DODAGID is 128-bit (16 bytes). Byte order (LE/BE) not specified. FNV-1a chosen but link layer primarily uses SHA512 truncated; should match exact primitive used in lichen_link or rpl for consistency with test vectors. Also update test/vectors/generate.py ccp16_vectors to validate the hash_32 output explicitly. P1 correctness. Also N_CHANNELS comment references non-existent Kconfig yet.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:38:49.388723446Z",

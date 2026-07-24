@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16.15.3",
   "title": "codereview: No interop test plan or Renode scenario for TDMA/SF in spec",
   "description": "P1 correctness: interop with Python/Rust/Zephyr must be specified with vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T16:21:07.772222811Z",

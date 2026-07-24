@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s287",
   "title": "codereview-pass2: pseudocode comment should use C-style for consistency and add test vector link",
   "description": "In spec/02a-coordinated-capacity.md the pseudocode uses /* */ but surrounding docs use consistent markdown. Add explicit link to test/vectors/sfn-delta.json (to be added). Also ensure RFC2119 MUST is used for unsigned arithmetic. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "ec2-user",

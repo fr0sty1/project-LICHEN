@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.70",
   "title": "[lora_l2.c:306-411] rx_thread error backoff does not reset on state transition",
   "description": "Completeness: Error handling completeness category.\n\nIn rx_thread (line 306-411), the error backoff at line 366 (k_sleep K_MSEC(1000)) triggers after consecutive errors. However:\n\n1. If errors occur, then state transitions to STOPPED (line 347), the thread exits immediately\n2. On restart (new rx_thread created), consecutive_errors is fresh (stack local, initialized to 0)\n3. But if errors occurred just before stop, then start is called quickly, the radio hardware state may still be problematic\n\nThis is correct behavior (fresh start = fresh counter), but the design implicitly assumes hardware issues are transient. If hardware is persistently flaky, each stop/start cycle resets the error counter without any escalation.\n\nConsider adding a module-level persistent error counter that survives stop/start cycles, or at minimum document this behavior.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

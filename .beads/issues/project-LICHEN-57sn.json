@@ -4,7 +4,7 @@
   "description": "Discovered by project-LICHEN-m5m1.8. Canonical t_deck/esp32s3/procpu puck compilation enables L2/CoAP-dependent source while CONFIG_LICHEN_COAP is disabled, causing lichen/coap_client.h to be unavailable. Correct the board/app configuration so the declared target builds, then exercise it through a faithful backend or classify hardware requirements.",
   "acceptance_criteria": "1. Canonical T-Deck puck build compiles and links without ad hoc command-line config overrides. 2. Configuration dependency is enforced by Kconfig or board config rather than relying on incidental includes. 3. Runtime reaches puck late oracle and independent TX on faithful Renode or hardware. 4. Exact commands, hashes, and logs are retained.",
   "notes": "SOURCE FIX APPLIED locally: added CONFIG_LICHEN_COAP=y to t_deck_esp32s3_procpu.conf. Local west configuration with SOURCE_DATE_EPOCH merges canonical board fragment and proves CONFIG_LICHEN_L2=y, CONFIG_LICHEN_COAP=y, CONFIG_LICHEN_COAP_CLIENT=y. Full local build is blocked because the installed Zephyr SDK lacks xtensa-espressif_esp32s3_zephyr-elf-gcc. Two isolated ARM builder attempts (i-06b59e258e4170e46, i-0fca8f23e46ab4d06) timed out before SSH and cleaned up; infrastructure follow-up filed. Do not close until canonical cross-build succeeds; runtime remains dependent on faithful cy6c.1 or physical T-Deck.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

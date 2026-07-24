@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-nhrc.2",
   "title": "codereview-pass2: added text should sync with updated appendix-schc.md table for MO columns (P3)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:00:36.192065531Z",

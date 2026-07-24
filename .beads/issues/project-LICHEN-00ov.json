@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-00ov",
   "title": "codereview pass 3: hash_32 param order and dodag_id vs eui64; density rationale needs explicit IETF/RFC2119 layering vs SF10",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

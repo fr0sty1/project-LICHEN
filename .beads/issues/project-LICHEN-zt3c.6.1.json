@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.6.1",
   "title": "codereview: spec/04-network.md addressing simplification chunk 1",
   "description": "Pass 1: Table updated but remaining references to ULA/GUA in later sections not yet updated. Derivation needs precise formula matching Yggdrasil (SHA-512 of pubkey, specific bit setting for 200::/7). Pass 2: Link-local scope clarification good but update all RPL DIO prefix ads and root election sections. Pass 3: No test vectors updated yet for new address format. All 3 passes filed as one; fix remaining before next chunk.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:08:35.909473691Z",

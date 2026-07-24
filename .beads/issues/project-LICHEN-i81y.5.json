@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.5",
   "title": "routing.c has duplicate local IPv6 address helpers",
   "description": "Elegance/readability finding: lichen/subsys/lichen/rpl/routing.c defines addr_eq() at lines 24-28 and addr_copy() at lines 30-34 even though the same file otherwise uses the shared rpl_addr_eq()/rpl_addr_copy() helpers throughout, for example lines 84, 184, 227, 229, 257, and 466. addr_eq() is unused, and addr_copy() is only used at lines 412-413 and 623-624. This gives maintainers two names for the same 16-byte IPv6 operation inside one module, and addr_eq() can also trip unused-function warnings under stricter flags. Rewrite: remove addr_eq()/addr_copy() and use rpl_addr_copy() at lines 412, 413, 623, and 624 so routing.c has one address-helper vocabulary.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

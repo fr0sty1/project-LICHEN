@@ -3,7 +3,7 @@
   "title": "Persist lichend RPL identity state",
   "description": "Implement a Linux NonVolatile backend with atomic durable replacement and old-value preservation on failure, then define lichend root identity and link-epoch load/provision lifecycle. Derive the root IPv6 IID/DODAG identity consistently from the persisted key and reject mismatched configured state.",
   "acceptance_criteria": "Crash/failure tests prove durable DAO replay and TX state updates preserve the previous value on failed replacement; restart tests retain root identity and advance a safe link epoch; configured root address and persisted identity mismatches fail closed; three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

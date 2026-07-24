@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-htc4",
   "title": "codereview procurement.md: rates are estimates due to fetch timeouts; obtain binding DHL quote for accuracy",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "chore",
   "assignee": "ec2-user",

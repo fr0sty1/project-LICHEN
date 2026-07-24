@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5whr",
   "title": "[spec-compliance] imprecise CBOR comment in lichen-coap/option.rs",
   "description": "lichen-coap/src/option.rs:31 comment says CBOR=60 \"used for SenML-CBOR (RFC 7049)\" but SenML uses 112 (SENML_CONTENT_FORMAT per constants.toml:81, appendix-senml.md:16, spec/07-transport-app.md:358). 60 is generic application/cbor. Minor but should be corrected for accuracy as part of constant/spec alignment. No wire impact but violates precise spec matching. Line 34 has correct 112 for SenML.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

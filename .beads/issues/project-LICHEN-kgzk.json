@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kgzk",
   "title": "Rust: EDHOC edhoc_kdf returns Result but original code used expect()",
   "description": "In rust/lichen-oscore/src/edhoc.rs, edhoc_kdf was changed from returning heapless::Vec directly to returning Result\u003cheapless::Vec, EdhocError\u003e. While this is correct, the refactor changed:\n\n    // Before: Silent truncation on overflow\n    okm.resize(length, 0).expect('length \u003c= 32');\n    hk.expand(\u0026info, \u0026mut okm).expect('length \u003c= 255');\n    okm\n\n    // After: Returns error on overflow\n    okm.resize(length, 0).expect('output Vec\u003cu8, 32\u003e fits any KDF output \u003c= 32');\n    hk.expand(\u0026info, \u0026mut okm).expect('requested length \u003c= 32 is within HKDF-Expand limits');\n    Ok(okm)\n\nThe expect() calls still exist, meaning the function can panic. For a crypto function, panics are generally undesirable. The Result return type suggests callers expect errors, but panics will bypass the Result.\n\nLocation: rust/lichen-oscore/src/edhoc.rs:163-174\nRisk: Panic in crypto code path; callers think they handle errors but can still panic.\nFix: Remove expect() calls and propagate errors, or document when panics are impossible.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

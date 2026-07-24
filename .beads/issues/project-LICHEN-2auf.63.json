@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.63",
   "title": "Harden Python CoAP transport boundaries",
   "description": "Recovery audit found invalid unbracketed IPv6 URI construction, malformed authority exceptions, ignored nondefault ports, incorrect local endpoint identity, and duplicate receiver registration/unregister ownership corruption in python/src/lichen/coap/transport.py. Fix with focused lifecycle and URI tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.3",
   "title": "Update all edhoc_kdf callsites, transcript handling, and remove conflicting code in edhoc.rs",
   "description": "Fix callsites (lines ~638-752, 827+), make consistent with new KDF (prk, th, label, context, length). Resolve duplicate implementations visible in the file (one using u8 labels, another string). Ensure TH_2/TH_3/TH_4 computation matches Python.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

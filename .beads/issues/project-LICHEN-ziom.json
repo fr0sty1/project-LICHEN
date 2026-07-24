@@ -3,7 +3,7 @@
   "title": "Missing NULL check in lichen_rpl_dodag_config_init",
   "description": "File: lichen/subsys/lichen/rpl/messages.c:176-186\n\nUnlike other init functions in the RPL module, `lichen_rpl_dodag_config_init` does not check for NULL input:\n\n```c\nvoid lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg)\n{\n    cfg-\u003emin_hop_rank_increase = 256;  // Crashes if cfg is NULL\n    ...\n}\n```\n\nFor consistency with other init functions (lichen_rpl_dodag_init, lichen_trickle_init, etc.) which all check for NULL, this function should also validate its input.\n\nImpact: NULL dereference crash if caller passes NULL.\n\nFix: Add `if (cfg == NULL) { return; }` at function start.",
   "notes": "Commit: 718eca5",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

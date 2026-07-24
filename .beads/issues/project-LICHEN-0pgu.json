@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0pgu",
   "title": "Rust: LOADng route discovery removed debug_assert! calls for state transitions",
   "description": "In rust/lichen-core/src/loadng.rs, several debug_assert! calls were removed from typestate transitions:\n\n    // Removed:\n    // debug_assert!(RouteDiscoveryState::Idle.can_transition_to(RouteDiscoveryState::Searching));\n    // debug_assert!(RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Searching));\n    // debug_assert!(RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Failed));\n\nComments were added saying 'Typestate: X -\u003e Y (enforced by type signature)' which is correct - the type system enforces these transitions at compile time.\n\nHowever, removing the runtime checks means debug builds won't catch if someone refactors the typestate incorrectly. The assertions were redundant but provided defense-in-depth.\n\nLocation: rust/lichen-core/src/loadng.rs:231, 254, 272, 283\nRisk: Very low - compile-time enforcement is sufficient.\nFix: None needed, just documenting the change.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3ikp",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Add -fsanitize=cfi -fvisibility=hidden when Clang 18+ detected. Blocks ROP/JOP attacks.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

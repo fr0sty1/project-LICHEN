@@ -2,7 +2,7 @@
   "id": "project-LICHEN-c5xs",
   "title": "[codereview-pass3-robustness] Gateway::mesh_to_mesh and TX queue not implemented; RPL integration incomplete for SRH recompress",
   "description": "P2: No handling for local mesh forwarding in Gateway. Adding SRH increases packet size requiring new SCHC rule selection and recompress. TX queue (core::tx_queue::TxQueue) must be added to struct to avoid blocking on serial/sim. Current tests only cover upstream. No error handling for route lookup failure. codereview. Discovered-from: project-LICHEN-lug0 project-LICHEN-xvqh project-LICHEN-hwup",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

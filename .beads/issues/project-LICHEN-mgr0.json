@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mgr0",
   "title": "Diagnose EC2 OpenCode state",
   "description": "Inspect the persistent EC2 workstation's OpenCode process, tmux session, logs, configuration, and SQLite state; repair non-destructively and verify normal operation without exposing credentials or deleting sessions.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

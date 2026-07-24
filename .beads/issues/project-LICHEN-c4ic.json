@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-c4ic",
   "title": "codereview-pass-1: appendix-rpl.md and rpl draft should cross-reference lichen_rpl_dodag_init() and exact trickle params from constants.toml:56-60",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "ec2-user",

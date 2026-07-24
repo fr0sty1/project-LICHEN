@@ -3,7 +3,7 @@
   "title": "senml profiles.py: humidity() accepts out-of-range percent_rh values",
   "description": "File: python/src/lichen/senml/profiles.py\nLines: 94-103\n\nThe humidity() function accepts any float for percent_rh without validation:\n\n  def humidity(percent_rh: float) -\u003e SenmlRecord:\n      return SenmlRecord(n='rel-humidity', u='%RH', v=percent_rh)\n\nRelative humidity is defined as 0-100%. Values outside this range (negative or \u003e100) are physically meaningless.\n\nSimilar to existing bug project-LICHEN-aez4 which covers battery percent, but this is a separate function.\n\nImpact:\n- Invalid humidity values (e.g., -50%, 200%) silently encoded\n- May cause confusion or errors in receiving systems\n\nFix: Add validation:\n  if not (0.0 \u003c= percent_rh \u003c= 100.0):\n      raise ValueError(f'percent_rh {percent_rh} out of range [0, 100]')",
   "notes": "Commit: c24922833",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

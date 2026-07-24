@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-da2q.15.7",
   "title": "CCP-15.2: Implement CCA before TX in lora_l2 and link layer",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

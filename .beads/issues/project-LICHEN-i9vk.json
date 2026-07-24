@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i9vk",
   "title": "[merge-conflict] worktree-worker24: heltec_wireless_tracker.conf",
   "notes": "Commit: 90b9d392d (worker24 deletion of stale heltec_wireless_tracker.conf to resolve merge conflict per retirement in 2u26.4)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

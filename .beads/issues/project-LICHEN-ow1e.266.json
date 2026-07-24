@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.266",
   "title": "Rust EDHOC: missing signature verification for Message 2",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 337-369\n\nSECURITY: The Rust EDHOC initiator process_message_2 function decrypts CIPHERTEXT_2 and extracts PLAINTEXT_2, but does NOT verify Signature_2 from the responder. The code proceeds directly from decryption to computing TH_3 without validating that the responder actually signed M_2.\n\nThis is a critical security flaw - an attacker could inject a forged Message 2 with an arbitrary signature and the initiator would accept it, leading to man-in-the-middle attacks. Per RFC 9528 Section 4.3.2, the initiator MUST verify Signature_2 before proceeding.\n\nCompare to the Python implementation which attempts verification (though with incorrect API usage - see related issue).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

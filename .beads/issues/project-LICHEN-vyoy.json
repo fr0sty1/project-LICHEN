@@ -3,7 +3,7 @@
   "title": "[spec-compliance] RPL Trickle Imin constant mismatch (4096 vs 4000ms)",
   "description": "constants.toml:59 sets imin_ms=4096 and python/src/lichen/constants.py:52 uses RPL_TRICKLE_IMIN_MS=4096. However, spec/drafts/draft-lichen-rpl-lora-00.md:235 explicitly states \"Imin = 4 s = 4000 ms\" and Imax calculation based on that. The C example in implementation status also uses 4*1000. This is a wrong constant differing from spec (MUST match normative values). Reviewed in commit 3f429277a which updated RPL section but left mismatch. Also check Rust/C impls for used value.",
   "notes": "Commit: 3fb4909a3",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-g38n",
   "title": "[codereview-pass-1] OSCORE section in appendix-schc.md still references deviid and MSB(12) ports which do not match current codec.rs:300-317 or Python _addr_field / _udp_fields",
   "description": "Current impl uses full 64bit IIDs via LSB after MSB(64) prefix, full 16bit ports value-sent, hop_limit value-sent. The md table update helped but OSCORE A.3 section is stale (uses fe80::/10, deviid, port 5684). Sync with rules.py:180-203 and spec/03-adaptation.md. File as P2 codereview. Part of mandatory 3-pass for project-LICHEN-upk9 edit.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

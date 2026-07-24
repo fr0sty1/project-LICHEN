@@ -2,7 +2,7 @@
   "id": "project-LICHEN-48l1",
   "title": "coap_status.h struct update missing capacity fields for CCP-17",
   "description": "struct lichen_coap_node_status lacks txq_cap, txq_used, fwd_cap, fwd_used fields. Add them using Zephyr style with CONFIG_LICHEN_COAP_STATUS_MAX_ for validation. No non-SPDX comments in edited section. Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

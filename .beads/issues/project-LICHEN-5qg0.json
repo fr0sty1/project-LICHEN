@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5qg0",
   "title": "[codereview] schema.json top-level missing $schema property",
   "description": "test/vectors/schema.json:5 The envelope schema has additionalProperties:false but all vector files declare \"$schema\" at root, causing validation failure for ccp_load_balancing.json. Add it to properties. Tagged codereview per task.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

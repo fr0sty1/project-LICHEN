@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iaui.1.1",
   "title": "Hide oscore_ctx struct definition in oscore.c (make opaque via forward decl)",
   "description": "Update oscore.h to only forward-declare struct oscore_ctx. Move full definition to oscore.c or private header. Update internal functions. Follow existing security comment in header.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

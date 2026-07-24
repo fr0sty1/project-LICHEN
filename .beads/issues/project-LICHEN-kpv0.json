@@ -3,7 +3,7 @@
   "title": "Restore inherited host quality gates",
   "description": "At convergence HEAD 9b3d7ba8, required host gates inherited failures from origin/main: Ruff 9 findings in unchanged tests; cargo fmt differences in 10 unchanged/pre-existing locations; Clippy manual_is_multiple_of in unchanged frame_parser.rs; strict rustdoc 13 unchanged documentation errors; pytest-cov is absent from the locked dev environment although CI invokes --cov. Mypy also reports 105 errors, 99 inherited and 6 in convergence-changed aiocoap sites, but mypy is not currently a CI command. Fix this outside the convergence freeze or explicitly redefine the baseline gate contract; do not mask failures.",
   "acceptance_criteria": "Locked Python CI command including coverage, Ruff, Rust fmt, Clippy -D warnings, and strict rustdoc pass from a clean environment; mypy status and scope are explicitly decided without broad ignores.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2auf.44.11.1.1",
   "title": "Bind runtime and actions to single RplStack generation; reject poll with pending actions",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

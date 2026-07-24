@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6euj",
   "title": "[codereview-pass2] IPv6 dst extraction uses magic offset 24..40 instead of constants from lichen_core::field or Ipv6Addr",
   "description": "Use field::DST_OFFSET or similar for robustness. Matches pattern in node.rs but not here. P2. discovered-from:project-LICHEN-3k6w.3",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

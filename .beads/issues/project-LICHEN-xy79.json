@@ -3,7 +3,7 @@
   "title": "Repair stale Renode selectors and CI",
   "description": "Discovered during project-LICHEN-m5m1.3 and board audit m5m1.8. Active workflows, scripts, and documentation use nonexistent or stale board selectors, including nrf52840_lichen, t_echo_nrf52840, rak4631_nrf52840, heltec_lora32_v3, and tbeam_supreme, instead of current canonical HWMv2 selectors or valid declared boards. Affected locations include workflows, scripts, README/CONTRIBUTING documentation, and docs/renode-workflow.md. Workflows also use old SDK/Renode versions and continue-on-error. Update all active commands to current valid selectors and deterministic runtime oracles; do not weaken failures.",
   "acceptance_criteria": "1. Repository search finds no active west build command using nrf52840_lichen, t_echo_nrf52840, rak4631_nrf52840, heltec_lora32_v3, or tbeam_supreme; historical prose may remain only if explicitly labeled invalid. 2. Commands use canonical HWMv2 selectors such as t_echo/nrf52840, rak4631/nrf52840, and heltec_wifi_lora32_v3/esp32s3/procpu. 3. Use Renode 1.16.1/Zephyr 3.7 tooling. 4. lora_ping artifacts include required board overlays/configs. 5. Runtime tests assert UART markers and simulator TX. 6. No required build/runtime step uses continue-on-error. 7. Workflow, Python, shell, and documentation command syntax is validated.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-lnbg",
   "title": "[codereview-pass3.1] notes update uses imprecise SHA-512[0..8] derivation; Yggdrasil actually uses specific bit selection from full SHA-512 of pubkey for the 200::/7 prefix to ensure exact interop with official daemon. Add exact fn spec from Yggdrasil source.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "[codereview] appendix-schc.md table uses approximate sizes; add exact byte calculation from BitWriter residue",
   "description": "The table now lists 26/42 bytes but test vectors show 33/49 because of tail inclusion and bit packing. Add a function or note for precise residue size. Rules.rs still has empty fields arrays - populate from Python rules.py to make it source of truth. Priority P2. Discovered during codereview-pass-1 for project-LICHEN-upk9.",
   "notes": "Fixed table in spec/appendix-schc.md with precise SCHC header sizes derived from residue_bit_length + padding via BitWriter (198/326/176/312/416 bits for rules 0-4). Updated column, added test vector sizes column, clarified tail inclusion, referenced codec functions and rules.rs stub. Performed 3 codereview passes via review epic project-LICHEN-u4pp (no P0-P2 findings after final pass). rules.rs population noted as separate P2.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

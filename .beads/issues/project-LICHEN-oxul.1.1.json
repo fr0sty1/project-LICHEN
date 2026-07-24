@@ -2,7 +2,7 @@
   "id": "project-LICHEN-oxul.1.1",
   "title": "Update spec for human-readable addresses",
   "description": "Create spec/03-addressing.md with full definition of 13-char Crockford base32 node address derivation, format (dashes every 4 chars), collision analysis, examples, integration with IID. Update table of contents in spec/README.md and cross-refs in 04-network.md. Add test vectors to test/vectors/node-addresses.json",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

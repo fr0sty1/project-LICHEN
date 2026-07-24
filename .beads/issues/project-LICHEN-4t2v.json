@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-4t2v",
   "title": "[codereview-pass2] new lichen_coap_respond must be implemented in coap_server.c or coap_oscore.c before use in deaddrop_post to avoid link error",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "parse_position_payload silently ignores invalid varint values",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:624-641\n\nWhen parsing POSITION_SATS_IN_VIEW_FIELD and POSITION_PRECISION_BITS_FIELD:\n  case POSITION_SATS_IN_VIEW_FIELD:\n      if (wt != PB_WT_VARINT || pb_read_varint(\u0026cur, \u0026v) \u003c 0) {\n          return -EINVAL;\n      }\n      if (v \u003c= UINT8_MAX) {\n          position-\u003esatellites = (uint8_t)v;\n          position-\u003esatellites_valid = true;\n      }\n      break;\n\nIf v \u003e UINT8_MAX (255), the field is silently ignored. No error, no warning. The message is still parsed successfully.\n\nThis could mask data corruption or protocol misuse. A satellites count \u003e 255 is physically impossible, but the silent ignore makes debugging harder.\n\nConsider:\n1. Logging a warning (if debug enabled)\n2. Setting an 'out of range' flag for diagnostics\n3. Or documenting this behavior explicitly",
   "notes": "Commit: ab083f341",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

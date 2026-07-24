@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-3wmt.2",
   "title": "Audit all other #pragma GCC diagnostic usages across Zephyr lichen/ and tests/ for consistent __GNUC__/__clang__ guards",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

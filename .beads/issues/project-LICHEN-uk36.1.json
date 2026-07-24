@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.1",
   "title": "Update all edhoc_kdf callsites in EdhocInitiator/Responder and export_context",
   "description": "Fix inconsistent calls at lines ~648,711,741,751,827 etc. Ensure TH, context, label params align with new KDF signature. Remove duplicate/broken code blocks.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

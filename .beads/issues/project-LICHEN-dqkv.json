@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dqkv",
   "title": "codereview pass 3/3: test and doc consistency",
   "description": "Final pass. The test_known_wire_format was broken by previous edit (wrong offsets for Python's post-sig channel placement). Fix test to assert wire[93] == current_channel and len(wire)==94. Docstring in messages.py now good. C comments still say rx_channel - out of scope for this bead as only Python signed_data(). No more findings. Tagged codereview. discovered-from:project-LICHEN-gnxq",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:28:27.792226315Z",

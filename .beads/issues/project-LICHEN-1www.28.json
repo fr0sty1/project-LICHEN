@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.28",
   "title": "Double buffer copy in TX path: lichen_l2_send linearizes, lora_l2_tx copies again",
   "description": "TX path performs two memcpy operations for the same payload:\n\n1. lichen_l2.c:291-298 - net_pkt_read() copies packet into tx_ipv6_buf\n2. lora_l2.c:511 - memcpy(tx_buf, data, len) copies frame into internal buffer\n\nFor a 200-byte payload, this is 400 bytes of copying. At the current ~1 packet/second rate this is negligible, but the pattern scales poorly if TX rate increases.\n\nThe second copy exists because 'Zephyr's lora_send() takes a non-const pointer because some radio drivers may modify the buffer' (lora_l2.c:506-509). This is defensive but may be unnecessary for the specific LoRa driver in use.\n\nWhat goes wrong: 2x memory bandwidth for TX. On MCUs with slow SRAM, this adds latency and wastes energy.\n\nPotential fix: If the specific LoRa driver (SX126x) is known not to modify the buffer, the copy could be eliminated. Alternatively, lichen_lora_l2_tx() could accept a flag indicating whether the caller's buffer is already sacrificable.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

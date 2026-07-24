@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.37",
   "title": "OSCORE compute_nonce silently drops sender_id bytes \u003e7",
   "description": "# Problem\nIn `rust/lichen-oscore/src/lib.rs:576-579`:\n\n```rust\n// Bytes 1-7: left-padded sender ID (max 7 bytes)\nif sender_id.len() \u003c= 7 {\n    let start = 8 - sender_id.len(); // bytes 1-7\n    nonce[start..start + sender_id.len()].copy_from_slice(sender_id);\n}\n```\n\nIf `sender_id.len() \u003e 7`, the ID is silently ignored. RFC 8613 allows IDs up to 8 bytes (`ID_MAX_LEN = 8`), but only 7 bytes fit in the nonce structure.\n\n## What goes wrong\n- A sender_id of 8 bytes (valid per `ID_MAX_LEN`) produces a nonce that ignores the ID entirely\n- Two contexts with different 8-byte IDs would produce identical nonces\n- This leads to nonce reuse and cryptographic failure\n\n## Trigger\n`Context::new(..., sender_id: \u0026[0u8; 8], ...)` - valid input, corrupted output.\n\n## Fix\nOption 1: Validate sender_id.len() \u003c= 7 in `Context::new` and return error\nOption 2: Change ID_MAX_LEN to 7 to match actual nonce capacity\nOption 3: Panic/error in `compute_nonce` if sender_id.len() \u003e 7\n\nNote: The caller `Context::new` does check `sender_id.len() \u003c= ID_MAX_LEN` (8), but 8 \u003e 7.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

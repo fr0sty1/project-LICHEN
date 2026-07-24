@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.15.3",
   "title": "Zephyr: CCP-15 requirements from da2q context",
   "description": "Zephyr implementation for CCP-15 Interference Mitigation requirements from da2q context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-6pbg",
   "title": "[codereview-pass3.3] Gateway still has unused routes: HashMap after rpl integration; is_local_mesh and SRH insertion for downward not implemented in mesh_to_upstream/upstream_to_mesh or lichend forward paths per spec 5 and 17",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dk3c.4",
   "title": "Rust impl: Gateway-centric announce suppression",
   "description": "Implement gateway-centric announce suppression in Rust node.\n\n## Files to modify\n- rust/src/ (locate announce scheduler and RPL modules)\n\n## Changes\nMirror Python implementation:\n1. Track DODAG membership state\n2. Parse gateway-centric flag from DIO\n3. Scale announce interval: 300 sec normal, 1800 sec gateway-centric\n4. Resume normal interval within 60 sec of DODAG loss\n\n## Constants\n- ANNOUNCE_INTERVAL_NORMAL: 300 sec\n- ANNOUNCE_INTERVAL_GATEWAY: 1800 sec  \n- DODAG_LOSS_RESUME_TIMEOUT: 60 sec",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "me@mark.atwood.name",

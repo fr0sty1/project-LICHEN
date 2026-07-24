@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.39",
   "title": "lora_recv buffer bound differs from callback buffer",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:160-161,170\n\nrx_thread declares rx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD] and passes sizeof(rx_buf) to lora_recv(). The callback then passes rx_buf with ret (actual length) to the callback.\n\nBUILD_ASSERT at line 161-162 verifies sizeof(rx_buf) == LICHEN_LORA_MAX_PHY_PAYLOAD.\n\nThe code is correct but the callback signature (line 225) passes ret as size_t. If ret somehow became negative after the \u003e 0 check (race, memory corruption), it would wrap to a huge positive value when cast to size_t in the callback.\n\nExtremely unlikely given the flow, but the callback could do its own bounds check against LICHEN_LORA_MAX_PHY_PAYLOAD.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

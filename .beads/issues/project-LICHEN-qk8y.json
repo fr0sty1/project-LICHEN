@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qk8y",
   "title": "[codereview-pass3] coap_dtn.c: static DTN storage not integrated with lichen_dtn_buffer from routing/dtn.c; no expiry, no S\u0026F retrieval",
   "description": "Lines 18-19: custom s_dtn_storage and s_dtn_count ignore existing lichen_dtn_* API in routing/dtn.c and router.c. No use of lichen_dtn_buffer_message or lichen_dtn_retrieve_for for true S\u0026F per spec 9.8 and 12-apps. Rate limit and OSCORE good start but storage incomplete. P0. discovered-from:project-LICHEN-zt3c.18.1",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

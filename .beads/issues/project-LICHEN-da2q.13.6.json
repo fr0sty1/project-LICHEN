@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.13.6",
   "title": "codereview: adaptive_duty_permille integer division edge case for density=0",
   "description": "P2: density=0 should use default not divide by zero risk (though if guarded). File under CCP-13. Tag with codereview. From /codereview pass 1 on duty calculation chunk.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

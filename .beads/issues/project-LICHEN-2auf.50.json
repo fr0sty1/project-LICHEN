@@ -3,7 +3,7 @@
   "title": "Recover Rust SCHC and SenML validation",
   "description": "Recover IPv6 payload-length checks before SCHC profile slicing and SenML value/length/capacity invariants.",
   "acceptance_criteria": "No profile panics on truncated payloads; multiple/duplicate SenML values reject; overflow/capacity errors are exact; vectors/tests/clippy and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

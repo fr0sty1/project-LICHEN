@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fnj7",
   "title": "[codereview-pass3] coap_dtn.c: rate limit and storage not using Kconfig or DTN API; duplicate code with location.c; no GET handler for deaddrop retrieval",
   "description": "Hardcoded defines, no integration with lichen_dtn_*, no provider s_provider pattern, no GET for reading deaddrop. Confessions calls deaddrop which requires OSCORE but may be intended as anonymous. Incomplete per spec 12-apps and LCI. Only close after 3 full passes with zero P0/P1 findings. discovered-from:project-LICHEN-zt3c.18.1",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

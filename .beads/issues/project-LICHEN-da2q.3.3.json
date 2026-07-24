@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.3.3",
   "title": "Rust impl: operating class parameter definitions and lookup tables",
   "description": "Implement operating class support in Rust as part of CCP-3 from da2q.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:12:25.345394812Z",

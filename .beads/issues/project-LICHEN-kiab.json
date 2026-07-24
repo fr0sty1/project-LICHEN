@@ -3,7 +3,7 @@
   "title": "senml: skip_one_depth doesn't handle indefinite-length CBOR",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 363-377 (skip_one_depth)\n\nThe skip_one_depth function only handles definite-length arrays and maps. CBOR supports indefinite-length encoding (info = 31, 0x1f), which is terminated by a break code (0xff).\n\nCurrent behavior: info \u003e= 26 returns InvalidInput, which includes:\n- info 26 (32-bit length) - valid but unsupported\n- info 27 (64-bit length) - valid but unsupported  \n- info 28-30 - reserved/invalid\n- info 31 (0x1f) - indefinite length - valid but unsupported\n\nFor SenML specifically, indefinite-length encoding is rare but legal CBOR. A conformant encoder could produce indefinite-length arrays or maps.\n\nImpact: Decoder rejects valid CBOR using indefinite-length encoding.\n\nFix: Either:\n1. Explicitly handle info 31 to return NotImplemented (clearer error)\n2. Implement indefinite-length parsing (more complete)\n\nMinimal fix:\n```rust\nmatch info {\n    0..=23 =\u003e (info as u64, 1),\n    24 =\u003e ...\n    25 =\u003e ...\n    26 | 27 =\u003e return Err(CborError::NotImplemented),\n    31 =\u003e return Err(CborError::NotImplemented),  // indefinite\n    _ =\u003e return Err(CborError::InvalidInput),\n}\n```",
   "notes": "Fix already present since commit 0af5c00 (project-LICHEN-gi31). Code updated to return NotImplemented for indefinite-length (info=31) and large lengths in skip_one_depth.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

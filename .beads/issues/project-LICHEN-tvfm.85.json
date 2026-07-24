@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.85",
   "title": "[lichen_l2.c:1134-1139] rx_link_key copied but has_link_key not checked for copy",
   "description": "Gap found: Link key copy logic not fully traced.\n\nWhy this was missed: Key handling logic reviewed partially, not complete path.\n\nThe actual bug: Lines 1134-1139 copy link_key only if has_link_key is true:\n  if (link_ctx.has_link_key) {\n      memcpy(rx_link_key, link_ctx.link_key, LICHEN_LINK_KEY_LEN);\n      rx_link_key_ptr = rx_link_key;\n  }\n\nIf has_link_key is false, rx_link_key_ptr remains NULL (initialized on line 1135). This is passed to rx_ctx.link_key (line 1158).\n\nThe question: what does lichen_link_rx() do when link_key is NULL?\n- If it requires link_key for MIC validation, the frame will fail\n- If it falls back to CRC32 validation, the frame may be accepted without crypto\n\nThis is by design - link_key is optional during initial handshake. The code correctly propagates the key state.\n\nHowever: if has_link_key is false but an attacker sends a frame with MIC that happens to pass CRC32, it would be accepted. This is documented behavior for unauthenticated bootstrap.\n\nPriority 3 - security design note for unauthenticated mode.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

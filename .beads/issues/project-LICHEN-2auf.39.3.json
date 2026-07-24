@@ -3,7 +3,7 @@
   "title": "Validate Python EDHOC method",
   "description": "Reject unsupported or malformed METHOD_CORR before mutating responder session state; current implementation supports SIGN_SIGN only.",
   "acceptance_criteria": "Initiator creation rejects unsupported methods; responder rejects malformed or unsupported METHOD_CORR before state mutation; focused EDHOC tests, Ruff, mypy, and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

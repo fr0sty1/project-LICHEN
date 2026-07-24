@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wu53.2",
   "title": "Remove or implement all #[allow(dead_code)] in Rust crates",
   "description": "Multiple instances of #[allow(dead_code)] violate 'no dead code' rule: lichen-node/src/routing.rs:187 (node_addr), lichen-node/src/secure.rs:101 (get_context), lichen-tui/src/rf_health.rs:51+65 (fields), lichen-tui/src/radio.rs:100, lichen-oscore/tests/vectors.rs. For codereview pass 2. Either remove unused code/fields, implement usage, or redesign. P2 style/consistency. Parent: project-LICHEN-wu53",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

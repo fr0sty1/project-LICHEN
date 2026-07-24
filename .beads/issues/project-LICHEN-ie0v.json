@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ie0v",
   "title": "codereview pass 1: coap_dtn.c handlers now use coap_respond with logging but SenML provider callback integration incomplete (TODOs remain); duplicated coap_respond still present; add include \u003cerrno.h\u003e for robustness",
   "description": "Finding from codereview pass 1 on post-edit state. Tagged codereview. Must fix all before clean pass. Do not close main bead.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:27:01.149339197Z",

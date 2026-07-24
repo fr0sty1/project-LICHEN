@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lx0j.1",
   "title": "Update lichen-oscore deps for zeroize on hmac/hkdf/sha2/aes",
   "description": "Add zeroize features to Cargo.toml to enable ZeroizeOnDrop on owned state in SHA, HMAC, HKDF, AES. Update any wrappers in lichen-crypto (or create if missing) or in oscore/edhoc. Add compile-time assertions for types implementing ZeroizeOnDrop where used. Extend tests for zeroization. After changes run 3 independent codereview passes using review commands. Fix ALL findings. Close only after all done and 3 clean passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

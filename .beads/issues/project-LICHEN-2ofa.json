@@ -3,7 +3,7 @@
   "title": "[merge-conflict] worker8: draft-lichen-schc-lora-00.md",
   "description": "Resolve merge conflict in spec/drafts/draft-lichen-schc-lora-00.md between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Commit: b63519472 - Merged rule tables, PIO details, test vector refs, CoAP compression table, and appendix updates from both branches into spec/drafts/draft-lichen-schc-lora-00.md",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

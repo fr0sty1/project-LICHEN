@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.7",
   "title": "Address simplification: Yggdrasil 02xx:: primary unicast, drop ULA support",
   "description": "Implement the addressing notes from parent epic. Update all address assignment, prefix config, routing decisions in Zephyr lichen subsys, Rust crates, and specs. Nodes get fe80:: + 02xx:: only. Update lichen_rpl_dodag, IPv6 init, Kconfig options. Must maintain compatibility with existing test vectors where possible. Add new test vectors for global routing. After changes run /codereview 3 times, file findings, fix all.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

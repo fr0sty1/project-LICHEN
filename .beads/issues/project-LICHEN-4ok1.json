@@ -3,7 +3,7 @@
   "title": "[codereview-pass1] lichen-rpl doc update for CCP-16",
   "description": "Review of first chunk (doc in lib.rs:6-9): Addition accurately describes TDMA/adaptive-SF/multi-channel/density features and ties to DIO metrics. No correctness issues. Links to test/vectors/ccp_load_balancing.json would strengthen it. Filed under da2q.16.7. P3 opinion.",
   "notes": "Doc link to ccp_load_balancing.json test vectors added in prior pass (lib.rs crate docs now reference it per review). No additional changes needed. Using commit ad62235b6",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

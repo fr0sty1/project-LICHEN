@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ozy0",
   "title": "medium.py: add full CCP rendezvous, load balancing, TDMA vector support",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

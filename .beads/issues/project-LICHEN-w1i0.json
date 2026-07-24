@@ -3,7 +3,7 @@
   "title": "GLOBAL_COAP_RULE and GLOBAL_OSCORE_RULE allow any global address but spec may require specific prefixes",
   "description": "File: python/src/lichen/schc/headers.py:62 and rules.py:246-248\n\n_is_global() checks:\n  return addr \u003e\u003e 125 == 0b001  # 2000::/3\n\nThis matches any address in the 2000::/3 range, which includes:\n- 2001::/32 (Teredo, deprecated)\n- 2001:db8::/32 (documentation)\n- 2002::/16 (6to4, deprecated)\n- 2001:10::/28 (ORCHID)\n- Plus legitimate global unicast\n\nRFC 8724 SCHC typically operates in specific deployment contexts where the address prefixes are known. Using the broad 2000::/3 match may allow packets with deprecated or reserved prefixes to use the global rules when they should not.\n\nAdditionally, GLOBAL_COAP_RULE uses CDA.VALUE_SENT for the full 128-bit address (no compression), while LINK_LOCAL_COAP_RULE uses MSB(64)/LSB to compress the IID. This asymmetry means global addresses get no compression benefit.\n\nFix: Consider documenting the address scope assumptions, or adding rule variants for specific deployment prefixes.\n\nCategory: PROTOCOL",
   "notes": "Commit: df7a7b80e",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

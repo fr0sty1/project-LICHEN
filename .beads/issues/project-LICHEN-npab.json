@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-npab",
   "title": "codereview: no CAD implementation in lichen/drivers/lora/lr1110/lr1110.c or SX126x; api initializers broken",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.43",
   "title": "coap/block: size_to_szx() can use ilog2 instead of manual ranges",
   "description": "In block.rs:114-125, size_to_szx() manually matches size ranges. Current code has redundant '0..=15 =\u003e 0' then '16..=31 =\u003e 0'. Rewrite to: if size \u003c 16 { return 0; } ((size.ilog2() as u8).saturating_sub(4)).min(6)",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

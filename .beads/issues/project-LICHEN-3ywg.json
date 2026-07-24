@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3ywg",
   "title": "[codereview-P3] 04-network.md:236 hash_32(EUI-64,0) reference should cross-link to full note at 02-physical-link.md:215 more precisely and prefer consistent formatting like other specs (backticks on code, exact line refs)",
   "description": "The edit made the reference but list item 1 still has minor vagueness in 'As above' in item 2. Also verify consistency with 06-security.md:445 and 02a-coordinated-capacity.md which detail the hash impl. Use tag codereview. discovered-from:project-LICHEN-vfl0",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:51:26.015794326Z",

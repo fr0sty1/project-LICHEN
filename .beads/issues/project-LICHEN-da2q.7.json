@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.7",
   "title": "CCP-7: Synchronization Requirements",
   "description": "Coordinated Capacity Profile section detailing time sync and hopping synchronization for capacity coordination.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

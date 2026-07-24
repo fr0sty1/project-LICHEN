@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nkxi",
   "title": "[codereview-pass1] add_route delegation uses 1-element path from nexthop only; full DAO path from rebuild_routes not used for multi-hop",
   "description": "In gateway.rs:95 the \u0026[nexthop] does not capture full assembled path from assemble_path. For 2+ hop routes the RoutingTable will have incomplete path. P1 correctness. discovered-from:project-LICHEN-fy9q",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

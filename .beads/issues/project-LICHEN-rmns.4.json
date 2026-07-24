@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rmns.4",
   "title": "Fix reply_buf drop when event set in forward_mesh_to_upstream",
   "description": "Restructure to always queue reply if reply_len \u003e 0 independently of RplEvent. Prevent early return or scope drop of buffer in event branches. Integrate handle_frame_rpl in lichend.rs forward. No comments in code. Discovered-from fhed. Run 3 codereview passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

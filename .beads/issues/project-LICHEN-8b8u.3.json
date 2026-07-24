@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8b8u.3",
   "title": "Audit and update all C/Zephyr uses of IID and human address for consistency with SHA-256 derivation",
   "description": "Search lichen/ for IID derivation, human address, address construction. Ensure lichen_pubkey_to_iid, eui64 handling, and any display functions use the canonical SHA-256 method per spec/03-addressing.md. Fix any remaining keyed-hash or old derivations. Update comments referencing old project-LICHEN-swvz.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

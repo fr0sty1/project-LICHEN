@@ -2,7 +2,7 @@
   "id": "project-LICHEN-50ck",
   "title": "[codereview-pass1] coap_dtn.c: missing static lichen_dtn_buffer integration and expiry handling in init",
   "description": "coap_dtn.c:1-20 - static s_dtn_storage should use lichen_dtn_buffer from dtn.h for shared S\u0026amp;F per spec 9.8; init must call lichen_dtn_init and lichen_dtn_expire_old periodically. P0 codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

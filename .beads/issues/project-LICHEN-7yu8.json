@@ -3,7 +3,7 @@
   "title": "hkdf_expand uses truncating cast for counter byte",
   "description": "File: lichen/subsys/lichen/oscore/hkdf.c\nLines: 101, 134\n\nThe HKDF expand function uses uint16_t for counter but casts to uint8_t when encoding:\n\n```c\nuint16_t counter = 1;\n// ...\nbuf[buf_len++] = counter++;  // Implicit truncation to uint8_t\n```\n\nPer RFC 5869, the counter is a single-byte value (1-255). The okm_len check at line 107 ensures we never exceed 255*32 bytes output, so counter never exceeds 255 iterations. The code is correct, but the implicit truncation could be clearer:\n\n```c\nbuf[buf_len++] = (uint8_t)counter++;\n```\n\nThis is a style/clarity issue, not a bug. The comment says 'uint16_t to avoid overflow if bounds check is ever weakened' which is good defensive coding.\n\nSeverity: Low - code is correct but implicit truncation should be explicit for readability and to avoid compiler warnings with -Wconversion.",
   "notes": "Commit: 9179f69e4 (hkdf cast fix applied)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

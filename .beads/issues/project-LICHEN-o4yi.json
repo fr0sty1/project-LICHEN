@@ -3,7 +3,7 @@
   "title": "Provision verified x86 Zephyr builder",
   "description": "Provision a replacement LICHEN x86_64 builder for terminated audit instance i-0b9423e5181dd9066 so unqualified 32-bit native_sim production firmware can be built and runtime-proved. Tag it Project=LICHEN, use strict ED25519 host-key-verified SSH without weakening StrictHostKeyChecking, collect the native32 evidence, then clean up the temporary instance.",
   "acceptance_criteria": "1. A replacement x86_64 builder is launched with Project=LICHEN and a session-specific LaunchedBy tag. 2. Identity and ED25519 host key are independently verified and strict non-interactive SSH succeeds. 3. Gateway and puck unqualified native_sim 32-bit builds reach their required runtime oracles with commands, hashes, and logs retained. 4. The temporary replacement instance is terminated after evidence collection.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

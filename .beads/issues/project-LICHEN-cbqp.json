@@ -3,7 +3,7 @@
   "title": "app_identity: copy_peers returns 0 for NULL violating _Nonnull contract",
   "description": "file: lichen/subsys/lichen/app_identity/app_identity.c:277\n\nlichen_app_identity_copy_peers() declares its 'out' parameter as _Nonnull (header line 88-89) but returns 0U when passed NULL instead of indicating error. All other _Nonnull functions in this module return -EINVAL for NULL input.\n\nProblem: The return type is size_t (unsigned), making it impossible to return negative error codes. Returning 0 for NULL is indistinguishable from 'no peers found', masking caller bugs.\n\nOptions:\n1. Add assert(out != NULL) to crash on contract violation\n2. Change signature to return int and output count via pointer\n3. Accept current defensive behavior but document it clearly\n\nRecommended: Option 1 (assert) since _Nonnull is a contract and other code in codebase uses asserts for contract violations.",
   "notes": "Commit: f4a7d9d6b",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

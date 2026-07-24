@@ -3,7 +3,7 @@
   "title": "wrap_coap does not validate payload length vs IPv6 limits",
   "description": "File: python/src/lichen/coap/schc_channel.py:35-51\n\nwrap_coap creates an IPv6 packet without checking payload size:\n```python\ndef wrap_coap(src, dst, coap, *, src_port=DEFAULT_COAP_PORT, dst_port=DEFAULT_COAP_PORT):\n    udp = UdpDatagram(src_port, dst_port, coap).to_bytes(src, dst)\n    header = IPv6Header(\n        src_addr=src,\n        dst_addr=dst,\n        next_header=UDP_NEXT_HEADER,\n        payload_length=len(udp),\n    )\n    return header.to_bytes() + udp\n```\n\nIPv6 payload_length is a 16-bit field (max 65535). If coap payload exceeds this (e.g., due to SCHC reassembly error or malicious input), the header will have an incorrect truncated length.\n\nFor LoRa/LICHEN, practical limits are much lower, but the function doesn't enforce them.\n\nFix: Validate len(udp) \u003c= 65535 and raise ValueError if exceeded.",
   "notes": "Commit: 4fb5432f8",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

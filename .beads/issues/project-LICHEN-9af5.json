@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9af5",
   "title": "codereview pass 2 chunk1: vectors not yet updated for now() timing tests in ccp_load_balancing.json",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Persist explicit DAO admissions separately",
   "description": "Persist bounded key-based explicit root DAO admissions atomically in separate redundant scope-bound storage before first accepted DAO; provision initializes and open reconciles with high-water.",
   "acceptance_criteria": "Admission survives restart before first DAO; write failure leaves RAM/storage unchanged; high-water keys are admitted and consistency fails closed; no retirement API.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-inym.3",
   "title": "Python impl: Density-aware startup delay",
   "description": "Implement density-aware startup delay in Python node.\n\n## Files to modify\n- python/src/lichen/announce/scheduler.py - density-aware initial_delay\n- python/src/lichen/node.py - add listen-first coordinator if needed\n- Possibly add python/src/lichen/startup.py for shared startup logic\n\n## Changes\n1. Add DensityDetector or similar to track unique nodes heard\n2. Modify SchedulerConfig to accept density-based delay calculation\n3. Add listen-first period before starting announce scheduler\n4. Apply same delay scaling to DIO/DIS timing (if RPL is in Python)\n\n## Implementation\n```python\nclass StartupCoordinator:\n    async def listen_phase(self, duration_sec: float) -\u003e int:\n        \"\"\"Listen and return count of unique nodes heard.\"\"\"\n        ...\n    \n    def calculate_delay(self, nodes_heard: int) -\u003e float:\n        \"\"\"Return delay in seconds based on density.\"\"\"\n        return min(300, nodes_heard * 5)\n```\n\n## Testing\n- Unit test for delay calculation\n- Integration test showing staggered startup",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "ec2-user",

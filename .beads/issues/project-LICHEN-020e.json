@@ -2,7 +2,7 @@
   "id": "project-LICHEN-020e",
   "title": "[codereview-pass1.3 robustness] rf_health.rs: test should be parametrized for different alpha values to prevent future breakage on tuning",
   "description": "Instead of hard-coded expectation, parametrize rssi_avg_multiple_samples and ema_convergence tests with different shift values. This follows the 'parametrize or update test' instruction. file: rust/lichen-core/src/rf_health.rs:404",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bhdp",
   "title": "[codereview-pass1] coap: deaddrop register stub does not register CoAP resource",
   "description": "coap_deaddrop.c:20 only registers provider but no COAP_RESOURCE_DEFINE(lichen_deaddrop...) or handler that uses the callbacks for /deaddrop and /confessions. The coap_dtn.c has partial impl. P1 correctness. discovered-from:project-LICHEN-r044",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -4,7 +4,7 @@
   "description": "Discovered while reviewing project-LICHEN-7i0p. In lichen_l2_enable(false), lichen_lora_l2_stop() may return -ECANCELED and deinit LoRa to UNINIT, after which link keys are wiped. Returning the error makes Zephyr retain NET_IF_UP even though the interface is unusable; returning success permits down state but recovery still requires explicit lichen_lora_l2_init(). The mirrored firmware/bridge-zephyr implementation has the same recovery contract. Define and implement a coherent abort outcome across both copies without reinitializing potentially held mutexes unsafely.",
   "acceptance_criteria": "1. Forced RX-thread abort leaves Zephyr interface flags and LoRa/L2 runtime state consistent. 2. Deinit failure is preserved and does not permit unsafe reuse. 3. Active and mirrored Zephyr implementations remain synchronized. 4. Normal down/up and forced-abort paths have independent regression checks. 5. Three independent code-review passes complete with findings resolved or explicitly tracked.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

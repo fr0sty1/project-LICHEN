@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.17.1",
   "title": "Python: CCP-17 requirements from da2q context",
   "description": "Python implementation for CCP-17 Capacity Validation requirements from da2q context.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

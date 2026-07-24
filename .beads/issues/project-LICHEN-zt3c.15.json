@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.15",
   "title": "codereview-pass3: gateway impl notes and Rust/C alignment",
   "description": "Pass 3 (completeness): Add gateway impl notes for Yggdrasil integration in rust/mesh-gateway. Update Rust address derivation and C lichen link/identity for unified Ed25519. Tests for derivation must match test/vectors. Do not close any until all 3 passes clean after fixes. Parallel subagents.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

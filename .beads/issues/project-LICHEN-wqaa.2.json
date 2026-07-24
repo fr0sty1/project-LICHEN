@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wqaa.2",
   "title": "Draft Shuttleworth Fellowship proposal for LICHEN 500-node deployment",
   "description": "Prepare a compelling fellowship application for Shuttleworth Foundation. Align the 500-node LICHEN deployment with their focus on open knowledge, freedom, innovation in public interest. Highlight the fellowship aspect: dedicated time for advancing decentralized mesh networking standards, open hardware, privacy-preserving comms. Include the core pitch, budget needs ($ for hardware, travel to conferences like DEFCON), expected impact (real-world validation of IETF-aligned protocols, community adoption). Reference current prototypes in rust/ and zephyr/. Follow their application process exactly. Prepare supporting docs.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T14:42:53.522364231Z",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tstl",
   "title": "[merge-conflict] worktree-worker19: 03-addressing.md",
   "notes": "Resolved merge conflict in spec/03-addressing.md by synthesizing coherent content from both HEAD and worker19 branches. Removed all conflict markers. File edited and staged. Full merge requires resolving other UU files.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

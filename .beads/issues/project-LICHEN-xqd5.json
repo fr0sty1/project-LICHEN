@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xqd5",
   "title": "codereview-pass-3: security/idiomatic review of RPL_DAO sync changes",
   "description": "No security issues (no new crypto, no secret exposure, input validation in matches() preserved). Style now consistent with Rust FieldDescriptor explicit targets. No dead code. Tests pass including cross-impl vector check. Ready to close uwuz and child review beads.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T15:01:37.016004067Z",

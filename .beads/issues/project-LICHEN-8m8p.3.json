@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8m8p.3",
   "title": "Update Python SCHC fragmentation to bound by full SCHC packet. Tests vs vectors",
   "description": "Add MAX_SCHC_PACKET = 1281 in fragment.py, enforce in FragmentSender. Update test_fragment.py to test against vectors. Refs project-LICHEN-8m8p",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T14:33:02.766436316Z",

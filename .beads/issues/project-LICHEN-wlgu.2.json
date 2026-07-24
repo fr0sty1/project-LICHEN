@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wlgu.2",
   "title": "Port CCP-12 synchronized hopping test vectors from worker23 into main generate.py",
   "description": "Worker23 added CCP synchronized hopping vectors using hash_32 for channel selection (spec section on TDMA/CCP?). Integrate cleanly, update JSON vectors if regenerated, ensure python/tests/test_vectors.py passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

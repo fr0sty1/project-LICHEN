@@ -3,7 +3,7 @@
   "title": "Resolve duplicate gateway CoAP ownership",
   "description": "Final production builds for nucleo_wl55jc and r1_neo/nrf52840 fail because legacy coap_server.c and modular coap_config.c both define lichen_config, while only the modular lichen_coap iterable section has linker bounds. Inputs are inherited from origin/main and selected commits 1dbe31a7, 8b82d8ee, and a12bbcde. Resolve by ensuring gateway configurations use one CoAP resource/service owner; do not merely rename duplicate /config resources or add a second conflicting service.",
   "acceptance_criteria": "Native gateway, nucleo_wl55jc gateway, and r1_neo/nrf52840 meshtastic gateway link successfully with exactly one /config owner and no undefined CoAP iterable-section bounds; focused CoAP/Twister tests pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

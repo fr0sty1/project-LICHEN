@@ -2,7 +2,7 @@
   "id": "project-LICHEN-igo0",
   "title": "Audit trickle.rs implementation against spec pseudocode",
   "description": "Review rust/lichen-rpl/src/trickle.rs for exact match to RPL Trickle algorithm in spec (likely spec/04-rpl.md or similar). Update to match pseudocode precisely. Remove all TODOs and worker comments.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

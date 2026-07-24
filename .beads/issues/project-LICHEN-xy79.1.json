@@ -3,7 +3,7 @@
   "title": "Replace stale Zephyr selectors",
   "description": "Update active workflows, scripts, README, CONTRIBUTING, and Renode documentation that invoke nrf52840_lichen, t_echo_nrf52840, rak4631_nrf52840, heltec_lora32_v3, or unsupported tbeam_supreme as west board selectors. Preserve internal model directory names where they are not commands.",
   "acceptance_criteria": "Repository search finds no active invalid west selector; commands use canonical HWMv2 selectors; shell, Python, workflow, and documentation examples validate.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

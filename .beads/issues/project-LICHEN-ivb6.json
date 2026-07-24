@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ivb6",
   "title": "codereview pass 3: test vector sync and impls missing for new primitives",
   "description": "New hash_32 and N_CHANNELS not yet implemented/verified in Python sim (reference), Rust rpl, Zephyr TDMA. generate.py ccp16_vectors must assert exact hash output for given inputs. No update to lichen/subsys/lichen/link/Kconfig or rust code. Vectors must be regenerated after. P1 for interop. 3rd pass still finds issues; do not close main task yet.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

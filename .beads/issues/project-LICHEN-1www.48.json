@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.48",
   "title": "secure_zero word-aligned optimization may overflow on unaligned pointers",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_util.h:35-59 (secure_zero inline function)\n\nRisk: The word-aligned optimization at lines 40-51 is safe, but:\n\n1. Line 47: *(volatile unsigned long *)p = 0 - on architectures where unaligned word access traps (some ARM Cortex-M), if the alignment loop at lines 42-45 fails to fully align (e.g., len becomes 0 before alignment), subsequent iterations might cause alignment faults.\n\nWait - re-reading: the alignment loop decrements len each iteration, and the word loop only runs while len \u003e= sizeof(unsigned long). So if we start with len=3 and need 4 bytes to align, the alignment loop consumes all of len before reaching the word loop.\n\nActually this is safe. The alignment loop will either:\na) Fully align the pointer before len becomes \u003c sizeof(unsigned long)\nb) Exhaust len during alignment, causing the word loop to be skipped\n\nLet me re-examine for actual issues...",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

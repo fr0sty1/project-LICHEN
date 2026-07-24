@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.66",
   "title": "generate_eui64 sets both U/L and clears multicast but comment only mentions multicast check",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

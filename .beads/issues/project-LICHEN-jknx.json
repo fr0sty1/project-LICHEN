@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-jknx",
   "title": "codereview: now() ctx param missing in fn sig and tdma_current_sfn_or_time undefined",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:41:19.996391449Z",

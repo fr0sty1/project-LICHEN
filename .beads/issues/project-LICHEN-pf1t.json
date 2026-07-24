@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pf1t",
   "title": "[codereview-pass3-edgecases] coap_dtn.c: no confessions_post, no rate limit enforcement using s_last_confession, no integration with global DTN buffer or provider, missing Zephyr test coverage for races, incomplete OSCORE handling per LCI spec, build errors on coap_respond and lichen_coap vs lichen_coap_server",
   "description": "All races not fixed; semantic mismatch in IID still present in placeholder; no test vectors validation in Zephyr. Must run Zephyr native_sim tests after fixes. Do not close original beads until 3 clean passes with no open codereview findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

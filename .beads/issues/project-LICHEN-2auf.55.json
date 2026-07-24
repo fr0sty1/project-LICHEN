@@ -3,7 +3,7 @@
   "title": "Integrate Zephyr transport lifecycle fixes",
   "description": "Recover BLE MTU/worst-case encoding, SLIP invalid-escape recovery, and KISS shutdown/stats fixes on top of the newer link migration.",
   "acceptance_criteria": "BLE cannot overflow; invalid SLIP discards full frame then recovers; KISS deinit stops RX without UAF; both native platforms and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

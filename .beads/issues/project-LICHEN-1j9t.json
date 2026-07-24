@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1j9t",
   "title": "OSCORE compute_nonce: silent truncation of oversized sender_id",
   "description": "In rust/lichen-oscore/src/lib.rs compute_nonce(), the code checks 'if sender_id.len() \u003c= NONCE_ID_LEN' before copying sender_id into the nonce. If sender_id is longer than 7 bytes, it silently does nothing (no copy, no error). This could lead to nonce reuse if a caller passes an invalid sender_id. Should either assert/error on invalid input, or truncate explicitly with a comment explaining the behavior. Same issue exists for PIV with 'if !piv.is_empty() \u0026\u0026 piv.len() \u003c= PIV_MAX_LEN'.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

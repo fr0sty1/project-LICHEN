@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.122",
   "title": "board_intake.py: String constants should use enum for type safety",
   "description": "The board_intake.py module uses string literals for question/checklist state values that could be typo-prone:\n\n**Locations:**\n- Line 83: `\"confidence\": \"observed\"`\n- Lines 460, 551: `\"kind\": \"conflict\"`\n- Lines 560, 614: `\"kind\": \"missing_fact\"`\n- Lines 630, 636, 642, 699: `\"status\": \"needs_validation\"`\n\n**Recommended fix:** Define StrEnums:\n```python\nclass QuestionKind(StrEnum):\n    CONFLICT = \"conflict\"\n    MISSING_FACT = \"missing_fact\"\n\nclass ChecklistStatus(StrEnum):\n    NEEDS_VALIDATION = \"needs_validation\"\n    VALIDATED = \"validated\"\n    FAILED = \"failed\"\n\nclass Confidence(StrEnum):\n    OBSERVED = \"observed\"\n    INFERRED = \"inferred\"\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

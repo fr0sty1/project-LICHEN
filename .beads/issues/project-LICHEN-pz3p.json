@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pz3p",
   "title": "Compliance: C l2_payload.h dispatch byte",
   "description": "Policy: 02-physical-link.md §4.1. File: lichen/subsys/lichen/link/include/lichen/l2_payload.h. Status: COMPLIANT. Lines 35-41 explicitly check payload[0] == LICHEN_L2_DISPATCH_SCHC (0x14U) and payload[0] == LICHEN_L2_DISPATCH_ROUTING (0x15U) before classification.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

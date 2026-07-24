@@ -3,7 +3,7 @@
   "title": "[CODEREVIEW-P1] Placeholder expected values in ccp16_vectors not independently computed",
   "description": "test/vectors/generate.py:1770 - expected_channel and hash must be derived from actual hash_32 impl or external oracle (e.g. run crc32 on mixed seed). Violates test integrity (no code-under-test oracle). tagged codereview",
   "notes": "3 independent codereview passes filed (61a7/jvs9/ddtb); hash_32 external oracle added to generate.py, expected values now computed inline, test_vectors.py updated with match test; pytest and generate clean; test integrity satisfied via Python pseudocode oracle independent of Rust/C impls. bd ready --limit 5 completed post-work.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

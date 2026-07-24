@@ -2,7 +2,7 @@
   "id": "project-LICHEN-n6mx",
   "title": "codereview pass 1: coap_status.c map_count update for capacity fields",
   "description": "Reviewed encode_status_cbor change. map_count now correctly 9 base + batteries to match  uptime/mem/time/dodag/radio + 4 capacity keys. No P0/P1 found. Zephyr style followed with no added comments. Needs 2 more independent passes before closing p0cd.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "chore",
   "assignee": "ec2-user",

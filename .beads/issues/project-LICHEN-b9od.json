@@ -4,7 +4,7 @@
   "description": "Runtime blocker discovered by project-LICHEN-m5m1.5. The app_identity LRU test expectations were corrected, but firmware still trips Zephyr compiler_stack_protect.c:39 in the idle thread with CONFIG_IDLE_STACK_SIZE=2048 on both ARM64 and x86_64 Native64 hosts. Increasing the test idle stack did not fix it, so instrument the canary/write path rather than guessing another size. TOFU pin eviction semantics are separately tracked by project-LICHEN-kppd.",
   "acceptance_criteria": "1. Identify and fix the write/corruption that trips the idle-thread canary. 2. app_identity boots and all ztests pass on Native64 with stack protection enabled. 3. No arbitrary stack-size masking or weakened test oracle. 4. Preserve independent LRU behavior tests; security pin semantics remain tracked by project-LICHEN-kppd. 5. Three independent review passes complete.",
   "notes": "ARM64 and x86_64 Native64 both fail at WEST_TOPDIR/zephyr/kernel/compiler_stack_protect.c:39 with Zephyr FATAL ERROR 2 after CONFIG_IDLE_STACK_SIZE=2048. Three sizing/reproduction attempts exhausted; next step is watchpoint/canary instrumentation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

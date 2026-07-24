@@ -2,7 +2,7 @@
   "id": "project-LICHEN-agcg",
   "title": "codereview-pass-1: outdated Rule 0-6 tables and CDA columns in draft-lichen-schc-lora-00.md:4.2-4.9 do not match appendix-schc.md or 03-adaptation.md:5.5",
   "notes": "codereview pass 3 clean: all rule tables fixed and consistent; 3 clean passes completed per instructions",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-wz2c",
   "title": "codereview-pass-2: draft-lichen-schc-lora-00.md rule descriptions in §4 still reference old rule 0/1/2/3 definitions that were replaced; need full current field tables or note that full descriptors are in rules.rs",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

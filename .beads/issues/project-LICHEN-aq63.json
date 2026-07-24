@@ -2,7 +2,7 @@
   "id": "project-LICHEN-aq63",
   "title": "Add enable_debug() function to simulation module",
   "description": "Add global debug flag and enable_debug()/disable_debug()/is_debug_enabled() functions to python/src/lichen/sim/simulation.py to control enhanced debugging output. This should be the first change to enable the debugging infrastructure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

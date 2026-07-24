@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.200",
   "title": "Codereview pass 1: WINDOW_SIZE constant shadowing in replay window",
   "description": "In rust/lichen-oscore/src/lib.rs, the is_replay_candidate() function defines a local WINDOW_SIZE const at line 343 that shadows the module-level const at line 61. Additionally, update_replay_window() uses a hardcoded literal 32 at line 377 instead of either constant.\n\nFix: Remove the local constant in is_replay_candidate() and use the module-level WINDOW_SIZE in both functions. This ensures a single source of truth for the window size.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.46",
   "title": "[lora_l2.c:356-358] consecutive_errors capped at INT_MAX but threshold is 5",
   "description": "Round 2 gap analysis: Missed because the overflow check seems reasonable at first glance.\n\nAt lines 356-358:\n```c\nif (consecutive_errors \u003c INT_MAX) {\n    consecutive_errors++;\n}\n```\n\nAnd at lines 361-364:\n```c\nif (consecutive_errors \u003e 0 \u0026\u0026 consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0) {\n    LOG_WRN(\"LoRa RX: %d consecutive errors - check hardware\",\n            consecutive_errors);\n}\n```\n\nThe INT_MAX cap is overkill - RX_ERROR_WARN_THRESHOLD is 5, and warnings occur every 5 errors. Even at 1 error per second, reaching INT_MAX would take ~68 years. The cap adds complexity for no practical benefit.\n\nMore importantly, once consecutive_errors hits INT_MAX and stays there, the modulo check (consecutive_errors % 5 == 0) will always be false (INT_MAX % 5 = 2), so warnings stop permanently. This is arguably a bug if the intent was to keep warning.\n\nSuggestion: either remove the cap (let it overflow - who cares at that point) or reset to a base value when hitting MAX.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

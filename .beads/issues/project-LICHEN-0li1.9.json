@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.9",
   "title": "[lora_l2.c:1010] lichen_lora_l2_set_rx_callback returns void, cannot report errors",
   "description": "Contract: lichen_lora_l2_set_rx_callback should set callback atomically.\nViolation: The function returns void, so it cannot report the early-return case where state == LORA_UNINIT (line 1012). Caller has no way to know the callback was not set.\nImpact: If called before init(), the callback registration silently fails. Caller may believe RX is enabled when it is not. The LOG_WRN provides some visibility but is not programmatic.\nMitigation: Change return type to int and return -ENODEV when not initialized. Audit callers to check return value.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

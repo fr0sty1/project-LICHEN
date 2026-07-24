@@ -3,7 +3,7 @@
   "title": "Gateway: Inter-mesh routing via Yggdrasil",
   "description": "## Overview\n\nRoute packets between local mesh and remote meshes via Yggdrasil backbone.\n\n## Packet flow\n\n### Local mesh → Remote mesh\n1. Node A sends packet to Node B (different mesh)\n2. Gateway A receives via LoRa\n3. Lookup destination:\n   - Not in local mesh\n   - Destination is Yggdrasil address (02xx::/7)\n4. Forward to Yggdrasil interface\n5. Yggdrasil routes to Gateway B\n6. Gateway B delivers via LoRa\n\n### Remote mesh → Local mesh\n1. Packet arrives on Yggdrasil interface\n2. Destination is local mesh node\n3. Lookup in RPL routing table\n4. Forward via LoRa\n\n## Routing table integration\n\n### Local routes (from RPL)\n- Populated by DAO messages\n- Direct delivery via LoRa\n\n### Remote routes (from Yggdrasil)\n- All 02xx::/7 → Yggdrasil interface\n- Yggdrasil handles next-hop selection\n\n### Decision logic\n```\nif dst in local_rpl_table:\n    forward_via_lora(dst)\nelif dst.is_yggdrasil_address():\n    forward_via_yggdrasil(dst)\nelif dst.is_internet():\n    forward_via_backhaul(dst)  # Tailscale/WireGuard\nelse:\n    icmpv6_unreachable()\n```\n\n## Address recognition\n\nHow to know if address is Yggdrasil vs internet:\n- 02xx::/7 → Yggdrasil\n- fd00:lichen::/32 → Local ULA (shouldn't route globally)\n- Everything else → Internet (via backhaul)\n\n## MTU considerations\n\n- Yggdrasil has its own encapsulation\n- Effective MTU may be reduced\n- SCHC compression helps\n- May need path MTU discovery",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "ec2-user",

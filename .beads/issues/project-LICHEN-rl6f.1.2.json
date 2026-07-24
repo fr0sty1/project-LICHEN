@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rl6f.1.2",
   "title": "codereview-pass3: spec/02a-coordinated-capacity.md final clean pass",
   "description": "Pass 3: All prior findings addressed (updated tables, added MUSTs, cross-refs to vectors and 09-packets-timing). Clean pass - only P4 opinion on expanding examples. Ready for closure after 3 passes.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "created_at": "2026-07-22T16:15:00.548243834Z",

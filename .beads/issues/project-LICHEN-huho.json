@@ -2,7 +2,7 @@
   "id": "project-LICHEN-huho",
   "title": "[codereview] coap/Kconfig: LICHEN_COAP_DEADDROP should select COAP_URI_WILDCARD for query param support (?node=...)",
   "description": "lichen/subsys/lichen/coap/Kconfig:257 - Dead drop GET uses query param per epic example. KEYS and MSG configs select COAP_URI_WILDCARD. Without it, URI parsing for query will fail. Also discovered-from:project-LICHEN-p3dm",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

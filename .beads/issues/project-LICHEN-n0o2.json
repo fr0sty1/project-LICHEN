@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-n0o2",
   "title": "codereview: draft-lichen-schc-lora-00.md missing update to Appendix A or References for new match-mapping PIO rule; add to normative refs if not present. P2 correctness",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:09:17.239277937Z",

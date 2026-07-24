@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nsjn",
   "title": "[codereview] dummy now_ms=0 breaks RPL timers",
   "description": "forward_mesh_to_upstream calls process_rpl(..., 0). RPL DODAG, trickle timer, DAO lifetime calculations require accurate monotonic time. Fix to pass real time from Instant or SystemTime. P1 correctness. discovered-from:project-LICHEN-r83o",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www",
   "title": "Review: project-LICHEN Zephyr C 2026-06-27",
   "notes": "## Review Confidence\n\nReview confidence: 15% chance of missed bug.\n\nLeast confident areas:\n- Link layer integration (lichen_link_tx/rx) - only reviewed call sites, not internals\n- SCHC compression edge cases - round-trip tests exist but fuzz coverage unknown\n- Renode/sim driver timing - polling loops not validated on real hardware\n\nWould raise confidence if:\n- lichen/subsys/lichen/link/*.c reviewed (link layer implementation)\n- Fuzz testing on SCHC compress/decompress\n- Hardware-in-loop testing for LoRa drivers\n\n## Finding counts\n\n| Priority | Count | Category |\n|----------|-------|----------|\n| P0 | 5 | Must fix - bugs |\n| P1 | 28 | Should fix - risks, missing checks |\n| P2 | 2 | Worth fixing - efficiency |\n| P3 | 19 | Polish (10 are \"Good\" patterns to preserve) |\n\nTotal: 54 findings",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

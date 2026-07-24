@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.2.2",
   "title": "Restore UDP ingress bounds checking for ports, lengths, checksums and malformed sources",
   "description": "Ensure UdpDatagram.from_bytes validates port ranges (0-65535), length field consistency, mandatory checksum for IPv6 (drop if 0 or invalid), source address validation. Update schc_channel.py:_on_inner, node_channel.py:_on_node_receive to explicitly drop on any validation failure with appropriate logging/metrics. Align with RFC 8200/768.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

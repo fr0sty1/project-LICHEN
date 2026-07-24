@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3cct",
   "title": "[cross-impl] EDHOC Rust test uses prk_out as TH param in KDF assertion",
   "description": "In rust/lichen-oscore/src/edhoc.rs:1540 the test for prk_exporter does edhoc_kdf(\u0026prk_out, \u0026prk_out, \"10\", \u0026[], 32) with note \"th param fixed to match signature\". This differs from Python edhoc.py:465 (uses self._th_4) and C edhoc.c:981 (uses ctx-\u003eth_4). Previous commits (11d4a7a32, ed7ed668b) updated vectors but did not align algorithm. Violates test integrity (must use independent oracle, not code-under-test). Matches ccp16-hop.json pattern but breaks EDHOC consistency. See test/vectors/edhoc.json and spec/draft-lichen-schnorr-00.md Appendix A.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

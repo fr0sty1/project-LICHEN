@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mugl.2",
   "title": "Simulator: Multi-gateway coordination model",
   "description": "Add multi-gateway coordination to simulator.\n\n## Changes\n\n1. Simulated backbone network between gateways\n2. Gateway discovery and slot negotiation\n3. Node handoff simulation\n4. Multi-gateway TDMA visualization\n\n## Test scenarios\n\n- 2 gateways, 500 nodes each, verify slot coordination\n- Node mobility between gateway coverage areas\n- Gateway failure and recovery\n- Conflicting slot claims and resolution",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "AI Agent",

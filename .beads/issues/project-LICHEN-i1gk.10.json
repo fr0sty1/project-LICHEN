@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.10",
   "title": "[lora_l2.c:802-817] lichen_lora_l2_tx: -EINVAL for zero length but doc doesn't mention it",
   "description": "Contract violation: documentation\n\n**Issue:** The function returns -EINVAL when len==0 (line 810) but the header documentation doesn't mention this error case.\n\n**Header doc (lora_l2.h:168-170):**\n```\n * @param len Length of data (max 255 bytes)\n * @return 0 on success, negative errno on failure\n```\n\n**Implementation:**\n```c\nif (len == 0) {\n    LOG_ERR(\"TX with zero length\");\n    return -EINVAL;\n}\n```\n\n**Impact:** Minor - callers won't know zero-length TX is rejected without reading implementation.\n\n**Fix:** Add to doc: '@return -EINVAL if data is NULL or len is 0'",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

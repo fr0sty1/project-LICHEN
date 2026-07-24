@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.35",
   "title": "Implicit int-to-bool conversion for led_configured",
   "description": "Location: firmware/bridge-zephyr/src/main.c:35,119\n\nled_configured is declared as static bool but set with gpio_pin_configure_dt return value logic:\n- Line 119: ret = gpio_pin_configure_dt(...) which returns int\n- Line 120: if (ret \u003c 0) { error }\n- Line 122: else { led_configured = true; }\n\nCurrent code is correct - it explicitly sets true. However, the pattern could be fragile if someone refactors to led_configured = (ret \u003e= 0) which would set led_configured to 1 (true) but not the canonical true value on some platforms.\n\nThis is a style note, not a bug. CLOSE if deemed too minor.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

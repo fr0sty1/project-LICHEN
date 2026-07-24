@@ -3,7 +3,7 @@
   "title": "ThinkNode M6: identify LoRa/GPS chips and pin mapping",
   "description": "Before board definition: (1) Check ELECROW docs/schematic for LoRa chip (SX1262 vs LR1110), (2) Identify GPS chip, (3) Find pin mapping in Meshtastic variants/ or by inspection, (4) Check solar/battery monitoring interface (I2C fuel gauge? ADC?). Blocks all other M6 work.",
   "notes": "Identified from Meshtastic firmware variants/nrf52840/ELECROW-ThinkNode-M6/: LoRa=SX1262 (CS=P1.12=44, DIO1=P1.6=38, BUSY=P1.11=43, RESET=P1.10=42, TCXO=3.3V, DIO2=RF switch); GPS=Quectel L76K (UART0.2TX/0.3RX, EN=0.6, REINIT=0.29, STBY=0.30, PPS=0.31); Battery=ADC P0.28 w/ ctrl P0.11, OCV table, no I2C gauge; Solar detect P0.15 (low=charging); I2C0 SCL=P0.8 SDA=P1.9 for PCF8563@0x51 RTC; PWR_EN=P0.27; LEDs power=12 pairing=7; BTN=17; QSPI flash. Updated docs/bench-operations.md with inventory entry. Board DTS/Kconfig follow in child bead. Test build passed for analogous t_echo target.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

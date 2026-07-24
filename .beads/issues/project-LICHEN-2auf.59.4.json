@@ -3,7 +3,7 @@
   "title": "Validate Zephyr non-link integration rows",
   "description": "Scope under project-LICHEN-2auf.59: validate recovered MeshCore, Meshtastic, BLE, and SLIP integration/transport slices on every declared native_sim/native/64 and applicable QEMU build/runtime scenario from a fresh clean EBS worktree. Use AWS_PROFILE=personal, account 210337117346, AWS_REGION=us-west-2, an owned Project=LICHEN builder in us-west-2c, and only EBS vol-0a95eee8d1d8461eb. Record clean base and applied commit/patch hashes, upstream fixture/tool provenance where used, west manifest, Zephyr/SDK/compiler versions, complete commands/environment/UTC timing/exit codes, and hashed logs/artifacts. Missing integration peers, unobserved data exchange, skipped targets, ignored exits, stale artifacts, or dirty worktree fail closed. Explicitly exclude KISS/kiss_transport, link_crypto, puck/L2, and link bridge checks owned by .35.6. Collect/hash evidence before mandatory sync, unmount, ownership-checked detach, wait-available, and owned-instance cleanup.",
   "acceptance_criteria": "MeshCore, Meshtastic, BLE, and SLIP declared scenarios each build and demonstrate their specified runtime behavior on every supported host/QEMU target; no KISS or other .35.6 row is duplicated. Every source/patch/tool/fixture, exact command and exit, log and artifact is identified and hashed; no skip or silent matrix reduction is accepted; clean-worktree checks pass; account/AZ/volume checks are exact; logs are secured before explicit EBS unmount, detach, wait-volume-available and ownership-checked instance termination.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

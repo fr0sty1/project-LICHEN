@@ -2,7 +2,7 @@
   "id": "project-LICHEN-287m",
   "title": "Close legacy vector document schema",
   "description": "legacy_document allows extra top-level fields, empty vectors, and mixed vector families despite the one-kind-per-file contract. Add mutually exclusive document branches, minItems, and additionalProperties false.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

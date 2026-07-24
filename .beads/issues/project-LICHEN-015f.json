@@ -2,7 +2,7 @@
   "id": "project-LICHEN-015f",
   "title": "spec/02a-coordinated-capacity.md: CCP-15.2 section references rf_health.rs without line number per code reference guideline",
   "description": "Per agent instructions, when referencing specific functions or pieces of code include the pattern . Update to rust/lichen-core/src/rf_health.rs:20 or appropriate. Discovered-from:project-LICHEN-5mh9.1 Tag: codereview",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

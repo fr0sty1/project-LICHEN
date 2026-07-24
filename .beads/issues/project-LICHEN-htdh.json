@@ -2,7 +2,7 @@
   "id": "project-LICHEN-htdh",
   "title": "[codereview-pass3-1] coap_status.c: cast to non-const for notify may not update resource-\u003eage if framework expects mutable resource",
   "description": "The lichen_coap_*_resource are defined as const. coap_resource_notify and the .notify callback use resource-\u003eage which is likely mutated by CoAP service when incrementing observe sequence. Cast bypasses const but doesn't solve root issue. Rejected removing const because task scoped to dead code functions only. Alternative: make resources non-const. P2 correctness. discovered-from:project-LICHEN-2op3",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:10:26.859477602Z",

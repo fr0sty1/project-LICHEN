@@ -3,7 +3,7 @@
   "title": "Bind DaoTxState to exact RPL scope",
   "description": "Bind persisted DAO TX state to local origin IPv6, RPL instance, DODAG, and public key. Update all provision/open callers and tests; use a new format only.",
   "acceptance_criteria": "Scope mismatch fails closed and retained DAO bytes cannot be retransmitted under another origin or DODAG; all callers pass exact scope.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

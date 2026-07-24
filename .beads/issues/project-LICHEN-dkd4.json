@@ -3,7 +3,7 @@
   "title": "Stub crypto functions may return without aborting on some platforms",
   "description": "File: lichen/subsys/lichen/link/schnorr48.c\nLines: 209-248\n\nThe stub schnorr48_stub_abort() function calls abort(), but the stub functions have return statements after the abort call:\n\n```c\nstatic void schnorr48_stub_abort(const char *func)\n{\n    LOG_WRN(\"FATAL: %s called without Monocypher - aborting\\n\", func);\n    abort();\n}\n\nint schnorr48_sign(...)\n{\n    (void)privkey;\n    // ...\n    schnorr48_stub_abort(\"schnorr48_sign\");\n    return -1; /* unreachable, but satisfies compiler */\n}\n```\n\nWhile the code is correct (abort() never returns), some static analyzers and compilers may not know abort() is noreturn, leading to:\n1. Warnings about code after noreturn functions\n2. If abort() is stubbed out in testing, the function returns -1 with uninitialized sig buffer\n\nImpact: Low - abort() is standard noreturn. However, defensive coding would use __attribute__((noreturn)) or _Noreturn on the stub function.\n\nFix: Mark schnorr48_stub_abort with noreturn attribute:\n```c\n#if defined(__GNUC__) || defined(__clang__)\n__attribute__((noreturn))\n#endif\nstatic void schnorr48_stub_abort(const char *func)\n```",
   "notes": "Already fixed in commit 5af5bc995 (project-LICHEN-9jlb: fix). Attribute added to schnorr48_stub_abort. No new changes needed. Closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

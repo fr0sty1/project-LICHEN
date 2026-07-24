@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r5xy",
   "title": "codereview-pass1: adaptive_sf_select SF function",
   "description": "P1: EMA formula now explicit but verify against ccp16.json independent oracle (alpha=0.1). P2: per-SF table good. No dead code. Addressed previous P2 from t6ic by adding full function.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T16:46:19.524426461Z",
