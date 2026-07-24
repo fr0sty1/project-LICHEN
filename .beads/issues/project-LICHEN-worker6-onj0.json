@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-onj0",
+  "title": "[review] project-LICHEN-worker6-x6f0: incomplete fix - build-provenance-2auf.59.log still tracked",
+  "description": "Commit db92401 deletes build-provenance-2auf.31.1.log and adds build-provenance-*.log to .gitignore, but build-provenance-2auf.59.log is still tracked by git. The .gitignore alone does not remove already-tracked files; git rm --cached is needed.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:32:19.881586728Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:32:19.881586728Z"
+}
