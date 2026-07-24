@@ -35,7 +35,7 @@ Current constants (Rust/C synchronized):
 | 8 | SRH | RPL Source Routing Header wrapper (NH=43) |
 | 255 | UNCOMPRESSED | No compression (full headers passthrough) |
 
-See rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/include/lichen/schc.h:93, constants.toml:29-36, and test/vectors/schc_compression.json for exact matching logic and test vectors. Fragmentation uses [schc.fragment]: M=1, N=6, T=0, RCS=4 bytes, RETX=10s, MAX_ACK=3, INACTIVITY=60s (MSB-first bitmap).
+See rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/include/lichen/schc.h:93, constants.toml:29-36, and test/vectors/schc_compression.json for exact matching logic and test vectors. Fragmentation uses [schc.fragment]: M=1, N=6, T=0, WINDOW_SIZE=63, RCS=4 bytes, RETX=10s, MAX_ACK=4, INACTIVITY=60s (MSB-first bitmap).
 
 ## A.2. Fragmentation (from constants.toml [schc.fragment])
 

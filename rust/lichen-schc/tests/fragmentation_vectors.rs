@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use lichen_schc::fragment::{
     ack_request, compute_mic, receiver_abort, sender_abort, Ack, Fragment, FragmentReceiver,
-    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, MAX_SCHC_PACKET, TILE_SIZE,
+    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, TILE_SIZE,
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -143,7 +143,7 @@ fn write_response(response: ReceiverResponse) -> Vec<u8> {
 #[test]
 fn shared_vectors_drive_production_implementations() {
     let document: Document = serde_json::from_str(VECTORS_JSON).expect("invalid vector JSON");
-    assert_eq!(document.format_version, 2);
+    assert_eq!(document.format_version, 1);
     assert!(!document.description.is_empty());
     let mut categories = BTreeSet::new();
 
@@ -184,12 +184,6 @@ fn exercise_transfer(vector: &Vector) {
     let packet = expand(vector.packet.as_ref().unwrap());
     assert_eq!(packet.len(), vector.packet_length.unwrap());
     let rule_id = vector.rule_id.unwrap();
-    // The implementation uses a fixed TILE_SIZE=8; vectors with different tile
-    // sizes produce different wire formats. Only validate headers for those.
-    let tile_size = packet.len().max(1);
-    let expected_count = vector.fragment_count.unwrap_or(1);
-    let expected_tile = (packet.len() + expected_count - 1) / expected_count;
-    let variable_tile = expected_tile != TILE_SIZE;
     let sender = FragmentSender::new(&packet, rule_id, packet.len()).unwrap();
     if let Some(count) = vector.fragment_count {
         assert_eq!(sender.fragment_count(), count, "{}", vector.name);
@@ -208,22 +202,16 @@ fn exercise_transfer(vector: &Vector) {
         let fragment = sender.get_fragment(expected.tile_ordinal).unwrap();
         assert_eq!(fragment.window, expected.window);
         assert_eq!(fragment.fcn, expected.fcn);
-        if variable_tile {
-            // Only validate header bytes when tile size differs
-            let wire = expand(&expected.wire);
-            assert_eq!(&wire[..2], &fragment.rule_id.to_be_bytes()[..]);
-        } else {
-            let wire = expand(&expected.wire);
-            assert_eq!(
-                write_fragment(&fragment),
-                wire,
-                "{} {}",
-                vector.name,
-                expected.name
-            );
-            let parsed = Fragment::from_bytes(&wire).unwrap();
-            assert_eq!(parsed, fragment);
-        }
+        let wire = expand(&expected.wire);
+        assert_eq!(
+            write_fragment(&fragment),
+            wire,
+            "{} {}",
+            vector.name,
+            expected.name
+        );
+        let parsed = Fragment::from_bytes(&wire).unwrap();
+        assert_eq!(parsed, fragment);
     }
 
     let loss = vector.loss.as_ref().unwrap();
@@ -352,7 +340,7 @@ fn exercise_capacity(vector: &Vector) {
         decode_hex(vector.rcs.as_ref().unwrap())
     );
     assert_eq!(vector.expect_status.as_deref(), Some("ok"));
-    if packet.len() <= MAX_SCHC_PACKET {
+    if packet.len() <= 1281 {
         let mut storage = vec![0u8; packet.len()];
         let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
         let mut result = None;

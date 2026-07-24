@@ -62,13 +62,14 @@ imax_doublings  = 8     # Imax = 4000 * 2^8 = 1_024_000 ms (~17.07 min); see spe
 k               = 10    # Redundancy constant
 
 [schc.fragment]
-# SCHC ACK-on-Error profile params (M=1 N=6 T=0) adapted from RFC 8724 for LICHEN
+# SCHC ACK-on-Error profile params (M=1 N=6 T=0, WINDOW_SIZE=63) adapted from RFC 8724 for LICHEN
 m = 1
 n = 6
 t = 0
+window_size = 63
 rcs_bytes = 4
 retransmission_timeout_s = 10
-max_ack_requests = 3
+max_ack_requests = 4
 inactivity_timeout_s = 60
 bitmap_msb_first = true
 
