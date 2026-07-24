@@ -178,6 +178,9 @@ class Ack:
                 raise FragmentError("malformed C=1 ACK or control")
             return cls(data[0], window, (), True)
         bit_count = len(data[1:]) * 8 - 2
+        max_bytes = (2 + WINDOW_SIZE + 7) // 8
+        if len(data[1:]) > max_bytes:
+            raise FragmentError("ACK bitmap size exceeds SCHC maximum window size")
         raw = int.from_bytes(data[1:], "big") & ((1 << bit_count) - 1)
         if bit_count >= WINDOW_SIZE:
             padding = bit_count - WINDOW_SIZE

@@ -133,6 +133,13 @@ def test_invalid_sender_parameters() -> None:
         Fragment.from_bytes(wire)
 
 
+def test_ack_rejects_oversized_bitmap() -> None:
+    with pytest.raises(FragmentError, match="bitmap size exceeds"):
+        Ack.from_bytes(bytes.fromhex("7800") + b"\x00" * 20)
+    with pytest.raises(FragmentError, match="bitmap size exceeds"):
+        Ack.from_bytes(bytes.fromhex("7800") + b"\x00" * 10)
+
+
 @pytest.mark.parametrize("wire", [bytes.fromhex("784000"), bytes.fromhex("78ff")])
 def test_malformed_ack_vectors(wire: bytes) -> None:
     with pytest.raises(FragmentError):
