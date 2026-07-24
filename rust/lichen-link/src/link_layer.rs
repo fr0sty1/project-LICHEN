@@ -310,9 +310,11 @@ struct PinnedKey {
 /// # Signature Verification Cost
 ///
 /// Since frames do not include the sender IID, RX must scan peers to find
-/// whose public key verifies the signature. Worst-case is O(n) Schnorr
-/// verifications where n = peer count. Keep peer count low (e.g., <20 direct
-/// neighbors) or implement sender IID hints in upper layers for larger networks.
+/// whose public key verifies the signature. Peers are tried in
+/// most-recently-seen order, so the common case is O(1) — the last peer to
+/// talk is usually the current sender. Worst case is O(n) when a completely
+/// new or long-dormant sender appears. Keep peer count low (e.g., <20 direct
+/// neighbors) or implement sender IID hints for larger networks.
 ///
 /// # Key Pinning
 ///
@@ -528,10 +530,15 @@ impl LinkLayer {
         let inner_payload = frame.payload;
         let frame_length = 4 + frame.dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
 
-        // O(n) scan — try every known peer
-        let Some(sender) = self
-            .peers
-            .values()
+        // Try known peers in most-recently-seen order. The common case is a
+        // reply or repeat from the last-active sender; MRU ordering means we
+        // verify that peer's signature first (O(1) amortized for active peers)
+        // and only fall back to O(n) when a new sender appears.
+        let mut peers: Vec<&TrackedPeer> = self.peers.values().collect();
+        peers.sort_unstable_by_key(|p| std::cmp::Reverse(p.last_access));
+
+        let Some(sender) = peers
+            .iter()
             .find(|p| {
                 schnorr::verify_frame(
                     frame_length as u8,
