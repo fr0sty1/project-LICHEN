@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-blbe",
+  "title": "[review] project-LICHEN-worker6-69p2: DEFAULT_WINDOW_SIZE=32 contradicts WINDOW_SIZE=63",
+  "description": "DEFAULT_WINDOW_SIZE was changed from 63 to 32 but WINDOW_SIZE remains 63. DEFAULT_WINDOW_SIZE is currently unused in production code (only referenced in std_ext test module where window_size is passed as parameter), making the constant misleading. If it's going to be used as a default for the std_ext FragmentReceiver, it should equal WINDOW_SIZE=63, not 32.\n\nThe constant DEFAULT_RECEIVER_LIMIT=1281 was also removed without replacement, and the fuzz harness switched to a local RECEIVER_STORAGE=16384 constant.\n\nAffected: rust/lichen-schc/src/fragment.rs constants section",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:58:43.130270028Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:58:43.130270028Z"
+}
