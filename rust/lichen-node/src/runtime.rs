@@ -302,6 +302,7 @@ mod tests {
         RplNode {
             node: Node::new(node_id),
             router: Router::new_root(address),
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         }
     }
 

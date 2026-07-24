@@ -873,7 +873,7 @@ int lichen_lora_l2_stop(void)
          */
         join_ret = k_thread_join(&rx_thread_data, K_MSEC(RX_TIMEOUT_MS));
         if (join_ret == -EAGAIN) {
-            LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting",
+            LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting — possible data loss",
                     RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);
             k_thread_abort(&rx_thread_data);
             k_thread_join(&rx_thread_data, K_FOREVER);

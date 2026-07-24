@@ -97,6 +97,7 @@ pub struct Node {
 pub struct RplNode {
     pub(crate) node: Node,
     pub(crate) router: Router,
+    pub(crate) rf_health: lichen_core::rf_health::RfHealthMetrics,
 }
 
 impl Node {
@@ -275,6 +276,7 @@ impl RplNode {
         Self {
             node: Node::new(node_id),
             router: Router::new(node_addr, dodag_id),
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         }
     }
 
@@ -293,6 +295,7 @@ impl RplNode {
             Self {
                 node: Node::new(node_id),
                 router,
+                rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
             },
             state,
         ))
@@ -313,6 +316,7 @@ impl RplNode {
             Self {
                 node: Node::new(node_id),
                 router,
+                rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
             },
             state,
         ))
@@ -792,6 +796,7 @@ mod tests {
         let mut child = RplNode {
             node: Node::new(child_id),
             router: Router::new(child_addr, root_addr),
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         };
         let dio = lichen_rpl::message::Dio {
             rpl_instance_id: RPL_INSTANCE_ID,
@@ -860,6 +865,7 @@ mod tests {
                 RplNode {
                     node: Node::new(child_id),
                     router: Router::new(child_addr, root_addr),
+                    rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
                 },
                 child_addr,
             )
@@ -937,14 +943,17 @@ mod tests {
         let mut root = RplNode {
             node: Node::new(root_id),
             router: root_router,
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         };
         let mut parent = RplNode {
             node: Node::new(parent_id),
             router: Router::new(parent_addr, root_addr),
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         };
         let mut leaf = RplNode {
             node: Node::new(leaf_id),
             router: Router::new(leaf_addr, root_addr),
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         };
         let mut announces = AnnounceProcessor::new(
             GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
@@ -1138,6 +1147,7 @@ mod tests {
         let mut root = RplNode {
             node: Node::new(root_id),
             router,
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         };
         assert!(root.router.set_dao_lifetime_unit(1));
         let mut announces = AnnounceProcessor::new(
@@ -1207,6 +1217,7 @@ mod tests {
         let mut root = RplNode {
             node: Node::new(root_id),
             router: Router::new_root(root_addr),
+            rf_health: lichen_core::rf_health::RfHealthMetrics::new(),
         };
         assert!(root.router.set_dao_lifetime_unit(1));
         let mut first =

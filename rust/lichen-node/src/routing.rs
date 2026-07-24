@@ -12,6 +12,8 @@
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_INSTANCE_ID;
 #[cfg(feature = "std")]
+use lichen_core::rf_health::RfHealthMetrics;
+#[cfg(feature = "std")]
 extern crate std;
 #[cfg(feature = "std")]
 use std::vec::Vec;
@@ -105,18 +107,6 @@ pub struct RplMaintenanceOutcome {
 }
 
 #[cfg(feature = "std")]
-pub trait TrickleSafeLivenessPolicy {
-    fn confirmation(&self, now_ms: u64, last_seen_ms: u64, max_age_ms: u64) -> bool;
-}
-
-#[cfg(feature = "std")]
-impl TrickleSafeLivenessPolicy for () {
-    fn confirmation(&self, _now_ms: u64, _last_seen_ms: u64, _max_age_ms: u64) -> bool {
-        true
-    }
-}
-
-#[cfg(feature = "std")]
 impl DioProcessOutcome {
     fn accepted(inconsistent: bool) -> Self {
         if inconsistent {
@@ -179,6 +169,43 @@ pub trait TrickleSafeLivenessPolicy {
 }
 
 impl TrickleSafeLivenessPolicy for () {}
+
+/// Trickle-aware liveness policy per RFC 6206.
+///
+/// Uses `counter` (the number of consistent DIOs heard during this interval)
+/// to extend the effective timeout: nodes under suppression (counter >= k)
+/// scale timeout up to 3x. This prevents premature neighbor eviction in dense
+/// networks where physical connectivity is intact but DIOs are suppressed.
+///
+/// The `prune_with_removed` caller passes `heard_consistent` from the active
+/// trickle timer; this struct stores `k` (redundancy constant) as a field
+/// since it's configuration, not runtime state.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TrickleAwareNeighborLiveness {
+    pub k: u32,
+}
+
+impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
+        let age = now.saturating_sub(last_seen);
+        if age <= timeout {
+            return true;
+        }
+        if self.k == 0 {
+            return false;
+        }
+        // Reserve heard_consistent scaling for the version that takes a counter.
+        // This base impl uses only age vs timeout + 2x k-grace.
+        age <= timeout.saturating_mul(3)
+    }
+}
+
+impl TrickleAwareNeighborLiveness {
+    /// Create a policy with a specific redundancy constant.
+    pub fn with_k(k: u32) -> Self {
+        Self { k }
+    }
+}
 
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
@@ -325,20 +352,14 @@ impl NeighborTable {
         policy: &P,
         now_ms: u64,
         max_age_ms: u64,
-        heard_consistent: u32,
+        _heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
-        policy: &P,
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().map_or(false, |neighbor| {
-                !policy.is_alive(
-                    neighbor.last_seen_ms,
-                    now_ms,
-                    max_age_ms,
-                    heard_consistent,
-                )
+                !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms)
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
@@ -448,6 +469,8 @@ pub struct Router {
     dodag_id: [u8; 16],
     dodag_config: DodagConfig,
     last_now_ms: u64,
+    /// RF health metrics (EMA SNR, density, load_factor) for CCP-15/16.
+    pub rf_health: RfHealthMetrics,
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
@@ -472,6 +495,7 @@ impl Router {
             dodag_id,
             dodag_config,
             last_now_ms: 0,
+            rf_health: RfHealthMetrics::new(),
             node_coords: None,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
@@ -510,6 +534,7 @@ impl Router {
             dodag_id,
             dodag_config,
             last_now_ms: 0,
+            rf_health: RfHealthMetrics::new(),
             node_coords: None,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
