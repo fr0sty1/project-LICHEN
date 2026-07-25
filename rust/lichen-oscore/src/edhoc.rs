@@ -134,6 +134,7 @@ impl PendingIdCred {
 pub struct PendingMessage2 {
     pub id_cred: PendingIdCred,
     pub plaintext: heapless::Vec<u8, 160>,
+    pub ciphertext: heapless::Vec<u8, 160>,
     pub c_r: ConnectionId,
     pub signature_offset: usize,
     pub transcript_binding: [u8; 32],
@@ -731,7 +732,7 @@ impl EdhocInitiator {
     /// message_1 = (METHOD, SUITES_I, G_X, C_I, ? EAD_1)
     pub fn create_message_1(&mut self) -> Result<heapless::Vec<u8, 64>, EdhocError> {
         let mut msg1 = heapless::Vec::<u8, 64>::new();
-        msg1.push_err(0)?; // METHOD = 0 (signature/signature)
+        msg1.push_err(1)?; // METHOD_CORR = 4*method + corr = 4*0 + 1 = 1
         msg1.push_err(SUITE_0)?;
         encode_bstr(&mut msg1, self.eph_public.as_bytes())?;
         encode_identifier(&mut msg1, &self.c_i)?;
@@ -844,10 +845,13 @@ impl EdhocInitiator {
 
             let mut plaintext = heapless::Vec::new();
             plaintext.extend_err(pt2)?;
+            let mut ct2 = heapless::Vec::<u8, 160>::new();
+            ct2.extend_err(ciphertext_2)?;
             self.state.lifecycle = Lifecycle::PendingMessage2;
             Ok(PendingMessage2 {
                 id_cred: id_cred_r,
                 plaintext,
+                ciphertext: ct2,
                 c_r,
                 signature_offset: sig_offset,
                 transcript_binding: self.state.th_2,
@@ -902,7 +906,8 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
             self.state.c_r = pending.c_r.clone();
-            self.state.th_3 = transcript_3(&self.state.th_2, &pending.plaintext, peer.credential)?;
+            self.state.th_3 =
+                transcript_3(&self.state.th_2, &pending.ciphertext, peer.public_key)?;
 
             // PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3 and OSCORE export)
             self.state.prk_4e3m = self.state.prk_3e2m;
@@ -948,7 +953,7 @@ impl EdhocInitiator {
             let plaintext_3 = ciphertext_3.clone();
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, self.pubkey.as_bytes())?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1210,7 +1215,8 @@ impl EdhocResponder {
                 ciphertext_2.push_err(b ^ keystream_2[i])?;
             }
 
-            self.state.th_3 = transcript_3(&self.state.th_2, &plaintext_2, &credential_r)?;
+            self.state.th_3 =
+                transcript_3(&self.state.th_2, &ciphertext_2, self.pubkey.as_bytes())?;
 
             let mut msg2 = heapless::Vec::<u8, 160>::new();
             let mut g_y_ciphertext = heapless::Vec::<u8, 144>::new();
@@ -1366,7 +1372,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.public_key)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1440,15 +1446,8 @@ fn parse_bstr_impl(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
         return Err(EdhocError::InvalidMessage);
     }
     let first = data[0];
-    let (len, header_size) = if first <= 0x17 {
-        (first as usize, 1)
-    } else if first == 0x18 {
-        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
-        (data[1] as usize, 2)
-    } else if first == 0x19 {
-        if data.len() < 3 { return Err(EdhocError::InvalidMessage); }
-        let l = u16::from_be_bytes([data[1], data[2]]) as usize;
-        (l, 3)
+    let (len, header_size) = if (0x40..=0x57).contains(&first) {
+        ((first - 0x40) as usize, 1)
     } else if first == 0x58 {
         if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
         (data[1] as usize, 2)
@@ -1471,6 +1470,27 @@ fn parse_bstr(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
 }
 
 fn parse_identifier(data: &[u8]) -> Result<(ConnectionId, usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    if (0x00..=0x17).contains(&first) {
+        let id = ConnectionId::new(&[first])?;
+        return Ok((id, 1));
+    } else if first == 0x18 {
+        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        let id = ConnectionId::new(&[data[1]])?;
+        return Ok((id, 2));
+    } else if (0x20..=0x37).contains(&first) {
+        let val = -((first - 0x20 + 1) as i8) as u8;
+        let id = ConnectionId::new(&[val])?;
+        return Ok((id, 1));
+    } else if first == 0x38 {
+        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        let val = (-((data[1] as i8) + 1)) as u8;
+        let id = ConnectionId::new(&[val])?;
+        return Ok((id, 2));
+    }
     let (id_bytes, consumed) = parse_bstr_impl(data)?;
     let id = ConnectionId::new(id_bytes)?;
     Ok((id, consumed))
@@ -1481,7 +1501,17 @@ fn encode_bstr_to<const N: usize>(buf: &mut heapless::Vec<u8, N>, data: &[u8]) -
 }
 
 fn encode_identifier<const N: usize>(buf: &mut heapless::Vec<u8, N>, id: &ConnectionId) -> Result<(), EdhocError> {
-    encode_bstr(buf, id.as_bytes())
+    let bytes = id.as_bytes();
+    if bytes.len() == 1 {
+        let val = bytes[0];
+        if val <= 23 {
+            return Ok(buf.push_err(val)?);
+        }
+        if val >= 232 {
+            return Ok(buf.push_err(0x20 | (255 - val))?);
+        }
+    }
+    encode_bstr(buf, bytes)
 }
 
 fn append_cbor_bstr<const N: usize>(buf: &mut heapless::Vec<u8, N>, data: &[u8]) -> Result<(), EdhocError> {
@@ -1801,7 +1831,7 @@ mod tests {
         let seed = [0x01u8; 32];
         let mut rng = rand_core::OsRng;
         let initiator = EdhocInitiator::new(seed, 0x00, &mut rng);
-        assert_eq!(initiator.c_i, 0x00);
+        assert_eq!(initiator.c_i, 0x00.into());
     }
 
     #[test]
@@ -1809,7 +1839,7 @@ mod tests {
         let seed = [0x01u8; 32];
         let mut rng = rand_core::OsRng;
         let responder = EdhocResponder::new(seed, 0x01, &mut rng).unwrap();
-        assert_eq!(responder.c_r, 0x01);
+        assert_eq!(responder.c_r, 0x01.into());
     }
 
     #[test]
@@ -1820,7 +1850,7 @@ mod tests {
         let msg1 = initiator.create_message_1().unwrap();
 
         // Check basic structure: METHOD, SUITE, G_X, C_I
-        assert_eq!(msg1[0], 0); // METHOD = SIGN/SIGN
+        assert_eq!(msg1[0], 1); // METHOD_CORR = 4*method + corr = 1
         assert_eq!(msg1[1], 0); // Suite 0
         assert_eq!(msg1[2], 0x58); // bstr marker
         assert_eq!(msg1[3], 32); // G_X length
@@ -1833,7 +1863,7 @@ mod tests {
         let x = hex!("892ec28e5cb6669108470539500b705e60d008d347c5817ee9f3327c8a87bb03");
         let mut initiator = EdhocInitiator::new_with_rng([0; 32], 0x2d, &mut FixedRng(x)).unwrap();
         let message_1 =
-            hex!("0000582031f82c7b5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1c0701e237f042d");
+            hex!("0100582031f82c7b5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1c0701e237f04412d");
         assert_eq!(initiator.create_message_1().unwrap().as_slice(), message_1);
 
         let g_y = hex!("dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c");
@@ -1858,15 +1888,12 @@ mod tests {
         assert_eq!(consumed, message_2.len());
         assert_eq!(&g_y_ciphertext[..32], &g_y);
 
-        let plaintext_2 = hex!(
-            "4118a11822822e4879f2a41b510c1f9b5840c3b5bd44d1e44a085c03d3aede4e1e6c11c572a1968cc3629b505f98c681608d3d1de793d1c40eb5dd5d89acf1966aea07022b48cdc99870ebc40374e8fa6e09"
-        );
-        let credential_r = hex!(
-            "58f13081ee3081a1a003020102020462319ec4300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323433365a170d3239313233313233303030305a30223120301e06035504030c174544484f4320526573706f6e6465722045643235353139302a300506032b6570032100a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359300506032b6570034100b723bc01eab0928e8b2b6c98de19cc3823d46e7d6987b032478fecfaf14537a1af14cc8be829c6b73044101837eb4abc949565d86dce51cfae52ab82c152cb02"
-        );
-        let th_3 = hex!("093c4bed6f1f679d7ef8c6dada0f631b75cf19d8a6eea88b2a5ac1a9fb9e5986");
+        let responder_public_key =
+            hex!("a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359");
+        let ciphertext_2 = &g_y_ciphertext[32..];
+        let th_3 = hex!("28d559806bcccb8e13ef91c01fbea7346921d624ee75f297863dbe1ef5074498");
         assert_eq!(
-            transcript_3(&th_2, &plaintext_2, &credential_r).unwrap(),
+            transcript_3(&th_2, ciphertext_2, &responder_public_key).unwrap(),
             th_3
         );
 
@@ -1880,18 +1907,18 @@ mod tests {
         let plaintext_3 = hex!(
             "a11822822e48c24ab2fd7643c79f584096e1cd5fceadfac1b5af819443f70924f5719955957fd02655beb4775e1a73186a0d1d3ea683f08f8d03dcecb9cf154e1c6f555a1e12ca118ce42bdba6878907"
         );
-        let credential_i = hex!(
-            "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
-        );
-        let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
+        let initiator_pubkey =
+            hex!("3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29");
+        let th_4 = hex!("05b3c368b66202524e16f82cd587838bcbb2217da10e07e8a107db803f8cfcdf");
         assert_eq!(
-            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
+            transcript_4(&th_3, &plaintext_3, &initiator_pubkey).unwrap(),
             th_4
         );
 
         let responder_public_key =
             hex!("a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359");
         let id_cred_r = hex!("a11822822e4879f2a41b510c1f9b");
+        let credential_r = hex!("a201062058a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359");
         let mut verifier = EdhocInitiator::new_with_rng(
             hex!("4c5b25878f507c6b9dae68fbd4fd3ff997533db0af00b25d324ea28e6c213bc8"),
             0x2d,
@@ -2098,7 +2125,7 @@ mod tests {
         let message_1 = initiator.create_message_1().unwrap();
         let message_2 = responder.process_message_1(&message_1).unwrap();
         let pending_2 = initiator.begin_process_message_2(&message_2).unwrap();
-        assert_eq!(pending_2.id_cred().as_bytes(), responder_id.as_slice());
+        assert_eq!(pending_2.id_cred.as_bytes(), responder_id.as_slice());
         assert_eq!(
             initiator.finish_process_message_2(
                 &pending_2,
@@ -2115,7 +2142,7 @@ mod tests {
             .unwrap();
 
         let pending_3 = responder.begin_process_message_3(&message_3).unwrap();
-        assert_eq!(pending_3.id_cred().as_bytes(), initiator_id.as_slice());
+        assert_eq!(pending_3.id_cred.as_bytes(), initiator_id.as_slice());
         assert_eq!(
             responder.finish_process_message_3(
                 &pending_3,
@@ -2224,7 +2251,7 @@ mod tests {
         assert_eq!(
             responder.finish_process_message_3(
                 &pending,
-                PeerCredential::new(&weak_key, pending.id_cred().as_bytes(), &weak_credential),
+                PeerCredential::new(&weak_key, pending.id_cred.as_bytes(), &weak_credential),
             ),
             Err(EdhocError::SignatureVerification)
         );
@@ -2342,8 +2369,8 @@ mod tests {
     fn responder_applies_suite_selection_rules() {
         let seed = [0x01; 32];
         let mut message = [0u8; 40];
-        message[0] = 0;
-        message[1..4].copy_from_slice(&[0x82, 0x02, 0x00]);
+        message[0] = 1;
+        message[1..4].copy_from_slice(&[0x82, 0x00, 0x02]);
         message[4..6].copy_from_slice(&[0x58, 32]);
         message[6..38].copy_from_slice(&hex!(
             "31f82c7b5b9cbbf0f194d913cc12ef1532d328ef32632a4881a1c0701e237f04"
@@ -2353,7 +2380,7 @@ mod tests {
         let result = responder(seed, 1).process_message_1(&message[..39]);
         assert!(result.is_ok(), "valid suite selection failed: {result:?}");
 
-        message[2] = 0;
+        message[2] = 0x02;
         assert_eq!(
             responder(seed, 1).process_message_1(&message[..39]),
             Err(EdhocError::UnsupportedSuite)
@@ -2455,7 +2482,7 @@ mod tests {
 
         let mut responder = responder([0x22; 32], 1);
         let mut message_1 = heapless::Vec::<u8, 40>::new();
-        message_1.extend_from_slice(&[0, 0, 0x58, 32]).unwrap();
+        message_1.extend_from_slice(&[1, 0, 0x58, 32]).unwrap();
         message_1.extend_from_slice(&[0; 32]).unwrap();
         message_1.push(0).unwrap();
         assert_eq!(
