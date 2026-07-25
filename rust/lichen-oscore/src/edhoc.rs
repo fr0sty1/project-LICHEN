@@ -396,11 +396,10 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
     Ok(compute_th(&buf))
 }
 
-fn transcript_4(th_3: &[u8; 32], ciphertext_3: &[u8], cred: &[u8]) -> Result<[u8; 32], EdhocError> {
+fn transcript_4(th_3: &[u8; 32], ciphertext_3: &[u8]) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
     encode_bstr(&mut buf, ciphertext_3)?;
-    encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
 
@@ -914,7 +913,7 @@ impl EdhocInitiator {
             ciphertext_3.extend_err(&tag)?;
 
             self.state.th_4 =
-                transcript_4(&self.state.th_3, &plaintext_3_for_th4, peer.credential)?;
+                transcript_4(&self.state.th_3, &plaintext_3_for_th4)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1415,9 +1414,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            let mut credential_r = heapless::Vec::<u8, 80>::new();
-            encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext, &credential_r)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
