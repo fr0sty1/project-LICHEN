@@ -2,17 +2,15 @@
   "id": "lora-ipv6-mesh-6yu",
   "title": "Spec: Define group membership protocol",
   "description": "Groups extensively documented for messaging/encryption but no join/leave protocol. Missing: membership synchronization, authorization model, key distribution mechanism (currently 'out-of-band'). Need concrete protocol for group CRUD operations and member management.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T04:55:15Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T02:33:23.291807851Z",
+  "updated_at": "2026-07-25T02:33:48.988166128Z",
   "started_at": "2026-07-25T02:33:23.291807851Z",
-  "closed_at": "2026-05-27T05:59:44Z",
-  "close_reason": "Added section 18.8.2: roles (owner/admin/member), invitations, key distribution via pairwise OSCORE, leave/remove, rekeying on removal. spec/12-apps.md",
-  "lease_expires_at": "2026-07-25T02:38:23.291807851Z",
-  "heartbeat_at": "2026-07-25T02:33:23.291807851Z"
+  "closed_at": "2026-07-25T02:33:48.988166128Z",
+  "close_reason": "Already fixed"
 }
