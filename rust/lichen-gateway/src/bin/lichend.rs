@@ -197,7 +197,7 @@ async fn main() {
         None
     };
 
-    let mut gw = Gateway::new(node_id);
+    let mut gw = Gateway::new(node_id, id.ygg_addr);
 
     if use_hat {
         run_hat(&mut gw, tun).await;

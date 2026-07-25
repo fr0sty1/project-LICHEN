@@ -20,16 +20,22 @@ use tracing::{error, info, warn};
 pub struct Gateway {
     rpl_node: RplNode,
     runtime: RplRuntime,
+    ygg_addr: [u8; 16],
 }
 
 impl Gateway {
-    pub fn new(node_id: NodeId) -> Self {
-        info!(?node_id, "gateway initialising");
+    pub fn new(node_id: NodeId, ygg_addr: [u8; 16]) -> Self {
+        info!(?node_id, ?ygg_addr, "gateway initialising");
         let addr = node_id.link_local_addr().0;
         Self {
             rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
+            ygg_addr,
         }
+    }
+
+    pub fn ygg_addr(&self) -> &[u8; 16] {
+        &self.ygg_addr
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
@@ -213,7 +219,10 @@ mod tests {
     }
 
     fn test_gateway() -> Gateway {
-        Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
+        Gateway::new(
+            NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]),
+            [0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01],
+        )
     }
 
     #[test]
