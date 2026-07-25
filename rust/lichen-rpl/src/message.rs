@@ -70,6 +70,7 @@ pub const OPT_RPL_TARGET: u8 = 5;
 pub const OPT_TRANSIT_INFO: u8 = 6;
 pub const OPT_PREFIX_INFO: u8 = 8;
 pub const OPT_RPL_TARGET_DESCRIPTOR: u8 = 9;
+pub const OPT_TIME: u8 = 0x0A;
 /// Provisional LICHEN DAO origin-authentication option.
 pub const OPT_DAO_ORIGIN_SIGNATURE: u8 = 0x12;
 pub const DAO_ORIGIN_SIGNATURE_DATA_LEN: usize = 56;
@@ -357,6 +358,44 @@ impl<'a> SignedDaoEnvelope<'a> {
             unsigned_bytes: &data[..unsigned_len],
             origin,
         })
+    }
+}
+
+// ── DIO Time Option (type 0x0A) ──────────────────────────────────────────────
+
+pub const TIME_OPTION_DATA_LEN: usize = 6;
+pub const TIME_OPTION_LEN: usize = 8;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DioTimeOption {
+    pub stratum: u8,
+    pub timestamp: u32,
+}
+
+impl DioTimeOption {
+    pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
+        if data.len() < TIME_OPTION_DATA_LEN {
+            return Err(TooShort::new(TIME_OPTION_DATA_LEN, data.len()).into());
+        }
+        if data[1] != 0 {
+            return Err(RplError::InvalidOption);
+        }
+        Ok(Self {
+            stratum: data[0],
+            timestamp: u32::from_be_bytes([data[2], data[3], data[4], data[5]]),
+        })
+    }
+
+    pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
+        if out.len() < TIME_OPTION_LEN {
+            return Err(BufferTooSmall::new(TIME_OPTION_LEN, out.len()).into());
+        }
+        out[0] = OPT_TIME;
+        out[1] = TIME_OPTION_DATA_LEN as u8;
+        out[2] = self.stratum;
+        out[3] = 0;
+        out[4..8].copy_from_slice(&self.timestamp.to_be_bytes());
+        Ok(TIME_OPTION_LEN)
     }
 }
 

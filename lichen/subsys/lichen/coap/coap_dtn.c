@@ -148,6 +148,11 @@ static int deaddrop_post(struct coap_resource *resource,
 		if (orig_code != COAP_METHOD_POST) {
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return deaddrop_oscore_respond(resource, request, addr, addr_len,
+						       ctx, piv, piv_len,
+						       COAP_RESPONSE_CODE_UNAUTHORIZED);
+		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
@@ -310,9 +315,18 @@ static int confessions_post(struct coap_resource *resource,
 		if (orig_code != COAP_METHOD_POST) {
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return deaddrop_oscore_respond(resource, request, addr, addr_len,
+						       ctx, piv, piv_len,
+						       COAP_RESPONSE_CODE_UNAUTHORIZED);
+		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return lichen_coap_respond(resource, request, addr, addr_len,
+						   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+		}
 		payload = coap_packet_get_payload(request, &payload_len);
 	}
 #else

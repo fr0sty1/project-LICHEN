@@ -28,8 +28,9 @@ pub use lichen_rpl::dodag::{DodagRole, DodagState, ParentCandidate, ROOT_RANK};
 use lichen_rpl::message::DODAG_CONFIG_DATA_LEN;
 #[cfg(feature = "std")]
 pub use lichen_rpl::message::{
-    Dao, DaoOriginSignature, Dio, DodagConfig, OptionIter, RplError, RplTarget, SignedDaoEnvelope,
-    TransitInfo, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
+    Dao, DaoOriginSignature, Dio, DioTimeOption, DodagConfig, OptionIter, RplError, RplTarget,
+    SignedDaoEnvelope, TransitInfo, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG, OPT_RPL_TARGET,
+    OPT_TIME, OPT_TRANSIT_INFO,
 };
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SignatureVerifiedDao;
@@ -171,12 +172,30 @@ pub type LinkEtx = f32;
 pub type GeoCoords = (f64, f64);
 
 pub trait TrickleSafeLivenessPolicy {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
         now.saturating_sub(last_seen) <= timeout
     }
 }
 
 impl TrickleSafeLivenessPolicy for () {}
+
+/// Trickle-aware neighbor liveness policy (RFC 6206 section 8.2).
+///
+/// Relaxes timeout when consistent neighbor information has been received.
+/// Consistent here means the neighbor has sent nothing-hop DIOs with a
+/// heard_consistent count >= 3 over the recent period.
+#[derive(Debug, Default, Clone)]
+pub struct TrickleAwareNeighborLiveness;
+
+impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, heard_consistent: u32) -> bool {
+        if heard_consistent >= 3 {
+            now.saturating_sub(last_seen) <= timeout * 2
+        } else {
+            now.saturating_sub(last_seen) <= timeout
+        }
+    }
+}
 
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
@@ -233,7 +252,7 @@ impl NeighborTable {
         rssi: i8,
         now_ms: u64,
         coords: Option<GeoCoords>,
-        protected: Option<[u8; 16]>,
+        _protected: Option<[u8; 16]>,
     ) -> (usize, Option<[u8; 16]>) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
@@ -313,11 +332,10 @@ impl NeighborTable {
     }
 
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        let policy = TrickleAwareNeighborLiveness::default();
+        let policy = TrickleAwareNeighborLiveness;
         self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
     }
 
-    #[cfg(feature = "std")]
     fn prune_with_removed<P: TrickleSafeLivenessPolicy>(
         &mut self,
         policy: &P,
@@ -325,12 +343,11 @@ impl NeighborTable {
         max_age_ms: u64,
         heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
-        policy: &P,
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
-            let is_stale = slot.as_ref().map_or(false, |neighbor| {
+            let is_stale = slot.as_ref().is_some_and(|neighbor| {
                 !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms, heard_consistent)
             });
             if is_stale {
@@ -360,9 +377,7 @@ impl NeighborTable {
             .iter()
             .flatten()
             .find(|n| n.addr == *addr)
-            .map_or(false, |n| {
-                policy.is_alive(n.last_seen_ms, now_ms, max_age_ms, heard_consistent)
-            })
+            .is_some_and(|n| policy.is_alive(n.last_seen_ms, now_ms, max_age_ms, heard_consistent))
     }
 }
 
@@ -439,6 +454,8 @@ pub struct Router {
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
+    time_stratum: u8,
+    wall_clock_seconds: u32,
     #[cfg(test)]
     test_storage: lichen_hal::storage::mem::MemStorage,
     #[cfg(test)]
@@ -461,6 +478,8 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            time_stratum: 0,
+            wall_clock_seconds: 0,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
@@ -499,6 +518,8 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            time_stratum: 0,
+            wall_clock_seconds: 0,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
             #[cfg(test)]
@@ -625,6 +646,7 @@ impl Router {
         }
 
         let mut proposed_config = self.dodag_config.clone();
+        let mut highest_time_stratum: Option<(u8, u32)> = None;
         for option in OptionIter::new(Dio::options_tail(dio_bytes)) {
             let Ok(option) = option else {
                 return DioProcessOutcome::Rejected;
@@ -645,6 +667,12 @@ impl Router {
                     return DioProcessOutcome::Rejected;
                 }
                 proposed_config = parsed;
+            } else if option.opt_type == OPT_TIME {
+                if let Ok(time) = DioTimeOption::from_bytes(option.data) {
+                    if time.stratum > self.time_stratum {
+                        highest_time_stratum = Some((time.stratum, time.timestamp));
+                    }
+                }
             }
         }
         let neighbor_known = self.neighbors.get_etx(&sender_addr).is_some();
@@ -711,6 +739,11 @@ impl Router {
         self.dodag = staged_dodag;
         self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
+
+        if let Some((stratum, timestamp)) = highest_time_stratum {
+            self.time_stratum = stratum;
+            self.wall_clock_seconds = timestamp;
+        }
 
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
@@ -946,7 +979,17 @@ impl Router {
         let Ok(config_len) = self.dodag_config.write_to(&mut out[base_len..]) else {
             return 0;
         };
-        base_len + config_len
+        let mut pos = base_len + config_len;
+        if self.time_stratum > 0 {
+            let time = DioTimeOption {
+                stratum: self.time_stratum,
+                timestamp: self.wall_clock_seconds,
+            };
+            if let Ok(n) = time.write_to(&mut out[pos..]) {
+                pos += n;
+            }
+        }
+        pos
     }
 
     /// Get the route path for a destination (root only).
@@ -1041,7 +1084,7 @@ impl Router {
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         let now_ms = self.observe_now(now_ms);
         let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
-        let policy = TrickleAwareNeighborLiveness::default();
+        let policy = TrickleAwareNeighborLiveness;
         let (neighbors_pruned, topology_changed) =
             self.prune_neighbors_at(now_ms, neighbor_timeout_ms, policy);
         RplMaintenanceOutcome {
@@ -1063,17 +1106,11 @@ impl Router {
         let heard_consistent = self.trickle.counter;
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
-        self.neighbors.prune_with_removed(
-            policy,
-            now_ms,
-            max_age_ms,
-            heard_consistent,
-            |addr| {
+        self.neighbors
+            .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
-            },
-            policy,
-        );
+            });
         if removed_len != 0 {
             self.dodag.remove_parents(&removed[..removed_len]);
         }
@@ -1115,6 +1152,19 @@ impl Router {
     /// Set this node's geographic coordinates (from GPS or config).
     pub fn set_node_coords(&mut self, coords: GeoCoords) {
         self.node_coords = Some(coords);
+    }
+
+    /// Set wall-clock time with stratum (spec 14.6).
+    pub fn set_time(&mut self, stratum: u8, unix_seconds: u32) {
+        if stratum >= self.time_stratum {
+            self.time_stratum = stratum;
+            self.wall_clock_seconds = unix_seconds;
+        }
+    }
+
+    /// Current time stratum (0 = no sync).
+    pub fn time_stratum(&self) -> u8 {
+        self.time_stratum
     }
 
     /// Clear this node's coordinates (privacy mode or GPS unavailable).

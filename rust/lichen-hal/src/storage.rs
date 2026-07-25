@@ -88,6 +88,7 @@ fn read_raw<'a, S: NonVolatile>(
     Ok(Some(&buf[..len]))
 }
 
+#[allow(clippy::type_complexity)]
 fn read_parsed_update<S: NonVolatile>(
     storage: &S,
     key: &str,

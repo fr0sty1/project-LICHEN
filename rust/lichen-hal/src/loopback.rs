@@ -135,6 +135,10 @@ impl Radio for LoopbackRadio {
     async fn configure_channels(&mut self, _channels: &[ChannelConfig]) -> Result<(), Self::Error> {
         Ok(())
     }
+
+    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
 }
 
 #[cfg(test)]

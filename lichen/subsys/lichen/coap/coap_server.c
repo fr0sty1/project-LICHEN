@@ -191,17 +191,55 @@ static int config_put(struct coap_resource *resource,
 	const uint8_t *payload;
 	uint16_t payload_len;
 	int ret;
+	uint8_t peer_eui64[8] = {0};
+	uint8_t plain[LICHEN_COAP_SERVER_MAX_PAYLOAD];
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	struct oscore_ctx *ctx = NULL;
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
+	size_t piv_len = 0;
+	bool is_protected = false;
+#endif
 
 	if (s_handlers.config_put == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
-	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+		lichen_eui64_to_iid(peer_eui64, peer_eui64);
 	}
 
-	payload = coap_packet_get_payload(request, &payload_len);
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	is_protected = coap_oscore_is_protected(request);
+	if (is_protected) {
+		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
+			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
+		}
+		uint8_t orig_code;
+		uint8_t opts[32];
+		size_t opt_len = sizeof(opts);
+		size_t plain_len = sizeof(plain);
+		piv_len = sizeof(piv);
+		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len,
+						      plain, &plain_len, piv, &piv_len);
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		if (orig_code != COAP_METHOD_PUT) {
+			return COAP_RESPONSE_CODE_NOT_ALLOWED;
+		}
+		payload = plain;
+		payload_len = (uint16_t)plain_len;
+	} else {
+#endif
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return lichen_coap_respond(resource, request, addr, addr_len,
+						   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+		}
+		payload = coap_packet_get_payload(request, &payload_len);
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	}
+#endif
+
 	if (payload == NULL || payload_len == 0) {
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
@@ -209,8 +247,19 @@ static int config_put(struct coap_resource *resource,
 	ret = s_handlers.config_put(payload, payload_len);
 	if (ret < 0) {
 		LOG_ERR("Config PUT callback failed: %d", ret);
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
+
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	if (is_protected && ctx != NULL && piv_len > 0) {
+		return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_CHANGED);
+	}
+#endif
 
 	return send_ack(resource, request, addr, addr_len,
 			COAP_RESPONSE_CODE_CHANGED);

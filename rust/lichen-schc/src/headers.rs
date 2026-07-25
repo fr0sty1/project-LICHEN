@@ -19,12 +19,11 @@
 //! The variable trailer (CoAP token/options/payload, or RPL options) travels
 //! verbatim after the byte-aligned residue.
 
-use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
-
 use crate::context::FieldId;
 use crate::rules::Rule;
 
 // IPv6 constants
+const IPV6_HEADER_LEN: usize = 40;
 const UDP_HEADER_LEN: usize = 8;
 const COAP_FIXED_HEADER: usize = 4;
 const COAP_BUF_SIZE: usize = 256;
@@ -250,8 +249,8 @@ fn parse_ipv6_fields<'a>(raw: &'a [u8], parsed: &mut ParsedPacket<'a>) -> Result
     let payload_length = u16::from_be_bytes([raw[4], raw[5]]);
     let next_header = raw[6];
     let hop_limit = raw[7];
-    let src = addr_to_u128(&raw[field::SRC_OFFSET..field::DST_OFFSET]);
-    let dst = addr_to_u128(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]);
+    let src = addr_to_u128(&raw[8..24]);
+    let dst = addr_to_u128(&raw[24..40]);
 
     parsed.add_field("IPv6.version", 6);
     parsed.add_field("IPv6.traffic_class", traffic_class as u128);
@@ -284,8 +283,8 @@ fn write_ipv6_header(
     out[5] = payload_len as u8;
     out[6] = next_header;
     out[7] = hop_limit;
-    out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(src);
-    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(dst);
+    out[8..24].copy_from_slice(src);
+    out[24..40].copy_from_slice(dst);
 }
 
 // ============================================================================
@@ -354,7 +353,7 @@ fn coap_profile_matches<F: Fn(&[u8]) -> bool>(raw: &[u8], addr_check: F) -> bool
     if payload_length < UDP_HEADER_LEN + COAP_FIXED_HEADER {
         return false;
     }
-    addr_check(&raw[field::SRC_OFFSET..field::DST_OFFSET]) && addr_check(&raw[field::DST_OFFSET..IPV6_HEADER_LEN])
+    addr_check(&raw[8..24]) && addr_check(&raw[24..40])
 }
 
 fn parse_coap_udp<'a>(raw: &'a [u8]) -> Result<ParsedPacket<'a>, PacketError> {
@@ -468,7 +467,8 @@ fn build_coap_udp(
         udp_len,
         NEXT_HEADER_UDP,
         hop_limit,
-        (traffic_class, flow_label),
+        traffic_class,
+        flow_label,
         &src,
         &dst,
     );
@@ -561,7 +561,7 @@ impl PacketProfile for Icmpv6EchoProfile {
         if payload_length < ICMPV6_ECHO_BASE {
             return false;
         }
-        if !is_link_local(&raw[field::SRC_OFFSET..field::DST_OFFSET]) || !is_link_local(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]) {
+        if !is_link_local(&raw[8..24]) || !is_link_local(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];
@@ -668,7 +668,8 @@ impl PacketProfile for Icmpv6EchoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+            flow_label,
             &src,
             &dst,
         );
@@ -720,7 +721,7 @@ impl PacketProfile for RplDioProfile {
         if payload_length < ICMPV6_HEADER + DIO_BASE {
             return false;
         }
-        if !is_routable(&raw[field::SRC_OFFSET..field::DST_OFFSET]) || !is_routable(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]) {
+        if !is_routable(&raw[8..24]) || !is_routable(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];
@@ -841,7 +842,8 @@ impl PacketProfile for RplDioProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+            flow_label,
             &src,
             &dst,
         );
@@ -877,7 +879,7 @@ impl PacketProfile for RplDaoProfile {
         if payload_length < ICMPV6_HEADER + DAO_BASE_WITH_DODAGID {
             return false;
         }
-        if !is_routable(&raw[field::SRC_OFFSET..field::DST_OFFSET]) || !is_routable(&raw[field::DST_OFFSET..IPV6_HEADER_LEN]) {
+        if !is_routable(&raw[8..24]) || !is_routable(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];
@@ -992,7 +994,8 @@ impl PacketProfile for RplDaoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+            flow_label,
             &src,
             &dst,
         );
