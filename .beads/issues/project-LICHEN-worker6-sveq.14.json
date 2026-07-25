@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.14",
+  "title": "Split lichen/subsys/lichen/hal/hal.c (1814 lines)",
+  "description": "Extract per-peripheral handlers into separate files",
+  "notes": "Split plan: hal_caps.c (~320), hal_device.c (~200), hal_power.c (~200), hal_reset.c (~160), hal_location.c (~340), hal_time.c (~400), hal_duty.c (~90)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:18.393156Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T15:58:23.362944Z",
+  "started_at": "2026-07-25T15:52:52.589232Z",
+  "closed_at": "2026-07-25T15:58:23.362944Z",
+  "close_reason": "Closed",
+  "labels": [
+    "zephyr",
+    "hal",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.14",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:18.667902Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-1qak.5",
+  "title": "Split test_edhoc_transport.py (1142 lines)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T16:42:17.226362Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:50:24.121078Z",
+  "started_at": "2026-07-25T16:42:28.405414Z",
+  "closed_at": "2026-07-25T16:50:24.121078Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "tests",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1qak.5",
+      "depends_on_id": "project-LICHEN-worker6-1qak",
+      "type": "parent-child",
+      "created_at": "2026-07-25T16:42:17.522605Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

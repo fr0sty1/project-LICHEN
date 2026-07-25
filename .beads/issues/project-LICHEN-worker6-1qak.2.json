@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-1qak.2",
+  "title": "Split test_context_store.py (1598 lines)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T16:42:14.396244Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:50:15.573276Z",
+  "started_at": "2026-07-25T16:42:26.601491Z",
+  "closed_at": "2026-07-25T16:50:15.573276Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "tests",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1qak.2",
+      "depends_on_id": "project-LICHEN-worker6-1qak",
+      "type": "parent-child",
+      "created_at": "2026-07-25T16:42:14.695552Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

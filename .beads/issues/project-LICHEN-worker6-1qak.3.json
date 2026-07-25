@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-1qak.3",
+  "title": "Split test_secure_lifecycle.py (1388 lines)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T16:42:15.320049Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:59:08.968042Z",
+  "started_at": "2026-07-25T16:42:27.203875Z",
+  "closed_at": "2026-07-25T16:59:08.968042Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "tests",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1qak.3",
+      "depends_on_id": "project-LICHEN-worker6-1qak",
+      "type": "parent-child",
+      "created_at": "2026-07-25T16:42:15.618247Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

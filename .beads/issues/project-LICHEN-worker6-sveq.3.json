@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.3",
+  "title": "Split python/src/lichen/coap/resources.py (1795 lines)",
+  "description": "Split CoAP resource handlers by domain",
+  "notes": "Split plan: base.py, cbor_validation.py, node_resources.py, proxy.py, senml.py, presence.py, emergency.py, messaging.py, resource_directory.py, keys.py, edhoc.py (~450), site.py",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:08.201268Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:00:53.689938Z",
+  "started_at": "2026-07-25T15:53:34.288098Z",
+  "closed_at": "2026-07-25T16:00:53.689938Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "coap",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.3",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:08.494549Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

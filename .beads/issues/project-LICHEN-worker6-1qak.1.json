@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-1qak.1",
+  "title": "Split test_native.py (1886 lines)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T16:42:13.42593Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:51:30.913784Z",
+  "started_at": "2026-07-25T16:42:25.980253Z",
+  "closed_at": "2026-07-25T16:51:30.913784Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "tests",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1qak.1",
+      "depends_on_id": "project-LICHEN-worker6-1qak",
+      "type": "parent-child",
+      "created_at": "2026-07-25T16:42:13.750012Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

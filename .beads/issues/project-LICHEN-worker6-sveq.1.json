@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.1",
+  "title": "Split python/src/lichen/tui/native.py (2950 lines)",
+  "description": "Break TUI into: input handling, rendering, state, widgets",
+  "notes": "Split plan: models.py (~200), formatting.py (~400), widgets.py (~450), app.py (~1400), client.py (~100)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:06.450477Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:01:44.140755Z",
+  "started_at": "2026-07-25T15:52:12.341459Z",
+  "closed_at": "2026-07-25T16:01:44.140755Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "tui",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.1",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:06.734254Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.20",
+  "title": "Split lichen/subsys/lichen/meshtastic/codec.c (1531 lines)",
+  "description": "Separate protobuf encoding, decoding, msg type handlers",
+  "notes": "Split plan: meshtastic_pb.c, meshtastic_info.c, meshtastic_config.c, meshtastic_decode.c, meshtastic_encode.c",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:23.667774Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:00:20.141812Z",
+  "started_at": "2026-07-25T15:54:42.599402Z",
+  "closed_at": "2026-07-25T16:00:20.141812Z",
+  "close_reason": "Closed",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.20",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:23.948614Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

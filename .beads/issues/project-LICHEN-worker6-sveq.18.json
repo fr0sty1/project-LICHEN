@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.18",
+  "title": "Split lichen/subsys/lichen/schc/schc.c (1540 lines)",
+  "description": "Separate compression, fragmentation, rule matching",
+  "notes": "Split plan: schc_helpers.c, schc_checksum.c, schc_compress.c, schc_decompress.c, schc.c",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:21.911363Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:02:07.019459Z",
+  "started_at": "2026-07-25T15:54:39.861418Z",
+  "closed_at": "2026-07-25T16:02:07.019459Z",
+  "close_reason": "Closed",
+  "labels": [
+    "zephyr",
+    "schc",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.18",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:22.186651Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

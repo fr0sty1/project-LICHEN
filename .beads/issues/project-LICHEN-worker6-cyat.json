@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-cyat",
+  "title": "Update schnorr48 cross-language oracle test for signer_iid",
+  "description": "The test_signed_frame_cross_language_oracle test is disabled because the protocol now requires signer_iid when signature_present is true. Need to: 1) Generate new test vectors with signer_iid field, 2) Update wire format expectations, 3) Cross-validate against Python/Rust implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T21:58:47.092585Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T21:58:47.092585Z",
+  "labels": [
+    "c",
+    "test"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.9",
+  "title": "Split rust/lichen-node/src/routing.rs (3122 lines)",
+  "description": "Extract routing table, neighbor mgmt, route selection",
+  "notes": "Split plan: neighbor.rs (~260), router.rs (~700), gpsr.rs (~120), dtn.rs (~180), tests.rs (~1720)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:13.536615Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:05:50.675215Z",
+  "started_at": "2026-07-25T15:53:32.824336Z",
+  "closed_at": "2026-07-25T16:05:50.675215Z",
+  "close_reason": "Closed",
+  "labels": [
+    "rust",
+    "routing",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.9",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:13.809237Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.13",
+  "title": "Split lichen/subsys/lichen/meshtastic/adapter.c (1846 lines)",
+  "description": "Separate protocol handling, msg conversion, state machine",
+  "notes": "Split plan: adapter_internal.h, adapter_parse.c (~520), adapter_nodedb.c (~400), adapter_sync.c (~350), adapter.c (~580)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:17.518001Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:00:01.568317Z",
+  "started_at": "2026-07-25T15:52:51.718479Z",
+  "closed_at": "2026-07-25T16:00:01.568317Z",
+  "close_reason": "Closed",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.13",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:17.798286Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

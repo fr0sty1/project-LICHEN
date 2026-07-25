@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.17",
+  "title": "Split lichen/subsys/lichen/rpl/routing.c (1559 lines)",
+  "description": "Separate route table, path computation, DIO/DAO",
+  "notes": "Split plan: rpl_srh.c, rpl_prefix.c, rpl_routing_table.c (~400), rpl_dao_build.c, rpl_dao_process.c (~500)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:21.028665Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:00:52.354608Z",
+  "started_at": "2026-07-25T15:54:05.269461Z",
+  "closed_at": "2026-07-25T16:00:52.354608Z",
+  "close_reason": "Closed",
+  "labels": [
+    "zephyr",
+    "rpl",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.17",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:21.314298Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

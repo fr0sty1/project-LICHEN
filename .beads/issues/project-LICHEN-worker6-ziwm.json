@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ziwm",
+  "title": "Fix lichen-node --all-features build errors",
+  "description": "53 compilation errors when building lichen-node with --all-features flag. Pre-existing structural issues from feature-gated module reorganization drift. Errors include: unresolved imports (RplMaintenanceOutcome, HOP_SCHEDULE_LEN, etc.), missing methods (local_public_key), non-exhaustive pattern matches, borrow conflicts, and missing macros (vec!).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T19:11:57.811052Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T19:25:34.435871Z",
+  "closed_at": "2026-07-25T19:25:34.435871Z",
+  "close_reason": "Fixed all 53 compilation errors. Workflow applied 57 fixes across 20 files including: missing imports, vec! macro scope, API drift (local_public_key, options_tail), type mismatches, visibility fixes, and enum variant updates."
+}

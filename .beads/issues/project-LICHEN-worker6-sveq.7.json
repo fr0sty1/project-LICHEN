@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-sveq.7",
+  "title": "Split rust/lichen-node/src/rpl_stack.rs (3912 lines)",
+  "description": "Separate RPL state machine, timer handling, message dispatch",
+  "notes": "Split plan: error.rs, receive.rs, transmit.rs, secure.rs, runtime.rs, provisioning.rs, util.rs, tests/",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:11.779509Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:06:01.743985Z",
+  "started_at": "2026-07-25T15:52:10.660472Z",
+  "closed_at": "2026-07-25T16:06:01.743985Z",
+  "close_reason": "Closed",
+  "labels": [
+    "rust",
+    "rpl",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.7",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:12.061997Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

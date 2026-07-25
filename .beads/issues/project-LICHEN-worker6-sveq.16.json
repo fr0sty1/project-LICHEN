@@ -1,0 +1,34 @@
+{
+  "id": "project-LICHEN-worker6-sveq.16",
+  "title": "Split lichen/subsys/lichen/edhoc/edhoc.c (1609 lines)",
+  "description": "Extract msg handlers, state machine, crypto helpers",
+  "notes": "Split plan: edhoc_crypto.c, edhoc_kdf.c, edhoc_sign.c, edhoc_initiator.c (~500), edhoc_responder.c (~550)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T15:32:20.1429Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T16:00:40.510764Z",
+  "started_at": "2026-07-25T15:54:04.579147Z",
+  "closed_at": "2026-07-25T16:00:40.510764Z",
+  "close_reason": "Closed",
+  "labels": [
+    "zephyr",
+    "edhoc",
+    "security",
+    "code-health",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sveq.16",
+      "depends_on_id": "project-LICHEN-worker6-sveq",
+      "type": "parent-child",
+      "created_at": "2026-07-25T15:32:20.43365Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
