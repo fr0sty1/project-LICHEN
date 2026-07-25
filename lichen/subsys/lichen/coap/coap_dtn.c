@@ -129,12 +129,9 @@ int lichen_coap_deaddrop_register(
 	struct lichen_deaddrop_provider *provider)
 {
 	if (provider == NULL) return -EINVAL;
-	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	int r = lichen_coap_dtn_init();
-	if (r < 0) {
-		k_mutex_unlock(&s_dtn_buf_mutex);
-		return r;
-	}
+	if (r < 0) return r;
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	s_provider = provider;
 	r = lichen_dtn_init(&s_dtn_buf);
 	if (r < 0) {
@@ -440,6 +437,8 @@ static int confessions_post(struct coap_resource *resource,
 
 int lichen_coap_dtn_init(void)
 {
+	k_mutex_init(&s_dtn_buf_mutex);
+	k_mutex_init(&s_rate_mutex);
 	int r = oscore_init();
 	if (r < 0) return r;
 	r = lichen_coap_client_init();

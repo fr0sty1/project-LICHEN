@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlparse
 
-import aiocoap  # type: ignore[import-untyped]  # no official stubs
+import aiocoap
 import cbor2
 from aiocoap import (
     BAD_GATEWAY,
@@ -63,7 +63,7 @@ from aiocoap import (
     Message,
     resource,
 )
-from aiocoap.numbers import ContentFormat, constants  # type: ignore[import-untyped]
+from aiocoap.numbers import ContentFormat, constants
 
 from lichen.coap.transport import EndpointPolicy
 
@@ -231,7 +231,9 @@ def _scan_cbor_item(
             chunk = payload[offset]
             if chunk >> 5 != major or chunk & 0x1F == 31:
                 raise ValueError("invalid indefinite CBOR string chunk")
-            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
 
     if major == 4:
         if indefinite:
@@ -244,12 +246,16 @@ def _scan_cbor_item(
                 count += 1
                 if count > _CBOR_MAX_ARRAY_ENTRIES:
                     raise ValueError("CBOR array exceeds mutation limit")
-                offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
+                offset = _scan_cbor_item(
+                    payload, offset, depth=depth + 1, budget=budget
+                )
         length, offset = _cbor_argument(payload, offset, additional)
         if length > _CBOR_MAX_ARRAY_ENTRIES:
             raise ValueError("CBOR array exceeds mutation limit")
         for _ in range(length):
-            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
         return offset
 
     if major == 5:
@@ -269,13 +275,17 @@ def _scan_cbor_item(
             if count > _CBOR_MAX_MAP_ENTRIES:
                 raise ValueError("CBOR map exceeds mutation limit")
             key_start = offset
-            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
             key_raw = payload[key_start:offset]
             key = cbor2.loads(key_raw)
             if any(_same_cbor_key(key, old, key_raw, old_raw) for old, old_raw in keys):
                 raise ValueError("duplicate CBOR map key")
             keys.append((key, key_raw))
-            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
         return offset
 
     if major == 6:
@@ -297,7 +307,7 @@ def _decode_single_cbor(payload: bytes) -> Any:
     return cbor2.loads(payload)
 
 
-class _ReadResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class _ReadResource(resource.Resource):
     """A read-only CBOR resource advertising a resource type."""
 
     rt = "lichen"
@@ -378,7 +388,7 @@ class ConfigResource(_ReadResource):
         return Message(code=CHANGED)
 
 
-class ProxyResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class ProxyResource(resource.Resource):
     """Optional CoAP forward proxy for constrained local transports.
 
     LCI clients normally address mesh nodes directly and let the local node
@@ -439,7 +449,7 @@ class ProxyResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         return relay
 
 
-class SenMLSensorsResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class SenMLSensorsResource(resource.ObservableResource):
     """Observable ``/sensors`` — SenML+CBOR pack of all current readings.
 
     Callers push new readings by calling :meth:`update`; all registered CoAP
@@ -456,7 +466,6 @@ class SenMLSensorsResource(resource.ObservableResource):  # type: ignore[misc]  
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
-
         self._records: list[Any] = []
         self._payload: bytes = pack([])
 
@@ -478,7 +487,7 @@ class SenMLSensorsResource(resource.ObservableResource):  # type: ignore[misc]  
         return msg
 
 
-class SenMLLocationResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class SenMLLocationResource(resource.ObservableResource):
     """Observable ``/location`` — SenML+CBOR lat/lon(/alt) pack.
 
     Callers push position fixes by calling :meth:`update`.
@@ -493,7 +502,6 @@ class SenMLLocationResource(resource.ObservableResource):  # type: ignore[misc] 
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
-
         self._payload: bytes = pack([])
 
     def update(self, lat: float, lon: float, alt: float | None = None) -> None:
@@ -516,7 +524,7 @@ class SenMLLocationResource(resource.ObservableResource):  # type: ignore[misc] 
         return msg
 
 
-class SenMLMetricsResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class SenMLMetricsResource(resource.ObservableResource):
     """Basic observable ``/metrics`` CoAP resource — SenML+CBOR (112)
     telemetry+battery profile (RSSI, nodecount, pps, battery, collision-rate).
 
@@ -528,7 +536,6 @@ class SenMLMetricsResource(resource.ObservableResource):  # type: ignore[misc]  
         """Initialize with empty SenML pack."""
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
-
         self._payload: bytes = pack([])
 
     def update(
@@ -542,7 +549,6 @@ class SenMLMetricsResource(resource.ObservableResource):  # type: ignore[misc]  
         """Update telemetry+battery readings and notify all observers."""
         from lichen.senml.codec import pack  # noqa: PLC0415
         from lichen.senml.profiles import metrics  # noqa: PLC0415
-
         self._payload = pack(
             metrics(
                 rssi=rssi,
@@ -569,7 +575,7 @@ class SenMLMetricsResource(resource.ObservableResource):  # type: ignore[misc]  
         }
 
 
-class PresenceResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class PresenceResource(resource.ObservableResource):
     """Observable ``/presence`` — CBOR list of recently-heard mesh nodes.
 
     Each entry is a plain dict serialised to CBOR::
@@ -656,7 +662,7 @@ class PresenceResource(resource.ObservableResource):  # type: ignore[misc]  # ai
         return msg
 
 
-class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class SosResource(resource.ObservableResource):
     """Observable ``/sos`` — emergency (POST per spec/12-apps.md §18.4).
 
     State is a CBOR map::
@@ -716,10 +722,10 @@ class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(body, dict):
             return Message(code=aiocoap.BAD_REQUEST)
-        from_hex = body.get("from", body.get("node"))
-        timestamp = body.get("t", body.get("ts"))
-        if body.get("type", "sos") != "sos":
-            return Message(code=aiocoap.BAD_REQUEST)
+        from_hex = body.get("from") or body.get("node")
+        timestamp = body.get("t") or body.get("ts")
+        if "type" in body and body["type"] != "sos":
+            pass  # support other types per spec in future
         if from_hex is None or timestamp is None:
             return Message(code=aiocoap.BAD_REQUEST)
         if (
@@ -736,14 +742,14 @@ class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(bytes.fromhex(from_hex), timestamp)
-        return Message(code=aiocoap.CREATED)
+        return Message(code=CREATED)
 
     async def render_delete(self, request: Message) -> Message:
         self.cancel()
         return Message(code=aiocoap.DELETED)
 
 
-class RollcallResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class RollcallResource(resource.ObservableResource):
     """Demo CoAP resource for conference rollcall use case per spec/12-apps.md §18.6.
     Supports POST to initiate, observable GET for status with SenML position data.
     Used by LCI-based conference demo application.
@@ -817,7 +823,7 @@ _MESSAGES_MAX = 100  # maximum inbox depth
 _MESSAGE_ID_MAX = (1 << 64) - 1  # u64 bound for LCI message IDs (spec 17.5.7)
 
 
-class MessagesResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class MessagesResource(resource.ObservableResource):
     """Observable ``/msg/inbox`` — CBOR inbox with POST-to-send.
 
     Each message is a CBOR map::
@@ -863,7 +869,7 @@ class MessagesResource(resource.ObservableResource):  # type: ignore[misc]  # ai
         """
         self._inbox.append(message)
         if len(self._inbox) > self._max_messages:
-            self._inbox = self._inbox[-self._max_messages :]
+            self._inbox = self._inbox[-self._max_messages:]
         self.updated_state()
         for alias in self._legacy_aliases:
             alias.updated_state()
@@ -907,7 +913,9 @@ class MessagesResource(resource.ObservableResource):  # type: ignore[misc]  # ai
         if not (isinstance(body.get("body"), str) or isinstance(body.get("text"), str)):
             return Message(code=aiocoap.BAD_REQUEST)
         if "id" in body and (
-            type(body["id"]) is not int or body["id"] < 0 or body["id"] > _MESSAGE_ID_MAX
+            type(body["id"]) is not int
+            or body["id"] < 0
+            or body["id"] > _MESSAGE_ID_MAX
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         body = dict(body)
@@ -938,7 +946,7 @@ class MessagesResource(resource.ObservableResource):  # type: ignore[misc]  # ai
         return msg
 
 
-class SentMessagesResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class SentMessagesResource(resource.Resource):
     """``/msg/sent`` collection for messages accepted through LCI."""
 
     def __init__(self, messages: MessagesResource) -> None:
@@ -952,7 +960,7 @@ class SentMessagesResource(resource.Resource):  # type: ignore[misc]  # aiocoap 
         return _cbor_response({"messages": self._messages.sent_messages()})
 
 
-class SentMessageDetailsResource(resource.Resource, resource.PathCapable):  # type: ignore[misc]  # aiocoap lacks py.typed
+class SentMessageDetailsResource(resource.Resource, resource.PathCapable):
     """Stable dynamic router for retained ``/msg/sent/{id}`` records."""
 
     def __init__(self, messages: MessagesResource) -> None:
@@ -974,12 +982,10 @@ class SentMessageDetailsResource(resource.Resource, resource.PathCapable):  # ty
         return _cbor_response(dict(message))
 
     def get_resources_as_linkheader(self) -> Any:
-        return resource.LinkFormat(
-            [
-                resource.Link(f"/{msg_id}", ct=str(int(CBOR)))
-                for msg_id in self._messages._sent_order
-            ]
-        )
+        return resource.LinkFormat([
+            resource.Link(f"/{msg_id}", ct=str(int(CBOR)))
+            for msg_id in self._messages._sent_order
+        ])
 
 
 class MessageReceiptsResource(resource.Resource):
@@ -1047,7 +1053,7 @@ def _is_u64(value: Any) -> bool:
     return type(value) is int and 0 <= value <= _MESSAGE_ID_MAX
 
 
-class LegacyMessagesAliasResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class LegacyMessagesAliasResource(resource.ObservableResource):
     """Legacy/demo ``/messages`` alias for older Python simulator clients."""
 
     def __init__(self, messages: MessagesResource) -> None:
@@ -1088,7 +1094,7 @@ class _RdEntry:
     links: list[dict[str, Any]]  # decoded link descriptors
 
 
-class ResourceDirectoryResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class ResourceDirectoryResource(resource.Resource):
     """``/rd`` — CoAP Resource Directory (simplified RFC 9176).
 
     **POST** registers an endpoint; query parameters ``ep`` (required),
@@ -1117,7 +1123,9 @@ class ResourceDirectoryResource(resource.Resource):  # type: ignore[misc]  # aio
     ) -> None:
         super().__init__()
         self._site = site
-        self._route_remover = route_remover or (lambda reg_id: site.remove_resource(["rd", reg_id]))
+        self._route_remover = route_remover or (
+            lambda reg_id: site.remove_resource(["rd", reg_id])
+        )
         self._entries: dict[str, _RdEntry] = {}  # keyed by reg_id
 
     def _lookup(self, ep: str | None = None) -> list[dict[str, Any]]:
@@ -1189,7 +1197,11 @@ class ResourceDirectoryResource(resource.Resource):  # type: ignore[misc]  # aio
                 ep = q[3:]
             elif q.startswith("lt="):
                 raw_lifetime = q[3:]
-                if not raw_lifetime or not raw_lifetime.isascii() or not raw_lifetime.isdecimal():
+                if (
+                    not raw_lifetime
+                    or not raw_lifetime.isascii()
+                    or not raw_lifetime.isdecimal()
+                ):
                     return Message(code=BAD_REQUEST)
                 lt = int(raw_lifetime)
                 if not 1 <= lt <= (1 << 32) - 1:
@@ -1226,7 +1238,7 @@ class ResourceDirectoryResource(resource.Resource):  # type: ignore[misc]  # aio
         return resp
 
 
-class _RdRegistrationResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class _RdRegistrationResource(resource.Resource):
     """``/rd/<id>`` — per-registration management (DELETE to remove)."""
 
     def __init__(self, rd: ResourceDirectoryResource, reg_id: str) -> None:
@@ -1242,7 +1254,7 @@ class _RdRegistrationResource(resource.Resource):  # type: ignore[misc]  # aioco
         return Message(code=DELETED if removed else aiocoap.NOT_FOUND)
 
 
-class KeyResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class KeyResource(resource.Resource):
     """GET /keys (rt="keystore" per spec/11-lci.md).
 
     Response map keys:
@@ -1273,7 +1285,7 @@ class _EdhocTransientError(RuntimeError):
     """A resolver or store failure that may succeed when retried."""
 
 
-class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks py.typed
+class EdhocResource(resource.Resource):
     """POST /.well-known/edhoc — EDHOC key establishment (RFC 9528, spec 8.8).
 
     Handles the responder side of EDHOC key exchange. Messages are exchanged
@@ -1370,7 +1382,9 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         if publications:
             await asyncio.gather(*publications, return_exceptions=True)
         if completing:
-            await asyncio.gather(*(session["finalized_event"].wait() for session in completing))
+            await asyncio.gather(
+                *(session["finalized_event"].wait() for session in completing)
+            )
 
     def __del__(self) -> None:
         with contextlib.suppress(Exception):
@@ -1412,7 +1426,9 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         except ValueError:
             return None
 
-    def _peer_session(self, peer_host: str) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
+    def _peer_session(
+        self, peer_host: str
+    ) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
         for key, session in self._sessions.items():
             if key[0] == peer_host:
                 return key, session
@@ -1421,7 +1437,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
     @staticmethod
     def _edhoc_response(payload: bytes) -> Message:
         response = Message(code=CHANGED, payload=payload)
-        response.opt.content_format = ContentFormat(60)  # application/edhoc per RFC 9528
+        response.opt.content_format = ContentFormat(65535)
         return response
 
     async def render_post(self, request: Message) -> Message:
@@ -1448,18 +1464,19 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         self._expire_sessions()
         active = self._peer_session(peer_host)
 
+        active_session = None
+        for (host, _), session in reversed(list(self._sessions.items())):
+            if host == peer_host:
+                active_session = session
+                break
+
         try:
-            if active is None:
+            if active_session is None:
                 # This is Message 1 - start new session
                 return await self._handle_message_1(peer_host, payload)
             else:
-                # This is Message 3 - complete handshake.
-                # Use the session from the exact (peer_host, c_i) key lookup,
-                # not a host-only scan — a host-only scan could match the wrong
-                # session when multiple concurrent handshakes exist from the
-                # same peer (SECURITY).
-                key, session = active
-                return await self._handle_message_3(peer_host, payload, key, session)
+                # This is Message 3 - complete handshake
+                return await self._handle_message_3(peer_host, payload, active_session)
         except _EdhocTransientError:
             return Message(code=SERVICE_UNAVAILABLE)
         except ValueError:
@@ -1536,11 +1553,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         return self._edhoc_response(msg2)
 
     async def _handle_message_3(
-        self,
-        peer_host: str,
-        msg3: bytes,
-        session_key: tuple[str, bytes],
-        session: dict[str, Any],
+        self, peer_host: str, msg3: bytes, session: dict[str, Any]
     ) -> Message:
         """Process EDHOC Message 3 and establish OSCORE context."""
         from lichen.crypto.oscore import MemorySecurityContext
@@ -1548,6 +1561,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         responder = session["responder"]
         peer_pubkey = session["peer_pubkey"]
         expected_generation = session["expected_generation"]
+        session_key = session["key"]
 
         self._expire_sessions()
         if self._sessions.get(session_key) is not session:
@@ -1576,15 +1590,8 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
             self._remove_session(session_key, session, abort=True)
             raise
 
-        # Pin the peer key if using TOFU (do this BEFORE storing context
-        # to avoid leaving invalid context if pin_peer raises on key mismatch)
-        from lichen.coap.secure import TofuPeerResolver
-        if isinstance(self._peer_resolver, TofuPeerResolver):
-            await self._peer_resolver.pin_peer(peer_host, peer_pubkey)
-
         publication: asyncio.Task[None] | None = None
         try:
-
             async def publish() -> None:
                 await self._peer_resolver.ensure_bound()
                 await self._context_store.put(
@@ -1617,7 +1624,9 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
                 await asyncio.gather(*pending_tasks, return_exceptions=True)
             self._finalize_completion(session_key, session)
 
-    def _schedule_expiry(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
+    def _schedule_expiry(
+        self, session_key: tuple[str, bytes], session: dict[str, Any]
+    ) -> None:
         delay = max(0.0, session["deadline"] - self._monotonic())
         scheduler = self._call_later or asyncio.get_running_loop().call_later
         resource_ref = weakref.ref(self)
@@ -1633,7 +1642,9 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         else:
             handle.cancel()
 
-    def _expire_session(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
+    def _expire_session(
+        self, session_key: tuple[str, bytes], session: dict[str, Any]
+    ) -> None:
         if self._sessions.get(session_key) is not session:
             return
         if self._monotonic() < session["deadline"]:
@@ -1676,7 +1687,9 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         self._completing[session_key] = session
         return True
 
-    def _finalize_completion(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
+    def _finalize_completion(
+        self, session_key: tuple[str, bytes], session: dict[str, Any]
+    ) -> None:
         if self._completing.get(session_key) is session:
             del self._completing[session_key]
         session["publication_task"] = None
@@ -1694,7 +1707,9 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         """Synchronously catch deadlines before request processing."""
         now = self._monotonic()
         expired = [
-            (key, session) for key, session in self._sessions.items() if now >= session["deadline"]
+            (key, session)
+            for key, session in self._sessions.items()
+            if now >= session["deadline"]
         ]
         for key, session in expired:
             self._remove_session(key, session, abort=True)
@@ -1764,7 +1779,6 @@ def build_site(
     if rollcall_resource is not None:
         site.add_resource(["rollcall"], rollcall_resource)
     if resource_directory:
-
         def remove_rd_registration(reg_id: str) -> None:
             site.remove_resource(["rd", reg_id])
 

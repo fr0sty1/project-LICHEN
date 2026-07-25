@@ -705,7 +705,8 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	uint32_t d = tdma->slot_duration;
 	uint32_t slot_start = tdma->superframe * (uint32_t)tdma->n_slots * d + (uint32_t)tdma->slot * d;
 	uint32_t g = LICHEN_TDMA_GUARD_MS;
-	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
+	uint32_t window_start = (slot_start >= g) ? (slot_start - g) : 0;
+	return (window_start <= now_ms) && (now_ms <= slot_start + d + g);
 }
 
 uint32_t lichen_hash_32(const uint8_t *data, size_t len)

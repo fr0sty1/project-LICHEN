@@ -276,6 +276,30 @@ int kiss_transport_send_ax25(const uint8_t *data, size_t len);
 int kiss_transport_send_raw(const uint8_t *data, size_t len);
 
 /**
+ * @brief Send an LCI IPv6 datagram on port 2
+ *
+ * Encodes and transmits an IPv6 datagram over KISS port 2
+ * for Meshtastic-style LCI mapping.
+ *
+ * @param data Pointer to IPv6 datagram
+ * @param len  Length of datagram (max KISS_MAX_PAYLOAD)
+ * @return 0 on success, negative errno on failure
+ */
+int kiss_transport_send_lci_ipv6(const uint8_t *data, size_t len);
+
+/**
+ * @brief Send an LCI control message on port 3
+ *
+ * Encodes and transmits a control message (config, status, keys)
+ * over KISS port 3.
+ *
+ * @param data Pointer to control message data
+ * @param len  Length of message (max KISS_MAX_PAYLOAD)
+ * @return 0 on success, negative errno on failure
+ */
+int kiss_transport_send_lci_ctrl(const uint8_t *data, size_t len);
+
+/**
  * @brief Send a KISS frame on a specific port
  *
  * Low-level send function for arbitrary port numbers.
