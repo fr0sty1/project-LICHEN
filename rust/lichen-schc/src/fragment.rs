@@ -1,7 +1,7 @@
 //! Rule Set Version 2 SCHC ACK-on-Error fragmentation (RFC 8724 section 8).
 
 use lichen_core::{
-    constants::{SCHC_FRAG_MAX_PACKET_SIZE, SCHC_MAX_DECOMPRESSED},
+    constants::SCHC_FRAG_MAX_PACKET_SIZE,
     error::{BufferTooSmall, TooShort},
 };
 
@@ -255,7 +255,7 @@ impl Ack {
 
         let trailing = (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
         let n = WINDOW_SIZE - trailing;
-        let remaining = if n <= 6 { 0 } else { n - 6 };
+        let remaining = n.saturating_sub(6);
         let body_bytes = remaining.div_ceil(8);
         let needed = 2 + body_bytes;
         if out.len() < needed {
@@ -263,7 +263,7 @@ impl Ack {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        let first_byte_bits = n.min(6) as usize;
+        let first_byte_bits = n.min(6);
         for i in 0..first_byte_bits {
             if self.bitmap & (1u64 << (62 - i)) != 0 {
                 out[1] |= 1 << (5 - i);
@@ -337,7 +337,7 @@ impl Ack {
         if n > WINDOW_SIZE {
             return Err(FragmentError::MalformedAck);
         }
-        let remaining = if n <= 6 { 0 } else { n - 6 };
+        let remaining = n.saturating_sub(6);
         let body_bytes = remaining.div_ceil(8);
         let expected_len = 2 + body_bytes;
         if expected_len != data.len() {
@@ -354,16 +354,6 @@ impl Ack {
         }
         Ok(ack)
     }
-}
-
-fn set_bit(bytes: &mut [u8], bit: usize, value: bool) {
-    if value {
-        bytes[bit / 8] |= 1 << (7 - bit % 8);
-    }
-}
-
-fn get_bit(bytes: &[u8], bit: usize) -> bool {
-    bytes[bit / 8] & (1 << (7 - bit % 8)) != 0
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

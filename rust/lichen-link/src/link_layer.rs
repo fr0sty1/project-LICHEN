@@ -480,6 +480,7 @@ impl LinkLayer {
             epoch,
             seqnum,
             dst_addr,
+            &[],  // signer_iid not yet implemented
             inner_payload,
             &self.identity.privkey,
             &self.identity.pubkey,
@@ -525,6 +526,7 @@ impl LinkLayer {
                     frame.epoch,
                     frame.seqnum,
                     frame.dst_addr,
+                    &[],  // signer_iid not yet extracted from frame
                     frame.payload,
                     frame.mic,
                     &p.identity.pubkey,

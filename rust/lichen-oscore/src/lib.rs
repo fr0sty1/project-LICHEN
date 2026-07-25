@@ -259,6 +259,7 @@ impl PendingResponse<'_> {
     }
 }
 
+#[allow(dead_code)]  // variants gated by features
 enum Construction {
     #[cfg(any(feature = "edhoc", test))]
     Fresh,
