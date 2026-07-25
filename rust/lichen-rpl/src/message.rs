@@ -64,6 +64,7 @@ impl core::error::Error for RplError {
 // ── Option type bytes ─────────────────────────────────────────────────────────
 
 pub const OPT_PAD1: u8 = 0;
+pub const OPT_PADN: u8 = 1;
 pub const OPT_DODAG_CONFIG: u8 = 4;
 pub const OPT_RPL_TARGET: u8 = 5;
 pub const OPT_TRANSIT_INFO: u8 = 6;
@@ -121,7 +122,7 @@ impl Dio {
             preference: gmop & 0x7,
             dtsn: data[5],
             flags: data[6],
-            // SAFETY: length check above ensures data.len() >= BASE_LEN (24),
+            // INFALLIBLE: length check above ensures data.len() >= BASE_LEN (24),
             // so 8..24 is within bounds and exactly 16 bytes
             dodag_id: data[8..24].try_into().unwrap(),
         })
@@ -172,6 +173,7 @@ pub struct Dao {
 
 impl Dao {
     pub const BASE_LEN: usize = 20; // for D=1 (common case)
+    pub const MIN_BASE_LEN: usize = 4; // for D=0 (no DODAGID)
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < 4 {
@@ -184,7 +186,7 @@ impl Dao {
             return Err(TooShort::new(base_len, data.len()).into());
         }
         let dodag_id = if d_flag == 1 {
-            // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
+            // INFALLIBLE: length check ensures data.len() >= 20; 4..20 is 16 bytes
             data[4..20].try_into().unwrap()
         } else {
             [0u8; 16] // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
@@ -194,7 +196,7 @@ impl Dao {
             ack_requested: (kd >> 7) & 1 == 1,
             flags: kd & 0x3F,
             dao_sequence: data[3],
-            dodag_id,
+            dodag_id: Some(dodag_id),
         })
     }
 
@@ -203,7 +205,7 @@ impl Dao {
             return Err(RplError::InvalidOption);
         }
         let base_len = if self.dodag_id.is_some() {
-            Self::DODAG_BASE_LEN
+            Self::BASE_LEN
         } else {
             Self::MIN_BASE_LEN
         };
@@ -230,11 +232,6 @@ impl Dao {
         let kd = data[1];
         let d_flag = (kd >> 6) & 1;
         let base_len = if d_flag == 1 { 20 } else { 4 };
-        if data.len() > base_len {
-            &data[base_len..]
-        } else {
-            Self::MIN_BASE_LEN
-        };
         data.get(base_len..).unwrap_or_default()
     }
 }
@@ -308,7 +305,7 @@ impl<'a> SignedDaoEnvelope<'a> {
         if dao.flags != 0 || data[2] != 0 {
             return Err(DaoEnvelopeError::Rpl(RplError::InvalidOption));
         }
-        let base_len = data.len() - dao.options_tail(data).len();
+        let base_len = data.len() - Dao::options_tail(data).len();
         let mut pos = base_len;
         let mut found = None;
         while pos < data.len() {
@@ -515,7 +512,7 @@ impl TransitInfo {
         if data.len() < Self::DATA_LEN {
             return Err(TooShort::new(Self::DATA_LEN, data.len()).into());
         }
-        // SAFETY: length check above ensures data.len() >= DATA_LEN (20),
+        // INFALLIBLE: length check above ensures data.len() >= DATA_LEN (20),
         // so 4..20 is within bounds and exactly 16 bytes. E flag (data[0] bit 7)
         // is asserted by caller tests per aligned E/Parent contract.
         Ok(Self {
@@ -708,7 +705,7 @@ mod tests {
         assert!(!dao.ack_requested);
         assert_eq!(dao.flags, 0);
         assert_eq!(dao.dao_sequence, 1);
-        assert_eq!(dao.dodag_id, [0u8; 16]);
+        assert_eq!(dao.dodag_id, Some([0u8; 16]));
     }
 
     #[test]
