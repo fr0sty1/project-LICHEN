@@ -2,16 +2,18 @@
   "id": "project-LICHEN-hwup",
   "title": "[codereview-pass2-security] Gateway lacks TX queue integration and RPL SRH insertion for downward traffic",
   "description": "P1: mesh-to-mesh packets require SourceRoutingHeader insertion per RFC6554 to prevent blackholing in non-storing RPL. No SCHC recompress after SRH (packet size changes). No TX queue (lichen_core::tx_queue or SlipFramer.queue). Potential buffer overflow or drop without queue. codereview-tagged. See lichen-rpl::routing::SourceRoutingHeader and lichen-core/src/tx_queue.rs. Discovered-from: project-LICHEN-lug0",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": null,
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:43:11.400318425Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T05:14:26.617637679Z",
+  "updated_at": "2026-07-25T01:18:08.537318578Z",
   "started_at": "2026-07-22T15:48:06.947745501Z",
   "closed_at": "2026-07-23T05:14:26.617637679Z",
   "close_reason": "Decomposed into subtasks project-LICHEN-hwup.1 (SRH insertion), .2 (SCHC recompress after SRH), .3 (TX queue integration in gateway)",
+  "lease_expires_at": "2026-07-25T01:23:08.537318578Z",
+  "heartbeat_at": "2026-07-25T01:18:08.537318578Z",
   "labels": [
     "codereview"
   ]
