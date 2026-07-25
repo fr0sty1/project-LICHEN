@@ -79,6 +79,66 @@ jobs:
       - run: cargo build
       - run: cargo test
 
+  rust-all-features:
+    needs: rust-fmt
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: Build with all features (catches FFI/feature drift)
+        run: cargo build --package lichen-node --all-features
+
+  c-cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=warning,style,performance,portability \
+            --error-exitcode=1 \
+            --inline-suppr \
+            --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            --suppress=syntaxError \
+            --std=c11 \
+            -I lichen/include \
+            -I lichen/subsys/lichen \
+            lichen/subsys/ lichen/lib/ lichen/drivers/
+
+  c-clang-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+      - name: Run clang-tidy on changed C files
+        run: |
+          find lichen/subsys lichen/lib lichen/drivers -name '*.c' | head -50 | \
+            xargs -I{} clang-tidy {} \
+              --config-file=lichen/.clang-tidy \
+              -p /dev/null \
+              -- -I lichen/include -I lichen/subsys/lichen -std=c11
+
+  c-standalone-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build schnorr48 standalone test (catches header/impl drift)
+        run: |
+          cd lichen/tests/schnorr48
+          mkdir -p build && cd build
+          cmake .. && make
+      - name: Run schnorr48 test
+        run: ./lichen/tests/schnorr48/build/schnorr48_test
+
   test-vectors:
     runs-on: ubuntu-latest
     steps:
