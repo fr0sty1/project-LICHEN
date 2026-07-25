@@ -2,11 +2,15 @@
   "id": "project-LICHEN-k98d",
   "title": "No constant-time comparison for security-sensitive operations",
   "description": "File: rust/lichen-oscore/src/lib.rs\n\nSeveral comparisons in security-critical code paths are not constant-time:\n\n1. Lines 651-664 (is_replay): Uses regular integer comparison, which is fine (not timing-sensitive for sequence numbers).\n\n2. Lines 719-721 (parse_option): Reserved bit check - not timing sensitive.\n\n3. The underlying ccm crate should handle tag comparison, but this should be verified.\n\nThe main concern is if any future additions compare secret material directly.\n\nCurrently no exploitable timing side-channel found, but the codebase should document its timing guarantees.\n\nImpact: Potential future vulnerability if comparisons are added carelessly.\n\nFix: Add comment documenting timing properties, consider using subtle crate for any future secret comparisons.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:37:57.340388Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:38:01.521903Z"
+  "updated_at": "2026-07-25T01:17:52.235227023Z",
+  "started_at": "2026-07-25T01:17:52.235227023Z",
+  "lease_expires_at": "2026-07-25T01:22:52.235227023Z",
+  "heartbeat_at": "2026-07-25T01:17:52.235227023Z"
 }
