@@ -67,8 +67,11 @@ int lichen_coap_deaddrop_register(
 	const struct lichen_deaddrop_provider *provider)
 {
 	if (provider == NULL) return -EINVAL;
-	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	k_mutex_init(&s_dtn_buf_mutex);
+	k_mutex_init(&s_rate_mutex);
 	int r = lichen_coap_dtn_init();
+	if (r < 0) return r;
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	if (r < 0) {
 		k_mutex_unlock(&s_dtn_buf_mutex);
 		return r;
@@ -288,8 +291,6 @@ int lichen_coap_dtn_init(void)
 	if (r < 0) return r;
 	r = lichen_coap_client_init();
 	if (r < 0) return r;
-	k_mutex_init(&s_dtn_buf_mutex);
-	k_mutex_init(&s_rate_mutex);
 	return 0;
 }
 
