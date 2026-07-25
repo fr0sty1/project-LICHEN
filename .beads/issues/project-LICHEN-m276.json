@@ -5,11 +5,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:53.449007Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:23:47.283554031Z",
+  "updated_at": "2026-07-25T00:43:14.633280414Z",
   "started_at": "2026-07-22T23:20:43.097936912Z",
   "closed_at": "2026-07-22T23:23:47.283554031Z",
   "close_reason": "Closed"
