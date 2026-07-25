@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use lichen_core::addr::{Ipv6Addr, NodeId};
+use lichen_core::addr::Ipv6Addr;
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
 use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
@@ -34,14 +34,12 @@ impl fmt::Debug for Gateway {
 }
 
 impl Gateway {
-    /// Create a new root gateway with a deterministic test identity.
+    /// Create a new root gateway with the given identity.
     ///
-    /// Uses `Seed::new([0x01; 32])` as the node identity. The `node_id`
-    /// parameter is retained for backward compatibility; the root address
-    /// is derived from the identity's public key per spec.
-    pub fn new(node_id: NodeId) -> Self {
-        info!(?node_id, "gateway initialising");
-        let identity = Identity::from_seed(Seed::new([0x01; 32]));
+    /// The root address and DODAG ID are derived from the identity's
+    /// public key per spec (unified Ed25519 identity for LICHEN and
+    /// Yggdrasil addressing).
+    pub fn new(identity: Identity) -> Self {
         let root_addr = identity_pubkey_link_local(&identity);
         let dodag_id = root_addr;
         let (radio, _peer) = LoopbackRadio::pair();
@@ -333,7 +331,8 @@ mod tests {
     }
 
     fn test_gateway() -> Gateway {
-        Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
+        let identity = Identity::from_seed(Seed::new([0x01; 32]));
+        Gateway::new(identity)
     }
 
     #[test]

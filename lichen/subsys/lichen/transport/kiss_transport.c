@@ -644,6 +644,28 @@ int kiss_transport_send_raw(const uint8_t *data, size_t len)
 	return kiss_tx_frame(ctx, KISS_PORT_LICHEN_RAW, data, len);
 }
 
+int kiss_transport_send_lci_ipv6(const uint8_t *data, size_t len)
+{
+	struct kiss_transport_ctx *ctx = &s_ctx;
+
+	if (!ctx->initialized) {
+		return -ENODEV;
+	}
+
+	return kiss_tx_frame(ctx, KISS_PORT_LCI_IPV6, data, len);
+}
+
+int kiss_transport_send_lci_ctrl(const uint8_t *data, size_t len)
+{
+	struct kiss_transport_ctx *ctx = &s_ctx;
+
+	if (!ctx->initialized) {
+		return -ENODEV;
+	}
+
+	return kiss_tx_frame(ctx, KISS_PORT_LCI_CTRL, data, len);
+}
+
 int kiss_transport_send(uint8_t port, const uint8_t *data, size_t len)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
