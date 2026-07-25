@@ -35,6 +35,12 @@ _SEND_SCOPE: contextvars.ContextVar[Any] = contextvars.ContextVar(
     "packet_coap_send_scope",
     default=None,
 )
+# Safety: when asyncio.create_task / ensure_future is called inside a
+# `with PacketSendScope(...)` block, the task captures a copy of the
+# current context (including _SEND_SCOPE).  Each task's context is
+# immutable from other tasks, so the scope is not lost even after the
+# calling coroutine exits the `with` block, suspends, or a different
+# task enters its own scope.
 _T = TypeVar("_T")
 
 
@@ -386,6 +392,8 @@ class PacketDatagramChannel(DatagramChannel):
         task = asyncio.create_task(self._packet_transport.send_packet(packet))
         self._send_tasks.add(task)
         task.add_done_callback(self._send_tasks.discard)
+        # Safe: the task calling us was created inside a with scope block,
+        # so its context captured _SEND_SCOPE (see comment above).
         scope = _SEND_SCOPE.get()
         if scope is not None and scope.channel is self:
             scope.track(task)
