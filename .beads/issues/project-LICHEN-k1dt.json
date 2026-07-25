@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:37.032438Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:25:15.980970571Z",
+  "updated_at": "2026-07-25T00:42:41.259038247Z",
   "started_at": "2026-07-22T23:21:08.825228376Z",
   "closed_at": "2026-07-22T23:25:15.980970571Z",
   "close_reason": "Fixed BitReader::read to use consistent byte counts in TooShort errors for partial byte cases (already implemented in prior work)"
