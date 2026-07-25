@@ -1,13 +1,12 @@
 //! lichend — LICHEN border router daemon.
 //!
-//! Bridges the LoRa mesh (SLIP over serial, TCP simulator, or SX1302/RAK2287 HAT) to the Linux
+//! Bridges the LoRa mesh (SLIP over serial or TCP simulator) to the Linux
 //! IPv6 stack via a TUN device. Acts as RPL DODAG root in Non-Storing Mode.
 //!
 //! Usage:
 //!   lichend --config /etc/lichen/gateway.toml
 //!   lichend --sim                          # TCP simulator, TUN device
 //!   lichend --sim --no-tun                 # TCP simulator, logging only (CI)
-//!   lichend --hat rak2287                  # RAK2287 HAT with Sx1302Concentrator
 
 use clap::Parser;
 use lichen_core::{
@@ -21,17 +20,16 @@ use lichen_gateway::{
 };
 use lichen_hal::storage::fs::FileStorage;
 use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
-use lichen_hal::{Concentrator, RadioConfig, Sx1302Concentrator};
 use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
 
-use std::{collections::VecDeque, path::PathBuf, sync::OnceLock, time::Instant};
+use std::path::PathBuf;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
     sync::mpsc,
-    time::{interval, sleep, Duration},
+    time::{sleep, Duration},
 };
 use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
@@ -63,10 +61,6 @@ struct Args {
     #[arg(long, default_value = "lichen")]
     sim_id: String,
 
-    /// Use RAK2287 HAT with Sx1302Concentrator for RX/TX instead of SLIP or sim.
-    #[arg(long, value_name = "TYPE")]
-    hat: Option<String>,
-
     /// Skip TUN device creation (logs packets instead of forwarding).
     /// Required when running without CAP_NET_ADMIN (e.g. CI).
     #[arg(long)]
@@ -76,8 +70,6 @@ struct Args {
     #[arg(long, env = "RUST_LOG", default_value = "info")]
     log: String,
 }
-
-static START_TIME: OnceLock<Instant> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -101,10 +93,7 @@ async fn main() {
         std::process::exit(1);
     });
 
-    let use_sim_mode = args.sim || config.mesh.interface == "sim";
-    let hat = args.hat.clone().or_else(|| config.mesh.hat.clone());
-    let use_hat = hat.is_some();
-    let storage_path = if use_sim_mode && !use_hat {
+    let storage_path = if args.sim || config.mesh.interface == "sim" {
         "/tmp/lichen"
     } else {
         "/var/lib/lichen"
@@ -146,17 +135,10 @@ async fn main() {
     };
     let _ = save_epoch(&mut storage, safe_epoch);
 
-    let use_sim = use_sim_mode && !use_hat;
-    let backend = if use_hat {
-        hat.as_deref().unwrap_or("hat")
-    } else if use_sim {
-        args.sim_addr.as_str()
-    } else {
-        config.mesh.interface.as_str()
-    };
+    let use_sim = args.sim || config.mesh.interface == "sim";
 
     info!(
-        backend,
+        interface = if use_sim { &args.sim_addr } else { &config.mesh.interface },
         ?node_id,
         prefix = %config.ipv6.prefix,
         rpl_mode = %config.rpl.mode,
@@ -164,10 +146,6 @@ async fn main() {
         auto_peer = ?config.yggdrasil.auto_peer,
         "lichend starting"
     );
-    if config.rpl.mode != "non-storing" || config.rpl.instance_id != 1 {
-        error!("unsupported RPL instance/MOP");
-        std::process::exit(1);
-    }
 
     // Open TUN device unless --no-tun or non-Linux.
     #[cfg(target_os = "linux")]
@@ -199,9 +177,7 @@ async fn main() {
 
     let mut gw = Gateway::new(node_id);
 
-    if use_hat {
-        run_hat(&mut gw, tun).await;
-    } else if use_sim {
+    if use_sim {
         run_sim(&mut gw, &args.sim_addr, &args.sim_id, &args.node_id, tun).await;
     } else {
         run_serial(&mut gw, &config.mesh.interface, config.mesh.baud, tun).await;
@@ -308,17 +284,9 @@ where
     });
 
     let mut tun_buf = vec![0u8; 1500];
-    let mut maintenance = interval(Duration::from_millis(1000));
 
     loop {
         tokio::select! {
-            _ = maintenance.tick() => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
-                gw.maintain(now_ms);
-            }
             frame_opt = rx_recv.recv() => {
                 match frame_opt {
                     Some(frame) => {
@@ -415,17 +383,9 @@ where
     let mut rx_buf = vec![0u8; 1500];
     let mut tun_buf = vec![0u8; 1500];
     let mut tx_buf = vec![0u8; SLIP_TX_BUF_SIZE];
-    let mut maintenance = interval(Duration::from_millis(1000));
 
     loop {
         tokio::select! {
-            _ = maintenance.tick() => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
-                gw.maintain(now_ms);
-            }
             result = tty.read(&mut rx_buf) => {
                 match result {
                     Ok(0) => { info!("serial port closed"); break; }
@@ -472,20 +432,16 @@ where
     }
 }
 
+// ── packet forwarding ─────────────────────────────────────────────────────────
+
 async fn forward_mesh_to_upstream<T: TunLike>(
     gw: &mut Gateway,
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
-    let now_ms = {
-        let start = START_TIME.get_or_init(Instant::now);
-        start.elapsed().as_millis() as u64
-    };
+    let now_ms = 0; // TODO: real monotonic time (e.g. Instant::now().elapsed().as_millis() as u32)
     let (reply_opt, event) = gw.process_rpl(frame, now_ms);
-    if let RplEvent::DaoReceived {
-        route_updated: true,
-    } = event
-    {
+    if let RplEvent::DaoReceived { route_updated: true } = event {
         info!("DAO event: route updated");
     }
     if let Some(reply) = reply_opt {
@@ -494,9 +450,9 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     } else if let Some(ipv6) = gw.mesh_to_upstream(frame) {
         let mut dst = [0u8; 16];
         if ipv6.len() >= IPV6_HEADER_LEN {
-            dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
+            dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
             if gw.is_local_mesh(&dst) {
-                return gw.mesh_to_mesh(&ipv6);
+                return None;
             }
         }
         if let Some(t) = tun {
@@ -509,6 +465,7 @@ async fn forward_mesh_to_upstream<T: TunLike>(
         None
     }
 }
+
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────
 
 trait TunLike {
@@ -552,141 +509,6 @@ impl TunLike for () {
     ) -> impl std::future::Future<Output = std::io::Result<()>> + 'a {
         tun_send_none(buf)
     }
-}
-
-async fn run_hat_inner<T>(gw: &mut Gateway, tun: Option<T>)
-where
-    T: TunLike,
-{
-    info!("initializing Sx1302Concentrator");
-    let mut conc = Sx1302Concentrator;
-    let _ = conc.reset().await;
-    let _ = conc.configure(&RadioConfig::default()).await;
-
-    let (tx_send, mut tx_recv) = mpsc::channel::<Vec<u8>>(8);
-    let (rx_send, mut rx_recv) = mpsc::channel::<Vec<u8>>(8);
-
-    let mut maintenance = interval(Duration::from_millis(1000));
-
-    // Concentrator task: polls for RX, drains TX queue.
-    let conc_task = tokio::spawn(async move {
-        let mut rx_buf = vec![0u8; 255];
-        loop {
-            // Drain all pending TX frames before the next RX window.
-            while let Ok(frame) = tx_recv.try_recv() {
-                if let Err(e) = conc.transmit(&frame).await {
-                    warn!("concentrator transmit failed: {:?}", e);
-                } else {
-                    info!(len = frame.len(), "hat TX");
-                }
-            }
-            // Poll for an incoming frame.
-            match conc.receive(&mut rx_buf, 50).await {
-                Ok(Some((n, rssi, snr))) => {
-                    info!(len = n, rssi, snr, "RX frame");
-                    if rx_send.send(rx_buf[..n].to_vec()).await.is_err() {
-                        break;
-                    }
-                }
-                Ok(None) => {}
-                Err(e) => {
-                    error!("concentrator receive error: {:?}", e);
-                    break;
-                }
-            }
-        }
-        while let Ok(frame) = tx_recv.try_recv() {
-            if let Err(e) = conc.transmit(&frame).await {
-                warn!("concentrator transmit failed (shutdown drain): {:?}", e);
-            }
-        }
-    });
-
-    let mut tun_buf = vec![0u8; 1500];
-
-    loop {
-        tokio::select! {
-            _ = maintenance.tick() => {
-                let now_ms = {
-                    let start = START_TIME.get_or_init(Instant::now);
-                    start.elapsed().as_millis() as u64
-                };
-                gw.maintain(now_ms);
-            }
-            frame_opt = rx_recv.recv() => {
-                match frame_opt {
-                    Some(frame) => {
-                        if let Some(reply) = forward_mesh_to_upstream(gw, &frame, &tun).await {
-                            match tx_send.try_send(reply) {
-                                Ok(()) => {}
-                                Err(mpsc::error::TrySendError::Full(_)) => {
-                                    warn!("TX channel full, dropping reply packet");
-                                }
-                                Err(mpsc::error::TrySendError::Closed(_)) => {
-                                    error!("concentrator task exited, cannot send reply packets");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    None => {
-                        error!("concentrator task exited, cannot receive inbound packets");
-                        break;
-                    }
-                }
-            }
-            result = async { match &tun {
-                Some(t) => t.recv_pkt(&mut tun_buf).await,
-                None => tun_recv_none(&mut tun_buf).await,
-            }} => {
-                match result {
-                    Ok(n) => {
-                        if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                            match tx_send.try_send(schc) {
-                                Ok(()) => {}
-                                Err(mpsc::error::TrySendError::Full(_)) => {
-                                    warn!("TX channel full, dropping outbound packet");
-                                }
-                                Err(mpsc::error::TrySendError::Closed(_)) => {
-                                    error!("concentrator task exited, cannot send outbound packets");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => { error!("TUN recv: {e}"); break; }
-                }
-            }
-            _ = signal::ctrl_c() => {
-                info!("shutting down");
-                break;
-            }
-        }
-    }
-
-    drop(tx_send);
-    drop(rx_recv);
-    info!("waiting for concentrator task to finish draining transmissions");
-    tokio::select! {
-        _ = &mut conc_task => {
-            info!("concentrator task completed");
-        }
-        _ = sleep(Duration::from_secs(5)) => {
-            warn!("concentrator task did not finish in time, aborting");
-            conc_task.abort();
-            let _ = conc_task.await;
-        }
-    }
-}
-
-#[cfg(target_os = "linux")]
-async fn run_hat(gw: &mut Gateway, tun: Option<TunDevice>) {
-    run_hat_inner(gw, tun).await
-}
-
-#[cfg(not(target_os = "linux"))]
-async fn run_hat(gw: &mut Gateway, _tun: Option<()>) {
-    run_hat_inner(gw, None::<()>).await
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

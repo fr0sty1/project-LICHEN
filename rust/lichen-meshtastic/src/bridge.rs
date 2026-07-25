@@ -15,8 +15,6 @@ use crate::address::{AddressMapper, MeshtasticNodeId};
 use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
 use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
-use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
-use lichen_core::rf_health::RfHealthMetrics;
 
 /// Maximum payload size for IPv6 tunnel packets.
 
@@ -137,9 +135,6 @@ pub struct MeshtasticBridge {
     our_node_id: MeshtasticNodeId,
     /// Next packet ID for outgoing messages.
     next_packet_id: u32,
-    /// RF health metrics tracking RX SNR/RSSI (for EMA), density, load_factor,
-    /// adaptive SF per CCP-16 / rf_health.rs and ccp vectors.
-    rf_health: RfHealthMetrics,
 }
 
 impl MeshtasticBridge {
@@ -149,7 +144,6 @@ impl MeshtasticBridge {
             mapper: AddressMapper::new(),
             our_node_id,
             next_packet_id: 1,
-            rf_health: RfHealthMetrics::new(),
         }
     }
 
@@ -168,26 +162,12 @@ impl MeshtasticBridge {
         self.our_node_id
     }
 
-    /// Get RF health metrics (EMA RSSI/SNR, density, load_factor, adaptive_sf()).
-    pub fn rf_health(&self) -> &RfHealthMetrics {
-        &self.rf_health
-    }
-
-    /// Mutable access for updating from announcements, hash-derived load, or tests.
-    pub fn rf_health_mut(&mut self) -> &mut RfHealthMetrics {
-        &mut self.rf_health
-    }
-
     /// Process an incoming MeshPacket from BLE/serial.
     ///
     /// Returns the extracted payload type or an error.
     pub fn process_incoming(&mut self, packet: &MeshPacket) -> Result<IncomingResult, BridgeError> {
         let from_node = MeshtasticNodeId::new(packet.from);
         let to_node = MeshtasticNodeId::new(packet.to);
-
-        // Record RX SNR into EMA for adaptive SF per rf_health.rs (rssi ignored
-        // after dead code removal). Density/load_factor updated via hash/announcements.
-        self.rf_health.record_rx(packet.rx_snr as i8);
 
         // Get decoded data or return error
         let data = match &packet.payload_variant {
@@ -203,15 +183,16 @@ impl MeshtasticBridge {
         match portnum {
             PortNum::IpTunnelApp => {
                 // Raw IPv6 packet encapsulated; version check + extract src/dst from IPv6 header
-                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns and IPv6 spec)
+                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns, consistent with CCP and test vectors)
                 if data.payload.len() < 40 || (data.payload[0] >> 4) != 6 {
                     return Err(BridgeError::InvalidPacket);
                 }
 
-                let src_bytes: [u8; 16] = data.payload[field::SRC_OFFSET..field::DST_OFFSET]
+                // Extract src/dst from IPv6 header (bytes 8-23 src, 24-39 dst)
+                let src_bytes: [u8; 16] = data.payload[8..24]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
-                let dst_bytes: [u8; 16] = data.payload[field::DST_OFFSET..IPV6_HEADER_LEN]
+                let dst_bytes: [u8; 16] = data.payload[24..40]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
 
@@ -293,14 +274,17 @@ impl MeshtasticBridge {
         }
     }
 
-    pub fn encapsulate_ipv6(&mut self, ipv6_data: &[u8]) -> Result<MeshPacket, BridgeError> {
+    pub fn encapsulate_ipv6(
+        &mut self,
+        ipv6_data: &[u8],
+    ) -> Result<MeshPacket, BridgeError> {
         if ipv6_data.len() > MAX_TUNNEL_PAYLOAD {
             return Err(BridgeError::PayloadTooLarge);
         }
         if ipv6_data.len() < 40 || (ipv6_data[0] >> 4) != 6 {
             return Err(BridgeError::InvalidPacket);
         }
-        let dst_bytes: [u8; 16] = ipv6_data[field::DST_OFFSET..IPV6_HEADER_LEN]
+        let dst_bytes: [u8; 16] = ipv6_data[24..40]
             .try_into()
             .map_err(|_| BridgeError::InvalidPacket)?;
         let dst = Ipv6Addr(dst_bytes);
@@ -481,9 +465,9 @@ mod tests {
         assert!(bridge.mapper_mut().learn_mapping(dst_node, &pubkey));
 
         let mut ipv6_data = [0u8; 48];
-        ipv6_data[0] = 0x60; // Version 6, destination address set at offset 24 to match mapper
+        ipv6_data[0] = 0x60; // Version 6; destination address set at offset 24 to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
-        ipv6_data[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr.0);
+        ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 
         let result = bridge.encapsulate_ipv6(&ipv6_data);
         assert!(result.is_ok());
@@ -521,7 +505,7 @@ mod tests {
 
         let mut data = [0u8; 48];
         data[0] = 0x60;
-        data[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&unknown_addr.0);
+        data[24..40].copy_from_slice(&unknown_addr.0);
         let result = bridge.encapsulate_ipv6(&data);
         assert_eq!(result, Err(BridgeError::UnknownDestination));
     }

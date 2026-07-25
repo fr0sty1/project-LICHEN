@@ -191,6 +191,20 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  Initializes per AGENTS.md order after link_ctx. Drives Trickle DIOs
 	  as root for mesh formation. Updates /status to reflect joined root role.
 
+config LICHEN_GATEWAY_PREFIX_DELEGATION
+	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
+	depends on LICHEN_RPL
+	depends on NET_DHCPV6
+	depends on NET_IPV6_ND
+	select WIFI
+	select NET_L2_WIFI_MGMT
+	select NET_IPV6_ND6
+	imply NET_DHCPV6_CLIENT
+	default y
+	help
+	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
+	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
+
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"
 	default 0
@@ -202,38 +216,11 @@ config LICHEN_GATEWAY_RX1_DELAY_MS
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
 
-config LICHEN_GATEWAY_PREFIX_DELEGATION
-	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
-	depends on LICHEN_RPL
-	depends on NET_DHCPV6
-	depends on NET_IPV6_ND
-	select NET_MGMT
-	select NET_MGMT_EVENT
-	select NET_MGMT_EVENT_INFO
-	select WIFI
-	select NET_L2_WIFI_MGMT
-	select NET_IPV6_ND6
-	imply NET_DHCPV6_CLIENT
+# Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
+# gateway; legacy standalone server (lichen_coap_server) would duplicate
+# lichen_config ownership and lacks linker bounds on nucleo_wl55jc/r1_neo.
+config LICHEN_COAP_SERVER_STANDALONE
 	default n
-	help
-	  IPv6 prefix delegation from WiFi STA backhaul (RA via net_mgmt) to RPL DODAG root for 6LBR.
-	  Selected by LICHEN_GATEWAY_WIFI_STATION. Requires wifi_mgmt_event_handler in main.c for
-	  NET_EVENT_WIFI_CONNECT_RESULT/NET_EVENT_IPV6_PREFIX_ADD per AGENTS.md init order and
-	  spec/appendix-border-router.md. Tune heaps in board .conf (see previous beads).
-
-config LICHEN_GATEWAY_WIFI_SSID
-	string "WiFi SSID for backhaul"
-	default "lichen-test"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  SSID for WiFi station mode (used by wifi_mgmt in main.c).
-
-config LICHEN_GATEWAY_WIFI_PSK
-	string "WiFi PSK for backhaul"
-	default "lichen123"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment via CoAP /config.
 
 config LICHEN_GATEWAY_COORDINATION
 	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
@@ -242,10 +229,10 @@ config LICHEN_GATEWAY_COORDINATION
 	depends on LICHEN_COAP_SERVER || LICHEN_COAP_CONFIG
 	default n
 	help
-	  Enable multi-gateway coordination per mugl.3 / spec/08-gateway-coordination.md
-	  and spec/02a-coordinated-capacity.md §2a.2 (TDMA slot coordination across
-	  gateways). Backbone UDP/CoAP. Supports closed (PSK+OSCORE) and open
-	  (Ed25519+TOFU) modes. Required for multi-BR deployments.
+	  Enable multi-gateway coordination per mugl.3 / spec/05-routing.md:145
+	  (backbone UDP/CoAP to /.well-known/lichen-gw). Supports closed (PSK+OSCORE)
+	  and open (Ed25519 signatures+TOFU) federation modes. Stubs in subsys and
+	  rust/lichen-gateway to follow. Required for >1 gateway deployments.
 
 choice LICHEN_GW_FEDERATION_MODE
 	prompt "Gateway federation mode for coordination"
@@ -274,23 +261,26 @@ config LICHEN_GW_PSK
 	  Shared secret for OSCORE in closed federation. Must match on all
 	  cooperating gateways in closed mode. 32+ bytes recommended.
 
-# Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
-# gateway; legacy standalone server (lichen_coap_server) would duplicate
-# lichen_config ownership and lacks linker bounds on nucleo_wl55jc/r1_neo.
-config LICHEN_COAP_SERVER_STANDALONE
-	default n
-
 config LICHEN_GATEWAY_WIFI_STATION
-	bool "WiFi station backhaul"
+	bool "WiFi station backhaul (Heltec V3)"
 	default y if BOARD_HELTEC_WIFI_LORA32_V3_ESP32S3_PROCPU
 	select WIFI
 	select WIFI_NM
 	select ESP_WIFI_ENABLED
-	select LICHEN_GATEWAY_PREFIX_DELEGATION
 	help
-	  WiFi STA backhaul for Heltec V3 / T-Deck gateways (spec/appendix-border-router.md). Enables
-	  LICHEN_GATEWAY_PREFIX_DELEGATION + net_mgmt handlers for connection and prefix events.
-	  SSID/PSK configurable via Kconfig or /config CoAP. Follows AGENTS.md subsystem init order.
+	  Enable WiFi station mode for internet backhaul, prefix acquisition via RA, and LICHEN_GATEWAY_PREFIX_DELEGATION. Uses net_mgmt events for NET_EVENT_WIFI_CONNECT_RESULT and NET_EVENT_IPV6_ADDR_ADD. SSID/PSK from Kconfig or /config CoAP resource. Follows AGENTS.md init order.
+
+config LICHEN_GATEWAY_WIFI_SSID
+	string "WiFi SSID"
+	depends on LICHEN_GATEWAY_WIFI_STATION
+	default "lichen-backhaul"
+
+config LICHEN_GATEWAY_WIFI_PSK
+	string "WiFi PSK"
+	depends on LICHEN_GATEWAY_WIFI_STATION
+	default "lichen123"
+	help
+	  WPA2 PSK for station mode. Override via CoAP /config for production.
 
 endmenu
 

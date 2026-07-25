@@ -3,9 +3,11 @@
 
 /**
  * @file trickle.c
- * @brief Trickle timer (RFC 6206) implementation matching pseudocode in §4.2.
+ * @brief Trickle timer (RFC 6206) implementation
  *
- * Used by lichen_rpl_dodag for DIO pacing per LICHEN RPL profile.
+ * Aligned reset() guard with Rust and Python (project-LICHEN-67ca).
+ * Ported from rust/lichen-rpl/src/trickle.rs with consistent init edge case.
+ * Resolved merge conflict from worktree-worker1 (project-LICHEN-otzx).
  */
 
 #include <lichen/rpl_trickle.h>
@@ -35,9 +37,10 @@ static void begin_interval(struct lichen_trickle *t,
 	t->counter = 0;
 	t->transmitted = false;
 
-	/* Per RFC 6206 §4.2: t uniform in [I/2, I). Shift form is bias-free
-	 * for odd intervals and safe at UINT32_MAX. */
-	uint32_t half = (t->interval >> 1) + (t->interval & 1u);
+	/* Per RFC 6206 §4.2: t uniform in [I/2, I). Use (interval+1)/2 to avoid
+	 * off-by-one bias in integer division; range = I - half. Worker23 fix
+	 * (project-LICHEN-verh). */
+	uint32_t half = (t->interval + 1u) / 2u;
 	uint32_t range = t->interval - half;
 	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
 	t->transmit_time = sat_add_u32(sat_add_u32(now, half), offset);
@@ -111,10 +114,7 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
-	/* interval == 0 is sentinel for "not yet started" (set in init).
-	 * Matches Rust/Python proxies for cross-impl determinism on
-	 * edge cases (time=0, init, u32 wrap). See rpl_trickle.h. */
-	if (t->interval == 0 || t->interval > t->imin) {
+	if (t->transmit_time == 0 || t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}

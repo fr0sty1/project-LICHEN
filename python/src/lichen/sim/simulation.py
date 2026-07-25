@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -92,9 +92,6 @@ class Simulation:
         seed: int | None = None,
         jitter_min_us: int = 0,
         jitter_max_us: int = 0,
-        density_aware_startup: bool = False,
-        listen_period_us: int = 1_000_000,
-        density_scale_factor: float = 1000.0,
     ) -> None:
         """Initialize a new simulation.
 
@@ -108,19 +105,12 @@ class Simulation:
             jitter_min_us: Minimum TX jitter in microseconds. Defaults to 0.
             jitter_max_us: Maximum TX jitter in microseconds. Defaults to 0
                 (disabled). Set to a positive value to enable TX jitter.
-            density_aware_startup: If True, nodes apply listen-before-TX during
-                startup, with a per-node delay scaled by estimated density.
-            listen_period_us: Duration in microseconds each node listens before
-                its first TX to build its heard set.
-            density_scale_factor: Scaling constant for the density-derived delay.
-                The actual delay is random.uniform(0, density_scale_factor *
-                log(1 + heard_count)).
         """
         self._id = sim_id
         self._time_mode = time_mode
         self._current_time_us = 0
         self._nodes: dict[str, SimNode] = {}
-        self._gateways: dict[str, dict[str, Any]] = {}
+        self._gateways: dict[str, dict] = {}
         self._medium = Medium()
         self._event_queue = EventQueue()
         self._pending_rx_timeouts: dict[str, int] = {}  # node_id -> timeout_time_us
@@ -141,9 +131,6 @@ class Simulation:
             )
         self._jitter_min_us = jitter_min_us
         self._jitter_max_us = jitter_max_us
-        self._density_aware_startup = density_aware_startup
-        self._listen_period_us = listen_period_us
-        self._density_scale_factor = density_scale_factor
         self._realtime_epoch_us: int = time.monotonic_ns() // 1000
 
     def enable_debug(self) -> None:
@@ -223,67 +210,6 @@ class Simulation:
     def jitter_max_us(self) -> int:
         """Return the maximum TX jitter in microseconds."""
         return self._jitter_max_us
-
-    @property
-    def density_aware_startup(self) -> bool:
-        """Return whether density-aware startup is enabled."""
-        return self._density_aware_startup
-
-    @property
-    def listen_period_us(self) -> int:
-        """Return the listen-before-TX period in microseconds."""
-        return self._listen_period_us
-
-    @property
-    def density_scale_factor(self) -> float:
-        """Return the density scale factor for startup delay calculation."""
-        return self._density_scale_factor
-
-    def calculate_startup_delay(self, node: SimNode) -> int:
-        """Calculate the density-aware startup delay for a node.
-
-        The delay is proportional to log(1 + heard_count), so denser
-        neighborhoods produce longer listen periods before first TX.
-        This reduces collision probability during simultaneous boot.
-
-        Args:
-            node: The node to calculate delay for.
-
-        Returns:
-            Startup delay in microseconds.
-        """
-        if not node.started:
-            heard = len(node.heard_set)
-            delay = self._rng.uniform(0, self._density_scale_factor * (1.0 + heard))
-            return int(delay)
-        return 0
-
-    def mark_node_started(self, node_id: str) -> None:
-        """Mark a node as having completed its startup listen phase.
-
-        Once marked, the node may transmit immediately without the
-        density-aware listen delay.
-
-        Args:
-            node_id: ID of the node to mark as started.
-        """
-        node = self._nodes.get(node_id)
-        if node is not None:
-            node.started = True
-
-    def is_startup_phase(self, node: SimNode) -> bool:
-        """Check if a node is still in its startup listen phase.
-
-        During startup, the node tracks neighbors heard on the medium
-        but must wait for its density-scaled delay before its first TX.
-
-        Args:
-            node: The node to check.
-
-        Returns:
-            True if the node is still in the startup phase.
-        """
-        return self._density_aware_startup and not node.started
 
     def calculate_tx_jitter(self) -> int:
         """Calculate a random TX jitter delay.
@@ -365,21 +291,18 @@ class Simulation:
         y: float,
         z: float,
         slot_range: tuple[int, int] = (0, 10),
-        gateway_centric: bool = False,
     ) -> SimNode:
         if gateway_id in self._nodes:
             raise ValueError(f"Node '{gateway_id}' already exists")
         node = SimNode(id=gateway_id, position=(x, y, z), connected=True)
         self._nodes[gateway_id] = node
-        weakref_slot: dict[str, object] = {
+        self._gateways[gateway_id] = {
+            "node": node,
             "slot_range": slot_range,
             "backbone_id": f"bb-{gateway_id}",
             "owned_nodes": set(),
             "negotiation_state": "idle",
         }
-        self._gateways[gateway_id] = weakref_slot
-        if gateway_centric:
-            self._enable_gateway_centric(gateway_id)
         self._observers.notify(
             "on_node_added",
             sim_id=self._id,
@@ -389,59 +312,6 @@ class Simulation:
             z=z,
         )
         return node
-
-    def _enable_gateway_centric(self, gateway_id: str) -> None:
-        """Mark a gateway as gateway-centric: it advertises the GC flag
-        in DIOs, and nodes that join its DODAG suppress announces."""
-        node = self._nodes.get(gateway_id)
-        if node is not None:
-            node.join_dodag(gateway_centric=True)
-        gw = self._gateways.get(gateway_id)
-        if gw is not None:
-            gw["gateway_centric"] = True
-        self._debug_log(
-            "gateway_centric_enabled",
-            sim_id=self._id,
-            gateway_id=gateway_id,
-        )
-
-    def get_gateway_centric_gateways(self) -> list[str]:
-        """Return IDs of gateways with gateway-centric mode enabled."""
-        gc_gateways: list[str] = []
-        for gid, gw in self._gateways.items():
-            if gw.get("gateway_centric"):
-                gc_gateways.append(gid)
-        return gc_gateways
-
-    def join_gateway_dodag(self, node_id: str, gateway_id: str) -> None:
-        """Simulate a node joining a gateway's DODAG.
-
-        If the gateway is gateway-centric, the node sets gateway_centric=True
-        and scales its announce interval accordingly.
-        """
-        node = self._nodes.get(node_id)
-        if node is None:
-            raise ValueError(f"Node '{node_id}' does not exist")
-        gw = self._gateways.get(gateway_id)
-        is_centric = bool(gw.get("gateway_centric")) if gw else False
-        node.join_dodag(gateway_centric=is_centric)
-        self._debug_log(
-            "node_joined_dodag",
-            sim_id=self._id,
-            node_id=node_id,
-            gateway_id=gateway_id,
-            gateway_centric=is_centric,
-        )
-
-    def leave_dodag(self, node_id: str) -> None:
-        """Simulate a node losing its DODAG connection.
-
-        Starts the grace period before normal announce interval resumes.
-        """
-        node = self._nodes.get(node_id)
-        if node is None:
-            raise ValueError(f"Node '{node_id}' does not exist")
-        node.leave_dodag(self._current_time_us)
 
     def remove_node(self, node_id: str) -> None:
         """Remove a node from the simulation.
@@ -514,15 +384,6 @@ class Simulation:
 
         event = self._event_queue.pop()
         self._current_time_us = event.time_us
-        if self._debug_enabled:
-            self._debug_log(
-                "process_next_event",
-                sim_id=self._id,
-                event_type=event.__class__.__name__,
-                event_time_us=event.time_us,
-                queue_size=len(self._event_queue),
-                **self._get_blocked_node_info(),
-            )
         self._handle_event(event)
         return event
 
@@ -683,6 +544,7 @@ class Simulation:
         if next_event is None:
             return False
 
+        blocked_info = self._get_blocked_node_info()
         self._debug_log(
             "time_advance",
             sim_id=self._id,
@@ -690,7 +552,7 @@ class Simulation:
             to_us=next_event.time_us,
             queue_size=len(self._event_queue),
             pending_rx_timeouts=len(self._pending_rx_timeouts),
-            **self._get_blocked_node_info(),
+            **blocked_info,
         )
         self.process_next_event()
         return True
@@ -701,25 +563,10 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-        channel = node.get_hop_channel()
-
-        delay_us = 0
-        if self._density_aware_startup and not node.started:
-            delay_us = self.calculate_startup_delay(node)
-            node.started = True
-            self._debug_log(
-                "density_aware_startup_delay",
-                sim_id=self._id,
-                node_id=node_id,
-                heard_count=len(node.heard_set),
-                delay_us=delay_us,
-            )
-        elif self._jitter_max_us > 0:
-            delay_us = self.calculate_tx_jitter()
-
-        if delay_us > 0:
+        if self._jitter_max_us > 0:
+            jitter = self.calculate_tx_jitter()
             delayed_event = TxStartDelayedEvent(
-                time_us=self._current_time_us + delay_us,
+                time_us=self._current_time_us + jitter,
                 node_id=node_id,
                 payload=payload,
                 tx_power_dbm=node.tx_power_dbm,
@@ -731,7 +578,7 @@ class Simulation:
                 "tx_delayed",
                 sim_id=self._id,
                 node_id=node_id,
-                delay_us=delay_us,
+                jitter_us=jitter,
                 fire_at_us=delayed_event.time_us,
             )
             return ""
@@ -755,36 +602,31 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping (CCP-12) using node.get_hop_channel(current_sfn)
-        when hop_schedule present; passes to medium; updates node state without conflicting
-        current_channel for hop nodes. Removes dead code.
+        Integrates synchronized hopping by using provided channel from
+        node's hop_schedule/SFN or current_channel.
 
         Args:
             node_id: ID of the transmitting node.
             payload: Raw bytes to transmit.
             tx_power_dbm: Transmit power in dBm.
             position: Node position (x, y, z) in meters.
-            channel: Channel from synchronized hopping (overrides
-                node.current_channel where necessary).
+            channel: Channel from synchronized hopping (overrides node.current_channel).
 
         Returns:
             The transmission ID.
         """
         node = self._nodes.get(node_id)
-        if node is not None and not node.tdma_scheduler.is_tx_allowed(self._current_time_us):
-            return ""
-        if node is not None:
-            channel = node.get_hop_channel()
+
         previous_tx_id = self._active_transmissions.get(node_id)
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)
+
         if node is not None:
             node.state = NodeState.TX
-            if (
-                not (node.hop_schedule and len(node.hop_schedule) > 0)
-                and channel != node.current_channel
-            ):
-                node.current_channel = channel
+            if channel != node.current_channel:
+                node.current_channel = channel  # update for synchronized hopping
+        else:
+            channel = 0
 
         tx = self._medium.start_tx(
             node_id=node_id,
@@ -876,18 +718,13 @@ class Simulation:
         on_timeout: Callable[[], None],
         channel: int = 0,
     ) -> None:
-        """Enter RX mode. Derives via node.get_hop_channel for hop_schedule
-        (CCP-12 rendezvous node.py:146). Sets current_channel only if needed.
-        """
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-        channel = node.get_hop_channel()
         node.state = NodeState.RX_WAIT
-        if not (node.hop_schedule and len(node.hop_schedule) > 0):
-            node.current_channel = channel
+        node.current_channel = channel
         node.rx_callbacks = (on_packet, on_timeout)
         timeout_time_us = self._current_time_us + timeout_us
         self._pending_rx_timeouts[node_id] = timeout_time_us
@@ -926,12 +763,9 @@ class Simulation:
     def deliver_pending_packets(self) -> int:
         """Deliver packets to nodes in callback-based RX mode.
 
-        All RX resolution, metrics (idempotent), collision handling, rx_success
-        logging, and on_rx_success notification are unified in
-        _get_rx_result_internal. This method only captures the callback and
-        performs RX cleanup/state transition. Preserves exact polling vs
-        callback behavior and test oracles (metrics.receptions==1,
-        observer events len==1, logs emitted once).
+        Checks all nodes in RX_WAIT with rx_callbacks set, and for each that
+        has a receivable packet, calls the on_packet callback and transitions
+        the node to IDLE.
 
         Returns:
             Number of packets delivered.
@@ -943,44 +777,71 @@ class Simulation:
 
             result = self._get_rx_result_internal(node_id)
             if result is not None:
-                payload, rssi, snr, _, _ = result
+                payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
-                # State cleanup must happen before callback (matches prior
-                # behavior; prevents re-delivery or timeout firing).
+                self._metrics.record_reception(node_id, tx_id, self._current_time_us)
+                rx_log = {
+                    "sim_id": self._id,
+                    "node_id": node_id,
+                    "tx_id": tx_id,
+                    "payload_len": len(payload),
+                    "rssi": rssi,
+                    "snr": snr,
+                    "time_us": self._current_time_us,
+                    "from_node_id": source_node_id,
+                }
+                if self._debug_enabled:
+                    rx_log.update(
+                        node_state=node.state.name,
+                        pending_timeouts=len(self._pending_rx_timeouts),
+                        event_queue_len=len(self._event_queue),
+                    )
+
+                self._observers.notify(
+                    "on_rx_success",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    tx_id=tx_id,
+                    from_node_id=source_node_id,
+                    payload_len=len(payload),
+                    rssi=rssi,
+                    snr=snr,
+                    time_us=self._current_time_us,
+                )
+
                 node.state = NodeState.IDLE
                 node.rx_callbacks = None
                 self._pending_rx_timeouts.pop(node_id, None)
                 self._event_queue.remove_events_for_node(node_id)
+
+                self._debug_log(
+                    "deliver_packet",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    payload_len=len(payload),
+                    rssi=rssi,
+                    snr=snr,
+                )
 
                 on_packet(payload, rssi, snr)
                 delivered += 1
 
         return delivered
 
-
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
-        """Unified core RX logic. Uses node.get_hop_channel (node.py:146)
-        for medium channel when hop_schedule present (CCP-12 per
-        ccp16-hop.json spec/02a-coordinated-capacity.md:120). Preserves oracles.
+        """Internal version of get_rx_result for callback delivery.
 
-        - Medium candidates + chaos + latency filter + resolve_reception.
-        - Collision: idempotent record_collision + log + observer (once).
-        - Success: idempotent record_reception + node.record_rx + rx_success
-          log (with debug fields) + on_rx_success observer.
-        - Returns full 5-tuple on success or None. No node state change
-          (callback path cleans up; polling path remains idempotent).
+        Does not raise on missing node, returns None instead.
         """
         node = self._nodes.get(node_id)
         if node is None:
             return None
 
-        channel = node.get_hop_channel()
         candidates = self._medium.get_rx_candidates(
             rx_node_id=node_id,
             rx_position=node.position,
             time_us=self._current_time_us,
-            channel=channel,
-            rx_frequency_hz=None,
+            rx_frequency_hz=None,  # explicit None; hash(SFN,EUI) per CCP-9
         )
 
         # Apply chaos rules to filter/modify candidates
@@ -1025,28 +886,19 @@ class Simulation:
                     )
             return None
 
-        # Record simulation-wide + per-node metrics. Idempotent for polling
-        # and callback paths.
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
-        # Track heard neighbors during startup phase for density-aware startup
-        if self._density_aware_startup and not node.started:
-            if tx.source_node_id is not None:
-                node.heard_set.add(tx.source_node_id)
-
         for candidate in candidates:
             if candidate.transmission is tx:
-                rssi = int(candidate.rssi)
-                snr = int(candidate.snr)
                 rx_log = {
                     "sim_id": self._id,
                     "node_id": node_id,
                     "tx_id": tx.id,
                     "payload_len": len(tx.payload),
-                    "rssi": rssi,
-                    "snr": snr,
+                    "rssi": int(candidate.rssi),
+                    "snr": int(candidate.snr),
                     "time_us": self._current_time_us,
                     "from_node_id": tx.source_node_id,
                     "node_state": node.state.name,
@@ -1055,21 +907,10 @@ class Simulation:
                     "pending_rx_timeouts": len(self._pending_rx_timeouts),
                 }
                 self._debug_log("rx_success", **rx_log)
-                self._observers.notify(
-                    "on_rx_success",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    tx_id=tx.id,
-                    from_node_id=tx.source_node_id,
-                    payload_len=len(tx.payload),
-                    rssi=rssi,
-                    snr=snr,
-                    time_us=self._current_time_us,
-                )
                 return (
                     tx.payload,
-                    rssi,
-                    snr,
+                    int(candidate.rssi),
+                    int(candidate.snr),
                     tx.id,
                     tx.source_node_id,
                 )
@@ -1077,19 +918,17 @@ class Simulation:
         return None
 
     def get_rx_result(self, node_id: str) -> tuple[bytes, int, int] | None:
-        """Polling path for RX result (used by tests/examples).
+        """Check if a transmission can be received by a node.
 
-        Thin wrapper that raises on missing node (legacy contract) and
-        extracts 3-tuple. All heavy lifting, metrics, logging, observers,
-        and deduplication now live in _get_rx_result_internal. No duplication
-        remains. Behavior identical for repeated polls (idempotent metrics,
-        single log/notify per test oracle).
+        Queries the medium for receive candidates at the node's position,
+        applies any chaos rules, and resolves collisions using capture effect.
 
         Args:
             node_id: ID of the receiving node.
 
         Returns:
-            (payload, rssi, snr) or None.
+            Tuple of (payload, rssi, snr) if a transmission was received,
+            None otherwise. RSSI and SNR are returned as integers.
 
         Raises:
             ValueError: If node doesn't exist.
@@ -1098,11 +937,103 @@ class Simulation:
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
 
-        result = self._get_rx_result_internal(node_id)
-        if result is None:
+        candidates = self._medium.get_rx_candidates(
+            rx_node_id=node_id,
+            rx_position=node.position,
+            time_us=self._current_time_us,
+            rx_frequency_hz=None,  # explicit CCP-9; hash(SFN,EUI) for rendezvous
+        )
+
+        # Apply chaos rules to filter/modify candidates
+        if self._chaos_engine is not None:
+            filtered_candidates = []
+            for candidate in candidates:
+                result = self._chaos_engine.apply_all(
+                    candidate=candidate,
+                    rx_node_id=node_id,
+                    rx_position=node.position,
+                )
+                if result is not None:
+                    filtered_candidates.append(result)
+            candidates = filtered_candidates
+
+        # Drop candidates whose LatencyRule-added delivery delay hasn't elapsed.
+        candidates = [
+            c
+            for c in candidates
+            if c.added_latency_us == 0
+            or self._current_time_us >= c.transmission.end_time_us + c.added_latency_us
+        ]
+
+        tx = self._medium.resolve_reception(candidates)
+        if tx is None:
+            # Two or more overlapping signals that failed the capture check
+            # are a collision (deduplicated inside record_collision).
+            if len(candidates) >= 2:
+                tx_ids = [c.transmission.id for c in candidates]
+                if self._metrics.record_collision(node_id, tx_ids):
+                    self._debug_log(
+                        "collision",
+                        sim_id=self._id,
+                        node_id=node_id,
+                        time_us=self._current_time_us,
+                        tx_ids=tx_ids,
+                    )
+                    # Notify observers
+                    self._observers.notify(
+                        "on_collision",
+                        sim_id=self._id,
+                        node_id=node_id,
+                        tx_ids=tx_ids,
+                        time_us=self._current_time_us,
+                    )
             return None
-        payload, rssi, snr, _, _ = result
-        return payload, rssi, snr
+
+        self._metrics.record_reception(node_id, tx.id, self._current_time_us)
+
+        # Record per-node metrics
+        packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
+        node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
+
+        # Find the candidate to get RSSI/SNR
+        for candidate in candidates:
+            if candidate.transmission is tx:
+                rx_log = {
+                    "sim_id": self._id,
+                    "node_id": node_id,
+                    "tx_id": tx.id,
+                    "payload_len": len(tx.payload),
+                    "rssi": int(candidate.rssi),
+                    "snr": int(candidate.snr),
+                    "time_us": self._current_time_us,
+                    "from_node_id": tx.source_node_id,
+                }
+                if self._debug_enabled:
+                    rx_log.update(
+                        node_state=node.state.name,
+                        pending_rx_timeouts=len(self._pending_rx_timeouts),
+                        queue_size=len(self._event_queue),
+                    )
+                self._debug_log("rx_success", **rx_log)
+                # Notify observers
+                self._observers.notify(
+                    "on_rx_success",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    tx_id=tx.id,
+                    from_node_id=tx.source_node_id,
+                    payload_len=len(tx.payload),
+                    rssi=int(candidate.rssi),
+                    snr=int(candidate.snr),
+                    time_us=self._current_time_us,
+                )
+                return (
+                    tx.payload,
+                    int(candidate.rssi),
+                    int(candidate.snr),
+                )
+
+        return None
 
     def get_connected_node_count(self) -> int:
         """Return the number of connected nodes.
