@@ -951,9 +951,6 @@ impl Context {
                 (piv, len, Some(len))
             } else {
                 // Reuse the request nonce (no new sequence generated).
-                if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                    return Err(OscoreError::InvalidParam);
-                }
                 let mut piv = [0u8; PIV_MAX_LEN];
                 piv[..request_piv.len()].copy_from_slice(request_piv);
                 (piv, request_piv.len(), None)
