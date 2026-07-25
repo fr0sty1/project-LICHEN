@@ -90,7 +90,7 @@ impl NeighborTable {
         rssi: i8,
         now_ms: u64,
         coords: Option<GeoCoords>,
-        protected: Option<[u8; 16]>,
+        _protected: Option<[u8; 16]>,
     ) -> (usize, Option<[u8; 16]>) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
@@ -211,15 +211,13 @@ impl NeighborTable {
         addr: &[u8; 16],
         now_ms: u64,
         max_age_ms: u64,
-        heard_consistent: u32,
+        _heard_consistent: u32,
     ) -> bool {
         self.entries
             .iter()
             .flatten()
             .find(|n| n.addr == *addr)
-            .map_or(false, |n| {
-                policy.is_alive(n.last_seen_ms, now_ms, max_age_ms)
-            })
+            .is_some_and(|n| policy.is_alive(n.last_seen_ms, now_ms, max_age_ms))
     }
 }
 

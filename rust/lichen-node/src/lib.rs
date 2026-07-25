@@ -83,10 +83,11 @@ pub use port_dispatch::{
     dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError,
 };
 #[cfg(feature = "std")]
-pub use routing::{DtnBuffer, DtnMessage, RouteTarget, Router, DTN_BUFFER_MAX_BYTES};
 pub use routing::{
-    Neighbor, NeighborTable, TrickleAwareNeighborLiveness, TrickleSafeLivenessPolicy,
+    DtnBuffer, DtnMessage, RouteTarget, Router, TrickleAwareNeighborLiveness,
+    DTN_BUFFER_MAX_BYTES,
 };
+pub use routing::{Neighbor, NeighborTable, TrickleSafeLivenessPolicy};
 // SECURITY: SecureStack is the primary export for CoAP traffic per spec section 8.7.
 // Use Stack (PlaintextStack) only for ICMPv6, diagnostics, or testing.
 #[cfg(feature = "std")]
