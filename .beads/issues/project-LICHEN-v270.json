@@ -2,18 +2,16 @@
   "id": "project-LICHEN-v270",
   "title": "[codereview-P1] test_vectors.py not updated for ccp9-rendezvous.json",
   "description": "Missing from schema test list and no _ccp9_cases() or parametrized test. Must add import from generate and test function using independent oracle only (no using generate as oracle for test).",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T17:11:41.435960788Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T01:19:58.216846792Z",
+  "updated_at": "2026-07-25T01:28:04.116178398Z",
   "started_at": "2026-07-22T17:11:57.139212033Z",
-  "closed_at": "2026-07-22T17:13:16.210408809Z",
-  "close_reason": "test updated",
-  "lease_expires_at": "2026-07-25T01:24:58.216846792Z",
-  "heartbeat_at": "2026-07-25T01:19:58.216846792Z",
+  "closed_at": "2026-07-25T01:28:04.116178398Z",
+  "close_reason": "Added ccp9-rendezvous.json to schema test list, added _ccp9_rendezvous_cases() and parametrized test_ccp9_rendezvous_vector with independent FNV-1a32 oracle; fixed schema.json to accept expected as object in ccp_vector; fixed closing bracket syntax error in generate.py ccp12_synchronized_hop_vectors. 8/8 new tests pass.",
   "labels": [
     "codereview"
   ]
