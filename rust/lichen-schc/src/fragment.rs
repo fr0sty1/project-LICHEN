@@ -1,7 +1,7 @@
 //! Rule Set Version 2 SCHC ACK-on-Error fragmentation (RFC 8724 section 8).
 
 use lichen_core::{
-    constants::SCHC_MAX_DECOMPRESSED,
+    constants::{SCHC_FRAG_MAX_PACKET_SIZE, SCHC_MAX_DECOMPRESSED},
     error::{BufferTooSmall, TooShort},
 };
 
@@ -13,13 +13,13 @@ pub const MIC_LENGTH: usize = 4;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
-pub const MAX_ACK_REQUESTS: u32 = 3;
+pub const MAX_ACK_REQUESTS: u32 = 4;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 
 pub const TILE_SIZE: usize = 187;
 pub const WINDOW_SIZE: usize = 63;
 pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
-pub const MAX_PACKET_SIZE: usize = SCHC_MAX_DECOMPRESSED;
+pub const MAX_PACKET_SIZE: usize = SCHC_FRAG_MAX_PACKET_SIZE;
 pub const RULE_ID_A_TO_B: u8 = 0;
 pub const RULE_ID_B_TO_A: u8 = 1;
 
@@ -191,6 +191,9 @@ impl<'a> Fragment<'a> {
         }
         if out.len() < payload_len {
             return Err(BufferTooSmall::new(payload_len, out.len()).into());
+        }
+        if fcn != ALL_1_FCN && data[data.len() - 1] & 1 != 0 {
+            return Err(FragmentError::NonZeroPadding);
         }
         for (i, byte) in out[..payload_len].iter_mut().enumerate() {
             let wire = 1 + content_offset + i;
@@ -460,8 +463,8 @@ impl<'a> FragmentSender<'a> {
         if payload.is_empty() {
             return Err(FragmentError::EmptyPacket);
         }
-        if payload.len() > SCHC_MAX_DECOMPRESSED {
-            return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
+        if payload.len() > SCHC_FRAG_MAX_PACKET_SIZE {
+            return Err(BufferTooSmall::new(SCHC_FRAG_MAX_PACKET_SIZE, payload.len()).into());
         }
         Ok(FragmentSender {
             payload,

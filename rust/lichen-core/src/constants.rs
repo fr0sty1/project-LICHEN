@@ -13,6 +13,9 @@ pub const LORA_MAX_PAYLOAD: usize = 255;
 /// Header overhead in local_mesh paths per RFC 6554). Covers IPv6 MTU 1280
 /// + max practical SRH (~8+16*8=136 bytes) + margin.
 pub const SCHC_MAX_DECOMPRESSED: usize = 1500;
+/// Maximum packet size for SCHC fragmentation (ACK-on-Error, window_size=63,
+/// max 2 windows, tile_size=187). 2 * 63 * 187 = 23562.
+pub const SCHC_FRAG_MAX_PACKET_SIZE: usize = 23562;
 
 // Well-known UDP ports (spec Section 9.1)
 pub const PORT_COMPACT_COT: u16 = 5681;
