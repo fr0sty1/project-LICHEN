@@ -1037,14 +1037,14 @@ impl EdhocResponder {
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
-        Ok(Self {
+        Self {
             signing_key,
             pubkey,
             c_r: c_r.into(),
             eph_secret: Some(eph_secret),
             eph_public,
             state: ResponderState::default(),
-        })
+        }
     }
 
     /// Create a new EDHOC responder.
