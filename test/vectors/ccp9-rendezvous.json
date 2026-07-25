@@ -8,7 +8,7 @@
       "sfn": 12345,
       "peer_eui64": "aabbccddeeff0011",
       "n_channels": 8,
-      "expected_channel": 7,
+      "expected_channel": 4,
       "expected_slot": 42,
       "mechanism": "hash_based"
     },

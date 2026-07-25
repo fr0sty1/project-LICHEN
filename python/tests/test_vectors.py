@@ -55,6 +55,7 @@ from generate import (  # noqa: E402
     ccp9_vectors,
     edhoc_vectors,
     frame_vectors,
+    hash_32,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
@@ -91,6 +92,7 @@ def test_vectors_directory_exists() -> None:
     "filename",
     [
         "ccp9.json",
+        "ccp9-rendezvous.json",
         "l2_payload.json",
         "ipv6_malformed.json",
     ],
@@ -512,6 +514,36 @@ def test_edhoc_vectors_match_generator() -> None:
 def test_ccp9_vectors_match_generator() -> None:
     doc = _load("ccp9.json")
     assert doc["vectors"] == ccp9_vectors()
+
+
+def _ccp9_rendezvous_cases():
+    doc = _load("ccp9-rendezvous.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp9_rendezvous_cases())
+def test_ccp9_rendezvous_vector(name: str, vector: dict) -> None:
+    mechanism = vector.get("mechanism") or vector.get("expected", {}).get("mechanism", "")
+    if mechanism == "hash_based":
+        peer_eui = bytes.fromhex(vector["peer_eui64"])
+        sfn = vector["sfn"]
+        n_channels = vector["n_channels"]
+        h = _hop_hash(peer_eui, sfn)
+        computed_channel = 1 + (h % (n_channels - 1))
+        assert computed_channel == vector["expected_channel"]
+        assert vector["expected_slot"] == 42
+    elif mechanism == "scheduled":
+        assert isinstance(vector["expected"], dict)
+        assert vector["expected"]["mechanism"] == "scheduled"
+        assert vector["expected"]["valid_until_sfn"] == 12350
+    elif mechanism == "announce_driven":
+        assert vector["rx_channel"] == vector["expected_channel"]
+    elif mechanism == "fallback":
+        assert vector["expected_channel"] == 0
+        assert vector["expected_slot"] == 0
+    else:
+        pytest.fail(f"Unknown rendezvous mechanism: {mechanism}")
 
 
 def _ccp16_cases():

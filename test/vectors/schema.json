@@ -1077,7 +1077,7 @@
         "current_sfn": {"type": "integer"},
         "last_sfn": {"type": "integer"},
         "sfn": {"type": "integer"},
-        "expected": {"type": "string"},
+        "expected": {"oneOf": [{"type": "string"}, {"type": "object"}]},
         "version": {"type": "integer"},
         "alternate_version": {"type": "integer"},
         "drift_ppm": {"type": "integer"},

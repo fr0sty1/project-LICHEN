@@ -1857,8 +1857,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
         }
-    )
-    return vectors
+    ]
 
 
 def ccp9_vectors() -> list[dict]:
