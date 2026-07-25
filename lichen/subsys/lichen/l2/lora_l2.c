@@ -3,7 +3,7 @@
 
 /**
  * @file lora_l2.c
- * @brief LICHEN LoRa L2 network interface driver implementation
+ * @brief LICHEN LoRa L2 network interface driver - main module
  *
  * This module provides the bridge between Zephyr's IPv6 stack and LoRa radio.
  * It's structured as a service that can be attached to the default interface
@@ -19,163 +19,32 @@
  * Threading model:
  * - TX is synchronous (called from application context)
  * - RX runs in dedicated thread, can invoke callbacks for received packets
+ *
+ * Module split:
+ * - lora_l2.c: Global state, init/start/stop/deinit, status queries
+ * - lora_l2_state.c: State machine transitions
+ * - lora_l2_identity.c: EUI-64 generation and access
+ * - lora_l2_rx.c: RX thread and callback management
+ * - lora_l2_tx.c: Transmit functions
+ * - lora_l2_internal.h: Shared definitions
  */
 
-#include "lora_l2.h"
+#include "lora_l2_internal.h"
 #include "lichen_l2.h"
-#include "crash_info.h"
 
-#include <limits.h>
-#include <string.h>
-
-#include <zephyr/kernel.h>
-#include <zephyr/device.h>
 #include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/random/random.h>
-#include <zephyr/drivers/hwinfo.h>
-#include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
-#include <lichen/op_class.h>
-#include <lichen/tx_queue.h>
-
-#include "lichen_util.h"
 
 LOG_MODULE_REGISTER(lichen_lora_l2, CONFIG_LICHEN_LORA_L2_LOG_LEVEL);
 
-/*
- * Radio-liveness hook. Apps that gate a watchdog feed on radio progress
- * (puck main.c) provide a strong definition; standalone builds fall back to
- * this no-op. Same pattern as lichen/lib/native/native.c.
- */
-__attribute__((weak)) void lichen_radio_progress(void)
-{
-}
-
 /* --------------------------------------------------------------------------
- * State machine
+ * Global state definitions
+ *
+ * These are declared extern in lora_l2_internal.h and defined here so there
+ * is exactly one copy across all split files.
  * -------------------------------------------------------------------------- */
-
-enum lora_state {
-    LORA_UNINIT = 0,   /* Not initialized */
-    LORA_STOPPED,      /* Initialized, not running */
-    LORA_RUNNING,      /* Initialized and running */
-    LORA_ABORTED,      /* Thread was forcibly aborted, needs full reinit */
-    LORA_DEINITING,    /* Deinit in progress */
-    LORA_STATE_COUNT
-};
-
-static const char *state_names[] = {
-    [LORA_UNINIT]    = "UNINIT",
-    [LORA_STOPPED]   = "STOPPED",
-    [LORA_RUNNING]   = "RUNNING",
-    [LORA_ABORTED]   = "ABORTED",
-    [LORA_DEINITING] = "DEINITING",
-};
-
-/* Compile-time check: state_names must have exactly LORA_STATE_COUNT entries.
- * Catches mismatch if enum values are added/removed without updating array. */
-BUILD_ASSERT(ARRAY_SIZE(state_names) == LORA_STATE_COUNT,
-             "state_names array size must match LORA_STATE_COUNT");
-
-/* Valid state transitions: valid_transitions[from][to] = 1 if allowed */
-static const uint8_t valid_transitions[LORA_STATE_COUNT][LORA_STATE_COUNT] = {
-    /*                    UNINIT STOPPED RUNNING ABORTED DEINITING */
-    [LORA_UNINIT]    = {  0,     1,      0,      0,      0 },  /* init -> STOPPED */
-    [LORA_STOPPED]   = {  0,     0,      1,      0,      1 },  /* start -> RUNNING, deinit -> DEINITING */
-    [LORA_RUNNING]   = {  0,     1,      0,      1,      0 },  /* stop -> STOPPED or ABORTED */
-    [LORA_ABORTED]   = {  0,     0,      0,      0,      1 },  /* deinit -> DEINITING */
-    [LORA_DEINITING] = {  1,     0,      0,      0,      0 },  /* -> UNINIT */
-};
-
-static atomic_t current_state = ATOMIC_INIT(LORA_UNINIT);
-
-/**
- * @brief Transition to a new state with validation
- *
- * Returns error and forces ABORTED state if the transition is invalid.
- * This catches state machine bugs at runtime.
- *
- * @param new_state Target state
- * @return 0 on success, -EINVAL if transition invalid (state forced to ABORTED)
- */
-static int lora_transition(enum lora_state new_state)
-{
-    if (new_state >= LORA_STATE_COUNT) {
-        LOG_ERR("lora_l2: invalid state (%d), forcing ABORTED", new_state);
-        atomic_set(&current_state, LORA_ABORTED);
-        return -EINVAL;
-    }
-
-    while (1) {
-        enum lora_state old_state = atomic_get(&current_state);
-
-        if (!valid_transitions[old_state][new_state]) {
-            LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
-                    state_names[old_state], state_names[new_state]);
-            atomic_set(&current_state, LORA_ABORTED);
-            return -EINVAL;
-        }
-
-        if (atomic_cas(&current_state, old_state, new_state)) {
-            LOG_DBG("lora_l2: state %s -> %s", state_names[old_state], state_names[new_state]);
-            return 0;
-        }
-    }
-}
-
-/**
- * @brief Atomically transition from expected state to new state
- *
- * @param expected Expected current state
- * @param new_state Target state
- * @return 0 on success, -EAGAIN if current state != expected, -EINVAL if transition invalid
- */
-static int lora_transition_from(enum lora_state expected, enum lora_state new_state)
-{
-    /* Validate transition BEFORE attempting CAS to avoid momentarily invalid state */
-    if (expected >= LORA_STATE_COUNT || new_state >= LORA_STATE_COUNT) {
-        LOG_ERR("lora_l2: invalid state value (expected=%d, new=%d), forcing ABORTED",
-                expected, new_state);
-        atomic_set(&current_state, LORA_ABORTED);
-        return -EINVAL;
-    }
-    if (!valid_transitions[expected][new_state]) {
-        LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
-                state_names[expected], state_names[new_state]);
-        atomic_set(&current_state, LORA_ABORTED);
-        return -EINVAL;
-    }
-
-    if (!atomic_cas(&current_state, expected, new_state)) {
-        return -EAGAIN;
-    }
-    LOG_DBG("lora_l2: state %s -> %s", state_names[expected], state_names[new_state]);
-    return 0;
-}
-
-static inline enum lora_state lora_get_state(void)
-{
-    return atomic_get(&current_state);
-}
-
-/* RX thread configuration - use Kconfig values */
-#define RX_THREAD_STACK_SIZE CONFIG_LICHEN_LORA_L2_RX_STACK_SIZE
-#define RX_THREAD_PRIORITY   CONFIG_LICHEN_LORA_L2_RX_PRIORITY
-#define RX_TIMEOUT_MS        CONFIG_LICHEN_LORA_L2_RX_TIMEOUT_MS
-#define RX_ERROR_WARN_THRESHOLD 5
-
-/* Join timeout for RX thread when not blocked in lora_recv() */
-#define RX_THREAD_QUICK_JOIN_MS 100
-
-/*
- * Join timeout for deinit() best-effort recovery.
- * Short timeout because: if stop() completed normally, thread is already dead
- * (instant return); if truly stuck, waiting longer won't help. 10ms is enough
- * for kernel to finalize thread termination.
- */
-#define DEINIT_JOIN_TIMEOUT_MS 10
 
 /*
  * ARCHITECTURAL LIMITATION (project-LICHEN-tvfm.110): This module uses static
@@ -189,16 +58,16 @@ BUILD_ASSERT(DT_NODE_EXISTS(DT_ALIAS(lora0)),
              "lora_l2 requires a 'lora0' devicetree alias for single-radio operation");
 
 /* RX thread and stack */
-static K_THREAD_STACK_DEFINE(rx_stack, RX_THREAD_STACK_SIZE);
-static struct k_thread rx_thread_data;
+K_THREAD_STACK_DEFINE(rx_stack, RX_THREAD_STACK_SIZE);
+struct k_thread rx_thread_data;
 
 /* Mutex protecting state transitions and callback registration */
-static K_MUTEX_DEFINE(lora_mutex);
+K_MUTEX_DEFINE(lora_mutex);
 
 /* Mutex protecting TX buffer access - serializes concurrent transmissions.
  * Separate from lora_mutex because TX may block for ~500ms at SF10/255 bytes;
  * holding lora_mutex that long would starve RX callback registration. */
-static K_MUTEX_DEFINE(tx_buf_mutex);
+K_MUTEX_DEFINE(tx_buf_mutex);
 
 /*
  * TX/RX modem arbitration (half-duplex radio, non-blocking driver acquire).
@@ -216,7 +85,7 @@ static K_MUTEX_DEFINE(tx_buf_mutex);
  * sides treat -EBUSY as the expected "other side owns the modem" signal,
  * not an error.
  */
-static atomic_t tx_pending;
+atomic_t tx_pending;
 
 /*
  * Hard mutual exclusion for driver calls (modem_mutex).
@@ -225,28 +94,28 @@ static atomic_t tx_pending;
  * does nothing about a recv that is already in flight. Drivers do not
  * tolerate concurrent recv+send: the LR1110 driver has no internal locking
  * at all, so a send() issued while recv() is mid-poll interleaves SPI
- * transactions on the same chip — corrupting radio state, spinning both
+ * transactions on the same chip - corrupting radio state, spinning both
  * sides in error/retry storms (heavy enough SPIM traffic to wedge nRF52840
  * USB enumeration as collateral), and putting nothing on the air. The
  * sx12xx driver merely returns -EBUSY. Wrap every lora_recv()/lora_send()
  * in modem_mutex so a send waits out the in-flight RX window (bounded by
  * RX_TIMEOUT_MS; k_mutex priority inheritance protects against inversion).
  */
-static K_MUTEX_DEFINE(modem_mutex);
+K_MUTEX_DEFINE(modem_mutex);
 
 /*
  * Internal TX buffer - copied before lora_send() to protect caller's data.
  * Zephyr's lora_send() takes a non-const pointer because some radio drivers
  * may modify the buffer (e.g., for DMA alignment or in-place encryption).
  */
-static uint8_t tx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
+uint8_t tx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
 
 /*
  * TX queue for bufferbloat avoidance (spec/appendix-bufferbloat.md).
  * Provides priority queuing, deadline expiry, and explicit backpressure.
  * Protected by tx_buf_mutex (same mutex as tx_buf since they're used together).
  */
-static struct tx_queue tx_queue;
+struct tx_queue tx_queue;
 
 /*
  * Module data (not state - state is managed by current_state atomic).
@@ -256,406 +125,11 @@ static struct tx_queue tx_queue;
  *     Must hold lora_mutex for both read and write. Callers read callback pair
  *     atomically via snapshot under lock (see rx_thread).
  */
-static struct {
-    const struct device *lora_dev;
-    uint8_t eui64[8];
-    lichen_lora_rx_cb_t rx_callback;
-    void *rx_callback_user_data;
-    bool cca_enabled;
-    uint8_t rx_channel;
-#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    struct lichen_duty_cycle_ctx duty;
-#endif
-} lora_data;
+struct lora_l2_data lora_data;
 
-/**
- * @brief Generate stable EUI-64 from hardware device ID
- *
- * Hashes the full hardware ID using SHA-256 to produce a collision-resistant
- * EUI-64. This avoids issues with MCU-specific hwid layouts:
- * - STM32: 12-byte UID where bytes 0-3 are lot/wafer (shared across chips)
- * - ESP32: 6-byte MAC (would leave 2 bytes unfilled)
- * - nRF52: 8-byte unique ID
- *
- * By hashing the full hwid, we mix all available entropy bits uniformly.
- * Returns error if no stable identity is available - a mesh network node
- * must not start with an unstable EUI-64 that changes on each reboot.
- *
- * SECURITY: EUI-64 is derived from hardware ID only, NOT cryptographically
- * bound to the node's Ed25519 identity keypair. This is an architectural
- * limitation with the following implications:
- * - EUI-64 provides device identification, not authentication
- * - An attacker with a victim's private key can sign frames with any EUI-64
- * - The Ed25519 public key (verified via Schnorr signature) is the true
- *   cryptographic identity - EUI-64 is just a stable routing identifier
- * - Frame authenticity depends on signature verification, not EUI-64 matching
- *
- * Future work: LICHEN spec section 6.2 suggests deriving IID from Ed25519
- * public key. This would cryptographically bind EUI-64 to the keypair,
- * but requires keypair provisioning before network initialization.
- *
- * @param eui64 Output buffer for 8-byte EUI-64
- * @return 0 on success, negative errno on failure
- */
-/*
- * SECURITY: Domain separation prefix for EUI-64 derivation.
- * This ensures SHA-256(prefix || hwid) produces different output than
- * other uses of SHA-256 on the same hwid (e.g., key derivation).
- * The prefix is a fixed ASCII string with no trailing NUL in the hash input.
- */
-#define EUI64_DOMAIN_PREFIX "LICHEN-EUI64-v1"
-#define EUI64_DOMAIN_PREFIX_LEN (sizeof(EUI64_DOMAIN_PREFIX) - 1)
-#define LICHEN_HWID_MAX_LEN 32U
-#define LICHEN_EXPECTED_MAX_HWID_LEN 16U
-
-BUILD_ASSERT(LICHEN_HWID_MAX_LEN >= LICHEN_EXPECTED_MAX_HWID_LEN,
-             "hardware ID buffer must cover supported MCU IDs");
-
-static int generate_eui64(uint8_t *eui64)
-{
-    if (eui64 == NULL) {
-        return -EINVAL;
-    }
-    int ret = 0;
-    uint8_t hwid[LICHEN_HWID_MAX_LEN];
-    ssize_t hwid_len;
-    uint8_t hash[TC_SHA256_DIGEST_SIZE];
-    uint8_t hash_input[EUI64_DOMAIN_PREFIX_LEN + sizeof(hwid)];
-    BUILD_ASSERT(sizeof(hwid) == LICHEN_HWID_MAX_LEN,
-                 "hwid buffer must match declared max hardware ID length");
-    BUILD_ASSERT(sizeof(hash_input) == EUI64_DOMAIN_PREFIX_LEN + LICHEN_HWID_MAX_LEN,
-                 "hash_input must cover domain prefix plus max hardware ID");
-
-    hwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));
-    if (hwid_len < 0) {
-        if (lichen_hal_synthetic_device_identity_allowed()) {
-            /*
-             * Simulation builds may not have a hardware identity provider. Use
-             * a HAL-owned deterministic identity so CI can exercise the L2
-             * path. Hardware builds still refuse to start without stable
-             * device identity.
-             */
-            ret = lichen_hal_synthetic_device_identity_get(hwid, sizeof(hwid));
-            if (ret < 0) {
-                LOG_ERR("lora_l2: synthetic hardware ID failed (%d)", ret);
-                goto cleanup;
-            }
-            hwid_len = ret;
-            LOG_WRN("lora_l2: using synthetic hardware ID");
-        } else {
-            /*
-             * SECURITY: Refusing to start without stable identity. A random EUI-64
-             * would change on each reboot, breaking IPv6 NDP and mesh routing.
-             */
-            LOG_ERR("lora_l2: hwinfo_get_device_id failed (%d)", (int)hwid_len);
-            /* Cast safe: hwinfo errors are negative errno (-E*), always fit in int */
-            ret = (int)hwid_len;
-            goto cleanup;
-        }
-    }
-    if (hwid_len == 0) {
-        /* SECURITY: Zero-length hwid means no unique identity available */
-        LOG_ERR("lora_l2: no hardware ID available, cannot generate stable EUI-64");
-        ret = -ENODEV;
-        goto cleanup;
-    }
-    /* DEFENSE-IN-DEPTH: This check is after hwinfo_get_device_id() already wrote
-     * to hwid[]. The real protection is sizeof(hwid) passed as the buffer limit
-     * to that call. If the driver returns len > sizeof(hwid), the buffer was
-     * already overflown — this check catches the inconsistency defensively. */
-    if ((size_t)hwid_len > sizeof(hwid)) {
-        LOG_ERR("lora_l2: hwinfo returned invalid length (%d)", (int)hwid_len);
-        ret = -EINVAL;
-        goto cleanup;
-    }
-    const size_t checked_hwid_len = (size_t)hwid_len;
-
-    /* SECURITY: Reject all-zeros hwid which would cause EUI-64 collisions.
-     * Some MCUs return zeros when fuses aren't programmed or in debug mode. */
-    uint8_t nonzero = 0;
-    for (ssize_t i = 0; i < hwid_len; i++) {
-        nonzero |= hwid[i];
-    }
-    if (nonzero == 0) {
-        LOG_ERR("lora_l2: hardware ID is all zeros, cannot generate unique EUI-64");
-        ret = -EINVAL;
-        goto cleanup;
-    }
-
-    /*
-     * Hash prefix || hwid to derive EUI-64 with domain separation.
-     * SECURITY: SHA-256 provides collision resistance - two different
-     * hwids will produce different EUI-64s with overwhelming probability.
-     * The domain prefix ensures this derivation is independent of other
-     * SHA-256 uses (e.g., ipv6_addr.c:pubkey_to_iid uses different input).
-     */
-    memcpy(hash_input, EUI64_DOMAIN_PREFIX, EUI64_DOMAIN_PREFIX_LEN);
-    memcpy(hash_input + EUI64_DOMAIN_PREFIX_LEN, hwid, checked_hwid_len);
-    ret = lichen_sha256(hash_input, EUI64_DOMAIN_PREFIX_LEN + checked_hwid_len, hash, sizeof(hash));
-    if (ret != 0) {
-        LOG_ERR("lora_l2: EUI-64 SHA-256 failed");
-        goto cleanup;
-    }
-
-    /*
-     * SECURITY: Using first 64 bits of SHA-256 for EUI-64 derivation.
-     * This is safe for identifier derivation (not key material) because:
-     * 1. Birthday collision requires 2^32 attempts (4B devices) for 50% collision
-     * 2. Preimage resistance remains at 2^64 (sufficient for device identity)
-     * 3. Matches RFC 7343 (ORCHID) approach for cryptographic identifiers
-     */
-    memcpy(eui64, hash, 8);
-    /* hwid_len is ssize_t; cast to int is safe since hwinfo_get_device_id()
-     * returns at most sizeof(hwid) (32 bytes), well within int range. */
-    LOG_DBG("lora_l2: EUI-64 from hashed hardware ID (%d bytes)", (int)hwid_len);
-
-    /*
-     * IEEE 802 EUI-64 first octet bit definitions (LSB numbering):
-     *   Bit 0 (0x01): Individual/Group (I/G) - 0=unicast, 1=multicast
-     *   Bit 1 (0x02): Universal/Local (U/L)  - 0=universally administered (OUI),
-     *                                          1=locally administered
-     *
-     * We set U/L=1 because this EUI-64 is derived from device hardware ID,
-     * not from an IEEE-assigned OUI. We clear I/G=0 to mark this as a unicast
-     * address (individual device, not a multicast group).
-     *
-     * Reference: IEEE 802-2014 section 8.2, IEEE Guidelines for EUI-64.
-     */
-    eui64[0] = (eui64[0] | 0x02) & 0xFE;  /* Set U/L bit, clear I/G bit */
-
-    LOG_DBG("lora_l2: EUI-64 %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-            eui64[0], eui64[1], eui64[2], eui64[3],
-            eui64[4], eui64[5], eui64[6], eui64[7]);
-
-cleanup:
-    /* SECURITY: Zero intermediate buffers and output on all error paths.
-     * Defense-in-depth: ensure caller never sees undefined eui64 on failure,
-     * even though callers should check return value. */
-    secure_zero(hwid, sizeof(hwid));
-    secure_zero(hash_input, sizeof(hash_input));
-    secure_zero(hash, sizeof(hash));
-    if (ret != 0) {
-        secure_zero(eui64, 8);
-    }
-    return ret;
-}
-
-/**
- * @brief RX thread - continuously receives LoRa packets
- */
-static void rx_thread(void *arg1, void *arg2, void *arg3)
-{
-    ARG_UNUSED(arg1);
-    ARG_UNUSED(arg2);
-    ARG_UNUSED(arg3);
-
-    int ret;
-    /*
-     * rx_buf sized to LICHEN_LORA_MAX_PHY_PAYLOAD (255 bytes) - the maximum
-     * that lora_recv() can return. The callback receives (data, len) where
-     * len is bounded by this buffer size. Callers implementing the callback
-     * must be prepared to handle up to LICHEN_LORA_MAX_PHY_PAYLOAD bytes.
-     */
-    uint8_t rx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
-    BUILD_ASSERT(sizeof(rx_buf) == LICHEN_LORA_MAX_PHY_PAYLOAD,
-                 "rx_buf size must equal LICHEN_LORA_MAX_PHY_PAYLOAD for "
-                 "callback buffer sizing guarantees");
-    int16_t rssi;
-    int8_t snr;
-    int consecutive_errors = 0;
-
-    /*
-     * Capture lora_dev under mutex once at thread startup. This ensures
-     * proper synchronization with init() and avoids repeated mutex
-     * acquisition in the hot path. The device pointer is immutable after
-     * init(), so a single snapshot is sufficient.
-     *
-     * SAFETY (project-LICHEN-0li1.5): The cached pointer cannot become stale
-     * because stop() joins this thread (waits for termination) before returning,
-     * and deinit() can only be called after stop() completes (state machine
-     * enforces STOPPED->DEINITING transition). The shutdown sequence is:
-     *   1. stop() transitions to STOPPED
-     *   2. This thread sees STOPPED, exits the loop
-     *   3. stop() joins this thread (k_thread_join)
-     *   4. stop() returns
-     *   5. Only then can deinit() be called
-     * Thus deinit() never runs while this thread holds the cached pointer.
-     */
-    k_mutex_lock(&lora_mutex, K_FOREVER);
-    const struct device *dev = lora_data.lora_dev;
-    k_mutex_unlock(&lora_mutex);
-
-    LOG_INF("lora_l2: RX thread started");
-
-    /*
-     * Loop condition: checking LORA_RUNNING is sufficient because ABORTED
-     * can only be set AFTER this thread is terminated. The shutdown sequence
-     * in stop() is: (1) transition to STOPPED, (2) join/abort thread,
-     * (3) only then transition to ABORTED if abort was needed. So this thread
-     * will either exit gracefully when it sees STOPPED, or be forcibly
-     * terminated by k_thread_abort() before ABORTED is ever set.
-     */
-    while (lora_get_state() == LORA_RUNNING) {
-        /*
-         * Radio-liveness heartbeat: apps gate their watchdog feed on this
-         * (see puck main.c). Each loop pass proves the radio path is not
-         * wedged; without it, an app main thread legitimately blocked in a
-         * long network call (CoAP request, ND resolution) has no other
-         * progress source and the watchdog resets the SoC.
-         */
-        lichen_radio_progress();
-
-        /*
-         * Yield the modem to a pending TX. Without this, back-to-back
-         * lora_recv() calls hold the modem near-continuously and
-         * lichen_lora_l2_tx() can never acquire it (see tx_pending above).
-         */
-        if (atomic_get(&tx_pending) > 0) {
-            k_sleep(K_MSEC(10));
-            continue;
-        }
-
-        k_mutex_lock(&modem_mutex, K_FOREVER);
-        ret = lora_recv(dev, rx_buf, sizeof(rx_buf),
-                        K_MSEC(RX_TIMEOUT_MS), &rssi, &snr);
-        k_mutex_unlock(&modem_mutex);
-
-        if (ret < 0) {
-            if (ret == -EAGAIN) {
-                /* Timeout is normal operation, not an error - reset counter */
-                consecutive_errors = 0;
-                continue;
-            }
-            if (ret == -EBUSY) {
-                /* TX owns the modem (half-duplex). Expected during a send;
-                 * yield briefly and re-arm - not a hardware error. */
-                consecutive_errors = 0;
-                k_sleep(K_MSEC(50));
-                continue;
-            }
-            if (consecutive_errors < INT_MAX) {
-                consecutive_errors++;
-            } else {
-                consecutive_errors = RX_ERROR_WARN_THRESHOLD;
-            }
-            LOG_ERR("lora_l2: RX error (%d)", ret);
-            if (consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0) {
-                LOG_WRN("lora_l2: %d consecutive RX errors, check hardware",
-                        consecutive_errors);
-            }
-            /*
-             * Backoff on persistent errors to avoid log flooding and CPU starvation.
-             *
-             * TIMING INTERACTION (project-LICHEN-i1gk.103): This 1000ms sleep is NOT
-             * interruptible. If stop() is called while the thread is in this backoff:
-             * - stop() uses join timeout: RX_THREAD_QUICK_JOIN_MS (100ms) + RX_TIMEOUT_MS
-             * - Default RX_TIMEOUT_MS is 1000ms, so total join timeout is 1100ms
-             * - The backoff can last up to 1000ms, which is within the 1100ms budget
-             *
-             * However, if CONFIG_LICHEN_LORA_L2_RX_TIMEOUT_MS is configured lower than
-             * 1000ms (e.g., 100ms for fast response), the join timeout becomes 200ms and
-             * this 1000ms backoff will cause forced thread abort. This is acceptable:
-             * - Error backoff indicates the radio is misbehaving
-             * - Forced abort triggers ABORTED state requiring deinit/init cycle
-             * - Recovery from persistent hardware errors requires reinitialization anyway
-             *
-             * A production system experiencing persistent LoRa errors should address
-             * the root cause (hardware fault, interference, misconfiguration) rather
-             * than relying on fast stop/start cycling.
-             */
-            k_sleep(K_MSEC(1000));
-            continue;
-        }
-
-        /* Non-negative return means radio responded successfully - reset error counter.
-         * This includes both ret==0 (empty packet) and ret>0 (data received). */
-        consecutive_errors = 0;
-
-        if (ret == 0) {
-            continue;  /* Empty packet */
-        }
-
-        /*
-         * SECURITY: If driver returned more than buffer size, stack corruption
-         * has ALREADY occurred. rx_buf is stack-allocated, so out-of-bounds
-         * writes may have corrupted the return address, saved registers, or
-         * other stack frames. There is no safe recovery from this state.
-         *
-         * We panic rather than continue because:
-         * 1. Corruption already happened - the damage is done
-         * 2. Continuing risks exploiting the corrupted state
-         * 3. A restart gives the system a clean slate
-         * 4. This is a driver bug that needs immediate attention, not silent handling
-         */
-        /* lora_recv() returns int: negative errno on error, byte count on success.
-         * At this point ret > 0 (we checked ret < 0 and ret == 0 above), so cast
-         * ret to size_t for a type-safe comparison against sizeof(rx_buf). */
-        if ((size_t)ret > sizeof(rx_buf)) {
-            /*
-             * Driver returned more bytes than buffer size - corruption likely.
-             * Store crash info for post-mortem, transition to ABORTED, and
-             * exit the RX loop. Watchdog will reset us if we're stuck.
-             */
-            LOG_ERR("lora_l2: recv overflow (%d > %d)", ret, (int)sizeof(rx_buf));
-            /*
-             * Best-effort retained telemetry only: crash_info_store() cannot
-             * report failure, so recovery must not depend on this write.
-             */
-            crash_info_store(CRASH_DRIVER_OVERFLOW, __LINE__, (uint32_t)ret);
-            atomic_set(&current_state, LORA_ABORTED);
-            break;  /* Exit RX loop - let watchdog reset if needed */
-        }
-
-        LOG_DBG("lora_l2: RX %d bytes (RSSI %d dBm, SNR %d dB)", ret, rssi, snr);
-
-        /*
-         * Invoke callback if registered - snapshot under lock for consistency.
-         *
-         * LOCK ORDER INVARIANT (project-LICHEN-i1gk.45): lora_mutex is released
-         * BEFORE the callback is invoked. The callback (lichen_l2_input) acquires
-         * rx_mutex. This ordering is safe because:
-         *
-         * 1. lora_mutex protects callback registration, not callback execution
-         * 2. The callback never calls back into lora_l2.c functions that need
-         *    lora_mutex (tx uses tx_buf_mutex only, not lora_mutex)
-         * 3. This ensures no lock ordering between lora_mutex and rx_mutex exists
-         *
-         * CROSS-MODULE INVARIANT: lora_l2_tx() must NOT acquire lora_mutex.
-         * If TX ever needs lora_mutex while a callback holds rx_mutex, and that
-         * callback's caller needed rx_mutex before acquiring lora_mutex, we'd have
-         * ABBA deadlock. Currently tx_buf_mutex is independent, preserving safety.
-         * See lichen_lora_l2_tx() which explicitly documents using only tx_buf_mutex.
-         */
-        k_mutex_lock(&lora_mutex, K_FOREVER);
-        lichen_lora_rx_cb_t cb = lora_data.rx_callback;
-        void *cb_user_data = lora_data.rx_callback_user_data;
-        k_mutex_unlock(&lora_mutex);
-
-        if (cb) {
-            /*
-             * SECURITY: Callback interruption risk during k_thread_abort().
-             *
-             * If stop() times out and calls k_thread_abort() while this
-             * callback is executing, the callback will be terminated
-             * mid-execution. This can leave the callback's resources in an
-             * inconsistent state (held locks, partial allocations, etc.).
-             *
-             * Recovery mechanism: After abort, stop() sets LORA_ABORTED state.
-             * Callers must check lichen_lora_l2_needs_reinit() and perform a
-             * full deinit()/init() cycle before restart. The callback owner
-             * is responsible for detecting the abort (via needs_reinit() or
-             * its own timeout/watchdog) and cleaning up any leaked resources.
-             *
-             * This is a known limitation of thread abort - there is no safe
-             * way to interrupt an arbitrary callback. The ABORTED state
-             * ensures callers are aware recovery action is required.
-             */
-            cb(rx_buf, ret, rssi, snr, cb_user_data);
-        }
-    }
-
-    LOG_INF("lora_l2: RX thread exiting");
-}
+/* --------------------------------------------------------------------------
+ * Init / Start / Stop / Deinit
+ * -------------------------------------------------------------------------- */
 
 int lichen_lora_l2_init(void)
 {
@@ -845,7 +319,7 @@ int lichen_lora_l2_stop(void)
 
     /*
      * Fast-path check without mutex: if already not RUNNING, return 0 early.
-     * This is intentionally idempotent — concurrent stop() calls are safe.
+     * This is intentionally idempotent - concurrent stop() calls are safe.
      * If two threads race in, one will do the work (clear callback, transition),
      * the other will hit the double-check below and return 0. Both return 0;
      * the caller cannot distinguish which one did the work, but the contract
@@ -908,7 +382,7 @@ int lichen_lora_l2_stop(void)
          */
         join_ret = k_thread_join(&rx_thread_data, K_MSEC(RX_TIMEOUT_MS));
         if (join_ret == -EAGAIN) {
-            LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting — possible data loss",
+            LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting - possible data loss",
                     RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);
             k_thread_abort(&rx_thread_data);
             join_ret = k_thread_join(&rx_thread_data, K_MSEC(100));
@@ -1149,355 +623,9 @@ int lichen_lora_l2_deinit(void)
     return 0;
 }
 
-
-bool lichen_lora_perform_cca(uint32_t timeout_ms)
-{
-    if (lora_data.lora_dev == NULL) {
-        return false;
-    }
-
-    bool busy = false;
-    int ret = lora_cad(lora_data.lora_dev, K_MSEC(timeout_ms), &busy);
-    if (ret < 0) {
-        if (ret != -ENOSYS) {
-            LOG_WRN("lora_l2: CCA failed (%d), treating as clear", ret);
-        }
-        return true;
-    }
-    return !busy;
-}
-
-int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
-{
-    if (data == NULL) {
-        LOG_ERR("lora_l2: TX data pointer is NULL");
-        return -EINVAL;
-    }
-
-    if (len == 0) {
-        LOG_ERR("lora_l2: TX with zero length");
-        return -EINVAL;
-    }
-
-    if (len > LICHEN_LORA_MAX_PHY_PAYLOAD) {
-        LOG_ERR("lora_l2: packet too large (%zu > %d)", len, LICHEN_LORA_MAX_PHY_PAYLOAD);
-        return -EMSGSIZE;
-    }
-
-    uint8_t effective_channel = 0;
-    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)) {
-        if (channel < CONFIG_LICHEN_N_CHANNELS) {
-            effective_channel = channel;
-        } else {
-            static uint8_t next = 1;
-            effective_channel = next;
-            next = (next % (CONFIG_LICHEN_N_CHANNELS - 1)) + 1;
-        }
-    }
-    lora_data.rx_channel = effective_channel;
-
-    /* Configure data channels via operating class lookup table (CCP-3/CCP-4).
-     * CH0 uses the base frequency from the plan; data channels use
-     * base + ch * spacing derived from the plan's channel mask.
-     * Falls back to Kconfig values when no plan entry matches.
-     */
-    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED) && effective_channel > 0 && lora_data.lora_dev != NULL) {
-        uint32_t plan_freq = CONFIG_LICHEN_LORA_FREQUENCY;
-        uint32_t plan_bw = BW_125_KHZ;
-        uint8_t plan_sf = SF_10;
-        uint8_t plan_cr = CR_4_5;
-        int8_t plan_power = CONFIG_LICHEN_LORA_TX_POWER;
-
-        const struct lichen_op_class_params *oc = lichen_op_class_lookup(CONFIG_LICHEN_OP_CLASS_ID);
-        if (oc != NULL) {
-            plan_freq = oc->frequency_hz;
-            plan_bw = oc->bandwidth_hz;
-            plan_sf = oc->spreading_factor;
-            plan_cr = oc->coding_rate;
-            plan_power = oc->tx_power_dbm;
-        }
-
-        uint32_t ch_freq = plan_freq + (uint32_t)effective_channel * 200000U;
-        struct lora_modem_config ch_config = {
-            .frequency = ch_freq,
-            .bandwidth = plan_bw,
-            .datarate = plan_sf,
-            .coding_rate = plan_cr,
-            .preamble_len = 8,
-            .tx_power = plan_power,
-            .tx = true,
-        };
-        int cfg_ret = lora_config(lora_data.lora_dev, &ch_config);
-        if (cfg_ret < 0) {
-            LOG_WRN("lora_l2: ch%u freq config failed (%d)", effective_channel, cfg_ret);
-        }
-    }
-
-    /*
-     * Check state atomically without mutex. The lora_send() call below blocks
-     * for the entire TX airtime (~500ms at SF10/255 bytes). Holding lora_mutex
-     * during this period would starve the RX thread, which needs the mutex to
-     * snapshot its callback pointer.
-     *
-     * This is safe because:
-     * - State is atomic_t, reads are naturally atomic
-     * - lora_send() is thread-safe (Zephyr driver serializes internally)
-     * - If stop() races with send(), the driver handles in-flight TX
-     *
-     * State coverage (project-LICHEN-tvfm.92):
-     *   UNINIT    -> -ENODEV (not initialized)
-     *   STOPPED   -> -ENETDOWN (check below: state != RUNNING)
-     *   RUNNING   -> proceed with TX
-     *   ABORTED   -> -ENETDOWN (state != RUNNING; deinit required)
-     *   DEINITING -> -ENETDOWN (state != RUNNING; stop() already ran,
-     *                          setting running=0 before deinit() begins)
-     *
-     * DEINITING case is safe: deinit() requires stop() first (state machine
-     * only allows STOPPED->DEINITING), and stop() clears RUNNING. Any TX
-     * attempt during deinit fails at the state != RUNNING check.
-     *
-     * TOCTOU analysis (project-LICHEN-i1gk.65): There is a TOCTOU window between
-     * the state check here and tx_buf_mutex acquisition below. Re-check state
-     * after acquiring tx_buf_mutex so a stop/deinit transition that wins this
-     * window prevents a stale TX before airtime is spent.
-     */
-    enum lora_state state = lora_get_state();
-    if (state == LORA_UNINIT) {
-        LOG_ERR("lora_l2: not initialized");
-        return -ENODEV;
-    }
-    if (state != LORA_RUNNING) {
-        LOG_WRN("lora_l2: not running (state=%s)", state_names[state]);
-        return -ENETDOWN;
-    }
-
-    LOG_DBG("lora_l2: TX %zu bytes", len);
-
-    /*
-     * Serialize TX operations with tx_buf_mutex. This protects the queue
-     * and lora_send() sequence from concurrent callers.
-     * The mutex is held for the full TX duration (~500ms at SF10/255 bytes),
-     * which serializes concurrent transmissions - acceptable since the radio
-     * can only transmit one packet at a time anyway.
-     *
-     * This is separate from lora_mutex because TX blocking would starve RX
-     * callback registration if we held lora_mutex here.
-     */
-    k_mutex_lock(&tx_buf_mutex, K_FOREVER);
-
-    state = lora_get_state();
-    if (state != LORA_RUNNING) {
-        LOG_WRN("lora_l2: not running after TX lock (state=%s)", state_names[state]);
-        k_mutex_unlock(&tx_buf_mutex);
-        return -ENETDOWN;
-    }
-
-    /*
-     * Push packet to TX queue. Uses default deadline based on priority.
-     * TX_PRIORITY_BULK is the default for application data.
-     * Queue tracks statistics for diagnostics (/status/queues endpoint).
-     *
-     * Note: Currently operating in synchronous mode - push then immediately
-     * pop and send. A future async TX thread could drain the queue
-     * asynchronously for better bufferbloat handling under contention.
-     */
-    int ret = tx_queue_push_default_deadline(&tx_queue, data, (uint16_t)len,
-                                              TX_PRIORITY_BULK);
-    if (ret < 0) {
-        LOG_WRN("lora_l2: TX queue push failed (%d)", ret);
-        k_mutex_unlock(&tx_buf_mutex);
-        return ret;
-    }
-
-    /*
-     * Pop packet from queue into tx_buf for transmission.
-     * In sync mode this immediately retrieves what we just pushed.
-     */
-    uint16_t pop_len = sizeof(tx_buf);
-    uint32_t latency_ms = 0;
-    ret = tx_queue_pop(&tx_queue, tx_buf, &pop_len, &latency_ms);
-    if (ret < 0) {
-        /* Should not happen in sync mode - queue can't be empty */
-        LOG_ERR("lora_l2: TX queue pop failed (%d)", ret);
-        k_mutex_unlock(&tx_buf_mutex);
-        return ret;
-    }
-#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    uint32_t dur = 80U + (uint32_t)pop_len * 6U;
-    if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), dur)) {
-        k_mutex_unlock(&tx_buf_mutex);
-        return -EBUSY;
-    }
-#endif
-
-    /*
-     * lora_send() follows the same error semantics as lora_config():
-     * returns 0 on success, negative errno on failure. Common errors:
-     *   -EBUSY: radio busy (CAD or prior TX in progress)
-     *   -EIO: SPI/hardware communication failure
-     *   -EINVAL: invalid parameters
-     *
-     * Cast pop_len (uint16_t) to uint32_t: lora_send() expects uint32_t data_len.
-     * This cast is safe because pop_len was bounded by TX_QUEUE_MAX_PACKET_SIZE.
-     */
-    BUILD_ASSERT(LICHEN_LORA_MAX_PHY_PAYLOAD <= UINT32_MAX,
-                 "LoRa max PHY payload no longer fits lora_send() uint32_t length");
-
-    /*
-     * Arbitrate with the RX thread (see tx_pending above): raise tx_pending
-     * so RX stops re-arming, then retry -EBUSY until the in-flight RX window
-     * drains. Bounded by RX_TIMEOUT_MS plus margin so a wedged radio still
-     * surfaces -EBUSY to the caller rather than blocking forever.
-     */
-    atomic_inc(&tx_pending);
-
-    if (k_mutex_lock(&modem_mutex, K_MSEC(RX_TIMEOUT_MS + 1000)) != 0) {
-        atomic_dec(&tx_pending);
-        secure_zero(tx_buf, sizeof(tx_buf));
-        k_mutex_unlock(&tx_buf_mutex);
-        return -EBUSY;
-    }
-
-    /* CCP-15 CCA: check channel before TX. Mutex held during CAD. */
-    if (lora_data.cca_enabled && !lichen_lora_perform_cca(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS)) {
-        LOG_INF("lora_l2: CCA detected busy channel, aborting TX");
-        k_mutex_unlock(&modem_mutex);
-        atomic_dec(&tx_pending);
-        secure_zero(tx_buf, sizeof(tx_buf));
-        k_mutex_unlock(&tx_buf_mutex);
-        return -EBUSY;
-    }
-
-    ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
-    k_mutex_unlock(&modem_mutex);
-#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    if (ret >= 0) lichen_duty_cycle_record_tx(&lora_data.duty, k_uptime_get(), dur);
-#endif
-
-    atomic_dec(&tx_pending);
-
-    /*
-     * SECURITY: Zero tx_buf after use to prevent leaking previous payload
-     * data. While lora_send() only transmits `pop_len` bytes, zeroing provides
-     * defense-in-depth against:
-     * - Driver bugs that read beyond len
-     * - Debug logging that dumps the full buffer
-     * - Future code changes that access stale data
-     */
-    secure_zero(tx_buf, sizeof(tx_buf));
-
-    k_mutex_unlock(&tx_buf_mutex);
-
-    if (ret < 0) {
-        LOG_ERR("lora_l2: TX failed (%d)", ret);
-        return ret;
-    }
-
-    return 0;
-}
-
-int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
-{
-    enum lora_state state = lora_get_state();
-
-    if (state == LORA_UNINIT) {
-        LOG_WRN("lora_l2: cannot set RX callback, not initialized");
-        return -ENODEV;
-    }
-    if (state == LORA_DEINITING) {
-        LOG_WRN("lora_l2: cannot set RX callback during deinit");
-        return -EBUSY;
-    }
-    if (state == LORA_ABORTED || lichen_lora_l2_needs_reinit()) {
-        LOG_WRN("lora_l2: cannot set RX callback until reinit after abort");
-        return -ECANCELED;
-    }
-
-    /*
-     * Use mutex to ensure atomic update of callback + user_data pair.
-     * The RX thread reads both fields, so they must be updated together
-     * to avoid invoking a callback with mismatched user_data.
-     *
-     * Order matters: user_data MUST be set before callback. If the callback
-     * pointer is read non-NULL, user_data must already be valid. This order
-     * is safe even for lock-free reads (though we use mutex here).
-     *
-     * Ownership: caller retains ownership of user_data. This module stores
-     * the pointer and passes it back on invocation, but never frees it.
-     * Callers should clean up their user_data before calling stop() or
-     * deinit() if the memory would otherwise be orphaned.
-     */
-    k_mutex_lock(&lora_mutex, K_FOREVER);
-    lora_data.rx_callback_user_data = user_data;
-    lora_data.rx_callback = cb;
-    k_mutex_unlock(&lora_mutex);
-
-    return 0;
-}
-
-int lichen_lora_l2_copy_eui64(uint8_t out[8])
-{
-    enum lora_state state;
-    int ret = 0;
-
-    if (out == NULL) {
-        return -EINVAL;
-    }
-
-    k_mutex_lock(&lora_mutex, K_FOREVER);
-    state = lora_get_state();
-    switch (state) {
-    case LORA_STOPPED:
-    case LORA_RUNNING:
-        memcpy(out, lora_data.eui64, sizeof(lora_data.eui64));
-        break;
-    case LORA_UNINIT:
-        LOG_ERR("lora_l2: not initialized");
-        ret = -ENODEV;
-        break;
-    case LORA_ABORTED:
-        LOG_ERR("lora_l2: EUI-64 unavailable until reinit after abort");
-        ret = -ECANCELED;
-        break;
-    case LORA_DEINITING:
-        LOG_ERR("lora_l2: EUI-64 unavailable during deinit");
-        ret = -EBUSY;
-        break;
-    default:
-        LOG_ERR("lora_l2: invalid state while copying EUI-64 (%d)", state);
-        ret = -EINVAL;
-        break;
-    }
-    k_mutex_unlock(&lora_mutex);
-    return ret;
-}
-
-/*
- * Compatibility API: returns an alias to internal eui64 storage after a
- * mutex-protected state check. New callers should use copy_eui64() instead.
- *
- * Thread safety contract (caller responsibility):
- * - No mutex is held after return; concurrent deinit() can zero the backing memory
- * - Caller must prevent concurrent deinit() while using the pointer
- */
-const uint8_t *lichen_lora_l2_get_eui64(void)
-{
-    const uint8_t *eui64 = NULL;
-    enum lora_state state;
-
-    k_mutex_lock(&lora_mutex, K_FOREVER);
-    state = lora_get_state();
-    if (state == LORA_STOPPED || state == LORA_RUNNING) {
-        eui64 = lora_data.eui64;
-    } else if (state == LORA_UNINIT) {
-        LOG_ERR("lora_l2: not initialized");
-    } else {
-        LOG_ERR("lora_l2: EUI-64 unavailable in state %d", state);
-    }
-    k_mutex_unlock(&lora_mutex);
-
-    return eui64;
-}
+/* --------------------------------------------------------------------------
+ * Status queries
+ * -------------------------------------------------------------------------- */
 
 bool lichen_lora_l2_is_running(void)
 {
@@ -1507,33 +635,4 @@ bool lichen_lora_l2_is_running(void)
 bool lichen_lora_l2_needs_reinit(void)
 {
     return lora_get_state() == LORA_ABORTED;
-}
-
-int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats)
-{
-    if (stats == NULL) {
-        return -EINVAL;
-    }
-
-    enum lora_state state = lora_get_state();
-    if (state == LORA_UNINIT) {
-        return -ENODEV;
-    }
-
-    /*
-     * tx_queue_stats_get() now acquires internal lock for atomic snapshot.
-     * No tx_buf_mutex needed: queue lock serializes with TX path.
-     */
-    return tx_queue_stats_get(&tx_queue, stats);
-}
-
-uint16_t adaptive_duty_permille(uint8_t density, uint8_t region)
-{
-    if (density > 8) {
-        return (region == 0) ? 5 : 10;
-    }
-    if (density < 3) {
-        return (region == 0) ? 20 : 50;
-    }
-    return (region == 0) ? 10 : 20;
 }

@@ -9,7 +9,11 @@ zephyr_library_sources(
   trickle.c
   messages.c
   dodag.c
-  routing.c
+  rpl_srh.c
+  rpl_prefix.c
+  rpl_routing_table.c
+  rpl_dao_build.c
+  rpl_dao_process.c
 )
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

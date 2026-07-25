@@ -6,7 +6,12 @@
 zephyr_library()
 
 zephyr_library_sources(
-  oscore.c
+  oscore_ctx.c
+  oscore_cbor.c
+  oscore_option.c
+  oscore_replay.c
+  oscore_nonce.c
+  oscore_protect.c
   hkdf.c
 )
 

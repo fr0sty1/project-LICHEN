@@ -6,7 +6,11 @@
 zephyr_library()
 
 zephyr_library_sources(
-  edhoc.c
+  edhoc_crypto.c
+  edhoc_kdf.c
+  edhoc_sign.c
+  edhoc_initiator.c
+  edhoc_responder.c
 )
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
