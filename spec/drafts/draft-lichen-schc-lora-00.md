@@ -139,8 +139,6 @@ Dynamic rule negotiation is NOT supported in this profile.
 
 ## 4. Compression Rules
 
-The tables in this section are the authoritative reference. They supersede prior versions in `spec/03-adaptation.md` §5.5 and `spec/appendix-schc.md` §A.1, and align with Appendix A.1 (ICMP Rule 2) and the adaptation-layer MQTT-SN rule. CoAP field compression follows Appendix A.2.
-
 ### 4.1. Rule ID Format
 
 Rule IDs are 8 bits (1 byte):
@@ -181,11 +179,11 @@ Most common case for intra-mesh traffic.
 | CoAP.Code | - | ignore | value-sent |
 | CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues + CoAP fields; see test vectors)
+**Compressed size:** ~26 bytes residue + tail (Rule ID + Hop Limit + endpoint IIDs + ports + CoAP type/TKL/code/MID; CoAP token + options + payload as tail per RFC 8824; see test vectors)
 
 ### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
-For traffic using 02xx primary addresses.
+For traffic using ULA or GUA addresses.
 
 **Rule Definition:** (aligned with appendix-schc.md:A.3, 03-adaptation.md:5.5, and GLOBAL_COAP_RULE)
 
@@ -211,11 +209,15 @@ For traffic using 02xx primary addresses.
 | CoAP.Code | - | ignore | value-sent |
 | CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 12-14 bytes (includes CoAP fields per appendix A.3)
+**Compressed size:** ~42 bytes residue + tail (Rule ID + Hop Limit + full source/destination addresses + ports + CoAP type/TKL/code/MID; see test vectors)
 
 ### 4.4. Rule 2: ICMPv6 Echo
 
 For diagnostic and reachability testing (distinct from MQTT-SN Rule 7 per adaptation.md §5.5).
+
+### 4.4. Rule 2: ICMPv6 Echo
+
+For diagnostic and reachability testing.
 
 **Rule Definition:** (matches `ICMPV6_ECHO_RULE` in `rust/lichen-schc/src/rules.rs:503`; see appendix-schc.md and rules.rs:257 for full ICMPv6 echo fields. Distinct from Rule 7: MQTT-SN.)
 
@@ -241,7 +243,7 @@ For diagnostic and reachability testing (distinct from MQTT-SN Rule 7 per adapta
 
 ### 4.5. Rule 3: RPL DIO (link-local)
 
-For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:521` and `constants.toml:32` (ICMPv6 type=155, code=1). 
+For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=1). 
 
 RPL options (TLVs) use MATCH_MAPPING on Type (prioritized: Pad1=0, PIO(type=3)=1, DAG Metric=2, Target=5, Transit=6, Origin-Sig, SCHC-Version). For Prefix Info Option (type 3):
 
@@ -260,7 +262,7 @@ See appendix-schc.md §A.4 and test/vectors/schc_compression.json for full table
 
 ### 4.6. Rule 4: RPL DAO (routable multi-hop)
 
-Uses 02xx source (self-derived primary address) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`. Options use same MATCH_MAPPING as DIO.
+Uses ULA source (fd00::/8) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`. Options use same MATCH_MAPPING as DIO.
 
 **Compressed size:** ~10-18 bytes total (base + compressed options)
 
@@ -272,72 +274,9 @@ IPv6 + UDP to port 10883 (exact). Matches `RULE_MQTT_SN`. See appendix-schc.md a
 
 ### 4.8. Rules 5-6: OSCORE-protected CoAP
 
-OSCORE-protected CoAP (RFC 8613) reuses the same compression scheme as regular
-CoAP (Rules 0/1) but with distinct Rule IDs for explicit identification of
-secured traffic, future OSCORE-specific compression optimizations, and
-interoperability markers for security auditing. The OSCORE Object-Security
-option (Option 9) and encrypted payload travel verbatim in the tail.
+Rule 5 (link-local) and Rule 6 (global) reuse base fields from Rules 0/1 plus OSCORE option. Encrypted payload as tail. Matches `LINK_LOCAL_OSCORE_RULE` / `GLOBAL_OSCORE_RULE`.
 
-**Rule 5: Link-local IPv6 + UDP + OSCORE-protected CoAP**
-
-Matches `LINK_LOCAL_OSCORE_RULE`.
-
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| IPv6.Version | 6 | equal | not-sent |
-| IPv6.TrafficClass | 0 | equal | not-sent |
-| IPv6.FlowLabel | 0 | equal | not-sent |
-| IPv6.PayloadLength | - | ignore | compute |
-| IPv6.NextHeader | 17 | equal | not-sent |
-| IPv6.HopLimit | - | ignore | value-sent |
-| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (L2 derived) |
-| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | equal | not-sent (L2 derived) |
-| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
-| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
-| UDP.Length | - | ignore | compute |
-| UDP.Checksum | - | ignore | compute |
-| CoAP.Version | 1 | equal | not-sent |
-| CoAP.Type | - | ignore | value-sent |
-| CoAP.TKL | - | ignore | value-sent |
-| CoAP.Code | - | ignore | value-sent |
-| CoAP.MID | - | ignore | value-sent |
-
-**Compressed size:** ~4-6 bytes residue + OSCORE tail
-
-**Rule 6: Global IPv6 + UDP + OSCORE-protected CoAP**
-
-Matches `GLOBAL_OSCORE_RULE`.
-
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| IPv6.Version | 6 | equal | not-sent |
-| IPv6.TrafficClass | 0 | equal | not-sent |
-| IPv6.FlowLabel | 0 | equal | not-sent |
-| IPv6.PayloadLength | - | ignore | compute |
-| IPv6.NextHeader | 17 | equal | not-sent |
-| IPv6.HopLimit | - | ignore | value-sent |
-| IPv6.SrcPrefix | mesh_prefix/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (L2 derived) |
-| IPv6.DstPrefix | - | ignore | value-sent (64 bits) |
-| IPv6.DstIID | - | ignore | value-sent (64 bits) |
-| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
-| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
-| UDP.Length | - | ignore | compute |
-| UDP.Checksum | - | ignore | compute |
-| CoAP.Version | 1 | equal | not-sent |
-| CoAP.Type | - | ignore | value-sent |
-| CoAP.TKL | - | ignore | value-sent |
-| CoAP.Code | - | ignore | value-sent |
-| CoAP.MID | - | ignore | value-sent |
-
-**Compressed size:** ~12-14 bytes residue + OSCORE tail
-
-The profile checks that the UDP checksum is valid and that the CoAP payload
-contains the OSCORE Option (Option 9) before matching. Plain CoAP packets
-without OSCORE MUST NOT match Rules 5/6. OSCORE-protected packets MUST NOT
-match Rules 0/1.
+**Compressed size:** ~26-42 bytes residue + OSCORE tail (reuses Rule 0/1 fields; see appendix-schc.md)
 
 ### 4.9. Rule 255: No Compression (Fallback)
 
@@ -365,7 +304,7 @@ See appendix-schc.md:A.3, RFC 8824, and the CoAP fields in Rules 0/1/5/6 above. 
 | Final tile | 1-187 bytes in All-1 | One fixed tile-size policy |
 | RCS | CRC-32/ISO-HDLC, 32 bits | RFC 8724 integrity check |
 | Retransmission timer | 10 seconds | LoRa latency tolerance |
-| MAX_ACK_REQUESTS | 3 | Initial All-1 plus at most 2 retries |
+| MAX_ACK_REQUESTS | 4 | Initial All-1 plus at most 3 retries |
 | Inactivity timer | 60 seconds | Clean up stale state |
 
 Rule ID 0x78 applies to canonical endpoint A-to-B data and Rule ID 0x79 applies
@@ -459,6 +398,72 @@ ACK (C=0, NACK bitmap):
 ```
 
 C=1 (success, no bitmap) encodes as `78 c0` (for Rule 0x78, W=0). Bitmap is MSB-first (1=missing), compressed by removing maximal trailing run of 1-bits. Sender uses windowed FCN countdown (m=1, n=6). Receiver sends NACK on loss or C=1 after successful RCS verification on All-1. All-1 carries RCS (CRC-32). Retransmission timeout 10s, MAX_ACK_REQUESTS=4, inactivity 60s. Max practical IPv6 datagram ~12 KB (larger payloads MUST be chunked at application layer, e.g. SenML batches per spec/12-apps.md). Parameters cross-reference `spec/03-adaptation.md` §5.7, `constants.toml`, and `lichen-schc`.
+
+## 6. Rule Versioning and DIO Advertisement
+
+Rule Set Version (8-bit) is advertised by DODAG roots in RPL DIOs per `spec/03-adaptation.md` §5.7 (authoritative definition; this document provides LoRa-specific context only). Version 1 is the initial release; future versions increment on rule changes. Rule 255 fallback is REQUIRED on version mismatch to prevent desynchronization. The DIO option carries the version.
+
+Full details, rule tables (0-7, 255), Field Descriptors, mappings, constants, and bit-exact test vectors are in `spec/appendix-schc.md`, `rust/lichen-schc/src/rules.rs` (and `lib.rs`), `test/vectors/schc*.json`. All implementations (Rust, C, Python) MUST match the independent test vector oracles exactly for interoperability. (All merge conflicts from worker5, worker8, worker18, worker24 resolved; content deduplicated and consolidated.)
+
+```
++--------+---+---+-------------------+---------+
+| RuleID | W | C | Compressed Bitmap | Padding |
++--------+---+---+-------------------+---------+
+   8 bit  1b  1b       variable        variable
+```
+
+The 63-bit bitmap is ordered from tile 62 at the left to tile 0 at the
+right. In the final window, the rightmost bit represents the final tile carried
+by All-1. A bit value of 1 means received; 0 means missing or invalid.
+
+In a short final window, Regular Fragments use FCNs 62 downward. Bitmap
+positions after the lowest assigned Regular FCN and before the rightmost
+All-1 position are unassigned and MUST be zero. The sender knows its tile
+assignment and MUST ignore zero bits at unassigned positions; it retransmits
+only assigned tiles whose bits are zero.
+
+C=1 indicates successful whole-packet RCS verification and carries no bitmap.
+C=0 carries the bitmap for W. Bitmap compression removes the maximal trailing
+run of 1 bits, then restores enough removed bits to end the ACK on an 8-bit L2
+Word boundary. A decoder restores omitted trailing bits as 1. An ACK for Rule
+ID 0x78 with W=1 and C=1 encodes as `78 c0`.
+
+ACK REQ uses the Fragment header with FCN=All-0 and no payload. Sender-Abort
+uses W=All-1 and FCN=All-1 with no RCS or tile. Receiver-Abort uses W=All-1,
+C=1, padding with ones to the next L2 Word, followed by one additional all-ones
+L2 Word. For Rule ID 0x78 these messages are `78 00` or `78 80` (ACK REQ for
+W=0 or W=1), `78 fe` (Sender-Abort), and `78 ff ff` (Receiver-Abort).
+
+After timeout or a retransmission batch, ACK REQ MUST carry the final W of the
+packet, not the window whose tiles were most recently retransmitted.
+
+On receiving Sender-Abort or Receiver-Abort, the recipient MUST stop the
+retransmission or inactivity timer, release the retained packet and reassembly
+state for that link and Rule ID, report failure to its caller, and MUST NOT send
+an ACK for the abort.
+
+If all assigned bitmap positions are 1 but the RCS fails, the receiver sends
+C=0 for the final window. Because this profile mandates that the final tile is
+in All-1, the sender cannot identify a repairable tile and MUST send
+Sender-Abort.
+
+CoAP per RFC 8824 OPTIONAL. RPL options use MATCH_MAPPING with prioritized mapping for Pad1/PadN/PIO/DAG Metric (full set in rust/lichen-schc/src/rules.rs, appendix-schc.md, test/vectors/schc_compression.json).
+
+#### 5.3. Operation
+
+Sender uses FCN countdown per window from constants, sends All-1 with RCS. Receiver tracks via bitmap, sends NACK on missing fragments, verifies RCS. Max practical size ~12 KB/datagram; larger payloads MUST chunk at application layer.
+
+## 6. Rule Versioning
+
+Rule Set Version (8-bit) advertised in DIOs per spec/03-adaptation.md §5.7 (authoritative; this draft provides LoRa context only, no duplication). Version 1 for initial release.
+
+With 63 tiles per window, two windows, and 187-byte tiles:
+- Encoding ceiling: 23,562 bytes
+- Mandatory receiver support: 1281 bytes
+- Larger receiver limits: implementation-specific up to the encoding ceiling
+
+Packets exceeding the known receiver limit MUST be chunked at the application
+layer or rejected before fragmentation.
 
 ## 6. Implementation Considerations
 
@@ -554,8 +559,8 @@ Example summary (normative values and full descriptors in the references above):
 
 | Rule ID | Name                  | Primary Use                          | Compressed Size |
 |---------|-----------------------|--------------------------------------|-----------------|
-| 0       | LINK_LOCAL_COAP       | Link-local IPv6+UDP+CoAP             | 4-6 bytes       |
-| 1-7     | GLOBAL_COAP, ICMP, RPL_DIO/DAO, OSCORE, MQTT-SN | As named                   | 3-40+ bytes     |
+| 0       | LINK_LOCAL_COAP       | Link-local IPv6+UDP+CoAP             | ~26 bytes residue |
+| 1-7     | GLOBAL_COAP, ICMP, RPL_DIO/DAO, OSCORE, MQTT-SN | As named                   | 3-42+ bytes     |
 | 255     | UNCOMPRESSED          | Fallback for mismatches/version errors | Full header  |
 
 Rule versioning is advertised in DIOs. OSCORE treats the payload as opaque. RPL options use prioritized MATCH_MAPPING.

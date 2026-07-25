@@ -20,7 +20,7 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome};
+use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome, TrickleSafeLivenessPolicy};
 #[cfg(feature = "std")]
 use crate::{
     announce::AnnounceProcessor,
@@ -58,9 +58,9 @@ pub enum RplEvent {
     /// DIO received. `inconsistent = true` → trickle reset (version/rank
     /// change detected).
     DioReceived { inconsistent: bool },
-    /// DAO received (root only). `route_updated = true` → routing table
-    /// was modified.
-    DaoReceived { route_updated: bool },
+    /// DAO received at root. The caller must extract DAO bytes from the
+    /// decompressed IPv6 packet and process via `RplNode::handle_dao`.
+    DaoReceived,
     /// DAO packet forwarded unchanged in source and payload toward the root.
     DaoForwarded { next_hop: [u8; 16] },
     /// DIS received, should send DIO.
@@ -83,7 +83,6 @@ pub enum DaoHandlingOutcome {
     Exhausted,
     Corrupt,
     RouteRejected,
-    NotAdmitted,
 }
 
 /// Top-level node state.
@@ -279,22 +278,6 @@ impl RplNode {
         }
     }
 
-    /// Create a new root RPL node (test only).
-    #[cfg(test)]
-    pub fn new_root(node_id: NodeId) -> Self {
-        let node_addr = node_id.link_local_addr().0;
-        Self {
-            node: Node::new(node_id),
-            router: Router::new_root(node_addr),
-        }
-    }
-
-    /// Seed a route for testing purposes.
-    #[cfg(test)]
-    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
-        self.router.add_test_route(target, path)
-    }
-
     /// Provision component-level root routing state.
     ///
     /// This advanced API does not serialize access to `RplNode`, `DaoRxState`, or
@@ -391,7 +374,6 @@ impl RplNode {
             Err(DaoProcessError::Exhausted) => DaoHandlingOutcome::Exhausted,
             Err(DaoProcessError::Corrupt) => DaoHandlingOutcome::Corrupt,
             Err(DaoProcessError::RouteRejected) => DaoHandlingOutcome::RouteRejected,
-            Err(DaoProcessError::NotAdmitted) => DaoHandlingOutcome::NotAdmitted,
         }
     }
 
@@ -611,12 +593,6 @@ impl RplNode {
         &self.router
     }
 
-    /// Mutable router access (test only).
-    #[cfg(test)]
-    pub fn router_mut(&mut self) -> &mut Router {
-        &mut self.router
-    }
-
     /// Check if this node is the DODAG root.
     pub fn is_root(&self) -> bool {
         self.router.is_root()
@@ -633,8 +609,13 @@ impl RplNode {
     }
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
-    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
-        self.router.maintain(now_ms, neighbor_timeout_ms)
+    pub fn maintain<P: TrickleSafeLivenessPolicy>(
+        &mut self,
+        now_ms: u64,
+        neighbor_timeout_ms: u64,
+        policy: &P,
+    ) -> RplMaintenanceOutcome {
+        self.router.maintain(now_ms, neighbor_timeout_ms, policy)
     }
 
     /// Return the current Trickle deadline without advancing it.
@@ -1493,14 +1474,9 @@ mod tests {
         assert_ne!(dio_inc, dio_cons);
         assert_ne!(dio_inc, RplEvent::None);
 
-        let dao_up = RplEvent::DaoReceived {
-            route_updated: true,
-        };
-        let dao_no = RplEvent::DaoReceived {
-            route_updated: false,
-        };
-        assert_eq!(dao_up, dao_up);
-        assert_ne!(dao_up, dao_no);
+        let dao = RplEvent::DaoReceived;
+        assert_eq!(dao, dao);
+        assert_ne!(dao, RplEvent::None);
 
         // Exercises Clone/Copy
         let copied = dao_up; // Copy

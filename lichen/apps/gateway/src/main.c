@@ -14,18 +14,22 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
-#include <zephyr/net/net_mgmt.h>
-#include <zephyr/net/wifi_mgmt.h>
 
 #include <lichen/hal.h>
-#include <lichen/rpl_dodag.h>
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+#include "rpl_root.h"
+#include <lichen/l2/ipv6_addr.h>
+#include <lichen/l2/lora_l2.h>
+#include <zephyr/net/net_if.h>
+#endif
 
 #if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
 #include "lora_l2.h"
 #endif
 
-#if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
+#if IS_ENABLED(CONFIG_LICHEN_L2)
 #include "lichen_l2.h"
+#include <lichen/coap_client.h>
 #endif
 
 #include "config_apply.h"
@@ -51,6 +55,13 @@
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
+#endif
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+#include <zephyr/net/net_mgmt.h>
+#include <zephyr/net/wifi_mgmt.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_event.h>
 #endif
 
 LOG_MODULE_REGISTER(lichen_gateway, LOG_LEVEL_INF);
@@ -104,12 +115,30 @@ static struct lichen_gateway_manual_location_config s_manual_location;
 static bool s_has_manual_location;
 
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-static struct lichen_rpl_dodag s_dodag;
+static struct lichen_rpl_root s_rpl_root;
+static struct k_work_delayable s_rpl_tick_work;
+
+static void rpl_tick_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	lichen_rpl_root_tick(&s_rpl_root, k_uptime_get_32());
+	k_work_schedule(&s_rpl_tick_work, K_MSEC(CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS / 4));
+}
 #endif
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+static bool s_backhaul_connected = false;
+static struct net_mgmt_event_callback s_wifi_mgmt_cb;
+#endif
+
 static int gateway_rpl_init(void) {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	uint8_t dodag_id[16] = {0};
+	uint8_t self_eui64[8];
+	uint8_t iid[8];
+	struct in6_addr ll_addr;
+
 	if (IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)) {
 		dodag_id[0] = 0xfd;
 		dodag_id[1] = 0x00;
@@ -117,19 +146,105 @@ static int gateway_rpl_init(void) {
 		dodag_id[0] = 0xfd;
 	}
 	dodag_id[15] = 0x01;
-	ret = lichen_rpl_dodag_init_root(&s_dodag, 0x00, dodag_id, 0);
-	if (ret == 0) {
-		LOG_INF("RPL DODAG root initialized (rank=%u, role=ROOT)", s_dodag.rank);
-	} else {
-		LOG_ERR("lichen_rpl_dodag_init_root failed: %d", ret);
+
+	ret = lichen_lora_l2_copy_eui64(self_eui64);
+	if (ret != 0) {
+		LOG_ERR("failed to read self EUI64: %d", ret);
+		return ret;
 	}
+	ret = lichen_eui64_to_iid(self_eui64, iid);
+	if (ret != 0) {
+		return ret;
+	}
+	ret = lichen_make_link_local(iid, &ll_addr);
+	if (ret != 0) {
+		return ret;
+	}
+
+	struct lichen_rpl_root *rp = lichen_rpl_root_init(
+		&s_rpl_root, net_if_get_default(), dodag_id, ll_addr.s6_addr);
+	if (rp == NULL) {
+		LOG_ERR("lichen_rpl_root_init failed");
+		return -EINVAL;
+	}
+	LOG_INF("RPL DODAG root initialized (rank=%u, role=ROOT)", s_rpl_root.dodag.rank);
+
+	k_work_init_delayable(&s_rpl_tick_work, rpl_tick_handler);
+	k_work_schedule(&s_rpl_tick_work, K_MSEC(CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS / 4));
 #endif
 	return ret;
 }
 
-/* --------------------------------------------------------------------------
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+/*
+ * WiFi station backhaul event handler per Kconfig and AGENTS.md.
+ * Registers early, handles connect result and IPv6 addr add for prefix
+ * delegation to RPL DODAG root. Updates observable status on change.
+ */
+static void wifi_mgmt_event_handler(struct net_mgmt_event_callback *cb,
+				    uint32_t mgmt_event, struct net_if *iface)
+{
+	ARG_UNUSED(iface);
+
+	if (mgmt_event == NET_EVENT_WIFI_CONNECT_RESULT) {
+		const struct wifi_status *status =
+			(const struct wifi_status *)cb->info;
+		if (status->status == 0) {  /* success per Zephyr wifi_mgmt */
+			s_backhaul_connected = true;
+			LOG_INF("WiFi backhaul connected to %s", CONFIG_LICHEN_GATEWAY_WIFI_SSID);
+		} else {
+			s_backhaul_connected = false;
+			LOG_ERR("WiFi connect failed: status=%d", status->status);
+		}
+	} else if (mgmt_event == NET_EVENT_IPV6_ADDR_ADD) {
+		s_backhaul_connected = true;
+		LOG_INF("IPv6 address added on backhaul - prefix delegation to RPL active");
+		/* TODO: extract prefix from iface and call lichen_rpl_root_set_prefix(&s_dodag, ...) */
+	}
+
+	/* Status observable will reflect s_backhaul_connected on next GET/notify */
+}
+
+static void gateway_backhaul_init(void)
+{
+	net_mgmt_init_event_callback(&s_wifi_mgmt_cb, wifi_mgmt_event_handler,
+		NET_EVENT_WIFI_CONNECT_RESULT | NET_EVENT_IPV6_ADDR_ADD);
+	net_mgmt_add_event_callback(&s_wifi_mgmt_cb);
+
+	struct net_if *iface = net_if_get_wifi_sta();
+	if (iface == NULL) {
+		LOG_WRN("No WiFi STA interface - backhaul unavailable");
+		return;
+	}
+
+	if (net_if_is_up(iface) == false) {
+		net_if_up(iface);
+	}
+
+	struct wifi_connect_req_params params = {
+		.ssid = CONFIG_LICHEN_GATEWAY_WIFI_SSID,
+		.ssid_length = strlen(CONFIG_LICHEN_GATEWAY_WIFI_SSID),
+		.psk = CONFIG_LICHEN_GATEWAY_WIFI_PSK,
+		.psk_length = strlen(CONFIG_LICHEN_GATEWAY_WIFI_PSK),
+		.security = (strlen(CONFIG_LICHEN_GATEWAY_WIFI_PSK) > 0)
+				? WIFI_SECURITY_TYPE_PSK : WIFI_SECURITY_TYPE_NONE,
+		.channel = WIFI_CHANNEL_ANY,
+		.mfp = WIFI_MFP_OPTIONAL,
+	};
+
+	int ret = net_mgmt(NET_REQUEST_WIFI_CONNECT, iface, &params, sizeof(params));
+	if (ret < 0) {
+		LOG_ERR("WiFi connect request failed: %d", ret);
+	} else {
+		LOG_INF("WiFi station mode requested for SSID %s (prefix delegation enabled)", CONFIG_LICHEN_GATEWAY_WIFI_SSID);
+	}
+}
+#endif /* CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION */
+
+ /* --------------------------------------------------------------------------
  * CBOR helpers
  * -------------------------------------------------------------------------- */
+
 
 /*
  * Build a minimal CoAP response and send it.
@@ -623,23 +738,22 @@ int main(void)
 	LOG_INF("LICHEN gateway starting");
 
 #if IS_ENABLED(CONFIG_LICHEN_L2)
-	/*
-	 * When LICHEN L2 is enabled, the L2 layer handles LoRa initialization
-	 * and RX automatically via NET_DEVICE_INIT. The L2 interface will be
-	 * available to the IPv6 stack for sending/receiving packets over LoRa.
-	 */
 	LOG_INF("LICHEN L2 enabled - LoRa handled by network stack");
 
 #if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
-	/* SECURITY: bench-only fixed key + static peer; see Kconfig warning. */
-	{
-		int prov = lichen_l2_dev_provision(NULL);
-
-		if (prov != 0) {
-			LOG_ERR("L2 dev provisioning failed: %d", prov);
+	int prov = -EAGAIN;
+	for (int i = 0; i < 50 && prov == -EAGAIN; i++) {
+		prov = lichen_l2_dev_provision(NULL);
+		if (prov == -EAGAIN) {
+			k_sleep(K_MSEC(100));
 		}
 	}
+	if (prov != 0) {
+		LOG_ERR("L2 dev provisioning failed: %d", prov);
+	}
 #endif
+	lichen_l2_publish_app_identity("gateway", NULL);
+	lichen_coap_client_init();
 #elif LICHEN_GATEWAY_HAS_LORA
 	int ret;
 
@@ -685,6 +799,13 @@ int main(void)
 	 * CONFIG_NET_SLIP_TAP).  native_sim uses the lichen-sim driver
 	 * instead.  No app-level init required in either case. */
 
+	/* Common message contract for BLE adapters (idempotent) */
+#if defined(CONFIG_LORA_LICHEN_MESHTASTIC_BLE) || defined(CONFIG_LORA_LICHEN_MESHCORE_BLE)
+	if (gateway_message_contract_init() < 0) {
+		LOG_WRN("Message contract init failed — BLE apps unavailable");
+	}
+#endif
+
 	/* BLE UART (NUS) — optional, enabled on boards with a BLE radio */
 #ifdef CONFIG_LORA_LICHEN_BLE
 	if (ble_uart_init() < 0) {
@@ -694,9 +815,7 @@ int main(void)
 
 	/* Meshtastic-compatible BLE GATT — optional app compatibility surface */
 #ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
-	if (gateway_message_contract_init() < 0) {
-		LOG_WRN("Message contract init failed — Meshtastic app unavailable");
-	} else if (ble_meshtastic_init() < 0) {
+	if (ble_meshtastic_init() < 0) {
 		LOG_WRN("Meshtastic BLE init failed — Meshtastic app unavailable");
 	} else if (gateway_meshtastic_adapter_init() < 0) {
 		LOG_WRN("Meshtastic adapter init failed — Meshtastic app unavailable");
@@ -709,28 +828,32 @@ int main(void)
 	    gateway_identity_publish_self() < 0) {
 		LOG_WRN("MeshCore app identity using degraded SELF_INFO until key is published");
 	}
-	if (gateway_message_contract_init() < 0) {
-		LOG_WRN("Message contract init failed — MeshCore app unavailable");
-	} else if (ble_meshcore_init() < 0) {
+	if (ble_meshcore_init() < 0) {
 		LOG_WRN("MeshCore BLE init failed — MeshCore app unavailable");
 	} else if (gateway_meshcore_adapter_init() < 0) {
 		LOG_WRN("MeshCore adapter init failed — MeshCore app unavailable");
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	gateway_backhaul_init();  /* registers handlers early, follows AGENTS.md init order before RPL */
+#endif
+
 	if (gateway_rpl_init() < 0) {
 		LOG_WRN("RPL root init failed - continuing without full DODAG support");
+	} else if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
+		LOG_INF("RPL root signalling enabled (DODAG root active, Trickle Imin=%ums)",
+			CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS);
 	}
 
-#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
-	LOG_INF("Prefix delegation enabled - WiFi backhaul stub active");
-#endif
-
-#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-	LOG_INF("RPL root signalling enabled (DODAG root active)");
-#else
+#if !IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	LOG_INF("Prefix delegation enabled - WiFi station backhaul active");
+#endif
+
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
 
 	return 0;
