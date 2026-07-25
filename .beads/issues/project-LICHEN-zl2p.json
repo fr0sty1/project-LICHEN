@@ -2,14 +2,18 @@
   "id": "project-LICHEN-zl2p",
   "title": "codereview: missing test vectors file and C test for ygg_addr derivation",
   "description": "test/vectors/yggdrasil.json does not exist. Header promises match to it. Add JSON with vectors from Rust test (seed 0x01*32 etc). Add ZTEST in link_crypto or app_identity test. Matches Rust identity.rs:155. Tagged codereview.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:26:11.673434546Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:27:09.302521602Z",
+  "updated_at": "2026-07-25T01:13:51.064875171Z",
+  "started_at": "2026-07-25T01:13:51.064875171Z",
   "closed_at": "2026-07-22T15:27:09.302521602Z",
   "close_reason": "Test vectors created and C function matches. Added to test/vectors.",
+  "lease_expires_at": "2026-07-25T01:18:51.064875171Z",
+  "heartbeat_at": "2026-07-25T01:13:51.064875171Z",
   "labels": [
     "codereview"
   ]
