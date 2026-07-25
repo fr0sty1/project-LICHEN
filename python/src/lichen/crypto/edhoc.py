@@ -408,7 +408,9 @@ class EdhocInitiator:
             th_2_input = cbor2.dumps(g_y) + cbor2.dumps(h_msg1)
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-            self._prk_3e2m = self._prk_2e
+            self._prk_3e2m = _edhoc_kdf(
+                self._prk_2e, self._th_2, "PRK_3e2m", self._th_2, EDHOC_HASH_LEN
+            )
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
             )
@@ -441,7 +443,9 @@ class EdhocInitiator:
                 + cbor2.dumps(id_cred_r)
             )
             self._th_3 = _compute_th(th_3_input)
-            self._prk_4e3m = self._prk_3e2m
+            self._prk_4e3m = _edhoc_kdf(
+                self._prk_3e2m, self._th_3, "PRK_4e3m", self._th_3, EDHOC_HASH_LEN
+            )
             id_cred_i = _validate_bytes(
                 self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
             )
@@ -626,7 +630,9 @@ class EdhocResponder:
             th_2_input = cbor2.dumps(self._eph_pk) + cbor2.dumps(h_msg1)
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-            self._prk_3e2m = self._prk_2e
+            self._prk_3e2m = _edhoc_kdf(
+                self._prk_2e, self._th_2, "PRK_3e2m", self._th_2, EDHOC_HASH_LEN
+            )
             id_cred_r = self.identity.pubkey
             cred_r = _ccs_encode_ed25519_key(self.identity.pubkey)
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
@@ -692,7 +698,9 @@ class EdhocResponder:
             signature_3 = _validate_bytes(pt3_items[1], "Signature_3", ED25519_SIG_LEN)
             if id_cred_i != peer_pubkey:
                 raise ValueError("ID_CRED_I does not match the authenticated peer")
-            self._prk_4e3m = self._prk_3e2m
+            self._prk_4e3m = _edhoc_kdf(
+                self._prk_3e2m, self._th_3, "PRK_4e3m", self._th_3, EDHOC_HASH_LEN
+            )
             context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_pubkey)
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
             m_3 = cbor2.dumps([
