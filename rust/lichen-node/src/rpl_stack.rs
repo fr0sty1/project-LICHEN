@@ -1307,7 +1307,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             self.rpl
                 .handle_frame_rpl(&l2_payload, received.sender_iid, &mut output, now_ms);
         match event {
-            RplEvent::DaoReceived => {
+            RplEvent::DaoReceived { .. } => {
                 let Some((source, dao)) = dao_parts(&received.ipv6) else {
                     return Ok(RplReceiveOutcome::Dao(DaoHandlingOutcome::Malformed));
                 };
