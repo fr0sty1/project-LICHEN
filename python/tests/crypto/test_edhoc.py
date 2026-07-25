@@ -5,6 +5,7 @@
 import cbor2
 import pytest
 
+from lichen.crypto import edhoc as edhoc_module
 from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder, Method
 from lichen.crypto.identity import Identity
 
@@ -451,9 +452,9 @@ class TestEdhocValidation:
         monkeypatch.setattr(edhoc_module, "_x25519_shared_secret", unexpected_dh)
         responder = EdhocResponder.create(Identity.generate())
 
-        with pytest.raises(ValueError, match="METHOD_CORR"):
+        with pytest.raises(ValueError, match="Method mismatch"):
             responder.process_message_1(
-                _sequence(0, 0, b"x" * 32, b"\x00"),
+                _sequence(4, 0, b"x" * 32, b"\x00"),
                 Identity.generate().pubkey,
             )
 
