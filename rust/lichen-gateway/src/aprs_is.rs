@@ -299,9 +299,6 @@ impl AprsIsClient {
     }
 
     /// Send an APRS packet to the server.
-    ///
-    /// Requires a fully-authenticated (Verified) session. Pre-login and
-    /// receive-only Unverified sessions are rejected.
     pub fn send(&mut self, packet: &str) -> Result<(), AprsError> {
         self.ensure_connected()?;
         if !self.can_transmit() {
@@ -349,7 +346,9 @@ impl AprsIsClient {
         self.ensure_connected()?;
         match read_line_bounded(&mut self.reader) {
             Ok(line) => Ok(line),
-            Err(AprsError::Io(ref e)) if e.kind() == io::ErrorKind::TimedOut => Ok(None),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::TimedOut => {
+                Ok(None)
+            }
             Err(error) => {
                 self.poison();
                 Err(error)
@@ -359,22 +358,21 @@ impl AprsIsClient {
 
     fn read_required_line(&mut self, message: &'static str) -> Result<String, AprsError> {
         self.ensure_connected()?;
-        let line = match read_line_bounded(&mut self.reader) {
-            Ok(line) => line,
-            Err(AprsError::Io(ref e)) if e.kind() == io::ErrorKind::TimedOut => {
+        match read_line_bounded(&mut self.reader) {
+            Ok(Some(line)) => Ok(line),
+            Ok(None) => {
                 self.poison();
-                return Err(io::Error::new(io::ErrorKind::TimedOut, message).into());
+                Err(io::Error::new(io::ErrorKind::UnexpectedEof, message).into())
+            }
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::TimedOut => {
+                Err(AprsError::Io(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    message,
+                )))
             }
             Err(error) => {
                 self.poison();
-                return Err(error);
-            }
-        };
-        match line {
-            Some(line) => Ok(line),
-            None => {
-                self.poison();
-                Err(io::Error::new(io::ErrorKind::UnexpectedEof, message).into())
+                Err(error)
             }
         }
     }
@@ -436,11 +434,11 @@ fn read_line_bounded<R: BufRead>(reader: &mut R) -> Result<Option<String>, AprsE
 
     if let Err(error) = result {
         if bytes.is_empty() {
-            if error.kind() == io::ErrorKind::TimedOut {
-                return Err(error.into());
-            }
             if error.kind() == io::ErrorKind::WouldBlock {
                 return Ok(None);
+            }
+            if error.kind() == io::ErrorKind::TimedOut {
+                return Err(error.into());
             }
         }
         return Err(error.into());
@@ -455,14 +453,6 @@ fn read_line_bounded<R: BufRead>(reader: &mut R) -> Result<Option<String>, AprsE
     }
     if !bytes.ends_with(b"\n") {
         return Err(AprsError::UnterminatedLine);
-    }
-
-    if !bytes.is_ascii() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "non-ASCII bytes in APRS line",
-        )
-        .into());
     }
 
     String::from_utf8(bytes)
@@ -1001,22 +991,23 @@ mod tests {
         let address = listener.local_addr().unwrap();
         let server = thread::spawn(move || {
             let mut stream = listener.accept().unwrap().0;
-            stream
-                .write_all(b"# javAPRSSrvr 3.15b08\r\n")
-                .unwrap();
-            let mut command = [0u8; 128];
+            stream.write_all(b"# javAPRSSrvr 4.2\r\n").unwrap();
+            let mut command = [0u8; 256];
             let n = stream.read(&mut command).unwrap();
-            assert!(command[..n].starts_with(b"user "));
+            assert!(n > 0);
+            let cmd = std::str::from_utf8(&command[..n]).unwrap();
+            assert!(cmd.contains("user N0CALL pass 5"));
+            assert!(cmd.contains("LICHEN"));
             stream
-                .write_all(b"# logresp W1ABC-9 verified, server T2SWISS2\r\n")
+                .write_all(b"# logresp N0CALL verified, server TEST\r\n")
                 .unwrap();
-            let _ = stream.shutdown(Shutdown::Both);
         });
         let mut client = AprsIsClient::connect("127.0.0.1", address.port()).unwrap();
-
-        client.login("W1ABC-9", 12345).unwrap();
+        assert!(client.verification().is_none());
+        assert!(!client.can_transmit());
+        client.login("N0CALL", 5).unwrap();
+        assert_eq!(client.callsign(), "N0CALL");
         assert_eq!(client.verification(), Some(AprsVerification::Verified));
-        assert_eq!(client.callsign(), "W1ABC-9");
         assert!(client.can_transmit());
         server.join().unwrap();
     }
@@ -1027,51 +1018,50 @@ mod tests {
         let address = listener.local_addr().unwrap();
         let server = thread::spawn(move || {
             let mut stream = listener.accept().unwrap().0;
-            stream
-                .write_all(b"# javAPRSSrvr 3.15b08\r\n")
-                .unwrap();
-            let mut command = [0u8; 128];
+            stream.write_all(b"# javAPRSSrvr 4.2\r\n").unwrap();
+            let mut command = [0u8; 256];
             let n = stream.read(&mut command).unwrap();
-            assert!(command[..n].starts_with(b"user "));
+            assert!(n > 0);
+            let cmd = std::str::from_utf8(&command[..n]).unwrap();
+            assert!(cmd.contains("pass -1"));
             stream
-                .write_all(b"# logresp N0CALL unverified, server T2SWISS2\r\n")
+                .write_all(b"# logresp N0CALL unverified, server TEST\r\n")
                 .unwrap();
-            let _ = stream.shutdown(Shutdown::Both);
         });
         let mut client = AprsIsClient::connect("127.0.0.1", address.port()).unwrap();
-
         client.login("N0CALL", -1).unwrap();
         assert_eq!(client.verification(), Some(AprsVerification::Unverified));
         assert!(!client.can_transmit());
-
-        let result = client.send("N0CALL>APRS:test");
+        let err = client.send("N0CALL>APRS:test").unwrap_err();
         assert!(
-            matches!(
-                result,
-                Err(AprsError::Io(ref e)) if e.kind() == io::ErrorKind::PermissionDenied
-            ),
+            matches!(err, AprsError::Io(ref e) if e.kind() == io::ErrorKind::PermissionDenied),
             "expected PermissionDenied, got {:?}",
-            result
+            err
         );
         server.join().unwrap();
     }
 
     #[test]
     fn write_failure_poisons_client() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
         let (mut client, server) = loopback_client();
         client.verification = Some(AprsVerification::Verified);
         drop(server);
-
-        let result = client.send("W1ABC-9>APRS:test");
-        assert!(result.is_err(), "expected write error, got {:?}", result);
+        assert!(client.can_transmit());
+        let err = client.send("N0CALL>APRS:payload").unwrap_err();
         assert!(
-            !client.can_transmit(),
-            "client should be poisoned after write failure"
+            matches!(err, AprsError::Io(_)),
+            "expected Io error, got {:?}",
+            err
         );
+        assert!(!client.can_transmit());
         assert!(matches!(
-            client.send("W1ABC-9>APRS:another"),
+            client.send("N0CALL>APRS:payload2"),
             Err(AprsError::Io(ref e)) if e.kind() == io::ErrorKind::NotConnected
         ));
+        // Also drop the listener
+        drop(listener);
     }
 
     #[test]
