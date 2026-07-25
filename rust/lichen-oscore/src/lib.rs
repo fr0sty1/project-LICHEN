@@ -5,6 +5,30 @@
 //!
 //! Provides end-to-end security for CoAP using AES-CCM-16-64-128 and HKDF-SHA256.
 //!
+//! # Timing Side-Channel Properties
+//!
+//! This implementation makes the following timing guarantees:
+//!
+//! * **AEAD tag comparison**: delegated to the `ccm` crate, which performs
+//!   constant-time tag verification in its `decrypt_in_place_detached` path.
+//!
+//! * **Sequence number comparisons** (replay window, sender reservation): use
+//!   regular integer comparison. Sequence numbers are public on the wire and
+//!   their comparison timeline does not leak secret material.
+//!
+//! * **Option parsing** (reserved-bit checks, KID/ID-Context matching):
+//!   operates on values that are visible in the plaintext after decryption or
+//!   in the OSCORE option itself. No constant-time guarantee is required.
+//!
+//! * **Secret-material comparisons** (keys, master secrets, IDs): keys are
+//!   never compared directly by this crate. Context lookup uses a
+//!   SHA-256-derived [`ContextId`] as the stable identifier, making
+//!   dictionary lookups safe.
+//!
+//! Any future code that compares secret bytes (key material, derived secrets,
+//! or authenticators) MUST use the `subtle` crate's
+//! [`ConstantTimeEq`](subtle::ConstantTimeEq) trait.
+//!
 //! # ponytail: pure-Rust OSCORE
 //!
 //! Using `ccm` + `hkdf` crates directly until a battle-tested no_std OSCORE crate
@@ -875,6 +899,8 @@ impl Context {
         )?;
 
         // Decrypt in place using detached API (works with plain slices, no Buffer trait needed)
+        // Tag comparison is delegated to the ccm crate which performs
+        // constant-time verification in its decrypt_in_place_detached path.
         // Split ciphertext into encrypted data and tag
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
@@ -1231,6 +1257,8 @@ impl Context {
 
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
+        // Tag comparison is delegated to the ccm crate which performs
+        // constant-time verification in its decrypt_in_place_detached path.
         let cipher =
             AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
         const PT_CAP: usize = 256;
@@ -1355,6 +1383,9 @@ impl Context {
 
     /// Check if sequence number would be rejected as a replay.
     /// Does NOT update the replay window - call update_replay_window after successful decryption.
+    ///
+    /// Regular integer comparison is acceptable here: sequence numbers are public
+    /// on the wire and their comparison timeline does not leak secret material.
     fn is_replay(&self, seq: OscoreSeqNum) -> bool {
         let seq_val = seq.get();
         let recipient_seq_val = self.recipient_seq.get();
@@ -1521,6 +1552,8 @@ fn parse_option(data: &[u8]) -> Result<OscoreOption, OscoreError> {
     let flags = data[pos];
     pos += 1;
 
+    // Reserved-bit check: not timing-sensitive; flags are visible in the
+    // plaintext (response) or OSCORE option itself (request).
     if flags & 0xe0 != 0 {
         return Err(OscoreError::InvalidParam);
     }
