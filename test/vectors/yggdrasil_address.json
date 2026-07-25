@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "description": "Native Yggdrasil AddrForKey vector copied from the upstream Go reference test.",
+  "source": "https://github.com/yggdrasil-network/yggdrasil-go/blob/422836eeb21a99790caa286aa63d493bbc4766d7/src/address/address_test.go",
+  "algorithm": "AddrForKey",
+  "vectors": [
+    {
+      "name": "upstream_addr_for_key",
+      "public_key": "bdbacfd82240de3dcd123924cbb55256fb8dab08aa98e305528ab84f419e6efb",
+      "address": "0200848a604fbb7e438465db8db66895",
+      "ipv6": "200:848a:604f:bb7e:4384:65db:8db6:6895"
+    }
+  ]
+}

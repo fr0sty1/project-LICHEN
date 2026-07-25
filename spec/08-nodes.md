@@ -11,16 +11,16 @@
 
 | Role | IPv6 | RPL | Forwards | Description |
 |------|------|-----|----------|-------------|
-| Leaf | Host | None | No | Endpoint device, no routing |
+| Leaf | Host | Leaf | No | Endpoint device, joins RPL but does not forward |
 | Router | Router | Full | Yes | Mesh router, participates in DODAG |
-| Border Router | Router | Root | Yes | DODAG root, internet gateway |
+| Border Router | Router | Root | Yes | DODAG root, identity-preserving backhaul |
 | Gateway | Host | None | L7 only | Protocol translator (MQTT-SN->MQTT) |
 
 ### 11.2. Leaf Node (Endpoint)
 
 - Minimal resources (constrained MCU)
-- Associates with one parent router
-- Does not participate in RPL
+- Joins through one preferred RPL parent
+- Sends DAO for its native `/128` but does not relay RPL or data traffic
 - Sends all traffic via default parent
 
 ### 11.3. Router
@@ -33,8 +33,8 @@
 ### 11.4. Border Router (6LBR)
 
 - DODAG root
-- Assigns global prefix to mesh
-- Routes between mesh and external IPv6
+- Installs native `/128` host routes from DAOs
+- Provides application gateways and optional separately specified backhauls
 - Runs Resource Directory, NTP, etc.
 - May aggregate multiple DODAGs
 

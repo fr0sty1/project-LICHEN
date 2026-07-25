@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-85z6",
+  "title": "Create canonical link/SCHC wire-format v2 vectors",
+  "description": "Create independent shared vectors for wire-format v2: signed link frames set I=S and carry short SenderID or 0xffff+IID; announce carries persistent origin epoch; SCHC v2 uses native 0200::/8 residues and explicit RPL source IDs; multicast IDs are immutable. Retain legacy v1 fixtures as explicitly versioned migration data. Implementation remains in project-LICHEN-fmu3, project-LICHEN-p8i6, and project-LICHEN-zp0h.",
+  "acceptance_criteria": "Canonical vectors cover normal and malformed SenderID/I/S forms, hop re-signing inputs, announce epoch replay, native SCHC, RPL source reconstruction, collisions, and multicast IDs; vector oracles are independent; schemas validate; three independent reviews pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T06:33:50.044274Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T06:34:02.51483Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-85z6",
+      "depends_on_id": "project-LICHEN-nqz6",
+      "type": "discovered-from",
+      "created_at": "2026-07-20T06:33:50.184092Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

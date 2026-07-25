@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-n31b",
+  "title": "Research T-Echo GNSS 1PPS routing",
+  "description": "Determine from LilyGO/Xinyuan manufacturer-grade artifacts whether each T-Echo hardware revision routes its GNSS module 1PPS output to the nRF52840 or an accessible pad/header, with exact revision/module evidence and source URLs.",
+  "acceptance_criteria": "Report revision-specific positive proof, negative schematic proof, and absence of evidence using only official sources.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T18:55:30.794838Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T19:05:30.905992Z",
+  "started_at": "2026-07-20T18:55:32.676088Z",
+  "closed_at": "2026-07-20T19:05:30.905992Z",
+  "close_reason": "Revision-specific GNSS PPS routing report completed"
+}

@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-2nnd.5.3",
+  "title": "Contact LILYGO about T-Echo PPS",
+  "description": "After Mark explicitly approves the prepared packet, contact the appropriate LILYGO engineering/business channel to confirm current T-Echo PPS routing and discuss a PPS-capable revision or sample. This Bead does not authorize contact by itself.",
+  "design": "Start with engineering fact-finding, not procurement negotiation. Send the approved concise introduction and attachment; request an engineering owner and durable written answers. Use a bounded follow-up cadence. Record every material answer, date, contact role, document/revision shared, and confidentiality restriction. Do not accept NDA, quote, sample charge, NRE, MOQ, branding, exclusivity, roadmap, or purchase terms without separate approval.",
+  "acceptance_criteria": "Explicit authorization to send is recorded; the approved message is sent through an official or verified LILYGO channel; receipt/contact owner and follow-up dates are recorded; answers or no-response outcome cover current PPS routing, feasible GPIO/test point, electrical characteristics, board revision path, samples, documentation, NRE, MOQ, pricing bands, and lead time; no commercial commitment is made implicitly or explicitly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T17:22:11.760916Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T17:22:11.760916Z",
+  "labels": [
+    "demo",
+    "milestone",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2nnd.5.3",
+      "depends_on_id": "project-LICHEN-2nnd.5",
+      "type": "parent-child",
+      "created_at": "2026-07-20T17:22:11.996151Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2nnd.5.3",
+      "depends_on_id": "project-LICHEN-2nnd.5.1",
+      "type": "blocks",
+      "created_at": "2026-07-20T17:22:12.18873Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2nnd.5.3",
+      "depends_on_id": "project-LICHEN-2nnd.5.2",
+      "type": "blocks",
+      "created_at": "2026-07-20T17:22:12.399605Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

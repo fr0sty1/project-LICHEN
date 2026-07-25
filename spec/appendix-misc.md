@@ -35,13 +35,13 @@ Response:
 | Topology | Mesh (RPL) | Mesh (flood) | Mesh (path) | Star |
 | IP Support | Full IPv6 | None | None | IPv6 (SCHC) |
 | Max Hops | Unlimited* | 7 | 63 | 1 |
-| Header Overhead | 6-15 bytes | 16 bytes | 6 bytes | 13 bytes |
+| Header Overhead | 18-33 bytes baseline | 16 bytes | 6 bytes | 13 bytes |
 | Authentication | Ed25519 | None/Ed25519 | HMAC | AES-CMAC |
 | Encryption | OSCORE | AES-256-CTR | AES-128-ECB | AES-128 |
 | Forward Secrecy | No** | No | No | No |
 | Standard | IETF | Proprietary | Proprietary | LoRa Alliance |
 | CoAP Support | Native | No | No | Via SCHC |
-| Internet Routing | Yes | Via gateway | Via gateway | Yes |
+| Global Mesh Routing | Separate Yggdrasil profile | Via gateway | Via gateway | LoRaWAN core |
 
 *Limited by network diameter and duty cycle
 **Can add EDHOC for session keys
@@ -51,11 +51,11 @@ Response:
 ## Appendix E: Example Network
 
 ```
-                         Internet
+                        Yggdrasil
                              |
                     +--------+--------+
                     |  Border Router  |
-                    | 2001:db8::1/64  |
+                    | native /128     |
                     | DODAG Root      |
                     +--------+--------+
                              |
@@ -63,14 +63,14 @@ Response:
             |                                 |
     +-------+-------+                 +-------+-------+
     |   Router A    |                 |   Router B    |
-    | 2001:db8::a   |                 | 2001:db8::b   |
+    | native /128   |                 | native /128   |
     +-------+-------+                 +-------+-------+
             |                                 |
       +-----+-----+                     +-----+-----+
       |           |                     |           |
   +---+---+   +---+---+             +---+---+   +---+---+
   | Leaf 1|   | Leaf 2|             | Leaf 3|   | Leaf 4|
-  | ::101 |   | ::102 |             | ::103 |   | ::104 |
+  | /128  |   | /128  |             | /128  |   | /128  |
   +-------+   +-------+             +-------+   +-------+
 
   Leaf 1: Temperature sensor, CoAP server
@@ -82,7 +82,7 @@ Response:
 **Traffic flow:**
 
 1. Leaf 1 -> Border Router: CoAP response with temperature (upward via RPL)
-2. Cloud -> Leaf 4: CoAP request to actuator (downward via source routing)
+2. Root -> Leaf 4: CoAP request (downward via source routing)
 3. Leaf 3 -> MQTT Broker: MQTT-SN PUBLISH (via gateway at border router)
 
 ---

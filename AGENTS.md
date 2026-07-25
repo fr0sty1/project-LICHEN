@@ -33,7 +33,10 @@ Run `bd prime` for full command reference. See the Beads section at the end of t
 
 ## Project Overview
 
-**What we're building:** LICHEN — a LoRa mesh network that uses real IPv6 addressing (not proprietary node IDs), enabling direct communication with internet hosts via border routers. Think "Meshtastic but with proper IP."
+**What we're building:** LICHEN -- a LoRa mesh network that uses real IPv6
+addressing rather than proprietary node IDs. Native key-derived addresses route
+inside isolated meshes; global Yggdrasil participation is a separate profile.
+Think "Meshtastic but with proper IP."
 
 **Relationship to Meshtastic:** LICHEN runs on the same hardware (reflash), but the protocol is **not backward compatible**. Different sync word (0x34 vs 0x2B), different framing, real IPv6 instead of proprietary addressing. A device runs one or the other, not both.
 
@@ -50,7 +53,7 @@ Run `bd prime` for full command reference. See the Beads section at the end of t
 Application:  CoAP / MQTT-SN / Raw UDP
 Security:     OSCORE (E2E) + Ed25519 link signatures
 Transport:    UDP (compressed via SCHC)
-Network:      IPv6 (link-local fe80::/10 or global /64)
+Network:      IPv6 (link-local fe80::/10 or native 0200::/8 /128)
 Routing:      RPL (DODAG mesh formation)
 Adaptation:   6LoWPAN + SCHC header compression
 Link:         Custom frame format with truncated Ed25519 sigs
@@ -87,7 +90,7 @@ Physical:     LoRa CSS (SX126x/SX127x)
 
 1. **Ed25519 truncated signatures (32 bytes)** - Non-standard but necessary for LoRa bandwidth. Security analysis required.
 
-2. **SCHC compression** - Header compression from 48+ bytes to 3-6 bytes. Rules are pre-provisioned, not negotiated.
+2. **SCHC compression** - Baseline IPv6/UDP headers compress from 48 bytes to 18-33 bytes. Rules are pre-provisioned, not negotiated.
 
 3. **RPL Non-Storing Mode** - Border router holds all routes, uses 6LoRH source routing for downward traffic.
 
@@ -369,8 +372,9 @@ LICHEN resources are tagged:
 - `Project=LICHEN`
 - `LaunchedBy=ec2-claude-sh` (for instances launched by the script)
 
-The copied Zephyr builder EBS volume is the sole untagged exception. Identify it
-by the exact volume ID and `Name=lichen-zephyr-arm64` listed below.
+The Zephyr builder EBS volume is tagged `Project=LICHEN` and `aiwork=true` (as
+of 2026-07-21), alongside its `Name=lichen-zephyr-arm64` tag. Identify it by the
+exact volume ID `vol-0a95eee8d1d8461eb` listed below.
 
 Before ANY destructive operation (terminate, delete, stop), verify the resource belongs to LICHEN:
 
@@ -460,6 +464,77 @@ tools/zephyr-clean-worktree.sh verify "$PWD" <build-dir>
 
 The volume is single-attach. Before terminating a builder, run `sync`, unmount `/mnt/lichen-zephyr`, detach the volume, and wait for it to return to `available` so the next builder can attach it.
 
+### Persistent Zephyr Workstation (STOPPED — restart to resume)
+
+There is a **long-lived** Zephyr dev workstation (distinct from the throwaway
+builders above). It runs OpenCode in `tmux` so an implementer agent can do
+Zephyr/C work "locally" on a beefy Linux box. It is currently **stopped** to
+halt compute billing; the attached EBS cache persists all work.
+
+| Field | Value |
+|-------|-------|
+| Instance | `i-0d14dd9fb53dae004` |
+| Type / AZ | `c8g.4xlarge` (ARM64) / `us-west-2c` |
+| State | **stopped** (as of 2026-07-21; stop halts compute cost, EBS storage still billed) |
+| Tags | `Project=LICHEN` |
+| EBS | `vol-0a95eee8d1d8461eb` — stays attached at `/dev/sdf`, mounts `/mnt/lichen-zephyr` |
+| Security group | `sg-0be97be8501aeecd6` — SSH ingress from home `/32` only |
+| Login | `ssh -i ~/.ssh/id_ed25519 ec2-user@<public-ip>` |
+| OpenCode | v1.18.3, model `openai/gpt-5.6-sol`, global config `permission: allow` |
+
+**Restart procedure:**
+
+```bash
+aws login --profile personal
+export AWS_PROFILE=personal AWS_REGION=us-west-2
+aws sts get-caller-identity --query Account --output text   # must be 210337117346
+
+aws ec2 start-instances --instance-ids i-0d14dd9fb53dae004
+
+# Public IP CHANGES on every start (no Elastic IP). Fetch the new one:
+aws ec2 describe-instances --instance-ids i-0d14dd9fb53dae004 \
+  --query 'Reservations[].Instances[].PublicIpAddress' --output text
+
+# If the home IP changed, the SG will block SSH. Update ingress:
+#   MYIP=$(curl -s https://checkip.amazonaws.com)
+#   aws ec2 authorize-security-group-ingress --group-id sg-0be97be8501aeecd6 \
+#     --protocol tcp --port 22 --cidr ${MYIP}/32
+
+ssh -i ~/.ssh/id_ed25519 ec2-user@<public-ip>
+tmux attach -t lichen            # or: tmux new -s lichen
+cd /mnt/lichen-zephyr/work/project-LICHEN
+opencode
+```
+
+The EBS auto-mounts on boot; if not, follow the "Workflow for a fresh EC2
+instance" mount steps above. Push auth on the box is **git-over-SSH as
+MarkAtwood** (the ed25519 key authenticates to GitHub for git too); the HTTPS
+`origin` has no token and `gh` is not installed. To push, use an explicit SSH
+URL, e.g. `git push git@github.com:MarkAtwood/project-LICHEN.git <branch>`.
+
+**To stop again (halt billing) — flush first so nothing is lost:**
+
+```bash
+ssh -i ~/.ssh/id_ed25519 ec2-user@<public-ip> 'sync; sync'
+aws ec2 stop-instances --instance-ids i-0d14dd9fb53dae004
+aws ec2 wait instance-stopped --instance-ids i-0d14dd9fb53dae004
+```
+
+Use **stop**, not terminate — terminate would destroy the root volume and the
+in-flight uncommitted work living only on the EBS (see below).
+
+**Uncommitted work on the EBS (NOT on GitHub, survives stop):** as of the
+2026-07-21 checkpoint, three checkouts hold live uncommitted edits — deliberately
+left in place, base commit `8e02a7ae`:
+- `/mnt/lichen-zephyr/validation/project-LICHEN-m5m1` — 26 modified files (renode boards, coap, l2, hal, tests, a deleted linker script)
+- `/mnt/lichen-zephyr/work/project-LICHEN-m5m1` — 7 modified files (coap, l2, renode)
+- `/mnt/lichen-zephyr/workspace` — 2 modified files (`oscore.c`, `router.c`)
+
+All committed code work was pushed to `github.com/MarkAtwood/project-LICHEN`
+(branches `integration/convergence-20260721`, `integration/rust-rpl-complete`,
+`wip/checkpoint-20260715`). Off-EBS paths held only disposable uv caches and a
+clean interop clone — nothing at risk there.
+
 ### AWS Fleet Runtime AMI
 
 Use the fleet AMI for parallel Renode, Rust, and Python simulation workers. Do
@@ -514,10 +589,12 @@ Check `bd list` for issues tracking these decisions.
 - **Embedded RTOS**: Zephyr (primary), RIOT (STM32WL fallback if needed)
 - **Why not Arduino**: No native IPv6/6LoWPAN/RPL/CoAP; Zephyr has all
 - **IPv6 addressing** (see spec 6.1, 12):
-  - Link-local always (fe80:: + IID)
-  - ULA default when DODAG root present (fd00::/8)
-  - GUA optional when BR has upstream prefix
-  - Isolated meshes work (self-elected root generates ULA)
+  - Link-local always (`fe80::` + key-derived IID) for control traffic
+  - Native Yggdrasil `/128` in `0200::/8` for application unicast
+  - Both derive from the node Ed25519 public key; ULA is not used
+  - Isolated meshes route native addresses without a Yggdrasil daemon
+  - Global reachability requires identity-preserving Yggdrasil participation
+    defined by a separate profile
   - Multiple BRs tolerated (no coordination required)
 - **Local Client Interface** (see spec 17):
   - IPv6 + CoAP over SLIP/BLE/IPC (not proprietary protobuf)

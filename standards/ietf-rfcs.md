@@ -9,7 +9,7 @@ Standards from the Internet Engineering Task Force that LICHEN implements or dep
 | RFC | Title | LICHEN Use |
 |-----|-------|------------|
 | [RFC 768](https://www.rfc-editor.org/rfc/rfc768) | User Datagram Protocol | Transport layer |
-| [RFC 4193](https://www.rfc-editor.org/rfc/rfc4193) | Unique Local IPv6 Unicast Addresses | ULA for mesh-internal routing |
+| [RFC 4193](https://www.rfc-editor.org/rfc/rfc4193) | Unique Local IPv6 Unicast Addresses | Reference only; LICHEN does not assign ULAs |
 | [RFC 4291](https://www.rfc-editor.org/rfc/rfc4291) | IPv6 Addressing Architecture | Address format, scopes |
 | [RFC 4443](https://www.rfc-editor.org/rfc/rfc4443) | ICMPv6 | Echo, router/neighbor discovery |
 | [RFC 8200](https://www.rfc-editor.org/rfc/rfc8200) | IPv6 Specification | Network layer |
@@ -58,7 +58,7 @@ Standards from the Internet Engineering Task Force that LICHEN implements or dep
 | RFC | Title | LICHEN Use |
 |-----|-------|------------|
 | [RFC 8613](https://www.rfc-editor.org/rfc/rfc8613) | OSCORE | E2E CoAP security |
-| [RFC 9203](https://www.rfc-editor.org/rfc/rfc9203) | OSCORE Group Communication | Group messaging security |
+| [RFC 9594](https://www.rfc-editor.org/rfc/rfc9594) | Group OSCORE | Group messaging security |
 | [RFC 9528](https://www.rfc-editor.org/rfc/rfc9528) | EDHOC | Lightweight key exchange |
 | [RFC 9052](https://www.rfc-editor.org/rfc/rfc9052) | COSE Structures | Signed/encrypted objects |
 | [RFC 9053](https://www.rfc-editor.org/rfc/rfc9053) | COSE Algorithms | Cipher suites |

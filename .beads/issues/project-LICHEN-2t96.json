@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-2t96",
+  "title": "Milestone: Exchange first LICHEN packets over LoRa",
+  "description": "Demonstrate bidirectional LICHEN packets over physical LoRa radios using the baseline local protocol. Validate PHY configuration, link framing, immediate-sender authentication, replay handling, and at least one native 0200::/8 /128 application exchange without requiring global Yggdrasil participation.",
+  "acceptance_criteria": "Two physical supported boards exchange authenticated LICHEN packets over LoRa in both directions; capture and decode the frames; verify native /128 source/destination handling and replay rejection; record hardware, firmware commits, regional plan, RSSI/SNR, and test evidence.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T07:06:38.665012Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T07:06:38.665012Z"
+}

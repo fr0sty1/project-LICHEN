@@ -48,8 +48,9 @@ RFC Publication
 ### draft-lichen-schc-lora-00
 
 SCHC compression rules optimized for LoRa mesh:
-- Rule 0: Link-local IPv6+UDP (2 bytes)
-- Rule 1: Global IPv6+UDP (10 bytes)
+- Rule 0: Link-local IPv6+UDP (18 bytes)
+- Rule 1: Native Yggdrasil IPv6+UDP (33 bytes)
+- Rule 2: Native Yggdrasil IPv6+MQTT-SN (32 bytes)
 - Fragmentation: ACK-on-Error mode
 
 ### draft-lichen-rpl-lora-00

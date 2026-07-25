@@ -176,7 +176,7 @@ Destination types:
 |-----------|-------------|---------|
 | 0x00 | Broadcast (all) | (none) |
 | 0x01 | Team | 1 byte team enum |
-| 0x02 | Direct | 8 byte IID |
+| 0x02 | Direct | 16 byte native IPv6 address |
 
 Team enumeration (matches PLI team byte):
 
@@ -196,7 +196,7 @@ Team enumeration (matches PLI team byte):
 Examples:
 - Broadcast: `[0x01][0x00][len][text]` -- 3 + len bytes
 - Team Blue: `[0x01][0x01][0x01][len][text]` -- 4 + len bytes
-- Direct to IID: `[0x01][0x02][8-byte IID][len][text]` -- 11 + len bytes
+- Direct: `[0x01][0x02][16-byte native address][len][text]` -- 19 + len bytes
 
 Sender identity comes from LICHEN L2/OSCORE context, not the CoT payload.
 

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-2nnd.5.1",
+  "title": "Prepare LILYGO PPS engineering ask",
+  "description": "Prepare a concise outreach packet explaining why hardware PPS materially improves optional LICHEN scheduled multichannel capacity while baseline LoRa operation remains compatible without it. Include the exact schematic question and minimum board-change request, but do not contact LILYGO.",
+  "design": "Lead with the low-cost question: is L76K 1PPS already routed or exposed? If not, request routing to an nRF52840 GPIOTE-capable GPIO with PPI timer capture and a test point. Ask for voltage/polarity/pulse width/fixed delay/jitter, GNSS EXTINT and power control, schematic availability, sample path, and engineering contact. Present LICHEN's T-Echo use case, 500-node event target, open Zephyr support, and measured drift/guard model. Avoid promises about orders, branding, exclusivity, or volume.",
+  "acceptance_criteria": "Produce an email-length introduction, a one-page technical attachment, a precise question list, a 20 ppm versus PPS guard/capacity table for SF10/BW125, a simple capture wiring diagram, validation criteria, and explicit non-commitment language; identify official LILYGO engineering/business contact channels; material is ready for Mark's approval but has not been sent.",
+  "notes": "Scope correction from project-LICHEN-2nnd.5.2: classic T-Echo U1.0 and T-Echo Plus already route L76K 1PPS through 1 kOhm to nRF52840 P1.04. Revise the engineering ask from 'please add PPS' to: confirm current production/batch guarantee and module variants; provide PPS voltage, polarity, pulse width, fixed delay, jitter/accuracy, valid-fix behavior, and factory test method; confirm P1.04 availability/conflicts; identify any accessible via/pad; and consider a labeled PPS test point in a future revision. Retain the measured CCP value case and no-commercial-commitment language.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T17:21:56.206599Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T19:08:31.594124Z",
+  "labels": [
+    "demo",
+    "milestone",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2nnd.5.1",
+      "depends_on_id": "project-LICHEN-2nnd.5",
+      "type": "parent-child",
+      "created_at": "2026-07-20T17:21:56.663151Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

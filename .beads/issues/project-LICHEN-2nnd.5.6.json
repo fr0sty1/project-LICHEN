@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-2nnd.5.6",
+  "title": "Decide LILYGO PPS production partnership",
+  "description": "After technical validation, decide whether to pursue a stock T-Echo revision, LICHEN-branded/custom T-Echo, documented rework, another manufacturer, or no PPS-specific hardware. This Bead records a decision; it does not itself authorize spending or contracts.",
+  "acceptance_criteria": "Decision memo compares validated capacity/power benefit, product fit, open hardware/firmware support, sample quality, NRE, MOQ, landed unit cost, lead time, lifecycle/supply risk, warranty/support, regulatory impact, branding, data/IP/NDA terms, and the 500-node demo economics; fallback radios and bounded-clock alternatives are considered; recommendation names explicit authorization and contractual next steps; project plans stop claiming T-Echo PPS or zero-collision TDMA if evidence does not support them.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T17:23:13.237917Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T17:23:13.237917Z",
+  "labels": [
+    "demo",
+    "milestone",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2nnd.5.6",
+      "depends_on_id": "project-LICHEN-2nnd.5",
+      "type": "parent-child",
+      "created_at": "2026-07-20T17:23:13.524139Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2nnd.5.6",
+      "depends_on_id": "project-LICHEN-2nnd.5.5",
+      "type": "blocks",
+      "created_at": "2026-07-20T17:23:13.787294Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

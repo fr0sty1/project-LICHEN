@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-jtup",
+  "title": "Align Python LCI with mandatory CoAP proxying",
+  "description": "The revised LCI baseline gives clients only link-local reachability and requires mesh requests through /proxy using RFC 7252 Proxy-Uri. Python resources, client transports, tests, and Python-native documentation still encode direct routing, optional proxy behavior, and fd00::/8 targets. Update them to support mandatory proxy requests and native 0200::/8 mesh targets. This implementation work is intentionally deferred from the specs-only addressing task.",
+  "acceptance_criteria": "LCI-facing Python sites advertise /proxy whenever baseline mesh access is provided; shared IP and packet transports can send Proxy-Uri requests through the local proxy; validation accepts appropriate native 0200::/8 targets and rejects unrelated destinations; tests cover successful proxied reads and mutations plus missing or invalid Proxy-Uri; stale direct-routing and optional-proxy assertions and Python documentation are removed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T07:27:56.06823Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T07:27:56.06823Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jtup",
+      "depends_on_id": "project-LICHEN-nqz6",
+      "type": "discovered-from",
+      "created_at": "2026-07-20T07:27:56.213927Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

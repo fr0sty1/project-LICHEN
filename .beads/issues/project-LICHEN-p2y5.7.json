@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-p2y5.7",
+  "title": "Gateway: Bridge LICHEN messaging to IRC",
+  "description": "Implement a gateway-hosted bidirectional bridge between authenticated LICHEN CoAP messaging and IRC. Map explicitly configured LICHEN groups/realms to IRC channels; relay LICHEN /msg/inbox messages through a gateway bot; and convert authorized IRC messages into LICHEN unicast fanout or the future authenticated group-delivery profile. Support conventional IRC networks such as Libera.Chat and Yggdrasil-internal IRC without making IRC authoritative for routing, trust, configuration, SOS, or protocol control.",
+  "design": "Treat IRC strictly as an application adapter. Preserve verified LICHEN native /128 origin metadata in a stable displayed form without impersonating arbitrary IRC accounts. Require explicit channel/group mappings and inbound account/hostmask authorization. Use persistent message IDs and bridge-instance IDs for loop suppression and reconnect deduplication. Bound queues, message length, attachment behavior, and per-origin/channel rates; apply fair queuing and backoff under IRC flood controls. Validate UTF-8 and sanitize IRC control codes, CTCP, mentions, and command-like content. Keep IRC credentials in protected runtime configuration and never place them in messages or logs. Do not bridge routing/control traffic. SOS and other privileged application operations are disabled unless a later separately reviewed policy explicitly enables them. Prefer IRCv3 message tags for provenance when negotiated, with a readable text prefix fallback. Provide store-and-forward across LoRa or IRC outages without inventing a second messaging identity system.",
+  "acceptance_criteria": "A gateway connects over TLS to a configurable IRC server and joins configured channels; authenticated LICHEN messages appear once in the mapped channel with origin and timestamp provenance; authorized IRC messages reach the intended LICHEN recipients through the native messaging contract; unauthorized users/channels, malformed content, oversized messages, and protocol-control attempts are rejected; bidirectional loops and duplicates remain suppressed across reconnect and process restart; rate limits, bounded queues, retry/backoff, secret redaction, and outage store-and-forward are tested; simulator integration demonstrates at least two LICHEN nodes and one IRC channel in both directions; a physical-radio demonstration is recorded after the underlying packet/messaging path exists; documentation clearly states that IRC is non-authoritative and describes deployment, mapping, moderation, privacy, and failure behavior.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T14:56:56.971523Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T14:56:56.971523Z",
+  "labels": [
+    "core",
+    "gateway",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.7",
+      "depends_on_id": "project-LICHEN-p2y5",
+      "type": "parent-child",
+      "created_at": "2026-07-20T14:56:57.137276Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

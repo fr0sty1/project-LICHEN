@@ -82,7 +82,7 @@ See `AGENTS.md` for full technical details. Quick reference:
 Application:  CoAP / MQTT-SN / Raw UDP
 Security:     OSCORE (E2E) + Schnorr link signatures (48B)
 Transport:    UDP (compressed via SCHC)
-Network:      IPv6 (link-local + ULA/GUA)
+Network:      IPv6 (link-local control + native Yggdrasil /128)
 Routing:      RPL (BR traffic) + Announce (peers) + LOADng (fallback)
 Adaptation:   SCHC (RFC 8724) — NOT 6LoWPAN
 Link:         LICHEN frame format with replay protection

@@ -1,0 +1,53 @@
+{
+  "id": "project-LICHEN-2nnd.5.5",
+  "title": "Validate T-Echo PPS samples for CCP",
+  "description": "Physically validate an existing, reworked, or manufacturer-supplied T-Echo with L76K 1PPS connected to the nRF52840 for LICHEN CCP scheduled mode. This is engineering validation, not production approval.",
+  "design": "Capture PPS with nRF52840 GPIOTE plus PPI into a free-running hardware timer; use UART only to associate the edge with its GPS second. Measure fixed offset, jitter, polarity, pulse width, lock acquisition, warm/cold start, power, sleep/wake, oscillator holdover, antenna/environment sensitivity, and fallback behavior. Compare measured uncertainty and slot guards with the canonical simulator model and quantify capacity rather than claiming zero collisions.",
+  "acceptance_criteria": "Exact sample/revision and wiring are recorded; oscilloscope or logic-analyzer evidence characterizes PPS electrical behavior; firmware captures PPS without ISR timestamp dependence and associates unambiguous GPS seconds; repeated cold/warm starts and at least indoor/outdoor or degraded-signal transitions are tested; holdover uncertainty and CH0 fallback occur at calculated boundaries; two or more radios demonstrate scheduled SF10/BW125 cells and channel switching; measured guard, collision loss, PDR, power, and capacity are compared with baseline and simulator predictions; display, LoRa, GNSS position, USB/BLE, button, RTC, and low-power regressions are checked; result recommends production pursuit, revision changes, or rejection.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T17:22:49.622859Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T17:22:49.622859Z",
+  "labels": [
+    "demo",
+    "milestone",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2nnd.5.5",
+      "depends_on_id": "project-LICHEN-2nnd.5",
+      "type": "parent-child",
+      "created_at": "2026-07-20T17:22:49.906159Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2nnd.5.5",
+      "depends_on_id": "project-LICHEN-2nnd.5.4",
+      "type": "blocks",
+      "created_at": "2026-07-20T17:22:50.184906Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2nnd.5.5",
+      "depends_on_id": "project-LICHEN-i9r0.2",
+      "type": "blocks",
+      "created_at": "2026-07-20T17:22:50.434184Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2nnd.5.5",
+      "depends_on_id": "project-LICHEN-2t96",
+      "type": "blocks",
+      "created_at": "2026-07-20T17:22:50.657547Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

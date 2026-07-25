@@ -207,18 +207,18 @@ Response format: echo command byte with MSB set (`cmd | 0x80`).
 
 ## 5. Use Cases
 
-### 5.1 Gateway to IP Network
+### 5.1 Gateway to Host Services
 
 ```
-Internet ←→ Border Router ←→ LICHEN Mesh
+Host services ←→ Border Router ←→ LICHEN Mesh
                   ↑
             KISS/Serial to
             LoRa transceiver
 ```
 
-KISS provides the host-to-radio interface for border routers connecting LICHEN
-meshes to IP networks. The border router speaks KISS to the radio and tunnels
-packets over IPv6/UDP.
+KISS provides the host-to-radio interface for border routers exposing
+application gateways or a separately specified backhaul. The border router
+speaks KISS to the radio and carries LICHEN IPv6 packets.
 
 ### 5.2 Debugging and Packet Sniffing
 
