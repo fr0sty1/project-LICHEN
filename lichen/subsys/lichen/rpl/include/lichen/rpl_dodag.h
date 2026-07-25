@@ -132,6 +132,13 @@ int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *_Nonnull d,
 			       uint8_t version);
 
 /**
+ * @brief Demote a root to UNJOINED, clearing parent state and rank.
+ *
+ * No-op if the node is not currently a root.
+ */
+void lichen_rpl_dodag_demote(struct lichen_rpl_dodag *_Nullable d);
+
+/**
  * @brief Check if node is root.
  */
 static inline bool lichen_rpl_dodag_is_root(const struct lichen_rpl_dodag *_Nonnull d)

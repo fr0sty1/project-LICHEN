@@ -200,6 +200,21 @@ int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
 	return 0;
 }
 
+void lichen_rpl_dodag_demote(struct lichen_rpl_dodag *d)
+{
+	if (d == NULL || d->role != LICHEN_RPL_ROOT) {
+		return;
+	}
+
+	d->role = LICHEN_RPL_UNJOINED;
+	d->has_preferred_parent = false;
+	d->rank = LICHEN_RPL_INFINITE_RANK;
+
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
+		d->parents[i].valid = false;
+	}
+}
+
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 {
 	if (d == NULL) {
@@ -283,11 +298,15 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 		return 0;
 	}
 
-	if (d->role == LICHEN_RPL_ROOT) {
+	if (dio->mode_of_operation != 1 || !dio->grounded) {
 		return 0;
 	}
 
-	if (dio->mode_of_operation != 1 || !dio->grounded) {
+	if (d->role == LICHEN_RPL_ROOT) {
+		if (version_is_newer(dio->version, d->version) &&
+		    rpl_addr_eq(dio->dodag_id, d->dodag_id)) {
+			adopt_version(d, dio);
+		}
 		return 0;
 	}
 

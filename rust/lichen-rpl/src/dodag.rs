@@ -108,7 +108,9 @@ impl DodagRole {
                 | (Self::Unjoined, Self::Root)
                 | (Self::Joined, Self::Unjoined)
                 | (Self::Joined, Self::Joined)
+                | (Self::Joined, Self::Root)
                 | (Self::Root, Self::Root)
+                | (Self::Root, Self::Unjoined)
         )
     }
 }
@@ -255,6 +257,15 @@ impl DodagState {
 
     pub fn is_joined(&self) -> bool {
         matches!(self.role, DodagRole::Joined | DodagRole::Root)
+    }
+
+    pub fn demote(&mut self) {
+        if self.role == DodagRole::Root {
+            self.role = DodagRole::Unjoined;
+            self.preferred_parent = None;
+            self.rank = INFINITE_RANK;
+            self.parents.clear();
+        }
     }
 
     fn set_role(&mut self, next: DodagRole) -> Result<(), InvalidDodagTransition> {
@@ -475,11 +486,12 @@ mod tests {
     }
 
     #[test]
-    fn dodag_role_transition_table_rejects_root_demotions() {
+    fn dodag_role_transition_table_allows_root_demotion_rejects_root_join() {
         assert!(DodagRole::Unjoined.can_transition_to(DodagRole::Joined));
         assert!(DodagRole::Joined.can_transition_to(DodagRole::Unjoined));
         assert!(DodagRole::Root.can_transition_to(DodagRole::Root));
-        assert!(!DodagRole::Root.can_transition_to(DodagRole::Unjoined));
+        assert!(DodagRole::Root.can_transition_to(DodagRole::Unjoined));
+        assert!(DodagRole::Joined.can_transition_to(DodagRole::Root));
         assert!(!DodagRole::Root.can_transition_to(DodagRole::Joined));
     }
 
