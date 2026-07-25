@@ -98,6 +98,11 @@ static int deaddrop_oscore_respond(struct coap_resource *resource,
 {
 	uint8_t buf[256];
 	struct coap_packet resp;
+
+	if (ctx == NULL) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   code, 0, NULL, 0);
+	}
 	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request,
 					       code, NULL, 0, &resp, buf,
 					       sizeof(buf));
