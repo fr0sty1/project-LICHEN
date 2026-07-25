@@ -1,18 +1,16 @@
 {
   "id": "project-LICHEN-flcb",
   "title": "Add human-readable node address definition and test vectors to spec/03-addressing.md",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T14:40:12.332242011Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T02:52:03.22471568Z",
+  "updated_at": "2026-07-25T02:52:21.955377956Z",
   "started_at": "2026-07-22T14:40:21.968882803Z",
-  "closed_at": "2026-07-25T01:28:51.533895735Z",
+  "closed_at": "2026-07-25T02:52:21.955377956Z",
   "close_reason": "Already fixed",
-  "lease_expires_at": "2026-07-25T02:57:03.22471568Z",
-  "heartbeat_at": "2026-07-25T02:52:03.22471568Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-flcb",
