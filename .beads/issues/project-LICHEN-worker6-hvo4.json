@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-hvo4",
   "title": "[review] project-LICHEN-worker6-eu0i: Stale doc comments referencing u32::MAX instead of 40-bit bound",
   "description": "OscoreSeqNum::increment() and fetch_increment() doc comments say:\n```\nReturns None if the sequence number is at u32::MAX (would overflow).\n```\nBut the actual bound is OscoreSeqNum::MAX = (1 \u003c\u003c 40) - 1 (40-bit per RFC 8613 Section 5.2), not u32::MAX. The doc was not updated when the underlying type changed from u32 to 40-bit u64. Found in seqnum.rs lines 52 and 69.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:04:28.046273983Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:04:28.046273983Z"
+  "updated_at": "2026-07-25T02:46:54.489467822Z",
+  "started_at": "2026-07-25T02:46:54.489467822Z",
+  "lease_expires_at": "2026-07-25T02:51:54.489467822Z",
+  "heartbeat_at": "2026-07-25T02:46:54.489467822Z"
 }

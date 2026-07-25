@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-pa6h",
   "title": "[codereview-pass-1 Rust] rules.rs:59-96 FieldDescriptor arrays now partially populated for LINK_LOCAL/GLOBAL_COAP but missing full RPL_DIO/DAO/OSCORE/MQTT_SN match to Python rules.py:246-311 and codec.rs:296",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T14:50:55.794799788Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T01:18:43.268320146Z",
+  "updated_at": "2026-07-25T02:46:54.470260016Z",
   "started_at": "2026-07-22T14:53:58.655548152Z",
   "closed_at": "2026-07-25T01:18:43.268320146Z",
   "close_reason": "Already fixed",
+  "lease_expires_at": "2026-07-25T02:51:54.470260016Z",
+  "heartbeat_at": "2026-07-25T02:46:54.470260016Z",
   "labels": [
     "codereview"
   ],
