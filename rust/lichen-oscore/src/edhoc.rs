@@ -1525,8 +1525,9 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn std_convenience_constructors_remain_available() {
-        let _ = EdhocInitiator::new([1; 32], 0).unwrap();
-        let _ = EdhocResponder::new([2; 32], 1).unwrap();
+        let mut rng = rand_core::OsRng;
+        let _ = EdhocInitiator::new([1; 32], 0, &mut rng);
+        let _ = EdhocResponder::new([2; 32], 1, &mut rng);
     }
 
     #[test]
