@@ -1,18 +1,16 @@
 {
   "id": "project-LICHEN-lnbg",
   "title": "[codereview-pass3.1] notes update uses imprecise SHA-512[0..8] derivation; Yggdrasil actually uses specific bit selection from full SHA-512 of pubkey for the 200::/7 prefix to ensure exact interop with official daemon. Add exact fn spec from Yggdrasil source.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T15:10:45.695631578Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T01:19:13.401821693Z",
+  "updated_at": "2026-07-25T01:23:48.102210905Z",
   "started_at": "2026-07-22T15:13:29.976319593Z",
-  "closed_at": "2026-07-22T15:14:30.084289997Z",
-  "close_reason": "Fixed per spec/review; tests/lint pass",
-  "lease_expires_at": "2026-07-25T01:24:13.401821693Z",
-  "heartbeat_at": "2026-07-25T01:19:13.401821693Z",
+  "closed_at": "2026-07-25T01:23:48.102210905Z",
+  "close_reason": "Updated all code comments to reference exact Yggdrasil AddrForKey algorithm from yggdrasil-go src/address/address.go; fixed SHA-256→SHA-512 in ipv6_addr.h; tests pass (192 passed, 2 doc-tests)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-lnbg",
