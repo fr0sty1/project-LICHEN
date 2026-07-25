@@ -2,18 +2,16 @@
   "id": "project-LICHEN-bf3c",
   "title": "[codereview] E501 line length and W191 tabs in test/vectors/generate.py after ccp15 addition",
   "description": "Ruff check revealed 86 errors mostly E501 from long description strings and some pre-existing tab indentation. New ccp15_vectors() added several long lines. Per task, file as codereview tagged bead. Must fix all before clean passes.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T16:33:24.543104619Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T02:47:35.095553141Z",
+  "updated_at": "2026-07-25T02:48:09.299682279Z",
   "started_at": "2026-07-22T16:35:18.241128081Z",
-  "closed_at": "2026-07-25T01:09:53.839326615Z",
-  "close_reason": "Already fixed",
-  "lease_expires_at": "2026-07-25T02:52:35.095553141Z",
-  "heartbeat_at": "2026-07-25T02:47:35.095553141Z",
+  "closed_at": "2026-07-25T02:48:09.299682279Z",
+  "close_reason": "Closed",
   "labels": [
     "codereview"
   ]
