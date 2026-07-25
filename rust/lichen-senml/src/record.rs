@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 /// For batch operations on multiple records, use [`cbor::encode`] and
 /// [`cbor::decode`] directly, which avoid repeated array framing overhead.
 /// JSON support (via `serde` feature) produces RFC 8428 SenML-JSON.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Record<'a> {
     /// Base name, e.g. `"urn:dev:mac:0123456789abcdef:"`.
@@ -90,7 +90,8 @@ impl<'a> Record<'a> {
         if count != 1 {
             return Err(CborError::InvalidInput);
         }
-        Ok(buf[0])
+        let [record] = buf;
+        Ok(record)
     }
 
     /// Parse a single record from a SenML-CBOR pack.
