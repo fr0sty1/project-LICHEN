@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:03:43.1032Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:11:42.821923897Z",
+  "updated_at": "2026-07-25T00:46:36.631877044Z",
   "started_at": "2026-07-22T20:10:55.359337466Z",
   "closed_at": "2026-07-22T20:11:42.821923897Z",
   "close_reason": "Added input validation for lat/lon per spec; tests and linters pass"
