@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-1kbk",
   "title": "[review] project-LICHEN-worker6-4n5v: shared_vectors.rs prints name twice instead of description",
   "description": "Severity: P3 (display regression)\n\n`shared_vectors.rs:143` changed `vector.description` to `vector.name`, causing the test output to print the vector name twice instead of name + description:\n\nBefore: `Vector \"foo\" (some meaningful description; rule N): ...`\nAfter:  `Vector \"foo\" (foo; rule N): ...`\n\nThe `description` field contains meaningful context about the test vector (e.g. \"IPv6 ICMP echo request over CoAP\"). The `name` is just a short label. Printing name twice is redundant and loses useful diagnostic info in test output.\n\n**File:** `rust/lichen-schc/tests/shared_vectors.rs`, line 143.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:59:44.204840147Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:59:44.204840147Z"
+  "updated_at": "2026-07-25T02:26:38.676831182Z",
+  "started_at": "2026-07-25T02:26:38.676831182Z",
+  "lease_expires_at": "2026-07-25T02:31:38.676831182Z",
+  "heartbeat_at": "2026-07-25T02:26:38.676831182Z"
 }
