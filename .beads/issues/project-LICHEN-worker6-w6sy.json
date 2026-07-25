@@ -2,15 +2,15 @@
   "id": "project-LICHEN-worker6-w6sy",
   "title": "[review] project-LICHEN-worker6-dztx: build_context_BOGUS typo breaks EDHOC initiator path",
   "description": "Line 858 in edhoc.rs calls `build_context_BOGUS` which does not exist. Should be `build_context_2`. This is in `EdhocInitiator::verify_message_2`, called during EDHOC message 2 verification by the initiator. The edhoc feature is not in default features so normal `cargo check` passes, but `cargo check --features edhoc` reveals this and 31 other errors (some pre-existing).",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": null,
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:37:42.81194649Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-25T00:22:12.708683001Z",
+  "updated_at": "2026-07-24T21:54:01.864505008Z",
   "started_at": "2026-07-24T21:54:01.864505008Z",
-  "closed_at": "2026-07-25T00:22:12.708683001Z",
-  "close_reason": "Already fixed"
+  "lease_expires_at": "2026-07-24T21:59:01.864505008Z",
+  "heartbeat_at": "2026-07-24T21:54:01.864505008Z"
 }

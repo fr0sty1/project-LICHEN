@@ -893,6 +893,11 @@ impl Router {
     }
 
     #[cfg(test)]
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.dao_manager.routing_table.add_route(target, path)
+    }
+
+    #[cfg(test)]
     pub(crate) fn process_dao_at_ms(
         &mut self,
         dao_bytes: &[u8],

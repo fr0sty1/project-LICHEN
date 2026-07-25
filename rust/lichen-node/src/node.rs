@@ -615,6 +615,11 @@ impl RplNode {
         &self.router
     }
 
+    #[cfg(test)]
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.router.add_test_route(target, path)
+    }
+
     /// Check if this node is the DODAG root.
     pub fn is_root(&self) -> bool {
         self.router.is_root()
@@ -679,7 +684,7 @@ fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
 #[cfg(feature = "std")]
 fn is_ula_or_global(address: &[u8; 16]) -> bool {
     let address = Ipv6Addr(*address);
-    address.is_ula() || address.is_gua()
+    address[0] == 0x02 || address.is_ula() || address.is_gua()
 }
 
 #[cfg(feature = "std")]

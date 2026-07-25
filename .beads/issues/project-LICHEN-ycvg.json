@@ -2,14 +2,15 @@
   "id": "project-LICHEN-ycvg",
   "title": "Fix transcript and TH computation in EdhocResponder and update tests to use independent Python oracle",
   "description": "Update responder side transcript_3/4 calls, fix any remaining edhoc_kdf or signature structure issues, ensure all tests in rfc9529_signature_trace_vectors and others pass against test/vectors/ and Python impl per test integrity rules. Add missing helper functions if needed. --parent=project-LICHEN-y80q",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:29:01.76206175Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-25T00:22:31.223462764Z",
+  "updated_at": "2026-07-24T21:41:29.244767617Z",
   "started_at": "2026-07-23T05:43:41.27798268Z",
-  "closed_at": "2026-07-25T00:22:31.223462764Z",
-  "close_reason": "Closed"
+  "lease_expires_at": "2026-07-24T21:46:29.244767617Z",
+  "heartbeat_at": "2026-07-24T21:41:29.244767617Z"
 }

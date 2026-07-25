@@ -4,7 +4,7 @@
 
 use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
-use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
+use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -20,22 +20,16 @@ use tracing::{error, info, warn};
 pub struct Gateway {
     rpl_node: RplNode,
     runtime: RplRuntime,
-    ygg_addr: [u8; 16],
 }
 
 impl Gateway {
-    pub fn new(node_id: NodeId, ygg_addr: [u8; 16]) -> Self {
-        info!(?node_id, ?ygg_addr, "gateway initialising");
+    pub fn new(node_id: NodeId) -> Self {
+        info!(?node_id, "gateway initialising");
         let addr = node_id.link_local_addr().0;
         Self {
             rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
-            ygg_addr,
         }
-    }
-
-    pub fn ygg_addr(&self) -> &[u8; 16] {
-        &self.ygg_addr
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
@@ -178,7 +172,7 @@ impl Gateway {
                 routed[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
                 let transport = ipv6[6];
                 routed[6] = 43;
-                routed[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&route[0]);
+                routed[24..40].copy_from_slice(&route[0]);
                 routed[40] = transport;
                 routed[41] = (routing_len / 8 - 1) as u8;
                 if srh.write_to(&mut routed[42..]).is_err() {
@@ -190,7 +184,7 @@ impl Gateway {
                 ipv6.to_vec()
             }
         };
-        let mut out = vec![0u8; to_compress.len() + 20];
+        let mut out = vec![0u8; to_compress.len() + 3];
         out[0] = L2_DISPATCH_SCHC;
         match compress(&to_compress, &mut out[1..]) {
             Ok(n) => {
@@ -207,14 +201,6 @@ impl Gateway {
 }
 
 #[cfg(test)]
-impl Gateway {
-    /// Add a route to the routing table for testing multi-hop SRH insertion.
-    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
-        self.rpl_node.add_test_route(target, path)
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use lichen_core::{
@@ -227,10 +213,7 @@ mod tests {
     }
 
     fn test_gateway() -> Gateway {
-        Gateway::new(
-            NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]),
-            [0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01],
-        )
+        Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
     }
 
     #[test]
@@ -250,8 +233,8 @@ mod tests {
 
         // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
-        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
-        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
+        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
         // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
@@ -275,8 +258,8 @@ mod tests {
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
         assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type should be 129");
-        assert_eq!(&recovered[field::SRC_OFFSET..field::DST_OFFSET], &src.0, "src mismatch");
-        assert_eq!(&recovered[field::DST_OFFSET..IPV6_HEADER_LEN], &dst.0, "dst mismatch");
+        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
+        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
     }
 
     #[test]
@@ -326,136 +309,146 @@ mod tests {
     }
 
     #[test]
-    fn multi_hop_srh_is_inserted_for_global_dest() {
-        let mut gw = test_gateway();
-        // Use a global unicast destination (not fe80::/10 or fd00::/8) so that
-        // mesh_to_mesh takes the route-lookup + SRH insertion path.
-        let child = ll(2);
-        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
-        let path = [child.0, dst.0];
-        assert!(gw.add_test_route(dst.0, &path));
-
+    fn mesh_to_mesh_link_local_no_srh() {
+        let gw = test_gateway();
         let src = ll(1);
-        let mut packet = [0u8; 48];
-        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"data", &mut packet);
-        let packet = &packet[..n];
+        let dst = ll(2);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst, 0x1234, 1, b"test", &mut packet);
+        let ipv6 = &packet[..n];
 
-        let result = gw.mesh_to_mesh(packet);
-        assert!(result.is_some(), "SRH insertion should succeed");
-        let compressed = result.unwrap();
-        assert_eq!(compressed[0], L2_DISPATCH_SCHC);
-        // SRH adds 24 bytes to a 48-byte packet, so SCHC compressed output should
-        // be noticeably larger than the original uncompressed packet.
-        assert!(
-            compressed.len() > packet.len(),
-            "SRH insertion should increase packet size"
-        );
+        let result = gw.mesh_to_mesh(ipv6).expect("mesh_to_mesh should succeed");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+        assert_eq!(result[1], 2, "rule 2 for ICMPv6 echo link-local");
+
+        let mut decomp_buf = [0u8; 512];
+        let decomp_len = decompress(&result[1..], &mut decomp_buf).expect("decompress");
+        let recovered = &decomp_buf[..decomp_len];
+        assert_eq!(recovered[6], 58, "NH should be ICMPv6 (no SRH)");
+        assert_eq!(&recovered[8..24], &src.0);
+        assert_eq!(&recovered[24..40], &dst.0);
+        assert_eq!(&recovered[48..52], b"test", "payload intact");
     }
 
     #[test]
-    fn direct_child_global_dest_no_srh() {
+    fn mesh_to_mesh_single_hop_no_srh() {
         let mut gw = test_gateway();
-        // Single-hop route to a global address: route.len() == 1 → no SRH.
-        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3]);
-        let path = [dst.0];
-        assert!(gw.add_test_route(dst.0, &path));
+        let final_dst = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x03];
+        gw.rpl_node.add_test_route(final_dst, &[final_dst]);
 
         let src = ll(1);
-        let mut packet = [0u8; 48];
-        let n = icmpv6::echo_request(&src, &dst, 2, 1, b"data", &mut packet);
-        let packet = &packet[..n];
+        let dst = Ipv6Addr(final_dst);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst, 0x1234, 1, b"test", &mut packet);
+        let ipv6 = &packet[..n];
 
-        let result = gw.mesh_to_mesh(packet);
-        assert!(result.is_some(), "direct child should succeed");
-        // For a direct child, no SRH is inserted, so the compressed size should
-        // be smaller than the inflated SRH path.
-        let compressed = result.unwrap();
-        assert_eq!(compressed[0], L2_DISPATCH_SCHC);
+        let result = gw.mesh_to_mesh(ipv6).expect("mesh_to_mesh should succeed");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+        assert_eq!(result[1], 255, "uncompressed rule (non-link-local, no SRH)");
+
+        let mut decomp_buf = [0u8; 512];
+        let decomp_len = decompress(&result[1..], &mut decomp_buf).expect("decompress");
+        let recovered = &decomp_buf[..decomp_len];
+        assert_eq!(recovered[6], 58, "NH = ICMPv6 (no SRH)");
+        assert_eq!(&recovered[8..24], &src.0);
+        assert_eq!(&recovered[24..40], &final_dst);
+        assert_eq!(&recovered[48..52], b"test", "payload intact");
     }
 
     #[test]
-    fn multi_hop_srh_header_correct() {
+    fn mesh_to_mesh_multi_hop_3_addresses() {
         let mut gw = test_gateway();
-        let child = ll(2);
-        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4]);
-        let path = [child.0, dst.0];
-        assert!(gw.add_test_route(dst.0, &path));
+        let hop1 = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02];
+        let hop2 = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x03];
+        let final_dst = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x04];
+        gw.rpl_node
+            .add_test_route(final_dst, &[hop1, hop2, final_dst]);
 
-        // IPv6 header with NH=UDP(17), then UDP payload
         let src = ll(1);
-        let mut ipv6 = [0u8; 40];
-        ipv6[0] = 0x60;
-        ipv6[4..6].copy_from_slice(&(20u16).to_be_bytes()); // payload length (UDP)
-        ipv6[6] = 17; // NH = UDP
-        ipv6[7] = 64;
-        ipv6[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src.0);
-        ipv6[field::DST_OFFSET..].copy_from_slice(&dst.0);
-        let mut packet = ipv6.to_vec();
-        packet.extend_from_slice(b"0123456789abcdefghij"); // 20-byte UDP payload
+        let dst = Ipv6Addr(final_dst);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst, 0x1234, 1, b"test", &mut packet);
+        let ipv6 = &packet[..n];
 
-        let result = gw.mesh_to_mesh(&packet);
-        assert!(result.is_some());
-        let schc = result.unwrap();
-        let mut decompressed = vec![0u8; 512];
-        let n = lichen_schc::codec::decompress(&schc[1..], &mut decompressed)
-            .expect("decompress should succeed");
-        decompressed.truncate(n);
+        let result = gw
+            .mesh_to_mesh(ipv6)
+            .expect("mesh_to_mesh multi-hop should succeed");
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+        assert_eq!(result[1], 255, "uncompressed rule");
 
-        // After SRH insertion: NH = 43 (Routing Header)
-        assert_eq!(decompressed[6], 43, "NH should be Routing Header (43)");
-        // Destination address should now be the first hop (child)
-        assert_eq!(
-            &decompressed[field::DST_OFFSET..IPV6_HEADER_LEN],
-            &child.0,
-            "DST addr should be first hop after SRH insertion"
-        );
-        // Hdr Ext Len = (8 + 1*16)/8 - 1 = 2
-        assert_eq!(decompressed[41], 2, "Hdr Ext Len for 24-byte routing header");
-        // SRH starts at offset 40
-        // [40] = next header after routing (should be original NH = 17)
-        assert_eq!(decompressed[40], 17, "NH after SRH should be original UDP");
-        // [41] = Hdr Ext Len
-        assert_eq!(decompressed[41], 2);
-        // [42] = routing type = 3 (SRH, RFC 6554)
-        assert_eq!(decompressed[42], 3, "routing type must be 3");
-        // [43] = segments_left = 1
-        assert_eq!(decompressed[43], 1, "segments_left should be 1 (one hop to go)");
-        // [48..64] = address[0] = final destination
-        assert_eq!(
-            &decompressed[48..64],
-            &dst.0,
-            "SRH address[0] should be final destination"
-        );
-        // The original UDP payload should follow after the SRH
-        let srh_len: usize = 8 + 16; // 8-byte fixed + 1*16 address
-        assert_eq!(
-            &decompressed[40 + srh_len..],
-            b"0123456789abcdefghij",
-            "original UDP payload should follow SRH"
-        );
+        let mut decomp_buf = [0u8; 512];
+        let decomp_len = decompress(&result[1..], &mut decomp_buf).expect("decompress");
+        let recovered = &decomp_buf[..decomp_len];
+
+        assert_eq!(recovered[6], 43, "NH = Routing");
+        assert_eq!(&recovered[24..40], &hop1, "dst = first hop");
+
+        let payload_len = u16::from_be_bytes([recovered[4], recovered[5]]) as usize;
+        assert_eq!(payload_len, 44, "payload_len = 12 ICMP + 32 ext hdr");
+
+        assert_eq!(recovered[40], 58, "transport NH = ICMPv6");
+        assert_eq!(recovered[41], 4, "HdrExtLen = 4 for routing_len=40");
+
+        assert_eq!(recovered[42], 3, "Routing Type = 3");
+        assert_eq!(recovered[43], 2, "Segments Left = 2");
+        assert_eq!(&recovered[48..64], &hop2, "SRH addr[0] = hop2");
+        assert_eq!(&recovered[64..80], &final_dst, "SRH addr[1] = final_dst");
+
+        assert_eq!(recovered[80], 128, "ICMPv6 type = Echo Request");
+        assert_eq!(&recovered[88..92], b"test", "payload intact");
     }
 
     #[test]
-    fn blackhole_prevention_route_one_hop_non_direct() {
-        // A route containing exactly one hop that is NOT the destination indicates
-        // a data-plane inconsistency (should not happen in practice, but defensive).
+    fn mesh_to_mesh_inserts_srh_and_regcompresses() {
         let mut gw = test_gateway();
-        let child = ll(2);
-        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]);
 
-        // Add a bogus route: path = [child] but target == dst (not child). The
-        // route path does NOT end with the target — but mesh_to_mesh doesn't
-        // validate that (it trusts the routing table). Just verify it doesn't
-        // crash and returns Some.
-        let path = [child.0];
-        assert!(gw.add_test_route(dst.0, &path));
+        let next_hop = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02];
+        let final_dst = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x03];
+        let path = [next_hop, final_dst];
+        gw.rpl_node.add_test_route(final_dst, &path);
 
         let src = ll(1);
-        let mut packet = [0u8; 48];
-        let n = icmpv6::echo_request(&src, &dst, 3, 1, b"data", &mut packet);
-        let packet = &packet[..n];
+        let dst_addr = Ipv6Addr(final_dst);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst_addr, 0x1234, 1, b"test", &mut packet);
+        let ipv6_packet = &packet[..n];
+        assert_eq!(
+            ipv6_packet[6], 58,
+            "original NH = ICMPv6"
+        );
 
-        let result = gw.mesh_to_mesh(packet);
-        assert!(result.is_some(), "should forward via single-hop route");
+        let result = gw
+            .mesh_to_mesh(ipv6_packet)
+            .expect("mesh_to_mesh should succeed");
+
+        assert_eq!(result[0], L2_DISPATCH_SCHC);
+        assert_eq!(result[1], 255, "uncompressed rule for NH=43");
+
+        let mut decomp_buf = [0u8; 512];
+        let decomp_len =
+            decompress(&result[1..], &mut decomp_buf).expect("decompress should work");
+        let recovered = &decomp_buf[..decomp_len];
+
+        assert_eq!(recovered[6], 43, "NH should be Routing");
+        assert_eq!(&recovered[24..40], &next_hop, "dst = first hop");
+
+        let payload_len = u16::from_be_bytes([recovered[4], recovered[5]]) as usize;
+        assert_eq!(payload_len, 36, "payload_len = 12 ICMP + 24 ext hdr");
+
+        assert_eq!(recovered[40], 58, "transport NH = ICMPv6");
+        let hdr_ext_len = recovered[41];
+        assert_eq!(hdr_ext_len, 2, "HdrExtLen = 24/8 - 1");
+
+        assert_eq!(recovered[42], 3, "Routing Type = 3");
+        assert_eq!(recovered[43], 1, "Segments Left = 1");
+        assert_eq!(
+            &recovered[44..48],
+            &[0, 0, 0, 0],
+            "CmprI/CmprE/reserved"
+        );
+        assert_eq!(&recovered[48..64], &final_dst, "SRH address = final_dst");
+
+        assert_eq!(recovered[64], 128, "ICMPv6 type = Echo Request");
+        assert_eq!(&recovered[72..76], b"test", "payload intact");
     }
 }

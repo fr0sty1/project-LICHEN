@@ -3,7 +3,7 @@
   "title": "SCHC: OSCORE rules 5/6 use wrong address compression format",
   "description": "File: lichen/subsys/lichen/schc/schc.c\nLines: 781-794 (compress) and 959-976 (decompress)\n\nRule 5 (SCHC_RULE_LINK_LOCAL_OSCORE) is designed for link-local OSCORE traffic\nbut uses the wrong address compression format.\n\nIn compress_coap(), the address format is selected by:\n```c\nif (rule_id == SCHC_RULE_LINK_LOCAL_COAP) {\n    // Send only IID (64 bits)\n} else {\n    // Send full 128-bit addresses\n}\n```\n\nSCHC_RULE_LINK_LOCAL_COAP is 0, but rule 5 is SCHC_RULE_LINK_LOCAL_OSCORE.\nRule 5 validates addresses as link-local but compresses them as global (full 128 bits).\n\nImpact: Rule 5 wastes 8 bytes per packet (128 bits each for src/dst instead of 64 bits).\nThe compression/decompression are consistent so no data corruption occurs.\n\nFix: Update conditions to include OSCORE variants:\n```c\nif (rule_id == SCHC_RULE_LINK_LOCAL_COAP || \n    rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {\n    // Send only IID (64 bits)\n} else {\n    // Send full 128-bit addresses\n}\n```\n\nSame fix needed in decompress_coap() at line 959 and for min_residue calculation at line 944.",
   "notes": "Fixed with commit d524b6804: updated if-conditions in compress_coap (validation+addr), decompress_coap (min_residue+reconstruct) for LINK_LOCAL_OSCORE. Matches bug description. Rust side has parallel bug but out of scope for this bead.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

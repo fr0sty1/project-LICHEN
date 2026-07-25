@@ -144,6 +144,17 @@ def _compute_th(th_input: bytes) -> bytes:
     return sha256(th_input).digest()
 
 
+def _cose_key(pubkey: bytes) -> dict:
+    """Encode Ed25519 public key as a COSE_Key CBOR map matching Rust encode_credential.
+
+    Returns a dict so that cbor2.dumps(_cose_key(...)) produces the correct
+    COSE_Key CBOR encoding: {1: 1, -1: 1, -2: pubkey, -3: null}
+    This is the wire-identical encoding produced by Rust's
+    encode_credential() in lichen-oscore/src/edhoc.rs.
+    """
+    return {1: 1, -1: 1, -2: pubkey, -3: None}
+
+
 def _ed25519_to_x25519_private(ed_seed: bytes) -> bytes:
     """Convert Ed25519 seed to X25519 private key."""
     # Create full Ed25519 secret key (seed + public key)
@@ -404,7 +415,7 @@ class EdhocInitiator:
             signature_2 = _validate_bytes(pt2_items[1], "Signature_2", ED25519_SIG_LEN)
             if id_cred_r != peer_pubkey:
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
-            cred_r = peer_pubkey
+            cred_r = _cose_key(peer_pubkey)
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
@@ -425,13 +436,13 @@ class EdhocInitiator:
             id_cred_i = _validate_bytes(
                 self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
             )
-            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(id_cred_i)
+            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(_cose_key(self.identity.pubkey))
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
             m_3 = cbor2.dumps([
                 "Signature1",
                 cbor2.dumps(id_cred_i),
                 self._th_3,
-                cbor2.dumps(id_cred_i),
+                cbor2.dumps(_cose_key(self.identity.pubkey)),
                 mac_3,
             ])
             signature_3 = SigningKey(self.identity.seed).sign(m_3).signature
@@ -600,7 +611,7 @@ class EdhocResponder:
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
             self._prk_3e2m = self._prk_2e
             id_cred_r = self.identity.pubkey
-            cred_r = self.identity.pubkey
+            cred_r = _cose_key(self.identity.pubkey)
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
@@ -665,13 +676,13 @@ class EdhocResponder:
             if id_cred_i != peer_pubkey:
                 raise ValueError("ID_CRED_I does not match the authenticated peer")
             self._prk_4e3m = self._prk_3e2m
-            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_pubkey)
+            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(_cose_key(peer_pubkey))
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
             m_3 = cbor2.dumps([
                 "Signature1",
                 cbor2.dumps(id_cred_i),
                 self._th_3,
-                cbor2.dumps(peer_pubkey),
+                cbor2.dumps(_cose_key(peer_pubkey)),
                 mac_3,
             ])
             Ed25519PublicKey.from_public_bytes(peer_pubkey).verify(signature_3, m_3)

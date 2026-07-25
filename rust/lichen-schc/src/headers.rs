@@ -144,8 +144,12 @@ fn is_ula(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] & 0xfe) == 0xfc
 }
 
+fn is_yggdrasil(addr: &[u8]) -> bool {
+    addr.len() == 16 && addr[0] == 0x02
+}
+
 fn is_routable(addr: &[u8]) -> bool {
-    is_link_local(addr) || is_ula(addr) || is_global(addr)
+    is_link_local(addr) || is_yggdrasil(addr) || is_ula(addr) || is_global(addr)
 }
 
 fn addr_to_u128(addr: &[u8]) -> u128 {
@@ -467,8 +471,7 @@ fn build_coap_udp(
         udp_len,
         NEXT_HEADER_UDP,
         hop_limit,
-        traffic_class,
-        flow_label,
+        (traffic_class, flow_label),
         &src,
         &dst,
     );
@@ -668,8 +671,7 @@ impl PacketProfile for Icmpv6EchoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
@@ -842,8 +844,7 @@ impl PacketProfile for RplDioProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
@@ -994,8 +995,7 @@ impl PacketProfile for RplDaoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );

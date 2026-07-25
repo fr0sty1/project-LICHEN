@@ -2,15 +2,17 @@
   "id": "lora_ipv6_mesh-mkk4",
   "title": "Phase 8: SOS CoAP resource (/sos)",
   "description": "Add /sos to the Python node. PUT triggers an SOS beacon (repeats every 30 s, pre-empting normal traffic). DELETE cancels. Observable — all reachable nodes receive a notification and can relay/escalate. Exit criterion: SOS priority handling works end-to-end in the simulator.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "feature",
-  "assignee": null,
+  "assignee": "AI Agent",
   "owner": "mark.frost@gmail.com",
   "created_at": "2026-06-25T04:47:41Z",
   "created_by": "Mark Frost",
-  "updated_at": "2026-07-24T23:28:09.098544134Z",
+  "updated_at": "2026-07-24T21:41:21.921335914Z",
   "started_at": "2026-07-24T16:13:56.772401216Z",
-  "closed_at": "2026-07-24T23:28:09.098544134Z",
-  "close_reason": "Already fixed"
+  "closed_at": "2026-06-25T04:47:41Z",
+  "close_reason": "SosResource with activate/cancel/retrigger + PUT/DELETE/observe; 14 tests passing",
+  "lease_expires_at": "2026-07-24T21:46:21.921335914Z",
+  "heartbeat_at": "2026-07-24T21:41:21.921335914Z"
 }

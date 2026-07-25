@@ -2,15 +2,12 @@
   "id": "project-LICHEN-md4y",
   "title": "[kimi-review] 1a81b18: [SEVERITY: low] The issue was already closed on 2026-07-13; ",
   "description": "Commit: 1a81b185b\nMessage: fix(schc): improve _abs_window for retransmit/reorder\n\nFinding: [SEVERITY: low] The issue was already closed on 2026-07-13; this commit rewrites history by re-closing it, changing the assignee from \"Mark Atwood\" to \"AI Agent\", and replacing the original close_reason. This erases attribution/audit trail in the tracker metadata.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T21:29:29.953175736Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T22:30:57.537918032Z",
-  "started_at": "2026-07-22T21:31:01.701139099Z",
-  "closed_at": "2026-07-24T22:30:57.537918032Z",
-  "close_reason": "Verified incorrect"
+  "updated_at": "2026-07-24T22:22:52.273924098Z",
+  "started_at": "2026-07-22T21:31:01.701139099Z"
 }

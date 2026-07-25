@@ -139,6 +139,13 @@ Dynamic rule negotiation is NOT supported in this profile.
 
 ## 4. Compression Rules
 
+SCHC rule matching follows the procedure defined in RFC 8724, Section 7.1:
+rules are evaluated in order, and the first rule whose field descriptors all
+match the packet header fields is selected. Rule IDs in this profile are
+ordered from most specific (Rule 0, link-local CoAP) to least specific
+(Rule 255, uncompressed fallback), consistent with RFC 8724's requirement that
+more-specific rules precede less-specific rules.
+
 ### 4.1. Rule ID Format
 
 Rule IDs are 8 bits (1 byte):

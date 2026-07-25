@@ -3,7 +3,7 @@
   "title": "Clock skew causes incorrect duplicate RREQ suppression",
   "description": "File: python/src/lichen/loadng/discovery.py\nLines: 190-198\n\nThe `_is_suppressed` method assumes monotonically increasing timestamps:\n```python\ndef _is_suppressed(self, rreq: RREQ, now: int) -\u003e bool:\n    ...\n    ts = self._seen.get(self._rreq_key(rreq))\n    return ts is not None and now - ts \u003c self.suppress_window_ms\n```\n\nProblem: If the clock goes backwards (reboot, NTP adjustment, or caller error where `now \u003c ts`), the subtraction produces a negative value. Since `-5 \u003c 10000` is True, the RREQ would be incorrectly suppressed.\n\nExample:\n- RREQ seen at ts=10000\n- Clock adjusted, now=5000\n- Check: `5000 - 10000 = -5000`, `-5000 \u003c 10000` is True\n- RREQ incorrectly suppressed even though the future timestamp should be invalid\n\nFix: Add a guard for clock skew:\n```python\ndef _is_suppressed(self, rreq: RREQ, now: int) -\u003e bool:\n    ...\n    ts = self._seen.get(self._rreq_key(rreq))\n    if ts is None:\n        return False\n    elapsed = now - ts\n    # Clock went backwards or timestamp is from the future - don't suppress\n    if elapsed \u003c 0:\n        return False\n    return elapsed \u003c self.suppress_window_ms\n```",
   "notes": "Commit: 864ac83a6",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

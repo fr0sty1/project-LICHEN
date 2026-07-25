@@ -3,7 +3,7 @@
   "title": "SLIP transport: is_ready returns false after init without UART",
   "description": "File: lichen/subsys/lichen/transport/slip_transport.c\nLines: 591-596, 627-638\n\nslip_transport_is_ready() returns false if uart_dev is NULL:\n\n    bool slip_transport_is_ready(void)\n    {\n        struct slip_transport_ctx *ctx = \u0026s_ctx;\n        return ctx-\u003einitialized \u0026\u0026 ctx-\u003euart_dev != NULL;\n    }\n\nHowever, slip_transport_init() succeeds (returns 0) even when no UART device is available (lines 635-638):\n\n    } else {\n        LOG_WRN(\"SLIP transport: no UART device available\");\n        ctx-\u003euart_dev = NULL;\n    }\n    ...\n    ctx-\u003einitialized = true;\n    return 0;  // Success!\n\nThis creates an inconsistency: init succeeds, but is_ready returns false. Callers might:\n1. Call init(), see success (0)\n2. Call is_ready(), see false\n3. Be confused about the transport state\n\nFix: Either fail init when no UART device is available, or have is_ready() return true when initialized (even without UART), or document this behavior.",
   "notes": "Commit: e72564209 (is_ready now matches init success, KISS pattern, and header documentation; UART optional for tests)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

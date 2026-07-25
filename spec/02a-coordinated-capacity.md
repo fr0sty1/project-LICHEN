@@ -201,6 +201,102 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 
 (The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
+## 2a.4. Time Synchronization
+
+All nodes synchronize their TDMA slot offset to the DODAG root. The root advertises its wall-clock epoch and SFN in each TDMA_BEACON (SCHC Rule 0x08, Section 2a.2). Synchronization uses layered precision sources with distinct stratum values.
+
+### 2a.4.1. Time Stratum and Epoch Floor
+
+Nodes MUST accept time from providers at equal or better (lower-numbered) stratum. The effective epoch floor is `max(firmware_build_epoch, board_provision_epoch)` per `docs/firmware-time-provider.md`. SFN/epoch updates derived from timestamps below the effective epoch floor MUST be rejected. A node with `wall_clock_valid=true` and stratum ≤ current acts as a time-provider for its children.
+
+| Stratum | Source | Precision | Notes |
+|---------|--------|-----------|-------|
+| 0 | GNSS PPS | <100 us | Best available; reduces guard to 10 ms |
+| 1 | GNSS time fix | <1 s | May require cold-start rejection (below epoch floor) |
+| 2 | NTP/SNTP | 1-100 ms | Requires epoch floor validation |
+| 3 | Mesh (DIO cascade) | superframe-aligned | Adopts parent stratum + 1 (capped at 15) |
+| 4 | Manual/local-client | variable | Lab/simulator only |
+| 15 | Uninitialized | N/A | Does not provide time to others |
+
+### 2a.4.2. Drift Compensation
+
+Nodes compute linear drift correction from beacon arrival time against the expected superframe boundary:
+
+```
+delta_ms = local_rx_ms - expected_beacon_ms
+drift_ppm = (delta_ms * 1000000) / beacon_interval_ms
+correction_ms = drift_ppm * future_delta_ms / 1000000
+adjusted_time = local_time + correction_ms
+```
+
+All implementations MUST apply drift compensation before slot calculation. Threshold >5000 ppm (cumulative) triggers desync (DRIFTING state, Section 2a.5). See `test/vectors/ccp_tdma.json` drift_compensation vector for the canonical oracle.
+
+## 2a.5. Desync Recovery State Machine
+
+This section defines the normative FSM for TDMA synchronization state, multi-root beacon conflict resolution, and recovery transitions. The FSM is referenced by SFN wrap semantics (Section 2a.2), RPL DODAG version changes (05-routing.md), and time-provider stratum updates (Section 2a.4). All implementations MUST match test vectors in `test/vectors/ccp_tdma.json` and `ccp16-desync.json` exactly.
+
+### 2a.5.1. State Definitions
+
+| State | Description |
+|-------|-------------|
+| **UNJOINED** | CH0 listen only, no TDMA TX. Initial state on power-on or factory reset. |
+| **ACQUIRING** | Receiving valid beacons. Adopts SFN/time, sends DAO with slot request. |
+| **SYNCED** | DAO-ACK received. TX only in assigned slot (enforced by `tdma_tx_allowed()`). Periodic beacon listen. |
+| **DRIFTING** | Lost synchronization. Extended CH0 listen, suppress TDMA TX. |
+| **RECOVERING** | Re-acquired beacons, validating consistency. 3 consecutive valid beacons required to re-sync. |
+
+### 2a.5.2. Transition Table
+
+| Current State | Trigger | Timeout | Action | Next State |
+|---------------|---------|---------|--------|------------|
+| UNJOINED | Valid beacon (stratum ≤ current OR higher root priority) with `ts >= epoch_floor` | BEACON_TIMEOUT = 3×superframe | Adopt SFN, adopt time if stratum is better, send DAO | ACQUIRING |
+| UNJOINED | Beacon timeout without valid candidate | — | Retry CH0 scan, widen channel list | UNJOINED |
+| ACQUIRING | DAO-ACK received, slot confirmed | — | Load key pair, start slot timer, arm `tdma_tx_allowed()` | SYNCED |
+| ACQUIRING | Beacon timeout (no DAO-ACK within 3 superframes) | BEACON_TIMEOUT = 3×superframe | Resend DIS, reset slot request | ACQUIRING |
+| ACQUIRING | Higher-priority root detected (better stratum or higher root ID precedence) | — | Abandon current ACQUIRING, flush pending DAO, switch to new root's SFN | ACQUIRING |
+| SYNCED | Beacon rx in assigned slot | superframe_timer | TX in slot, update RPL metrics | SYNCED |
+| SYNCED | >3 consecutive missed beacons | BEACON_TIMEOUT | Reset SFN, clear stale RPL state, suppress TDMA TX | DRIFTING |
+| SYNCED | RPL DODAG version increment from current root | — | Reset SFN relative to new DODAG version (see 2a.5.3), suppress TDMA TX | DRIFTING |
+| SYNCED | Drift threshold exceeded (>5000 ppm cumulative) | — | Mark local time invalid, flush slot timer | DRIFTING |
+| SYNCED | Multi-root conflict: beacon from different root with higher precedence | — | Abandon current root, adopt new root's SFN and epoch, send DAO | ACQUIRING |
+| DRIFTING | Valid beacon (ts >= epoch_floor, same root) | REJOIN_TIMEOUT = 10×superframe | Start extended listen timer, begin validation count | RECOVERING |
+| DRIFTING | New DODAG version from same or different root | REJOIN_TIMEOUT = 10×superframe | Reset SFN, clear stale TDMA state, evaluate stratum | ACQUIRING |
+| DRIFTING | Rejoin timeout with no valid beacon | — | Fall back to CSMA-only on CH0, periodic DIS | DRIFTING |
+| RECOVERING | 3 consecutive valid beacons (SFN advancing monotonically, ts valid, slot consistent) | — | Resume normal TDMA slot usage, clear drift accumulator | SYNCED |
+| RECOVERING | Any missed beacon before 3-count completes | — | Restart validation count | RECOVERING |
+| RECOVERING | RPL version change (different DODAG version in beacon) | — | Reset SFN, reset validation count, transition | ACQUIRING |
+| RECOVERING | Beacon timeout during validation | REJOIN_TIMEOUT | Suppress TDMA TX, resume CSMA fallback | DRIFTING |
+
+### 2a.5.3. RPL DODAG Version Increment and SFN Reset
+
+When the RPL DODAG version increments (detected via DIO `DODAGVersion`), the node MUST:
+
+1. Flush the current SFN value.
+2. The new SFN base is derived from the beacon's `epoch` field and the new DODAG version as `SFN_base = epoch XOR (DODAGVersion << 24)`. This ensures that nodes joining the updated DODAG compute a consistent slot hash even when the time-provider has not changed stratum.
+3. Re-derive `Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots` using the new epoch. All slot timers are restarted from the recovery timeout.
+4. The time-provider stratum is re-evaluated: if the new root advertises stratum ≤ current local stratum, adopt the new root's time as the canonical source. If the new root advertises a strictly worse (higher-numbered) stratum, retain the local time but re-anchor SFN to the new epoch for TDMA slotting.
+5. Suppress TDMA TX until re-synced (DRIFTING→ACQUIRING→SYNCED chain).
+
+This interaction guarantees that a DODAG version change does not leave nodes stuck in stale slots, and that nodes rejoining a re-rooted DODAG converge on the same epoch within one REJOIN_TIMEOUT window.
+
+### 2a.5.4. Multi-Root Beacon Conflict
+
+When a node receives beacons from two or more DODAG roots (distinct DODAG IDs), the following precedence rules resolve the conflict deterministically:
+
+1. **Primary key: time-provider stratum.** Lower stratum number wins. GNSS-locked root (stratum 0) always outranks mesh-derived time.
+2. **Stratum tiebreaker: root ID precedence.** When stratum is equal, compare DODAG ID bytes in lexicographic order (RFC 6550 Section 8.1.1). Lower DODAG ID wins.
+3. **Transition rule.** If the node is ACQUIRING or SYNCED to root A and detects root B with higher precedence, the node MUST abandon root A (flush pending DAO, clear slot timer) and begin ACQUIRING to root B. If the node is SYNCED to a higher-precedence root A and detects lower-precedence root B, the node MUST ignore B's beacons for slot purposes while recording B's presence in neighbor diagnostics.
+4. **Oscillation guard.** A node that switches roots more than twice within any 60-second window MUST enter DRIFTING state, set `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT` * 2, and suppress all TDMA TX until the guard window expires. This prevents oscillation between two roots with near-identical stratum and prevents disruption of the active slot schedule. During the guard window, the node uses CSMA-only on CH0 and monitors both roots for stability.
+5. **Diagnostics.** Root conflict events (precedence changes, oscillation triggers) are recorded as diagnostics that can be queried via CoAP `/status` resources.
+
+### 2a.5.5. SFN Wrap-Around Interaction
+
+When SFN wraps from 0xFFFFFFFF to 0x00000000, the unsigned delta computation (Section 2a.2) produces correct advancement. The FSM interprets a single 0xFFFFFFFF→0x00000000 transition as one superframe advance — the SYNCED state is maintained. However, a delta larger than `num_slots × 256` (indicating possible missed wraps or clock skew) triggers DRIFTING and `wall_clock_valid=false` re-evaluation through the time-provider.
+
+Test vectors in `ccp16.json` and `ccp_tdma.json` MUST cover SFN wrap, multi-root FSM transitions, and oscillation guard expiry as independent oracles.
+
+(Codereview pass 3 closure: Section 2a.5 FSM table is normative for all multi-root, desync recovery, and RPL version interactions. All SFN resets and stratum updates follow the procedure in 2a.5.3.)
+
 ## Regional Channel Plans and CH0 Rules
 
 - Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.

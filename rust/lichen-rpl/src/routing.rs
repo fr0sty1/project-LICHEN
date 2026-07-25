@@ -1311,10 +1311,18 @@ impl Freshness {
     }
 
     pub fn is_reclaimable(&self, now_seconds: u64) -> bool {
-        self.active_until
-            .map_or(true, |deadline| deadline <= now_seconds)
+        self.active_until.map_or(true, |deadline| deadline <= now_seconds)
             && self.retain_until <= now_seconds
     }
+}
+
+/// Timing parameters for DAO processing, bundling wall-clock and lifetime configuration.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug)]
+pub struct DaoTiming {
+    pub now_seconds: u64,
+    pub lifetime_unit_seconds: u64,
+    pub max_deadline_seconds: u64,
 }
 
 /// Packed candidate parent from a Transit Info option after parsing.
@@ -1673,9 +1681,9 @@ impl DaoManager {
         found_origin
     }
 
-    fn has_exact_origin_target(dao: &Dao, dao_bytes: &[u8], origin: [u8; 16]) -> bool {
+    fn has_exact_origin_target(_dao: &Dao, dao_bytes: &[u8], origin: [u8; 16]) -> bool {
         let mut target = None;
-        for option in OptionIter::new(dao.options_tail(dao_bytes)) {
+        for option in OptionIter::new(Dao::options_tail(dao_bytes)) {
             let Ok(option) = option else {
                 return false;
             };
@@ -2283,7 +2291,7 @@ impl DaoManager {
         if dao.flags != 0 || dao_bytes.get(2).copied()? != 0 {
             return None;
         }
-        let options = dao.options_tail(dao_bytes);
+        let options = Dao::options_tail(dao_bytes);
         let mut updates = [None; MAX_DAO_UPDATES];
         let mut update_count = 0;
         let mut targets = [None; MAX_DAO_UPDATES];
@@ -2412,13 +2420,12 @@ impl DaoManager {
                 *update_count += 1;
             }
         }
-        self.last_dao_ts = self.last_dao_ts.wrapping_add(1);
+        Some(())
     }
 
     /// Walk target → parent → … → root and return the reversed downward path.
     ///
     /// Returns `None` if the chain is incomplete or contains a loop.
-    #[cfg(test)]
     fn assemble_path(
         root: [u8; 16],
         parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
@@ -2518,6 +2525,111 @@ impl DaoManager {
         Ok(true)
     }
 
+    fn contains_cycle(parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>) -> bool {
+        let mut visited = HashSet::new();
+        let mut in_stack = HashSet::new();
+        let mut stack = Vec::new();
+        for &node in parent_map.keys() {
+            if visited.contains(&node) {
+                continue;
+            }
+            stack.push(node);
+            while let Some(current) = stack.pop() {
+                if in_stack.contains(&current) {
+                    // popped from processing stack — done
+                    in_stack.remove(&current);
+                    continue;
+                }
+                if visited.contains(&current) {
+                    continue;
+                }
+                visited.insert(current);
+                in_stack.insert(current);
+                stack.push(current); // will pop again as completed marker
+                if let Some(parents) = parent_map.get(&current) {
+                    for parent in parents.iter().rev() {
+                        if in_stack.contains(parent) {
+                            return true;
+                        }
+                        if !visited.contains(parent) {
+                            stack.push(*parent);
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn rebuilt_routes(
+        root: [u8; 16],
+        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
+        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
+        routing_table: &RoutingTable,
+        changed: &HashSet<[u8; 16]>,
+    ) -> Option<RoutingTable> {
+        let mut routes = RoutingTable::new();
+        for target in routing_table.routes.keys() {
+            if target.prefix_len() < 128 {
+                if let Some(&egress) = routing_table.rpl_managed_prefixes.get(target) {
+                    let host_target = RouteTarget::host(egress);
+                    let egress_route = routes.routes.get(&host_target);
+                    if egress_route.is_some_and(|e| e.is_usable()) {
+                        continue;
+                    }
+                    if let Some(path) = routing_table.routes.get(target) {
+                        if path.state == RouteEntryState::Expired {
+                            routes.routes.insert(*target, path.clone());
+                            routes.prefix_route_count += 1;
+                        }
+                        continue;
+                    }
+                }
+                if let Some(entry) = routing_table.routes.get(target) {
+                    routes.routes.insert(*target, entry.clone());
+                    if target.prefix_len() < 128 {
+                        routes.prefix_route_count += 1;
+                    }
+                }
+                continue;
+            }
+            let target_addr = *target.prefix();
+            if !parent_map.contains_key(&target_addr) {
+                continue;
+            }
+            let path = Self::assemble_path(root, parent_map, candidate_map, target_addr)?;
+            if !routes.add_route(target_addr, &path) {
+                return None;
+            }
+        }
+        for target in parent_map.keys() {
+            if routes.routes.contains_key(&RouteTarget::host(*target)) {
+                continue;
+            }
+            let path = Self::assemble_path(root, parent_map, candidate_map, *target)?;
+            if !routes.add_route(*target, &path) {
+                return None;
+            }
+        }
+        if !changed.is_empty() {
+            for target in changed {
+                if !parent_map.contains_key(target) {
+                    continue;
+                }
+                let path = Self::assemble_path(root, parent_map, candidate_map, *target)?;
+                if !routes.routes.contains_key(&RouteTarget::host(*target)) {
+                    if !routes.add_route(*target, &path) {
+                        return None;
+                    }
+                }
+            }
+        }
+        routes.rpl_managed_hosts = routing_table.rpl_managed_hosts.clone();
+        routes.rpl_managed_prefixes = routing_table.rpl_managed_prefixes.clone();
+        routes.unavailable_managed_prefixes = routing_table.unavailable_managed_prefixes.clone();
+        Some(routes)
+    }
+
     fn path_control_rank(path_control: u8) -> Option<u8> {
         let active_mask = u8::MAX << (7 - PATH_CONTROL_SIZE);
         let masked = path_control & active_mask;
@@ -2592,7 +2704,7 @@ fn decode_high_water(data: &[u8]) -> Option<HighWaterMap> {
 mod tests {
     use super::*;
     use lichen_hal::storage::mem::MemStorage;
-    use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+    use lichen_link::{identity::Identity, keys::Seed};
     use std::{vec, vec::Vec};
 
     fn ll(iid: u8) -> [u8; 16] {
@@ -2665,7 +2777,7 @@ mod tests {
         let mut sender = DaoManager::new(origin, 0, dodag_id());
         let unsigned = sender.build_dao(parent);
         let digest = dao_origin_digest(origin, dodag_id(), sequence, &unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+        let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
         let mut wire = unsigned;
         let offset = wire.len();
         wire.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
@@ -2687,7 +2799,7 @@ mod tests {
             .to_vec();
         unsigned[44] = path_sequence;
         let digest = dao_origin_digest(origin, dodag_id(), sequence, &unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+        let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
         let offset = unsigned.len();
         unsigned.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
         crate::message::DaoOriginSignature::write_to(sequence, &signature, &mut unsigned[offset..])
@@ -2718,7 +2830,7 @@ mod tests {
             unsigned.extend_from_slice(parent);
         }
         let digest = dao_origin_digest(origin, dodag_id(), origin_sequence, &unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+        let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
         let offset = unsigned.len();
         unsigned.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
         crate::message::DaoOriginSignature::write_to(
@@ -2767,7 +2879,7 @@ mod tests {
         unsigned: &[u8],
     ) -> Vec<u8> {
         let digest = dao_origin_digest(origin, dodag_id(), origin_sequence, unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+        let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
         let mut wire = unsigned.to_vec();
         let offset = wire.len();
         wire.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
@@ -3168,7 +3280,7 @@ mod tests {
         assert_eq!(dao.dodag_id, Some(dodag_id()));
 
         // Parse options
-        let options_data = dao.options_tail(&dao_bytes);
+        let options_data = Dao::options_tail(&dao_bytes);
         let mut found_target = false;
         let mut found_transit = false;
         for opt in OptionIter::new(options_data) {
@@ -3533,8 +3645,8 @@ mod tests {
     fn local_path_sequence_advances_per_generation_and_exact_copy_reuses_it() {
         let mut mgr = DaoManager::new(ll(2), 0, dodag_id());
         let path_sequence = |wire: &[u8]| {
-            let dao = Dao::from_bytes(wire).unwrap();
-            OptionIter::new(dao.options_tail(wire))
+            let _dao = Dao::from_bytes(wire).unwrap();
+            OptionIter::new(Dao::options_tail(wire))
                 .find_map(|option| {
                     let option = option.ok()?;
                     (option.opt_type == OPT_TRANSIT_INFO)
@@ -3565,7 +3677,7 @@ mod tests {
         let update = mgr.build_dao_with_lifetime(ll(1), 10);
         let (update_dao_sequence, update_path_sequence) = {
             let dao = Dao::from_bytes(&update).unwrap();
-            let transit = OptionIter::new(dao.options_tail(&update))
+            let transit = OptionIter::new(Dao::options_tail(&update))
                 .map(Result::unwrap)
                 .find(|option| option.opt_type == OPT_TRANSIT_INFO)
                 .map(|option| TransitInfo::from_bytes(option.data).unwrap())
@@ -3581,7 +3693,7 @@ mod tests {
 
         let exact = mgr.build_dao_copy_with_lifetime(ll(1), 10).unwrap();
         let exact_dao = Dao::from_bytes(&exact).unwrap();
-        let exact_transit = OptionIter::new(exact_dao.options_tail(&exact))
+        let exact_transit = OptionIter::new(Dao::options_tail(&exact))
             .map(Result::unwrap)
             .find(|option| option.opt_type == OPT_TRANSIT_INFO)
             .map(|option| TransitInfo::from_bytes(option.data).unwrap())
@@ -4476,7 +4588,7 @@ mod tests {
         let (first_wire, origin) = verified_dao(&identity, 1, ll(1));
         let sign = |unsigned: &[u8], sequence: u64| {
             let digest = dao_origin_digest(origin, dodag_id(), sequence, unsigned);
-            let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+            let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
             let mut wire = unsigned.to_vec();
             let offset = wire.len();
             wire.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
@@ -5162,7 +5274,7 @@ mod tests {
         let mut sender = DaoManager::new(other_prefix, 0, dodag_id());
         let unsigned = sender.build_dao(ll(1));
         let digest = dao_origin_digest(origin, dodag_id(), 2, &unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+        let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
         let mut changed = unsigned;
         let offset = changed.len();
         changed.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
@@ -5209,8 +5321,8 @@ mod tests {
         let (wire, origin) = verified_dao(&identity, 2, ll(1));
         let mut wrong_context = wire.clone();
         wrong_context[0] = 1;
-        let dao = Dao::from_bytes(&wrong_context).unwrap();
-        let option_offset = wrong_context.len() - dao.options_tail(&wrong_context).len();
+        let _dao = Dao::from_bytes(&wrong_context).unwrap();
+        let option_offset = wrong_context.len() - Dao::options_tail(&wrong_context).len();
         wrong_context[option_offset + 1] = u8::MAX;
         assert!(matches!(
             SignatureVerifiedDao::verify_signature(
@@ -5252,11 +5364,11 @@ mod tests {
 
         let envelope = SignedDaoEnvelope::from_bytes(&wire).unwrap();
         let mut non_128 = envelope.unsigned_bytes.to_vec();
-        let dao = Dao::from_bytes(&non_128).unwrap();
-        let target_offset = non_128.len() - dao.options_tail(&non_128).len();
+        let _dao = Dao::from_bytes(&non_128).unwrap();
+        let target_offset = non_128.len() - Dao::options_tail(&non_128).len();
         non_128[target_offset + 3] = 64;
         let digest = dao_origin_digest(origin, dodag_id(), 1, &non_128);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+        let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
         let offset = non_128.len();
         non_128.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
         crate::message::DaoOriginSignature::write_to(1, &signature, &mut non_128[offset..])
@@ -5291,7 +5403,7 @@ mod tests {
         let unsigned = sender.build_dao_with_lifetime(ll(1), 1);
         let sign = |unsigned: &[u8]| {
             let digest = dao_origin_digest(origin, dodag_id(), 1, unsigned);
-            let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
+            let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &digest);
             let mut wire = unsigned.to_vec();
             let offset = wire.len();
             wire.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);

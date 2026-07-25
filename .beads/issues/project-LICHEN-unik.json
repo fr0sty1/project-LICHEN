@@ -2,13 +2,11 @@
   "id": "project-LICHEN-unik",
   "title": "Dead Drop docs/UI notes",
   "description": "Update spec/12-apps.md and 11-lci.md for /deaddrop CoAP resource, rate limits, OSCORE, SenML payload format. Include UI notes for client apps.",
-  "labels": [
-    "defer-external"
-  ],
+  "labels": ["defer-external"],
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
-  "assignee": null,
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:58:47.324919204Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T15:00:18.789597537Z",

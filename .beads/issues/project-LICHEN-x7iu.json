@@ -3,7 +3,7 @@
   "title": "ReassemblyManager.receive may evict receiver mid-datagram on overflow",
   "description": "File: python/src/lichen/schc/reassembly.py:210-212\n\nReassemblyManager.receive() creates a new receiver for unknown keys, then evicts the oldest if capacity is exceeded:\n  receiver = FragmentReceiver(self.window_size)\n  self._contexts[key] = receiver\n  while len(self._contexts) \u003e self.max_contexts:\n      self._contexts.popitem(last=False)  # evict oldest\n\nThis eviction happens BEFORE the new fragment is processed. If a new sender appears when max_contexts receivers exist, the oldest in-progress datagram is silently discarded.\n\nWhile this is documented behavior (bounded memory), there's no indication to the caller that a datagram was aborted. The evicted receiver's sender would eventually timeout waiting for ACKs.\n\nMore critically, the eviction does not send a NACK to the evicted sender, so the sender has no immediate feedback that its datagram was dropped.\n\nConsider:\n1. Returning an indication of eviction in ReceiverResult\n2. Logging or metrics hook for monitoring\n3. Optional behavior to reject new senders instead of evicting\n\nCategory: PROTOCOL",
   "notes": "Commit: 86e10726a",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

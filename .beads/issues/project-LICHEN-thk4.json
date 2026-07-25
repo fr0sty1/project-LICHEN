@@ -3,7 +3,7 @@
   "title": "duty_cycle.py: ZeroDivisionError when limit_percent is zero or negative",
   "description": "File: python/src/lichen/sim/duty_cycle.py\nLines: 100-102, 116-117, 130-132, 189\n\nDutyCycleTracker methods divide by max_airtime which is computed as:\n```python\nmax_airtime = self._window_us * self._limit_ratio  # _limit_ratio = limit_percent / 100.0\n```\n\nWhen limit_percent is 0, max_airtime becomes 0, causing ZeroDivisionError in get_usage().\nNegative values would produce nonsensical results.\n\nAffected methods:\n- get_usage() - ZeroDivisionError on line 102\n- can_transmit() - comparison against 0 always returns False (not a crash, but wrong)\n- remaining_ms() - computes negative budget incorrectly\n- next_tx_available_ms() - may return -1 even for small transmissions\n\nFailure scenario:\n```python\ntracker = DutyCycleTracker(limit_percent=0.0)  # e.g., configured to disable TX\ntracker.record_tx(1000, 0)\ntracker.get_usage(1000)  # ZeroDivisionError\n```\n\nFix: Add validation in __init__:\n```python\nif limit_percent \u003c= 0:\n    raise ValueError(f\"limit_percent must be positive, got {limit_percent}\")\n```\n\nOr handle the zero case explicitly in methods that divide by max_airtime.",
   "notes": "Fixed via commit bf6b107c420cd958fce349fd1a7068059d0cdf7b: added limit_percent \u003e0 validation in DutyCycleTracker.__init__() + test case. Ruff passed, mypy env issues noted but core change verified.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

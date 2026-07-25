@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ay1z",
   "title": "P4/opinion: Table formatting in 2a.7.2 could use exact dB values from vectors instead of rounded",
   "description": "Minor polish on SNR table presentation. codereview pass 2. discovered-from:project-LICHEN-8gac",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
