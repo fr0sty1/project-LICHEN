@@ -6,12 +6,12 @@
   "status": "closed",
   "priority": 0,
   "issue_type": "task",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:30:21.097143178Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T03:04:03.333508582Z",
   "started_at": "2026-07-23T03:00:33.165085021Z",
   "closed_at": "2026-07-23T03:04:03.333508582Z",
-  "close_reason": "Updated trickle.rs and aligned C port to exactly match RFC 6206 §4.2 Trickle pseudocode (rules 1-6); cleaned all worker comments; reset guard now uses \u003e Imin; comments revised; tests unaffected"
+  "close_reason": "Updated trickle.rs and aligned C port to exactly match RFC 6206 §4.2 Trickle pseudocode (rules 1-6); cleaned all worker comments; reset guard now uses > Imin; comments revised; tests unaffected"
 }

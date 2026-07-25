@@ -6,7 +6,7 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:51:59.284086Z",
   "created_by": "Mark Atwood",

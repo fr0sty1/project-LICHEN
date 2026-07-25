@@ -2,18 +2,17 @@
   "id": "project-LICHEN-zfo6",
   "title": "codereview-pass-1-ccp16",
   "description": "Pass 1 correctness: no logic errors in vector definitions for load balancing per da2q. No findings.",
-  "labels": ["defer-external"],
+  "labels": [
+    "codereview"
+  ],
   "status": "closed",
   "priority": 3,
   "issue_type": "task",
-  "assignee": "AI Agent",
+  "assignee": null,
   "created_at": "2026-07-22T16:06:37.76049513Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T22:35:32.352978204Z",
   "started_at": "2026-07-22T22:35:32.352978204Z",
   "lease_expires_at": "2026-07-22T22:40:32.352978204Z",
-  "heartbeat_at": "2026-07-22T22:35:32.352978204Z",
-  "labels": [
-    "codereview"
-  ]
+  "heartbeat_at": "2026-07-22T22:35:32.352978204Z"
 }
