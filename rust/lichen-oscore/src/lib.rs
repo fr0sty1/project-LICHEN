@@ -1024,9 +1024,6 @@ impl Context {
             if !self.allow_no_piv_response {
                 return Err(OscoreError::InvalidParam);
             }
-            if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                return Err(OscoreError::InvalidParam);
-            }
             let request_seq =
                 OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
             if self.is_response_reuse(request_seq) {
