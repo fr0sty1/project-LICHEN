@@ -1221,7 +1221,7 @@ mod std_ext {
                     .iter()
                     .enumerate()
                     .filter(|(_, &b)| b)
-                    .fold(0, |acc, (i, _)| acc | (1u64 << (62 - i)));
+                    .fold(0, |acc, (i, _)| acc | (1u64 << (self.window_size - 1 - i)));
                 if self.window_full(abs_window) {
                     self.completed_windows.insert(abs_window);
                     self.current_window = abs_window + 1;
@@ -1250,7 +1250,7 @@ mod std_ext {
                 .iter()
                 .enumerate()
                 .filter(|(_, &b)| b)
-                .fold(0, |acc, (i, _)| acc | (1u64 << (62 - i)));
+                .fold(0, |acc, (i, _)| acc | (1u64 << (self.window_size - 1 - i)));
             let rule_id = self.rule_id.unwrap();
             let nack = Ack::new(rule_id, (self.all1_window % 2) as u8, bitmap, false);
 
