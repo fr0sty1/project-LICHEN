@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:49:38.748675Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:11:30.620360194Z",
+  "updated_at": "2026-07-25T00:46:34.23240485Z",
   "started_at": "2026-07-22T23:08:31.569504715Z",
   "closed_at": "2026-07-22T23:11:30.620360194Z",
   "close_reason": "Conflicts resolved by preserving NULL checks in schnorr48_sign_frame and best changes from both branches in coap_dtn.c kiss_transport.c and spec; tests passed; merge completed"
