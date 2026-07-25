@@ -2710,7 +2710,7 @@ mod tests {
     }
 
     #[test]
-    fn restored_context_rejects_response_without_piv() {
+    fn restored_context_rejects_protect_response() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
