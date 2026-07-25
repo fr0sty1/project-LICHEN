@@ -8,10 +8,8 @@
 
 #include <lichen/link_ctx.h>
 #include <lichen/link.h>
-#include <lichen_util.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
-#include <lichen/tx_queue.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -113,7 +111,6 @@ static int save_tuple(const struct lichen_link_ctx *ctx)
 	t.replay_counter = 0; /* TODO: integrate replay table snapshot if needed */
 	t.crc = tuple_crc(&t);
 	rc = nvs_write(&link_nvs_fs, LINK_TUPLE_NVS_ID, &t, sizeof(t));
-	secure_wipe(&t, sizeof(t));
 	return (rc == sizeof(t)) ? 0 : rc;
 }
 
@@ -125,11 +122,9 @@ static int restore_tuple(struct lichen_link_ctx *ctx)
 	struct link_persisted_tuple t;
 	rc = nvs_read(&link_nvs_fs, LINK_TUPLE_NVS_ID, &t, sizeof(t));
 	if (rc != sizeof(t)) {
-		secure_wipe(&t, sizeof(t));
 		return -ENOENT;
 	}
 	if (t.crc != tuple_crc(&t)) {
-		secure_wipe(&t, sizeof(t));
 		return -EBADMSG;
 	}
 	memcpy(ctx->eui64, t.eui64, sizeof(ctx->eui64));
@@ -140,7 +135,6 @@ static int restore_tuple(struct lichen_link_ctx *ctx)
 	ctx->has_key = true;
 	ctx->nonce_exhausted = t.nonce_exhausted;
 	/* replay counters restored via placeholder; full table in replay.c out of scope */
-	secure_wipe(&t, sizeof(t));
 	return 0;
 }
 #endif
@@ -187,8 +181,6 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 		return -EIO;
 	}
 #endif
-
-	tx_queue_init(&ctx->tx_queue);
 
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
@@ -285,7 +277,6 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 #ifdef CONFIG_NVS
 	(void)save_tuple(ctx); /* persist new key + reset tuple; ignore errors to not block boot */
 #endif
-	(void)seq_unlock(ctx);
 	return 0;
 }
 
@@ -592,27 +583,26 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #endif
 }
 
-int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)
+int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, const struct lichen_link_ctx *_Nonnull ctx)
 {
-	if (tdma == NULL || ctx == NULL) return -EINVAL;
-	uint8_t slot = lichen_tdma_compute_slot(ctx->eui64, (uint32_t)ctx->epoch, 8);
-	tdma->slot = slot;
-	tdma->n_slots = 8;
+	(void)ctx;
+	if (tdma == NULL) {
+		return -EINVAL;
+	}
 	tdma->superframe = 0;
-	tdma->slot_duration = LICHEN_TDMA_SLOT_MS;
+	tdma->slot = 0;
+	tdma->n_slots = 0;
+	tdma->slot_duration = 0;
 	tdma->synced = false;
 	return 0;
 }
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn)
 {
 	if (tdma == NULL) return -EINVAL;
-	if (slot_id == 0xff && ctx != NULL) {
-		slot_id = lichen_tdma_compute_slot(ctx->eui64, (uint32_t)ctx->epoch, n_slots ? n_slots : 8);
-	}
 	tdma->slot = slot_id;
 	tdma->n_slots = n_slots ? n_slots : 8;
 	tdma->superframe = sfn;
-	tdma->slot_duration = LICHEN_TDMA_SLOT_MS;
+	tdma->slot_duration = 250;
 	tdma->synced = true;
 	return 0;
 }
@@ -625,4 +615,26 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
 }
 
+uint32_t lichen_hash_32(const uint8_t *data, size_t len)
+{
+	uint32_t hash = 0x811c9dc5u;
+	for (size_t i = 0; i < len; i++) {
+		hash ^= (uint32_t)data[i];
+		hash = hash * 0x01000193u;
+	}
+	return hash;
+}
 
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
+{
+	if (num_slots == 0) num_slots = 8;
+	uint8_t buf[8];
+	memcpy(buf, eui64, 8);
+	uint32_t e = epoch;
+	for (size_t i = 0; i < 8; i++) {
+		buf[i] ^= (uint8_t)e;
+		e >>= 8;
+	}
+	uint32_t h = lichen_hash_32(buf, 8);
+	return (uint8_t)(h % num_slots);
+}
