@@ -2,18 +2,16 @@
   "id": "project-LICHEN-hyk3",
   "title": "[codereview-pass2] coap_status.c: cbor_put_map_header still receives potential int truncation",
   "description": "map_count calc uses U suffixes but some time_fields/dodag_fields calcs in same function use int expressions that trigger -Wconversion warnings seen in builds. The error code chunk should use consistent uint8_t everywhere. Tag: codereview",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T16:06:51.195283738Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T01:11:27.964164242Z",
+  "updated_at": "2026-07-25T01:11:39.299997324Z",
   "started_at": "2026-07-22T16:07:09.566507811Z",
-  "closed_at": "2026-07-22T16:08:18.15781892Z",
-  "close_reason": "uint8_t consistency restored, no truncation in map headers. Warnings cleared.",
-  "lease_expires_at": "2026-07-25T01:16:27.964164242Z",
-  "heartbeat_at": "2026-07-25T01:11:27.964164242Z",
+  "closed_at": "2026-07-25T01:11:39.299997324Z",
+  "close_reason": "Already fixed",
   "labels": [
     "codereview"
   ]
