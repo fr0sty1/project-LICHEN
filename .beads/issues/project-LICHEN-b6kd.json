@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:40:11.475033Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:31:50.070836856Z",
+  "updated_at": "2026-07-25T00:39:36.614911166Z",
   "started_at": "2026-07-22T23:26:27.23138019Z",
   "closed_at": "2026-07-22T23:31:50.070836856Z",
   "close_reason": "Fixed by returning total peer count from copy_peers (option 1); updated caller to cap loop bound with MIN to prevent buffer overrun. Eliminates TOCTOU and extra lock. Matches code style."
