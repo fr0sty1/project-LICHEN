@@ -6,12 +6,9 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:04.84033Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:27:40.856295815Z",
-  "started_at": "2026-07-22T20:24:32.823591227Z",
-  "lease_expires_at": "2026-07-22T20:29:32.823591227Z",
-  "heartbeat_at": "2026-07-22T20:24:32.823591227Z"
+  "updated_at": "2026-07-25T00:49:45.839962472Z",
+  "started_at": "2026-07-22T20:24:32.823591227Z"
 }
