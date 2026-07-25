@@ -565,7 +565,7 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' is not connected")
         if node.hop_schedule and len(node.hop_schedule) > 0:
             current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.synchronized_hop_channel(current_sfn)
+            channel = node.get_hop_channel(current_sfn)
         elif channel == 0:
             channel = node.current_channel
         if self._jitter_max_us > 0:
@@ -607,7 +607,7 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping (CCP-12) using node.synchronized_hop_channel(current_sfn)
+        Integrates synchronized hopping (CCP-12) using node.get_hop_channel(current_sfn)
         when hop_schedule present; passes to medium; updates node state without conflicting
         current_channel for hop nodes. Removes dead code.
 
@@ -627,7 +627,7 @@ class Simulation:
             return ""
         if node is not None and node.hop_schedule and len(node.hop_schedule) > 0:
             current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.synchronized_hop_channel(current_sfn)
+            channel = node.get_hop_channel(current_sfn)
         previous_tx_id = self._active_transmissions.get(node_id)
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)
@@ -729,7 +729,7 @@ class Simulation:
         on_timeout: Callable[[], None],
         channel: int = 0,
     ) -> None:
-        """Enter RX mode. Derives via node.synchronized_hop_channel for hop_schedule
+        """Enter RX mode. Derives via node.get_hop_channel for hop_schedule
         (CCP-12 rendezvous node.py:146). Sets current_channel only if needed.
         """
         node = self._nodes.get(node_id)
@@ -739,7 +739,7 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' is not connected")
         if node.hop_schedule and len(node.hop_schedule) > 0:
             current_sfn = node.tdma_scheduler.clock.sfn
-            channel = node.synchronized_hop_channel(current_sfn)
+            channel = node.get_hop_channel(current_sfn)
         elif channel == 0:
             channel = node.current_channel
         node.state = NodeState.RX_WAIT
@@ -816,7 +816,7 @@ class Simulation:
 
 
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
-        """Unified core RX logic. Uses node.synchronized_hop_channel (node.py:146)
+        """Unified core RX logic. Uses node.get_hop_channel (node.py:146)
         for medium channel when hop_schedule present (CCP-12 per
         ccp16-hop.json spec/02a-coordinated-capacity.md:120). Preserves oracles.
 
@@ -832,7 +832,7 @@ class Simulation:
             return None
 
         if node.hop_schedule and len(node.hop_schedule) > 0:
-            channel = node.synchronized_hop_channel()
+            channel = node.get_hop_channel()
         else:
             channel = node.current_channel
         candidates = self._medium.get_rx_candidates(
