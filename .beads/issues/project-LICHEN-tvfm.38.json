@@ -5,7 +5,7 @@
   "status": "open",
   "priority": 3,
   "issue_type": "issue",
-  "assignee": "Mark Atwood",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-28T01:48:41.470724Z",
   "created_by": "Mark Atwood",
