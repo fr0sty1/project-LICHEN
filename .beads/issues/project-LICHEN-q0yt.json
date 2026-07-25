@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-q0yt",
   "title": "codereview-P3: spec/02a-coordinated-capacity.md not yet updated with CCP-13 adaptive duty pseudocode or reference to standards/ tables",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
-  "assignee": null,
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:06:53.406576043Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T01:30:51.999375835Z",
+  "updated_at": "2026-07-25T02:56:40.844358173Z",
   "started_at": "2026-07-22T17:06:58.410890569Z",
   "closed_at": "2026-07-25T01:30:51.999375835Z",
   "close_reason": "Added CCP-13 section with adaptive duty pseudocode, DutyCycleTracker spec, standards/ references, and RFC2119 language to spec/02a-coordinated-capacity.md",
+  "lease_expires_at": "2026-07-25T03:01:40.844358173Z",
+  "heartbeat_at": "2026-07-25T02:56:40.844358173Z",
   "labels": [
     "codereview"
   ],
