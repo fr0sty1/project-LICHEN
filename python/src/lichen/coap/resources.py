@@ -24,7 +24,7 @@ Observable resources (RFC 7641):
   neighbour nodes; updated by calling :meth:`~PresenceResource.seen` whenever a
   beacon arrives from a mesh peer.
 
-* :class:`SosResource` — ``/sos`` — emergency beacon.  PUT activates SOS;
+* :class:`SosResource` — ``/sos`` — emergency beacon.  POST activates SOS;
   DELETE cancels; GET and Observe let any node monitor the state.
 
 Because the integrated Node class does not exist yet, the local resources read
@@ -742,7 +742,7 @@ class SosResource(resource.ObservableResource):
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(bytes.fromhex(from_hex), timestamp)
-        return Message(code=aiocoap.CHANGED)
+        return Message(code=CREATED)
 
     async def render_delete(self, request: Message) -> Message:
         self.cancel()
