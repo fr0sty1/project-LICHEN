@@ -5,7 +5,7 @@
   "status": "closed",
   "priority": 0,
   "issue_type": "epic",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:04:09.547349829Z",
   "created_by": "AI Agent",
