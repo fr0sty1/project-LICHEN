@@ -7,7 +7,7 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "grinder",
+  "assignee": null,
   "owner": "claude@ec2.local",
   "created_at": "2026-07-07T02:49:00.896436376Z",
   "created_by": "Claude Code (EC2)",
