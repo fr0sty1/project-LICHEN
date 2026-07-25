@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-zhc1",
-  "title": "[codereview] pass1 correctness: forward_mesh_to_upstream now returns Option but call sites in lichend.rs:233 and 310 still treat as () ignoring return value; will not compile. Also, to_vec() on slice assumes reply_len <=256 which it does per buffer. P0 build break.",
-  "status": "open",
+  "title": "[codereview] pass1 correctness: forward_mesh_to_upstream now returns Option but call sites in lichend.rs:233 and 310 still treat as () ignoring return value; will not compile. Also, to_vec() on slice assumes reply_len \u003c=256 which it does per buffer. P0 build break.",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": null,
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:56:10.241369348Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T01:17:35.258351798Z",
+  "updated_at": "2026-07-25T03:00:03.013214826Z",
   "started_at": "2026-07-22T15:57:26.800296261Z",
   "closed_at": "2026-07-25T01:17:35.258351798Z",
   "close_reason": "Already fixed",
+  "lease_expires_at": "2026-07-25T03:05:03.013214826Z",
+  "heartbeat_at": "2026-07-25T03:00:03.013214826Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-zhc1",
