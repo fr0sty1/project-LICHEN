@@ -175,7 +175,7 @@ async fn main() {
         None
     };
 
-    let mut gw = Gateway::new(node_id);
+    let mut gw = Gateway::new(node_id, id.ygg_addr);
 
     if use_sim {
         run_sim(&mut gw, &args.sim_addr, &args.sim_id, &args.node_id, tun).await;

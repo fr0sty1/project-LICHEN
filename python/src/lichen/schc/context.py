@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from lichen.schc.codec import SchcError, compress, decompress
 from lichen.schc.rules import (
+    GLOBAL_OSCORE_RULE,
+    LINK_LOCAL_OSCORE_RULE,
     MO,
     RULE_ID_UNCOMPRESSED,
     RULES,
@@ -50,7 +52,13 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
 class SchcContext:
     def __init__(self, rules: dict[int, Rule] | None = None) -> None:
         source = RULES if rules is None else rules
-        self._rules: dict[int, Rule] = dict(sorted(source.items()))
+        _oscore_ids = {LINK_LOCAL_OSCORE_RULE.rule_id, GLOBAL_OSCORE_RULE.rule_id}
+
+        def _rule_sort_key(item: tuple[int, Rule]) -> tuple[int, int]:
+            rid = item[0]
+            return (0 if rid in _oscore_ids else 1, rid)
+
+        self._rules: dict[int, Rule] = dict(sorted(source.items(), key=_rule_sort_key))
 
     def get(self, rule_id: int) -> Rule | None:
         return self._rules.get(rule_id)

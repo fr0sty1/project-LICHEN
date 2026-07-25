@@ -188,7 +188,7 @@ def _encode_connection_id(c_x: bytes) -> bytes:
         val = c_x[0]
         if val <= 23:
             return cbor2.dumps(val)
-        if val >= 232:  # -24 in two's complement
+        if val >= 232:
             return cbor2.dumps(val - 256)
     return cbor2.dumps(c_x)
 
@@ -246,20 +246,24 @@ def _decode_cbor_sequence(data: bytes) -> list[Any]:
     return items
 
 
-def _validate_int(value: object, name: str) -> int:
-    if isinstance(value, bool):
-        raise ValueError(f"{name} must be an integer, not bool")
-    if not isinstance(value, int):
-        raise ValueError(f"{name} must be an integer, not {type(value).__name__}")
-    return value
-
-
 def _validate_bytes(value: object, name: str, length: int | None = None) -> bytes:
     if not isinstance(value, bytes):
         raise ValueError(f"{name} must be a byte string")
     if length is not None and len(value) != length:
         raise ValueError(f"{name} must be exactly {length} bytes")
     return value
+
+
+def _ccs_encode_ed25519_key(pubkey: bytes) -> dict[int, int | bytes]:
+    """Encode Ed25519 pubkey as CCS COSE_Key (RFC 9053 OKP).
+
+    Produces a CBOR map: {1: 1, -1: 6, -2: pubkey}
+      - kty (1): OKP (1)
+      - crv (-1): Ed25519 (6)
+      - x (-2): raw public key bytes
+    """
+    _validate_bytes(pubkey, "public key", ED25519_SIG_LEN // 2)
+    return {1: 1, -1: 6, -2: pubkey}
 
 
 @dataclass
@@ -321,13 +325,20 @@ class EdhocInitiator:
 
     @classmethod
     def create(
-        cls, identity: Identity, c_i: bytes | None = None, method: Method = Method.SIGN_SIGN
+        cls,
+        identity: Identity,
+        c_i: bytes | None = None,
+        method: Method = Method.SIGN_SIGN,
+        eph_sk: bytes | None = None,
     ) -> EdhocInitiator:
         if method is not Method.SIGN_SIGN:
             raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_i is None:
             c_i = os.urandom(1)
-        eph_sk, eph_pk = _x25519_keypair()
+        if eph_sk is not None:
+            eph_pk = crypto_scalarmult_base(eph_sk)
+        else:
+            eph_sk, eph_pk = _x25519_keypair()
         return cls(
             identity=identity,
             c_i=c_i,
@@ -394,13 +405,17 @@ class EdhocInitiator:
             self._c_r = c_r
             g_xy = _x25519_shared_secret(self._eph_sk, g_y)
             h_msg1 = _compute_th(self._msg1)
-            th_2_input = cbor2.dumps(g_y) + _encode_connection_id(c_r) + cbor2.dumps(h_msg1)
+            th_2_input = cbor2.dumps(g_y) + cbor2.dumps(h_msg1)
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-            self._prk_3e2m = self._prk_2e
+            self._prk_3e2m = _edhoc_kdf(
+                self._prk_2e, self._th_2, "PRK_3e2m", self._th_2, EDHOC_HASH_LEN
+            )
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
             )
+            if len(ciphertext_2) != len(keystream_2):
+                raise ValueError("ciphertext/keystream length mismatch")
             plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
             pt2_items = _decode_cbor_sequence(plaintext_2)
             if len(pt2_items) != 2:
@@ -411,8 +426,8 @@ class EdhocInitiator:
             signature_2 = _validate_bytes(pt2_items[1], "Signature_2", ED25519_SIG_LEN)
             if id_cred_r != peer_pubkey:
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
-            cred_r = peer_pubkey
-            context_2 = _encode_connection_id(c_r) + cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+            cred_r = _ccs_encode_ed25519_key(peer_pubkey)
+            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
                 "Signature1",
@@ -424,11 +439,13 @@ class EdhocInitiator:
             VerifyKey(peer_pubkey).verify(m_2, signature_2)
             th_3_input = (
                 cbor2.dumps(self._th_2)
-                + plaintext_2
-                + cbor2.dumps(cred_r)
+                + cbor2.dumps(ciphertext_2)
+                + cbor2.dumps(id_cred_r)
             )
             self._th_3 = _compute_th(th_3_input)
-            self._prk_4e3m = self._prk_3e2m
+            self._prk_4e3m = _edhoc_kdf(
+                self._prk_3e2m, self._th_3, "PRK_4e3m", self._th_3, EDHOC_HASH_LEN
+            )
             id_cred_i = _validate_bytes(
                 self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
             )
@@ -447,7 +464,7 @@ class EdhocInitiator:
             iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
             a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
             ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-            th_4_input = cbor2.dumps(self._th_3) + plaintext_3 + cbor2.dumps(cred_r)
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(id_cred_i)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()
@@ -544,13 +561,20 @@ class EdhocResponder:
 
     @classmethod
     def create(
-        cls, identity: Identity, c_r: bytes | None = None, method: Method = Method.SIGN_SIGN
+        cls,
+        identity: Identity,
+        c_r: bytes | None = None,
+        method: Method = Method.SIGN_SIGN,
+        eph_sk: bytes | None = None,
     ) -> EdhocResponder:
         if method is not Method.SIGN_SIGN:
             raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_r is None:
             c_r = os.urandom(1)
-        eph_sk, eph_pk = _x25519_keypair()
+        if eph_sk is not None:
+            eph_pk = crypto_scalarmult_base(eph_sk)
+        else:
+            eph_sk, eph_pk = _x25519_keypair()
         return cls(
             identity=identity,
             c_r=c_r,
@@ -580,19 +604,18 @@ class EdhocResponder:
                 raise ValueError(
                     f"Malformed message_1: expected 4 or 5 CBOR items, got {len(items)}"
                 )
-            method_corr = _validate_int(items[0], "METHOD_CORR")
+            method_corr = items[0]
             received_method = method_corr // 4
             corr = method_corr % 4
             if received_method != self.method:
                 raise ValueError(
-                    f"Method mismatch: initiator sent method={received_method}, "
+                    f"METHOD_CORR mismatch: initiator sent method={received_method}, "
                     f"responder expects method={self.method}"
                 )
             if corr not in (0, 1, 2, 3):
                 raise ValueError(f"Invalid corr value: {corr}")
-            suite = _validate_int(items[1], "SUITES_I")
-            if suite != SUITE_0:
-                raise ValueError(f"Unsupported cipher suite: {suite}")
+            if items[1] != SUITE_0:
+                raise ValueError(f"Unsupported cipher suite: {items[1]}")
             g_x = _validate_bytes(items[2], "G_X", X25519_KEY_LEN)
             c_i = _decode_connection_id(items[3])
             if len(items) == 5:
@@ -604,13 +627,15 @@ class EdhocResponder:
             self._c_i = c_i
             g_xy = _x25519_shared_secret(self._eph_sk, g_x)
             h_msg1 = _compute_th(message_1)
-            th_2_input = cbor2.dumps(self._eph_pk) + _encode_connection_id(self._c_r) + cbor2.dumps(h_msg1)
+            th_2_input = cbor2.dumps(self._eph_pk) + cbor2.dumps(h_msg1)
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-            self._prk_3e2m = self._prk_2e
+            self._prk_3e2m = _edhoc_kdf(
+                self._prk_2e, self._th_2, "PRK_3e2m", self._th_2, EDHOC_HASH_LEN
+            )
             id_cred_r = self.identity.pubkey
-            cred_r = self.identity.pubkey
-            context_2 = _encode_connection_id(self._c_r) + cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+            cred_r = _ccs_encode_ed25519_key(self.identity.pubkey)
+            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
                 "Signature1",
@@ -624,11 +649,13 @@ class EdhocResponder:
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
             )
+            if len(plaintext_2) != len(keystream_2):
+                raise ValueError("plaintext/keystream length mismatch")
             ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
             th_3_input = (
                 cbor2.dumps(self._th_2)
-                + plaintext_2
-                + cbor2.dumps(cred_r)
+                + cbor2.dumps(ciphertext_2)
+                + cbor2.dumps(id_cred_r)
             )
             self._th_3 = _compute_th(th_3_input)
             g_y_ciphertext_2 = self._eph_pk + ciphertext_2
@@ -671,7 +698,9 @@ class EdhocResponder:
             signature_3 = _validate_bytes(pt3_items[1], "Signature_3", ED25519_SIG_LEN)
             if id_cred_i != peer_pubkey:
                 raise ValueError("ID_CRED_I does not match the authenticated peer")
-            self._prk_4e3m = self._prk_3e2m
+            self._prk_4e3m = _edhoc_kdf(
+                self._prk_3e2m, self._th_3, "PRK_4e3m", self._th_3, EDHOC_HASH_LEN
+            )
             context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_pubkey)
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
             m_3 = cbor2.dumps([
@@ -682,7 +711,7 @@ class EdhocResponder:
                 mac_3,
             ])
             VerifyKey(peer_pubkey).verify(m_3, signature_3)
-            th_4_input = cbor2.dumps(self._th_3) + plaintext_3 + cbor2.dumps(self.identity.pubkey)
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(id_cred_i)
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()

@@ -26,7 +26,7 @@ zeroize = { version = "1.8", default-features = false, features = ["derive"] }
 # ponytail: lakers only supports Suite 2 (P-256), not Suite 0 (X25519/Ed25519).
 # Rolling minimal Suite 0 for interop with Python simulator.
 x25519-dalek = { version = "2.0", default-features = false, features = ["static_secrets", "zeroize"], optional = true }
-lichen-link = { path = "../lichen-link", features = ["schnorr"], optional = true }
+lichen-link = { path = "../lichen-link", features = ["alloc", "schnorr"], optional = true }
 rand_core = { version = "0.6", default-features = false, optional = true }
 
 # Logging backends (optional, feature-gated)

@@ -170,32 +170,7 @@ int schc_decompress(const struct schc_profile *profile,
 
 static void set_bit(uint8_t *bytes, size_t bit)
 {
-	if (fragmenter == NULL || config == NULL || packet == NULL ||
-	    config->tile_size == 0 || config->mtu == 0) {
-		return SCHC_ERR_INVALID_ARGUMENT;
-	}
-	if (packet_len > SCHC_MAX_PACKET) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	uint8_t window_bits = fragment_window_bits(config);
-	uint8_t fcn_bits = fragment_fcn_bits(config);
-	int ret = validate_fragment_bits(config->dtag_bits, window_bits,
-					 fcn_bits);
-
-	if (ret < 0) {
-		return ret;
-	}
-	ret = validate_dtag(config->dtag, config->dtag_bits);
-	if (ret < 0) {
-		return ret;
-	}
-
-	fragmenter->config = *config;
-	fragmenter->packet = packet;
-	fragmenter->packet_len = packet_len;
-	fragmenter->offset = 0;
-	return SCHC_OK;
+	bytes[bit / 8u] |= (uint8_t)(1u << (7u - bit % 8u));
 }
 
 static bool get_bit(const uint8_t *bytes, size_t bit)
@@ -831,34 +806,6 @@ int schc_reassembler_input(struct schc_reassembler *reassembler,
 		}
 	}
 
-	if (tile_index >= SCHC_FRAGMENT_MAX_TRACKED_TILES ||
-	    (reassembler->config.tile_size > 0 && tile_index > reassembler->packet_max_len / reassembler->config.tile_size)) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	if (offset >= reassembler->packet_max_len ||
-	    tile_len > reassembler->packet_max_len - offset) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	if (fcn == all_1 && mic_len != 0) {
-		size_t candidate_len = offset + tile_len;
-		uint32_t observed = read_be32(&tile[tile_len]);
-
-		memcpy(&reassembler->packet[offset], tile, tile_len);
-		tile_copied = true;
-
-		uint32_t expected = schc_crc32_ieee(reassembler->packet,
-						   candidate_len);
-
-		if (expected != observed) {
-			*complete = false;
-			return SCHC_ERR_MIC_MISMATCH;
-		}
-		receiver_queue_abort(reassembler, rule_id);
-		result->aborted = true;
-		return SCHC_OK;
-	}
 	if (exact_control(message, message_len, SCHC_CONTROL_SENDER_ABORT) ||
 	    exact_control(message, message_len, SCHC_CONTROL_RECEIVER_ABORT)) {
 		receiver_reset(reassembler);
