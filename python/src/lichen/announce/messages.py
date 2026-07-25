@@ -33,8 +33,8 @@ class AnnounceMessage:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
-        if not 0 <= self.rx_channel <= 7:
-            raise AnnounceError(f"invalid rx_channel: {self.rx_channel} (must be 0-7)")
+        if not 0 <= self.rx_channel <= 15:
+            raise AnnounceError(f"invalid rx_channel: {self.rx_channel} (must be 0-15)")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, got {len(self.signature)}"
@@ -73,8 +73,8 @@ class AnnounceMessage:
         if data[0] != ANNOUNCE_TYPE:
             raise AnnounceError(f"wrong message type: expected {ANNOUNCE_TYPE}, got {data[0]}")
         rx_channel = data[1]
-        if rx_channel >= 8:
-            raise AnnounceError(f"invalid rx_channel: {rx_channel} (must be 0-7)")
+        if rx_channel >= 16:
+            raise AnnounceError(f"invalid rx_channel: {rx_channel} (must be 0-15)")
         return cls(
             originator_iid=data[5:13],
             pubkey=data[13:45],
