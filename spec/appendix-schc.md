@@ -55,7 +55,7 @@ No deviid/port-MSB optimizations yet. Hop limit value-sent. Exact descriptors an
 
 Rules 3/4 compress base fields (IPv6+ICMPv6+RPL base). Options use MATCH_MAPPING on Type field (prioritized list of common TLVs) + per-type descriptors.
 
-The mapping contains 4 common RPL option types: Pad1(type=0, index 0), PIO(type=3, index 1), DAG Metric(type=2, index 2), Target(type=5, index 3). `mapping_bits() = (4-1).bit_length() = 2` bits for the residue index (see `python/src/lichen/schc/rules.py:131`).
+The mapping contains 4 common RPL option types: Pad1(type=0, index 0), PIO(type=3, index 1), DAG Metric(type=2, index 2), Target(type=5, index 3). `mapping_bits() = (len(mapping)-1).bit_length()` bits for the residue index; e.g., a mapping with 6 options yields `(6-1).bit_length() = 3` bits (see `python/src/lichen/schc/rules.py:131`).
 
 For PIO (type=3, common for prefix ads):
 

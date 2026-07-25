@@ -269,7 +269,7 @@ For DODAG formation, maintenance, and prefix distribution (including PIO). Match
 | RPL.Reserved | 0 | equal | not-sent | 1 byte |
 | RPL.DODAGID | - | ignore | value-sent | 16 bytes |
 
-**RPL Options Compression:** RPL option TLVs use MATCH_MAPPING on Type with a prioritized list of 4 common types: Pad1(type=0, index 0), PIO(type=3, index 1), DAG Metric(type=2, index 2), Target(type=5, index 3). `mapping_bits() = (4-1).bit_length() = 2` bits for the index.
+**RPL Options Compression:** RPL option TLVs use MATCH_MAPPING on Type with a prioritized list of 4 common types: Pad1(type=0, index 0), PIO(type=3, index 1), DAG Metric(type=2, index 2), Target(type=5, index 3). `mapping_bits() = (len(mapping)-1).bit_length()` residue bits for the index; e.g., a mapping with 6 options yields `(6-1).bit_length() = 3` bits.
 
 For Prefix Info Option (type 3, index 1):
 
