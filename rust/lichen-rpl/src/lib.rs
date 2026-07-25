@@ -14,10 +14,15 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod announce;
 pub mod dodag;
 pub mod message;
+pub mod persistence;
 pub mod routing;
+pub mod srh;
+pub mod table;
 pub mod trickle;
+pub mod verify;
 
 #[cfg(feature = "std")]
 extern crate std;

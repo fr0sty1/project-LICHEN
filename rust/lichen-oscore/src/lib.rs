@@ -22,7 +22,10 @@ pub mod edhoc;
 pub use seqnum::OscoreSeqNum;
 
 #[cfg(feature = "edhoc")]
-pub use edhoc::{EdhocError, EdhocInitiator, EdhocResponder};
+pub use edhoc::{
+    ConnectionId, EdhocError, EdhocInitiator, EdhocResponder, IdCred, IdCredReference,
+    PeerCredential, PendingMessage2, PendingMessage3,
+};
 
 use aes::Aes128;
 use ccm::{
