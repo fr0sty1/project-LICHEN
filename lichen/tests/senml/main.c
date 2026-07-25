@@ -368,6 +368,138 @@ static int test_location_valid_coordinates(void)
 	return 1;
 }
 
+/*
+ * Test vector: string value (message="hello") with base time 0
+ * Python: cbor2.dumps([{0: 'msg', 3: 'hello'}])
+ * CBOR structure:
+ *   81        array(1)
+ *   a2        map(2)
+ *   00        label 0 (n)
+ *   63 6d7367 tstr(3) "msg"
+ *   03        label 3 (vs)
+ *   65 68656c6c6f tstr(5) "hello"
+ */
+static const uint8_t VEC_STRING_SIMPLE[] = {
+	0x81, 0xa2,
+	0x00, 0x63, 0x6d, 0x73, 0x67,
+	0x03, 0x65, 0x68, 0x65, 0x6c, 0x6c, 0x6f
+};
+
+/*
+ * Test vector: string value with base_name and base_time
+ * Python: cbor2.dumps([{-2: 'urn:dev:mac:', 0: 'msg', 3: 'hello'}])
+ */
+static const uint8_t VEC_STRING_WITH_BASE[] = {
+	0x81, 0xa3,
+	0x21, 0x6c, 0x75, 0x72, 0x6e, 0x3a, 0x64, 0x65,
+	0x76, 0x3a, 0x6d, 0x61, 0x63, 0x3a,
+	0x00, 0x63, 0x6d, 0x73, 0x67,
+	0x03, 0x65, 0x68, 0x65, 0x6c, 0x6c, 0x6f
+};
+
+/*
+ * Test vector: string value NULL (empty string)
+ * Python: cbor2.dumps([{0: 'ack', 3: ''}])
+ * CBOR structure:
+ *   81        array(1)
+ *   a2        map(2)
+ *   00        label 0 (n)
+ *   63 61636b tstr(3) "ack"
+ *   03        label 3 (vs)
+ *   60        tstr(0) ""
+ */
+static const uint8_t VEC_STRING_EMPTY[] = {
+	0x81, 0xa2,
+	0x00, 0x63, 0x61, 0x63, 0x6b,
+	0x03, 0x60
+};
+
+static int test_encode_string(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+	ret = senml_add_string(&pack, "msg", "hello");
+	ASSERT_EQ(ret, 0, "senml_add_string");
+
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, (int)sizeof(VEC_STRING_SIMPLE), "encoded length");
+	ASSERT_MEM_EQ(buf, VEC_STRING_SIMPLE, sizeof(VEC_STRING_SIMPLE),
+		      "CBOR output");
+
+	return 1;
+}
+
+static int test_encode_string_with_base(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_pack_init(&pack, "urn:dev:mac:", 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+	ret = senml_add_string(&pack, "msg", "hello");
+	ASSERT_EQ(ret, 0, "senml_add_string");
+
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, (int)sizeof(VEC_STRING_WITH_BASE), "encoded length");
+	ASSERT_MEM_EQ(buf, VEC_STRING_WITH_BASE,
+		      sizeof(VEC_STRING_WITH_BASE), "CBOR output");
+
+	return 1;
+}
+
+static int test_encode_string_null_value(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[64];
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+	ret = senml_add_string(&pack, "ack", NULL);
+	ASSERT_EQ(ret, 0, "senml_add_string with NULL value");
+
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, (int)sizeof(VEC_STRING_EMPTY), "encoded length");
+	ASSERT_MEM_EQ(buf, VEC_STRING_EMPTY, sizeof(VEC_STRING_EMPTY),
+		      "CBOR output");
+
+	return 1;
+}
+
+static int test_string_length_limits_extended(void)
+{
+	struct senml_pack pack;
+	char max_str[SENML_MAX_STRING_LEN + 1];
+	char long_str[SENML_MAX_STRING_LEN + 2];
+	uint8_t buf[256];
+	int ret;
+
+	fill_string(max_str, SENML_MAX_STRING_LEN, 's');
+	fill_string(long_str, SENML_MAX_STRING_LEN + 1, 'x');
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_string(&pack, "msg", max_str);
+	ASSERT_EQ(ret, 0, "max-length string accepted");
+	ASSERT_EQ(pack.record_count, 1, "accepted record counted");
+
+	ret = senml_add_string(&pack, "msg", long_str);
+	ASSERT_EQ(ret, -EMSGSIZE, "overlong string rejected");
+	ASSERT_EQ(pack.record_count, 1, "rejected string not counted");
+
+	pack.records[0].value.s = long_str;
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EMSGSIZE, "manually overlong string rejected at encode");
+
+	return 1;
+}
+
 static int test_null_name_rejected(void)
 {
 	struct senml_pack pack;
@@ -423,6 +555,10 @@ int main(void)
 	RUN_TEST(test_buffer_too_small);
 	RUN_TEST(test_pack_full);
 	RUN_TEST(test_string_length_limits);
+	RUN_TEST(test_encode_string);
+	RUN_TEST(test_encode_string_with_base);
+	RUN_TEST(test_encode_string_null_value);
+	RUN_TEST(test_string_length_limits_extended);
 	RUN_TEST(test_location_rejects_nan_lat);
 	RUN_TEST(test_location_rejects_nan_lon);
 	RUN_TEST(test_location_rejects_inf_lat);
