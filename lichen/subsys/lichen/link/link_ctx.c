@@ -154,8 +154,6 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 
 	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
 	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
-	 * Used for TDMA slot = hash(EUI64 ^ epoch) % n_slots per
-	 * spec/02a-coordinated-capacity.md §2a.2, ccp16.json, and ccp_tdma.json.
 	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
 	 *
 	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
@@ -585,14 +583,13 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 
 int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, const struct lichen_link_ctx *_Nonnull ctx)
 {
-	(void)ctx;
-	if (tdma == NULL) {
+	if (tdma == NULL || ctx == NULL) {
 		return -EINVAL;
 	}
 	tdma->superframe = 0;
 	tdma->slot = 0;
-	tdma->n_slots = 0;
-	tdma->slot_duration = 0;
+	tdma->n_slots = 8;
+	tdma->slot_duration = 250;
 	tdma->synced = false;
 	return 0;
 }
@@ -611,30 +608,6 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	if (tdma == NULL || !tdma->synced) return true;
 	uint32_t d = tdma->slot_duration;
 	uint32_t slot_start = tdma->superframe * (uint32_t)tdma->n_slots * d + (uint32_t)tdma->slot * d;
-	uint32_t g = LICHEN_TDMA_GUARD_MS;
+	uint32_t g = 50;
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
-}
-
-uint32_t lichen_hash_32(const uint8_t *data, size_t len)
-{
-	uint32_t hash = 0x811c9dc5u;
-	for (size_t i = 0; i < len; i++) {
-		hash ^= (uint32_t)data[i];
-		hash = hash * 0x01000193u;
-	}
-	return hash;
-}
-
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
-{
-	if (num_slots == 0) num_slots = 8;
-	uint8_t buf[8];
-	memcpy(buf, eui64, 8);
-	uint32_t e = epoch;
-	for (size_t i = 0; i < 8; i++) {
-		buf[i] ^= (uint8_t)e;
-		e >>= 8;
-	}
-	uint32_t h = lichen_hash_32(buf, 8);
-	return (uint8_t)(h % num_slots);
 }
