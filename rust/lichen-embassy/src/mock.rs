@@ -193,14 +193,14 @@ impl Default for MockNonVolatile {
 impl NonVolatile for MockNonVolatile {
     type Error = core::convert::Infallible;
 
-    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         let data = self.data.lock().unwrap();
-        data.get(key).map(|v| {
+        Ok(data.get(key).map(|v| {
             let stored = v.len();
             let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&v[..n]);
             stored
-        })
+        }))
     }
 
     fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {

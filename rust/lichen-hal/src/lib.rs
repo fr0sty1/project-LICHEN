@@ -314,13 +314,15 @@ pub trait NonVolatile {
     /// Error type for storage operations.
     type Error;
 
-    /// Read value for key into buffer. If key exists, returns `Some(stored_len)`
-    /// (the full original stored length), copying the first `min(stored_len, buf.len())`
-    /// bytes into `buf`. Returns `None` if key not found.
+    /// Read value for key into buffer.
     ///
-    /// Callers can detect truncation or size mismatch by comparing the returned
-    /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
-    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
+    /// Returns:
+    /// - `Ok(Some(stored_len))` if key exists, copying `min(stored_len, buf.len())` bytes
+    /// - `Ok(None)` if key not found
+    /// - `Err(e)` on I/O or hardware failure
+    ///
+    /// Callers can detect truncation by comparing `stored_len` against `buf.len()`.
+    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
 
     /// Atomically and durably replace one value.
     ///
