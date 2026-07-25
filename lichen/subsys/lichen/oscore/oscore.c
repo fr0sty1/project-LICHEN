@@ -1643,7 +1643,7 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* After common wipe in cleanup_protect_request, this dedicated
+	/* Before common wipe in cleanup_protect_request, this dedicated
 	 * nvm_failed path locks mutex to safely handle sender_seq.
 	 * SECURITY: SSN MUST NOT be left incremented on NVM failure -
 	 * would allow AES-CCM nonce reuse attack vector on reboot
