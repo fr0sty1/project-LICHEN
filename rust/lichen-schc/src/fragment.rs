@@ -15,6 +15,12 @@ pub const MAX_WINDOW_SIZE: usize = 62;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
 pub const MAX_ACK_REQUESTS: u32 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
+pub const RULE_ID_A_TO_B: u8 = 0x78;
+pub const RULE_ID_B_TO_A: u8 = 0x79;
+pub const TILE_SIZE: usize = 187;
+pub const WINDOW_SIZE: usize = 63;
+pub const BITMAP_MASK: u64 = (1u64 << (WINDOW_SIZE as u64)) - 1;
+pub const MAX_PACKET_SIZE: usize = 23562;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -81,7 +87,7 @@ impl From<BufferTooSmall> for FragmentError {
 }
 
 fn check_rule(rule_id: u8) -> Result<(), FragmentError> {
-    if matches!(rule_id, RULE_ID_A_TO_B | RULE_ID_B_TO_A) {
+    if rule_id == RULE_ID_A_TO_B || rule_id == RULE_ID_B_TO_A {
         Ok(())
     } else {
         Err(FragmentError::UnsupportedRule)
@@ -149,6 +155,7 @@ impl<'a> Fragment<'a> {
         out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
+        let mut index = 0;
         if self.is_all_1() {
             for byte in self.mic {
                 out[1 + index] |= byte >> 7;
@@ -429,6 +436,7 @@ pub enum SenderOutput {
     },
 }
 
+#[derive(Debug)]
 pub struct FragmentSender<'a> {
     payload: &'a [u8],
     pub rule_id: u8,
@@ -582,7 +590,7 @@ impl<'a> FragmentSender<'a> {
             }
             return SenderOutput::None;
         }
-        if self.attempts >= MAX_ACK_REQUESTS {
+        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
             return self.abort_output();
         }
         self.attempts += 1;
@@ -599,7 +607,7 @@ impl<'a> FragmentSender<'a> {
         if self.status != SenderStatus::Active {
             return Err(FragmentError::InvalidState);
         }
-        if self.attempts >= MAX_ACK_REQUESTS {
+        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
             return Ok(self.abort_output());
         }
         self.attempts += 1;
@@ -810,7 +818,7 @@ impl<'a> FragmentReceiver<'a> {
             return self.receive_ack_request(rule_id);
         }
         let mut tile = [0u8; TILE_SIZE];
-        match Fragment::from_bytes(data, &mut tile) {
+        match Fragment::from_bytes(data) {
             Ok(fragment) => {
                 if self.done {
                     self.reset();
@@ -1078,7 +1086,9 @@ mod std_ext {
         }
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
-            self.fragments_in_window(abs_window).collect()
+            self.iter()
+                .filter(|f| f.window as usize == abs_window)
+                .collect()
         }
     }
 
