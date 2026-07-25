@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:03.406558Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:32:28.868266878Z",
+  "updated_at": "2026-07-25T00:41:58.252364709Z",
   "started_at": "2026-07-22T23:31:07.315272912Z",
   "closed_at": "2026-07-22T23:32:28.868266878Z",
   "close_reason": "Implemented length validation in Ack::from_bytes to error on truncated bitmap instead of silent zeroing (matches suggested fix). Verified in rust/lichen-schc/src/fragment.rs:232-241. Tests in ack_round_trip pass. Workspace has unrelated merge conflicts."
