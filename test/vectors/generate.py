@@ -2140,7 +2140,7 @@ def edhoc_vectors() -> list[dict]:
     """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds, records PRK, OscoreContext, TH, messages, keys (oscore/schnorr48 pattern). Python reference oracle only."""
     import os
     from lichen.crypto.identity import Identity
-    from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
+    from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder, _edhoc_kdf
     old = os.urandom
     os.urandom = lambda n: bytes([0x42] * n)
     try:
@@ -2152,8 +2152,14 @@ def edhoc_vectors() -> list[dict]:
         m2 = resp.process_message_1(m1, i.pubkey)
         m3 = init.process_message_2(m2, r.pubkey)
         resp.process_message_3(m3, i.pubkey)
-        prk_2e = init._prk_2e.hex()
-        th_2 = init._th_2.hex()
+        th_2 = init._th_2
+        th_3 = init._th_3
+        th_4 = init._th_4
+        prk_2e = init._prk_2e
+        prk_3e2m = init._prk_3e2m
+        prk_4e3m = init._prk_4e3m
+        prk_out = _edhoc_kdf(prk_4e3m, th_4, 7, th_4, 32)
+        prk_exporter = _edhoc_kdf(prk_out, th_4, 10, b"", 32)
         ctx = init.export_oscore()
         return [{
             "name": "fixed_seed_sign_sign",
@@ -2162,8 +2168,14 @@ def edhoc_vectors() -> list[dict]:
             "msg1": m1.hex(),
             "msg2": m2.hex(),
             "msg3": m3.hex(),
-            "prk_2e": prk_2e,
-            "th_2": th_2,
+            "prk_2e": prk_2e.hex(),
+            "prk_3e2m": prk_3e2m.hex(),
+            "prk_4e3m": prk_4e3m.hex(),
+            "th_2": th_2.hex(),
+            "th_3": th_3.hex(),
+            "th_4": th_4.hex(),
+            "prk_out": prk_out.hex(),
+            "prk_exporter": prk_exporter.hex(),
             "oscore_master_secret": ctx.master_secret.hex(),
             "oscore_master_salt": ctx.master_salt.hex(),
             "oscore_sender_id": ctx.sender_id.hex(),

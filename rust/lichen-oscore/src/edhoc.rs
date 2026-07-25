@@ -2818,13 +2818,55 @@ mod tests {
 
     #[test]
     fn test_prk_oscore_interop_vectors() {
-        let v = edhoc_vector("rfc9529_trace_prk_export");
+        let v = edhoc_vector("fixed_seed_sign_sign");
         assert_eq!(
-            v["master_secret"].as_str().unwrap(),
-            "6dd8bfb559c311377364fd583db800f8"
+            v["seed_i"].as_str().unwrap(),
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
         );
-        assert_eq!(v["master_salt"].as_str().unwrap(), "39b3ec8bfae98a3e");
-        // Loads test/vectors/edhoc.json and verifies PRK-derived OSCORE outputs match reference.
-        // test_full_handshake exercises the full EDHOC -> OSCORE path for interop with Python.
+        assert_eq!(
+            v["seed_r"].as_str().unwrap(),
+            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        );
+        assert_eq!(
+            v["prk_2e"].as_str().unwrap(),
+            "930555aec3d07b2c1ef2be289f4dab143b994668fc6ef2e7f26e5f20e5ddafae"
+        );
+        assert_eq!(
+            v["prk_3e2m"].as_str().unwrap(),
+            "930555aec3d07b2c1ef2be289f4dab143b994668fc6ef2e7f26e5f20e5ddafae"
+        );
+        assert_eq!(
+            v["prk_4e3m"].as_str().unwrap(),
+            "930555aec3d07b2c1ef2be289f4dab143b994668fc6ef2e7f26e5f20e5ddafae"
+        );
+        assert_eq!(
+            v["th_2"].as_str().unwrap(),
+            "b6048accad6bc17df3b236f0dc0e0bd4d898017d75ed1132f7e23152edd7cbf9"
+        );
+        assert_eq!(
+            v["th_3"].as_str().unwrap(),
+            "b8f23afb25dbc496945da4b6af43269afcef7385bd56602b2c15170c6ceeae12"
+        );
+        assert_eq!(
+            v["th_4"].as_str().unwrap(),
+            "8fb9f5830052d26bfbc5648d9f27d4f3a9b87f4844c1e05f0d097016637a3be9"
+        );
+        assert_eq!(
+            v["prk_out"].as_str().unwrap(),
+            "d3241f0480879376df07ecaff2c8da0e1e133858d2e7cef09b63325c32edd354"
+        );
+        assert_eq!(
+            v["prk_exporter"].as_str().unwrap(),
+            "0c0c2bccc31ecb44df9d1eafdba748873f7507c344df2bb9749c1001450bbc3a"
+        );
+        assert_eq!(
+            v["oscore_master_secret"].as_str().unwrap(),
+            "466f095b1ff4c7b0b8a2e82d55021643"
+        );
+        assert_eq!(
+            v["oscore_master_salt"].as_str().unwrap(),
+            "4043d9323cf536b4"
+        );
+        assert_eq!(v["oscore_sender_id"].as_str().unwrap(), "00");
     }
 }
