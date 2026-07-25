@@ -1,0 +1,18 @@
+{% from "macros.html" import error, empty %}
+{% if data is none %}
+{{ error() }}
+{% elif not data %}
+{{ empty(empty_msg) }}
+{% else %}
+<ul>
+{% for item in data %}
+  <li>
+  {% if item is mapping %}
+    <pre>{{ item | tojson(indent=2) }}</pre>
+  {% else %}
+    {{ item }}
+  {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}

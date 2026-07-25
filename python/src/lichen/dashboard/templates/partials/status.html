@@ -1,0 +1,8 @@
+{% from "macros.html" import error, kv_table %}
+{% if data is none %}
+{{ error() }}
+{% elif data is mapping %}
+{{ kv_table(data) }}
+{% else %}
+<pre>{{ data | tojson(indent=2) }}</pre>
+{% endif %}

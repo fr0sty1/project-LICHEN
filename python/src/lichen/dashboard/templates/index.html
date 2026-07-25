@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LICHEN - {{ node }}</title>
+  <script>
+    function refreshElement(el) {
+      var target = el.getAttribute("hx-get");
+      if (!target) return;
+      var card = el.closest(".card");
+      if (card) card.classList.add("htmx-request");
+      fetch(target, { headers: { "HX-Request": "true" } })
+        .then(function (response) { return response.text(); })
+        .then(function (html) { el.innerHTML = html; })
+        .catch(function () { el.innerHTML = "<p class='err'>Unreachable</p>"; })
+        .finally(function () {
+          if (card) card.classList.remove("htmx-request");
+        });
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("[hx-get]").forEach(function (el) {
+        var trigger = el.getAttribute("hx-trigger") || "";
+        if (trigger.indexOf("load") !== -1) refreshElement(el);
+        var match = trigger.match(/every\s+(\d+)s/);
+        if (match) {
+          window.setInterval(function () { refreshElement(el); }, Number(match[1]) * 1000);
+        }
+      });
+    });
+  </script>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <h1>LICHEN &#9675; {{ node }}</h1>
+  <div class="grid">
+
+    <div class="card">
+      <h2>Status <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/status" hx-trigger="load, every 10s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Neighbors <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/neighbors" hx-trigger="load, every 15s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Presence <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/presence" hx-trigger="load, every 15s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Messages <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/messages" hx-trigger="load, every 30s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Sensors <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/sensors" hx-trigger="load, every 10s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Location <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/location" hx-trigger="load, every 15s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+      <h2>Live Mesh Stats <span class="htmx-indicator">&#8635;</span></h2>
+      <div id="mesh-stats" hx-get="/partial/mesh-stats" hx-trigger="load, every 5s" hx-indicator="closest .card">
+        Loading mesh stats...
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 3; height: 420px;">
+      <h2>Topology <span class="htmx-indicator">&#8635;</span></h2>
+      <div id="topology" style="width:100%; height:380px; background:#161b22; border:1px solid #30363d; border-radius:4px; position:relative;">
+        <svg id="mesh-svg" width="100%" height="100%" style="position:absolute;"></svg>
+      </div>
+      <script src="https://d3js.org/d3.v7.min.js"></script>
+      <script src="/static/topology.js"></script>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+      <h2>Spectrum Waterfall + TDMA <span class="htmx-indicator">&#8635;</span></h2>
+      <canvas id="spectrum" width="800" height="160" style="background:#000; display:block; margin:0 auto; image-rendering:pixelated;"></canvas>
+      <script src="/static/spectrum.js"></script>
+      <div style="text-align:center; font-size:0.75em; margin-top:0.5rem; color:#58a6ff;">
+        LoRa CSS channels - LICHEN active on SF10 CH4 - TDMA slots active (green bars)
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

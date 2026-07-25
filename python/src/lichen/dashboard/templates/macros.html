@@ -1,0 +1,36 @@
+{# Shared macros for dashboard templates #}
+
+{% macro error(message="Unreachable") %}
+<p class="err">{{ message }}</p>
+{% endmacro %}
+
+{% macro empty(message) %}
+<p class="empty">{{ message }}</p>
+{% endmacro %}
+
+{% macro kv_table(data) %}
+<table class="kv">
+{% for key, value in data.items() %}
+  <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+{% else %}
+  <tr><td colspan="2">(empty)</td></tr>
+{% endfor %}
+</table>
+{% endmacro %}
+
+{% macro senml_table(entries) %}
+<table class="kv">
+{% for entry in entries %}
+  {% if entry is mapping %}
+    {% set name = entry.n or entry.get(0, '') %}
+    {% set value = entry.v or entry.vs or entry.vb or entry.get(2, '') %}
+    {% set unit = entry.u or entry.get(1, '') %}
+  {% else %}
+    {% set name = entry[0] %}
+    {% set value = entry[1] %}
+    {% set unit = entry[2] if entry|length > 2 else '' %}
+  {% endif %}
+  <tr><th>{{ name }}</th><td>{{ value }}{% if unit %} {{ unit }}{% endif %}</td></tr>
+{% endfor %}
+</table>
+{% endmacro %}

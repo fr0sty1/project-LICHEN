@@ -1,0 +1,8 @@
+{% from "macros.html" import error, empty, senml_table %}
+{% if data is none %}
+{{ error() }}
+{% elif not data %}
+{{ empty("No data") }}
+{% else %}
+{{ senml_table(data) }}
+{% endif %}
