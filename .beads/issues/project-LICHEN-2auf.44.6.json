@@ -7,7 +7,7 @@
   "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-17T21:57:32.033423Z",
   "created_by": "Mark Atwood",
