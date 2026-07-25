@@ -2,13 +2,17 @@
   "id": "lora_ipv6_mesh-tybo",
   "title": "Observable CoAP /sensors and /location resources",
   "description": "Extend lichen/coap/resources.py with observable resources (RFC 7641). Needs: ObservableSenMLResource base class using aiocoap resource.ObservableResource; /sensors resource that returns a SenML pack of all available readings; /location resource that returns lat/lon/alt SenML pack; update_state() method so callers can push new readings to observers; wire into build_site(). Tests cover observe subscription receiving pushed updates via InMemoryNetwork.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "mark.frost@gmail.com",
   "created_at": "2026-06-25T04:47:45Z",
   "created_by": "Mark Frost",
-  "updated_at": "2026-06-25T04:47:46Z",
+  "updated_at": "2026-07-25T02:37:41.33477961Z",
+  "started_at": "2026-07-25T02:37:41.33477961Z",
   "closed_at": "2026-06-25T04:47:46Z",
-  "close_reason": "SenML codec, profiles, and observable resources implemented; all tests passing"
+  "close_reason": "SenML codec, profiles, and observable resources implemented; all tests passing",
+  "lease_expires_at": "2026-07-25T02:42:41.33477961Z",
+  "heartbeat_at": "2026-07-25T02:37:41.33477961Z"
 }
