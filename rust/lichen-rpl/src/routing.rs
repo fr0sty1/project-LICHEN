@@ -1487,15 +1487,6 @@ impl DaoManager {
         else {
             return Err(DaoProcessError::RouteRejected);
         };
-        if !Self::sender_is_authorized(
-            &updates,
-            update_count,
-            verified.origin,
-            self.node_address,
-            authenticated_sender_iid,
-        ) {
-            return Err(DaoProcessError::RouteRejected);
-        }
 
         let mut duplicate = false;
         if let Some((hash, previous)) = self.origin_high_water.get(&verified.public_key) {
@@ -1517,6 +1508,15 @@ impl DaoManager {
                 .any(|update| self.path_seq_map.contains_key(&update.target))
         {
             return Ok(DaoProcessOutcome::Duplicate);
+        }
+        if !Self::sender_is_authorized(
+            &updates,
+            update_count,
+            verified.origin,
+            self.node_address,
+            authenticated_sender_iid,
+        ) {
+            return Err(DaoProcessError::RouteRejected);
         }
         let mut proposed = self.staged();
         if proposed
