@@ -48,14 +48,6 @@ static bool is_link_local(const uint8_t addr[16])
 }
 
 /**
- * Check if address is ULA (fd00::/8).
- */
-static bool is_ula(const uint8_t addr[16])
-{
-	return addr[0] == 0xfd;
-}
-
-/**
  * Extract IID from IPv6 address (last 8 bytes).
  */
 static void extract_iid(const uint8_t addr[16], uint8_t iid[8])
@@ -115,10 +107,6 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		return LICHEN_ADDR_LINK_LOCAL;
 	}
 
-	if (is_ula(dst_addr)) {
-		return LICHEN_ADDR_MESH_LOCAL;
-	}
-
 	if (dst_addr[0] == 0x02) {
 		return LICHEN_ADDR_YGGDRASIL;
 	}
@@ -149,7 +137,7 @@ static int route_link_local(const uint8_t dst_addr[16],
 }
 
 /**
- * Route to a mesh-local address (ULA or mesh GUA).
+ * Route to a mesh-local address (configured prefix or 02xx primary).
  * Look up gradient table, initiate LOADng discovery if needed.
  */
 static int route_mesh_local(struct lichen_router *router,
@@ -247,14 +235,14 @@ int lichen_router_route(struct lichen_router *router,
 	case LICHEN_ADDR_YGGDRASIL: {
 		/* Local mesh first: gradient + LOADng, then Yggdrasil fallback via BR */
 		struct lichen_gradient_entry *ge =
-			lichen_gradient_lookup(&router->gradient_table, iid, now_ms);
+			lichen_gradient_lookup(&router->gradient_table, dst_iid, now_ms);
 		if (ge != NULL) {
 			result->decision = LICHEN_ROUTE_FORWARD;
 			memcpy(result->next_hop, ge->next_hop, 16);
 			return 0;
 		}
 		if (router->loadng.discover != NULL) {
-			int ret = router->loadng.discover(router->loadng.user_data, iid);
+			int ret = router->loadng.discover(router->loadng.user_data, dst_iid);
 			if (ret == 0) {
 				result->decision = LICHEN_ROUTE_QUEUE;
 				return 0;
