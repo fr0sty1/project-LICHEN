@@ -53,6 +53,7 @@ Multi-byte integers unsigned big-endian (network order). Full byte layout:
 | 19     | 1     | guard          | u8 ms (default 100) |
 | 20     | 4     | channel_mask   | u32 (bit 0=CH0); local intersection computed |
 | 24+    | var   | cbor_options   | density, slot_map, etc. |
+| E-48   | 48    | beacon_sig     | Schnorr48 signature over bytes 0..(E-48) per draft-lichen-schnorr-00 |
 
 **CDDL (RFC 8610) for CBOR options tail:**
 
@@ -73,7 +74,30 @@ tdma-beacon = {
 }
 ```
 
-Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
+Slot ID = fnv1a32(EUI64 XOR SFN) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
+
+slot_map (CBOR array of u8): A sorted list of slot indices assigned to this node for the current superframe; an empty array indicates no transmit slots. Receivers MUST validate that each entry is less than num_slots. The root MUST set slot_map on each beacon; joiners MUST adopt the assigned slot_map and MUST NOT transmit outside it. See ccp_tdma.json for edge-case vectors (wraparound, slot_map order, num_slots change).
+
+**Test Vector Example — Slot Hash Computation:**
+
+```
+EUI64 = 0x1122334455667788 (big-endian)
+SFN   = 0x00000005 (u32 big-endian)
+
+XOR input: EUI64[0..3] XOR SFN_bytes[0..3] || EUI64[4..7] XOR SFN_bytes[4..7]
+          = (0x11223344 XOR 0x00000005) || 0x55667788
+          = 0x11223341 || 0x55667788
+          = 0x1122334155667788 (64-bit FE)
+
+fnv1a32(0x1122334155667788, basis=0x811c9dc5) = 0x8f3a2b1c
+num_slots = 8
+Slot ID = 0x8f3a2b1c % 8 = 4
+
+This is the one true slot_master calculation; changing the XOR field size or endianness breaks interop. A second vector at SFN wraparound (SFN=0xFFFFFFFF with EUI64 0x8877665544332211) MUST match ccp_tdma.json.
+```
+
+Beacons MUST be signed with a Schnorr48 signature per [draft-lichen-schnorr-00]. The signature covers bytes 0 through (E-48) of the beacon (all fixed fields and CBOR options, excluding the signature itself). Receivers MUST verify the signature against the sender's public key before accepting slot assignments or time updates. The root's public key MUST be distributed out-of-band (TOFU on first beacon or pre-provisioned); nodes MUST NOT relay beacons whose Schnorr48 signature fails verification.
+
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
 
@@ -103,7 +127,7 @@ Each versioned plan contains:
 - applicable duty-cycle, dwell-time, occupancy, and listen-before-talk rules;
 - hardware-specific permitted channel mask.
 
-CCP PHY profile ID `0x01` is fixed as LoRa bandwidth 125 kHz, SF10, coding rate 4/5, eight-symbol preamble, explicit header, payload CRC enabled, and low-data-rate optimization disabled. ADR MUST NOT change these parameters inside a schedule generation. See 2a.3 for normative adaptive SF outside schedules. Future profile IDs require canonical airtime vectors and a new specification revision before use.
+CCP PHY profile ID `0x01` is fixed as LoRa bandwidth 125 kHz, SF10, coding rate 4/5, eight-symbol preamble, explicit header, payload CRC enabled, and low-data-rate optimization disabled. ADR MUST NOT change these parameters inside a schedule generation. See 2a.3 for normative adaptive SF outside schedules. Future profile IDs REQUIRE canonical airtime vectors and a new specification revision before use.
 
 Remote capability and schedule messages MAY reduce the locally permitted intersection. Unknown plan identifiers or versions MUST cause CH0 fallback.
 
@@ -174,5 +198,6 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 - `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
 - `docs/firmware-time-provider.md`
 - `spec/drafts/draft-lichen-link-01.md` (L2 0x15 join frame)
+- `spec/drafts/draft-lichen-schnorr-00.md` (Schnorr48 beacon signature)
 
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](03-adaptation.md)
