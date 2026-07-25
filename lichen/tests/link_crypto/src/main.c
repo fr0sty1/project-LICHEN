@@ -366,8 +366,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	/* Uses test/vectors/yggdrasil-derivation.json vectors (first two).
 	 * Matches Rust lichen-core::addr::ygg_addr_from_pubkey,
 	 * C lichen_identity_ygg_addr_from_ed25519 oracle, and Python.
-	 * IID = SHA-256(pubkey)[0:8] with U/L bit cleared;
-	 * addr = [0x02] + SHA-512(pubkey)[0:7] + IID per 06-security.md §8.5.
+	 * addr = [0x02] + SHA-512(pubkey)[0:7] + SHA-512(pubkey)[0:8] (U/L cleared)
 	 * Tests the lichen_yggdrasil_addr wrapper (project-LICHEN-gp7u). */
 	static const uint8_t vec1_pubkey[32] = {
 		0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
@@ -377,7 +376,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	};
 	static const uint8_t vec1_ygg[16] = {
 		0x02, 0x6b, 0x4e, 0x6c, 0x1f, 0xe3, 0x65, 0x04,
-		0x5d, 0xf6, 0xe0, 0xe2, 0x76, 0x13, 0x59, 0xd3
+		0x69, 0x4e, 0x6c, 0x1f, 0xe3, 0x65, 0x04, 0xe1
 	};
 
 	struct in6_addr addr;
@@ -392,7 +391,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	static const uint8_t vec2_pubkey[32] = {0};
 	static const uint8_t vec2_ygg[16] = {
 		0x02, 0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38,
-		0x64, 0x68, 0x7a, 0xad, 0xf8, 0x62, 0xbd, 0x77
+		0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0x86
 	};
 
 	ret = lichen_yggdrasil_addr(vec2_pubkey, &addr);
@@ -409,7 +408,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	};
 	static const uint8_t vec3_ygg[16] = {
 		0x02, 0x0e, 0x02, 0xa5, 0x02, 0x25, 0xb4, 0xba,
-		0x21, 0xfe, 0x31, 0xdf, 0xa1, 0x54, 0xa2, 0x61
+		0x0c, 0x02, 0xa5, 0x02, 0x25, 0xb4, 0xba, 0xaa
 	};
 
 	ret = lichen_yggdrasil_addr(vec3_pubkey, &addr);
