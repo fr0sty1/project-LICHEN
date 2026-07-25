@@ -1,14 +1,17 @@
 {
   "id": "project-LICHEN-lug0.2.2.4",
   "title": "Update buffer handling, SCHC recompression, and add tests for new SRH insertion in mesh_to_mesh",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:54.111143091Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T22:29:03.044119172Z",
+  "updated_at": "2026-07-25T02:46:56.438504073Z",
   "started_at": "2026-07-24T22:19:01.937705396Z",
+  "lease_expires_at": "2026-07-25T02:51:56.438504073Z",
+  "heartbeat_at": "2026-07-25T02:46:56.438504073Z",
   "labels": [
     "codereview"
   ],
