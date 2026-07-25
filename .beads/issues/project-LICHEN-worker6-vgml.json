@@ -2,15 +2,15 @@
   "id": "project-LICHEN-worker6-vgml",
   "title": "[review] lora_ipv6_mesh-mkk4: SHA-256 test verification weakened in fragmentation_vectors",
   "description": "In `fragmentation_vectors.rs`, the packet_sha256 verification was changed from:\n```\nlet digest = Sha256::digest(expand(packet));\nlet expected = decode_hex(vector.packet_sha256.as_ref().unwrap());\nassert_eq!(\u0026digest[..], expected);\n```\nto:\n```\nif vector.packet.is_some() {\n    assert!(vector.packet_sha256.is_some());\n}\n```\n\nThe new code only checks that the field exists, not that it matches the computed hash. The `use sha2::{Digest, Sha256}` import was removed. This weakens test coverage by silently accepting incorrect hash values.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:01:40.480108522Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-25T02:55:00.877412655Z",
+  "updated_at": "2026-07-25T02:55:18.237742375Z",
   "started_at": "2026-07-25T02:55:00.877412655Z",
-  "lease_expires_at": "2026-07-25T03:00:00.877412655Z",
-  "heartbeat_at": "2026-07-25T02:55:00.877412655Z"
+  "closed_at": "2026-07-25T02:55:18.237742375Z",
+  "close_reason": "Already fixed"
 }
