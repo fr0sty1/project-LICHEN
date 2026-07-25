@@ -114,6 +114,35 @@ int coap_oscore_send_unauthorized(struct coap_resource *_Nonnull resource,
 				  struct coap_packet *_Nonnull request,
 				  struct sockaddr *_Nonnull addr, socklen_t addr_len);
 
+/**
+ * @brief Authenticate a peer via OSCORE for LCI mutating operations.
+ *
+ * Extracts peer EUI64 from the source address, looks up the OSCORE
+ * security context, unprotects the request, and verifies the inner
+ * CoAP method code.  Consolidates the repeated pattern used by
+ * deaddrop, confessions, msg_inbox, and /keys handlers.
+ *
+ * @param[in]     request          Protected CoAP request
+ * @param[in]     addr             Source address (IPv6)
+ * @param[in]     addr_len         Address length
+ * @param[in]     expected_method  Expected inner CoAP method code
+ * @param[out]    out_ctx          OSCORE security context (on success)
+ * @param[out]    piv              Request PIV for response
+ * @param[in,out] piv_len          Input: max PIV size, output: actual
+ * @param[out]    plain_buf        Decrypted payload buffer
+ * @param[in,out] plain_len        Input: buffer size, output: payload
+ * @return 0 on success,
+ *         COAP_RESPONSE_CODE_UNAUTHORIZED if no context or unprotect
+ *         fails, COAP_RESPONSE_CODE_NOT_ALLOWED if inner method mismatch
+ */
+int coap_oscore_authenticate_peer_request(
+	const struct coap_packet *_Nonnull request,
+	const struct sockaddr *_Nullable addr, socklen_t addr_len,
+	uint8_t expected_method,
+	struct oscore_ctx *_Nullable *_Nonnull out_ctx,
+	uint8_t *_Nonnull piv, size_t *_Nonnull piv_len,
+	uint8_t *_Nonnull plain_buf, size_t *_Nonnull plain_len);
+
 #ifdef __cplusplus
 }
 #endif

@@ -13,9 +13,11 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
+#include <zephyr/net/net_ip.h>
 
 #include <lichen/oscore.h>
 #include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
 
 LOG_MODULE_REGISTER(coap_oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
@@ -235,4 +237,55 @@ int coap_oscore_send_unauthorized(struct coap_resource *resource,
 
 	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
 	return coap_err_to_oscore(ret);
+}
+
+int coap_oscore_authenticate_peer_request(
+	const struct coap_packet *request,
+	const struct sockaddr *addr, socklen_t addr_len,
+	uint8_t expected_method,
+	struct oscore_ctx **out_ctx,
+	uint8_t *piv, size_t *piv_len,
+	uint8_t *plain_buf, size_t *plain_len)
+{
+	uint8_t peer_eui64[8] = {0};
+	struct oscore_ctx *ctx = NULL;
+	uint8_t orig_code;
+	uint8_t opts[32];
+	size_t opt_len = sizeof(opts);
+	int ret;
+
+	if (out_ctx == NULL || piv == NULL || piv_len == NULL ||
+	    plain_buf == NULL || plain_len == NULL) {
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	}
+
+	*out_ctx = NULL;
+
+	if (addr_len >= sizeof(struct sockaddr_in6) &&
+	    addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *in6 =
+			(const struct sockaddr_in6 *)addr;
+		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+		lichen_eui64_to_iid(peer_eui64, peer_eui64);
+	}
+
+	ret = oscore_ctx_get_by_eui64(peer_eui64, &ctx);
+	if (ret != OSCORE_OK || ctx == NULL) {
+		return COAP_RESPONSE_CODE_UNAUTHORIZED;
+	}
+
+	ret = coap_oscore_unprotect_request(ctx, request, &orig_code,
+					     opts, &opt_len,
+					     plain_buf, plain_len,
+					     piv, piv_len);
+	if (ret != OSCORE_OK) {
+		return COAP_RESPONSE_CODE_UNAUTHORIZED;
+	}
+
+	if (orig_code != expected_method) {
+		return COAP_RESPONSE_CODE_NOT_ALLOWED;
+	}
+
+	*out_ctx = ctx;
+	return 0;
 }

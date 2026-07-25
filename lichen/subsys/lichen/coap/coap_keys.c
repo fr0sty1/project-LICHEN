@@ -1049,49 +1049,36 @@ static int keys_single_put(struct coap_resource *resource,
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	struct oscore_ctx *ctx = NULL;
-	uint8_t peer_eui64[8] = {0};
 	uint8_t piv[OSCORE_PIV_MAX_LEN];
 	size_t piv_len = sizeof(piv);
 	bool is_protected = coap_oscore_is_protected(request);
 	if (is_protected) {
-		if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
-			const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-			memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
-			lichen_eui64_to_iid(peer_eui64, peer_eui64);
-		}
-		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
-			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
-		}
-		uint8_t orig_code;
-		uint8_t opts[32];
-		size_t opt_len = sizeof(opts);
 		uint8_t plain[LICHEN_COAP_SERVER_MAX_PAYLOAD];
 		size_t plain_len = sizeof(plain);
-		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len,
-						      plain, &plain_len, piv, &piv_len);
-		if (r != OSCORE_OK) {
-			return COAP_RESPONSE_CODE_BAD_REQUEST;
-		}
-		if (orig_code != COAP_METHOD_PUT) {
-			return COAP_RESPONSE_CODE_NOT_ALLOWED;
+		int r = coap_oscore_authenticate_peer_request(
+			request, addr, addr_len, COAP_METHOD_PUT,
+			&ctx, piv, &piv_len, plain, &plain_len);
+		if (r != 0) {
+			if (r == COAP_RESPONSE_CODE_UNAUTHORIZED) {
+				return coap_oscore_send_unauthorized(
+					resource, request, addr, addr_len);
+			}
+			return r;
 		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
-	}
+	} else {
 #endif
-
-	/* SECURITY: Require local admin access for write operations */
-	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		LOG_WRN("PUT /keys rejected: not local admin");
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-		if (is_protected && ctx != NULL && piv_len > 0) {
-			return keys_oscore_respond(resource, request, addr, addr_len,
-						   ctx, piv, piv_len, COAP_RESPONSE_CODE_UNAUTHORIZED);
+		/* SECURITY: Require local admin access for non-OSCORE write ops */
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			LOG_WRN("PUT /keys rejected: not local admin");
+			return lichen_coap_respond(resource, request, addr, addr_len,
+					    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 		}
-#endif
-		return lichen_coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+		payload = coap_packet_get_payload(request, &payload_len);
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	}
+#endif
 
 	opt_count = coap_find_options(request, COAP_OPTION_URI_PATH, options, ARRAY_SIZE(options));
 	if (opt_count < 2) {
@@ -1214,40 +1201,32 @@ static int keys_single_delete(struct coap_resource *resource,
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	struct oscore_ctx *ctx = NULL;
-	uint8_t peer_eui64[8] = {0};
 	uint8_t piv[OSCORE_PIV_MAX_LEN];
 	size_t piv_len = sizeof(piv);
 	bool is_protected = coap_oscore_is_protected(request);
 	if (is_protected) {
-		if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
-			const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-			memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
-			lichen_eui64_to_iid(peer_eui64, peer_eui64);
-		}
-		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
-			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
-		}
-		uint8_t orig_code;
-		uint8_t opts[32];
-		size_t opt_len = sizeof(opts);
-		uint8_t plain[16]; /* DELETE has no payload */
+		uint8_t plain[16];
 		size_t plain_len = sizeof(plain);
-		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len,
-						      plain, &plain_len, piv, &piv_len);
-		if (r != OSCORE_OK) {
-			return COAP_RESPONSE_CODE_BAD_REQUEST;
+		int r = coap_oscore_authenticate_peer_request(
+			request, addr, addr_len, COAP_METHOD_DELETE,
+			&ctx, piv, &piv_len, plain, &plain_len);
+		if (r != 0) {
+			if (r == COAP_RESPONSE_CODE_UNAUTHORIZED) {
+				return coap_oscore_send_unauthorized(
+					resource, request, addr, addr_len);
+			}
+			return r;
 		}
-		if (orig_code != COAP_METHOD_DELETE) {
-			return COAP_RESPONSE_CODE_NOT_ALLOWED;
+	} else {
+#endif
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			LOG_WRN("DELETE /keys rejected: not local admin");
+			return lichen_coap_respond(resource, request, addr, addr_len,
+					    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 		}
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	}
 #endif
-
-	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		LOG_WRN("DELETE /keys rejected: not local admin");
-		return lichen_coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
-	}
 
 	opt_count = coap_find_options(request, COAP_OPTION_URI_PATH, options, ARRAY_SIZE(options));
 	if (opt_count < 2) {
