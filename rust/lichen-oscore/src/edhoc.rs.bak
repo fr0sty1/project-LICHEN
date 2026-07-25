@@ -30,6 +30,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
 use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
@@ -247,16 +248,6 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
-/// EDHOC-KDF label: CBOR integer (exporter labels) or CBOR text string (KDF labels).
-///
-/// RFC 9528 Section 4.2.1 uses integer labels for the exporter (7=PRK_out, 10=PRK_exporter,
-/// 0=master_secret, 1=master_salt), while Section 4.1.2 uses text-string labels for key
-/// derivation (e.g. "KEYSTREAM_2", "MAC_2").
-enum KdfLabel {
-    Int(u8),
-    Text(&'static str),
-}
-
 /// EDHOC-KDF (RFC 9528 Section 4.1.2).
 ///
 /// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
@@ -264,7 +255,7 @@ enum KdfLabel {
 fn edhoc_kdf(
     prk: &[u8; 32],
     th: &[u8; 32],
-    label: KdfLabel,
+    label: &str,
     context: &[u8],
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
@@ -288,30 +279,18 @@ fn edhoc_kdf(
     info.push_err(32)?;
     info.extend_err(th)?;
 
-    // label as CBOR int or tstr
-    match label {
-        KdfLabel::Int(n) => {
-            if n <= 23 {
-                info.push_err(n)?;
-            } else {
-                info.push_err(0x18)?;
-                info.push_err(n)?;
-            }
-        }
-        KdfLabel::Text(s) => {
-            let label_bytes = s.as_bytes();
-            if label_bytes.len() > 255 {
-                return Err(EdhocError::BufferTooSmall);
-            }
-            if label_bytes.len() <= 23 {
-                info.push_err(0x60 | label_bytes.len() as u8)?;
-            } else {
-                info.push_err(0x78)?;
-                info.push_err(label_bytes.len() as u8)?;
-            }
-            info.extend_err(label_bytes)?;
-        }
+    // label as tstr
+    let label_bytes = label.as_bytes();
+    if label_bytes.len() > 255 {
+        return Err(EdhocError::BufferTooSmall);
     }
+    if label_bytes.len() <= 23 {
+        info.push_err(0x60 | label_bytes.len() as u8)?;
+    } else {
+        info.push_err(0x78)?;
+        info.push_err(label_bytes.len() as u8)?;
+    }
+    info.extend_err(label_bytes)?;
 
     // context as bstr
     if context.is_empty() {
@@ -346,19 +325,19 @@ fn export_context(
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
-    let prk_out_vec = edhoc_kdf(prk, th, KdfLabel::Int(7), th, 32)
+    let prk_out_vec = edhoc_kdf(prk, th, "7", th, 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_out = Zeroizing::new([0u8; 32]);
     prk_out.copy_from_slice(&prk_out_vec[0..32]);
-    let prk_exporter_vec = edhoc_kdf(&prk_out, th, KdfLabel::Int(10), b"", 32)
+    let prk_exporter_vec = edhoc_kdf(&prk_out, th, "10", b"", 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_exporter = Zeroizing::new([0u8; 32]);
     prk_exporter.copy_from_slice(&prk_exporter_vec);
-    let master_secret_vec = edhoc_kdf(&prk_exporter, th, KdfLabel::Int(0), b"", KEY_LEN)
+    let master_secret_vec = edhoc_kdf(&prk_exporter, th, "0", b"", KEY_LEN)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
-    let master_salt_vec = edhoc_kdf(&prk_exporter, th, KdfLabel::Int(1), b"", 8)
+    let master_salt_vec = edhoc_kdf(&prk_exporter, th, "1", b"", 8)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
@@ -812,7 +791,7 @@ impl EdhocInitiator {
 
             // Decrypt CIPHERTEXT_2 with KEYSTREAM_2
             let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, KdfLabel::Text("KEYSTREAM_2"), &[], ciphertext_2.len())?;
+                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", &[], ciphertext_2.len())?;
             let mut plaintext_2 = SecretVec::<128>::new();
             for (i, &b) in ciphertext_2.iter().enumerate() {
                 plaintext_2.push_err(b ^ keystream_2[i])?;
@@ -870,7 +849,7 @@ impl EdhocInitiator {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
             let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
-            let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, KdfLabel::Text("MAC_2"), &context_2, 32)?;
+            let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 32)?;
             let m_2 = build_signature_structure(
                 pending.id_cred.as_bytes(),
                 &self.state.th_2,
@@ -901,7 +880,7 @@ impl EdhocInitiator {
             let mac_3 = edhoc_kdf(
                 &self.state.prk_4e3m,
                 &self.state.th_3,
-                KdfLabel::Text("MAC_3"),
+                "MAC_3",
                 &context_3,
                 32,
             )?;
@@ -913,8 +892,8 @@ impl EdhocInitiator {
             encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
 
             // K_3 and IV_3 for AEAD
-            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, KdfLabel::Text("K_3"), &[], KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, KdfLabel::Text("IV_3"), &[], NONCE_LEN)?;
+            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
+            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
 
             let mut a_3 = heapless::Vec::<u8, 64>::new();
             a_3.push_err(0x83)?;
@@ -1181,7 +1160,7 @@ impl EdhocResponder {
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
-                KdfLabel::Text("MAC_2"),
+                "MAC_2",
                 &context_2,
                 32,
             )?;
@@ -1200,7 +1179,7 @@ impl EdhocResponder {
 
             // Encrypt with KEYSTREAM_2
             let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, KdfLabel::Text("KEYSTREAM_2"), &[], plaintext_2.len())?;
+                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", &[], plaintext_2.len())?;
             let mut ciphertext_2 = heapless::Vec::<u8, 128>::new();
             for (i, &b) in plaintext_2.iter().enumerate() {
                 ciphertext_2.push_err(b ^ keystream_2[i])?;
@@ -1260,8 +1239,8 @@ impl EdhocResponder {
             }
 
             // K_3 and IV_3 for AEAD decryption
-            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, KdfLabel::Text("K_3"), &[], KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, KdfLabel::Text("IV_3"), &[], NONCE_LEN)?;
+            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
+            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
 
             // A_3 (AAD)
             let mut a_3 = heapless::Vec::<u8, 64>::new();
@@ -1346,7 +1325,7 @@ impl EdhocResponder {
             let mac_3 = edhoc_kdf(
                 &self.state.prk_4e3m,
                 &self.state.th_3,
-                KdfLabel::Text("MAC_3"),
+                "MAC_3",
                 &context_3,
                 32,
             )?;
@@ -1611,7 +1590,7 @@ mod tests {
             "c8419a8f1cae45674cf4c7ba021a110538c7fa2639ae70f316e8c3c34a0faf5dbf68cf835ec76f8f532fda302c647b303f02397f72710d072bd962118e35c6fe6d3f0a46a4160fba02a12eeec59e54135c3d"
         );
         assert_eq!(
-            edhoc_kdf(&prk_2e, &th_2, KdfLabel::Text("KEYSTREAM_2"), &[], 82)
+            edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82)
                 .unwrap()
                 .as_slice(),
             keystream_2
@@ -1674,46 +1653,23 @@ mod tests {
             "RFC 9529 Message 2 failed: {verified_message_3:?}"
         );
 
-        let prk_out = edhoc_kdf(&prk_2e, &th_4, KdfLabel::Int(7), &th_4, 32).unwrap();
+        let prk_out = hex!("77da318df09d26aa4cc69be602930750c32b5551d7a053d52000265d3c180eac");
         assert_eq!(
-            prk_out.as_slice(),
-            &hex!("1659d0f94c436648b2cb79c91b8cbfaca9579055a26d1df777831bba16b28f51")
+            edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap().as_slice(),
+            prk_out
         );
-        let prk_exporter = edhoc_kdf(
-            prk_out.as_slice().try_into().unwrap(),
-            &th_4,
-            KdfLabel::Int(10),
-            &[],
-            32,
-        )
-        .unwrap();
+        let prk_exporter = hex!("a0ef8465a68d81f448c85ea6118170d1f65fa03ef4277250b74a599b3353ab02");
         assert_eq!(
-            prk_exporter.as_slice(),
-            &hex!("b01c06e05aab56939e6a7adc7669253d0be6c0706cd6482175e7ce12b8804f70")
+            edhoc_kdf(&prk_out, &th_4, "10", &[], 32).unwrap().as_slice(),
+            prk_exporter
         );
-        let master_secret = edhoc_kdf(
-            prk_exporter.as_slice().try_into().unwrap(),
-            &th_4,
-            KdfLabel::Int(0),
-            &[],
-            16,
-        )
-        .unwrap();
         assert_eq!(
-            master_secret.as_slice(),
-            &hex!("fa4cc000d2f87bf49cbca77243e66c56")
+            edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16).unwrap().as_slice(),
+            &hex!("240e728a7ef8fe1129c26da390ce9954")
         );
-        let master_salt = edhoc_kdf(
-            prk_exporter.as_slice().try_into().unwrap(),
-            &th_4,
-            KdfLabel::Int(1),
-            &[],
-            8,
-        )
-        .unwrap();
         assert_eq!(
-            master_salt.as_slice(),
-            &hex!("337ac289a203cb5a")
+            edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8).unwrap().as_slice(),
+            &hex!("32d1a820b919523a")
         );
 
         let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
