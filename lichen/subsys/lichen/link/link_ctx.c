@@ -632,15 +632,13 @@ int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 #else
 int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 			       uint32_t epoch,
-			       uint8_t density,
+			       [[maybe_unused]] uint8_t density,
 			       uint8_t num_channels,
 			       uint8_t *channel)
 {
 	uint8_t data[12];
 	uint32_t hash;
 	uint8_t n;
-
-	(void)density;
 
 	if (eui64 == NULL || channel == NULL) {
 		return -EINVAL;

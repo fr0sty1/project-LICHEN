@@ -282,6 +282,8 @@ bool schnorr48_verify(const uint8_t *pubkey,
 int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
+			 [[maybe_unused]] const uint8_t *signer_iid,
+			 [[maybe_unused]] size_t signer_iid_len,
 			 const uint8_t *payload, size_t payload_len,
 			 const uint8_t *privkey,
 			 const uint8_t *pubkey,
@@ -383,6 +385,8 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
+			   [[maybe_unused]] const uint8_t *signer_iid,
+			   [[maybe_unused]] size_t signer_iid_len,
 			   const uint8_t *payload, size_t payload_len,
 			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
@@ -480,6 +484,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
+			 const uint8_t *signer_iid, size_t signer_iid_len,
 			 const uint8_t *payload, size_t payload_len,
 			 const uint8_t *privkey,
 			 const uint8_t *pubkey,
@@ -491,6 +496,8 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	(void)seqnum;
 	(void)dst_addr;
 	(void)dst_addr_len;
+	(void)signer_iid;
+	(void)signer_iid_len;
 	(void)payload;
 	(void)payload_len;
 	(void)privkey;
@@ -503,11 +510,14 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
+			   const uint8_t *signer_iid, size_t signer_iid_len,
 			   const uint8_t *payload, size_t payload_len,
 			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
 {
 	(void)length;
+	(void)signer_iid;
+	(void)signer_iid_len;
 	(void)llsec;
 	(void)epoch;
 	(void)seqnum;

@@ -520,12 +520,12 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  *         on NVM failure (with conditional SSN rollback), or other negative
  *         error codes
  */
-int oscore_protect_request(struct oscore_ctx *_Nonnull ctx,
-			   uint8_t code,
-			   const uint8_t *_Nullable options, size_t options_len,
-			   const uint8_t *_Nullable payload, size_t payload_len,
-			   uint8_t *_Nonnull ciphertext, size_t *_Nonnull ciphertext_len,
-			   uint8_t *_Nonnull oscore_opt, size_t *_Nonnull oscore_opt_len);
+[[nodiscard]] int oscore_protect_request(struct oscore_ctx *_Nonnull ctx,
+					 uint8_t code,
+					 const uint8_t *_Nullable options, size_t options_len,
+					 const uint8_t *_Nullable payload, size_t payload_len,
+					 uint8_t *_Nonnull ciphertext, size_t *_Nonnull ciphertext_len,
+					 uint8_t *_Nonnull oscore_opt, size_t *_Nonnull oscore_opt_len);
 
 /**
  * @brief Unprotect an OSCORE-protected CoAP request.
@@ -544,12 +544,12 @@ int oscore_protect_request(struct oscore_ctx *_Nonnull ctx,
  * @param[in,out] payload_len   Input: buffer size, output: payload length
  * @return 0 on success, negative error code on failure
  */
-int oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
-			     const uint8_t *_Nonnull oscore_opt, size_t oscore_opt_len,
-			     const uint8_t *_Nonnull ciphertext, size_t ciphertext_len,
-			     uint8_t *_Nonnull code,
-			     uint8_t *_Nonnull options, size_t *_Nonnull options_len,
-			     uint8_t *_Nonnull payload, size_t *_Nonnull payload_len);
+[[nodiscard]] int oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
+					   const uint8_t *_Nonnull oscore_opt, size_t oscore_opt_len,
+					   const uint8_t *_Nonnull ciphertext, size_t ciphertext_len,
+					   uint8_t *_Nonnull code,
+					   uint8_t *_Nonnull options, size_t *_Nonnull options_len,
+					   uint8_t *_Nonnull payload, size_t *_Nonnull payload_len);
 
 /**
  * @brief Protect a CoAP response with OSCORE.
@@ -568,13 +568,13 @@ int oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
  * @param[in,out] oscore_opt_len Input: buffer size, output: option length
  * @return 0 on success, negative error code on failure
  */
-int oscore_protect_response(struct oscore_ctx *_Nonnull ctx,
-			    const uint8_t *_Nonnull request_piv, size_t request_piv_len,
-			    uint8_t code,
-			    const uint8_t *_Nullable options, size_t options_len,
-			    const uint8_t *_Nullable payload, size_t payload_len,
-			    uint8_t *_Nonnull ciphertext, size_t *_Nonnull ciphertext_len,
-			    uint8_t *_Nonnull oscore_opt, size_t *_Nonnull oscore_opt_len);
+[[nodiscard]] int oscore_protect_response(struct oscore_ctx *_Nonnull ctx,
+					  const uint8_t *_Nonnull request_piv, size_t request_piv_len,
+					  uint8_t code,
+					  const uint8_t *_Nullable options, size_t options_len,
+					  const uint8_t *_Nullable payload, size_t payload_len,
+					  uint8_t *_Nonnull ciphertext, size_t *_Nonnull ciphertext_len,
+					  uint8_t *_Nonnull oscore_opt, size_t *_Nonnull oscore_opt_len);
 
 /**
  * @brief Unprotect an OSCORE-protected CoAP response.
@@ -593,13 +593,13 @@ int oscore_protect_response(struct oscore_ctx *_Nonnull ctx,
  * @param[in,out] payload_len    Input: buffer size, output: payload length
  * @return 0 on success, negative error code on failure
  */
-int oscore_unprotect_response(struct oscore_ctx *_Nonnull ctx,
-			      const uint8_t *_Nonnull request_piv, size_t request_piv_len,
-			      const uint8_t *_Nonnull oscore_opt, size_t oscore_opt_len,
-			      const uint8_t *_Nonnull ciphertext, size_t ciphertext_len,
-			      uint8_t *_Nonnull code,
-			      uint8_t *_Nonnull options, size_t *_Nonnull options_len,
-			      uint8_t *_Nonnull payload, size_t *_Nonnull payload_len);
+[[nodiscard]] int oscore_unprotect_response(struct oscore_ctx *_Nonnull ctx,
+					    const uint8_t *_Nonnull request_piv, size_t request_piv_len,
+					    const uint8_t *_Nonnull oscore_opt, size_t oscore_opt_len,
+					    const uint8_t *_Nonnull ciphertext, size_t ciphertext_len,
+					    uint8_t *_Nonnull code,
+					    uint8_t *_Nonnull options, size_t *_Nonnull options_len,
+					    uint8_t *_Nonnull payload, size_t *_Nonnull payload_len);
 
 #ifdef __cplusplus
 }

@@ -104,10 +104,10 @@ void schnorr48_derive_keypair(const uint8_t *_Nonnull seed,
  * @param[out] sig      48-byte signature output
  * @return 0 on success, -EINVAL if msg is NULL with nonzero msg_len
  */
-int schnorr48_sign(const uint8_t *_Nonnull privkey,
-		   const uint8_t *_Nonnull pubkey,
-		   const uint8_t *_Nullable msg, size_t msg_len,
-		   uint8_t *_Nonnull sig);
+[[nodiscard]] int schnorr48_sign(const uint8_t *_Nonnull privkey,
+				 const uint8_t *_Nonnull pubkey,
+				 const uint8_t *_Nullable msg, size_t msg_len,
+				 uint8_t *_Nonnull sig);
 
 /**
  * @brief Verify a Schnorr-48 signature.
@@ -119,9 +119,9 @@ int schnorr48_sign(const uint8_t *_Nonnull privkey,
  * @param[in] sig_len  Signature length (must be SCHNORR48_SIG_LEN)
  * @return true if valid, false if invalid
  */
-bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
-		      const uint8_t *_Nonnull msg, size_t msg_len,
-		      const uint8_t *_Nonnull sig, size_t sig_len);
+[[nodiscard]] bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
+				    const uint8_t *_Nonnull msg, size_t msg_len,
+				    const uint8_t *_Nonnull sig, size_t sig_len);
 
 /**
  * @brief Sign a LICHEN link-layer frame.
@@ -146,14 +146,14 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
  * @return 0 on success, -EINVAL if dst_addr_len > SCHNORR48_MAX_ADDR_LEN
  *         or if NULL pointers are passed with nonzero lengths
  */
-int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
-			 uint8_t epoch, uint16_t seqnum,
-			 const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
-			 const uint8_t *_Nullable signer_iid, size_t signer_iid_len,
-			 const uint8_t *_Nonnull payload, size_t payload_len,
-			 const uint8_t *_Nonnull privkey,
-			 const uint8_t *_Nonnull pubkey,
-			 uint8_t *_Nonnull sig);
+[[nodiscard]] int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
+				       uint8_t epoch, uint16_t seqnum,
+				       const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
+				       const uint8_t *_Nullable signer_iid, size_t signer_iid_len,
+				       const uint8_t *_Nonnull payload, size_t payload_len,
+				       const uint8_t *_Nonnull privkey,
+				       const uint8_t *_Nonnull pubkey,
+				       uint8_t *_Nonnull sig);
 
 /**
  * @brief Verify a signed LICHEN link-layer frame.
@@ -175,15 +175,15 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
  *         -EINVAL if dst_addr_len > SCHNORR48_MAX_ADDR_LEN or if NULL
  *         pointers passed with nonzero lengths, or if sig_len != SCHNORR48_SIG_LEN
  */
-int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
-			   uint8_t epoch, uint16_t seqnum,
-			   const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
-			   const uint8_t *_Nullable signer_iid, size_t signer_iid_len,
-			   const uint8_t *_Nullable payload, size_t payload_len,
-			   const uint8_t *_Nonnull sig, size_t sig_len,
-			   const uint8_t *_Nonnull pubkey);
+[[nodiscard]] int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
+					 uint8_t epoch, uint16_t seqnum,
+					 const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
+					 const uint8_t *_Nullable signer_iid, size_t signer_iid_len,
+					 const uint8_t *_Nullable payload, size_t payload_len,
+					 const uint8_t *_Nonnull sig, size_t sig_len,
+					 const uint8_t *_Nonnull pubkey);
 
-bool schnorr48_pubkey_valid(const uint8_t *_Nonnull pubkey);
+[[nodiscard]] bool schnorr48_pubkey_valid(const uint8_t *_Nonnull pubkey);
 
 #ifdef __cplusplus
 }

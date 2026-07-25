@@ -97,7 +97,7 @@ enum senml_value_type {
  * @brief SenML record
  */
 	struct senml_record {
-	const char *name;          /**< Record name (n) */
+	const char *_Nullable name;  /**< Record name (n) - may be NULL per SenML spec */
 	const char *unit;          /**< Unit (u) - may be NULL */
 	enum senml_value_type type;
 	union {
