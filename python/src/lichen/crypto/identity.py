@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from hashlib import sha256, sha512
+from hashlib import sha512
 from ipaddress import IPv6Address
 
 from nacl.bindings import crypto_scalarmult_base

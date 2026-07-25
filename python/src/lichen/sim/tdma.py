@@ -71,7 +71,9 @@ class TDMAScheduler:
             return computed == vector.get("expected_slot", 0)
         if "sfn" in vector or "expected_channel" in vector:
             sfn = vector.get("sfn", 0)
-            computed = synchronized_hop_channel(sfn, vector.get("seed", 0), vector.get("num_channels", 8))
+            seed = vector.get("seed", 0)
+            n_ch = vector.get("num_channels", 8)
+            computed = synchronized_hop_channel(sfn, seed, n_ch)
             return computed == vector.get("expected_channel", 0)
         if "slot_start_ms" in vector:
             t = vector["current_ms"] * 1000

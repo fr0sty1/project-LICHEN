@@ -116,7 +116,7 @@ class FieldDescriptor:
                 raise ValueError(f"{self.field_id}: mapping values must be unique")
             if len(self.mapping) < 2:
                 raise ValueError(
-                    f"{self.field_id}: mapping must have >=2 elements (use NOT_SENT for single values)"
+                    f"{self.field_id}: mapping needs >=2 elements; use NOT_SENT for single"
                 )
 
     def lsb_bits(self) -> int:

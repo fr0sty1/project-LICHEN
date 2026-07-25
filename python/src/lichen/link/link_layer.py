@@ -39,7 +39,7 @@ from ..constants import (
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from ..gradient import MAX_ENTRIES
-from .frame import AddrMode, FrameError, LichenFrame, MAX_FRAME_BODY, MicLength
+from .frame import MAX_FRAME_BODY, AddrMode, FrameError, LichenFrame, MicLength
 from .replay import ReplayProtector
 from .tx_queue import Priority, TxQueue
 
@@ -530,17 +530,16 @@ class LinkLayer:
         # Since we are the sender, we trust our own sequence — no external
         # adversary can replay a frame we sent unless they also have our
         # signing key. If they have our key, replay protection is moot.
-        if sender.pubkey != self.identity.pubkey:
-            if not self.replay_protector.check_and_update(
-                sender.pubkey, frame.epoch, frame.seqnum
-            ):
-                logger.warning(
-                    "RX replay detected: epoch=%d seqnum=%d sender=%s",
-                    frame.epoch,
-                    frame.seqnum,
-                    sender.iid.hex(),
-                )
-                return ReceiveError.REPLAY
+        if sender.pubkey != self.identity.pubkey and not self.replay_protector.check_and_update(
+            sender.pubkey, frame.epoch, frame.seqnum
+        ):
+            logger.warning(
+                "RX replay detected: epoch=%d seqnum=%d sender=%s",
+                frame.epoch,
+                frame.seqnum,
+                sender.iid.hex(),
+            )
+            return ReceiveError.REPLAY
 
         # Success! Return the validated frame
         logger.debug(

@@ -124,7 +124,7 @@ class KissSerialConnection:
                 self._loop.run_in_executor(None, _read),
                 timeout=2.0,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return True
         except (serial.SerialException, OSError) as exc:
             log.error("KISS serial read error: %s", exc)

@@ -187,8 +187,8 @@ class Metrics:
                     self._latency_max_us = latency
             else:
                 logger.warning(
-                    "record_reception: time_us=%d < start=%d for tx_id=%s rx_node=%s (negative latency=%d us); "
-                    "latency not recorded — possible clock skew or race",
+                    "record_reception: time_us=%d < start=%d for tx_id=%s "
+                    "rx_node=%s (negative latency=%d us); latency not recorded",
                     time_us,
                     start,
                     tx_id,

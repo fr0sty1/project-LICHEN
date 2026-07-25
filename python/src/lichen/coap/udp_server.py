@@ -21,7 +21,7 @@ from typing import Any
 
 import aiocoap  # type: ignore[import-untyped]  # no official stubs
 
-from lichen.coap.resources import NodeInfo, SosResource, build_site
+from lichen.coap.resources import SosResource, build_site
 
 
 async def bind_coap_udp(

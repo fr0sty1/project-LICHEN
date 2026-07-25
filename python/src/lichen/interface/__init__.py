@@ -17,8 +17,8 @@ warnings.warn(
     stacklevel=2,
 )
 
-from lichen.interface import kiss, meshtastic, protocols
-from lichen.interface.protocols import (
+from lichen.interface import kiss, meshtastic, protocols  # noqa: E402
+from lichen.interface.protocols import (  # noqa: E402
     Clock,
     FrameParser,
     Identity,

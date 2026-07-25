@@ -61,6 +61,7 @@ __all__ = [
     "BitWriter",
     "CDA",
     "COAP_RULE",
+    "DEFAULT_RECEIVER_LIMIT",
     "DEFAULT_WINDOW_SIZE",
     "MAX_SCHC_PACKET",
     "MAX_WINDOW_SIZE",

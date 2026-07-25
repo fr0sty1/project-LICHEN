@@ -29,9 +29,8 @@ from lichen.sim.propagation import (
     SENSITIVITY_SF10,
     PropagationModel,
 )
-from lichen.sim.tdma import hash_32, synchronized_hop_channel
+from lichen.sim.tdma import synchronized_hop_channel
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
-
 
 _LINEAR_EPSILON = 1e-15
 
@@ -234,16 +233,15 @@ class Medium:
                         valid_until_sfn=valid_until,
                     )
 
-        if peer_eui64 is not None and peer_eui64 in self._known_peers:
-            if sfn is not None:
-                channel = synchronized_hop_channel(sfn, seed, num_channels)
-                mechanism = RendezvousMechanism.HASH_BASED
-                confidence = 0.8
-                return RendezvousInfo(
-                    channel=channel,
-                    mechanism=mechanism,
-                    confidence=confidence,
-                )
+        if peer_eui64 is not None and peer_eui64 in self._known_peers and sfn is not None:
+            channel = synchronized_hop_channel(sfn, seed, num_channels)
+            mechanism = RendezvousMechanism.HASH_BASED
+            confidence = 0.8
+            return RendezvousInfo(
+                channel=channel,
+                mechanism=mechanism,
+                confidence=confidence,
+            )
 
         if peer_eui64 is not None and peer_eui64 in self._announce_channels:
             channel = self._announce_channels[peer_eui64]
@@ -365,10 +363,13 @@ class Medium:
             Channel index with the lowest utilization.
         """
         loads = self.get_channel_loads(time_us, num_channels)
-        candidates = [l for l in loads if exclude_channels is None or l.channel_id not in exclude_channels]
+        candidates = [
+            ch for ch in loads
+            if exclude_channels is None or ch.channel_id not in exclude_channels
+        ]
         if not candidates:
             return 0
-        candidates.sort(key=lambda l: l.utilization)
+        candidates.sort(key=lambda ch: ch.utilization)
         return candidates[0].channel_id
 
     def start_tx(

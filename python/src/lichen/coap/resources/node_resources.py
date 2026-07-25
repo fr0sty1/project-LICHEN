@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from aiocoap import BAD_REQUEST, CHANGED, UNAUTHORIZED, Message
 
-from lichen.coap.resources.base import NodeInfo, _ReadResource, _cbor_response
+from lichen.coap.resources.base import NodeInfo, _cbor_response, _ReadResource
 from lichen.coap.resources.cbor_validation import _decode_single_cbor
 
 

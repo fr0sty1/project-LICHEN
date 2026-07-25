@@ -37,6 +37,7 @@ from lichen.sim.transmission import airtime_us
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
+
     from lichen.sim.simulation import Simulation
 
 logger = logging.getLogger(__name__)

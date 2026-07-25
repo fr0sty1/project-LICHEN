@@ -8,6 +8,7 @@ This module provides a sliding window tracker for compliance monitoring.
 
 from __future__ import annotations
 
+
 class DutyCycleTracker:
     """Track transmit duty cycle over a sliding time window.
 

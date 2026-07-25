@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from ipaddress import IPv6Address
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from lichen.rpl.dodag import DodagState
@@ -22,7 +22,7 @@ These are pure functions over a snapshot; the caller decides when to snapshot
 the evolving DODAG during a run.
 """
 
-Topology = dict[IPv6Address, Optional[IPv6Address]]
+Topology = dict[IPv6Address, IPv6Address | None]
 
 
 def topology_from_states(states: Mapping[IPv6Address, DodagState]) -> Topology:
@@ -43,8 +43,8 @@ def ranks_from_states(states: Mapping[IPv6Address, DodagState]) -> dict[IPv6Addr
     return {node_id: state.rank for node_id, state in states.items()}
 
 
-def _children_of(parents: Topology) -> dict[Optional[IPv6Address], list[IPv6Address]]:
-    children: dict[Optional[IPv6Address], list[IPv6Address]] = {}
+def _children_of(parents: Topology) -> dict[IPv6Address | None, list[IPv6Address]]:
+    children: dict[IPv6Address | None, list[IPv6Address]] = {}
     for node, parent in parents.items():
         children.setdefault(parent, []).append(node)
     return children

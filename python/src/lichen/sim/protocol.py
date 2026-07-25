@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import struct
 from typing import Final
+
 from .tdma import hash_32
 
 # Message type constants
@@ -249,10 +250,7 @@ def decode_rx_enter(data: bytes) -> tuple[int, int]:
     if len(data) < 4:
         raise ProtocolError("RX_ENTER message too short")
     timeout_us = struct.unpack_from("<I", data, 0)[0]
-    if len(data) >= 5:
-        channel = data[4]
-    else:
-        channel = 0
+    channel = data[4] if len(data) >= 5 else 0
     return timeout_us, channel
 
 
@@ -535,7 +533,7 @@ def get_message_payload(data: bytes) -> bytes:
 
 
 def hop_channel(sfn: int, eui64: bytes, num_channels: int = 8, epoch: int = 0) -> int:
-    """Deterministic synchronized hop per spec/02a-coordinated-capacity.md:120-125 using hash_32(test/vectors/generate.py:30) as oracle."""
+    """Deterministic synchronized hop per spec 02a-coordinated-capacity.md:120-125."""
     data = eui64 + ((sfn + epoch) & 0xFFFFFFFF).to_bytes(4, "little")
     h = hash_32(data)
     n = max(num_channels, 3)

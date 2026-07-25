@@ -115,7 +115,10 @@ class ConnectionStatus(Static):  # type: ignore[misc]  # textual lacks py.typed
 
     def set_connected(self, host: str, port: int, sim_id: str, node_id: str) -> None:
         """Update to show connected state."""
-        self.update(f"Connected: {self._sanitize(node_id)}@{self._sanitize(sim_id)} via {self._sanitize(host)}:{port}")
+        node = self._sanitize(node_id)
+        sim = self._sanitize(sim_id)
+        h = self._sanitize(host)
+        self.update(f"Connected: {node}@{sim} via {h}:{port}")
         self.remove_class("disconnected")
         self.add_class("connected")
 

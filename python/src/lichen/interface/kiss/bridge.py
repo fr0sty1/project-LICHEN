@@ -49,9 +49,6 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Runtime import for ReceiveError used in isinstance checks
-from ...link.link_layer import ReceiveError
-
 # Port assignments
 PORT_AX25 = 0  # AX.25-wrapped frames (for legacy TNC apps)
 PORT_RAW = 1  # Raw LICHEN frames (for native apps)

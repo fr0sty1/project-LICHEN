@@ -391,9 +391,8 @@ class RadioMixin:
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
         # Track heard neighbors during startup phase for density-aware startup
-        if self._density_aware_startup and not node.started:
-            if tx.source_node_id is not None:
-                node.heard_set.add(tx.source_node_id)
+        if self._density_aware_startup and not node.started and tx.source_node_id is not None:
+            node.heard_set.add(tx.source_node_id)
 
         for candidate in candidates:
             if candidate.transmission is tx:
