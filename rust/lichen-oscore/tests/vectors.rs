@@ -70,8 +70,6 @@ struct Vector {
     #[serde(default)]
     sender_seq: Option<u32>,
     #[serde(default)]
-    include_piv: Option<bool>,
-    #[serde(default)]
     request_piv: Option<String>,
     #[serde(default)]
     request_kid: Option<String>,
@@ -97,8 +95,7 @@ struct Plaintext {
 
 #[derive(Debug, Deserialize)]
 struct Expected {
-    oscore_option: Option<String>,
-    ciphertext: Option<String>,
+    #[allow(dead_code)]
     is_replay: Option<bool>,
 }
 
