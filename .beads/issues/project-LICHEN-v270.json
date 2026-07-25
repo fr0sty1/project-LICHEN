@@ -2,16 +2,18 @@
   "id": "project-LICHEN-v270",
   "title": "[codereview-P1] test_vectors.py not updated for ccp9-rendezvous.json",
   "description": "Missing from schema test list and no _ccp9_cases() or parametrized test. Must add import from generate and test function using independent oracle only (no using generate as oracle for test).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": null,
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:11:41.435960788Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:13:16.210408809Z",
+  "updated_at": "2026-07-25T01:19:58.216846792Z",
   "started_at": "2026-07-22T17:11:57.139212033Z",
   "closed_at": "2026-07-22T17:13:16.210408809Z",
   "close_reason": "test updated",
+  "lease_expires_at": "2026-07-25T01:24:58.216846792Z",
+  "heartbeat_at": "2026-07-25T01:19:58.216846792Z",
   "labels": [
     "codereview"
   ]
