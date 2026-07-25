@@ -5,12 +5,12 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:10.074202713Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T04:34:54.00025355Z",
   "started_at": "2026-07-23T00:43:21.720494809Z",
   "closed_at": "2026-07-23T04:34:54.00025355Z",
-  "close_reason": "Synced messages.py implementations across worktrees, resolved inconsistencies in serialization, validation, field names (rx_channel-\u003ecurrent_channel), added range checks, updated tests and spec. Tests pass in main workspace. Commit in worker18: 391302077"
+  "close_reason": "Synced messages.py implementations across worktrees, resolved inconsistencies in serialization, validation, field names (rx_channel->current_channel), added range checks, updated tests and spec. Tests pass in main workspace. Commit in worker18: 391302077"
 }
