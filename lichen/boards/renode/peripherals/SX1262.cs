@@ -624,7 +624,14 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 {
                     continue;
                 }
-                DispatchMessage(resp);
+                try
+                {
+                    DispatchMessage(resp);
+                }
+                catch (Exception e)
+                {
+                    this.Log(LogLevel.Error, "DispatchMessage failed: {0}", e.Message);
+                }
             }
         }
 
