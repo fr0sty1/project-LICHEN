@@ -9,7 +9,7 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": "Mark Atwood",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T04:40:29.35389Z",
   "created_by": "Mark Atwood",
