@@ -12,28 +12,13 @@
 
 #include "ipv6_addr.h"
 
-#include <stdio.h>
 #include <string.h>
 
 #include "lichen_util.h"
+#include <lichen/lichen_log.h>
 #include <lichen/link_ctx.h>
 
-/*
- * Logging abstraction: use Zephyr logging when available, otherwise
- * fall back to fprintf(stderr) for host-side unit tests.
- *
- * Note: Host-side log output is best-effort for debugging. Production
- * (Zephyr) builds use proper logging levels. (project-LICHEN-tvfm.76)
- */
-#ifdef __ZEPHYR__
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);
-#else
-#define LOG_ERR(fmt, ...)  fprintf(stderr, "ERR: " fmt "\n", ##__VA_ARGS__)
-#define LOG_WRN(fmt, ...)  fprintf(stderr, "WRN: " fmt "\n", ##__VA_ARGS__)
-#define LOG_INF(fmt, ...)  ((void)0)  /* Suppress info in tests */
-#define LOG_DBG(fmt, ...)  ((void)0)  /* Suppress debug in tests */
-#endif
+LICHEN_LOG_MODULE(lichen_ipv6, LOG_LEVEL_INF);
 
 /* Ed25519 public key length - compile-time check */
 #define LICHEN_ED25519_PUBKEY_LEN 32

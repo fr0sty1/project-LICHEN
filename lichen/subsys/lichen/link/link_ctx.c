@@ -28,18 +28,15 @@
 
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
+#include <lichen/lichen_log.h>
+
 #ifdef __ZEPHYR__
-#include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
-LOG_MODULE_REGISTER(link_ctx, CONFIG_LICHEN_LINK_LOG_LEVEL);
+LICHEN_LOG_MODULE(link_ctx, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #else
-/* Minimal logging for non-Zephyr builds */
-#include <stdio.h>
-#define LOG_WRN(...) fprintf(stderr, "WRN: " __VA_ARGS__)
+LICHEN_LOG_MODULE(link_ctx, LOG_LEVEL_WRN);
 /* POSIX CSPRNG */
-#if defined(__linux__)
-#include <sys/random.h>
-#elif defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__)
 #include <sys/random.h>
 #endif
 #endif

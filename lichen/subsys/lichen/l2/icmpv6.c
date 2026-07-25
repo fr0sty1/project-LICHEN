@@ -11,20 +11,9 @@
 #include <string.h>
 #include <limits.h>
 
-/*
- * Logging abstraction: use Zephyr logging when available, otherwise
- * fall back to fprintf(stderr) for host-side unit tests.
- */
-#ifdef __ZEPHYR__
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(lichen_icmpv6, LOG_LEVEL_INF);
-#else
-#include <stdio.h>
-#define LOG_ERR(fmt, ...)  fprintf(stderr, "ERR: " fmt "\n", ##__VA_ARGS__)
-#define LOG_WRN(fmt, ...)  fprintf(stderr, "WRN: " fmt "\n", ##__VA_ARGS__)
-#define LOG_INF(fmt, ...)  ((void)0)
-#define LOG_DBG(fmt, ...)  ((void)0)
-#endif
+#include <lichen/lichen_log.h>
+
+LICHEN_LOG_MODULE(lichen_icmpv6, LOG_LEVEL_INF);
 
 /*
  * IPv6 header field offsets.

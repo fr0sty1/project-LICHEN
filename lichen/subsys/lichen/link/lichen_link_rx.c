@@ -37,13 +37,12 @@ struct lichen_link_auth_payload {
 
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
+#include <lichen/lichen_log.h>
+
 #ifdef __ZEPHYR__
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(lichen_link_rx, CONFIG_LICHEN_LINK_LOG_LEVEL);
+LICHEN_LOG_MODULE(lichen_link_rx, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #else
-/* Minimal logging for non-Zephyr builds */
-#include <stdio.h>
-#define LOG_WRN(...) fprintf(stderr, "WRN: " __VA_ARGS__)
+LICHEN_LOG_MODULE(lichen_link_rx, LOG_LEVEL_WRN);
 #endif
 
 /* ─── Signature verification ──────────────────────────────────────────────── */

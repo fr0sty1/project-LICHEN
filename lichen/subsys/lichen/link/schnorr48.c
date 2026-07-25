@@ -20,16 +20,15 @@
 
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
+#include <lichen/lichen_log.h>
+
 #ifdef __ZEPHYR__
-#include <zephyr/logging/log.h>
 #ifndef CONFIG_LICHEN_LINK_LOG_LEVEL
 #define CONFIG_LICHEN_LINK_LOG_LEVEL LOG_LEVEL_INF
 #endif
-LOG_MODULE_REGISTER(schnorr48, CONFIG_LICHEN_LINK_LOG_LEVEL);
+LICHEN_LOG_MODULE(schnorr48, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #else
-/* Minimal logging for non-Zephyr builds */
-#include <stdio.h>
-#define LOG_WRN(...) fprintf(stderr, "WRN: " __VA_ARGS__)
+LICHEN_LOG_MODULE(schnorr48, LOG_LEVEL_WRN);
 #endif
 
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
