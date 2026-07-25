@@ -5,7 +5,7 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T15:57:23.630787493Z",
   "created_by": "AI Agent",

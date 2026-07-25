@@ -5,12 +5,12 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:46.082988315Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T00:23:21.863185728Z",
   "started_at": "2026-07-23T00:21:28.641853565Z",
   "closed_at": "2026-07-23T00:23:21.863185728Z",
-  "close_reason": "Fixed coap_config.c merge conflict residue by aligning KEY_PRIMARY + identity-\u003eygg access with main tree and LCI spec; updated comment and defines"
+  "close_reason": "Fixed coap_config.c merge conflict residue by aligning KEY_PRIMARY + identity->ygg access with main tree and LCI spec; updated comment and defines"
 }

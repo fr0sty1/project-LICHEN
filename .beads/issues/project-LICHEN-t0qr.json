@@ -5,12 +5,12 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:16.797106025Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-22T23:58:35.87918087Z",
   "started_at": "2026-07-22T23:55:07.705311102Z",
   "closed_at": "2026-07-22T23:58:35.87918087Z",
-  "close_reason": "Fixed naming inconsistency in coap_config.c (ula -\u003e ygg/primary per spec 17.5.2 and header struct); resolved related merge conflict markers in board configs"
+  "close_reason": "Fixed naming inconsistency in coap_config.c (ula -> ygg/primary per spec 17.5.2 and header struct); resolved related merge conflict markers in board configs"
 }

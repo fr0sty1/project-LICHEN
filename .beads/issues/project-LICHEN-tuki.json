@@ -2,11 +2,13 @@
   "id": "project-LICHEN-tuki",
   "title": "[merge-conflict] worker8: Kconfig",
   "description": "Resolve merge conflict in lichen/subsys/lichen/meshcore/Kconfig between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "labels": ["defer-external"],
+  "labels": [
+    "defer-external"
+  ],
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:02.641571925Z",
   "created_by": "AI Agent",
