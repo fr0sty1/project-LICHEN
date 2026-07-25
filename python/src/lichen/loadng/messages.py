@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
-from typing import Union
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 
@@ -175,7 +174,7 @@ class RERR:
         )
 
 
-LoadngMessage = Union[RREQ, RREP, RERR]
+LoadngMessage = RREQ | RREP | RERR
 
 _CODE_BY_TYPE = {RREQ: LoadngCode.RREQ, RREP: LoadngCode.RREP, RERR: LoadngCode.RERR}
 _CLASS_BY_CODE: dict[LoadngCode, type[LoadngMessage]] = {
