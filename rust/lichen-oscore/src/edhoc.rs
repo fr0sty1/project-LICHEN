@@ -768,7 +768,8 @@ impl EdhocInitiator {
             if self.state.c_r == self.c_i {
                 return Err(EdhocError::InvalidMessage);
             }
-            self.state.th_2 = transcript_2(&self.state.g_y, self.state.c_r.as_bytes(), &self.state.msg1)?;
+            self.state.th_2 =
+                transcript_2(&self.state.g_y, self.state.c_r.as_bytes(), &self.state.msg1)?;
 
             // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
             let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
@@ -912,7 +913,8 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3_for_th4, peer.credential)?;
+            self.state.th_4 =
+                transcript_4(&self.state.th_3, &plaintext_3_for_th4, peer.credential)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1098,7 +1100,11 @@ impl EdhocResponder {
     }
 
     /// Create a new EDHOC responder using caller-provided entropy.
-    pub fn new_with_rng<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Result<Self, OscoreError> {
+    pub fn new_with_rng<R: RngCore + CryptoRng>(
+        seed: [u8; 32],
+        c_r: u8,
+        rng: &mut R,
+    ) -> Result<Self, OscoreError> {
         let mut eph_seed = [0u8; KEY_LEN_32];
         rng.try_fill_bytes(&mut eph_seed[..])
             .map_err(|_| OscoreError::KeyDerivation)?;
@@ -1558,12 +1564,18 @@ fn parse_identifier(data: &[u8]) -> Result<(ConnectionId, usize), EdhocError> {
     }
     let first = data[0];
     if (0x00..=0x17).contains(&first) {
-        Ok((ConnectionId::new(&[first]).map_err(|_| EdhocError::BufferTooSmall)?, 1))
+        Ok((
+            ConnectionId::new(&[first]).map_err(|_| EdhocError::BufferTooSmall)?,
+            1,
+        ))
     } else if first == 0x18 {
         if data.len() < 2 {
             return Err(EdhocError::InvalidMessage);
         }
-        Ok((ConnectionId::new(&[data[1]]).map_err(|_| EdhocError::BufferTooSmall)?, 2))
+        Ok((
+            ConnectionId::new(&[data[1]]).map_err(|_| EdhocError::BufferTooSmall)?,
+            2,
+        ))
     } else if (0x40..=0x57).contains(&first) {
         let len = (first - 0x40) as usize;
         if data.len() < 1 + len {
@@ -1603,16 +1615,24 @@ fn parse_suites_r(data: &[u8]) -> Result<usize, EdhocError> {
     if (0x00..=0x17).contains(&first) {
         Ok(1)
     } else if first == 0x18 {
-        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
         Ok(2)
     } else if (0x80..=0x97).contains(&first) {
         let arr_len = (first - 0x80) as usize;
-        if data.len() < 1 + arr_len { return Err(EdhocError::InvalidMessage); }
+        if data.len() < 1 + arr_len {
+            return Err(EdhocError::InvalidMessage);
+        }
         Ok(1 + arr_len)
     } else if first == 0x98 {
-        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
         let arr_len = data[1] as usize;
-        if data.len() < 2 + arr_len { return Err(EdhocError::InvalidMessage); }
+        if data.len() < 2 + arr_len {
+            return Err(EdhocError::InvalidMessage);
+        }
         Ok(2 + arr_len)
     } else {
         Err(EdhocError::InvalidMessage)
@@ -1632,7 +1652,9 @@ fn encode_identifier<const N: usize>(
 /// Build a raw key CCS (COSE_Key credential) from a public key.
 ///
 /// Returns (id_cred, credential) as deterministic CBOR.
-fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 40>, heapless::Vec<u8, 80>), EdhocError> {
+fn raw_key_credential(
+    pubkey: &[u8; 32],
+) -> Result<(heapless::Vec<u8, 40>, heapless::Vec<u8, 80>), EdhocError> {
     // ID_CRED with kid = bstr(hash of public key)
     let kid = Sha256::digest(pubkey);
     let mut id_cred = heapless::Vec::<u8, 40>::new();
@@ -1721,13 +1743,7 @@ fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
         _ => return Err(EdhocError::InvalidMessage),
     };
 
-    Ok((
-        IdCred {
-            encoded,
-            reference,
-        },
-        consumed,
-    ))
+    Ok((IdCred { encoded, reference }, consumed))
 }
 
 /// Copy an ID_CRED kid value into a bounded vec.
@@ -1852,8 +1868,12 @@ fn validate_peer_credential(peer: PeerCredential<'_>) -> Result<(), EdhocError> 
         return Ok(());
     }
     // Parse CCS map to find the x-coordinate
-    if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
-    if data[0] != 0xa2 { return Err(EdhocError::InvalidMessage); }
+    if data.len() < 2 {
+        return Err(EdhocError::InvalidMessage);
+    }
+    if data[0] != 0xa2 {
+        return Err(EdhocError::InvalidMessage);
+    }
     if data[1] != 0x01 || data.get(2) != Some(&0x01) {
         return Err(EdhocError::InvalidMessage);
     }
@@ -2094,11 +2114,10 @@ mod tests {
         assert_eq!(transcript_2(&g_y, &[0x01], &message_1).unwrap(), th_2);
 
         // Full handshake test with known seeds
-        let mut handshake_initiator = EdhocInitiator::new_with_rng([0; 32], 0, &mut TestRng(0))
-            .unwrap();
+        let mut handshake_initiator =
+            EdhocInitiator::new_with_rng([0; 32], 0, &mut TestRng(0)).unwrap();
         let initiator_key = handshake_initiator.pubkey.to_bytes();
-        let mut responder =
-            EdhocResponder::new_with_rng([1; 32], 1, &mut TestRng(1)).unwrap();
+        let mut responder = EdhocResponder::new_with_rng([1; 32], 1, &mut TestRng(1)).unwrap();
         let responder_key = responder.pubkey.to_bytes();
         let (responder_id, responder_credential) = raw_key_credential(&responder_key).unwrap();
         let (initiator_id, initiator_credential) = raw_key_credential(&initiator_key).unwrap();

@@ -14,11 +14,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 
+pub mod group;
 pub mod seqnum;
 
 #[cfg(feature = "edhoc")]
 pub mod edhoc;
 
+pub use group::{GroupContext, GroupTrust, GROUP_MAX_MEMBERS, GROUP_NAME_MAX_LEN};
 pub use seqnum::OscoreSeqNum;
 
 #[cfg(feature = "edhoc")]
@@ -256,6 +258,7 @@ impl PendingResponse<'_> {
     }
 }
 
+#[allow(dead_code)]
 enum Construction {
     #[cfg(any(feature = "edhoc", test))]
     Fresh,
@@ -485,7 +488,13 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -538,7 +547,13 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -557,6 +572,47 @@ impl Context {
                 ctx.allow_no_piv_response = false;
             }
         }
+        Ok(ctx)
+    }
+
+    /// Derive an OSCORE master secret from an Ed25519 public key and a peer IID.
+    ///
+    /// Uses HKDF-SHA256 with domain separation `"LICHEN-OSCORE-peer-key"`.
+    /// This provides a deterministic 16-byte key for E2E pairwise encryption
+    /// without EDHOC, suitable for dead drops and confessions where parties
+    /// exchange public keys via TOFU.
+    pub fn derive_master_secret_from_peer_key(
+        pubkey: &[u8; 32],
+        iid: &[u8; 8],
+    ) -> Result<[u8; KEY_LEN], OscoreError> {
+        let prk = Hkdf::<Sha256>::new(None, pubkey);
+        let label = b"LICHEN-OSCORE-peer-key";
+        let mut info = [0u8; 31];
+        info[..22].copy_from_slice(label);
+        info[23..].copy_from_slice(iid);
+
+        let mut okm = [0u8; KEY_LEN];
+        prk.expand(&info, &mut okm)
+            .map_err(|_| OscoreError::KeyDerivation)?;
+        Ok(okm)
+    }
+
+    /// Create a pairwise OSCORE context from a peer's Ed25519 public key and IID.
+    ///
+    /// Derives the master secret via [`Self::derive_master_secret_from_peer_key`]
+    /// and creates a context with the caller's IID as sender_id and the peer's IID
+    /// as recipient_id (for E2E encryption) or vice versa (for E2E decryption).
+    ///
+    /// Callers who want to decrypt messages from peers should reverse the IDs.
+    pub fn from_peer_key(
+        pubkey: &[u8; 32],
+        peer_iid: &[u8; 8],
+        sender_id: &[u8],
+        recipient_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        let mut master_secret = Self::derive_master_secret_from_peer_key(pubkey, peer_iid)?;
+        let ctx = Self::new(&master_secret, None, None, sender_id, recipient_id)?;
+        master_secret.zeroize();
         Ok(ctx)
     }
 
@@ -749,7 +805,13 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -944,7 +1006,13 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         if !self.active {
             return Err(OscoreError::InvalidParam);
         }
@@ -2506,10 +2574,10 @@ mod tests {
                 exhausted: false,
             },
         };
-        let mut context =
-            Context::new(&secret, None, None, &[1], &[0])
-                .map_err(ContextStoreError::Oscore)
-                .and_then(|ctx| ctx.restore_existing(&mut store)).unwrap();
+        let mut context = Context::new(&secret, None, None, &[1], &[0])
+            .map_err(ContextStoreError::Oscore)
+            .and_then(|ctx| ctx.restore_existing(&mut store))
+            .unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
@@ -2603,14 +2671,14 @@ mod tests {
             barrier: Arc::clone(&barrier),
         };
         let mut second_store = first_store.clone();
-        let mut first =
-            Context::new(&secret, None, None, &[0], &[1])
-                .map_err(ContextStoreError::Oscore)
-                .and_then(|ctx| ctx.restore_existing(&mut first_store)).unwrap();
-        let mut second =
-            Context::new(&secret, None, None, &[0], &[1])
-                .map_err(ContextStoreError::Oscore)
-                .and_then(|ctx| ctx.restore_existing(&mut second_store)).unwrap();
+        let mut first = Context::new(&secret, None, None, &[0], &[1])
+            .map_err(ContextStoreError::Oscore)
+            .and_then(|ctx| ctx.restore_existing(&mut first_store))
+            .unwrap();
+        let mut second = Context::new(&secret, None, None, &[0], &[1])
+            .map_err(ContextStoreError::Oscore)
+            .and_then(|ctx| ctx.restore_existing(&mut second_store))
+            .unwrap();
 
         let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
         let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());
