@@ -177,7 +177,6 @@ pub enum FrameError {
     MicLenMismatch,
     SignatureMicMismatch,
     SignedEncryptedUnsupported,
-    EncryptionUnsupported,
     TrailingBytes,
     FrameTooLarge,
 }
@@ -195,9 +194,6 @@ impl core::fmt::Display for FrameError {
             Self::SignatureMicMismatch => write!(f, "signature MIC must be 48 bytes"),
             Self::SignedEncryptedUnsupported => {
                 write!(f, "signed and encrypted frames are unsupported")
-            }
-            Self::EncryptionUnsupported => {
-                write!(f, "encrypted frames are unsupported")
             }
             Self::TrailingBytes => write!(f, "trailing bytes after frame"),
             Self::FrameTooLarge => write!(f, "frame too large"),
@@ -247,7 +243,6 @@ impl From<BufferTooSmall> for FrameError {
 pub struct LichenFrame<'a> {
     pub epoch: u8,
     pub seqnum: LinkSeqNum,
-    pub src_addr: &'a [u8],
     pub dst_addr: &'a [u8],
     pub payload: &'a [u8],
     pub mic: &'a [u8],
@@ -255,13 +250,6 @@ pub struct LichenFrame<'a> {
     pub mic_length: MicLength,
     pub signature: Signature,
     pub encryption: Encryption,
-}
-
-impl<'a> LichenFrame<'a> {
-    /// True when the frame carries a source short address (R bit set).
-    pub fn has_src(&self) -> bool {
-        !self.src_addr.is_empty()
-    }
 }
 
 impl<'a> LichenFrame<'a> {
@@ -275,9 +263,6 @@ impl<'a> LichenFrame<'a> {
         if self.encryption.is_encrypted() {
             v |= ENCRYPTED_BIT;
         }
-        if self.has_src() {
-            v |= RESERVED_BIT;
-        }
         v
     }
 
@@ -288,9 +273,6 @@ impl<'a> LichenFrame<'a> {
         if self.addr_mode.addr_len() != self.dst_addr.len() {
             return Err(FrameError::AddrLenMismatch);
         }
-        if self.has_src() && self.src_addr.len() != 2 {
-            return Err(FrameError::AddrLenMismatch);
-        }
         let expected_mic_len = if self.signature.is_present() { 48 } else { 0 };
         if self.mic.len() != expected_mic_len {
             return Err(if self.signature.is_present() {
@@ -299,8 +281,7 @@ impl<'a> LichenFrame<'a> {
                 FrameError::MicLenMismatch
             });
         }
-        let src_len = if self.has_src() { 2 } else { 0 };
-        let body_len = 4 + src_len + self.dst_addr.len() + self.payload.len() + self.mic.len();
+        let body_len = 4 + self.dst_addr.len() + self.payload.len() + self.mic.len();
         if body_len > MAX_FRAME_BODY {
             return Err(FrameError::FrameTooLarge);
         }
@@ -315,10 +296,6 @@ impl<'a> LichenFrame<'a> {
         buf[3] = seqnum_bytes[0];
         buf[4] = seqnum_bytes[1];
         let mut off = 5;
-        if self.has_src() {
-            buf[off..off + 2].copy_from_slice(self.src_addr);
-            off += 2;
-        }
         buf[off..off + self.dst_addr.len()].copy_from_slice(self.dst_addr);
         off += self.dst_addr.len();
         buf[off..off + self.payload.len()].copy_from_slice(self.payload);
@@ -372,6 +349,11 @@ impl<'a> LichenFrame<'a> {
             return Err(TooShort::new(4, length).into());
         }
         let llsec = body[0];
+        if llsec & RESERVED_BIT != 0 {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail LLSec reserved bit check");
+            return Err(FrameError::ReservedBitSet);
+        }
         // ADDR_MODE_MASK is 0b11, so value is always 0-3; from_u8 covers all cases
         let addr_mode = AddrMode::from_u8(llsec & ADDR_MODE_MASK).unwrap();
         let mic_field = (llsec >> MIC_LEN_SHIFT) & MIC_LEN_MASK;
@@ -385,8 +367,6 @@ impl<'a> LichenFrame<'a> {
         transition_frame_state(&mut state, FrameProcessingState::HeaderRead)
             .expect("valid fixed header can advance to header-read");
         let addr_len = addr_mode.addr_len();
-        let has_src = llsec & RESERVED_BIT != 0;
-        let src_len = if has_src { 2 } else { 0 };
         let signature = llsec & SIGNATURE_BIT != 0;
         if signature && llsec & ENCRYPTED_BIT != 0 {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
@@ -394,27 +374,21 @@ impl<'a> LichenFrame<'a> {
             return Err(FrameError::SignedEncryptedUnsupported);
         }
         let mic_len = if signature { 48 } else { 0 };
-        let min_body = 4 + src_len + addr_len + mic_len;
+        let min_body = 4 + addr_len + mic_len;
         if body.len() < min_body {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
                 .expect("header-read frame can fail variable length check");
             return Err(TooShort::new(min_body, body.len()).into());
         }
-        let src_addr: &[u8] = if has_src {
-            &body[4..6]
-        } else {
-            &[]
-        };
-        let dst_addr = &body[4 + src_len..4 + src_len + addr_len];
+        let dst_addr = &body[4..4 + addr_len];
         let payload_end = body.len() - mic_len;
-        let payload = &body[4 + src_len + addr_len..payload_end];
+        let payload = &body[4 + addr_len..payload_end];
         let mic = &body[payload_end..];
         transition_frame_state(&mut state, FrameProcessingState::Parsed)
             .expect("header-read frame can parse successfully");
         Ok(LichenFrame {
             epoch,
             seqnum,
-            src_addr,
             dst_addr,
             payload,
             mic,
@@ -525,20 +499,12 @@ mod tests {
     }
 
     #[test]
-    fn src_addr_roundtrip() {
+    fn reserved_bit_error() {
         let wire = from_hex("0b8001000261626301020304");
-        let frame = LichenFrame::from_bytes(&wire).unwrap();
-        assert_eq!(frame.has_src(), true);
-        assert_eq!(frame.src_addr, &[0x61, 0x62]);
-        assert_eq!(frame.epoch, 1);
-        assert_eq!(frame.seqnum.get(), 2);
-        assert_eq!(frame.dst_addr, &[] as &[u8]);
-        assert_eq!(frame.payload, &[0x63, 0x01, 0x02, 0x03, 0x04]);
-        assert_eq!(frame.mic, &[] as &[u8]);
-        assert_eq!(frame.addr_mode, AddrMode::None);
-        let mut buf = [0u8; 64];
-        let n = frame.write_to(&mut buf).unwrap();
-        assert_eq!(&buf[..n], &wire[..]);
+        assert_eq!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::ReservedBitSet)
+        );
     }
 
     #[test]
@@ -565,7 +531,6 @@ mod tests {
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
-            src_addr: &[],
             dst_addr: &[0xaa],
             payload: &[],
             mic: &[],
@@ -580,7 +545,6 @@ mod tests {
         );
 
         let frame = LichenFrame {
-            src_addr: &[],
             dst_addr: &[],
             mic: &[],
             addr_mode: AddrMode::None,
@@ -595,7 +559,6 @@ mod tests {
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
-            src_addr: &[],
             dst_addr: &[],
             payload: &[0; 252],
             mic: &[],
@@ -612,7 +575,6 @@ mod tests {
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
-            src_addr: &[],
             dst_addr: &[],
             payload: &[],
             mic: &[],
@@ -632,7 +594,6 @@ mod tests {
         let frame = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
-            src_addr: &[],
             dst_addr: &[],
             payload: b"test",
             mic: &[],
@@ -743,32 +704,17 @@ mod tests {
                         }
                         "reserved_bit_set" => error == FrameError::ReservedBitSet,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
-                        "encryption_unsupported" => error == FrameError::EncryptionUnsupported,
                         "signed_encrypted_unsupported" => {
                             error == FrameError::SignedEncryptedUnsupported
                         }
                         "frame_too_large" => error == FrameError::FrameTooLarge,
                         _ => false,
                     };
-                    // R bit now means source address present, not error
-                    if vector.expected.error_type == "reserved_bit_set" {
-                        continue;
-                    }
-                    // max_size_frame vector has LENGTH=255 which exceeds
-                    // MAX_FRAME_BODY=254; pre-existing inconsistency
-                    if name == "max_size_frame" {
-                        continue;
-                    }
                     assert!(
                         matches_type,
                         "{}: expected {}, got {:?}",
                         name, vector.expected.error_type, error
                     );
-                    continue;
-                }
-
-                // max_size_frame has LENGTH=255 > MAX_FRAME_BODY=254
-                if name == "max_size_frame" {
                     continue;
                 }
 
@@ -857,11 +803,6 @@ mod tests {
             for vector in &file.vectors {
                 // Skip error/empty cases
                 if vector.expected.error || vector.input_hex.is_empty() {
-                    continue;
-                }
-
-                // max_size_frame has LENGTH=255 > MAX_FRAME_BODY=254
-                if vector.name == "max_size_frame" {
                     continue;
                 }
 

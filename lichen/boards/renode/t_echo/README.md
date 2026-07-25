@@ -21,7 +21,7 @@ renode lichen/boards/renode/t_echo/support/t_echo.resc \
 | LEDs (3x) | Working | P0.13/14/15, active-low |
 | Button | Working | P1.10 |
 | E-ink display | Not implemented | Add if needed |
-| GPS (L76K) | Not implemented | See `samz` task |
+| GPS (L76K) | Working | UART1, 9600 baud, NMEA at 1 Hz |
 
 ## GPIO Mapping
 

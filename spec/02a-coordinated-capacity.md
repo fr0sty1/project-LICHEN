@@ -1,49 +1,82 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: The contributors to the LICHEN project -->
 
-<!-- Part of LICHEN Protocol Specification -->
-
-# Coordinated Capacity Protocol (CCP-16 with CCP-14 Gateway Multi-RX)
+# Coordinated Capacity Protocol (CCP)
 
 ## Abstract
 
-CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per da2q multi-channel context. 
+The Coordinated Capacity Protocol (CCP) defines mechanisms for coordinated capacity management in LICHEN LoRa meshes. This includes TDMA slot assignment, channel agility via select_channel with density-aware fallback, adaptive spreading factor selection via adaptive_sf_select (incorporating EMA-smoothed SNR and load_factor), time synchronization via now(), CH0 control channel rules, signed rx_channel for CCP-9 da2q rendezvous, density/load rules, capability signaling in DIOs, and desynchronization recovery.
 
-All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`:
-- vectors[0-2]: TDMA slot, SF, channel, tx_allowed per CCP-16 (see 2a.2, 2a.3)
-- vectors[3+]: CCP-14 Gateway Multi-RX scheduling, concurrent RX validation, capacity metrics (independent oracle: reference FNV-1a + Semtech SX126x airtime tables + multi-channel sim from external Python oracle, not LICHEN impl).
+All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, and `l2_payload.json`:
+- TDMA beacon byte layout, CDDL, SCHC rule 0x08, slot/hash, SFN wrap, join flows, epoch/num_slots per 2a.2
+- vectors for CCP-16/14 slot, SF, channel, tx_allowed, Multi-RX, capacity metrics (independent oracle: FNV-1a + SX126x airtime + multi-channel sim).
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119].
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
 ## Table of Contents
 
 1. Abstract
 2. 2a.1. Overview
-3. 2a.2. TDMA Slots and Hash Selection
-4. CCP-4. Regional Channel Plans
-5. 2a.3. Channel Agility and Adaptive SF
-6. 2a.4. Time Synchronization
-7. 2a.5. Desync Recovery State Machine
-8. Implementation Status
-9. References
+3. 2a.2. TDMA Beacon Format, Slots, Hash Selection, and Join (SCHC 0x08, CDDL, byte layout)
+4. 2a.3. Channel Agility (select_channel, now())
+5. 2a.4. Time Synchronization
+6. 2a.5. Multi-Root Beacon Conflict Resolution
+7. 2a.6. Desync Recovery State Machine
+8. 2a.7. Regional Channel Plans and CH0 Rules
+9. 2a.8. Adaptive Spreading Factor Selection (adaptive_sf_select)
+10. Implementation Status
+11. References
 
-## 2a.1. Overview
+## Overview
 
-LICHEN networks operate under severe bandwidth and duty-cycle constraints. CCP-16 coordinates access to the shared medium using hash-derived TDMA slots synchronized to a network epoch, density-aware adaptive SF, multi-channel operation (CH0 for control per SCHC-compressed beacons - see draft-lichen-schc-lora-00), and time synchronization via RPL DIOs. 
+LICHEN networks operate under severe bandwidth and duty-cycle constraints. CCP coordinates access to the shared medium using hash-derived TDMA slots synchronized to a network epoch, density-aware adaptive SF selection, multi-channel operation (CH0 dedicated to control per SCHC-compressed beacons and RPL DIOs), deterministic channel agility, time synchronization, signed rx_channel announcements for rendezvous, per-neighbor EMA for RF metrics, and load/density signaling. The root advertises epoch and num_slots. Nodes suppress transmission outside assigned slots. All algorithms are deterministic.
 
-Nodes compute their slot using a deterministic hash of (EUI64 XOR epoch) modulo num_slots (see test vectors for validation). Transmission outside the assigned slot is suppressed by the link layer. This document specifies the algorithms and interoperation with RPL, SCHC, TDMA, and the link layer, incorporating SFN modulo, multi-root conflict, and desync recovery per parent epic. Arbitrary constants (e.g. 100ms guard, 300s density window) are defined in appendix-design-rationale.md and test vectors; implementations MUST match exactly.
+## TDMA Frame Structure, Slot Assignment, now(), and Desync Recovery
 
 ## 2a.2. TDMA Slots and Hash Selection
 
-The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL configuration option.
+The root advertises `epoch` (u32) and `num_slots` (default 8) via SCHC Rule ID 0x08 (TDMA_BEACON) on CH0 (see draft-lichen-schc-lora-00 and appendix-schc.md). 
 
-Slot ID MUST be computed as:
+**TDMA Beacon Format (exact, normative for interop):**
 
-Multi-byte integers are unsigned big-endian. Flags bits: 0=scheduled mode, 1=CSMA rendezvous, 2=concurrent CH0 RX, 3=GNSS-PPS, 4-7 reserved (zero). `Setup Window` bounds retune/readiness/CAD. `Occupied Time` bounds data+ACK. `Guard` is separation between occupied envelopes. `RX Chains` is simultaneous receive count (1 for typical single-radio). `Channel Mask` bit 0 = CH0. Receivers compute local intersection. See test/vectors/ccp*.json for format validation.
+Multi-byte integers unsigned big-endian (network order). Full byte layout:
 
-using `fnv1a32` (lichen_hash_32 primitive, basis 0x811c9dc5; see lichen-core/src/lib.rs, spec/appendix-design-rationale.md). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All implementations MUST match ccp*.json vectors exactly. This integrates with `lichen_rpl_dodag_init()`.
+| Offset | Bytes | Field          | Description |
+|--------|-------|----------------|-------------|
+| 0      | 4     | epoch          | u32 BE for slot hash and SFN base |
+| 4      | 1     | num_slots      | u8 (default 8); hash modulus |
+| 5      | 4     | sfn            | u32 BE superframe number |
+| 9      | 4     | timestamp      | u32 BE for epoch_floor validation |
+| 13     | 1     | flags          | bits 0=scheduled, 1=CSMA, 2=CH0-RX, 3=GNSS-PPS, 4-7=0 |
+| 14     | 1     | rx_chains      | u8 (1 for single-radio) |
+| 15     | 2     | setup_window   | u16 ms (retune/CAD) |
+| 17     | 2     | occupied_time  | u16 ms (data+ACK) |
+| 19     | 1     | guard          | u8 ms (default 100) |
+| 20     | 4     | channel_mask   | u32 (bit 0=CH0); local intersection computed |
+| 24+    | var   | cbor_options   | density, slot_map, etc. |
 
-For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
+**CDDL (RFC 8610) for CBOR options tail:**
+
+```cddl
+tdma-beacon = {
+    epoch: uint .size 4,
+    num_slots: uint .size 1,
+    sfn: uint .size 4,
+    timestamp: uint .size 4,
+    flags: uint .size 1,
+    rx_chains: uint .size 1,
+    setup_window: uint .size 2,
+    occupied_time: uint .size 2,
+    guard: uint .size 1,
+    channel_mask: uint .size 4,
+    ? density: uint .size 1,
+    * any
+}
+```
+
+Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json`, `sfn-delta.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
+
+For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes (DODAGVersion increment via DIO, see spec/05-routing.md Section 8.4) or desync MUST reset SFN relative to the new root; node MUST reset SFN on version change per the FSM in Section 2a.6.
 
 Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
 
@@ -55,9 +88,57 @@ current_sfn = 0x00000002u;
 delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 ```
 
-This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json MUST cover this and similar boundaries.
+This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json, ccp_tdma.json, and sfn-delta.json MUST cover this and similar boundaries.
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
+
+## 2a.5. Multi-Root Beacon Conflict Resolution
+
+When a node receives TDMA beacons from multiple candidate roots on CH0, it MUST apply the following selection criteria in order to resolve conflicts deterministically. All overlap comparisons (RSSI, SNR) MUST use the most recent valid measurement from each candidate.
+
+### 2a.5.1. Signature Verification
+
+Every TDMA beacon received on CH0 for a candidate root MUST carry a valid Schnorr48 Ed25519 signature (see draft-lichen-schnorr-00) over the beacon payload. The node MUST verify the signature against the root's public key before evaluating any selection criteria.
+
+If signature verification fails:
+- The received beacon MUST be discarded immediately.
+- The candidate root MUST NOT cause any state transition (no SFN adjustment, no slot reassignment, no timer reset, and no DODAG version update).
+- The failure MUST NOT alter the node's current sync state or time-provider binding.
+
+The node SHOULD log the signature failure for diagnostic purposes but MUST NOT retain the untrusted root in its candidate list.
+
+### 2a.5.2. Root Selection Criteria
+
+When signatures are valid, nodes MUST select a single root using the following ordered criteria:
+
+1. **RPL DODAG Preference** (MUST): The node MUST prefer the root advertising the lowest RPL DODAG Preference field value (lower = less preferred, per RFC 6550). If a root's DIO includes an explicit preference metric, it overrides any default.
+
+2. **Stratum** (MUST): The node MUST prefer the root with the lowest time-provider stratum value (see docs/firmware-time-provider.md). Roots sourcing time from GNSS or a trusted upstream NTP reference (stratum 0-1) MUST take precedence over roots with higher stratum values.
+
+3. **RSSI/SNR** (SHOULD): Between roots of equal DODAG Preference and stratum, the node SHOULD select the root with the highest combined RSSI and SNR (RSSI_EMA + SNR_EMA, with RSSI weighted 2:1 over SNR per EMA update).
+
+4. **EUI-64 Tiebreak** (MUST): If all above criteria are equal, the node MUST select the root with the numerically smaller link-local IID (last 8 bytes of the EUI-64, compared as unsigned big-endian integers).
+
+### 2a.5.3. Overlap Resolution
+
+Beacons from distinct roots that arrive within the same beacon window (setup_window + occupied_time + guard) constitute an overlap. When multiple valid beacons overlap in time:
+
+- If any beacon signature fails verification, the receiving node MUST discard that beacon and proceed as if it were not received.
+- The node MUST retain only the one candidate selected per Section 2a.5.2.
+- If the selected root differs from the node's current root, the node MUST NOT transition immediately; rather, it MUST defer the transition for a hold-off period of 3 superframes. If the new root remains preferred across the entire hold-off, the node MUST initiate desync and rejoin per Section 2a.6.
+- Discarded beacons from non-selected roots MUST NOT accumulate state or influence scheduling decisions.
+
+### 2a.5.4. RPL Version Change During Multi-Root Conflict
+
+When a node's current root increments the RPL DODAG Version Number (as signaled in DIO messages per RFC 6550) while other root candidates remain present:
+
+- The node MUST reset its superframe number (SFN) relative to the current root's new epoch.
+- If the version increment coincides with a multi-root conflict (i.e., another root becomes preferred per Section 2a.5.2), the node MUST first complete the version-handling steps below before evaluating the conflict:
+  1. Accept the new DODAG Version from the current root.
+  2. Reset any desync state that depended on the prior version.
+  3. Re-verify the current root's beacon signature upon the first beacon with the new version.
+  4. If signature verification fails for the new version, discard the current root and proceed to evaluate remaining candidates per Section 2a.5.2.
+- During the hold-off transition described in Section 2a.5.3, a version change from the selected root MUST reset the hold-off counter to zero and restart the 3-superframe hold-off period. If the selected root fails signature verification on the new version, the node MUST immediately evaluate remaining candidates.
 
 ## CCP-4. Regional Channel Plans
 
@@ -77,79 +158,70 @@ Remote capability and schedule messages MAY reduce the locally permitted interse
 
 ## 2a.3. Channel Agility and Adaptive SF
 
-CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Data channels are selected via select_channel. All implementations MUST produce identical results to test/vectors/ccp16.json for CCP-14/15/16 vectors.
+CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous. Data channels selected via select_channel() or hash. All implementations MUST produce identical results to test vectors in ccp16.json, ccp9*.json, ccp_load_balancing.json.
 
-### select_channel and now()
+### 2a.3.1. Pure Pseudocode Definitions (IETF-style, language agnostic)
 
-```
-function select_channel(ctx, metrics, t):
-    IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
-        RETURN 0   // control CH0 for high density or desync (per vectors)
-    hash = fnv1a32(ctx.eui64 XOR t XOR ctx.epoch)
-    n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
-    RETURN 1 + (hash MOD n)
+Procedure Now():
+   1. RETURN current SFN value.
+   2. All subtractions, comparisons, and MOD operations MUST use unsigned 32-bit modular arithmetic (modulo 2^32) to handle wraparound correctly per test vectors.
 
-function now():
-    RETURN current_sfn()   // from time-provider; unsigned modular arithmetic per 2a.2
-```
+Procedure SelectChannel(EUI64, Epoch, Density, NChannels):
+   1. IF Density > 8 THEN RETURN 0
+   2. Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes)
+   3. Hash = FNV1A32(Data)  /* basis 0x811c9dc5; matches hash_32.json and ccp16.json vectors */
+   4. N = MAX(NChannels, 3)
+   5. RETURN 1 + (Hash MOD N)
 
-Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. blacklist_until[] timer comparisons MUST use unsigned 32-bit subtraction to correctly handle wrap-around. Cross-ref draft-lichen-tdma, RPL, and SCHC.
+### 2a.7. Adaptive Spreading Factor Selection (per 8gac)
 
-### Density Rules Rationale
+SF10 is the REQUIRED baseline for moderate density (5-20 nodes). Density-aware adaptation and per-neighbor EMA (alpha = 1/4) override only on explicit thresholds. Load_factor from gateway DIOs takes precedence. All paths MUST match ccp16.json and ccp_load_balancing.json exactly (independent oracle).
 
-SF10 is the REQUIRED default because it balances sensitivity (~ -137 dBm at 125 kHz) and airtime for typical mesh density per appendix-design-rationale.md and independent sim oracle in ccp16.json vectors. Density-aware adaptation prioritizes capacity (SF9 in low density <5 + good SNR >8 dB to reduce airtime) vs robustness (SF11/12 in density >8 or poor SNR or high load_factor to lower PER). EMA on SNR (updated via now()) integrates with load_factor override from gateway DIOs. Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
+**Thresholds Table:**
 
-### adaptive_sf_select Pseudocode
+| SF | Sensitivity | Upgrade Condition (SHOULD) | Downgrade Condition (MUST) |
+|----|-------------|----------------------------|----------------------------|
+| 7  | -123 dBm   | N/A                        | SNR < 0 OR loss > 0.25    |
+| 9  | -129 dBm   | Density < 5 AND SNR_EMA > 8 | SNR < 0 OR Density > 8    |
+| 10 | -132 dBm   | DEFAULT (moderate density) | SNR < 0 OR load_factor > 0.8 |
+| 11 | -134 dBm   | N/A                        | Density > 8 OR SNR_EMA < 0 OR load > 0.8 |
+| 12 | -137 dBm   | N/A                        | Density > 20 OR SNR_EMA < -5 |
 
-```
-function ema_update(avg, sample):
-    diff = sample - avg
-    RETURN avg + (diff >> 2)
+Procedure AdaptiveSFSelect(AssignedSF, Neighbor, Density, Utilization, LoadFactor):
+   1. SF = AssignedSF
+   2. IF SF absent THEN SF = 10
+   3. IF (Density > 10) OR (Utilization > 150) THEN SF = MIN(12, SF + 2)
+   4. IF (Neighbor.EMA_SNR > 8) AND (Density < 5) THEN SF = MAX(7, SF - 1)
+   5. IF (Neighbor.EMA_Loss > 0.25) OR (Utilization > 200) THEN
+         SF = MIN(12, SF + 1)
+         IF Utilization > 200 THEN RETURN (SF, false)  /* tx not allowed */
+   6. RETURN (SF, true)
 
-function adaptive_sf_select(density, snr_ema, load_factor):
-    IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
-        RETURN 11
-    ELSE IF (density < 5) AND (snr_ema > 8) THEN
-        RETURN 9
-    ELSE IF (density > 20) OR (snr_ema < -5) THEN
-        RETURN 12
-    ELSE
-        RETURN 10
-```
+EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neighbor state on every RX. Integrate with RPL DIO capability signaling. No dead code.
 
-Per-SF SNR thresholds (normative): SF9: >8dB, SF10: >0dB, SF11: >-5dB, SF12: any. Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp16.json. Integrates with TDMA slot enforcement and SCHC.
+(The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
-## 2a.4. Time Synchronization
+## Regional Channel Plans and CH0 Rules
 
-Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`). Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` and lichen_link.
-
-## 2a.5. Desync Recovery State Machine
-
-A CCP-capable node is always in exactly one of these states:
-
-| State | Meaning | Channel behavior |
-|-------|---------|------------------|
-| UNJOINED | Never successfully synchronized | CH0 only; cannot hop |
-| JOINED | Clock is trusted; normal operation | Hop per schedule |
-| DRIFT | Clock may be drifting; watching | Hop with extended RX windows |
-| RECOVER | Clock is untrusted; seeking beacon | CH0 only; stopped hopping |
-
-(See full state diagram, timers T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s, transitions, multi-root conflict resolution preferring higher epoch, GPS-capable nodes, SFN wraparound handling, and implementation notes in the detailed description. All transitions MUST match test vectors. Nodes in RECOVER MUST refrain from data TX until re-synchronized.)
-
-## Implementation Status
-
-- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`.
-- Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete.
+- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
+- Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
 - Adaptive SF, desync FSM, channel plans, Multi-RX gateway support implemented and tested.
 - All codereview passes closed. Capacity gains verified in simulation per independent oracles.
 
 ## References
 
-- `test/vectors/ccp16.json` (authoritative for all MUST-match behavior)
+### Normative References
+
+- [RFC 2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
+
+- `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`, `sfn-delta.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
+
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/drafts/draft-lichen-schc-lora-00.md`
 - `spec/appendix-design-rationale.md`
-- `lichen/subsys/lichen/link*` (for `lichen_link_set_slot`, `tdma_tx_allowed`)
+- `spec/appendix-schc.md` (Rule 0x08=TDMA_BEACON)
+- `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
 - `docs/firmware-time-provider.md`
+- `spec/drafts/draft-lichen-link-01.md` (L2 0x15 join frame)
 
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](03-adaptation.md)

@@ -1547,9 +1547,10 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	 *
 	 * Class 2 - post-transmittable NVM failure (persist_ssn failing
 	 * after ciphertext and OSCORE option are fully built and returned
-	 * to the caller): goes to the distinct nvm_failed path, which takes
-	 * extra measures (safety-margin SSN bump inside persist_ssn,
-	 * s_seq_initialized sync) because the packet may still be sent.
+	 * to the caller): goes to the distinct nvm_failed path, which
+	 * conditionally rolls back sender_seq to the pre-increment value
+	 * (if no concurrent increment occurred) and sets s_seq_initialized
+	 * to maintain nonce uniqueness on reboot per RFC 8613 §7.2.
 	 */
 
 	/*
@@ -1643,7 +1644,7 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* After the common_wipe convergence point, this dedicated
+	/* Before common_wipe, this dedicated
 	 * nvm_failed path locks mutex to safely handle sender_seq.
 	 * SECURITY: SSN MUST NOT be left incremented on NVM failure -
 	 * would allow AES-CCM nonce reuse attack vector on reboot

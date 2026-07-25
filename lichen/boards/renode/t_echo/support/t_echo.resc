@@ -12,6 +12,8 @@ include $ORIGIN/../../peripherals/SX1262.cs
 include $ORIGIN/../../peripherals/USBD.cs
 # Load BLE/RADIO model for LCI + Meshtastic BLE on nRF52840 boards
 include $ORIGIN/../../peripherals/BLE.cs
+# Load L76K-compatible GPS UART peripheral
+include $ORIGIN/../../peripherals/GPS.cs
 
 mach create $name
 machine LoadPlatformDescription $ORIGIN/t_echo.repl

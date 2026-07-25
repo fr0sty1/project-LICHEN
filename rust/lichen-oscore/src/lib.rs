@@ -234,6 +234,7 @@ pub struct ReservedSender<'a> {
 pub struct PendingResponse<'a> {
     context: &'a mut Context,
     request_seq: OscoreSeqNum,
+    response_seq: Option<OscoreSeqNum>,
     code: u8,
     options: heapless::Vec<u8, 128>,
     payload: heapless::Vec<u8, 128>,
@@ -246,6 +247,9 @@ impl PendingResponse<'_> {
     ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
         if !matches!(self.code >> 5, 2..=5) {
             return Err(OscoreError::InvalidParam);
+        }
+        if let Some(seq) = self.response_seq {
+            self.context.update_replay_window(seq);
         }
         self.context.mark_received_response(self.request_seq);
         Ok((self.code, self.options, self.payload))
@@ -1182,10 +1186,6 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
-        if let Some(seq) = response_seq {
-            self.update_replay_window(seq);
-        }
-
         if plaintext.is_empty() {
             return Err(OscoreError::InvalidParam);
         }
@@ -1218,6 +1218,7 @@ impl Context {
         Ok(PendingResponse {
             context: self,
             request_seq,
+            response_seq,
             code,
             options,
             payload,
@@ -2726,7 +2727,7 @@ mod tests {
     }
 
     #[test]
-    fn restored_context_rejects_response_without_piv() {
+    fn restored_context_rejects_protect_response() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 

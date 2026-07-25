@@ -10,6 +10,7 @@
 #include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
+#include <lichen_util.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -154,6 +155,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 
 	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
 	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
+	 * Used for TDMA slot = hash(EUI64 ^ epoch) % n_slots per
+	 * spec/02a-coordinated-capacity.md §2a.2, ccp16.json, and ccp_tdma.json.
 	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
 	 *
 	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
@@ -423,7 +426,7 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 			 * further TX until key rotation clears the flag.
 			 */
 			ctx->nonce_exhausted = true;
-			LOG_WRN("CRITICAL: nonce exhausted after 16M frames, TX blocked until key rotation\n");
+			LOG_WRN("nonce exhausted after 16M frames, TX blocked until key rotation\n");
 		} else {
 			LOG_WRN("tx_seq wrapped - epoch incremented to %u (was %u)\n",
 				ctx->epoch, old_epoch);
@@ -581,25 +584,39 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #endif
 }
 
-int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, const struct lichen_link_ctx *_Nonnull ctx)
+int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {
-	if (tdma == NULL || ctx == NULL) {
-		return -EINVAL;
-	}
-	tdma->superframe = 0;
-	tdma->slot = 0;
+	if (num_slots == 0) num_slots = 8;
+	uint8_t data[12];
+	memcpy(data, eui64, 8);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+	uint32_t h = lichen_hash_32(data, 12);
+	return (uint8_t)(h % num_slots);
+}
+int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)
+{
+	if (tdma == NULL || ctx == NULL) return -EINVAL;
+	uint8_t slot = lichen_tdma_compute_slot(ctx->eui64, (uint32_t)ctx->epoch, 8);
+	tdma->slot = slot;
 	tdma->n_slots = 8;
-	tdma->slot_duration = 250;
+	tdma->superframe = 0;
+	tdma->slot_duration = LICHEN_TDMA_SLOT_MS;
 	tdma->synced = false;
 	return 0;
 }
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn)
 {
 	if (tdma == NULL) return -EINVAL;
+	if (slot_id == 0xff && ctx != NULL) {
+		slot_id = lichen_tdma_compute_slot(ctx->eui64, (uint32_t)ctx->epoch, n_slots ? n_slots : 8);
+	}
 	tdma->slot = slot_id;
 	tdma->n_slots = n_slots ? n_slots : 8;
 	tdma->superframe = sfn;
-	tdma->slot_duration = 250;
+	tdma->slot_duration = LICHEN_TDMA_SLOT_MS;
 	tdma->synced = true;
 	return 0;
 }
@@ -608,6 +625,119 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	if (tdma == NULL || !tdma->synced) return true;
 	uint32_t d = tdma->slot_duration;
 	uint32_t slot_start = tdma->superframe * (uint32_t)tdma->n_slots * d + (uint32_t)tdma->slot * d;
-	uint32_t g = 50;
+	uint32_t g = LICHEN_TDMA_GUARD_MS;
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
 }
+
+uint32_t lichen_hash_32(const uint8_t *data, size_t len)
+{
+	uint32_t hash = 0x811c9dc5u;
+	for (size_t i = 0; i < len; i++) {
+		hash ^= (uint32_t)data[i];
+		hash = hash * 0x01000193u;
+	}
+	return hash;
+}
+
+#ifdef CONFIG_LICHEN_LINK_COORDINATION
+int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
+{
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+	if (!ctx->has_key) {
+		return -ENOKEY;
+	}
+	return LICHEN_COORD_HASH_BASED;
+}
+#endif /* CONFIG_LICHEN_LINK_COORDINATION */
+
+uint8_t lichen_select_channel(const uint8_t eui64[8], uint32_t epoch,
+			      uint8_t density, uint8_t n_channels)
+{
+	uint8_t data[12];
+
+	if (density > 8) {
+		return 0;
+	}
+
+	memcpy(data, eui64, 8);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+
+	uint32_t h = lichen_hash_32(data, 12);
+	uint8_t n = (n_channels < 3) ? 3 : n_channels;
+
+	return (uint8_t)(1 + (h % n));
+}
+
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
+					   uint8_t ygg_addr[16])
+{
+	int ret;
+	uint8_t hash512[64];
+	uint8_t iid[8];
+
+	if (pubkey == NULL || ygg_addr == NULL) {
+		return -EINVAL;
+	}
+
+	crypto_sha512(hash512, pubkey, 32);
+
+	ret = lichen_sha256(pubkey, 32, iid);
+	if (ret != 0) {
+		memset(ygg_addr, 0, 16);
+		return ret;
+	}
+
+	iid[0] &= 0xfd;
+
+	ygg_addr[0] = 0x02;
+	memcpy(&ygg_addr[1], hash512, 7);
+	memcpy(&ygg_addr[8], iid, 8);
+
+	memset(hash512, 0, sizeof(hash512));
+	return 0;
+}
+
+uint8_t lichen_adaptive_sf_select(uint8_t assigned_sf, int8_t snr_ema,
+				  uint8_t density, uint16_t utilization,
+				  uint16_t loss_rate_ema, bool *tx_allowed)
+{
+	uint8_t sf = (assigned_sf == 0) ? 10 : assigned_sf;
+
+	if (density > 10 || utilization > 150) {
+		if (sf <= 10) {
+			sf += 2;
+		} else {
+			sf = 12;
+		}
+	}
+
+	if (snr_ema > 8 && density < 5) {
+		if (sf > 7) {
+			sf -= 1;
+		}
+	}
+
+	if (loss_rate_ema > 2500 || utilization > 200) {
+		if (sf < 12) {
+			sf += 1;
+		}
+		if (utilization > 200) {
+			if (tx_allowed != NULL) {
+				*tx_allowed = false;
+			}
+			return sf;
+		}
+	}
+
+	if (tx_allowed != NULL) {
+		*tx_allowed = true;
+	}
+	return sf;
+}
+
+

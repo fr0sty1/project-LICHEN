@@ -51,8 +51,8 @@ static struct lichen_coap_server_handlers s_handlers;
  * Common response helper for all CoAP resources (including deaddrop_post).
  * Centralizes duplicated logic from coap_*.c files. Matches Python/Rust reference
  * behavior and spec/18-applications for DTN. Type=ACK for CON requests.
- * Uses per-call static buffer to avoid both shared race and stack use-after-return.
- * Zephyr coap_resource_send + pending slab performs synchronous memcpy of packet data.
+ * Zephyr coap_resource_send + pending slab performs synchronous memcpy of packet data,
+ * so a stack-allocated buffer is safe (no use-after-return) and avoids reentrancy races.
  */
 int lichen_coap_respond(struct coap_resource *resource,
 			struct coap_packet *request,
@@ -60,7 +60,7 @@ int lichen_coap_respond(struct coap_resource *resource,
 			uint8_t resp_code, uint16_t content_format,
 			const uint8_t *payload, size_t payload_len)
 {
-	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet response;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
@@ -414,7 +414,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 	}
 #endif
 
-	static uint8_t response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	uint8_t response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet response;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;

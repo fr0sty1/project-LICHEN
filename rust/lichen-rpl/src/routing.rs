@@ -922,37 +922,6 @@ const DEFAULT_LIFETIME_UNIT_SECONDS: u64 = 60;
 #[cfg(feature = "std")]
 const FRESHNESS_TOMBSTONE_RETENTION_SECONDS: u64 = 60 * 60;
 
-#[cfg(feature = "std")]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Freshness {
-    sequence: u8,
-    active_until: Option<u64>,
-    retain_until: u64,
-    updated_at: u64,
-}
-
-#[cfg(feature = "std")]
-impl Freshness {
-    fn new(sequence: u8, active_until: Option<u64>, now_seconds: u64) -> Self {
-        let retain_until = active_until
-            .unwrap_or(u64::MAX)
-            .max(now_seconds)
-            .saturating_add(FRESHNESS_TOMBSTONE_RETENTION_SECONDS);
-        Self {
-            sequence,
-            active_until,
-            retain_until,
-            updated_at: now_seconds,
-        }
-    }
-
-    fn is_reclaimable(self, now_seconds: u64) -> bool {
-        self.active_until
-            .is_some_and(|deadline| deadline <= now_seconds)
-            && self.retain_until <= now_seconds
-    }
-}
-
 // ── Source Routing Header (RFC 6554) ─────────────────────────────────────────
 
 /// RFC 6554 Source Routing Header, routing type 3 (uncompressed).
@@ -1013,7 +982,7 @@ impl SourceRoutingHeader {
             .map(|chunk| chunk.try_into().unwrap())
             .collect();
         let segments_left = data[1];
-        if (segments_left as usize) > addresses.len() || addresses.len() > MAX_ROUTE_HOPS {
+        if (segments_left as usize) > addresses.len() {
             return Err(RplError::InvalidOption);
         }
         Ok(Self {
@@ -1024,10 +993,10 @@ impl SourceRoutingHeader {
 
     pub fn from_route(route: &[[u8; 16]]) -> Result<Self, RplError> {
         let remaining = route.len().checked_sub(1).ok_or(RplError::InvalidOption)?;
-        let addresses = route[1..].to_vec();
-        if remaining == 0 || remaining > u8::MAX as usize || route.len() > MAX_ROUTE_HOPS + 1 {
+        if remaining == 0 || remaining > u8::MAX as usize {
             return Err(RplError::InvalidOption);
         }
+        let addresses = route[1..].to_vec();
         Ok(Self {
             segments_left: remaining as u8,
             addresses,
@@ -1320,37 +1289,75 @@ impl RoutingTable {
 
 // ── DAO manager ───────────────────────────────────────────────────────────────
 
+/// Tracks freshness of a DAO path or origin sequence, including expiry deadlines.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Freshness {
+    pub sequence: u8,
+    pub active_until: Option<u64>,
+    pub retain_until: u64,
+    pub updated_at: u64,
+}
+
+#[cfg(feature = "std")]
+impl Freshness {
+    pub fn new(sequence: u8, active_until: Option<u64>, updated_at: u64) -> Self {
+        Self {
+            sequence,
+            active_until,
+            retain_until: updated_at.saturating_add(FRESHNESS_TOMBSTONE_RETENTION_SECONDS),
+            updated_at,
+        }
+    }
+
+    pub fn is_reclaimable(&self, now_seconds: u64) -> bool {
+        self.active_until
+            .map_or(true, |deadline| deadline <= now_seconds)
+            && self.retain_until <= now_seconds
+    }
+}
+
+/// Packed candidate parent from a Transit Info option after parsing.
+#[cfg(feature = "std")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DaoCandidate {
+    pub parent: [u8; 16],
+    pub path_control: u8,
+    pub path_lifetime: u8,
+}
+
+#[cfg(feature = "std")]
+impl PartialOrd for DaoCandidate {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Ord for DaoCandidate {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.parent
+            .cmp(&other.parent)
+            .then_with(|| self.path_control.cmp(&other.path_control))
+            .then_with(|| self.path_lifetime.cmp(&other.path_lifetime))
+    }
+}
+
+/// Single update extracted from a parsed DAO: one target / parent pair.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DaoUpdate {
+    pub target: [u8; 16],
+    pub parent: [u8; 16],
+    pub path_control: u8,
+    pub path_sequence: u8,
+    pub path_lifetime: u8,
+    pub descriptor: Option<u32>,
+}
+
 /// Builds DAOs (non-root nodes) and assembles source routes from incoming DAOs (root).
 ///
 /// On the root, `routing_table` is updated in place as DAOs arrive.
-
-#[cfg(feature = "std")]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct DaoCandidate {
-    parent: [u8; 16],
-    path_control: u8,
-    path_lifetime: u8,
-}
-
-#[cfg(feature = "std")]
-#[derive(Clone, Copy)]
-struct DaoUpdate {
-    target: [u8; 16],
-    parent: [u8; 16],
-    path_control: u8,
-    path_sequence: u8,
-    path_lifetime: u8,
-    descriptor: Option<u32>,
-}
-
-#[cfg(feature = "std")]
-#[derive(Clone, Copy)]
-struct DaoTiming {
-    now_seconds: u64,
-    lifetime_unit_seconds: u64,
-    max_deadline_seconds: u64,
-}
-
 #[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct DaoManager {
@@ -1363,17 +1370,13 @@ pub struct DaoManager {
     path_sequence: u8,
     last_built_dao: Option<([u8; 16], u8)>,
     parent_map: HashMap<[u8; 16], Vec<[u8; 16]>>,
+    dao_seq_map: HashMap<[u8; 16], u8>,
     edge_expiry: HashMap<([u8; 16], [u8; 16]), Option<u64>>,
-    /// Last accepted DAOSequence and replay-retention deadline per DAO origin.
     origin_seq_map: HashMap<[u8; 16], Freshness>,
-    /// Last accepted Transit Path Sequence per target (route freshness).
     path_seq_map: HashMap<[u8; 16], Freshness>,
     candidate_map: HashMap<[u8; 16], Vec<DaoCandidate>>,
     descriptor_map: HashMap<[u8; 16], Option<u32>>,
-    /// Strict authenticated origin sequence. Never expires or evicts.
-    origin_high_water: HighWaterMap,
-    dao_seq_map: HashMap<[u8; 16], u8>,
-    last_dao_ts: u32,
+    origin_high_water: HashMap<[u8; 32], ([u8; 32], u64)>,
 }
 
 #[cfg(feature = "std")]
@@ -1389,14 +1392,13 @@ impl DaoManager {
             path_sequence: 240,
             last_built_dao: None,
             parent_map: HashMap::new(),
+            dao_seq_map: HashMap::new(),
             edge_expiry: HashMap::new(),
             origin_seq_map: HashMap::new(),
             path_seq_map: HashMap::new(),
             candidate_map: HashMap::new(),
             descriptor_map: HashMap::new(),
             origin_high_water: HashMap::new(),
-            dao_seq_map: HashMap::new(),
-            last_dao_ts: 0,
         }
     }
 
@@ -1417,14 +1419,13 @@ impl DaoManager {
             path_sequence: self.path_sequence,
             last_built_dao: self.last_built_dao,
             parent_map: self.parent_map.clone(),
+            dao_seq_map: self.dao_seq_map.clone(),
             edge_expiry: self.edge_expiry.clone(),
             origin_seq_map: self.origin_seq_map.clone(),
             path_seq_map: self.path_seq_map.clone(),
             candidate_map: self.candidate_map.clone(),
             descriptor_map: self.descriptor_map.clone(),
             origin_high_water: self.origin_high_water.clone(),
-            dao_seq_map: self.dao_seq_map.clone(),
-            last_dao_ts: self.last_dao_ts,
         }
     }
 
@@ -1556,7 +1557,25 @@ impl DaoManager {
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         let sequence = verified.envelope.origin.origin_sequence;
 
-        // Step 6 (spec §7.5): replay classification BEFORE semantic parsing
+        let dao = verified.envelope.dao.clone();
+        if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
+            return Err(DaoProcessError::RouteRejected);
+        }
+        let Some((updates, update_count)) =
+            self.extract_updates(&dao, verified.envelope.unsigned_bytes)
+        else {
+            return Err(DaoProcessError::RouteRejected);
+        };
+        if !Self::sender_is_authorized(
+            &updates,
+            update_count,
+            verified.origin,
+            self.node_address,
+            authenticated_sender_iid,
+        ) {
+            return Err(DaoProcessError::RouteRejected);
+        }
+
         let mut duplicate = false;
         if let Some((hash, previous)) = self.origin_high_water.get(&verified.public_key) {
             if sequence < *previous
@@ -1568,26 +1587,6 @@ impl DaoManager {
                 duplicate = true;
             }
         } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
-            return Err(DaoProcessError::RouteRejected);
-        }
-
-        // Steps 7-8 (spec §7.5): semantic parsing and exact self /128 Target validation
-        let dao = verified.envelope.dao.clone();
-        let Some((updates, update_count)) =
-            self.extract_updates(&dao, verified.envelope.unsigned_bytes)
-        else {
-            return Err(DaoProcessError::RouteRejected);
-        };
-        if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
-            return Err(DaoProcessError::RouteRejected);
-        }
-        if !Self::sender_is_authorized(
-            &updates,
-            update_count,
-            verified.origin,
-            self.node_address,
-            authenticated_sender_iid,
-        ) {
             return Err(DaoProcessError::RouteRejected);
         }
         if duplicate
@@ -1695,12 +1694,6 @@ impl DaoManager {
 
     pub fn routing_table(&self) -> &RoutingTable {
         &self.routing_table
-    }
-
-    /// Insert a route for testing purposes only.
-    #[cfg(test)]
-    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
-        self.routing_table.add_route(target, path)
     }
 
     #[doc(hidden)]
@@ -2420,94 +2413,6 @@ impl DaoManager {
             }
         }
         self.last_dao_ts = self.last_dao_ts.wrapping_add(1);
-    }
-
-    /// Rebuild the full route table from the parent map, preserving existing
-    /// prefix routes and tracking managed (RPL-advertised) prefix egress.
-    ///
-    /// Returns `None` if any host-route path fails or capacity is exceeded.
-    fn rebuilt_routes(
-        root: [u8; 16],
-        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
-        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
-        routing_table: &RoutingTable,
-        refresh_targets: &HashSet<[u8; 16]>,
-    ) -> Option<RoutingTable> {
-        let mut targets: Vec<[u8; 16]> = parent_map.keys().copied().collect();
-        targets.sort_unstable();
-        let mut routes = HashMap::with_capacity(routing_table.routes.len());
-        let mut rpl_managed_hosts = routing_table.rpl_managed_hosts.clone();
-        let mut rpl_managed_prefixes = HashMap::new();
-        let mut unavailable_managed_prefixes = HashSet::new();
-        for target in targets {
-            if let Some(path) =
-                Self::assemble_path_checked(root, parent_map, candidate_map, target).ok()?
-            {
-                rpl_managed_hosts.insert(target);
-                let route_target = RouteTarget::host(target);
-                if !routes.contains_key(&route_target)
-                    && routes.len() + routing_table.prefix_route_count >= MAX_ROUTES
-                {
-                    return None;
-                }
-                let mut entry = match routing_table.routes.get(&route_target) {
-                    Some(entry)
-                        if entry.state == RouteEntryState::Expired
-                            && !refresh_targets.contains(&target)
-                            && entry.path == path =>
-                    {
-                        entry.clone()
-                    }
-                    Some(entry) if entry.state != RouteEntryState::Expired => entry.clone(),
-                    _ => RouteEntry::fresh(&path),
-                };
-                if refresh_targets.contains(&target) || entry.path != path {
-                    entry
-                        .refresh(&path)
-                        .expect("fresh or stale route entry can refresh");
-                }
-                routes.insert(route_target, entry);
-            }
-        }
-        for (target, existing) in routing_table
-            .routes
-            .iter()
-            .filter(|(target, _)| target.prefix_len < 128)
-        {
-            let egress = existing.path.last().copied()?;
-            let was_managed = routing_table.rpl_managed_prefixes.get(target) == Some(&egress);
-            let is_managed = was_managed || rpl_managed_hosts.contains(&egress);
-            let mut entry = existing.clone();
-            if is_managed {
-                rpl_managed_prefixes.insert(*target, egress);
-                if let Some(path) =
-                    Self::assemble_path_checked(root, parent_map, candidate_map, egress).ok()?
-                {
-                    if routing_table.unavailable_managed_prefixes.contains(target) {
-                        entry = RouteEntry::fresh(&path);
-                    } else {
-                        entry.path = path;
-                    }
-                } else {
-                    entry
-                        .mark_expired()
-                        .expect("usable managed prefix can expire repeatedly");
-                    unavailable_managed_prefixes.insert(*target);
-                }
-            }
-            routes.insert(*target, entry);
-        }
-        let prefix_route_count = routes
-            .keys()
-            .filter(|target| target.prefix_len < 128)
-            .count();
-        Some(RoutingTable {
-            routes,
-            prefix_route_count,
-            rpl_managed_hosts,
-            rpl_managed_prefixes,
-            unavailable_managed_prefixes,
-        })
     }
 
     /// Walk target → parent → … → root and return the reversed downward path.

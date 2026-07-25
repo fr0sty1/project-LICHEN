@@ -50,6 +50,8 @@ pub enum BridgeError {
     BufferTooSmall,
     /// Invalid address length (must be 0, 2, or 8 bytes).
     InvalidAddressLength(usize),
+    /// EPO+SEQ tuple exhausted (0xFF, 0xFFFF sent); key rotation required.
+    SequenceExhausted,
 }
 
 impl fmt::Display for BridgeError {
@@ -64,6 +66,10 @@ impl fmt::Display for BridgeError {
             Self::InvalidAddressLength(len) => {
                 write!(f, "invalid address length: {} (must be 0, 2, or 8)", len)
             }
+            Self::SequenceExhausted => write!(
+                f,
+                "sequence number epoch+seqnum tuple exhausted; key rotation required"
+            ),
         }
     }
 }
@@ -373,6 +379,17 @@ impl KissBridge {
         let mic = [];
 
         let seqnum = self.seqnum.fetch_increment();
+
+        // Per spec §4.4: when seqnum reaches 0xFFFF, increment epoch
+        // and reset seqnum to zero for the next frame.
+        // EPO MUST NOT wrap from 0xFF to 0x00; after the terminal
+        // tuple (EPO=0xFF, SEQ=0xFFFF), the sender MUST rotate keys.
+        if self.seqnum.get() == 0 {
+            if self.default_epoch == u8::MAX {
+                return Err(BridgeError::SequenceExhausted);
+            }
+            self.default_epoch += 1;
+        }
 
         let frame = LichenFrame {
             epoch: self.default_epoch,

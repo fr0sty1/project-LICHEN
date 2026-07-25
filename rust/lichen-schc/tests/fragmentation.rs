@@ -3,11 +3,10 @@
 //! Tests that large payloads fragment and reassemble correctly through the
 //! sender/receiver API.
 
-#[cfg(feature = "std")]
-use lichen_schc::fragment::FragmentReceiver;
 use lichen_schc::fragment::{
-    receiver_abort, Ack, Fragment, FragmentSender, ReceiverResponse, SenderOutput, SenderStatus,
-    DEFAULT_RECEIVER_LIMIT, MAX_ACK_REQUESTS, RULE_ID_A_TO_B, TILE_SIZE,
+    ack_request, receiver_abort, Ack, Fragment, FragmentReceiver, FragmentSender,
+    ReceiverResponse, SenderOutput, SenderStatus, MAX_ACK_REQUESTS,
+    DEFAULT_RECEIVER_LIMIT, TILE_SIZE,
 };
 
 #[test]
@@ -30,11 +29,11 @@ fn sender_receiver_literal_recovery() {
     };
     let mut wire = [0u8; 193];
     let length = ack.write_to(&mut wire).unwrap();
-    assert_eq!(&wire[..length], &[0x78, 0x00, 0x3e, 0x80, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(&wire[..length], &[0x78, 0x20, 0, 0, 0, 0, 0, 0, 0]);
 
     let mut output = sender.handle_ack(ack);
     sender.write_next(&mut output, &mut wire).unwrap().unwrap();
-    assert_eq!(&wire[..2], &[0x78, 0x7a]);
+    assert_eq!(&wire[..2], &[0x78, 0x3d]);
     let recovered = receiver.receive(&fragments[1]);
     assert_eq!(recovered.response, None);
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
@@ -53,17 +52,23 @@ fn sender_receiver_literal_recovery() {
 
 #[test]
 fn multi_fragment_single_window() {
-    let payload: Vec<u8> = (0u8..20).collect();
-    let sender = FragmentSender::new(&payload, RULE_ID_A_TO_B, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let payload: Vec<u8> = (0u8..).take(TILE_SIZE + 7).collect();
+    assert_eq!(payload.len(), TILE_SIZE + 7);
+    let sender =
+        FragmentSender::new(&payload, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
 
-    assert_eq!(sender.fragment_count(), 1);
+    assert_eq!(sender.fragment_count(), 2);
     assert_eq!(sender.window_count(), 1);
 
     let frags: Vec<_> = sender.iter().collect();
-    assert_eq!(frags.len(), 1);
+    assert_eq!(frags.len(), 2);
 
-    assert!(frags[0].is_all_1());
-    assert_eq!(frags[0].payload, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    assert_eq!(frags[0].fcn, 62);
+    assert!(!frags[0].is_all_1());
+    assert!(frags[1].is_all_1());
+
+    assert_eq!(frags[0].payload, &payload[..TILE_SIZE]);
+    assert_eq!(frags[1].payload, &payload[TILE_SIZE..]);
 }
 
 #[test]
@@ -112,17 +117,19 @@ fn retry_limits_emit_aborts() {
 
 #[test]
 fn malformed_codec_inputs_are_rejected() {
-    let mut tile = [0; TILE_SIZE];
-    assert!(Fragment::from_bytes(&[0x78, 0x7c, 0], &mut tile).is_err());
-    let regular_nonzero_padding = [0xff; TILE_SIZE + 2];
-    assert!(Fragment::from_bytes(&regular_nonzero_padding, &mut tile).is_err());
-    assert!(Ack::from_bytes(&[0x78, 0x40, 0]).is_err());
+    let mut tile = [0u8; TILE_SIZE];
+    assert!(Fragment::from_bytes(&[], &mut tile).is_err());
+    assert!(Fragment::from_bytes(&[0x78], &mut tile).is_err());
+    let short_frag = Fragment::from_bytes(&[0x78, 0x7c, 0], &mut tile).unwrap();
+    assert!(short_frag.write_to(&mut [0u8; 4]).is_err());
+    assert!(Ack::from_bytes(&[0x78]).is_err());
     assert!(Ack::from_bytes_for(
         &[0x78, 0x38, 0, 0, 0, 0, 0, 0, 0],
         Some(0x6000_0000_0000_0001)
     )
     .is_err());
 
+    let tile = [0u8; TILE_SIZE];
     let invalid = Fragment {
         rule_id: 0x78,
         window: 0,
@@ -142,15 +149,15 @@ fn malformed_codec_inputs_are_rejected() {
 #[test]
 fn sender_output_retries_after_small_buffer() {
     let packet = [0xa5; TILE_SIZE + 1];
-    let mut wire = [0u8; TILE_SIZE + 2];
+    let mut wire = [0u8; TILE_SIZE + 3];
 
     let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
     sender.start().unwrap();
     let mut output = sender.handle_ack(Ack::new(0x78, 0, 1, false));
     assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
-    assert_eq!(length, TILE_SIZE + 2);
-    assert_eq!(&wire[..2], &[0x78, 0x7d]);
+    assert_eq!(length, TILE_SIZE + 3);
+    assert_eq!(&wire[..2], &[0x78, 0x3e]);
     assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
     assert_eq!(&wire[..length], &[0x78, 0x00]);
@@ -208,10 +215,10 @@ fn ack_request_after_completion_starts_empty_context() {
     assert_eq!(result.packet_len, None);
     assert_eq!(receiver.packet(), None);
     assert!(!receiver.is_done());
-    let mut wire = [0xff; 11];
+    let mut wire = [0xff; 10];
     let length = result.response.unwrap().write_to(&mut wire).unwrap();
-    assert_eq!(length, 11);
-    assert_eq!(&wire[..length], &[0x78, 0, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(length, 10);
+    assert_eq!(&wire[..length], &[0x78, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 }
 
 #[test]
@@ -220,10 +227,10 @@ fn missing_all0_still_requests_final_window_ack() {
     let mut sender = FragmentSender::new(&packet, 0x78, packet.len()).unwrap();
     sender.start().unwrap();
     let mut output = sender.handle_ack(Ack::new(0x78, 0, u64::MAX << 1, false));
-    let mut wire = [0u8; TILE_SIZE + 2];
+    let mut wire = [0u8; TILE_SIZE + 3];
 
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
-    assert_eq!(length, TILE_SIZE + 2);
+    assert_eq!(length, TILE_SIZE + 3);
     assert_eq!(&wire[..2], &[0x78, 0x00]);
     let mut tile = [0u8; TILE_SIZE];
     let fragment = Fragment::from_bytes(&wire[..length], &mut tile).unwrap();

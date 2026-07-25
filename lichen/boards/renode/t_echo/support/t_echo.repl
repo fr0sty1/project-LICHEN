@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 //
 // LilyGO T-Echo board for Renode
-// nRF52840 + SX1262 + LEDs + button
-// ponytail: minimal - no e-ink or GPS yet
+// nRF52840 + SX1262 + LEDs + button + L76K GPS
+// ponytail: no e-ink yet
 
 using "../../nrf52840_lichen/support/nrf52840_lichen.repl"
 
@@ -25,3 +25,9 @@ led2: Miscellaneous.LED @ gpio0 15
 // User button on P1.10
 button0: Miscellaneous.Button @ gpio1 10
     -> gpio1@10
+
+// L76K GPS on UART1 (9600 baud, NMEA output at 1 Hz)
+gps: Sensors.GPS @ uart1
+    latitude: 37.7749
+    longitude: -122.4194
+    altitude: 10.0

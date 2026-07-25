@@ -135,14 +135,20 @@ int schnorr48_sign(const uint8_t *privkey,
 
 bool schnorr48_verify(const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len,
-		      const uint8_t *sig)
+		      const uint8_t *sig, size_t sig_len)
 {
-	const uint8_t *e_received = sig;
-	const uint8_t *s = sig + 16;
 	uint8_t e_extended[32];
 	uint8_t R_prime[32];
 	uint8_t e_hash[64];
 	crypto_sha512_ctx ctx;
+
+	/* Defensive bounds check: sig must be at least SCHNORR48_SIG_LEN */
+	if (sig_len < SCHNORR48_SIG_LEN) {
+		return false;
+	}
+
+	const uint8_t *e_received = sig;
+	const uint8_t *s = sig + 16;
 
 	/*
 	 * Validate: if msg_len > 0, msg must not be NULL.
@@ -151,15 +157,13 @@ bool schnorr48_verify(const uint8_t *pubkey,
 	if (msg_len > 0 && msg == NULL) {
 		return false;
 	}
-
-	/*
-	 * 1. Check s is non-zero (constant-time OR accumulator)
-	 */
-	uint8_t s_nonzero_acc = 0;
-	for (int i = 0; i < 32; i++) {
-		s_nonzero_acc |= s[i];
+	if (!schnorr48_pubkey_valid(pubkey)) {
+		return false;
 	}
-	if (s_nonzero_acc == 0) {
+
+	/* s MUST be non-zero per spec §5.3. crypto_verify32 is constant-time. */
+	static const uint8_t zero[32] = {0};
+	if (crypto_verify32(s, zero) == 0) {
 		return false;
 	}
 
@@ -194,6 +198,17 @@ bool schnorr48_verify(const uint8_t *pubkey,
 	return crypto_verify16(e_hash, e_received) == 0;
 }
 
+bool schnorr48_pubkey_valid(const uint8_t *pubkey) {
+	if (pubkey == NULL) return false;
+	static const uint8_t lows[8][32] = {{0x01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},{0xec,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff},{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0x80},{0xed,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x7f},{0x26,0xe8,0x95,0x8f,0xc2,0xb2,0x27,0xb0,0x45,0xc3,0xf4,0x89,0xf2,0xef,0x98,0xf0,0xd5,0xdf,0xac,0x05,0xd3,0xc6,0x33,0x39,0xb1,0x38,0x02,0x88,0x6d,0x53,0xfc,0x05},{0xc7,0x17,0x6a,0x70,0x3d,0x4d,0xd8,0x4f,0xba,0x3c,0x0b,0x76,0x0d,0x10,0x67,0x0f,0x2a,0x20,0x53,0xfa,0x2c,0x39,0xcc,0xc6,0x4e,0xc7,0xfd,0x77,0x92,0xac,0x03,0x7a},{0xc7,0x17,0x6a,0x70,0x3d,0x4d,0xd8,0x4f,0xba,0x3c,0x0b,0x76,0x0d,0x10,0x67,0x0f,0x2a,0x20,0x53,0xfa,0x2c,0x39,0xcc,0xc6,0x4e,0xc7,0xfd,0x77,0x92,0xac,0x03,0xfa},{0x26,0xe8,0x95,0x8f,0xc2,0xb2,0x27,0xb0,0x45,0xc3,0xf4,0x89,0xf2,0xef,0x98,0xf0,0xd5,0xdf,0xac,0x05,0xd3,0xc6,0x33,0x39,0xb1,0x38,0x02,0x88,0x6d,0x53,0xfc,0x85}};
+	uint8_t is_low = 0;
+	for (int i = 0; i < 8; i++) {
+		/* CT via crypto_verify32 (per spec §5.3); rejects low-order points. */
+		is_low |= (uint8_t)(crypto_verify32(pubkey, lows[i]) == 0);
+	}
+	return is_low == 0;
+}
+
 #else /* !CONFIG_LICHEN_CRYPTO_MONOCYPHER */
 
 /*
@@ -212,7 +227,7 @@ __attribute__((noreturn))
 #endif
 static void schnorr48_stub_abort(const char *func)
 {
-	LOG_WRN("FATAL: %s called without Monocypher - aborting\n", func);
+	LOG_WRN("%s called without Monocypher - aborting\n", func);
 	abort();
 }
 
@@ -242,12 +257,13 @@ int schnorr48_sign(const uint8_t *privkey,
 
 bool schnorr48_verify(const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len,
-		      const uint8_t *sig)
+		      const uint8_t *sig, size_t sig_len)
 {
 	(void)pubkey;
 	(void)msg;
 	(void)msg_len;
 	(void)sig;
+	(void)sig_len;
 	schnorr48_stub_abort("schnorr48_verify");
 	return false; /* unreachable, but satisfies compiler */
 }
@@ -268,8 +284,8 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 const uint8_t *pubkey,
 			 uint8_t *sig)
 {
-	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr_len(1) + dst_addr(up to 8) */
 	uint8_t header[14];
+
 	size_t header_len = 0;
 	uint8_t nonce_hash[64];
 	uint8_t r_scalar[32];
@@ -296,9 +312,6 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 		return -EINVAL;
 	}
 
-	/* Build the exact wire prefix, excluding the signature MIC.
-	 * addr_len prefix provides domain separation (prevents addr/payload
-	 * ambiguity per project-LICHEN-j7rk). */
 	header[header_len++] = length;
 	header[header_len++] = llsec;
 	header[header_len++] = epoch;
@@ -368,9 +381,14 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
-			   const uint8_t *sig,
+			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
 {
+	/* Defensive bounds check: sig must be at least SCHNORR48_SIG_LEN */
+	if (sig_len < SCHNORR48_SIG_LEN) {
+		return -EINVAL;
+	}
+
 	/* Validate dst_addr_len before use */
 	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
 		return -EINVAL;
@@ -381,14 +399,17 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 		return -EINVAL;
 	}
 
-	/* Validate: payload must not be NULL (always needed for signature) */
-	if (payload == NULL) {
+	/* Validate: if payload_len > 0, payload must not be NULL */
+	if (payload_len > 0 && payload == NULL) {
 		return -EINVAL;
 	}
 
 	/* Validate: pubkey must not be NULL (needed for signature verification) */
 	if (pubkey == NULL) {
 		return -EINVAL;
+	}
+	if (!schnorr48_pubkey_valid(pubkey)) {
+		return 0;
 	}
 
 	if (sig == NULL) {
@@ -397,7 +418,6 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	const uint8_t *e_received = sig;
 	const uint8_t *s = sig + 16;
 
-	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr_len(1) + dst_addr(up to 8) */
 	uint8_t header[14];
 	size_t header_len = 0;
 	uint8_t e_extended[32];
@@ -405,9 +425,6 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	uint8_t e_hash[64];
 	crypto_sha512_ctx ctx;
 
-	/* Build the exact wire prefix, excluding the signature MIC.
-	 * addr_len prefix provides domain separation (prevents addr/payload
-	 * ambiguity per project-LICHEN-j7rk). */
 	header[header_len++] = length;
 	header[header_len++] = llsec;
 	header[header_len++] = epoch;
@@ -419,14 +436,8 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 		header_len += dst_addr_len;
 	}
 
-	/*
-	 * 1. Check s is non-zero (constant-time OR accumulator)
-	 */
-	uint8_t s_nonzero_acc = 0;
-	for (int i = 0; i < 32; i++) {
-		s_nonzero_acc |= s[i];
-	}
-	if (s_nonzero_acc == 0) {
+	static const uint8_t zero[32] = {0};
+	if (crypto_verify32(s, zero) == 0) {
 		return 0;
 	}
 
@@ -490,7 +501,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
-			   const uint8_t *sig,
+			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
 {
 	(void)length;
@@ -502,6 +513,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	(void)payload;
 	(void)payload_len;
 	(void)sig;
+	(void)sig_len;
 	(void)pubkey;
 	schnorr48_stub_abort("schnorr48_verify_frame");
 	return -EINVAL; /* unreachable, but satisfies compiler */
