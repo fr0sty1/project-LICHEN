@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:30:29.711138Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:09:16.644928058Z",
+  "updated_at": "2026-07-25T00:49:29.531330282Z",
   "started_at": "2026-07-22T20:07:52.086369157Z",
   "closed_at": "2026-07-22T20:09:16.644928058Z",
   "close_reason": "Fixed link-local OSCORE compression rules in schc.c per description; committed as d524b6804; updated validation, compression logic, min_residue, and address reconstruction. Verified via code review and git diff."
