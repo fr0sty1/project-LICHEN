@@ -15,9 +15,12 @@ overlapping transmissions)`` keys.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -173,14 +176,25 @@ class Metrics:
             return
         self._delivered.add(key)
         start = self._tx_start_times.get(tx_id)
-        if start is not None and time_us >= start:
-            latency = time_us - start
-            self._latency_count += 1
-            self._latency_sum_us += latency
-            if self._latency_min_us is None or latency < self._latency_min_us:
-                self._latency_min_us = latency
-            if self._latency_max_us is None or latency > self._latency_max_us:
-                self._latency_max_us = latency
+        if start is not None:
+            if time_us >= start:
+                latency = time_us - start
+                self._latency_count += 1
+                self._latency_sum_us += latency
+                if self._latency_min_us is None or latency < self._latency_min_us:
+                    self._latency_min_us = latency
+                if self._latency_max_us is None or latency > self._latency_max_us:
+                    self._latency_max_us = latency
+            else:
+                logger.warning(
+                    "record_reception: time_us=%d < start=%d for tx_id=%s rx_node=%s (negative latency=%d us); "
+                    "latency not recorded — possible clock skew or race",
+                    time_us,
+                    start,
+                    tx_id,
+                    rx_node_id,
+                    start - time_us,
+                )
 
     def record_collision(self, rx_node_id: str, tx_ids: Iterable[str]) -> bool:
         """Record a collision at a receiver among overlapping transmissions.
