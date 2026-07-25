@@ -112,6 +112,10 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	  spec/appendix-design-rationale.md. Explicitly selects SCHC and
 	  link epoch features required for TDMA/multi-channel operation.
 
+	  NOTE: CCP-16 density-aware load balancing code (lichen_link_ccp16_*
+	  functions) is not yet implemented. This config reserves the option
+	  and selects required dependencies for future use.
+
 config LICHEN_TDMA
 	bool "TDMA slot scheduling / gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
