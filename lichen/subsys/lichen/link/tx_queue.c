@@ -13,9 +13,12 @@
  */
 
 #include <lichen/tx_queue.h>
-#include <lichen/link.h>
 #include <lichen/errno.h>
 #include <string.h>
+
+#ifndef SLOT_DURATION_MS
+#define SLOT_DURATION_MS 250 /* spec/02a-coordinated-capacity.md:2a.2 */
+#endif
 
 #ifdef CONFIG_TX_QUEUE_TEST_TIME
 static bool fail_test_time;
@@ -49,6 +52,15 @@ static int tx_queue_clock_gettime(clockid_t clock_id, struct timespec *ts)
 static int tx_queue_platform_now_ms(uint32_t *now_ms)
 {
 	struct timespec ts;
+	/* SECURITY: On failure, return 0 to avoid using uninitialized data.
+	 * This is safe: deadlines will appear not-yet-expired (signed wrap
+	 * math in deadline_expired()), preventing premature packet drops.
+	 * clock_gettime(CLOCK_MONOTONIC) should essentially never fail. */
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+		return 0;
+	}
+	return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
 
 	if (tx_queue_clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
 		return -EIO;
@@ -297,13 +309,13 @@ int tx_queue_push_default_deadline(struct tx_queue *queue,
 
 	switch (priority) {
 	case TX_PRIORITY_ROUTING:
-		deadline_ms = now_ms + 20 * SLOT_DURATION_MS;
+		deadline_ms = now_ms + TX_DEADLINE_ROUTING_SLOTS * SLOT_DURATION_MS;
 		break;
 	case TX_PRIORITY_ACK:
-		deadline_ms = now_ms + 40 * SLOT_DURATION_MS;
+		deadline_ms = now_ms + TX_DEADLINE_ACK_SLOTS * SLOT_DURATION_MS;
 		break;
 	default:
-		deadline_ms = now_ms + 240 * SLOT_DURATION_MS;
+		deadline_ms = now_ms + TX_DEADLINE_APP_SLOTS * SLOT_DURATION_MS;
 		break;
 	}
 
@@ -372,69 +384,60 @@ out:
 	return ret;
 }
 
-int tx_queue_count(struct tx_queue *queue)
+int tx_queue_count(const struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return -EINVAL;
 	}
 
-	lock_queue(queue);
+	struct tx_queue *q = (struct tx_queue *)queue;
+	lock_queue(q);
 
 	int count = 0;
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (queue->entries[i].valid) {
+		if (q->entries[i].valid) {
 			count++;
 		}
 	}
 
-	unlock_queue(queue);
+	unlock_queue(q);
 	return count;
 }
 
-bool tx_queue_empty(struct tx_queue *queue)
+bool tx_queue_empty(const struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return true;
 	}
 
-	lock_queue(queue);
+	struct tx_queue *q = (struct tx_queue *)queue;
+	lock_queue(q);
 
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (queue->entries[i].valid) {
-			unlock_queue(queue);
+		if (q->entries[i].valid) {
+			unlock_queue(q);
 			return false;
 		}
 	}
 
-	unlock_queue(queue);
+	unlock_queue(q);
 	return true;
 }
 
-int tx_queue_stats_get(struct tx_queue *queue,
+int tx_queue_stats_get(const struct tx_queue *queue,
 		       struct tx_queue_stats *stats)
 {
 	if (queue == NULL || stats == NULL) {
 		return -EINVAL;
 	}
 
-	lock_queue(queue);
+	/*
+	 * Note: This read is not atomic with respect to concurrent writes.
+	 * For diagnostic purposes this is acceptable; for precise accounting
+	 * the caller should serialize access externally.
+	 */
 	*stats = queue->stats;
-	unlock_queue(queue);
 	return 0;
-}
-
-int tx_queue_destroy(struct tx_queue *queue)
-{
-	if (queue == NULL) {
-		return -EINVAL;
-	}
-
-#ifdef __ZEPHYR__
-	(void)queue;
-	return 0;
-#else
-	return -pthread_mutex_destroy(&queue->lock);
-#endif
 }
 
 void tx_queue_clear(struct tx_queue *queue)

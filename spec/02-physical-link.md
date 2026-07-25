@@ -91,6 +91,11 @@ Thresholds:
 | 11 | -134 dBm   | N/A                          | density > 8 or snr_ema < 0 or load > 0.8 |
 | 12 | -137 dBm   | N/A                          | density > 20 or snr_ema < -5 |
 
+Channel utilization (`utilization`) is a uint8 on 0..255 representing
+fractional airtime occupancy: util_norm = utilization / 255. Measurement
+MUST use TX-time based occupancy (total detected airtime / observation
+window) rather than RSSI-based CAD for accuracy.
+
 **Normative Pseudocode:**
 
 ```pseudocode

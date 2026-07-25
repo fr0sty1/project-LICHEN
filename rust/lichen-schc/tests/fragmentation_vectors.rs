@@ -135,7 +135,7 @@ fn write_fragment(fragment: &Fragment<'_>) -> Vec<u8> {
 }
 
 fn write_response(response: ReceiverResponse) -> Vec<u8> {
-    let mut wire = [0u8; 10];
+    let mut wire = [0u8; 16];
     let length = response.write_to(&mut wire).unwrap();
     wire[..length].to_vec()
 }

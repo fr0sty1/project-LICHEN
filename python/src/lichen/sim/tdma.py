@@ -39,10 +39,8 @@ class TDMAScheduler:
         self.clock = SuperframeClock()
         self.eui64 = bytes(8)
     def hash_slot(self, eui64: bytes, n_slots: int = 8, epoch: int = 0) -> int:
-        data = bytearray(eui64)
-        for i in range(4):
-            data[i] ^= (epoch >> (i * 8)) & 0xff
-        return hash_32(bytes(data)) % n_slots
+        data = eui64 + epoch.to_bytes(4, "little")
+        return hash_32(data) % n_slots
     def sync_from_beacon(self, rx_time_us: int, sfn: int, assigned: int = -1) -> None:
         self.clock.sfn = sfn
         self.clock.last_sync_us = rx_time_us
@@ -67,33 +65,36 @@ class TDMAScheduler:
         return drift
     def validate_vector(self, vector: dict) -> bool:
         if "eui64_hex" in vector:
-            n_slots = vector.get("n_slots", 8)
-            epoch = vector.get("epoch", 0)
             eui = bytes.fromhex(vector["eui64_hex"])
-            data = eui + epoch.to_bytes(4, "little")
-            computed = hash_32(data) % n_slots
+            n_slots = vector.get("n_slots", vector.get("num_slots", 8))
+            computed = self.hash_slot(eui, n_slots, vector.get("epoch", 0))
             return computed == vector.get("expected_slot", 0)
         if "sfn" in vector or "expected_channel" in vector:
             sfn = vector.get("sfn", 0)
-            seed = vector.get("seed", 0)
-            num_channels = vector.get("num_channels", 8)
-            data = seed.to_bytes(4, "little") + ((sfn & 0xffffffff).to_bytes(4, "little"))
-            h = hash_32(data)
-            n = max(num_channels, 3)
-            computed = 1 + (h % n)
+            computed = synchronized_hop_channel(sfn, vector.get("seed", 0), vector.get("num_channels", 8))
             return computed == vector.get("expected_channel", 0)
         if "slot_start_ms" in vector:
-            t = vector["current_ms"]
-            start = vector["slot_start_ms"]
-            dur = vector.get("slot_duration_ms", 250)
-            g = vector.get("guard_ms", 50)
-            in_guard = t < start or t > (start + dur)
-            return in_guard == vector.get("expected_in_guard", False)
-        if "local_beacon_rx_ms" in vector:
+            t = vector["current_ms"] * 1000
+            start = vector["slot_start_ms"] * 1000
+            dur = vector.get("slot_duration_ms", 250) * 1000
+            g = vector.get("guard_ms", 50) * 1000
+            in_window = (start - g) <= t <= (start + dur + g)
+            return in_window == (not vector.get("expected_in_guard", False))
+        if "local_beacon_rx_ms" in vector and "expected_beacon_ms" in vector:
             local = vector["local_beacon_rx_ms"]
             expected = vector["expected_beacon_ms"]
-            correction_ms = abs(local - expected)
-            return correction_ms == vector.get("expected_correction_ms", 0)
+            return abs(local - expected) == vector.get("expected_correction_ms", 0)
+        if "observed_ms" in vector and "beacon_nominal_ms" in vector:
+            observed = vector["observed_ms"]
+            nominal = vector["beacon_nominal_ms"]
+            deviations = [abs(o - nominal) for o in observed]
+            max_dev = max(deviations)
+            computed_ppm = max_dev * 1000000 // nominal
+            return (computed_ppm == vector.get("expected_ppm", 0)
+                    and max_dev == vector.get("slot_adjust_ticks", 0))
+        if "superframe_ms" in vector and "drift_ppm" in vector and "guard_ms" in vector:
+            max_drift = vector["superframe_ms"] * vector["drift_ppm"] / 1000000
+            return max_drift < vector["guard_ms"]
         return True
     def get_hop_channel(self, sfn: int | None = None, seed: int = 0, num_channels: int = 8) -> int:
         if sfn is None:

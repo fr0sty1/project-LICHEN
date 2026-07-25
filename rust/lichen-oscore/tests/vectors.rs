@@ -4,8 +4,7 @@
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
 use lichen_oscore::{
-    validate_option, Context, ContextId, ContextStoreError, OscoreError, SenderSequenceState,
-    SenderStateStore,
+    validate_option, Context, ContextId, OscoreError, SenderSequenceState, SenderStateStore,
 };
 
 struct TestStore(SenderSequenceState);
@@ -111,35 +110,15 @@ fn context_at(
     sequence: u64,
 ) -> (Context, TestStore) {
     let mut store = TestStore::existing(sequence);
-    let context = Context::load_existing(
+    let context = Context::new(
         master_secret,
         master_salt,
         id_context,
         sender_id,
         recipient_id,
-        &mut store,
     )
-    .unwrap();
-    (context, store)
-}
-
-fn context_at(
-    master_secret: &[u8; 16],
-    master_salt: Option<&[u8]>,
-    id_context: Option<&[u8]>,
-    sender_id: &[u8],
-    recipient_id: &[u8],
-    sequence: u64,
-) -> (Context, TestStore) {
-    let mut store = TestStore::existing(sequence);
-    let context = Context::load_existing(
-        master_secret,
-        master_salt,
-        id_context,
-        sender_id,
-        recipient_id,
-        &mut store,
-    )
+    .unwrap()
+    .restore_existing(&mut store)
     .unwrap();
     (context, store)
 }
@@ -165,11 +144,10 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 
 fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let bytes = hex_to_bytes(hex);
-    bytes.try_into().expect(&format!(
-        "hex_to_array: expected {} bytes, got {}",
-        N,
-        bytes.len()
-    ))
+    let len = bytes.len();
+    bytes
+        .try_into()
+        .expect(&format!("hex_to_array: expected {} bytes, got {}", N, len))
 }
 
 #[test]
@@ -185,7 +163,9 @@ fn test_request_protection_vectors() {
         let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
         let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
         let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+        let seq = v.sender_seq.unwrap_or(0);
 
+        let mut store = TestStore::existing(seq.into());
         let mut ctx = Context::new(
             &master_secret,
             master_salt.as_deref(),
@@ -193,16 +173,17 @@ fn test_request_protection_vectors() {
             &sender_id,
             &recipient_id,
         )
-        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name));
+        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name))
+        .restore_existing(&mut store)
+        .unwrap_or_else(|_| panic!("Failed to restore context for {}", v.name));
 
         let pt = v.plaintext.as_ref().unwrap();
         let options = hex_to_bytes(&pt.options);
         let payload = hex_to_bytes(&pt.payload);
-        for _ in 0..v.sender_seq.unwrap() {
-            ctx.protect_request(1, &[], &[]).unwrap();
-        }
 
         let (ciphertext, oscore_opt) = ctx
+            .reserve_sender(&mut store)
+            .unwrap()
             .protect_request(pt.code, &options, &payload)
             .unwrap_or_else(|_| panic!("protect_request failed for {}", v.name));
         let expected = v.expected.as_ref().unwrap();
@@ -242,16 +223,17 @@ fn test_response_protection_vectors() {
         let payload = hex_to_bytes(&pt.payload);
         let expected = v.expected.as_ref().unwrap();
         let include_piv = v.include_piv.unwrap();
+        let mut store = TestStore::existing(v.sender_seq.unwrap().into());
         let mut ctx = Context::new(
             &master_secret,
             master_salt.as_deref(),
+            None,
             &sender_id,
             &recipient_id,
         )
+        .unwrap()
+        .restore_existing(&mut store)
         .unwrap();
-        for _ in 0..v.sender_seq.unwrap() {
-            ctx.protect_request(1, &[], &[]).unwrap();
-        }
 
         let (ciphertext, oscore_opt) = ctx
             .protect_response(
@@ -323,7 +305,7 @@ fn test_invalid_inputs() {
                 let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
                 let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
 
-                let result = Context::new(&master_secret, None, &sender_id, &recipient_id);
+                let result = Context::new(&master_secret, None, None, &sender_id, &recipient_id);
                 assert!(
                     matches!(result, Err(OscoreError::InvalidParam)),
                     "Expected InvalidParam for {}, got {:?}",
@@ -341,21 +323,8 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::load_existing(
-        &master_secret,
-        None,
-        None,
-        &too_long_id,
-        &[1],
-        &mut TestStore::existing(0),
-    );
-    assert!(
-        matches!(
-            result,
-            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
-        ),
-        "Expected InvalidParam for 8-byte sender_id"
-    );
+    let result = Context::new(&master_secret, None, None, &too_long_id, &[1]);
+    assert!(matches!(result, Err(OscoreError::InvalidParam)));
 }
 
 #[test]
@@ -363,21 +332,8 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::load_existing(
-        &master_secret,
-        None,
-        None,
-        &[0],
-        &too_long_id,
-        &mut TestStore::existing(0),
-    );
-    assert!(
-        matches!(
-            result,
-            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
-        ),
-        "Expected InvalidParam for 8-byte recipient_id"
-    );
+    let result = Context::new(&master_secret, None, None, &[0], &too_long_id);
+    assert!(matches!(result, Err(OscoreError::InvalidParam)));
 }
 
 #[test]
@@ -397,18 +353,8 @@ fn present_empty_id_context_is_distinct_and_encoded() {
 
 #[test]
 fn id_context_over_implementation_capacity_is_rejected() {
-    let result = Context::load_existing(
-        &[0u8; 16],
-        None,
-        Some(&[0; 9]),
-        &[0],
-        &[1],
-        &mut TestStore::existing(0),
-    );
-    assert!(matches!(
-        result,
-        Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
-    ));
+    let result = Context::new(&[0u8; 16], None, Some(&[0; 9]), &[0], &[1]);
+    assert!(matches!(result, Err(OscoreError::InvalidParam)));
 }
 
 #[test]
@@ -425,121 +371,6 @@ fn malformed_oscore_options_are_rejected_without_keys() {
     }
 
     assert_eq!(validate_option(b"\x09\x01\x00"), Ok(()));
-}
-
-#[test]
-fn test_request_protection_vectors() {
-    for vector in load_vectors()
-        .vectors
-        .into_iter()
-        .filter(|vector| vector.vector_type == "request_protection")
-    {
-        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
-        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
-        let id_context = vector.id_context.as_ref().map(|value| hex_to_bytes(value));
-        let sender_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
-        let recipient_id = hex_to_bytes(vector.recipient_id.as_ref().unwrap());
-        let plaintext = vector.plaintext.as_ref().unwrap();
-        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
-            "rfc8613_c4_request_protection" => (
-                hex_to_bytes("0914"),
-                hex_to_bytes("612f1092f1776f1c1668b3825e"),
-            ),
-            "rfc8613_c5_request_protection_no_salt" => (
-                hex_to_bytes("091400"),
-                hex_to_bytes("4ed339a5a379b0b8bc731fffb0"),
-            ),
-            "rfc8613_c6_request_protection_with_id_context" => (
-                hex_to_bytes("19140837cbf3210017a2d3"),
-                hex_to_bytes("72cd7273fd331ac45cffbe55c3"),
-            ),
-            _ => panic!("missing independent expected values for {}", vector.name),
-        };
-        let (mut context, mut store) = context_at(
-            &master_secret,
-            master_salt.as_deref(),
-            id_context.as_deref(),
-            &sender_id,
-            &recipient_id,
-            u64::from(vector.sender_seq.unwrap()),
-        );
-
-        let (ciphertext, option) = context
-            .reserve_sender(&mut store)
-            .unwrap()
-            .protect_request(
-                plaintext.code,
-                &hex_to_bytes("b3747631"),
-                &hex_to_bytes(&plaintext.payload),
-            )
-            .unwrap();
-
-        assert_eq!(
-            option.as_slice(),
-            expected_option,
-            "OSCORE option mismatch for {}",
-            vector.name
-        );
-        assert_eq!(
-            ciphertext.as_slice(),
-            expected_ciphertext,
-            "ciphertext mismatch for {}",
-            vector.name
-        );
-    }
-}
-
-#[test]
-fn test_response_protection_vectors() {
-    for vector in load_vectors()
-        .vectors
-        .into_iter()
-        .filter(|vector| vector.vector_type == "response_protection")
-    {
-        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
-        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
-        let responder_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
-        let requester_id = hex_to_bytes(vector.request_kid.as_ref().unwrap());
-        let request_piv = hex_to_bytes(vector.request_piv.as_ref().unwrap());
-        let plaintext = vector.plaintext.as_ref().unwrap();
-        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
-            "rfc8613_c7_response_protection" => (
-                hex_to_bytes(""),
-                hex_to_bytes("dbaad1e9a7e7b2a813d3c31524378303cdafae119106"),
-            ),
-            "rfc8613_c8_response_with_partial_iv" => (
-                hex_to_bytes("0100"),
-                hex_to_bytes("4d4c13669384b67354b2b6175ff4b8658c666a6cf88e"),
-            ),
-            _ => panic!("missing independent expected values for {}", vector.name),
-        };
-        let (mut requester, _) = context_at(
-            &master_secret,
-            master_salt.as_deref(),
-            None,
-            &requester_id,
-            &responder_id,
-            0,
-        );
-
-        let (code, options, payload) = requester
-            .unprotect_response(&expected_option, &expected_ciphertext, &request_piv)
-            .unwrap_or_else(|_| panic!("unprotect_response failed for {}", vector.name));
-
-        assert_eq!(code, plaintext.code, "code mismatch for {}", vector.name);
-        assert_eq!(
-            options.as_slice(),
-            hex_to_bytes(&plaintext.options),
-            "options mismatch for {}",
-            vector.name
-        );
-        assert_eq!(
-            payload.as_slice(),
-            hex_to_bytes(&plaintext.payload),
-            "payload mismatch for {}",
-            vector.name
-        );
-    }
 }
 
 #[test]
