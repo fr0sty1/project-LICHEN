@@ -5,12 +5,12 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:35.014310023Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T00:26:26.537734776Z",
   "started_at": "2026-07-23T00:24:34.487235448Z",
   "closed_at": "2026-07-23T00:26:26.537734776Z",
-  "close_reason": "Fixed merge conflict in coap_config.c by aligning address key names and struct field (ula-\u003eygg, KEY_ULA-\u003eKEY_PRIMARY to match spec/11-lci.md and header)"
+  "close_reason": "Fixed merge conflict in coap_config.c by aligning address key names and struct field (ula->ygg, KEY_ULA->KEY_PRIMARY to match spec/11-lci.md and header)"
 }
