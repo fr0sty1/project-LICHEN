@@ -10,18 +10,17 @@ pub const FRAGMENT_N: u8 = 6;
 pub const FRAGMENT_T: u8 = 0;
 pub const ALL_1_FCN: u8 = (1 << FRAGMENT_N) - 1;
 pub const MIC_LENGTH: usize = 4;
-pub const TILE_SIZE: usize = 187;
-pub const WINDOW_SIZE: usize = 63;
-pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
-pub const MAX_PACKET_SIZE: usize = 16384;
-pub const DEFAULT_RECEIVER_LIMIT: usize = 1281;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
-pub const RULE_ID_A_TO_B: u8 = 0x78;
-pub const RULE_ID_B_TO_A: u8 = 0x79;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
 pub const MAX_ACK_REQUESTS: u32 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
+pub const RULE_ID_A_TO_B: u8 = 0x78;
+pub const RULE_ID_B_TO_A: u8 = 0x79;
+pub const TILE_SIZE: usize = 187;
+pub const WINDOW_SIZE: usize = 63;
+pub const BITMAP_MASK: u64 = (1u64 << (WINDOW_SIZE as u64)) - 1;
+pub const MAX_PACKET_SIZE: usize = 23562;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -88,7 +87,7 @@ impl From<BufferTooSmall> for FragmentError {
 }
 
 fn check_rule(rule_id: u8) -> Result<(), FragmentError> {
-    if matches!(rule_id, RULE_ID_A_TO_B | RULE_ID_B_TO_A) {
+    if rule_id == RULE_ID_A_TO_B || rule_id == RULE_ID_B_TO_A {
         Ok(())
     } else {
         Err(FragmentError::UnsupportedRule)
@@ -155,7 +154,7 @@ impl<'a> Fragment<'a> {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << 7) | ((self.fcn & 0x3f) << 1);
+        out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
         let mut index = 0;
         if self.is_all_1() {
             for byte in self.mic {
@@ -172,16 +171,38 @@ impl<'a> Fragment<'a> {
         Ok(needed)
     }
 
-    pub fn from_bytes<'out>(data: &[u8], out: &'out mut [u8]) -> Result<Fragment<'out>, FragmentError> {
+    pub fn from_bytes(data: &'a [u8]) -> Result<Self, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
-        check_rule(data[0])?;
+        let rule_id = data[0];
+        let window = (data[1] >> FRAGMENT_N) & 1;
+        let fcn = data[1] & ((1 << FRAGMENT_N) - 1);
+        let rest = &data[2..];
+        if fcn == ALL_1_FCN {
+            if rest.len() < MIC_LENGTH {
+                return Err(TooShort::new(2 + MIC_LENGTH, data.len()).into());
+            }
+            let mut mic = [0u8; MIC_LENGTH];
+            mic.copy_from_slice(&rest[..MIC_LENGTH]);
+            Ok(Fragment {
+                rule_id,
+                window,
+                fcn,
+                payload: &rest[MIC_LENGTH..],
+                mic,
+            })
+        } else {
+            Ok(Fragment {
+                rule_id,
+                window,
+                fcn,
+                payload: rest,
+                mic: [0u8; MIC_LENGTH],
+            })
+        }
         let window = data[1] >> 7;
         let fcn = (data[1] >> 1) & 0x3f;
-        if fcn > ALL_1_FCN {
-            return Err(FragmentError::InvalidFcn);
-        }
         let content_len = data.len() - 2;
         let content_offset = if fcn == ALL_1_FCN { MIC_LENGTH } else { 0 };
         if fcn == ALL_1_FCN {
@@ -210,7 +231,7 @@ impl<'a> Fragment<'a> {
                 mic[i] = (data[1 + i] << 7) | (data[2 + i] >> 1);
             }
         }
-        Ok(Fragment {
+        Ok(Self {
             rule_id: data[0],
             window,
             fcn,
@@ -271,8 +292,7 @@ impl Ack {
         out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
-        let body_bytes = kept.div_ceil(8);
-        out[2] = kept as u8;
+        out[2] = n as u8;
         for b in out[3..3 + body_bytes].iter_mut() {
             *b = 0;
         }
@@ -293,24 +313,17 @@ impl Ack {
         let rule_id = data[0];
         let window = (data[1] >> FRAGMENT_N) & 1;
         let complete = (data[1] & 0x01) != 0;
-        if complete {
-            if data.len() != 2 {
-                return Err(FragmentError::MalformedAck);
-            }
-            let ack = Self::new(rule_id, window, 0, true);
-            if ack.write_to(&mut [0u8; 2])? != 2 {
-                return Err(FragmentError::NonCanonicalAck);
-            }
-            return Ok(ack);
-        }
-        if data.len() < 3 {
-            return Err(TooShort::new(3, data.len()).into());
-        }
         let n = data[2] as usize;
         let body_bytes = n.div_ceil(8);
         let required = 3 + body_bytes;
         if data.len() < required {
             return Err(TooShort::new(required, data.len()).into());
+        }
+        let body = &data[3..];
+        let mut bitmap = [false; MAX_WINDOW_SIZE];
+        for i in 0..n.min(MAX_WINDOW_SIZE) {
+            let byte = body[i / 8];
+            bitmap[i] = (byte >> (7 - (i % 8))) & 1 != 0;
         }
         let bit_count = (data.len() - 1) * 8 - 2;
         let mut bitmap = 0u64;
@@ -423,7 +436,7 @@ pub enum SenderOutput {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FragmentSender<'a> {
     payload: &'a [u8],
     pub rule_id: u8,
@@ -449,6 +462,12 @@ impl<'a> FragmentSender<'a> {
         if payload.len() > SCHC_MAX_DECOMPRESSED {
             return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
         }
+        let mic = compute_mic(payload);
+        let count = if payload.is_empty() {
+            1
+        } else {
+            payload.len().div_ceil(tile_size)
+        };
         Ok(FragmentSender {
             payload,
             rule_id,
@@ -799,7 +818,7 @@ impl<'a> FragmentReceiver<'a> {
             return self.receive_ack_request(rule_id);
         }
         let mut tile = [0u8; TILE_SIZE];
-        match Fragment::from_bytes(data, &mut tile) {
+        match Fragment::from_bytes(data) {
             Ok(fragment) => {
                 if self.done {
                     self.reset();
@@ -958,7 +977,7 @@ impl<'a> FragmentReceiver<'a> {
     }
 
     fn respond(&mut self, ack: Ack) -> ReceiverResult {
-        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
+        if self.attempts >= MAX_ACK_REQUESTS {
             return self.abort(ack.rule_id);
         }
         self.attempts += 1;
@@ -1067,7 +1086,9 @@ mod std_ext {
         }
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
-            self.fragments_in_window(abs_window).collect()
+            self.iter()
+                .filter(|f| f.window as usize == abs_window)
+                .collect()
         }
     }
 
