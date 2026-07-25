@@ -52,6 +52,52 @@
       "encoded": "1006ffffff000102030405060764617461"
     },
     {
+      "name": "broadcast_signed",
+      "description": "Signed broadcast frame with known seed",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 2,
+        "dst_addr": "",
+        "payload": "616263",
+        "mic": "07562afe2b0dbda9481a46ae62a904d8460961965e9c324132eea8a3eea62ca4729332a13ff648c13c778a80e966ec09",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false
+      },
+      "encoded": "372001000261626307562afe2b0dbda9481a46ae62a904d8460961965e9c324132eea8a3eea62ca4729332a13ff648c13c778a80e966ec09",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "3720010002616263",
+        "signature": "07562afe2b0dbda9481a46ae62a904d8460961965e9c324132eea8a3eea62ca4729332a13ff648c13c778a80e966ec09"
+      }
+    },
+    {
+      "name": "short_addr_signed",
+      "description": "Signed frame with 16-bit destination and known seed",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 2,
+        "dst_addr": "abcd",
+        "payload": "68656c6c6f21",
+        "mic": "cc99b8f001f54e45c1c29b884292f0a218d7d35ee0399502384560a230a6b0f13691786d4ea3f545902324422d7cde0a",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false
+      },
+      "encoded": "3c21010002abcd68656c6c6f21cc99b8f001f54e45c1c29b884292f0a218d7d35ee0399502384560a230a6b0f13691786d4ea3f545902324422d7cde0a",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "3c21010002abcd68656c6c6f21",
+        "signature": "cc99b8f001f54e45c1c29b884292f0a218d7d35ee0399502384560a230a6b0f13691786d4ea3f545902324422d7cde0a"
+      }
+    },
+    {
       "name": "signed_encrypted",
       "description": "Unsupported signature + encrypted combination",
       "fields": {

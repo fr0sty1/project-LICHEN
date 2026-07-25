@@ -603,10 +603,10 @@ mod tests {
             encryption: Encryption::Plaintext,
         };
         let mut small_buf = [0u8; 5];
-        assert_eq!(
+        assert!(matches!(
             frame.write_to(&mut small_buf),
-            Err(FrameError::BufferTooSmall)
-        );
+            Err(FrameError::BufferTooSmall(_))
+        ));
 
         let large_payload = vec![0u8; 260];
         let large_frame = LichenFrame {
@@ -704,7 +704,9 @@ mod tests {
                         }
                         "reserved_bit_set" => error == FrameError::ReservedBitSet,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
-                        "encryption_unsupported" => error == FrameError::EncryptionUnsupported,
+                        "signed_encrypted_unsupported" => {
+                            error == FrameError::SignedEncryptedUnsupported
+                        }
                         "frame_too_large" => error == FrameError::FrameTooLarge,
                         _ => false,
                     };

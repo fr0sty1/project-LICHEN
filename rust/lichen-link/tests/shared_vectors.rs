@@ -11,6 +11,15 @@ use serde::Deserialize;
 use lichen_link::frame::{FrameError, LichenFrame, MAX_FRAME_LEN};
 
 #[derive(Deserialize)]
+struct CryptoMetadata {
+    seed: String,
+    private_key: String,
+    public_key: String,
+    preimage: String,
+    signature: String,
+}
+
+#[derive(Deserialize)]
 struct VectorFile {
     format_version: u32,
     vectors: Vec<LinkFrameVector>,
@@ -23,6 +32,8 @@ struct LinkFrameVector {
     fields: LinkFrameFields,
     #[serde(default)]
     expect: Option<serde_json::Value>,
+    #[serde(default)]
+    crypto: Option<CryptoMetadata>,
 }
 
 #[derive(Deserialize)]
