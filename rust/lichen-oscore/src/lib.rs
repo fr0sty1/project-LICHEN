@@ -478,7 +478,13 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -531,7 +537,13 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -742,7 +754,13 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -940,7 +958,13 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         if request_kid.len() > NONCE_ID_LEN
             || OscoreSeqNum::from_piv(request_piv).is_none()
             || request_kid != self.recipient_id()
@@ -2497,8 +2521,10 @@ mod tests {
                 exhausted: false,
             },
         };
-        let mut context =
-            Context::new(&secret, None, None, &[1], &[0]).unwrap().restore_existing(&mut store).unwrap();
+        let mut context = Context::new(&secret, None, None, &[1], &[0])
+            .unwrap()
+            .restore_existing(&mut store)
+            .unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
         assert!(context
@@ -2537,7 +2563,9 @@ mod tests {
         }
 
         assert!(matches!(
-            Context::new(&[0x44; KEY_LEN], None, None, &[1], &[0]).unwrap().restore_existing(&mut EmptyStore),
+            Context::new(&[0x44; KEY_LEN], None, None, &[1], &[0])
+                .unwrap()
+                .restore_existing(&mut EmptyStore),
             Err(ContextStoreError::Missing)
         ));
     }
@@ -2593,10 +2621,14 @@ mod tests {
             barrier: Arc::clone(&barrier),
         };
         let mut second_store = first_store.clone();
-        let mut first =
-            Context::new(&secret, None, None, &[0], &[1]).unwrap().restore_existing(&mut first_store).unwrap();
-        let mut second =
-            Context::new(&secret, None, None, &[0], &[1]).unwrap().restore_existing(&mut second_store).unwrap();
+        let mut first = Context::new(&secret, None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut first_store)
+            .unwrap();
+        let mut second = Context::new(&secret, None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut second_store)
+            .unwrap();
 
         let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
         let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());

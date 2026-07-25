@@ -4,8 +4,7 @@
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
 use lichen_oscore::{
-    validate_option, Context, ContextId, OscoreError, SenderSequenceState,
-    SenderStateStore,
+    validate_option, Context, ContextId, OscoreError, SenderSequenceState, SenderStateStore,
 };
 
 struct TestStore(SenderSequenceState);
@@ -111,10 +110,16 @@ fn context_at(
     sequence: u64,
 ) -> (Context, TestStore) {
     let mut store = TestStore::existing(sequence);
-    let context = Context::new(master_secret, master_salt, id_context, sender_id, recipient_id)
-        .unwrap()
-        .restore_existing(&mut store)
-        .unwrap();
+    let context = Context::new(
+        master_secret,
+        master_salt,
+        id_context,
+        sender_id,
+        recipient_id,
+    )
+    .unwrap()
+    .restore_existing(&mut store)
+    .unwrap();
     (context, store)
 }
 
@@ -140,10 +145,9 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let bytes = hex_to_bytes(hex);
     let len = bytes.len();
-    bytes.try_into().expect(&format!(
-        "hex_to_array: expected {} bytes, got {}",
-        N, len
-    ))
+    bytes
+        .try_into()
+        .expect(&format!("hex_to_array: expected {} bytes, got {}", N, len))
 }
 
 #[test]
@@ -371,12 +375,10 @@ fn malformed_oscore_options_are_rejected_without_keys() {
 
 #[test]
 fn test_edhoc_interop_vectors() {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../test/vectors/edhoc.json"
-    );
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test/vectors/edhoc.json");
     let content = fs::read_to_string(path).expect("Failed to read edhoc.json");
-    let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse edhoc.json");
+    let doc: serde_json::Value =
+        serde_json::from_str(&content).expect("Failed to parse edhoc.json");
     let v = &doc["vectors"][0];
     assert_eq!(v["name"], "fixed_seed_sign_sign");
     // Verifies Rust EdhocInitiator/Responder with fixed seeds produces identical PRK, OSCORE context, keys byte-for-byte to Python oracle.
