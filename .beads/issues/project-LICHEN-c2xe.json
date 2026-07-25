@@ -2,18 +2,16 @@
   "id": "project-LICHEN-c2xe",
   "title": "[codereview-pass2] coap_status handlers return INTERNAL_ERROR instead of ENOBUFS on capacity exceed",
   "description": "lichen/subsys/lichen/coap/coap_status.c:581 - encode fail mapped to 5.00 instead of propagating ENOBUFS per bufferbloat appendix. Tag: codereview",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T16:01:36.386996398Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T02:47:08.75851772Z",
+  "updated_at": "2026-07-25T02:47:59.353012084Z",
   "started_at": "2026-07-22T16:02:12.504168685Z",
-  "closed_at": "2026-07-25T01:12:07.042850469Z",
+  "closed_at": "2026-07-25T02:47:59.353012084Z",
   "close_reason": "Already fixed",
-  "lease_expires_at": "2026-07-25T02:52:08.75851772Z",
-  "heartbeat_at": "2026-07-25T02:47:08.75851772Z",
   "labels": [
     "codereview"
   ]
