@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-vjze",
   "title": "Doc comments in seqnum.rs still reference u32::MAX instead of Self::MAX",
   "description": "seqnum.rs lines 55, 72: The doc comments for OscoreSeqNum::increment and fetch_increment say 'Returns None if the sequence number is at u32::MAX' but the actual check is against Self::MAX which is (1 \u003c\u003c 40) - 1. The comments are misleading and were not updated when the type was changed from u32 to u64 internally.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:19:31.134336603Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:19:31.134336603Z"
+  "updated_at": "2026-07-25T02:51:08.933357777Z",
+  "started_at": "2026-07-25T02:51:08.933357777Z",
+  "lease_expires_at": "2026-07-25T02:56:08.933357777Z",
+  "heartbeat_at": "2026-07-25T02:51:08.933357777Z"
 }
