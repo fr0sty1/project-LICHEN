@@ -5,12 +5,12 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "Mark Frost",
+  "assignee": null,
   "owner": "mark.frost@gmail.com",
   "created_at": "2026-06-15T15:32:22Z",
   "created_by": "Mark Frost",
   "updated_at": "2026-06-18T18:57:03Z",
   "started_at": "2026-06-18T18:52:51Z",
   "closed_at": "2026-06-18T18:57:03Z",
-  "close_reason": "Fixed: maybe_advance_time() no longer requires ALL nodes in RX_WAIT (which deadlocked when a node transmitted then went idle/TX while a receiver waited). New contract: advance to the next event whenever \u003e=1 connected node is RX_WAIT; idle/TX nodes don't hold the barrier. The RX wait loop checks for a deliverable packet before advancing, so in-range receptions are never skipped. test_out_of_range_no_receive and 17 other integration tests now pass; unit tests in test_simulation.py updated to the corrected contract. CI now runs test_integration.py (deselecting only test_partition_rule_blocks_cross_group, tracked as euj)."
+  "close_reason": "Fixed: maybe_advance_time() no longer requires ALL nodes in RX_WAIT (which deadlocked when a node transmitted then went idle/TX while a receiver waited). New contract: advance to the next event whenever >=1 connected node is RX_WAIT; idle/TX nodes don't hold the barrier. The RX wait loop checks for a deliverable packet before advancing, so in-range receptions are never skipped. test_out_of_range_no_receive and 17 other integration tests now pass; unit tests in test_simulation.py updated to the corrected contract. CI now runs test_integration.py (deselecting only test_partition_rule_blocks_cross_group, tracked as euj)."
 }

@@ -5,7 +5,7 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "Mark Frost",
+  "assignee": null,
   "owner": "mark.frost@gmail.com",
   "created_at": "2026-07-17T17:28:50Z",
   "created_by": "Mark Frost",

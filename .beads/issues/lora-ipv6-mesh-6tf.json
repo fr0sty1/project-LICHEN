@@ -1,11 +1,11 @@
 {
   "id": "lora-ipv6-mesh-6tf",
   "title": "airtime_us() accepts negative payload length without validation",
-  "description": "transmission.py airtime_us() produces garbage for negative payload_len. Add validation: if payload_len \u003c 0: raise ValueError. Public API should validate at boundary.",
+  "description": "transmission.py airtime_us() produces garbage for negative payload_len. Add validation: if payload_len < 0: raise ValueError. Public API should validate at boundary.",
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "Mark Frost",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T19:07:44Z",
   "created_by": "Mark Atwood",
