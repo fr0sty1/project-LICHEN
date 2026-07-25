@@ -144,8 +144,12 @@ fn is_ula(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] & 0xfe) == 0xfc
 }
 
+fn is_yggdrasil(addr: &[u8]) -> bool {
+    addr.len() == 16 && addr[0] == 0x02
+}
+
 fn is_routable(addr: &[u8]) -> bool {
-    is_link_local(addr) || is_ula(addr) || is_global(addr)
+    is_link_local(addr) || is_yggdrasil(addr) || is_ula(addr) || is_global(addr)
 }
 
 fn addr_to_u128(addr: &[u8]) -> u128 {

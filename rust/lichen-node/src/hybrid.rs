@@ -2,7 +2,7 @@
 //!
 //! The HybridRouter decides how to forward each packet based on destination address:
 //! 1. Link-local (fe80::/10): Direct neighbor delivery
-//! 2. Mesh-local (ULA or mesh GUA): Gradient lookup -> LOADng discovery
+//! 2. Mesh-local (02xx/Yggdrasil, ULA, or mesh GUA): Gradient lookup -> LOADng discovery
 //! 3. External: Forward to RPL parent toward border router
 //!
 //! Each protocol has its own state machine; the HybridRouter orchestrates them
@@ -25,7 +25,7 @@ use lichen_core::loadng::{Idle, RouteDiscovery, Rreq, Searching};
 pub enum AddressClass {
     /// fe80::/10 - direct neighbor, one hop away.
     LinkLocal,
-    /// ULA (fd00::/8) or configured mesh GUA - peer in mesh.
+    /// Yggdrasil 02xx::/7, ULA (fd00::/8), or configured mesh GUA - peer in mesh.
     MeshLocal,
     /// Other GUA or unknown - route via border router.
     External,
@@ -205,6 +205,11 @@ impl HybridRouter {
             return AddressClass::LinkLocal;
         }
 
+        // Yggdrasil: 02xx::/7
+        if addr[0] == 0x02 {
+            return AddressClass::MeshLocal;
+        }
+
         // ULA: fd00::/8
         if addr[0] == 0xfd {
             return AddressClass::MeshLocal;
@@ -242,7 +247,7 @@ impl HybridRouter {
         }
     }
 
-    /// Route to a mesh-local address (ULA or mesh GUA).
+    /// Route to a mesh-local address (Yggdrasil 02xx, ULA, or mesh GUA).
     fn route_mesh_local(&self, dst: &[u8; 16], now_ms: u32) -> RouteResult {
         // Check gradient table for existing route
         if let Some(entry) = self.gradient_table.lookup(dst, now_ms) {
@@ -624,6 +629,13 @@ mod tests {
     }
 
     #[test]
+    fn classify_yggdrasil() {
+        let router = HybridRouter::new(link_local(1));
+        let ygg = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5];
+        assert_eq!(router.classify_address(&ygg), AddressClass::MeshLocal);
+    }
+
+    #[test]
     fn classify_external() {
         let router = HybridRouter::new(link_local(1));
         assert_eq!(router.classify_address(&gua(2)), AddressClass::External);
@@ -664,6 +676,14 @@ mod tests {
     fn route_mesh_local_no_gradient_is_queue() {
         let router = HybridRouter::new(link_local(1));
         let result = router.route(&ula(2), 1000);
+        assert_eq!(result.decision, RouteDecision::Queue);
+    }
+
+    #[test]
+    fn route_mesh_local_yggdrasil_no_gradient_is_queue() {
+        let router = HybridRouter::new(link_local(1));
+        let ygg = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5];
+        let result = router.route(&ygg, 1000);
         assert_eq!(result.decision, RouteDecision::Queue);
     }
 
