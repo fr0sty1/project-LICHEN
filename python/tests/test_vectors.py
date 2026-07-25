@@ -106,6 +106,7 @@ def test_vectors_directory_exists() -> None:
     "filename",
     [
         "ccp9.json",
+        "ccp9-rendezvous.json",
         "l2_payload.json",
         "ipv6_malformed.json",
     ],
@@ -527,6 +528,37 @@ def test_edhoc_vectors_match_generator() -> None:
 def test_ccp9_vectors_match_generator() -> None:
     doc = _load("ccp9.json")
     assert doc["vectors"] == ccp9_vectors()
+
+
+def _ccp9_rendezvous_cases():
+    doc = _load("ccp9-rendezvous.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp9_rendezvous_cases())
+def test_ccp9_rendezvous_vector(name: str, vector: dict) -> None:
+    mechanism = vector.get("mechanism", vector.get("expected", {}).get("mechanism"))
+    if mechanism == "hash_based":
+        sfn = vector["sfn"]
+        n_channels = vector["n_channels"]
+        seed = 0
+        data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
+        h = _fnv1a32(data)
+        expected_ch = 1 + (h % (n_channels - 1))
+        assert expected_ch == vector["expected_channel"], (
+            f"hash-ch drift: {name} (got {expected_ch}, expected {vector['expected_channel']})"
+        )
+    elif mechanism == "scheduled":
+        assert vector["assigned_channel"] == 2
+        assert vector["assigned_slot"] == 5
+        assert vector["expected"]["mechanism"] == "scheduled"
+        assert vector["expected"]["valid_until_sfn"] == 12350
+    elif mechanism == "announce_driven":
+        assert vector["rx_channel"] == vector["expected_channel"]
+    elif mechanism == "fallback":
+        assert vector["expected_channel"] == 0
+        assert vector["expected_slot"] == 0
 
 
 def _hash_32_cases():

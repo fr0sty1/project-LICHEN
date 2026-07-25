@@ -42,7 +42,8 @@
               {"$ref": "#/definitions/schnorr48_vector"},
               {"$ref": "#/definitions/hash_32_vector"},
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
-              {"$ref": "#/definitions/ipv6_malformed_vector"}
+              {"$ref": "#/definitions/ipv6_malformed_vector"},
+              {"$ref": "#/definitions/ccp9_rendezvous_vector"}
             ]
           }
         }
@@ -98,7 +99,8 @@
           {"$ref": "#/definitions/compact_cot_vector"},
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
-          {"$ref": "#/definitions/ccp_load_balancing_vector"}
+          {"$ref": "#/definitions/ccp_load_balancing_vector"},
+          {"$ref": "#/definitions/ccp9_rendezvous_vector"}
         ]
       },
       "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
@@ -1152,6 +1154,41 @@
         "score": {"type": "number"},
         "action": {"type": "string"}
       }
+    },
+    "ccp9_rendezvous_vector": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "mechanism": {"type": "string", "enum": ["hash_based", "scheduled", "announce_driven", "fallback"]},
+        "expected_channel": {"type": "integer"},
+        "expected_slot": {"type": "integer"},
+        "sfn": {"type": "integer"},
+        "peer_eui64": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "n_channels": {"type": "integer"},
+        "rx_channel": {"type": "integer"},
+        "assigned_channel": {"type": "integer"},
+        "assigned_slot": {"type": "integer"},
+        "expected": {
+          "type": "object",
+          "properties": {
+            "mechanism": {"type": "string"},
+            "valid_until_sfn": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "ccp9_rendezvous_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {"items": {"$ref": "#/definitions/ccp9_rendezvous_vector"}}
+          }
+        }
+      ]
     },
     "schnorr48_vector": {
       "type": "object",
