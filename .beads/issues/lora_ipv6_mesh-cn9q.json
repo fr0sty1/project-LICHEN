@@ -2,13 +2,17 @@
   "id": "lora_ipv6_mesh-cn9q",
   "title": "Web status dashboard (FastAPI + HTMX)",
   "description": "Lightweight web dashboard that proxies the node's CoAP resources into a browser UI. FastAPI server makes CoAP requests to a local node and renders status/neighbors/presence/messages. Single-file Python app with embedded HTML template using HTMX for auto-refresh.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "mark.frost@gmail.com",
   "created_at": "2026-06-25T04:47:49Z",
   "created_by": "Mark Frost",
-  "updated_at": "2026-06-25T04:47:49Z",
+  "updated_at": "2026-07-25T02:26:39.894864846Z",
+  "started_at": "2026-07-25T02:26:39.894864846Z",
   "closed_at": "2026-06-25T04:47:49Z",
-  "close_reason": "lichen-dashboard FastAPI+HTMX app implemented with 15 passing tests; lichen-dashboard entry point added to pyproject.toml"
+  "close_reason": "lichen-dashboard FastAPI+HTMX app implemented with 15 passing tests; lichen-dashboard entry point added to pyproject.toml",
+  "lease_expires_at": "2026-07-25T02:31:39.894864846Z",
+  "heartbeat_at": "2026-07-25T02:26:39.894864846Z"
 }
