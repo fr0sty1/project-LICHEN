@@ -2704,7 +2704,7 @@ fn decode_high_water(data: &[u8]) -> Option<HighWaterMap> {
 mod tests {
     use super::*;
     use lichen_hal::storage::mem::MemStorage;
-    use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+    use lichen_link::{identity::Identity, keys::Seed};
     use std::{vec, vec::Vec};
 
     fn ll(iid: u8) -> [u8; 16] {
@@ -5321,7 +5321,7 @@ mod tests {
         let (wire, origin) = verified_dao(&identity, 2, ll(1));
         let mut wrong_context = wire.clone();
         wrong_context[0] = 1;
-        let dao = Dao::from_bytes(&wrong_context).unwrap();
+        let _dao = Dao::from_bytes(&wrong_context).unwrap();
         let option_offset = wrong_context.len() - Dao::options_tail(&wrong_context).len();
         wrong_context[option_offset + 1] = u8::MAX;
         assert!(matches!(
@@ -5364,7 +5364,7 @@ mod tests {
 
         let envelope = SignedDaoEnvelope::from_bytes(&wire).unwrap();
         let mut non_128 = envelope.unsigned_bytes.to_vec();
-        let dao = Dao::from_bytes(&non_128).unwrap();
+        let _dao = Dao::from_bytes(&non_128).unwrap();
         let target_offset = non_128.len() - Dao::options_tail(&non_128).len();
         non_128[target_offset + 3] = 64;
         let digest = dao_origin_digest(origin, dodag_id(), 1, &non_128);
