@@ -186,8 +186,10 @@ impl<'a> Fragment<'a> {
             if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&content_len) {
                 return Err(FragmentError::InvalidTileLength);
             }
-        } else if data.len() != TILE_SIZE + 2 || (window == 1 && fcn == 0) {
+        } else if data.len() != TILE_SIZE + 2 {
             return Err(FragmentError::InvalidTileLength);
+        } else if window == 1 && fcn == 0 {
+            return Err(FragmentError::InvalidFcn);
         }
         if out.len() < payload_len {
             return Err(BufferTooSmall::new(payload_len, out.len()).into());
