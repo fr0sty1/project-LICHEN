@@ -122,7 +122,7 @@ impl Dio {
             preference: gmop & 0x7,
             dtsn: data[5],
             flags: data[6],
-            // SAFETY: length check above ensures data.len() >= BASE_LEN (24),
+            // INFALLIBLE: length check above ensures data.len() >= BASE_LEN (24),
             // so 8..24 is within bounds and exactly 16 bytes
             dodag_id: data[8..24].try_into().unwrap(),
         })
@@ -173,6 +173,7 @@ pub struct Dao {
 
 impl Dao {
     pub const BASE_LEN: usize = 20; // for D=1 (common case)
+    pub const MIN_BASE_LEN: usize = 4; // for D=0 (no DODAGID)
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < 4 {
@@ -185,18 +186,17 @@ impl Dao {
             return Err(TooShort::new(base_len, data.len()).into());
         }
         let dodag_id = if d_flag == 1 {
-            // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
-            Some(data[4..20].try_into().unwrap())
+            // INFALLIBLE: length check ensures data.len() >= 20; 4..20 is 16 bytes
+            data[4..20].try_into().unwrap()
         } else {
-            // D=0 elides DODAGID per RFC 6550 §6.4.2; caller uses context DODAG
-            None
+            [0u8; 16] // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
         };
         Ok(Self {
             rpl_instance_id: data[0],
             ack_requested: (kd >> 7) & 1 == 1,
             flags: kd & 0x3F,
             dao_sequence: data[3],
-            dodag_id,
+            dodag_id: Some(dodag_id),
         })
     }
 
@@ -205,9 +205,9 @@ impl Dao {
             return Err(RplError::InvalidOption);
         }
         let base_len = if self.dodag_id.is_some() {
-            20
+            Self::BASE_LEN
         } else {
-            4
+            Self::MIN_BASE_LEN
         };
         if out.len() < base_len {
             return Err(BufferTooSmall::new(base_len, out.len()).into());
@@ -338,7 +338,7 @@ impl<'a> SignedDaoEnvelope<'a> {
                     return Err(DaoEnvelopeError::NonTerminalSignature);
                 }
                 match data[pos] {
-                    OPT_PADN if data[pos + 1] > 0 => {}
+                    OPT_PADN => {}
                     OPT_RPL_TARGET if data[pos + 1] as usize == 18 => {}
                     OPT_TRANSIT_INFO if data[pos + 1] as usize == TransitInfo::DATA_LEN => {}
                     OPT_RPL_TARGET_DESCRIPTOR if data[pos + 1] as usize == 4 => {}
@@ -368,7 +368,6 @@ pub const DODAG_CONFIG_DATA_LEN: usize = 14;
 pub struct DodagConfig {
     pub pcs: u8,
     pub a_flag: bool,
-    pub gateway_centric: bool,
     pub min_hop_rank_increase: u16,
     pub max_rank_increase: u16,
     pub ocp: u16,
@@ -384,7 +383,6 @@ impl Default for DodagConfig {
         Self {
             pcs: 0,
             a_flag: false,
-            gateway_centric: false,
             min_hop_rank_increase: 256,
             max_rank_increase: 2048,
             ocp: 1,
@@ -405,14 +403,12 @@ impl DodagConfig {
         let flags = data[0];
         let pcs = flags & 0x07;
         let a_flag = (flags & 0x10) != 0;
-        let gateway_centric = (flags & 0x80) != 0;
         if data[10] != 0 {
             return Err(RplError::InvalidOption); // reserved field per RFC 6550 §6.7.6
         }
         Ok(Self {
             pcs,
             a_flag,
-            gateway_centric,
             dio_int_doublings: data[1],
             dio_int_min: data[2],
             dio_redundancy_const: data[3],
@@ -432,8 +428,7 @@ impl DodagConfig {
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
-        let flags =
-            ((self.gateway_centric as u8) << 7) | ((self.a_flag as u8) << 4) | (self.pcs & 0x07);
+        let flags = ((self.a_flag as u8) << 4) | (self.pcs & 0x07);
         out[2] = flags;
         out[3] = self.dio_int_doublings;
         out[4] = self.dio_int_min;
@@ -517,7 +512,7 @@ impl TransitInfo {
         if data.len() < Self::DATA_LEN {
             return Err(TooShort::new(Self::DATA_LEN, data.len()).into());
         }
-        // SAFETY: length check above ensures data.len() >= DATA_LEN (20),
+        // INFALLIBLE: length check above ensures data.len() >= DATA_LEN (20),
         // so 4..20 is within bounds and exactly 16 bytes. E flag (data[0] bit 7)
         // is asserted by caller tests per aligned E/Parent contract.
         Ok(Self {
@@ -710,7 +705,7 @@ mod tests {
         assert!(!dao.ack_requested);
         assert_eq!(dao.flags, 0);
         assert_eq!(dao.dao_sequence, 1);
-        assert_eq!(dao.dodag_id, None);
+        assert_eq!(dao.dodag_id, Some([0u8; 16]));
     }
 
     #[test]
@@ -726,7 +721,7 @@ mod tests {
         assert_eq!(dao.rpl_instance_id, 0);
         assert!(!dao.ack_requested);
         assert_eq!(dao.dao_sequence, 5);
-        assert_eq!(dao.dodag_id, Some([0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        assert_eq!(dao.dodag_id[0], 0xfd);
     }
 
     #[test]
@@ -872,24 +867,9 @@ mod tests {
         let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
         assert_eq!(decoded.pcs, 0);
         assert!(!decoded.a_flag);
-        assert!(!decoded.gateway_centric);
         assert_eq!(decoded.min_hop_rank_increase, 256);
         assert_eq!(decoded.max_rank_increase, 2048);
         assert_eq!(decoded.ocp, 1);
-    }
-
-    #[test]
-    fn dodag_config_gateway_centric_roundtrip() {
-        let mut cfg = DodagConfig::default();
-        cfg.gateway_centric = true;
-        let mut buf = [0u8; 20];
-        let n = cfg.write_to(&mut buf).unwrap();
-        assert_eq!(buf[2] & 0x80, 0x80);
-
-        let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
-        assert!(decoded.gateway_centric);
-        assert!(!decoded.a_flag);
-        assert_eq!(decoded.min_hop_rank_increase, 256);
     }
 
     #[test]
