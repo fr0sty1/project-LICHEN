@@ -5,7 +5,7 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "epic",
-  "assignee": "ec2-user",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T03:18:15.665267Z",
   "created_by": "Mark Atwood",
