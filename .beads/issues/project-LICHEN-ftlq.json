@@ -6,7 +6,7 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "feature",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T15:00:36.409316698Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-23T05:13:25.148538709Z",

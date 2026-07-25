@@ -2,11 +2,13 @@
   "id": "project-LICHEN-ve27.3",
   "title": "[codereview-pass3-robustness] TDMA spec update in 02a: insufficient detail on SFN wrap (modulo arithmetic for hash/scheduling?), multi-root beacon conflict resolution, interaction with time-provider epoch-floor from 09-packets-timing.md:170, desync recovery state machine, and RPL DODAG version change during join/drift",
   "description": "spec/02a-coordinated-capacity.md:100-170 - Edge cases in long-running mesh or interference-heavy environments not fully specified. Must define state transitions and fallback behaviors for robustness. Third review pass on ve27 chunk 1.",
-  "labels": ["defer-external"],
+  "labels": [
+    "defer-external"
+  ],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T16:18:42.640257057Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T16:20:09.899165681Z",

@@ -5,13 +5,13 @@
   "status": "closed",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T15:45:56.894671563Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T15:48:19.869008979Z",
   "started_at": "2026-07-22T15:47:35.985678125Z",
   "closed_at": "2026-07-22T15:48:19.869008979Z",
-  "close_reason": "Verified routes sync in DAO path via provider callback from RplNode to Gateway.add_route; fixed is_local_mesh before TUN/Ygg fallback per spec/05-routing.md:7.2; matched style, read before edits, no TODOs; ran cargo clippy --all-features -p lichen-gateway, cargo test, west build -b native_sim, pytest -q --tb=no; init order followed (link-\u003eoscore-\u003erpl-\u003ecoap); hash/sync and vectors updated for CCP channel and coap_deaddrop. All 5 beads closed.",
+  "close_reason": "Verified routes sync in DAO path via provider callback from RplNode to Gateway.add_route; fixed is_local_mesh before TUN/Ygg fallback per spec/05-routing.md:7.2; matched style, read before edits, no TODOs; ran cargo clippy --all-features -p lichen-gateway, cargo test, west build -b native_sim, pytest -q --tb=no; init order followed (link->oscore->rpl->coap); hash/sync and vectors updated for CCP channel and coap_deaddrop. All 5 beads closed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-fy9q",

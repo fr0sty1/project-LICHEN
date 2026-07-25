@@ -5,7 +5,7 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T16:38:59.334137391Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T16:42:39.524575032Z",

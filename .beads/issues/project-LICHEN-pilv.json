@@ -1,20 +1,19 @@
 {
   "id": "project-LICHEN-pilv",
   "title": "codereview pass 2: enum values should match test vector strings in ccp9-rendezvous.json; add comment with exact mapping",
-  "labels": ["defer-external"],
+  "labels": [
+    "codereview"
+  ],
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T17:16:47.038393169Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T17:20:09.177669252Z",
   "started_at": "2026-07-22T17:20:09.177669252Z",
   "lease_expires_at": "2026-07-22T17:25:09.177669252Z",
   "heartbeat_at": "2026-07-22T17:20:09.177669252Z",
-  "labels": [
-    "codereview"
-  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-pilv",

@@ -1,11 +1,11 @@
 {
   "id": "project-LICHEN-da2q.13.5",
   "title": "CCP-13: Define adaptive duty calculation",
-  "description": "Duty calculation function based on density\u003e8=5permille, density\u003c3=20permille, per-region tables from standards/. Integrate with spec/02a. File as parent project-LICHEN-da2q.13. Tag codereview.",
+  "description": "Duty calculation function based on density>8=5permille, density<3=20permille, per-region tables from standards/. Integrate with spec/02a. File as parent project-LICHEN-da2q.13. Tag codereview.",
   "status": "closed",
   "priority": 1,
   "issue_type": "task",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T17:03:56.940816182Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T17:06:11.158511564Z",

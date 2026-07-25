@@ -6,13 +6,13 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "task",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T15:21:52.147193746Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-23T05:04:26.142019533Z",
   "started_at": "2026-07-22T15:22:58.995520264Z",
   "closed_at": "2026-07-23T05:04:26.142019533Z",
-  "close_reason": "Implemented retrieval in deaddrop_get via provider-\u003eretrieve callback + URI_QUERY node parse; uses lichen_dtn_retrieve_for indirectly; fixed per codereview3; commit cb7d09544; tests/build pass",
+  "close_reason": "Implemented retrieval in deaddrop_get via provider->retrieve callback + URI_QUERY node parse; uses lichen_dtn_retrieve_for indirectly; fixed per codereview3; commit cb7d09544; tests/build pass",
   "labels": [
     "codereview"
   ]

@@ -4,7 +4,7 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "chore",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T14:48:11.67882197Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T14:53:19.851264941Z",

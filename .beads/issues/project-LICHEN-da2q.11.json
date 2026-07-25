@@ -2,22 +2,21 @@
   "id": "project-LICHEN-da2q.11",
   "title": "CCP-11: Dynamic Channel Selection",
   "description": "Coordinated Capacity Profile section detailing Dynamic Channel Selection from da2q multi-channel coordination context.",
-  "labels": ["defer-external"],
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
   "status": "open",
   "priority": 2,
   "issue_type": "epic",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T15:43:45.372192287Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T17:07:30.959890119Z",
   "started_at": "2026-07-22T17:07:30.959890119Z",
   "lease_expires_at": "2026-07-22T17:12:30.959890119Z",
   "heartbeat_at": "2026-07-22T17:07:30.959890119Z",
-  "labels": [
-    "ccp",
-    "phy",
-    "scalability"
-  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-da2q.11",

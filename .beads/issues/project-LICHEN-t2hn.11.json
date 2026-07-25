@@ -5,7 +5,7 @@
   "status": "closed",
   "priority": 0,
   "issue_type": "task",
-  "assignee": "ec2-user",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T17:15:25.393082Z",
   "created_by": "Mark Atwood",

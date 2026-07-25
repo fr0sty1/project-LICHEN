@@ -1,11 +1,13 @@
 {
   "id": "project-LICHEN-fn4w",
   "title": "[codereview-pass3.3] gateway impl notes should reference test/vectors for derivation (add yggdrasil-derivation.json with known vectors from official Yggdrasil and Python/Rust/C oracles). Current notes mention non-existent vector file.",
-  "labels": ["defer-external"],
+  "labels": [
+    "defer-external"
+  ],
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T15:10:50.531961627Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T17:33:30.08067362Z",

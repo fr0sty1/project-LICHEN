@@ -5,13 +5,13 @@
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T16:33:24.543104619Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T16:37:44.250951752Z",
   "started_at": "2026-07-22T16:35:18.241128081Z",
   "closed_at": "2026-07-22T16:37:44.250951752Z",
-  "close_reason": "Fixed all E501 (long strings via black + module noqa) and W191 (tabs-\u003espaces). Ruff clean with project config. Python test_vectors.py: 129 passed. 3 codereview passes completed with zero findings (no correctness, style, or test issues after changes). All issues addressed per spec.",
+  "close_reason": "Fixed all E501 (long strings via black + module noqa) and W191 (tabs->spaces). Ruff clean with project config. Python test_vectors.py: 129 passed. 3 codereview passes completed with zero findings (no correctness, style, or test issues after changes). All issues addressed per spec.",
   "labels": [
     "codereview"
   ]

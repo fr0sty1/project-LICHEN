@@ -6,7 +6,7 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "task",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T17:02:18.470178065Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-23T04:51:27.278022526Z",

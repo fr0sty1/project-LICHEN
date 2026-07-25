@@ -2,22 +2,21 @@
   "id": "project-LICHEN-da2q.4.4",
   "title": "Vectors: multi-channel frequency allocation plans",
   "description": "Test vectors for CCP-4 channel plans from da2q context.",
-  "labels": ["defer-external"],
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
   "status": "open",
   "priority": 2,
   "issue_type": "task",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T15:12:31.017920927Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T17:22:54.122369371Z",
   "started_at": "2026-07-22T17:22:54.122369371Z",
   "lease_expires_at": "2026-07-22T17:27:54.122369371Z",
   "heartbeat_at": "2026-07-22T17:22:54.122369371Z",
-  "labels": [
-    "ccp",
-    "phy",
-    "scalability"
-  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-da2q.4.4",

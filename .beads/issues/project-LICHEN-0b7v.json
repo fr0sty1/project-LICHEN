@@ -5,12 +5,12 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:32.127492529Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T02:28:18.517859444Z",
   "started_at": "2026-07-23T02:26:09.340972082Z",
   "closed_at": "2026-07-23T02:28:18.517859444Z",
-  "close_reason": "Corrected CBOR map counts in lichen/subsys/lichen/coap/coap_status.c (top-level status from 6-\u003e5, radio submap from 4-\u003e5) to match actual keys after merge reconciliation. Matches Rust oracle and prevents parse errors. Verified with git diff. Commit 99b1fbe36"
+  "close_reason": "Corrected CBOR map counts in lichen/subsys/lichen/coap/coap_status.c (top-level status from 6->5, radio submap from 4->5) to match actual keys after merge reconciliation. Matches Rust oracle and prevents parse errors. Verified with git diff. Commit 99b1fbe36"
 }

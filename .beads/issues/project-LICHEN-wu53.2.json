@@ -5,13 +5,13 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T14:50:05.643342861Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T14:54:48.518454543Z",
   "started_at": "2026-07-22T14:53:01.581099907Z",
   "closed_at": "2026-07-22T14:54:48.518454543Z",
-  "close_reason": "Eliminated all #[allow(dead_code)]: removed unused get_context() in secure.rs, tick() in radio.rs, count fields from Rssi/SnrDisplay (and demo data), pruned unused fields from oscore test Vector/Expected structs. cargo check -p lichen-tui \u0026\u0026 cargo test -p lichen-oscore --test vectors both clean. No P0-P2.",
+  "close_reason": "Eliminated all #[allow(dead_code)]: removed unused get_context() in secure.rs, tick() in radio.rs, count fields from Rssi/SnrDisplay (and demo data), pruned unused fields from oscore test Vector/Expected structs. cargo check -p lichen-tui && cargo test -p lichen-oscore --test vectors both clean. No P0-P2.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-wu53.2",

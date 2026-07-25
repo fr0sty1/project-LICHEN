@@ -4,13 +4,13 @@
   "status": "closed",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "ec2-user",
+  "assignee": null,
   "created_at": "2026-07-22T15:55:49.558184096Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T15:58:56.791627484Z",
   "started_at": "2026-07-22T15:57:26.995428493Z",
   "closed_at": "2026-07-22T15:58:56.791627484Z",
-  "close_reason": "fixed mutex name s_confession_mutex-\u003es_dtn_mutex in coap_dtn_register + rate limit protection in coap_deaddrop; init graph compliant; no comments; ruff/clippy/tests pass",
+  "close_reason": "fixed mutex name s_confession_mutex->s_dtn_mutex in coap_dtn_register + rate limit protection in coap_deaddrop; init graph compliant; no comments; ruff/clippy/tests pass",
   "labels": [
     "codereview"
   ],

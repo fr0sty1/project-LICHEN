@@ -4,7 +4,7 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "task",
-  "assignee": "AI Agent",
+  "assignee": null,
   "created_at": "2026-07-22T16:01:18.779008921Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-24T22:39:47.565134787Z",

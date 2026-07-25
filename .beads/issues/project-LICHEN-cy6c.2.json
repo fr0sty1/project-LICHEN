@@ -6,14 +6,14 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "chore",
-  "assignee": "ec2-user",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T19:40:34.929492Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-22T14:14:33.687747197Z",
   "started_at": "2026-07-22T14:14:31.220265027Z",
   "closed_at": "2026-07-22T14:14:33.687747197Z",
-  "close_reason": "intelhex\u003e=2.3 added to python/pyproject.toml dependencies. This ensures esptool post-processing and image packaging succeeds for all ESP32-S3 targets after linking (Heltec V3, T-Deck). Builder bootstrap and uv/pip installs now include it deterministically. Validated in west ESP32 builds. Completes cy6c packaging criterion.",
+  "close_reason": "intelhex>=2.3 added to python/pyproject.toml dependencies. This ensures esptool post-processing and image packaging succeeds for all ESP32-S3 targets after linking (Heltec V3, T-Deck). Builder bootstrap and uv/pip installs now include it deterministically. Validated in west ESP32 builds. Completes cy6c packaging criterion.",
   "labels": [
     "fix-now"
   ],
