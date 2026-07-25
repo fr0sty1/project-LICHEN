@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-n5mb",
   "title": "codereview: test/vectors/ccp15.json and schnorr48 not updated for new CCA/CAD behavior and test vectors",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T16:46:46.670321738Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T01:32:43.108211656Z",
+  "updated_at": "2026-07-25T01:37:04.183774902Z",
   "started_at": "2026-07-22T16:52:00.897172335Z",
-  "lease_expires_at": "2026-07-25T01:37:43.108211656Z",
-  "heartbeat_at": "2026-07-25T01:32:43.108211656Z",
+  "closed_at": "2026-07-25T01:37:04.183774902Z",
+  "close_reason": "Fixed: syntax error in generate.py ccp12_synchronized_hop_vectors, expanded ccp15.json with CCA/CAD vectors (cca_threshold, interference_score, frequency_agility, sf_adaptation, tdma_cca_guard), updated ccp15_vector schema with type discriminator and allOf conditionals, updated schnorr48.json description clarifying CCA/CAD relationship",
   "labels": [
     "codereview"
   ],
