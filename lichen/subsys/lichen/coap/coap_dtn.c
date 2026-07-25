@@ -22,11 +22,12 @@ LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
-static struct k_mutex s_dtn_buf_mutex;
+static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[256] = {0};
 static uint32_t s_last_confession[256] = {0};
-static struct k_mutex s_rate_mutex;
+static K_MUTEX_DEFINE(s_rate_mutex);
+static K_MUTEX_DEFINE(s_senml_pack_mutex);
 
 static bool parse_recipient(const uint8_t *payload, size_t len,
 			    uint8_t dest_iid[8])
@@ -95,6 +96,11 @@ static int deaddrop_oscore_respond(struct coap_resource *resource,
 {
 	uint8_t buf[256];
 	struct coap_packet resp;
+
+	if (ctx == NULL) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   code, 0, NULL, 0);
+	}
 	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request,
 					       code, NULL, 0, &resp, buf,
 					       sizeof(buf));
@@ -259,9 +265,11 @@ static int confessions_get(struct coap_resource *resource,
 {
 	uint8_t buf[64];
 	struct senml_pack pack;
+	k_mutex_lock(&s_senml_pack_mutex, K_FOREVER);
 	senml_pack_init(&pack, NULL, dtn_get_unix_time());
 	senml_add_float(&pack, SENML_KEY_CONFESSIONS, NULL, 0.0f);
 	int len = senml_encode_cbor(&pack, buf, sizeof(buf));
+	k_mutex_unlock(&s_senml_pack_mutex);
 	if (len < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
