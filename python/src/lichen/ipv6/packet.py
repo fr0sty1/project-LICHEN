@@ -218,10 +218,20 @@ class IPv6Packet:
         return header.to_bytes() + ext_bytes + self.payload
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> IPv6Packet:
-        """Parse a full packet, walking any extension-header chain."""
+    def from_bytes(cls, data: bytes, *, strict: bool = False) -> IPv6Packet:
+        """Parse a full packet, walking any extension-header chain.
+
+        When *strict* is True, trailing bytes beyond the payload_length
+        are treated as an error instead of being silently discarded.
+        """
         header = IPv6Header.from_bytes(data)
-        body = data[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]
+        expected_len = HEADER_LENGTH + header.payload_length
+        body = data[HEADER_LENGTH:expected_len]
+        if strict and len(data) > expected_len:
+            raise PacketError(
+                f"trailing {len(data) - expected_len} byte(s) after "
+                f"payload_length of {header.payload_length}"
+            )
         if len(body) != header.payload_length:
             raise PacketError(
                 f"payload_length says {header.payload_length} but "
@@ -247,7 +257,6 @@ class IPv6Packet:
         if next_header == NextHeader.FRAGMENT:
             raise PacketError("IPv6 Fragment headers are not supported (use SCHC)")
 
-        # next_header is now the upper-layer protocol; surface it on the header.
         parsed_header = replace(header, next_header=next_header)
         return cls(
             header=parsed_header,
