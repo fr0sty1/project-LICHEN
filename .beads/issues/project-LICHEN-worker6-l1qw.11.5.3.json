@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.11.5.3",
+  "title": "Malformed pubkey handling",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:24.024035Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:24.024035Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.11.5.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.11.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:24.713597Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.8.2.3",
+  "title": "Zephyr: create_message_1",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:15.706535Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:15.706535Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.8.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.8.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:16.213034Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.8.4.2",
+  "title": "Rust: RERR encode/decode",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:52.5096Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:52.5096Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.8.4.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.8.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:52.898145Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

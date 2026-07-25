@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.13.16",
+  "title": "Gate 17: paired seed metrics (4x payload ratio)",
+  "description": "Verify CCP achieves 4x payload throughput ratio vs CSMA. Acceptance: Measured ratio \u003e= 4x on test topologies.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:31.047262Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:31.047262Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.13.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:31.877207Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

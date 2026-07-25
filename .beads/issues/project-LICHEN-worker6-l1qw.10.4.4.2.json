@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.4.4.2",
+  "title": "Python: eviction policy (expired -\u003e per-dest fairness -\u003e FIFO)",
+  "description": "Implement three-tier message eviction: expired first, then per-dest fairness, then FIFO",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:42.35757Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:42.35757Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.4.4.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.4.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:43.066071Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

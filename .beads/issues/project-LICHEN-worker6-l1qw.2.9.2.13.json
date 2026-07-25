@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.2.13",
+  "title": "Vectors: SCHEDULE codec and digest cases",
+  "description": "Create test vectors for SCHEDULE encode/decode and digest computation. Include multi-page schedules, edge cases. Acceptance: All implementations pass vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:00.071589Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:00.071589Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.2.13",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:00.550445Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

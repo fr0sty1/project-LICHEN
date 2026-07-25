@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.6.8",
+  "title": "Rust: PHY profile constants (ID 0x01)",
+  "description": "Define PHY profile constants for Rust. Acceptance: Identical values to Python implementation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:50.773502Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:50.773502Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.6.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:51.510329Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

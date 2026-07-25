@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.6.3",
+  "title": "Zephyr: 4 addressing modes",
+  "description": "4 addressing modes implementation in Zephyr. DONE",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:44.145782Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:44.145782Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.6.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:45.194936Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

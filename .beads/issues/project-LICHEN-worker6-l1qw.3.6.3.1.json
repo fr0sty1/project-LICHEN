@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.6.3.1",
+  "title": "Python: ACK generation + processing",
+  "description": "Implement ACK generation and processing in Python. Acceptance: generates correct ACKs with bitmaps, processes incoming ACKs correctly.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:49.291325Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:49.291325Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.6.3.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:49.967686Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

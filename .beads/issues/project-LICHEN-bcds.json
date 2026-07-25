@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 2,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T04:05:21.64126Z",
   "created_by": "Mark Atwood",
@@ -14,5 +13,15 @@
   "close_reason": "SCHC fragmentation was already implemented in lichen/subsys/schc/schc.c (commit 86b9df45d from 2026-06-29). The file contains complete fragmenter (schc_fragmenter_init/next/retransmit), reassembler (schc_reassembler_init/input/ack), and ACK handling APIs. Fuzz tests pass. Bead description was outdated.",
   "labels": [
     "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-bcds",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:38:52.136505Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.6.1.2",
+  "title": "Python: SLIP stream reader (incremental)",
+  "description": "Acceptance: KissReader handles partial frames",
+  "notes": "Already implemented as KissReader class",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:48.691204Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:48.691204Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:49.465035Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

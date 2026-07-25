@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.5",
+  "title": "IID Derivation (spec 6.2)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:03.917059Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:03.917059Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:04.158564Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

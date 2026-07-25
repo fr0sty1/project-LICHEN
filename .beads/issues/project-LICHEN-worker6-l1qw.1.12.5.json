@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.12.5",
+  "title": "Concurrent DAD probes from multiple nodes",
+  "description": "Handle concurrent DAD probes from multiple nodes",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:31.736891Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:31.736891Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.12.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:32.291793Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

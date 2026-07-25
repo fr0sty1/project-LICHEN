@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.7.4",
+  "title": "Rust: DAO initial delay (random 0-2s)",
+  "description": "Implement random DAO initial delay 0-2s. AC: DAO transmission starts with random delay in [0, 2000ms].",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:42.469678Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:42.469678Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.7.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:43.153565Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

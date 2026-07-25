@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.6.2.8",
+  "title": "Vectors: BLE GATT frame reassembly tests",
+  "description": "Acceptance: test vectors for frame reassembly",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:26.794198Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:26.794198Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.2.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:27.397473Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

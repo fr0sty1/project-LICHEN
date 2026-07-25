@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.7",
+  "title": "Border Router Time Responsibilities",
+  "description": "Gateway NTS/Roughtime client, time advertisement in DIO, CoAP time provider status",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:24.333938Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:24.333938Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:25.288347Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

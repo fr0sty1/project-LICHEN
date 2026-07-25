@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.6.2.5",
+  "title": "Duplicate tile detection",
+  "description": "Implement duplicate tile detection in reassembly. Acceptance: detects and discards duplicate tiles without corruption.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:40.581373Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:40.581373Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.6.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:41.01374Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

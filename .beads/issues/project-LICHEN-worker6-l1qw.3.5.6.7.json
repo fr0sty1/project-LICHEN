@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.6.7",
+  "title": "Vectors: Rule 6 test cases",
+  "description": "Create test vectors for Rule 6. Acceptance: covers EDHOC edge cases, used by all implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:01.134233Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:01.134233Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.6.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:01.554706Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

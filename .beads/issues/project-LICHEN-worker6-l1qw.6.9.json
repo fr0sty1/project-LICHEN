@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.9",
+  "title": "8.9 RPL Security",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:20.434831Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:20.434831Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:21.431859Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

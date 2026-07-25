@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.4",
+  "title": "Cross-validate: SCHC parity",
+  "description": "Run identical inputs through Python, Rust, Zephyr SCHC. Verify compression output bit-exact, fragmentation interops. Document any spec ambiguities.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:38:16.46015Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:38:16.46015Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:38:16.683482Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

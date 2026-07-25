@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.10",
+  "title": "CoAP",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:47.30112Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:47.30112Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:47.784234Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

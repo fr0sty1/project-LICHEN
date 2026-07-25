@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.12.2.2",
+  "title": "Block transfer with OSCORE",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:36.515692Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:36.515692Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.12.2.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.12.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:37.536326Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

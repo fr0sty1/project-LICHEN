@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.12.5",
+  "title": "Rust: root signature verification",
+  "description": "Implement root signature verification for Rust. Acceptance: Consistent with Python implementation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:17.312653Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:17.312653Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.12.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:17.624224Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

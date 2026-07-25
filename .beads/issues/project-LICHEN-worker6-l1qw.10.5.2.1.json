@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.5.2.1",
+  "title": "Python: /pos/cache GET (peer positions)",
+  "description": "Return cached positions of all known peers",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:27.468869Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:27.468869Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.5.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.5.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:27.890953Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

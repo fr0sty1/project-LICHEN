@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.3",
+  "title": "Epoch Floor Validation",
+  "description": "Firmware build epoch floor and board provision epoch handling",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:11.435308Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:11.435308Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:12.703907Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

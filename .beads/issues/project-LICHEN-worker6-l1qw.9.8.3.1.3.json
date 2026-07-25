@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.3.1.3",
+  "title": "Rust: GET /status client",
+  "description": "Acceptance: Rust client fetches status",
+  "notes": "Already implemented in lichen-client/status.rs",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:03.986605Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:03.986605Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.3.1.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.3.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:04.35838Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

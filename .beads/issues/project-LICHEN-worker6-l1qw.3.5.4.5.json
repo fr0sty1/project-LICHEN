@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.4.5",
+  "title": "Zephyr: Rule 4 compression",
+  "description": "Implement Rule 4 CoAP compression in Zephyr C. Acceptance: compresses CoAP headers, passes test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:15.324137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:15.324137Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:16.355295Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

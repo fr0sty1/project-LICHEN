@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.7.4",
+  "title": "Memory budget verification (Zephyr)",
+  "description": "Verify SCHC memory budget in Zephyr. Acceptance: SCHC operations stay within defined memory limits, no unbounded allocations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:33.506946Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:33.506946Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:34.252853Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

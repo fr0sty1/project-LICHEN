@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.14.4",
+  "title": "Python: CCP to RPL integration",
+  "description": "Integrate CCP capability advertisement with RPL DIOs. Acceptance: CCP options in DIOs, schedule distribution.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:48.240376Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:48.240376Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.14.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.14",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:48.69103Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

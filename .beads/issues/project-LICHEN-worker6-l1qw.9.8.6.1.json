@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.6.1",
+  "title": "Python: ProxyResource",
+  "description": "Acceptance: CoAP forward proxy works",
+  "notes": "Already implemented in resources.py ProxyResource",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:47.859098Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:47.859098Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:48.360934Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.6.2.5",
+  "title": "Zephyr: BLE IPSP transport",
+  "description": "Acceptance: IPSP over BLE works",
+  "notes": "Already implemented in transport/ble_ipsp_transport.c",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:20.398212Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:20.398212Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:21.241595Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

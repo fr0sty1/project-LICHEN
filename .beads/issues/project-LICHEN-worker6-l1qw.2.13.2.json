@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.13.2",
+  "title": "Gate 2: canonical LoRa airtime vectors",
+  "description": "Verify airtime calculations match canonical LoRa timing. Acceptance: All airtime values within spec tolerance.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:59.990785Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:59.990785Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.13.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:00.447943Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

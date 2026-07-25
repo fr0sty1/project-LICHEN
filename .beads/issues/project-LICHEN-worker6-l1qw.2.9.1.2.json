@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.1.2",
+  "title": "Python: JOIN_REQUEST decode",
+  "description": "Implement JOIN_REQUEST message decoder. Acceptance: Round-trips with encoder.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:14.02307Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:14.02307Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:14.645168Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

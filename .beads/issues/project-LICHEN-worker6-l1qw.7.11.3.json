@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.11.3",
+  "title": "Zephyr: Observe subscribe/notify",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:31.957884Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:31.957884Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.11.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:32.403123Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

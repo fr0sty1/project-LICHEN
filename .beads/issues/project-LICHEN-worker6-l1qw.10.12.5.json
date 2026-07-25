@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.12.5",
+  "title": "Observable resource notification flood protection",
+  "description": "Rate-limit notifications to prevent flooding observers",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:58.624281Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:58.624281Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.12.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:58.936614Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

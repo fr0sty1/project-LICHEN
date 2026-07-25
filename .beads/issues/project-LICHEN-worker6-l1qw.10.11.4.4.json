@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11.4.4",
+  "title": "Vectors: rekeying protocol sequences",
+  "description": "Test vectors for rekeying protocol",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:33.373552Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:33.373552Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:33.728956Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

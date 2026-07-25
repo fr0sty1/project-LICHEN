@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.3",
+  "title": "Cross-validate: Applications parity",
+  "description": "Run identical inputs through Python, Rust, Zephyr apps. Verify SenML/message encoding match. Document any spec ambiguities.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:38:22.169416Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:38:22.169416Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:38:22.394062Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

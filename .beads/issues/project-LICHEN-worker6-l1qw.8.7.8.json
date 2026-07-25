@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.7.8",
+  "title": "Zephyr: DAO retry backoff (4, 8, 16s exponential)",
+  "description": "Implement DAO exponential retry backoff. AC: Retries at 4s, 8s, 16s intervals.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:50.716569Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:50.716569Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.7.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:51.419475Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

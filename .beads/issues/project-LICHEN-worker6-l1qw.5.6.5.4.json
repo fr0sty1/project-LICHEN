@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.6.5.4",
+  "title": "Vectors: DAO-ACK test cases",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:23.345841Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:23.345841Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.6.5.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:23.836091Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6",
+  "title": "Chapter 06: Security",
+  "description": "Spec: spec/06-security.md. Sections: key hierarchy (identity, link, OSCORE), EDHOC key exchange, OSCORE message protection, Group OSCORE (optional). Status: Python/Zephyr complete, Rust partial (OSCORE AAD fix needed). Existing beads: 2okc, r9pz.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:45.283289Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:45.283289Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:45.548679Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

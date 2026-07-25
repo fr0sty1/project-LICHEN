@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.12.2",
+  "title": "Rust: telemetry interval configuration (5-60 min)",
+  "description": "Configurable telemetry interval 5-60 min. AC: Telemetry sent at configured interval.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:03.948703Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:03.948703Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.12.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:04.423956Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

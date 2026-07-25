@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.6.2",
+  "title": "Hop-Limited Broadcast",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:35.110363Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:35.110363Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.6.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:35.60923Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

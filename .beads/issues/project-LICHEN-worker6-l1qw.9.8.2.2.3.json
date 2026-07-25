@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.2.2.3",
+  "title": "Rust: GET /config/radio client",
+  "description": "Acceptance: Rust client fetches radio config",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:24.934488Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:24.934488Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.2.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.2.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:25.632117Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

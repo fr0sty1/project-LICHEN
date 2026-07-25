@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.8.6",
+  "title": "Zephyr: cell record structure",
+  "description": "Implement 19-byte cell record for Zephyr C. Acceptance: Byte-compatible with Python/Rust.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:44.376202Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:44.376202Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.8.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:44.74677Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.12.10",
+  "title": "Python: join request rate limiting",
+  "description": "Rate limit join requests to prevent DoS. Acceptance: Throttles excessive join attempts.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:25.318322Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:25.318322Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.12.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:25.780454Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

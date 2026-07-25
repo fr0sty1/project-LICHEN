@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.7.4",
+  "title": "Vectors: BR time distribution scenarios",
+  "description": "Test vectors for border router time distribution. AC: Test cases verify time propagation through network.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:54.508371Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:54.508371Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.7.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:55.151732Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

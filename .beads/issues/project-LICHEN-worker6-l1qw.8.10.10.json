@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.10.10",
+  "title": "Vectors: CSMA/CA backoff sequence test cases",
+  "description": "Test vectors for CSMA/CA backoff sequences. AC: Test cases verify correct exponential backoff and retry exhaustion.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:04.895814Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:04.895814Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.10.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:05.666768Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

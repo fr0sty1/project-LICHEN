@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.5.7",
+  "title": "Zephyr: PUT /keys",
+  "description": "Acceptance: Zephyr accepts key updates",
+  "notes": "Already implemented in coap_keys.c",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:35.746211Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:35.746211Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.5.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:36.300129Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

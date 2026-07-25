@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.8",
+  "title": "Rule ID encoding: variable-length wire format",
+  "description": "Implement variable-length Rule ID encoding per SCHC spec. Acceptance: encodes/decodes rule IDs correctly, handles all defined rules.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:10.700752Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:10.700752Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:11.165988Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

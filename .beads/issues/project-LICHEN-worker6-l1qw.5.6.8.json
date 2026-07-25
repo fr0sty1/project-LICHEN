@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.6.8",
+  "title": "Trickle Timer",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:44.727339Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:44.727339Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.6.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:45.64017Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.10.5",
+  "title": "Cross-validate: Python client \u003c-\u003e Zephyr firmware",
+  "description": "Acceptance: Python client works with Zephyr",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:18.665928Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:18.665928Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.10.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:19.027945Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

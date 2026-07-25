@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.5.7",
+  "title": "Vectors: DIO Time Option test cases",
+  "description": "Test vectors for DIO Time Option. AC: Test cases verify encoding/decoding round-trip, stratum propagation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:25.968024Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:25.968024Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.5.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:26.564596Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.16.6",
+  "title": "Zephyr: channel switch timing",
+  "description": "Implement channel switch timing for Zephyr C. Acceptance: Works with real radio hardware.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:46.916955Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:46.916955Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.16.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.16",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:47.208533Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

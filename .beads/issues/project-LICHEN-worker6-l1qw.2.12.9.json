@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.12.9",
+  "title": "Zephyr: replay detection",
+  "description": "Implement replay detection for Zephyr C. Acceptance: Memory-efficient bitmap implementation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:23.557953Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:23.557953Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.12.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:24.097438Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

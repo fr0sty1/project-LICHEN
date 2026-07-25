@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.16.4",
+  "title": "Python: channel switch timing",
+  "description": "Time channel switches to avoid guard violations. Acceptance: No TX during switch.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:44.797842Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:44.797842Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.16.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.16",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:45.1206Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

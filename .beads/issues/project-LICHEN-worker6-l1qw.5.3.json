@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.3",
+  "title": "Vectors: Routing test vectors",
+  "description": "Complete test/vectors/rpl-*.json, add LOADng vectors. Cover: DIO/DAO/DIS encoding, Announce, LOADng RREQ/RREP. All three implementations must pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:57.550155Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:57.550155Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:57.773097Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.6.4",
+  "title": "RTOS IPC (Same-Device)",
+  "description": "Message queue and pipe-based IPC for same-device apps",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:34.591527Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:34.591527Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:35.412076Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

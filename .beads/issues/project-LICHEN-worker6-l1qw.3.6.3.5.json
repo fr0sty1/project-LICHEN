@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.6.3.5",
+  "title": "Vectors: ACK round-trip cases",
+  "description": "Create test vectors for ACK round-trips. Acceptance: covers all bitmap patterns, window boundaries, used by all implementations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:56.776207Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:56.776207Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.6.3.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:57.42675Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

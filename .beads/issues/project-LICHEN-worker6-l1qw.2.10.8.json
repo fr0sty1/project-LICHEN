@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.10.8",
+  "title": "Rust: channel selection hash",
+  "description": "Implement channel selection hash for Rust. Acceptance: Identical results to Python.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:08.285791Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:08.285791Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.10.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:08.775041Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

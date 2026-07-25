@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.4.1.1",
+  "title": "Vectors: link-local derivation test cases",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:07.684157Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:07.684157Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.4.1.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:09.258009Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

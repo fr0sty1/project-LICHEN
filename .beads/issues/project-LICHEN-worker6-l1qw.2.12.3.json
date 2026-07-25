@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.12.3",
+  "title": "Zephyr: authority sequence tracking",
+  "description": "Implement authority sequence tracking for Zephyr C. Acceptance: Persists across power cycles.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:15.023906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:15.023906Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.12.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:15.354653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

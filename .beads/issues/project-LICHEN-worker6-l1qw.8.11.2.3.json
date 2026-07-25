@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.2.3",
+  "title": "Zephyr: wall clock validity tracking",
+  "description": "Wall clock validity state tracking. AC: Returns wall_clock_valid flag, transitions on time establishment.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:30.738574Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:30.738574Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:31.488921Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

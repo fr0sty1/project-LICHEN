@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.7.7.3",
+  "title": "Zephyr: /sos/log resource",
+  "description": "CoAP resource for SOS event log",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:35.872072Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:35.872072Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.7.7.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.7.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:36.40963Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

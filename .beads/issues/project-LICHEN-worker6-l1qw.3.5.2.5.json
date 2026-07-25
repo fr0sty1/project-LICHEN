@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.2.5",
+  "title": "Zephyr: Rule 2 compression",
+  "description": "Implement Rule 2 compression in Zephyr C. Acceptance: compresses IPv6/UDP, passes test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:29.650321Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:29.650321Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:30.563549Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.10",
+  "title": "18.7 Range Testing",
+  "description": "Ping, extended range tests, continuous testing, and traceroute",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:21.453698Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:21.453698Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:22.402389Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

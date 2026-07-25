@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.5.4",
+  "title": "Version 2 SenderID Field",
+  "description": "Spec 4.2: 10-byte extended sender support",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:08.64537Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:08.64537Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.5.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:09.939178Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

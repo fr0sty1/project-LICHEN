@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.7.10",
+  "title": "Vectors: DAO timing scenarios",
+  "description": "Test vectors for DAO timing scenarios. AC: Test cases for initial delay, retry sequence, refresh cycle.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:55.557512Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:55.557512Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.7.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:56.179664Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

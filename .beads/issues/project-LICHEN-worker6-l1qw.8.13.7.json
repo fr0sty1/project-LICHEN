@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.13.7",
+  "title": "Cross-validate: timing integration parity",
+  "description": "Cross-validate timing integration across implementations. AC: All implementations behave consistently for same timing scenarios.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:28.644184Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:28.644184Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.13.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:29.192703Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

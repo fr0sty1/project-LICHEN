@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.10.2",
+  "title": "Python: backoff unit (10ms)",
+  "description": "CSMA/CA backoff unit constant. AC: CAD_SLOT_MS=10.",
+  "notes": "Already implemented - CAD_SLOT_MS",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:48.394428Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:48.394428Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.10.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:49.357623Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.8.7.1",
+  "title": "Rust: SUITES_I array parsing (RFC 9528 Section 3.3.2)",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:46.181269Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:46.181269Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.8.7.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.8.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:46.590097Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

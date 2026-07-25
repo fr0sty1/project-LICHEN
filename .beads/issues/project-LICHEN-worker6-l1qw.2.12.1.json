@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.12.1",
+  "title": "Python: authority sequence tracking",
+  "description": "Track authority object sequence numbers for replay protection. Acceptance: Rejects replayed/reordered authority objects.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:12.959553Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:12.959553Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.12.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:13.256885Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

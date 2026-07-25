@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.2",
+  "title": "Rule 2: IPv6/UDP Compressed",
+  "description": "SCHC Rule 2 for compressed IPv6/UDP headers",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:18.871238Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:18.871238Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:19.218374Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

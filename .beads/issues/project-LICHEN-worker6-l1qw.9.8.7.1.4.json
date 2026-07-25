@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.7.1.4",
+  "title": "Rust: messaging client",
+  "description": "Acceptance: Rust client for messaging",
+  "notes": "Already implemented in lichen-client/msg.rs",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:16.236264Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:16.236264Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.7.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:16.649206Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.4",
+  "title": "4.1 Frame Format",
+  "description": "Frame parse/serialize across Python/Rust/Zephyr with shared test vectors",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:40:49.704639Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:40:49.704639Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:40:49.939565Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

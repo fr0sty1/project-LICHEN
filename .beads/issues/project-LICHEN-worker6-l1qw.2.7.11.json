@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.7.11",
+  "title": "Integration: RPL DIO option extension",
+  "description": "Integrate CCP capability option into existing RPL DIO handling. Acceptance: Capability options carried in DIOs without breaking existing RPL operation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:39.735751Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:39.735751Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.7.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:40.447653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

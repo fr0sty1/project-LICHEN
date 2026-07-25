@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.13",
+  "title": "Integration",
+  "description": "Timing integration: duty cycle TX queue gating, airtime tracking in duty cycle",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:42.485596Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:42.485596Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.13",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:43.194537Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

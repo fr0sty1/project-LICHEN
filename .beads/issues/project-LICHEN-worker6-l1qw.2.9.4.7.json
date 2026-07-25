@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.4.7",
+  "title": "Python: CHANNEL_REJECT encode/decode",
+  "description": "Implement CHANNEL_REJECT message encoder and decoder. Acceptance: Correct format per spec, round-trips.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:42.29097Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:42.29097Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.4.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:42.77751Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

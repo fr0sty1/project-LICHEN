@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.7.5",
+  "title": "Vectors: IPv6 address derivation test cases",
+  "description": "Acceptance: shared test vectors for address derivation",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:10.136086Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:10.136086Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.7.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:10.686243Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

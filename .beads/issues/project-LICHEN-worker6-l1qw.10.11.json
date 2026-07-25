@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11",
+  "title": "18.8 Groups and Channels",
+  "description": "Group CRUD, membership, key management, rekeying, multicast addressing, and group messaging",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:24.56922Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:24.56922Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:25.524327Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

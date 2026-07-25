@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.9.3.2",
+  "title": "Rust: access level types",
+  "description": "Acceptance: access level types defined",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:58.235005Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:58.235005Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.9.3.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.9.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:58.620722Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

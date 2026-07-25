@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.11.2",
+  "title": "Rust: Zeroize on drop (verify)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:23.354529Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:23.354529Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.11.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:24.764002Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

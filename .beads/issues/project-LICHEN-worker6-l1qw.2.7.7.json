@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.7.7",
+  "title": "Python: capability flag handling",
+  "description": "Implement CCP capability flag parsing and generation. Acceptance: All spec-defined flags handled correctly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:29.73715Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:29.73715Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.7.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:30.470003Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

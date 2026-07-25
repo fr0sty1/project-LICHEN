@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.14.3",
+  "title": "Zephyr: CCP to link layer integration",
+  "description": "Integrate CCP with link layer for Zephyr C. Acceptance: Works with real radio driver.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:46.34312Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:46.34312Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.14.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.14",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:46.825403Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

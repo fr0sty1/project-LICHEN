@@ -20,5 +20,15 @@
     "gateway",
     "networking",
     "core"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:38:58.612112Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

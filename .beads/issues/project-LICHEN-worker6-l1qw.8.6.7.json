@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.6.7",
+  "title": "Python: spec constants alignment (Imin/Imax/k)",
+  "description": "Align Python Trickle constants with spec. AC: Imin=4096ms, Imax=17min, k=10.",
+  "notes": "Already implemented - constants.py",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:26.502846Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:26.502846Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.6.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:27.093554Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

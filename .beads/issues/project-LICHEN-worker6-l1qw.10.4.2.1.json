@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.4.2.1",
+  "title": "Python: receipt status handling (delivered/read/failed)",
+  "description": "Handle and propagate delivery receipt states",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:23.553955Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:23.553955Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.4.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.4.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:24.174003Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

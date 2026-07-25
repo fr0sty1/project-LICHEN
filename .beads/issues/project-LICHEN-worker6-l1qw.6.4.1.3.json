@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.4.1.3",
+  "title": "Zephyr: Schnorr48 sign (link/schnorr48.c)",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:03.033015Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:03.033015Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.4.1.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:03.613312Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

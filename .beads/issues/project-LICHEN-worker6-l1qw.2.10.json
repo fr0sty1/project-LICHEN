@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.10",
+  "title": "CSMA Channel Rendezvous (CCP-11)",
+  "description": "Rendezvous initiator/grantor state machines, channel selection hash, and switch guard timing. Acceptance: Channel rendezvous works reliably across implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:02.688262Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:02.688262Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:02.951677Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

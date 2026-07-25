@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.4.4",
+  "title": "Python: CHANNEL_GRANT encode/decode",
+  "description": "Implement CHANNEL_GRANT message encoder and decoder. Acceptance: Correct format per spec, round-trips.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:34.426624Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:34.426624Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:35.010221Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.6.1.4",
+  "title": "Tile sizing for LoRa MTU",
+  "description": "Implement tile sizing logic for LoRa MTU constraints. Acceptance: tiles fit within LoRa payload limits, handles variable spreading factors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:25.919506Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:25.919506Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.6.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:26.324145Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

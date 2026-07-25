@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.14.1",
+  "title": "Duty cycle budget exhaustion handling",
+  "description": "Handle duty cycle budget exhaustion. AC: Graceful handling when budget exhausted, queued packets or rejection.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:35.788508Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:35.788508Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.14.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.14",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:36.368782Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

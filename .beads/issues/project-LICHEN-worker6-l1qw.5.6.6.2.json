@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.6.6.2",
+  "title": "Rust: SRH encode/decode",
+  "notes": "Already implemented in routing.rs",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:31.11862Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:31.11862Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.6.6.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.6.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:31.701917Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

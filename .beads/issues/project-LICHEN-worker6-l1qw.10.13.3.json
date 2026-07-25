@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.13.3",
+  "title": "Oversized message handling (4.13 response)",
+  "description": "Return 4.13 Request Entity Too Large for oversized messages",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:51:06.822588Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:51:06.822588Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.13.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:51:07.131695Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

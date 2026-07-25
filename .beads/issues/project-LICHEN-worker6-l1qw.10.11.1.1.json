@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11.1.1",
+  "title": "Python: /groups GET/POST (create group)",
+  "description": "List groups and create new groups",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:02.712091Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:02.712091Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11.1.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:03.130623Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

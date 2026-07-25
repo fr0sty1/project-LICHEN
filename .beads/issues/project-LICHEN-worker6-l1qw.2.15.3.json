@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.3",
+  "title": "Zephyr: GPS time to ASN derivation",
+  "description": "Derive Absolute Slot Number from GPS time for Zephyr C. Acceptance: Identical results to Python/Rust implementations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:53.654966Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:53.654966Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:54.317778Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.7.2.3",
+  "title": "Zephyr: epoch persistence",
+  "description": "Epoch persistence in Zephyr. DONE - epoch_persist.c",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:40.420718Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:40.420718Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.7.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:41.172854Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

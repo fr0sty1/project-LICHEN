@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.7",
+  "title": "Context matching: rule selection logic",
+  "description": "Implement rule selection logic for SCHC context matching. Acceptance: correctly selects appropriate rule based on packet headers, handles ambiguous cases.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:08.897375Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:08.897375Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:09.412796Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

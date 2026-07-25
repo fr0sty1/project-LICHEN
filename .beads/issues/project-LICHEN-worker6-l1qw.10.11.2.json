@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11.2",
+  "title": "Group Membership Protocol",
+  "description": "Invitation and removal with signatures",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:49.831306Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:49.831306Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:50.183794Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

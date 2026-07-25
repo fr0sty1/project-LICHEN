@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.12",
+  "title": "Thruline: OSCORE end-to-end assurance",
+  "description": "Cross-cutting: OSCORE message protection + CoAP integration + SCHC compression. Spans Ch03/06/07. Full protected round-trip must work. Sub-epics: message protection, CoAP integration, SCHC compression, context management, Group OSCORE.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:04.6845Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:04.6845Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.12",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:04.928199Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

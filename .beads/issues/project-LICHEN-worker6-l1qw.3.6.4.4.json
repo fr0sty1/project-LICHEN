@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.6.4.4",
+  "title": "Max-retry exhaustion behavior",
+  "description": "Implement max-retry exhaustion behavior. Acceptance: correctly handles case when all retries exhausted, reports failure appropriately.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:10.25294Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:10.25294Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.6.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.6.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:10.727328Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9",
+  "title": "Chapter 11: Local Client Interface (LCI)",
+  "description": "Spec: spec/11-lci.md. Sections: KISS framing, BLE GATT profile, USB CDC, native app protocol. Status: Python partial, Rust not started, Zephyr partial (BLE exists). Note: spec underspecified. Existing bead: jtup.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:51.653562Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:51.653562Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:51.890715Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

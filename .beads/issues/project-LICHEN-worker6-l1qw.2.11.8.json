@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.11.8",
+  "title": "Rust: recovery countdown",
+  "description": "Implement recovery countdown for Rust. Acceptance: Consistent with Python implementation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:42.113786Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:42.113786Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.11.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:42.489805Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

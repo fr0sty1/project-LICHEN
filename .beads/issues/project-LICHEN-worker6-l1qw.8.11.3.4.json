@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.3.4",
+  "title": "Zephyr: board provision epoch handling",
+  "description": "Board provision timestamp handling for Zephyr. AC: Optionally uses board provision time as floor if available.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:45.977796Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:45.977796Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.3.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:46.520923Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

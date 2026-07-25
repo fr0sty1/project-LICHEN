@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.1",
+  "title": "Python: CCP complete",
+  "description": "Implement all CCP spec sections in Python. Includes: time sync, channel negotiation, scheduled/unscheduled capacity, TDMA. Pass shared test vectors. Acceptance: pytest passes, simulator supports CCP mode.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:22.2163Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:22.2163Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:22.470398Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

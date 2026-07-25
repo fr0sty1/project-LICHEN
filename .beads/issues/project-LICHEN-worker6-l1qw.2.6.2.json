@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.6.2",
+  "title": "Rust: regional plan data structures",
+  "description": "Implement regional channel plan data structures for Rust. Acceptance: Bit-compatible with Python implementation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:37.476489Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:37.476489Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.6.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:38.034818Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

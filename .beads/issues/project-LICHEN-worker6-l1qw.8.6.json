@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.6",
+  "title": "Trickle Timer (RFC 6206)",
+  "description": "Trickle timer implementations per RFC 6206 with spec constants Imin=4s, Imax=17min, k=10",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:29.604723Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:29.604723Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:30.040552Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

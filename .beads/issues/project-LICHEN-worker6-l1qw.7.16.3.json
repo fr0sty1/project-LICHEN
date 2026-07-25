@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.16.3",
+  "title": "Malformed CoAP option handling",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:52.955565Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:52.955565Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.16.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.16",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:53.224186Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

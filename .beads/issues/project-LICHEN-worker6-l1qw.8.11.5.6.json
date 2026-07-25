@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.5.6",
+  "title": "Zephyr: DIO Time Option encoding/decoding",
+  "description": "DIO Time Option encoding/decoding. AC: Encodes/decodes stratum and timestamp in DIO option.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:23.640518Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:23.640518Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.5.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:24.34117Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

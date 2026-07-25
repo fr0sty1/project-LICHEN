@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.9.1.5",
+  "title": "Coords field for GPSR",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:45.198602Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:45.198602Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.9.1.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.9.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:45.533956Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

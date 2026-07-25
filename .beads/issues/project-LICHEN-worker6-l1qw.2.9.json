@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9",
+  "title": "Control Message Codecs (CCP-10)",
+  "description": "Encode/decode for all CCP control messages: JOIN_REQUEST, SCHEDULE, REVOKE, DISABLE, CHANNEL_REQUEST/GRANT/REJECT. Acceptance: All codecs pass byte-exact cross-validation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:00.985659Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:00.985659Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:01.225815Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

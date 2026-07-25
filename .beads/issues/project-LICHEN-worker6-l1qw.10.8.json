@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.8",
+  "title": "18.5 Presence and Status",
+  "description": "Presence state, caching, and automatic status transitions",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:15.118264Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:15.118264Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:16.14998Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

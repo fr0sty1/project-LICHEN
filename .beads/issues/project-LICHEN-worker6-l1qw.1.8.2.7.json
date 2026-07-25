@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.8.2.7",
+  "title": "Vectors: DAD exchange scenarios",
+  "description": "Test vectors for DAD probe/response exchanges",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:28.91487Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:28.91487Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.8.2.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:29.358575Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

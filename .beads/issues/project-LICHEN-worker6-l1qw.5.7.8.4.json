@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.7.8.4",
+  "title": "Haversine distance calculation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:50.370049Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:50.370049Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.7.8.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.7.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:50.854628Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

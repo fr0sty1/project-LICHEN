@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.8.3.2",
+  "title": "Python: away after 30min inactivity",
+  "description": "Auto-set away status after inactivity",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:09.157463Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:09.157463Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.8.3.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.8.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:09.452241Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

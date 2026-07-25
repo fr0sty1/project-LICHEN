@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.13.4",
+  "title": "Key derivation failure recovery",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:01.123952Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:01.123952Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.13.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:01.456791Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

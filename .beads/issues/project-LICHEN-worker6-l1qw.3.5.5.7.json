@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.5.7",
+  "title": "Vectors: Rule 5 test cases",
+  "description": "Create test vectors for Rule 5. Acceptance: covers OSCORE edge cases, used by all implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:42.268041Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:42.268041Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.5.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:42.79545Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

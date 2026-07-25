@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.7.1",
+  "title": "Python: link-local address assignment",
+  "description": "Acceptance: assigns fe80:: link-local to client",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:01.850523Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:01.850523Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.7.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:02.225759Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

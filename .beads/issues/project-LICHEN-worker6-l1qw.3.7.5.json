@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.7.5",
+  "title": "Reassembly buffer exhaustion handling",
+  "description": "Handle reassembly buffer exhaustion gracefully. Acceptance: reports error when buffers full, cleans up oldest incomplete streams.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:35.897271Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:35.897271Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:36.91605Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

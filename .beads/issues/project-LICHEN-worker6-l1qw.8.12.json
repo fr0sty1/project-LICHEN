@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.12",
+  "title": "Data Traffic Timing Guidelines",
+  "description": "Telemetry interval (5-60 min) and heartbeat/keepalive timer (30 min) configuration",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:40.285931Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:40.285931Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.12",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:40.954393Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

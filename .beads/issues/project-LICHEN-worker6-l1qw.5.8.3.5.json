@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.8.3.5",
+  "title": "Rust: RREP receive handler",
+  "notes": "Already implemented in hybrid.rs",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:33.720489Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:33.720489Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.8.3.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.8.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:34.761323Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

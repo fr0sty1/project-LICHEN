@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.5.2",
+  "title": "Vectors: RPL DIO packet format validation",
+  "description": "Test vectors for RPL DIO packet format. AC: DIO packets match spec format, parsed correctly across all implementations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:36.057409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:36.057409Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.5.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:36.756541Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

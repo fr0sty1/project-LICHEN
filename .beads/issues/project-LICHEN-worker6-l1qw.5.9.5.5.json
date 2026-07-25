@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.9.5.5",
+  "title": "Expire old entries",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:51:33.621285Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:51:33.621285Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.9.5.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.9.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:51:33.936485Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

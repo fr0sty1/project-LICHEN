@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.9.7",
+  "title": "11.4 Backpressure (Optional)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:33.212354Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:33.212354Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.9.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.9",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:33.52892Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.16.10",
+  "title": "Vectors: multi-channel timing cases",
+  "description": "Create test vectors for multi-channel operation timing. Include channel switch, half-duplex, concurrent cell cases. Acceptance: All implementations handle correctly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:50.941784Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:50.941784Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.16.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.16",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:51.240764Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

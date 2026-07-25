@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.4.6",
+  "title": "Zephyr: source precedence policy",
+  "description": "Time source precedence policy. AC: Higher-quality sources take precedence, policy configurable.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:02.254061Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:02.254061Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.4.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:02.692197Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

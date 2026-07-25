@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11.4",
+  "title": "Group Rekeying",
+  "description": "Key rotation on member removal",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:52.315212Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:52.315212Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:52.681521Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

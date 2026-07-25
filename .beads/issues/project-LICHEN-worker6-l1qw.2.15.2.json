@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.2",
+  "title": "Rust: GPS time to ASN derivation",
+  "description": "Derive Absolute Slot Number from GPS time for Rust. Acceptance: Identical results to Python implementation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:51.208318Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:51.208318Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:51.914389Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

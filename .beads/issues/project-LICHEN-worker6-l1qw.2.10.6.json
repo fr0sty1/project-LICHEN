@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.10.6",
+  "title": "Zephyr: rendezvous grantor state machine",
+  "description": "Implement rendezvous grantor for Zephyr C. Acceptance: Works on constrained devices.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:04.996816Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:04.996816Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.10.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:05.457461Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.7.2.7",
+  "title": "Vectors: RFC 8613 request protection vectors",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:02.794391Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:02.794391Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.7.2.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:03.215422Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

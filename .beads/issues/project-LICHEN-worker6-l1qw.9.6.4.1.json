@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.6.4.1",
+  "title": "Zephyr: message queue IPC",
+  "description": "Acceptance: app_interface subsys works",
+  "notes": "Already implemented in app_interface subsys",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:42.826662Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:42.826662Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.4.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:43.32445Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

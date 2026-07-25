@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2",
+  "title": "Chapter 02a: Coordinated Capacity Profile (CCP)",
+  "description": "Spec: spec/02a-ccp.md. Sections: time sync (GNSS-PPS, NTP), channel negotiation, scheduled/unscheduled capacity, multi-channel rendezvous, TDMA. Status: Python partial (simulator), Rust/Zephyr partial. P2 because CCP is optional.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:34.496979Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:34.496979Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:34.762585Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.3",
+  "title": "Rule 3: IPv6/UDP Link-local",
+  "description": "SCHC Rule 3 for link-local IPv6/UDP compression",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:20.207145Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:20.207145Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:20.605441Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

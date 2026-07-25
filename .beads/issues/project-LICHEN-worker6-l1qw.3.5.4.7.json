@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.4.7",
+  "title": "Vectors: Rule 4 test cases",
+  "description": "Create test vectors for Rule 4. Acceptance: covers CoAP edge cases, used by all implementations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:21.799054Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:21.799054Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.4.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:22.834042Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

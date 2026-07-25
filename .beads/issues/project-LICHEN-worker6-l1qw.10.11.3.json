@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11.3",
+  "title": "Group Key Management",
+  "description": "Group OSCORE key distribution",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:51.051918Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:51.051918Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:51.429799Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.6.4",
+  "title": "Cross-validate: waypoint encoding parity",
+  "description": "Verify Python/Rust/Zephyr produce identical waypoint CBOR",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:16.47267Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:16.47267Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.6.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:17.015369Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

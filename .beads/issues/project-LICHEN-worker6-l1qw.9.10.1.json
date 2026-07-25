@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.10.1",
+  "title": "Python: LCI client abstraction",
+  "description": "Acceptance: LciClient provides unified API",
+  "notes": "Already implemented in lci.py LciClient",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:12.505045Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:12.505045Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.10.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:12.969727Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

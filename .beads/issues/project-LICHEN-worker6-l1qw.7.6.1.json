@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.6.1",
+  "title": "CBOR Codec",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:32.657017Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:32.657017Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.6.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:33.57436Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

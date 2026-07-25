@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.14.2.1",
+  "title": "Beacon time field",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:35.963173Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:35.963173Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.14.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.14.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:36.584778Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

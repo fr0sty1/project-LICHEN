@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.9.1.2",
+  "title": "Rust: seed -\u003e Ed25519 keypair",
+  "description": "Keypair derivation from seed. DONE - schnorr.rs",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:12.153193Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:12.153193Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.9.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.9.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:12.646319Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

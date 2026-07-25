@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.8.2",
+  "title": "Rust: hash-based short address",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:13.46961Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:13.46961Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.8.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:14.012005Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

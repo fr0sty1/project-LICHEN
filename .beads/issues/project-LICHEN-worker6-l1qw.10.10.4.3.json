@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.10.4.3",
+  "title": "Zephyr: /diag/traceroute from RPL source routing",
+  "description": "Extract route from RPL source routing header",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:35.083235Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:35.083235Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.10.4.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.10.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:35.843176Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

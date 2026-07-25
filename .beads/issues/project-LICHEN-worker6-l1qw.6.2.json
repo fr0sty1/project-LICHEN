@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.2",
+  "title": "Vectors: Security test vectors",
+  "description": "Complete OSCORE + EDHOC vectors. Cover: RFC 8613 test vectors, full EDHOC handshake, key derivation. All three implementations must pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:58.963481Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:58.963481Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:59.212005Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.4.4",
+  "title": "Store-and-Forward",
+  "description": "S\u0026F node capability, storage limits, eviction policy, back-pressure signaling",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:49.238585Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:49.238585Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:49.992728Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

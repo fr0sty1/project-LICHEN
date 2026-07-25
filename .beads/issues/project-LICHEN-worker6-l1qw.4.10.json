@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.10",
+  "title": "Edge Cases / Hardening",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:09.628598Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:09.628598Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:09.940449Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

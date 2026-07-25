@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.6.2.4",
+  "title": "Python: DIO receive handler",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:22.82393Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:22.82393Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.6.2.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:23.513239Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

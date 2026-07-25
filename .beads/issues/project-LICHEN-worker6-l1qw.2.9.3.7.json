@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.3.7",
+  "title": "Vectors: REVOKE/DISABLE codec cases",
+  "description": "Create test vectors for REVOKE and DISABLE messages. Include valid/invalid inputs, sequence number edge cases. Acceptance: All implementations pass vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:20.323741Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:20.323741Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.3.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:21.275415Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

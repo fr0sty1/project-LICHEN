@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.9",
+  "title": "Cross-validate: compression parity",
+  "description": "Cross-validate compression output across Python/Rust/Zephyr implementations. Acceptance: bit-identical output for same input across all implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:12.301616Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:12.301616Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:12.759977Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

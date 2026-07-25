@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.8",
+  "title": "Superframes and Cells (CCP-8)",
+  "description": "Slot offset calculation, 19-byte cell record structure, schedule validation, and execution window timing. Acceptance: Consistent slot/cell handling across all implementations with test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:40:59.308251Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:40:59.308251Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:40:59.575877Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

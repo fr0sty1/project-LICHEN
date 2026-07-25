@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.10.5.4",
+  "title": "Congestion levels: Normal/Elevated/Critical/Exhausted",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:55.512352Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:55.512352Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.10.5.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.10.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:55.941571Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

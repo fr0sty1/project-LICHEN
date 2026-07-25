@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.10.4",
+  "title": "Zephyr: CoAP server integration",
+  "description": "Acceptance: CoAP server works end-to-end",
+  "notes": "Already implemented in coap_server.c",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:16.86255Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:16.86255Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.10.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:17.619098Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

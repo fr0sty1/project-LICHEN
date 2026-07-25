@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.1",
+  "title": "Python: LCI complete",
+  "description": "Complete LCI in Python per project-LICHEN-jtup. Align with mandatory CoAP proxying. Includes: KISS framing. Pass shared test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:39.661431Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:39.661431Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:39.898512Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

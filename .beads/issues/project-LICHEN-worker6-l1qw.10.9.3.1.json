@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.9.3.1",
+  "title": "Python: /config/checkin PUT (interval, target, include_location)",
+  "description": "Configure scheduled check-ins",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:42.664049Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:42.664049Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.9.3.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.9.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:42.943545Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

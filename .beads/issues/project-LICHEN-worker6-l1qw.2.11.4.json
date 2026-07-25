@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.11.4",
+  "title": "Python: drift watchdog timer (T_DRIFT_WARN)",
+  "description": "Implement drift warning watchdog timer. Acceptance: Triggers at correct threshold.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:35.774574Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:35.774574Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.11.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:36.396698Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

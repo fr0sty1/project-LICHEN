@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.8.3.1",
+  "title": "Python: auto-update from GPS (moving/stationary)",
+  "description": "Auto-detect motion state from GPS",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:07.939539Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:07.939539Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.8.3.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.8.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:08.326004Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

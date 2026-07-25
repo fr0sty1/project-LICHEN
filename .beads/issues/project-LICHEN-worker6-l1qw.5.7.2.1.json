@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.7.2.1",
+  "title": "Python: Schnorr signature over signed_data",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:06.520318Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:06.520318Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.7.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:07.075003Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

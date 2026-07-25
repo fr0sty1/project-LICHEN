@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.5.4.3",
+  "title": "Rust: privacy config types",
+  "description": "Domain types for privacy mode configuration",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:53.741496Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:53.741496Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.5.4.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.5.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:54.217089Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

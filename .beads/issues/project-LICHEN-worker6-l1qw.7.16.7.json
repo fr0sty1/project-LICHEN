@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.16.7",
+  "title": "Fuzz vectors: malformed application payloads",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:59.795296Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:59.795296Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.16.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.16",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:00.345126Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

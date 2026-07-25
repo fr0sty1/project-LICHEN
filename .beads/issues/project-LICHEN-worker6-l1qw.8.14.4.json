@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.14.4",
+  "title": "Trickle timer overflow handling",
+  "description": "Trickle timer overflow handling. AC: Uses saturating math, no overflow.",
+  "notes": "Already implemented - all impls have saturating math",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:40.721049Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:40.721049Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.14.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.14",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:41.085986Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.13.2",
+  "title": "Missing required fields rejection",
+  "description": "Return 4.00 Bad Request for missing required fields",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:51:05.704892Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:51:05.704892Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.13.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:51:06.075134Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.7",
+  "title": "Python: drift bound tracking (B(h) = B(0) + rho*h)",
+  "description": "Track oscillator drift bound using formula B(h) = B(0) + rho*h. Acceptance: Drift correctly computed over holdover period.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:00.863465Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:00.863465Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:01.272727Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

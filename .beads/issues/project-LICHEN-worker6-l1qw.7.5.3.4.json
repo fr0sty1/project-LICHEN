@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.5.3.4",
+  "title": "Vectors: XML round-trip test cases",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:12.092123Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:12.092123Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.5.3.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.5.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:12.572604Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.13.6",
+  "title": "Gate 6: zero scheduler-created overlap (topologies)",
+  "description": "Verify scheduler creates no overlapping cells in various topologies. Acceptance: Zero collisions in all test topologies.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:05.567736Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:05.567736Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.13.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:06.103106Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

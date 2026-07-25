@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.8.2",
+  "title": "Rust: slot offset calculation",
+  "description": "Calculate slot offset for Rust. Acceptance: Identical to Python implementation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:38.699705Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:38.699705Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.8.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:39.382583Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

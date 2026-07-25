@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.2.1.4",
+  "title": "Rust: PUT /config client",
+  "description": "Acceptance: Rust client can update config",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:08.841831Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:08.841831Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.2.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.2.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:09.50147Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

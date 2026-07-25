@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.6.1.1",
+  "title": "Python: SLIP frame encode/decode",
+  "description": "Acceptance: encode() and decode() pass test vectors",
+  "notes": "Already implemented in interface/kiss/framing.py",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:46.189903Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:46.189903Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.1.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:47.105965Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

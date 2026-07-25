@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.3.3",
+  "title": "/status/routes",
+  "description": "Routing table resource",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:53.792065Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:53.792065Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.3.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:54.28944Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

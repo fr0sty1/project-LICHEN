@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.5.3.2",
+  "title": "Rust: Signature cache with 30s expiry",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:01.552278Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:01.552278Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.5.3.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.5.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:01.916888Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

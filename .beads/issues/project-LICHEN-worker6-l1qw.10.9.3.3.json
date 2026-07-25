@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.9.3.3",
+  "title": "Zephyr: missed check-in alert trigger",
+  "description": "Alert on missed scheduled check-in",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:44.752891Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:44.752891Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.9.3.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.9.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:45.079597Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

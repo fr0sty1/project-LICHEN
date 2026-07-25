@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.6.3",
+  "title": "Zephyr: regional plan data structures",
+  "description": "Implement regional channel plan data structures for Zephyr C. Acceptance: Bit-compatible with Python/Rust implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:39.257449Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:39.257449Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.6.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:39.774635Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

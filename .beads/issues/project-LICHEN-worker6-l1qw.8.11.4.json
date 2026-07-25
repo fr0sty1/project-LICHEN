@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.4",
+  "title": "Source Classes",
+  "description": "Time source class enumeration (GNSS/Network/Local/Manual/RTC/Monotonic) and precedence policy",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:14.248125Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:14.248125Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:15.352563Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

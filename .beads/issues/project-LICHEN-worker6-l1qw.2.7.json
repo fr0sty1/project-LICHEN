@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.7",
+  "title": "Capability Advertisement (CCP-6)",
+  "description": "36-byte DIO option encode/decode and capability flag handling across all implementations. Acceptance: Capability options round-trip correctly, RPL DIO extension integrated.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:40:57.233131Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:40:57.233131Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:40:57.475076Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.6.5",
+  "title": "Cross-validate: fragmentation interop",
+  "description": "Cross-validate fragmentation/reassembly across Python/Rust/Zephyr. Acceptance: fragments from one impl reassemble in another.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:19.233676Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:19.233676Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:20.007279Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

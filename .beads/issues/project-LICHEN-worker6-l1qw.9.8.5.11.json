@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.5.11",
+  "title": "Vectors: key store CBOR payloads",
+  "description": "Acceptance: shared test vectors for keys CBOR",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:42.058596Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:42.058596Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.5.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:42.439405Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

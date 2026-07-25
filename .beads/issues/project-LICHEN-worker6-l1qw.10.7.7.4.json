@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.7.7.4",
+  "title": "Vectors: SOS log encoding",
+  "description": "Test vectors for SOS log CBOR format",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:37.810869Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:37.810869Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.7.7.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.7.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:38.344355Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

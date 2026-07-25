@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5",
+  "title": "Chapter 05: Routing",
+  "description": "Spec: spec/05-routing.md. Sections: three-tier architecture (RPL + Announce + LOADng), DODAG formation, DIO/DAO/DIS, gradient routing, reactive fallback. Status: Python complete, Rust partial (DAO), Zephyr partial (RPL stub). Existing beads: p2y5, 2auf.44.9, r6r8.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:42.670013Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:42.670013Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:42.898852Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

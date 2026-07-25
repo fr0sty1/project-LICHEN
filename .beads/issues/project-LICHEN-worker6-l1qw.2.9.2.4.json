@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.2.4",
+  "title": "Rust: SCHEDULE decode",
+  "description": "Implement SCHEDULE decoder for Rust. Acceptance: Cross-validates with Python.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:38.646838Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:38.646838Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.2.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:39.168872Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

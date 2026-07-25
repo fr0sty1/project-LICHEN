@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.6.5",
+  "title": "Vectors: constrained node time scenarios",
+  "description": "Test vectors for constrained node time scenarios. AC: Test cases verify fallback behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:43.457122Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:43.457122Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:43.875747Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

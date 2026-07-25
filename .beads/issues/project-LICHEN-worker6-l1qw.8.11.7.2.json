@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.7.2",
+  "title": "Gateway: time advertisement in DIO",
+  "description": "Gateway advertises time in DIO. AC: DIO Time Option included in gateway DIOs.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:51.846023Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:51.846023Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.7.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:52.220074Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

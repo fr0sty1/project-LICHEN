@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.13.1",
+  "title": "Malformed CBOR payload handling (all resources)",
+  "description": "Gracefully reject malformed CBOR payloads",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:51:04.219995Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:51:04.219995Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.13.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:51:04.589072Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

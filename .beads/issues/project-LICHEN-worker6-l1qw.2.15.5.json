@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.5",
+  "title": "Rust: PPS edge capture and association",
+  "description": "Capture PPS edge for Rust. Acceptance: Consistent with Python implementation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:57.609576Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:57.609576Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:58.069084Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

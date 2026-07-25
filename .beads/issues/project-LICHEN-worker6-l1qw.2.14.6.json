@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.14.6",
+  "title": "Zephyr: CCP to RPL integration",
+  "description": "Integrate CCP with RPL for Zephyr C. Acceptance: Works with existing RPL implementation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:50.869059Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:50.869059Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.14.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.14",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:51.253876Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.11.8",
+  "title": "Fuzz vectors: malformed LCI packets",
+  "description": "Acceptance: fuzz testing for LCI",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:47.381162Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:47.381162Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.11.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:48.091151Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

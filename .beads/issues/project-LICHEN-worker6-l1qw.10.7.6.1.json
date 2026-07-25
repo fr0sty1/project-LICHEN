@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.7.6.1",
+  "title": "Python: priority routing (SOS packets first)",
+  "description": "Route SOS packets with highest priority",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:23.090646Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:23.090646Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.7.6.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.7.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:23.789177Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

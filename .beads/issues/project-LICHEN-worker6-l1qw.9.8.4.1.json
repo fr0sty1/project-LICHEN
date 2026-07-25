@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.4.1",
+  "title": "/diag",
+  "description": "Base diagnostics resource",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:46.801911Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:46.801911Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.4.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:47.128725Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

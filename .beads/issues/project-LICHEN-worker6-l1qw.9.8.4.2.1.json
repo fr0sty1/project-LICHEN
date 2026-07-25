@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.4.2.1",
+  "title": "Python: GET /diag/raw/rx",
+  "description": "Acceptance: get_raw_rx_status works",
+  "notes": "Already implemented in lci.py get_raw_rx_status",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:00.261325Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:00.261325Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.4.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.4.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:00.854466Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

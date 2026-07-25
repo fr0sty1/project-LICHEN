@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.3.1.5",
+  "title": "Zephyr: Observe /status",
+  "description": "Acceptance: Zephyr supports Observe on /status",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:07.165128Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:07.165128Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.3.1.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.3.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:07.731984Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

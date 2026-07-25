@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.13.2",
+  "title": "Rust: duty cycle TX queue gating",
+  "description": "Duty cycle integration with TX queue. AC: TX queue respects duty cycle budget before transmitting.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:18.589044Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:18.589044Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.13.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:19.222069Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

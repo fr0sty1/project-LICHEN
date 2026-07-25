@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.11.2.3",
+  "title": "Key rotation → address change propagation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:41.399384Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:41.399384Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.11.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.11.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:42.424864Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

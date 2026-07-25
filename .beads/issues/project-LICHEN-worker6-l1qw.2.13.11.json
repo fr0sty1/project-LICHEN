@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.13.11",
+  "title": "Gate 11: per-hop rendezvous recovery",
+  "description": "Verify per-hop rendezvous recovers from failures. Acceptance: Recovery within spec timeout.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:18.34237Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:18.34237Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.13.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:18.681317Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

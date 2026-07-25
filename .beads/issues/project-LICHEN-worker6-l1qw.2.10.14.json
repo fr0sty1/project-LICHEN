@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.10.14",
+  "title": "Vectors: rendezvous timing scenarios",
+  "description": "Create test vectors for rendezvous timing scenarios. Include timeout, retry, guard violation cases. Acceptance: All implementations handle timing correctly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:22.374886Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:22.374886Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.10.14",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:22.940743Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

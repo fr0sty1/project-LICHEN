@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.14.7",
+  "title": "Fuzz vectors: malformed DIO Time Option",
+  "description": "Fuzz test vectors for malformed DIO Time Option. AC: Parser handles malformed options without crash.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:44.51765Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:44.51765Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.14.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.14",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:44.915154Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

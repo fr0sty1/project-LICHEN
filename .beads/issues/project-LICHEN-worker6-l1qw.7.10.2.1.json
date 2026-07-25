@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.10.2.1",
+  "title": "Python: CoAP client",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:10.018725Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:10.018725Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.10.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.10.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:10.802697Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.14",
+  "title": "Thruline: CCP time synchronization assurance",
+  "description": "Cross-cutting: GNSS-PPS, NTP, drift, desync recovery, routing implications. Spans Ch02a/05. P2 because CCP is optional. Sub-epics: time sources, time distribution, desync handling, routing implications.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:09.271597Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:09.271597Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.14",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:09.591457Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

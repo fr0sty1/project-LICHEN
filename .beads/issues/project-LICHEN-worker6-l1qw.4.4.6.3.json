@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.4.6.3",
+  "title": "Grounded root preference via objective function",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:53.058449Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:53.058449Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.4.6.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.4.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:53.722545Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

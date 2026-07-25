@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.11.10",
+  "title": "Python: extended RX window in DRIFT (50%)",
+  "description": "Implement 50% extended RX window during DRIFT state. Acceptance: Increases reception probability.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:44.52798Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:44.52798Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.11.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:44.918297Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

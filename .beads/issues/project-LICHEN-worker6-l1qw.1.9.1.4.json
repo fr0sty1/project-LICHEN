@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.9.1.4",
+  "title": "Vectors: keypair derivation",
+  "description": "Test vectors for keypair derivation. DONE - schnorr48.json",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:16.236917Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:16.236917Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.9.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.9.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:16.681275Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

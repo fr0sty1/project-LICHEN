@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.8.3.1",
+  "title": "Signature mismatch collision detection",
+  "description": "Detect address collisions via signature mismatches",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:43.189488Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:43.189488Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.8.3.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:43.486508Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.9.2",
+  "title": "11.1 Gradient Sources",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:27.960974Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:27.960974Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.9.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.9",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:28.268634Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

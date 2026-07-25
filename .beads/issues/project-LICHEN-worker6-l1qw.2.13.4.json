@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.13.4",
+  "title": "Gate 4: GNSS PPS alignment verification",
+  "description": "Verify all nodes align to PPS within spec tolerance. Acceptance: Sub-millisecond alignment.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:02.825642Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:02.825642Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.13.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:03.159474Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

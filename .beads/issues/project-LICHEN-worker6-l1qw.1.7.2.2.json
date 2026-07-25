@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.7.2.2",
+  "title": "Rust: epoch persistence across restarts",
+  "description": "Implement epoch persistence in Rust",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:37.556111Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:37.556111Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.7.2.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:38.414081Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

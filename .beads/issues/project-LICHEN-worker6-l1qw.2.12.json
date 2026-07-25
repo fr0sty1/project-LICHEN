@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.12",
+  "title": "Security and Replay Protection (CCP-14)",
+  "description": "Authority sequence tracking, root signature verification (Schnorr48), replay detection, and join request rate limiting. Acceptance: Forged/replayed control messages rejected.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:06.621279Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:06.621279Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.12",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:06.902144Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

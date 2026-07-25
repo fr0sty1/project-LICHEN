@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.10.6",
+  "title": "Zephyr: CSMA/CA parameter constants",
+  "description": "CSMA/CA constants: CAD timeout 3 symbols, backoff unit 10ms, max exponent 5, retry limit 3. AC: All constants defined and match spec.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:57.028418Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:57.028418Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.10.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:57.632972Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

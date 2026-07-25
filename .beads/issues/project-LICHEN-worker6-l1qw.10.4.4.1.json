@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.4.4.1",
+  "title": "Python: S\u0026F node capability + storage limits",
+  "description": "Store-and-forward capability advertisement and configurable limits",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:40.177659Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:40.177659Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.4.4.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.4.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:40.926895Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

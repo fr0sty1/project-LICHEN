@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.6.1.7",
+  "title": "Vectors: Yggdrasil address derivation (yggdrasil_address.json)",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:42.851953Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:42.851953Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.6.1.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:43.172689Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

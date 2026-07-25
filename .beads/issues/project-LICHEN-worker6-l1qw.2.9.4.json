@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.4",
+  "title": "CHANNEL_REQUEST/GRANT/REJECT Codecs",
+  "description": "Encode/decode for channel rendezvous messages. Acceptance: Rendezvous protocol messages round-trip correctly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:21.059625Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:21.059625Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:21.500597Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

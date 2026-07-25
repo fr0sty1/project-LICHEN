@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.13.12",
+  "title": "Gate 12: plan mismatch rejection",
+  "description": "Verify nodes with mismatched channel plans are rejected. Acceptance: Clean rejection, no silent failure.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:19.629063Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:19.629063Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.13.12",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:20.239571Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

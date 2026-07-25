@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.8.4",
+  "title": "Python: regional limit configuration (EU 1%, US FCC)",
+  "description": "Regional duty cycle limits. AC: EU 1% and US FCC limits configurable, enforced per region.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:11.092341Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:11.092341Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.8.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:11.565108Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.7.3",
+  "title": "Python: DAO refresh timer (30 min)",
+  "description": "Implement DAO refresh timer. AC: DAO re-sent every 30 minutes while route valid.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:40.067785Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:40.067785Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.7.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:40.826936Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

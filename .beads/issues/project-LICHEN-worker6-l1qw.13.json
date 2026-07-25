@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.13",
+  "title": "Thruline: Key lifecycle assurance",
+  "description": "Cross-cutting: identity keys, link keys, EDHOC, OSCORE keys. Spans Ch02/06/Ygg. Generation, storage, derivation, rotation must be consistent across all implementations. Sub-epics: identity key mgmt, link key derivation, EDHOC exchange, OSCORE key derivation, rotation/revocation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:07.21292Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:07.21292Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:07.448194Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.7.2",
+  "title": "Python: 36-byte DIO option decode",
+  "description": "Implement 36-byte CCP capability DIO option decoder. Acceptance: Round-trips with encoder.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:13.232737Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:13.232737Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.7.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:14.133556Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

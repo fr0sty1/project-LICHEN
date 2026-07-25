@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.10.7",
+  "title": "Python: channel selection hash (SHA-256 based)",
+  "description": "Implement deterministic channel selection using SHA-256 hash. Acceptance: Peers select same channel.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:06.678769Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:06.678769Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.10.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:07.166241Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

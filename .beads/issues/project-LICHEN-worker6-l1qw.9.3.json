@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.3",
+  "title": "Zephyr: LCI complete",
+  "description": "Complete LCI in Zephyr. BLE GATT exists, need KISS/USB CDC. Pass shared test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:41.373619Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:41.373619Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:41.614366Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8",
+  "title": "Chapter 09: Packets and Timing",
+  "description": "Spec: spec/09-packets-timing.md. Sections: packet size budgets, duty cycle limits, airtime calculations, timing constraints. Status: Python complete (simulator), Rust/Zephyr partial. Needs: airtime calculation vectors, duty cycle enforcement tests.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:49.482687Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:49.482687Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:49.735571Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

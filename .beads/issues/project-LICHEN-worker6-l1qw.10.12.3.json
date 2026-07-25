@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.12.3",
+  "title": "Zephyr: lichen_coap service integration",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:56.419346Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:56.419346Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.12.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:56.796273Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11.3.3",
+  "title": "Zephyr: Group OSCORE key storage",
+  "description": "Secure storage for group OSCORE keys",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:26.994806Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:26.994806Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11.3.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:27.300745Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

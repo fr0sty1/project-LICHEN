@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.8",
+  "title": "Edge cases / hardening",
+  "description": "SCHC edge case handling, malformed packet recovery, and fuzz testing",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:11.588765Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:11.588765Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:11.880203Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

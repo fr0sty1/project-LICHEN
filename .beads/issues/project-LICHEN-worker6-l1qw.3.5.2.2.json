@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.2.2",
+  "title": "Python: Rule 2 decompression",
+  "description": "Implement Rule 2 decompression in Python. Acceptance: decompresses to original headers, round-trip passes.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:20.188398Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:20.188398Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.2.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:21.074814Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

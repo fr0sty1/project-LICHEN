@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.8.4.4",
+  "title": "Vectors: Message 3 format test cases",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:32.561241Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:32.561241Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.8.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.8.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:33.044778Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

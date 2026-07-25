@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.13.5",
+  "title": "Rust: airtime tracking in duty cycle",
+  "description": "Airtime tracking feeds duty cycle. AC: Actual airtime deducted from duty cycle budget after TX.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:25.084942Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:25.084942Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.13.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:25.564556Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

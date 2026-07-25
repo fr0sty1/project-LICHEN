@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.8.2",
+  "title": "Rust: duty cycle tracker implementation",
+  "description": "Duty cycle tracker for TX budget enforcement. AC: Tracks airtime per window, enforces limits.",
+  "notes": "Already implemented - lichen-core/duty_cycle.rs",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:06.6471Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:06.6471Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.8.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:07.389375Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

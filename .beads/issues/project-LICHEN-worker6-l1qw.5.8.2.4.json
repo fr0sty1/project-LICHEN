@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.8.2.4",
+  "title": "Python: RREQ receive handler",
+  "notes": "Already implemented in discovery.py",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:01.884587Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:01.884587Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.8.2.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.8.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:02.290727Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

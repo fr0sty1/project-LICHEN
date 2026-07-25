@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.18",
+  "title": "Cross-validate: ASN parity across impls",
+  "description": "Verify ASN calculation produces identical results across Python, Rust, and Zephyr implementations. Acceptance: Zero divergence on all test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:24.939916Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:24.939916Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.18",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:25.373926Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

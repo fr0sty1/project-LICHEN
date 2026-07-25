@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1",
+  "title": "Chapter 02: Physical and Link Layer",
+  "description": "Spec: spec/02-physical-link.md. Sections: LoRa PHY (SF10, 125kHz), frame format, EUI-64 addressing, replay protection, Schnorr signatures. Status: Python/Rust/Zephyr all complete per parity audit. Remaining: verify edge cases in vectors, cross-validate replay semantics.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:32.053622Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:32.053622Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:32.301552Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

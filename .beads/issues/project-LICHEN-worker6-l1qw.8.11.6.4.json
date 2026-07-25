@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.6.4",
+  "title": "SenML relative timestamp fallback",
+  "description": "SenML relative timestamp fallback for constrained nodes. AC: Uses relative timestamps when wall clock unavailable.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:41.774764Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:41.774764Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.6.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:42.276313Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

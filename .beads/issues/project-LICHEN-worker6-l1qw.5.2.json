@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.2",
+  "title": "Zephyr: Routing complete",
+  "description": "Complete routing in Zephyr (lichen_rpl). RPL stub needs DODAG root per project-LICHEN-p2y5. Includes: RPL, Announce, LOADng. Pass shared test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:31.65782Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:31.65782Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:31.891114Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

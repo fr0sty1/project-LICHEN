@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.7.4.2",
+  "title": "Rust: OSCORE replay window (32-bit)",
+  "notes": "Already implemented",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:19.892008Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:19.892008Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.7.4.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.7.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:20.686881Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

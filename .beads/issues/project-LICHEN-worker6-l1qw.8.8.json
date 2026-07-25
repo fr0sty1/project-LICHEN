@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.8",
+  "title": "Duty Cycle Tracking",
+  "description": "Duty cycle tracker implementations with regional limit configuration (EU 1%, US FCC)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:33.027876Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:33.027876Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:33.356951Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

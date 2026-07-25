@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.11.6.1",
+  "title": "Python: wall_clock_valid=false handling",
+  "description": "Handling when wall_clock_valid=false. AC: Falls back to monotonic time, marks data appropriately.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:33.943523Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:33.943523Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.11.6.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:34.600855Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

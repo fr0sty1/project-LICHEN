@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.6.2.4",
+  "title": "Python: Key mismatch rejection + alert",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:47.642784Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:47.642784Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.6.2.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:48.440404Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

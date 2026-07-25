@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.10.1",
+  "title": "Python: CAD timeout constant (3 symbols)",
+  "description": "Fix CAD timeout constant: currently 2 symbols, should be 3 per spec. AC: CAD_SYMBOLS=3.",
+  "notes": "PARTIAL - currently 2 symbols in constants.py",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:45.947276Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:45.947276Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.10.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:46.352875Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

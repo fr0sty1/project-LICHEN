@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.7.1",
+  "title": "Python: SCHC link layer integration",
+  "description": "Integrate SCHC with link layer in Python. Acceptance: compressed/fragmented packets flow through link layer correctly.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:27.010314Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:27.010314Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:27.613224Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

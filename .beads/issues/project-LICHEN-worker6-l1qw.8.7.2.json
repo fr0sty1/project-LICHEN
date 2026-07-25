@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.7.2",
+  "title": "Python: DAO retry backoff (4, 8, 16s exponential)",
+  "description": "Implement DAO exponential retry backoff. AC: Retries at 4s, 8s, 16s intervals.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:37.303432Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:37.303432Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.7.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:38.147552Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

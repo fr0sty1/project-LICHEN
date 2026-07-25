@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.5.9",
+  "title": "Key ID validation (SHA-256 of pubkey)",
+  "description": "Acceptance: key-id = SHA-256(pubkey) validated",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:39.426687Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:39.426687Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.5.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:39.863839Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

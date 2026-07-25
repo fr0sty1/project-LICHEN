@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.11",
+  "title": "Desync Recovery State Machine (CCP-13a)",
+  "description": "State machine for UNJOINED/JOINED/DRIFT/RECOVER states, drift watchdog, recovery countdown, and multi-root conflict resolution. Acceptance: Nodes recover from desync within spec timeouts.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:04.870418Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:04.870418Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:05.1547Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

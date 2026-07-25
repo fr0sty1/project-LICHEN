@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.6.5",
+  "title": "Zephyr: forward proxy resource",
+  "description": "Acceptance: Zephyr forward proxy works",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:54.53647Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:54.53647Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:55.032797Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

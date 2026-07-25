@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.6.5.1",
+  "title": "Python: KISS command dispatch",
+  "description": "Acceptance: KissHandler dispatches commands",
+  "notes": "Already implemented as KissHandler",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:48.502905Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:48.502905Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.5.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:49.200681Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

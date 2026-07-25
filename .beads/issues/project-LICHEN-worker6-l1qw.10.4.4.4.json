@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.4.4.4",
+  "title": "Rust: S\u0026F types + status codes",
+  "description": "Domain types for store-and-forward state and error codes",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:46.570571Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:46.570571Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.4.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.4.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:46.964007Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

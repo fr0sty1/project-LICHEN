@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.17",
+  "title": "Vectors: drift/holdover boundary cases",
+  "description": "Create test vectors for drift and holdover edge cases. Include max drift, holdover expiry, recovery scenarios. Acceptance: All implementations pass vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:23.236778Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:23.236778Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:23.748225Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

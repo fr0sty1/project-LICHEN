@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.6.3",
+  "title": "Cross-validate: Trickle timer behavior parity",
+  "description": "Cross-validate Trickle behavior across Python/Rust/Zephyr. AC: All implementations produce same timing behavior for same input sequence.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:04.378654Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:04.378654Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.6.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:05.2427Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

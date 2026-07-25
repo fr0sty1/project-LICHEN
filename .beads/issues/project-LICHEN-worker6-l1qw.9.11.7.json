@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.11.7",
+  "title": "Legacy protocol rejection (0xC1 framing)",
+  "description": "Acceptance: reject 0xC1 legacy framing",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:45.542576Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:45.542576Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.11.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:46.086723Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

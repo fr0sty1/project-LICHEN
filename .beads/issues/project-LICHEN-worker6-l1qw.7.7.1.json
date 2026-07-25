@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.7.1",
+  "title": "Python: Cayenne encode/decode",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:05.86417Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:05.86417Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.7.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:06.411577Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

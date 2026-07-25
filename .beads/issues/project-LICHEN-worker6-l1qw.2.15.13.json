@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.13",
+  "title": "Python: guard budget validation",
+  "description": "Validate guard time budget per spec formula G \u003e= B_i + B_j + J_i + J_j + P + M. Acceptance: Rejects insufficient guard configurations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:15.612313Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:15.612313Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.13",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:15.916353Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

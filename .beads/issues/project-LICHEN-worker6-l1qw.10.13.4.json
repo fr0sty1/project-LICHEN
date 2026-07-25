@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.13.4",
+  "title": "Observable resource cleanup on client disconnect",
+  "description": "Clean up observers when clients disconnect",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:51:07.844524Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:51:07.844524Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.13.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.13",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:51:08.146358Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

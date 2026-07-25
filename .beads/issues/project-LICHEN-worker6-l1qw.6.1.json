@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.1",
+  "title": "Rust: OSCORE complete",
+  "description": "Fix OSCORE in Rust per project-LICHEN-2okc. Needs RFC 8613 AAD fix. Pass OSCORE test vectors, cross-validate with Python/Zephyr.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:32.536147Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:32.536147Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:32.788589Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

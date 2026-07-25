@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.11.6",
+  "title": "Sequence number wraparound (RFC 1982)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:52:26.233649Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:52:26.233649Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.11.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:52:26.566578Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

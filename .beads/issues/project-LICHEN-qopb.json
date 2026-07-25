@@ -6,7 +6,6 @@
   "status": "open",
   "priority": 3,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T04:05:23.456741Z",
   "created_by": "Mark Atwood",
@@ -15,5 +14,15 @@
   "close_reason": "Implemented headers.rs (~580 lines) and context.rs (~170 lines) in lichen-schc. 5 packet profiles, rule matching, no_std compatible. 34 tests pass.",
   "labels": [
     "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qopb",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:38:51.363701Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

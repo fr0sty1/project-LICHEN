@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.16",
+  "title": "Multi-Channel Operation (CCP-12)",
+  "description": "Scheduled cell execution, channel switch timing, and half-duplex conflict prevention. Ref: existing epic project-LICHEN-da2q.2. Acceptance: Multi-channel TDMA operation works correctly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:37.503863Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:37.503863Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:38.364723Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

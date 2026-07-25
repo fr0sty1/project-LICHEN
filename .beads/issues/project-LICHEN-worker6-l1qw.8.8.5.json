@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.8.5",
+  "title": "Rust: regional limit configuration (EU 1%, US FCC)",
+  "description": "Regional duty cycle limits. AC: EU 1% and US FCC limits configurable, enforced per region.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:12.645409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:12.645409Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.8.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:12.976298Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

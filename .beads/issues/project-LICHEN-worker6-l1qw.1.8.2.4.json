@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.8.2.4",
+  "title": "CRC16(EUI-64) candidate computation",
+  "description": "Compute candidate short address from CRC16 of EUI-64",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:24.53045Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:24.53045Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.8.2.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:24.98884Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

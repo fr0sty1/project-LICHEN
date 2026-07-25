@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.11",
+  "title": "Link Layer Integration",
+  "description": "LinkLayer RX/TX pipeline, memory budget, buffer pool",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:40:56.110661Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:40:56.110661Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:40:56.349798Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

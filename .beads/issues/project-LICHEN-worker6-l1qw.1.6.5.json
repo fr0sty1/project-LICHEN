@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.6.5",
+  "title": "Rust: elided mode context derivation",
+  "description": "Implement elided addressing mode with context derivation in Rust",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:49.267448Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:49.267448Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:50.159538Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

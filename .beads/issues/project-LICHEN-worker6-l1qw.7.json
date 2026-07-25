@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7",
+  "title": "Chapter 07: Transport and Application",
+  "description": "Spec: spec/07-transport.md. Sections: UDP native, CoAP (RFC 7252 + block transfer), MQTT-SN (optional), Resource Directory. Status: Python/Rust complete, Zephyr partial (needs CoAP server). Existing beads: o6pb, k1p9.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:47.453795Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:47.453795Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:47.727154Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

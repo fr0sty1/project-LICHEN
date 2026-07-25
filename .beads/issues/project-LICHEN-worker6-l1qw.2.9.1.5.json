@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.9.1.5",
+  "title": "Zephyr: JOIN_REQUEST encode",
+  "description": "Implement JOIN_REQUEST encoder for Zephyr C. Acceptance: Byte-exact match with Python/Rust.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:19.233679Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:19.233679Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.9.1.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.9.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:19.984856Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

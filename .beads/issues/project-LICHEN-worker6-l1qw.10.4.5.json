@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.4.5",
+  "title": "Vectors: messaging inbox/sent/ack round-trip",
+  "description": "Test vectors for message send/receive/ack cycle",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:51.836442Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:51.836442Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:52.777104Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

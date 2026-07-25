@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.13",
+  "title": "Fragmentation Guidance",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:53.689426Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:53.689426Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.13",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:54.858443Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.2",
+  "title": "Cross-validate: Link layer parity",
+  "description": "Run identical inputs through Python, Rust, Zephyr link layer. Verify frame encoding, signatures, replay windows match. Document any spec ambiguities.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:38:14.906779Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:38:14.906779Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:38:15.149664Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

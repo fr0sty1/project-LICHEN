@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.6.7",
+  "title": "Vectors: all 4 modes covered",
+  "description": "Test vectors covering all 4 addressing modes. PARTIAL - need elided",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:54.266822Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:54.266822Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.6.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:55.071844Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

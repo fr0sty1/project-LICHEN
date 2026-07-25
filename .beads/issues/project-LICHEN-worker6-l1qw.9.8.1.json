@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.8.1",
+  "title": "Discovery (/.well-known/core)",
+  "description": "CoRE Link Format discovery resource",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:21.208955Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:21.208955Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.8.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:22.108614Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

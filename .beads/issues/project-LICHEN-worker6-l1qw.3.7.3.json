@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.7.3",
+  "title": "Zephyr: SCHC link layer integration",
+  "description": "Integrate SCHC with link layer in Zephyr C. Acceptance: compressed/fragmented packets flow through link layer, respects memory constraints.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:31.313472Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:31.313472Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:32.009652Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

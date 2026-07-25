@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.10",
+  "title": "CSMA/CA Parameters",
+  "description": "CSMA/CA parameters and CAD-based backoff state machine: CAD timeout 3 symbols, backoff unit 10ms, max exponent 5, retry limit 3",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:35.898711Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:35.898711Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:36.741634Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

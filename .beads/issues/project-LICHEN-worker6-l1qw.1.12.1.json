@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.12.1",
+  "title": "Malformed LLSec byte handling",
+  "description": "Handle malformed LLSec bytes gracefully",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:46:22.347644Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:46:22.347644Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.12.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:46:23.069161Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.9.2.3",
+  "title": "Rust: roll call types (responded/missing)",
+  "description": "Domain types for roll call status",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:38.348723Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:38.348723Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.9.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.9.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:38.708984Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

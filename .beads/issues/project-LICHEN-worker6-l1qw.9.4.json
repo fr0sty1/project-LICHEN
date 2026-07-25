@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.4",
+  "title": "Vectors: LCI test vectors",
+  "description": "Create test/vectors/lci-*.json. Cover: KISS framing, message encoding. All three implementations must pass.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:38:01.296688Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:38:01.296688Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:38:01.524026Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

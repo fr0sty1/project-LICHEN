@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.8.5",
+  "title": "Rust: cell record structure",
+  "description": "Implement 19-byte cell record for Rust. Acceptance: Byte-compatible with Python.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:43.186014Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:43.186014Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.8.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.8",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:43.484589Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

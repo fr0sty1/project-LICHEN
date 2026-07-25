@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.5.1.4",
+  "title": "Zephyr: position beacon broadcast (interval: 60s moving, 300s stationary)",
+  "description": "Broadcast position at variable intervals based on motion state",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:24.568354Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:24.568354Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.5.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.5.1",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:24.98879Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

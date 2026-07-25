@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.11.13",
+  "title": "Python: multi-root conflict resolution",
+  "description": "Handle conflict when multiple root nodes are visible. Acceptance: Consistent root selection across network.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:53.244118Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:53.244118Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.11.13",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.11",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:53.740506Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

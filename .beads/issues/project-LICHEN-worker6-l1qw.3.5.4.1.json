@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.4.1",
+  "title": "Python: Rule 4 compression",
+  "description": "Implement Rule 4 CoAP compression in Python. Acceptance: compresses CoAP headers, passes test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:05.548821Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:05.548821Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.4.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.4",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:06.497901Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

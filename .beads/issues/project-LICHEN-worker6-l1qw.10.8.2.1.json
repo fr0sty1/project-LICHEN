@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.8.2.1",
+  "title": "Python: /presence/cache GET (all known nodes)",
+  "description": "Return cached presence for all known nodes",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:48:02.900556Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:48:02.900556Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.8.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.8.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:48:03.240805Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

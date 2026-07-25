@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.10.7",
+  "title": "Cross-validate: all transports interop",
+  "description": "Acceptance: all transports interoperate",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:22.769885Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:22.769885Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.10.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.10",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:23.352492Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

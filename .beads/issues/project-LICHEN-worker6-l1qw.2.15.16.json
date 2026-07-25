@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.15.16",
+  "title": "Vectors: ASN derivation test cases",
+  "description": "Create test vectors for ASN derivation. Include leap second boundaries, epoch rollover, edge cases. Acceptance: All implementations pass vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:44:21.003627Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:44:21.003627Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.15.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.15",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:44:21.871153Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

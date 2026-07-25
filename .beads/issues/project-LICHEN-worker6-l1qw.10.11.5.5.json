@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.11.5.5",
+  "title": "Vectors: multicast address derivation",
+  "description": "Test vectors for multicast address derivation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:38.95326Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:38.95326Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.11.5.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:39.258203Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

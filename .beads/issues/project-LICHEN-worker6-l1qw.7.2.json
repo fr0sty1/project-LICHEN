@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.2",
+  "title": "Vectors: Transport test vectors",
+  "description": "Complete test/vectors/coap-*.json. Cover: CoAP messages, block transfer, observe. All three implementations must pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:37:59.740953Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:37:59.740953Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:37:59.965278Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.6.7",
+  "title": "Python: PHY profile constants (ID 0x01)",
+  "description": "Define PHY profile constants for CCP profile ID 0x01 (LoRa SF10). Acceptance: Constants match spec exactly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:48.795369Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:48.795369Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.6.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:49.246478Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

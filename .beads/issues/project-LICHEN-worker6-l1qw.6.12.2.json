@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.12.2",
+  "title": "Rust: Security ↔ link layer integration",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:49:41.611502Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:49:41.611502Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.12.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:49:42.302878Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

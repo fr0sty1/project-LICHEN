@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.5.5.5",
+  "title": "Zephyr: Rule 5 compression",
+  "description": "Implement Rule 5 OSCORE compression in Zephyr C. Acceptance: compresses OSCORE headers, passes test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:43:36.589217Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:43:36.589217Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.5.5.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.5.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:43:37.504199Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

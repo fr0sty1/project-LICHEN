@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.8.6.2",
+  "title": "Rust: Discovery orchestration",
+  "notes": "Already implemented in loadng.rs/hybrid.rs",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:50:16.235727Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:50:16.235727Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.8.6.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.8.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:50:16.636994Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

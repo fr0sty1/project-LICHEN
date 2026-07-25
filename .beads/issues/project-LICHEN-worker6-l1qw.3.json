@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3",
+  "title": "Chapter 03: Adaptation Layer (SCHC)",
+  "description": "Spec: spec/03-adaptation.md. Sections: SCHC compression rules 1-6, RFC 8724 ACK-on-Error fragmentation, context matching, Rule ID encoding. Status: Python complete, Rust partial (missing headers/context), Zephyr partial (missing fragmentation). Existing beads: hwx9, vsiw, qopb, bcds.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:36:37.458578Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:36:37.458578Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:36:37.723753Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

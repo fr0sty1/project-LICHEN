@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.7.2",
+  "title": "Rust: SCHC link layer integration",
+  "description": "Integrate SCHC with link layer in Rust. Acceptance: compressed/fragmented packets flow through link layer correctly.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:45:29.135812Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:45:29.135812Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:45:29.75638Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

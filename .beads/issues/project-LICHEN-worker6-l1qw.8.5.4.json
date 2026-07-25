@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.5.4",
+  "title": "Rust: packet size budget calculator",
+  "description": "Calculator for packet size budgets at each layer. AC: Function returns remaining bytes at each layer given input packet size.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:42:41.215033Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:42:41.215033Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.5.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.5",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:42:42.304704Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

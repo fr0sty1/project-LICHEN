@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.7.7.2",
+  "title": "Rust: SOS log types",
+  "description": "Domain types for SOS log entries",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:33.781865Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:33.781865Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.7.7.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.7.7",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:34.328045Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

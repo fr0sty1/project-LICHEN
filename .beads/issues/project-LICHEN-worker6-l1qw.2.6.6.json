@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.6.6",
+  "title": "Zephyr: channel mask intersection logic",
+  "description": "Implement channel mask intersection for Zephyr C. Acceptance: Bit-compatible with Python/Rust implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:46.495363Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:46.495363Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.6.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.6",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:47.397654Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

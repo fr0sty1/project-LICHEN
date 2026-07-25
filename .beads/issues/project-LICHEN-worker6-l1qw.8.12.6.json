@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.12.6",
+  "title": "Zephyr: heartbeat/keepalive timer (30 min)",
+  "description": "Heartbeat/keepalive timer 30 min. AC: Heartbeat sent if no data sent in 30 min.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:47:10.504194Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:47:10.504194Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.12.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.12",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:47:10.945694Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

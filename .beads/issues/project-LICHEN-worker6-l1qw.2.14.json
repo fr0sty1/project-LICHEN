@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.14",
+  "title": "Integration and Cross-validation",
+  "description": "CCP to link layer and RPL integration, control message parity cross-validation, end-to-end scheduled operation testing. Acceptance: CCP operates correctly with link/network layers.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-25T03:41:09.399781Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-25T03:41:09.399781Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.14",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-25T03:41:09.778215Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
