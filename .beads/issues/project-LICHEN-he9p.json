@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:54:39.388584Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:50:39.898114499Z",
+  "updated_at": "2026-07-25T00:41:38.890019789Z",
   "started_at": "2026-07-22T22:48:59.658803386Z",
   "closed_at": "2026-07-22T22:50:39.898114499Z",
   "close_reason": "Fixed: is_ready() now returns true after successful init even without UART device (matches KISS, header docs, and test expectations). UART remains optional for native_sim/ZTEST."
