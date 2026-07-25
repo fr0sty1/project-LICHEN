@@ -316,6 +316,17 @@ enum Construction {
     Stored(SenderSequenceState),
 }
 
+/// OSCORE context mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContextMode {
+    /// Unicast (1:1, RFC 8613) — sender_id ≠ recipient_id.
+    Unicast,
+    /// Group (1:N, RFC 9203 Group OSCORE) — all peers share sender/recipient
+    /// keys derived from the shared Group ID. Sender sequences must be
+    /// independently tracked per sender.
+    Group,
+}
+
 /// OSCORE security context.
 ///
 /// Contains cryptographic material and state for one peer.
@@ -341,6 +352,9 @@ pub struct Context {
     id_context: [u8; ID_CONTEXT_CAPACITY],
     id_context_len: u8,
     id_context_present: bool,
+
+    // Context mode: unicast (RFC 8613) or group (RFC 9203)
+    mode: ContextMode,
 
     // Sender context
     sender_id: [u8; ID_MAX_LEN],
@@ -378,6 +392,7 @@ impl core::fmt::Debug for Context {
             .field("common_iv", &"[REDACTED]")
             .field("id_context_len", &self.id_context_len)
             .field("id_context_present", &self.id_context_present)
+            .field("mode", &self.mode)
             .field("sender_id_len", &self.sender_id_len)
             .field("sender_key", &"[REDACTED]")
             .field("sender_seq", &self.sender_seq)
@@ -437,20 +452,61 @@ impl Context {
     ///
     /// Derives keys/IV via HKDF-SHA256, computes stable ContextId, sets defaults (seq=0,
     /// inactive, not restored). Use `register_fresh`/`restore_existing` to activate with store.
-    /// Fixes undefined variables, incomplete struct init, key derivation, ContextId, and
-    /// EDHOC compatibility from the oscore-recovery merge. Satisfies zeroize, constant-time,
-    /// and RFC 8613.
     ///
     /// # Errors
     ///
-    /// `InvalidParam` for: ID lengths > NONCE_ID_LEN, identical sender/recipient IDs,
-    /// oversized salt or id_context.
+    /// `InvalidParam` for: ID lengths > NONCE_ID_LEN, identical sender/recipient IDs
+    /// in Unicast mode, oversized salt or id_context.
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
         id_context: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        Self::new_with_mode(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+            ContextMode::Unicast,
+        )
+    }
+
+    /// Create a new Group OSCORE context per RFC 9203.
+    ///
+    /// In group mode all peers share the same Group ID as both sender and
+    /// recipient. The master secret and salt MUST be shared via secure group
+    /// keying (out of band or via EDHOC pairwise then relay).
+    ///
+    /// # Errors
+    ///
+    /// `InvalidParam` for: ID lengths > NONCE_ID_LEN, empty group_id,
+    /// oversized salt or id_context.
+    pub fn new_group(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
+        group_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        Self::new_with_mode(
+            master_secret,
+            master_salt,
+            id_context,
+            group_id,
+            group_id,
+            ContextMode::Group,
+        )
+    }
+
+    fn new_with_mode(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+        mode: ContextMode,
     ) -> Result<Self, OscoreError> {
         if sender_id.len() > NONCE_ID_LEN || recipient_id.len() > NONCE_ID_LEN {
             return Err(OscoreError::InvalidParam);
@@ -459,7 +515,7 @@ impl Context {
             return Err(OscoreError::InvalidParam);
         }
 
-        if sender_id == recipient_id {
+        if mode == ContextMode::Unicast && sender_id == recipient_id {
             return Err(OscoreError::InvalidParam);
         }
 
@@ -488,6 +544,7 @@ impl Context {
             id_context: [0u8; ID_CONTEXT_CAPACITY],
             id_context_len: id_context_value.len() as u8,
             id_context_present: id_context.is_some(),
+            mode,
             sender_id: [0u8; ID_MAX_LEN],
             sender_id_len: sender_id.len() as u8,
             sender_key: [0u8; KEY_LEN],
@@ -620,6 +677,11 @@ impl Context {
     /// Return the durable-store identifier for this directional context.
     pub fn context_id(&self) -> ContextId {
         self.context_id
+    }
+
+    /// Return the context mode (unicast or group).
+    pub fn mode(&self) -> ContextMode {
+        self.mode
     }
 
     /// Get the next sender sequence number, or `None` if it is exhausted.
@@ -1391,6 +1453,28 @@ impl Context {
             }
         }
     }
+}
+
+/// Derive an OSCORE master secret from X25519 static-static Diffie-Hellman
+/// between two Ed25519 peer long-term keys.
+///
+/// For dead-drop E2E encryption, each peer converts its Ed25519 keypair to
+/// X25519 and computes the static-static shared secret. This produces a
+/// deterministic 16-byte OSCORE master secret usable with `Context::new()`.
+///
+/// `shared_secret` is the raw X25519 DH output (Montgomery u-coordinate).
+/// `peer_identity` is additional identifying material (e.g. peer Ed25519
+/// public key) mixed into the HKDF extract.
+#[cfg(feature = "edhoc")]
+pub fn derive_master_from_ed25519_peer(
+    shared_secret: &[u8; 32],
+    peer_identity: &[u8],
+) -> [u8; KEY_LEN] {
+    let hk = Hkdf::<Sha256>::new(Some(b"LICHEN static-static OSCORE\x00"), shared_secret);
+    let mut master = [0u8; KEY_LEN];
+    hk.expand(peer_identity, &mut master)
+        .expect("KEY_LEN fits HKDF-SHA256 output");
+    master
 }
 
 impl ReservedSender<'_> {
@@ -3435,6 +3519,139 @@ mod tests {
         let marker_pos = find_payload_marker(&data);
         assert_eq!(marker_pos, Some(0));
     }
+
+    // ── Group OSCORE (RFC 9203) tests ─────────────────────────────────────
+
+    #[test]
+    fn group_context_allows_identical_ids() {
+        let master_secret = [0xa0; KEY_LEN];
+        let group_id = &[0x03];
+
+        let ctx =
+            Context::new_group(&master_secret, None, None, group_id).unwrap();
+        assert_eq!(ctx.mode(), ContextMode::Group);
+        assert_eq!(ctx.sender_id(), group_id);
+        assert_eq!(ctx.recipient_id(), group_id);
+        assert_eq!(ctx.sender_key, ctx.recipient_key);
+        assert_ne!(ctx.sender_key, [0u8; KEY_LEN]);
+    }
+
+    #[test]
+    fn group_context_roundtrip() {
+        let master_secret = [0xa0; KEY_LEN];
+        let group_id = &[0x03];
+
+        let mut sender = Context::new_ephemeral(&master_secret, None, group_id, group_id).unwrap();
+        let mut receiver = Context::new_ephemeral(&master_secret, None, group_id, group_id).unwrap();
+
+        let (ciphertext, oscore_opt) = sender.protect_request(0x01, &[], b"group-data").unwrap();
+        let (_code, _options, payload) = receiver.unprotect_request(&oscore_opt, &ciphertext).unwrap();
+
+        assert_eq!(payload.as_slice(), b"group-data");
+    }
+
+    #[test]
+    fn group_context_rejects_replay_between_peers() {
+        let master_secret = [0xa1; KEY_LEN];
+        let group_id = &[0x04];
+
+        let mut sender = Context::new_ephemeral(&master_secret, None, group_id, group_id).unwrap();
+        let mut receiver_a = Context::new_ephemeral(&master_secret, None, group_id, group_id).unwrap();
+        let mut receiver_b = Context::new_ephemeral(&master_secret, None, group_id, group_id).unwrap();
+
+        let (ciphertext, oscore_opt) = sender.protect_request(0x01, &[], b"broadcast").unwrap();
+
+        receiver_a.unprotect_request(&oscore_opt, &ciphertext).unwrap();
+        assert_eq!(
+            receiver_b.unprotect_request(&oscore_opt, &ciphertext).unwrap_err(),
+            OscoreError::Replay
+        );
+    }
+
+    #[test]
+    fn unicast_context_still_rejects_identical_ids() {
+        let master_secret = [0x42; KEY_LEN];
+        let id = &[0x07];
+
+        assert_eq!(
+            Context::new(&master_secret, None, None, id, id).unwrap_err(),
+            OscoreError::InvalidParam
+        );
+    }
+
+    #[test]
+    fn group_context_accepts_empty_salt_and_id_context() {
+        let master_secret = [0xa2; KEY_LEN];
+        let group_id = &[0x05];
+
+        let ctx = Context::new_group(&master_secret, None, Some(b"\xcc"), group_id).unwrap();
+        assert!(ctx.id_context_present);
+        assert_eq!(&ctx.id_context[..ctx.id_context_len as usize], b"\xcc");
+    }
+
+    #[cfg(feature = "edhoc")]
+    #[test]
+    fn derive_master_from_ed25519_peer_is_deterministic() {
+        let shared_secret = hex!(
+            "4a5d9d5ba4ce2de766981db3e0a20e2cb72ba5e23d8b9fea588b5d6f4b9a3c7a"
+        );
+        let peer_identity = hex!("f0f1f2f3f4f5f6f7");
+        let expected = hex!("a1c11dee5bdda4c2d7e23f1b7e381a2d");
+
+        let master1 =
+            derive_master_from_ed25519_peer(&shared_secret, &peer_identity);
+        let master2 =
+            derive_master_from_ed25519_peer(&shared_secret, &peer_identity);
+
+        assert_eq!(master1, expected);
+        assert_eq!(master1, master2);
+    }
+
+    #[cfg(feature = "edhoc")]
+    #[test]
+    fn derive_master_from_ed25519_peer_is_context_free() {
+        let shared_a = hex!(
+            "4a5d9d5ba4ce2de766981db3e0a20e2cb72ba5e23d8b9fea588b5d6f4b9a3c7a"
+        );
+        let shared_b = hex!(
+            "5b6e9d5ba4ce2de766981db3e0a20e2cb72ba5e23d8b9fea588b5d6f4b9a3c7b"
+        );
+
+        let master_a =
+            derive_master_from_ed25519_peer(&shared_a, b"peer-a");
+        let master_b =
+            derive_master_from_ed25519_peer(&shared_b, b"peer-b");
+
+        assert_ne!(master_a, master_b);
+    }
+
+    #[test]
+    fn group_context_key_derivation_matches_test_vector() {
+        let vector = vector("group_context_key_derivation");
+        let secret: [u8; KEY_LEN] =
+            json_hex(&vector["master_secret"]).try_into().unwrap();
+        let salt = json_hex(&vector["master_salt"]);
+        let group_id = json_hex(&vector["sender_id"]);
+
+        let ctx =
+            Context::new_group(&secret, Some(&salt), None, &group_id).unwrap();
+
+        assert_eq!(
+            ctx.sender_key.as_slice(),
+            json_hex(&vector["expected"]["sender_key"])
+        );
+        assert_eq!(
+            ctx.recipient_key.as_slice(),
+            json_hex(&vector["expected"]["recipient_key"])
+        );
+        assert_eq!(
+            ctx.common_iv.as_slice(),
+            json_hex(&vector["expected"]["common_iv"])
+        );
+    }
+
+    #[test]
+    fn test_find_payload_marker_immediate_marker_dup() {
 
     #[test]
     fn test_find_payload_marker_extended_length() {

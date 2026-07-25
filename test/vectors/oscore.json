@@ -328,6 +328,47 @@
       "description": "Ciphertext shorter than tag length should be rejected",
       "ciphertext": "0102030405060708",
       "expected_error": "invalid_param"
+    },
+    {
+      "name": "group_context_key_derivation",
+      "type": "group_key_derivation",
+      "description": "RFC 9203 Group OSCORE context where sender_id == recipient_id == group_id",
+      "master_secret": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+      "master_salt": "b0b1b2b3b4b5b6b7",
+      "sender_id": "03",
+      "recipient_id": "03",
+      "id_context": null,
+      "algorithm": 10,
+      "expected": {
+        "sender_key": "196b93c102072f9e192b5ffe80a9b3e2",
+        "recipient_key": "196b93c102072f9e192b5ffe80a9b3e2",
+        "common_iv": "d2994fad8144cef770c7b2dffb"
+      }
+    },
+    {
+      "name": "group_context_roundtrip",
+      "type": "group_roundtrip",
+      "description": "Group OSCORE: protect with one peer context, unprotect with another sharing the same group key",
+      "master_secret": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+      "master_salt": "b0b1b2b3b4b5b6b7",
+      "sender_id": "03",
+      "recipient_id": "03",
+      "id_context": null,
+      "algorithm": 10,
+      "sender_seq": 0,
+      "plaintext": {
+        "code": 1,
+        "options": "",
+        "payload": "67726f75702d64617461"
+      }
+    },
+    {
+      "name": "ed25519_peer_master_derivation",
+      "type": "peer_key_derivation",
+      "description": "Static-static X25519 DH from Ed25519 peer keys derives deterministic OSCORE master secret",
+      "shared_secret": "4a5d9d5ba4ce2de766981db3e0a20e2cb72ba5e23d8b9fea588b5d6f4b9a3c7a",
+      "peer_identity": "f0f1f2f3f4f5f6f7",
+      "expected_master_secret": "a1c11dee5bdda4c2d7e23f1b7e381a2d"
     }
   ]
 }
