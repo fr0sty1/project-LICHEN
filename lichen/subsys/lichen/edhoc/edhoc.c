@@ -1062,8 +1062,6 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	crypto_wipe(prk_out, sizeof(prk_out));
 	crypto_wipe(prk_exporter, sizeof(prk_exporter));
 
-	ctx->state = EDHOC_STATE_EXPORTED;
-
 	return 0;
 
 wipe:
@@ -1580,8 +1578,6 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
 	crypto_wipe(prk_out, sizeof(prk_out));
 	crypto_wipe(prk_exporter, sizeof(prk_exporter));
-
-	ctx->state = EDHOC_STATE_EXPORTED;
 
 	return 0;
 
