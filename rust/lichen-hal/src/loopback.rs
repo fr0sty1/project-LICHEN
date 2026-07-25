@@ -82,7 +82,7 @@ impl Radio for LoopbackRadio {
     type Error = RadioError<std::convert::Infallible>;
 
     async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
-        let guard = self.tx_chan.lock().unwrap_or_else(|e| e.into_inner());
+        let mut guard = self.tx_chan.lock().unwrap_or_else(|e| e.into_inner());
         guard.send(payload);
         Ok(())
     }
@@ -94,7 +94,7 @@ impl Radio for LoopbackRadio {
         _timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
         let data = {
-            let guard = self.rx_chan.lock().unwrap_or_else(|e| e.into_inner());
+            let mut guard = self.rx_chan.lock().unwrap_or_else(|e| e.into_inner());
             guard.recv()
         };
 
@@ -126,6 +126,10 @@ impl Radio for LoopbackRadio {
 
     async fn configure_channels(&mut self, _channels: &[ChannelConfig]) -> Result<(), Self::Error> {
         Ok(())
+    }
+
+    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        Ok(true)
     }
 }
 

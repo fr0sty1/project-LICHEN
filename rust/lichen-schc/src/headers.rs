@@ -669,7 +669,7 @@ impl PacketProfile for Icmpv6EchoProfile {
             NEXT_HEADER_ICMPV6,
             hop_limit,
             traffic_class,
-        flow_label,
+            flow_label,
             &src,
             &dst,
         );
@@ -843,7 +843,7 @@ impl PacketProfile for RplDioProfile {
             NEXT_HEADER_ICMPV6,
             hop_limit,
             traffic_class,
-        flow_label,
+            flow_label,
             &src,
             &dst,
         );
@@ -995,7 +995,7 @@ impl PacketProfile for RplDaoProfile {
             NEXT_HEADER_ICMPV6,
             hop_limit,
             traffic_class,
-        flow_label,
+            flow_label,
             &src,
             &dst,
         );

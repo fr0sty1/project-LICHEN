@@ -4,8 +4,8 @@
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
 use lichen_oscore::{
-    validate_option, Context, ContextId, ContextStoreError, OscoreError, SenderSequenceState,
-    SenderStateStore,
+    validate_option, Context, ContextId, ContextMode, ContextStoreError, OscoreError,
+    SenderSequenceState, SenderStateStore,
 };
 
 struct TestStore(SenderSequenceState);
@@ -170,6 +170,7 @@ fn test_request_protection_vectors() {
             None,
             &sender_id,
             &recipient_id,
+            ContextMode::Unicast,
         )
         .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name));
 
@@ -232,6 +233,7 @@ fn test_response_protection_vectors() {
             None,
             &sender_id,
             &recipient_id,
+            ContextMode::Unicast,
         )
         .unwrap();
         let mut store = TestStore::existing(0);
@@ -312,7 +314,14 @@ fn test_invalid_inputs() {
                 let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
                 let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
 
-                let result = Context::new(&master_secret, None, None, &sender_id, &recipient_id);
+                let result = Context::new(
+                    &master_secret,
+                    None,
+                    None,
+                    &sender_id,
+                    &recipient_id,
+                    ContextMode::Unicast,
+                );
                 assert!(
                     matches!(result, Err(OscoreError::InvalidParam)),
                     "Expected InvalidParam for {}, got {:?}",
@@ -449,8 +458,14 @@ fn test_edhoc_interop_vectors() {
         v["responder_th_4"].as_str().unwrap(),
         v["th_4"].as_str().unwrap()
     );
-    assert_eq!(v["oscore_master_secret"].as_str().unwrap(), v["oscore_master_secret"].as_str().unwrap());
-    assert_eq!(v["oscore_master_salt"].as_str().unwrap(), v["oscore_master_salt"].as_str().unwrap());
+    assert_eq!(
+        v["oscore_master_secret"].as_str().unwrap(),
+        v["oscore_master_secret"].as_str().unwrap()
+    );
+    assert_eq!(
+        v["oscore_master_salt"].as_str().unwrap(),
+        v["oscore_master_salt"].as_str().unwrap()
+    );
     assert_eq!(v["oscore_sender_id"].as_str().unwrap(), "00");
     assert_eq!(v["oscore_recipient_id"].as_str().unwrap(), "01");
 }

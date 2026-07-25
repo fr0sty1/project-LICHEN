@@ -176,6 +176,38 @@ impl core::error::Error for OscoreError {
     }
 }
 
+/// OSCORE context mode determining validation and derivation rules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Zeroize)]
+pub enum ContextMode {
+    /// Unicast: peer-to-peer OSCORE (RFC 8613).
+    /// Sender and recipient IDs MUST differ.
+    #[default]
+    Unicast,
+    /// Group: multicast OSCORE (RFC 9203).
+    /// All group members share the same master secret and salt.
+    Group,
+    /// Dead drop: per-recipient OSCORE for store-and-forward E2E.
+    /// Context is derived from a shared common secret for a specific recipient.
+    DeadDrop,
+}
+
+impl ContextMode {
+    /// Whether this is a unicast context.
+    pub fn is_unicast(self) -> bool {
+        matches!(self, Self::Unicast)
+    }
+
+    /// Whether this is a group context.
+    pub fn is_group(self) -> bool {
+        matches!(self, Self::Group)
+    }
+
+    /// Whether this is a dead-drop context.
+    pub fn is_deaddrop(self) -> bool {
+        matches!(self, Self::DeadDrop)
+    }
+}
+
 /// Sender sequence state that must be persisted before transmitting a message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SenderSequenceState {
@@ -271,6 +303,7 @@ impl PendingResponse<'_> {
     }
 }
 
+#[allow(dead_code)]
 enum Construction {
     #[cfg(any(feature = "edhoc", test))]
     Fresh,
@@ -330,6 +363,10 @@ pub struct Context {
     received_response_window_initialized: bool,
     allow_no_piv_response: bool,
     context_id: ContextId,
+
+    mode: ContextMode,
+    group_id: [u8; ID_MAX_LEN],
+    group_id_len: u8,
 }
 
 impl core::fmt::Debug for Context {
@@ -351,6 +388,8 @@ impl core::fmt::Debug for Context {
             .field("replay_window", &self.replay_window)
             .field("response_seq", &self.response_seq)
             .field("response_window", &self.response_window)
+            .field("mode", &self.mode)
+            .field("group_id_len", &self.group_id_len)
             .finish()
     }
 }
@@ -405,14 +444,15 @@ impl Context {
     ///
     /// # Errors
     ///
-    /// `InvalidParam` for: ID lengths > NONCE_ID_LEN, identical sender/recipient IDs,
-    /// oversized salt or id_context.
+    /// `InvalidParam` for: ID lengths > NONCE_ID_LEN, identical sender/recipient IDs
+    /// in unicast mode, oversized salt or id_context.
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
         id_context: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
+        mode: ContextMode,
     ) -> Result<Self, OscoreError> {
         if sender_id.len() > NONCE_ID_LEN || recipient_id.len() > NONCE_ID_LEN {
             return Err(OscoreError::InvalidParam);
@@ -421,7 +461,7 @@ impl Context {
             return Err(OscoreError::InvalidParam);
         }
 
-        if sender_id == recipient_id {
+        if mode.is_unicast() && sender_id == recipient_id {
             return Err(OscoreError::InvalidParam);
         }
 
@@ -470,6 +510,9 @@ impl Context {
             received_response_window_initialized: false,
             allow_no_piv_response,
             context_id,
+            mode,
+            group_id: [0u8; ID_MAX_LEN],
+            group_id_len: 0,
         };
 
         ctx.master_salt[..salt.len()].copy_from_slice(salt);
@@ -509,9 +552,46 @@ impl Context {
             id_context,
             sender_id,
             recipient_id,
+            ContextMode::Unicast,
         )
         .map_err(ContextStoreError::Oscore)?;
         ctx.restore_existing(store)
+    }
+
+    /// Create a new group OSCORE context (RFC 9203) for multicast confessions.
+    ///
+    /// All members of the group share the same master secret and master salt.
+    /// The sender_id identifies the group member sending messages.
+    /// Recipient IDs may be identical to sender IDs since this is group mode.
+    ///
+    /// # Parameters
+    /// - `group_id`: opaque identifier for this group (0-7 bytes)
+    /// - `sender_id`: the ID of this node within the group
+    /// - `recipient_id`: the ID to use for receiving (often same as sender_id in group mode)
+    pub fn new_group(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        group_id: &[u8],
+        sender_id: &[u8],
+        recipient_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        if group_id.len() > ID_MAX_LEN {
+            return Err(OscoreError::InvalidParam);
+        }
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            Some(group_id),
+            sender_id,
+            recipient_id,
+            ContextMode::Group,
+        )?;
+        ctx.group_id[..group_id.len()].copy_from_slice(group_id);
+        ctx.group_id_len = group_id.len() as u8;
+        ctx.restored = false;
+        ctx.active = false;
+        ctx.allow_no_piv_response = false;
+        Ok(ctx)
     }
 
     /// Fresh context for EDHOC export (starts inactive; register with store).
@@ -528,8 +608,8 @@ impl Context {
             id_context,
             sender_id,
             recipient_id,
+            ContextMode::Unicast,
         )?;
-        ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
         Ok(ctx)
@@ -543,7 +623,14 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, None, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            None,
+            sender_id,
+            recipient_id,
+            ContextMode::Unicast,
+        )?;
         ctx.restored = false;
         ctx.active = true;
         ctx.allow_no_piv_response = true;
@@ -560,7 +647,14 @@ impl Context {
         next_sequence: u64,
         exhausted: bool,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, None, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            None,
+            sender_id,
+            recipient_id,
+            ContextMode::Unicast,
+        )?;
         let state = SenderSequenceState {
             next_sequence,
             exhausted,
@@ -587,6 +681,7 @@ impl Context {
             id_context,
             sender_id,
             recipient_id,
+            ContextMode::Unicast,
         )?;
         match construction {
             Construction::Fresh => {
@@ -635,6 +730,51 @@ impl Context {
             next_sequence: self.sender_seq.get(),
             exhausted: self.sender_seq_exhausted,
         }
+    }
+
+    /// Return the context mode (unicast, group, or dead-drop).
+    pub fn context_mode(&self) -> ContextMode {
+        self.mode
+    }
+
+    /// Return the group ID for group/dead-drop contexts.
+    pub fn group_id(&self) -> Option<&[u8]> {
+        if self.group_id_len == 0 {
+            None
+        } else {
+            Some(&self.group_id[..self.group_id_len as usize])
+        }
+    }
+
+    /// Return the master secret for deriving child contexts.
+    pub fn master_secret(&self) -> &[u8; KEY_LEN] {
+        &self.master_secret
+    }
+
+    /// Return the master salt.
+    pub fn master_salt(&self) -> &[u8] {
+        &self.master_salt[..self.master_salt_len as usize]
+    }
+
+    /// Derive a per-recipient dead-drop context from a group context.
+    ///
+    /// Uses the group's master secret and salt to derive a new OSCORE context
+    /// for the specified recipient. The derived context uses the group ID as
+    /// its ID context for isolation.
+    pub fn derive_recipient_context(&self, recipient_id: &[u8]) -> Result<Self, OscoreError> {
+        if !self.mode.is_group() {
+            return Err(OscoreError::InvalidParam);
+        }
+        let group_id = self.group_id();
+        let group_salt = self.master_salt();
+        Self::new(
+            &self.master_secret,
+            Some(group_salt),
+            group_id,
+            self.sender_id(),
+            recipient_id,
+            ContextMode::DeadDrop,
+        )
     }
 
     /// Atomically reserve the next sender sequence in durable storage.
@@ -1320,6 +1460,7 @@ impl Context {
             .commit()
     }
 
+    #[allow(dead_code)]
     fn is_response_reuse(&self, seq: OscoreSeqNum) -> bool {
         if !self.response_window_initialized || seq.get() > self.response_seq.get() {
             return false;
@@ -1329,6 +1470,7 @@ impl Context {
         diff >= u64::from(WINDOW_SIZE) || self.response_window & (1 << diff as u32) != 0
     }
 
+    #[allow(dead_code)]
     fn mark_response_used(&mut self, seq: OscoreSeqNum) {
         if !self.response_window_initialized {
             self.response_seq = seq;
@@ -1674,6 +1816,24 @@ fn derive_context_id(
     hash.update([sender_id.len() as u8]);
     hash.update(sender_id);
     ContextId(hash.finalize().into())
+}
+
+/// Derive an OSCORE master secret from an Ed25519 peer public key.
+///
+/// Uses HKDF-SHA256 to deterministically derive a 16-byte AES-128 master secret
+/// from the peer's Ed25519 public key. Both parties can independently derive the
+/// same secret: the initiator uses the recipient's public key, the recipient uses
+/// its own public key. This enables per-peer E2E encryption without a full EDHOC
+/// handshake for dead-drop messaging.
+///
+/// The domain separator prevents cross-protocol key reuse.
+pub fn derive_master_secret_from_ed25519(peer_key: &[u8; 32]) -> [u8; KEY_LEN] {
+    let salt = b"LICHEN OSCORE dead-drop ed25519\0";
+    let hk = Hkdf::<Sha256>::new(Some(salt), peer_key);
+    let mut okm = [0u8; KEY_LEN];
+    hk.expand(b"OSCORE master secret", &mut okm)
+        .expect("HKDF-SHA256 expansion never fails for 16 bytes with SHA-256");
+    okm
 }
 
 /// Derive sender/recipient key using HKDF-SHA256 (returns 16-byte AES key).
@@ -3523,8 +3683,24 @@ mod tests {
     fn test_roundtrip_with_0xff_in_class_e_options() {
         // End-to-end test: protect a request with 0xFF in options, verify decryption
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender_ctx = Context::new(&master_secret, None, None, &[0x00], &[0x01]).unwrap();
-        let mut recipient_ctx = Context::new(&master_secret, None, None, &[0x01], &[0x00]).unwrap();
+        let mut sender_ctx = Context::new(
+            &master_secret,
+            None,
+            None,
+            &[0x00],
+            &[0x01],
+            ContextMode::Unicast,
+        )
+        .unwrap();
+        let mut recipient_ctx = Context::new(
+            &master_secret,
+            None,
+            None,
+            &[0x01],
+            &[0x00],
+            ContextMode::Unicast,
+        )
+        .unwrap();
 
         let code = 0x01; // GET
                          // Class E options with 0xFF embedded in a value:

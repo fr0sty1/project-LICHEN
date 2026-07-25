@@ -172,12 +172,30 @@ pub type LinkEtx = f32;
 pub type GeoCoords = (f64, f64);
 
 pub trait TrickleSafeLivenessPolicy {
-    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, _heard_consistent: u32) -> bool {
         now.saturating_sub(last_seen) <= timeout
     }
 }
 
 impl TrickleSafeLivenessPolicy for () {}
+
+/// Trickle-aware neighbor liveness policy (RFC 6206 section 8.2).
+///
+/// Relaxes timeout when consistent neighbor information has been received.
+/// Consistent here means the neighbor has sent nothing-hop DIOs with a
+/// heard_consistent count >= 3 over the recent period.
+#[derive(Debug, Default, Clone)]
+pub struct TrickleAwareNeighborLiveness;
+
+impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64, heard_consistent: u32) -> bool {
+        if heard_consistent >= 3 {
+            now.saturating_sub(last_seen) <= timeout * 2
+        } else {
+            now.saturating_sub(last_seen) <= timeout
+        }
+    }
+}
 
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
@@ -234,7 +252,7 @@ impl NeighborTable {
         rssi: i8,
         now_ms: u64,
         coords: Option<GeoCoords>,
-        protected: Option<[u8; 16]>,
+        _protected: Option<[u8; 16]>,
     ) -> (usize, Option<[u8; 16]>) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
@@ -314,11 +332,10 @@ impl NeighborTable {
     }
 
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        let policy = TrickleAwareNeighborLiveness::default();
+        let policy = TrickleAwareNeighborLiveness;
         self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
     }
 
-    #[cfg(feature = "std")]
     fn prune_with_removed<P: TrickleSafeLivenessPolicy>(
         &mut self,
         policy: &P,
@@ -326,12 +343,11 @@ impl NeighborTable {
         max_age_ms: u64,
         heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
-        policy: &P,
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
-            let is_stale = slot.as_ref().map_or(false, |neighbor| {
+            let is_stale = slot.as_ref().is_some_and(|neighbor| {
                 !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms, heard_consistent)
             });
             if is_stale {
@@ -361,9 +377,7 @@ impl NeighborTable {
             .iter()
             .flatten()
             .find(|n| n.addr == *addr)
-            .map_or(false, |n| {
-                policy.is_alive(n.last_seen_ms, now_ms, max_age_ms, heard_consistent)
-            })
+            .is_some_and(|n| policy.is_alive(n.last_seen_ms, now_ms, max_age_ms, heard_consistent))
     }
 }
 
@@ -472,7 +486,7 @@ impl Router {
             test_rx_state: None,
             #[cfg(test)]
             test_origin_sequence: 0,
-        });
+        }
     }
 
     fn root_with_manager(
@@ -1070,7 +1084,7 @@ impl Router {
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         let now_ms = self.observe_now(now_ms);
         let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
-        let policy = TrickleAwareNeighborLiveness::default();
+        let policy = TrickleAwareNeighborLiveness;
         let (neighbors_pruned, topology_changed) =
             self.prune_neighbors_at(now_ms, neighbor_timeout_ms, policy);
         RplMaintenanceOutcome {
@@ -1092,17 +1106,11 @@ impl Router {
         let heard_consistent = self.trickle.counter;
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
-        self.neighbors.prune_with_removed(
-            policy,
-            now_ms,
-            max_age_ms,
-            heard_consistent,
-            |addr| {
+        self.neighbors
+            .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
-            },
-            policy,
-        );
+            });
         if removed_len != 0 {
             self.dodag.remove_parents(&removed[..removed_len]);
         }

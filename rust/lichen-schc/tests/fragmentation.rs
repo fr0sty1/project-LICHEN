@@ -4,9 +4,8 @@
 //! sender/receiver API.
 
 use lichen_schc::fragment::{
-    receiver_abort, Ack, Fragment, FragmentReceiver, FragmentSender,
-    SenderOutput, SenderStatus, ReceiverResponse, TILE_SIZE,
-    DEFAULT_RECEIVER_LIMIT, MAX_ACK_REQUESTS,
+    receiver_abort, Ack, Fragment, FragmentReceiver, FragmentSender, ReceiverResponse,
+    SenderOutput, SenderStatus, DEFAULT_RECEIVER_LIMIT, MAX_ACK_REQUESTS, TILE_SIZE,
 };
 
 #[test]

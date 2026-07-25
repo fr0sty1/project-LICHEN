@@ -1,8 +1,6 @@
 //! Rule Set Version 2 SCHC ACK-on-Error fragmentation (RFC 8724 section 8).
 
-use lichen_core::{
-    error::{BufferTooSmall, TooShort},
-};
+use lichen_core::error::{BufferTooSmall, TooShort};
 
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
@@ -156,20 +154,19 @@ impl<'a> Fragment<'a> {
         out[..needed].fill(0);
         out[0] = self.rule_id;
         out[1] = ((self.window & 1) << 7) | (self.fcn << 1);
-        let mut index = 0;
         let mic_iter = if self.is_all_1() {
             Some(self.mic.iter())
         } else {
             None
         };
-        for &byte in mic_iter
+        for (index, &byte) in mic_iter
             .into_iter()
             .flatten()
             .chain(self.payload.iter())
+            .enumerate()
         {
             out[1 + index] |= byte >> 7;
             out[2 + index] = byte << 1;
-            index += 1;
         }
         Ok(needed)
     }
@@ -194,7 +191,7 @@ impl<'a> Fragment<'a> {
             return Err(FragmentError::InvalidTileLength);
         } else if window == 1 && fcn == 0 {
             return Err(FragmentError::InvalidFcn);
-        } else if data.last().map_or(false, |b| b & 1 != 0) {
+        } else if data.last().is_some_and(|b| b & 1 != 0) {
             return Err(FragmentError::NonZeroPadding);
         }
         if out.len() < payload_len {
@@ -334,12 +331,14 @@ impl Ack {
     }
 }
 
+#[allow(dead_code)]
 fn set_bit(bytes: &mut [u8], bit: usize, value: bool) {
     if value {
         bytes[bit / 8] |= 1 << (7 - bit % 8);
     }
 }
 
+#[allow(dead_code)]
 fn get_bit(bytes: &[u8], bit: usize) -> bool {
     bytes[bit / 8] & (1 << (7 - bit % 8)) != 0
 }

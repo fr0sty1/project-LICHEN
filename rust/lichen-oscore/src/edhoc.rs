@@ -395,7 +395,11 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
     Ok(compute_th(&buf))
 }
 
-fn transcript_4(th_3: &[u8; 32], plaintext_3: &[u8], cred_r: &[u8]) -> Result<[u8; 32], EdhocError> {
+fn transcript_4(
+    th_3: &[u8; 32],
+    plaintext_3: &[u8],
+    cred_r: &[u8],
+) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
     buf.extend_from_slice(plaintext_3)
@@ -766,8 +770,7 @@ impl EdhocInitiator {
             if g_xy.as_bytes() == &[0; KEY_LEN_32] {
                 return Err(EdhocError::InvalidMessage);
             }
-            self.state.th_2 =
-                transcript_2(&self.state.g_y, &c_r_from_wire, &self.state.msg1)?;
+            self.state.th_2 = transcript_2(&self.state.g_y, &c_r_from_wire, &self.state.msg1)?;
 
             // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
             let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
@@ -1419,8 +1422,7 @@ impl EdhocResponder {
 
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            self.state.th_4 =
-                transcript_4(&self.state.th_3, &pending.plaintext, &credential_r)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, &credential_r)?;
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
 
@@ -1561,6 +1563,7 @@ fn parse_bstr(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
 ///
 /// Returns (ConnectionId, bytes_consumed).
 /// Rejects non-canonical encodings (e.g. bstr for compact-int values).
+#[allow(clippy::needless_return)]
 fn parse_identifier(data: &[u8]) -> Result<(ConnectionId, usize), EdhocError> {
     if data.is_empty() {
         return Err(EdhocError::InvalidMessage);
@@ -2167,9 +2170,7 @@ mod tests {
         );
 
         let prk_out_vec = edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap();
-        let prk_out: &[u8; 32] = prk_out_vec[..32]
-            .try_into()
-            .expect("PRK_out is 32 bytes");
+        let prk_out: &[u8; 32] = prk_out_vec[..32].try_into().expect("PRK_out is 32 bytes");
         let prk_exporter_vec = edhoc_kdf(prk_out, &th_4, "10", &[], 32).unwrap();
         let prk_exporter: &[u8; 32] = prk_exporter_vec[..32]
             .try_into()
@@ -2216,7 +2217,10 @@ mod tests {
             parse_identifier(&[0x18, 0x0d]),
             Err(EdhocError::InvalidMessage)
         );
-        assert_eq!(parse_identifier(&[0x18, 0x0d]), Err(EdhocError::InvalidMessage));
+        assert_eq!(
+            parse_identifier(&[0x18, 0x0d]),
+            Err(EdhocError::InvalidMessage)
+        );
         assert_eq!(ConnectionId::new(&[0; 8]), Err(EdhocError::BufferTooSmall));
     }
 
@@ -3016,17 +3020,24 @@ mod tests {
 
         // All crypto fields present (non-empty hex)
         for field in &[
-            "prk_2e", "th_2", "th_3", "th_4",
-            "oscore_master_secret", "oscore_master_salt",
+            "prk_2e",
+            "th_2",
+            "th_3",
+            "th_4",
+            "oscore_master_secret",
+            "oscore_master_salt",
         ] {
-            assert!(!v[field].as_str().unwrap().is_empty(), "missing field {field}");
+            assert!(
+                !v[field].as_str().unwrap().is_empty(),
+                "missing field {field}"
+            );
         }
 
         // Functional: deterministic full handshake roundtrip
         let initiator_seed = [0x11u8; 32];
         let responder_seed = [0x22u8; 32];
-        let mut initiator = EdhocInitiator::new_with_rng(initiator_seed, 0x00, &mut TestRng(1))
-            .unwrap();
+        let mut initiator =
+            EdhocInitiator::new_with_rng(initiator_seed, 0x00, &mut TestRng(1)).unwrap();
         let mut responder =
             EdhocResponder::new_with_rng(responder_seed, 0x01, &mut TestRng(2)).unwrap();
         let initiator_pubkey = initiator.pubkey.to_bytes();
