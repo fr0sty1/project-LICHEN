@@ -4,13 +4,10 @@
   "status": "open",
   "priority": 4,
   "issue_type": "task",
-  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:55:13.59952432Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T04:28:34.318356814Z",
+  "updated_at": "2026-07-25T00:35:47.217921602Z",
   "started_at": "2026-07-23T04:28:34.318356814Z",
-  "lease_expires_at": "2026-07-23T04:33:34.318356814Z",
-  "heartbeat_at": "2026-07-23T04:28:34.318356814Z",
   "labels": [
     "defer-external",
     "codereview"
