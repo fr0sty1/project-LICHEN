@@ -12,14 +12,7 @@
 use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
-
-use sha2::{Digest, Sha256};
-
-/// Compute a 16-byte hash prefix for a payload.
-fn packet_hash_prefix(payload: &[u8]) -> [u8; 16] {
-    let hash = Sha256::digest(payload);
-    hash[..16].try_into().unwrap()
-}
+use lichen_core::constants::{ANNOUNCE_TYPE_BYTE, L2_DISPATCH_ROUTING};
 
 /// Metrics collected during node operation.
 struct NodeMetrics {
@@ -107,8 +100,7 @@ fn main() {
                 peer_id: Option<String>,
                 rssi: Option<i32>,
                 snr: Option<i32>| {
-        let hash_prefix = packet_hash_prefix(payload);
-        let hash_hex: String = hash_prefix.iter().map(|b| format!("{b:02x}")).collect();
+        let hash = format!("{:x}", Sha256::digest(payload));
         println!(
             "TELEMETRY {}",
             serde_json::json!({
@@ -117,8 +109,8 @@ fn main() {
                 "ts_us": ts_us,
                 "node_id": format!("rust-{}", node_id),
                 "impl": "rust",
-                "tx_id": hash_hex,
-                "packet_hash": hash_hex,
+                "tx_id": hash[..16].to_string(),
+                "packet_hash": hash[..16].to_string(),
                 "direction": if event.starts_with("tx") { "tx" } else { "rx" },
                 "peer_id": peer_id,
                 "payload_len": payload.len(),
@@ -135,8 +127,8 @@ fn main() {
         // Build announce-like message
         // Format: [0x15 dispatch][type=0x01][seq:2][hop:1][iid:8][signature:48]
         let mut announce = Vec::with_capacity(64);
-        announce.push(0x15); // routing dispatch
-        announce.push(0x01); // announce type
+        announce.push(L2_DISPATCH_ROUTING);
+        announce.push(ANNOUNCE_TYPE_BYTE);
         announce.extend_from_slice(&seq_num.to_be_bytes());
         announce.push(0x00); // hop count
         announce.extend_from_slice(&identity.iid);
@@ -149,7 +141,8 @@ fn main() {
             Ok(()) => {
                 metrics.tx_count += 1;
                 metrics.tx_bytes += announce.len() as u64;
-                let hash_prefix = packet_hash_prefix(&announce);
+                let hash = Sha256::digest(&announce);
+                let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
                 metrics.packet_hashes_sent.insert(hash_prefix);
                 emit(
                     "tx",
@@ -180,10 +173,11 @@ fn main() {
                     metrics.rx_count += 1;
                     metrics.rx_bytes += pkt.len as u64;
 
-    // Track packet hash
-    let hash_prefix = packet_hash_prefix(&buf[..pkt.len]);
-    metrics.packet_hashes_received.insert(hash_prefix);
-                    let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
+                    // Track packet hash
+                    let hash = Sha256::digest(&buf[..pkt.len]);
+                    let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
+                    metrics.packet_hashes_received.insert(hash_prefix);
+                    let peer_id = if pkt.len > 12 && buf[0] == L2_DISPATCH_ROUTING && buf[1] == ANNOUNCE_TYPE_BYTE {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {
                         None
@@ -202,7 +196,7 @@ fn main() {
                     // Check if it's from a different implementation
                     if pkt.len > 0 {
                         let dispatch = buf[0];
-                        let source = if dispatch == 0x15 {
+                        let source = if dispatch == L2_DISPATCH_ROUTING {
                             "announce"
                         } else {
                             "other"
@@ -214,7 +208,7 @@ fn main() {
 
                         // Parse announce to extract peer IID
                         // Format: [0x15 dispatch][type=0x01][seq:2][hop:1][iid:8]...
-                        if pkt.len > 10 && buf[0] == 0x15 && buf[1] == 0x01 {
+                        if pkt.len > 10 && buf[0] == L2_DISPATCH_ROUTING && buf[1] == ANNOUNCE_TYPE_BYTE {
                             let peer_iid: [u8; 8] = buf[5..13].try_into().unwrap();
                             if peer_iid != identity.iid {
                                 metrics.unique_peers.insert(peer_iid);
@@ -252,8 +246,8 @@ fn main() {
         "rx_bytes": metrics.rx_bytes,
         "unique_peers": metrics.unique_peers.len(),
         "errors": metrics.errors.len(),
-        "packet_hashes_sent": metrics.packet_hashes_sent.iter().map(|h| hex::encode(h)).collect::<Vec<_>>(),
-        "packet_hashes_received": metrics.packet_hashes_received.iter().map(|h| hex::encode(h)).collect::<Vec<_>>(),
+        "hashes_sent": metrics.packet_hashes_sent.len(),
+        "hashes_received": metrics.packet_hashes_received.len(),
     });
     println!("METRICS:{}", serde_json::to_string(&metrics_json).unwrap());
 }

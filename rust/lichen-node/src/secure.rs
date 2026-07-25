@@ -779,7 +779,7 @@ impl<R: Radio> SecureStack<R> {
         let mut builder = CoapBuilder::new(
             &mut outer,
             message_type,
-            MessageCode(0x44),
+            MessageCode::CHANGED,
             message_id,
             metadata.token(),
         )
@@ -1452,7 +1452,7 @@ mod tests {
                 &alice_iid,
                 &request,
                 SecureResponseData {
-                    code: MessageCode(0x45),
+                    code: MessageCode::CONTENT,
                     options: &[],
                     payload: &oversized_payload,
                 },
@@ -1468,7 +1468,7 @@ mod tests {
             &alice_iid,
             &request,
             SecureResponseData {
-                code: MessageCode(0x45),
+                code: MessageCode::CONTENT,
                 options: &[],
                 payload: b"ok",
             },
@@ -1496,7 +1496,7 @@ mod tests {
                 .await
                 .unwrap(),
             SecureResponse::Decrypted { code, payload, .. }
-                if code == MessageCode(0x45) && payload == b"ok"
+                if code == MessageCode::CONTENT && payload == b"ok"
         ));
     }
 
@@ -1704,7 +1704,7 @@ mod tests {
         );
 
         let mut separate = packet;
-        separate[0] = 0x41;
+        separate[0] = MessageCode::CREATED.0;
         separate[2..4].copy_from_slice(&0x9999u16.to_be_bytes());
         separate[1] = MessageCode::GET.0;
         assert_eq!(
@@ -1785,12 +1785,12 @@ mod tests {
         let prior = server
             .reserve_sender(&mut server_store)
             .unwrap()
-            .protect_response_with_piv(0x45, &[], b"prior", &[0], &prior_piv)
+            .protect_response_with_piv(MessageCode::CONTENT.0, &[], b"prior", &[0], &prior_piv)
             .unwrap();
         let current = server
             .reserve_sender(&mut server_store)
             .unwrap()
-            .protect_response_with_piv(0x45, &[], b"current", &[0], &current_piv)
+            .protect_response_with_piv(MessageCode::CONTENT.0, &[], b"current", &[0], &current_piv)
             .unwrap();
         secure
             .contexts
@@ -1803,7 +1803,7 @@ mod tests {
         let mut builder = CoapBuilder::new(
             &mut packet,
             MessageType::Confirmable,
-            MessageCode(0x44),
+            MessageCode::CHANGED,
             0x9999,
             &[0xaa],
         )
@@ -1901,7 +1901,7 @@ mod tests {
         let (ciphertext, response_option) = server
             .reserve_sender(&mut server_store)
             .unwrap()
-            .protect_response_with_piv(0x45, &[], b"response", &[0], &[request_piv])
+            .protect_response_with_piv(MessageCode::CONTENT.0, &[], b"response", &[0], &[request_piv])
             .unwrap();
         assert_eq!(response_option.as_slice(), &[1, 0]);
         let context_id = client.context_id();

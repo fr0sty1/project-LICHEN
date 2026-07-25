@@ -3281,7 +3281,7 @@ mod tests {
             &leaf_identity.iid,
             &request,
             SecureResponseData {
-                code: lichen_coap::message::MessageCode(0x45),
+                code: lichen_coap::message::MessageCode::CONTENT,
                 options: &[],
                 payload: b"ok",
             },

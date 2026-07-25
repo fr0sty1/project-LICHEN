@@ -7,8 +7,8 @@
 //! Port 10883 (MQTT-SN) requires a dedicated SCHC rule but preserves IANA compliance.
 
 use lichen_core::constants::{
-    PORT_APRS_IS, PORT_CAYENNE_LPP, PORT_COAP, PORT_COMPACT_COT, PORT_MQTT_SN, PORT_NMEA,
-    PORT_SENML,
+    PORT_APRS_IS, PORT_CAYENNE_LPP, PORT_COAP, PORT_COAP_DTLS, PORT_COMPACT_COT, PORT_MQTT_SN,
+    PORT_NMEA, PORT_SENML,
 };
 
 /// Application protocol identified by UDP destination port.
@@ -134,7 +134,7 @@ pub fn dispatch_by_port(port: u16, payload: &[u8]) -> Result<Dispatched<'_>, Dis
         PORT_COMPACT_COT => AppProtocol::CompactCot,
         PORT_SENML => AppProtocol::SenML,
         PORT_COAP => AppProtocol::CoAP,
-        5684 => return Err(DispatchError::ReservedPort),
+        PORT_COAP_DTLS => return Err(DispatchError::ReservedPort),
         PORT_CAYENNE_LPP => AppProtocol::CayenneLPP,
         PORT_APRS_IS => AppProtocol::AprsIs,
         PORT_NMEA => AppProtocol::Nmea,
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn dispatch_reserved_port_5684() {
-        let result = dispatch_by_port(5684, &[]);
+        let result = dispatch_by_port(PORT_COAP_DTLS, &[]);
         assert_eq!(result.unwrap_err(), DispatchError::ReservedPort);
     }
 
