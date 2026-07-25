@@ -5,12 +5,12 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T03:01:13.723275736Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T03:02:03.970174011Z",
   "started_at": "2026-07-23T03:02:00.071486535Z",
   "closed_at": "2026-07-23T03:02:03.970174011Z",
-  "close_reason": "Fixed missing CoapError::InvalidPayloadMarker variant, updated Display impl, restored unit test for RFC 7252 §4.1 malformed payload marker case. Reviewed git show diffs from relevant commits (b6760be4d, f621ffbf7, 6983d8f35, accfd6ee7 etc.). No other CoAP MUST/SHOULD violations found in codec constants or parsing logic (version=1, TKL\u003c=8, option deltas, payload marker all compliant). lichend.rs changes unrelated to CoAP."
+  "close_reason": "Fixed missing CoapError::InvalidPayloadMarker variant, updated Display impl, restored unit test for RFC 7252 §4.1 malformed payload marker case. Reviewed git show diffs from relevant commits (b6760be4d, f621ffbf7, 6983d8f35, accfd6ee7 etc.). No other CoAP MUST/SHOULD violations found in codec constants or parsing logic (version=1, TKL<=8, option deltas, payload marker all compliant). lichend.rs changes unrelated to CoAP."
 }

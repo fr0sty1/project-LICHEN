@@ -5,12 +5,12 @@
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:19.314012973Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T03:30:24.432218427Z",
   "started_at": "2026-07-23T03:27:28.802376206Z",
   "closed_at": "2026-07-23T03:30:24.432218427Z",
-  "close_reason": "Fixed merge conflict in coap_config.c by updating resource registration to lichen_coap (per CMakeLists modular preference and mutual exclusivity with standalone server), replaced outdated identity-\u003eygg with identity-\u003eprimary to match struct, removed dead hex_len check, tightened freq_mhz validation bound. Verified with git diff and build consistency. Commit ce6f54c"
+  "close_reason": "Fixed merge conflict in coap_config.c by updating resource registration to lichen_coap (per CMakeLists modular preference and mutual exclusivity with standalone server), replaced outdated identity->ygg with identity->primary to match struct, removed dead hex_len check, tightened freq_mhz validation bound. Verified with git diff and build consistency. Commit ce6f54c"
 }

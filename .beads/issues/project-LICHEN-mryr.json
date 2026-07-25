@@ -6,7 +6,7 @@
   "status": "closed",
   "priority": 3,
   "issue_type": "chore",
-  "assignee": "AI Agent",
+  "assignee": null,
   "created_at": "2026-07-22T16:18:26.056928154Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T22:57:44.695166498Z",
