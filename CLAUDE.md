@@ -184,6 +184,17 @@ struct msg {
 };
 ```
 
+**Header/Implementation Sync (CRITICAL):**
+When modifying a C function signature, you MUST update BOTH:
+1. The declaration in the `.h` header file
+2. ALL implementations in `.c` files (including `#ifdef` branches and stubs)
+
+This is a blocking rule. Failure to sync causes builds to pass in isolation but fail on merge — this has caused fleet divergence incidents. Before committing ANY C signature change, verify:
+```bash
+./scripts/lint-c.sh                    # cppcheck + clang-tidy
+cd lichen/tests/schnorr48 && rm -rf build && mkdir build && cd build && cmake .. && make
+```
+
 ### 8. AWS EC2 Access and Safety
 
 **Authentication:**

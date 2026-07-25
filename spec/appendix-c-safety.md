@@ -3,6 +3,12 @@
 
 # C Code Safety Policy
 
+> **NO EXCEPTIONS. NO WAIVERS. NO "FIX IT LATER."**
+>
+> This project was born hardass. PRs that do not pass all checks below will not
+> be merged. If your code triggers a warning, fix your code — do not disable
+> the warning. If you think a check is wrong, open an issue; do not bypass it.
+
 This document defines mandatory safety requirements for all C code in LICHEN.
 C is used for the Zephyr firmware — the attack surface includes frame parsing,
 cryptographic operations, and radio driver interaction.
@@ -16,17 +22,48 @@ All C code MUST be compiled with these flags:
 ```cmake
 # CMake: add to top-level CMakeLists.txt
 add_compile_options(
+    # Core warnings — no negotiation
     -Wall -Wextra -Werror
-    -Wformat=2 -Wformat-security
+
+    # Format string security
+    -Wformat=2 -Wformat-security -Wformat-truncation=2
+
+    # Type safety
     -Wshadow
-    -Wconversion -Wsign-conversion
-    -Wno-unused-parameter  # Zephyr callbacks often have unused params
+    -Wconversion -Wno-sign-conversion
+    -Wdouble-promotion
+
+    # Pointer safety
+    -Wnull-dereference
+    -Wcast-align
+
+    # Logic bugs
+    -Wlogical-op
+    -Wduplicated-cond -Wduplicated-branches
+
+    # Array/bounds safety
+    -Warray-bounds=2
+    -Wstack-usage=2048
+
+    # Switch/enum exhaustiveness
+    -Wswitch-enum
+
+    # Aliasing violations
+    -Wstrict-aliasing=2 -fstrict-aliasing
+
+    # Uninitialized detection
+    -Wmaybe-uninitialized
+
+    # Zephyr compatibility
+    -Wno-unused-parameter
+
+    # Runtime protection
     -fstack-protector-strong
 )
 
 # For native_sim builds only (not cross-compiled firmware)
 if(CONFIG_BOARD_NATIVE_SIM OR CONFIG_BOARD_NATIVE_POSIX)
-    add_compile_options(-fsanitize=address,undefined)
+    add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all)
     add_link_options(-fsanitize=address,undefined)
 endif()
 ```
@@ -34,9 +71,17 @@ endif()
 | Flag | Purpose |
 |------|---------|
 | `-Wall -Wextra -Werror` | All warnings as errors |
-| `-Wformat=2 -Wformat-security` | Format string vulnerabilities |
+| `-Wformat=2 -Wformat-security -Wformat-truncation=2` | Format string vulnerabilities |
 | `-Wshadow` | Variable shadowing bugs |
-| `-Wconversion -Wsign-conversion` | Implicit conversion bugs |
+| `-Wconversion` | Implicit narrowing/conversion bugs |
+| `-Wdouble-promotion` | Catches float→double on soft-float MCUs |
+| `-Wnull-dereference` | Static null pointer analysis |
+| `-Wcast-align` | Catches misaligned pointer casts |
+| `-Wlogical-op -Wduplicated-cond` | Logic errors in conditionals |
+| `-Warray-bounds=2` | Out-of-bounds array access |
+| `-Wstack-usage=2048` | Functions using >2KB stack |
+| `-Wswitch-enum` | Missing enum cases in switch |
+| `-Wstrict-aliasing=2` | Type punning violations |
 | `-fstack-protector-strong` | Stack buffer overflow detection |
 
 ### Advanced Hardening (Clang 18+)
@@ -169,20 +214,33 @@ Checks: >
   bugprone-*,
   cert-*,
   clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  cppcoreguidelines-pro-bounds-constant-array-index,
+  cppcoreguidelines-narrowing-conversions,
+  hicpp-signed-bitwise,
   misc-*,
-  modernize-*,
   performance-*,
-  readability-*,
-  -readability-magic-numbers,
+  portability-*,
+  readability-braces-around-statements,
+  readability-inconsistent-declaration-parameter-name,
+  readability-isolate-declaration,
+  readability-misleading-indentation,
+  readability-redundant-*,
+  readability-simplify-boolean-expr,
+  -bugprone-easily-swappable-parameters,
   -cert-dcl37-c,
   -cert-dcl51-cpp,
-  -bugprone-easily-swappable-parameters
+  -misc-no-recursion,
+  -misc-include-cleaner,
+  -misc-unused-parameters
 WarningsAsErrors: '*'
 ```
 
 Run in CI:
 ```bash
-clang-tidy --config-file=.clang-tidy lichen/subsys/lichen/**/*.c
+clang-tidy --config-file=lichen/.clang-tidy \
+  lichen/subsys/lichen/**/*.c lichen/lib/**/*.c lichen/drivers/**/*.c
 ```
 
 ### cppcheck (Mandatory)
