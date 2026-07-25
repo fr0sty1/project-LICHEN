@@ -2,13 +2,17 @@
   "id": "lora-ipv6-mesh-syf",
   "title": "Spec: Define short address collision handling",
   "description": "Short address assignment says 'Hash lower 16 bits, check for collision' but no collision detection mechanism for lossy mesh. DAD over LoRa is unreliable. Race conditions when multiple nodes join. Need: concrete DAD protocol with timeouts, collision resolution, coordinator-assisted fallback.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T04:55:20Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-05-27T05:50:52Z",
+  "updated_at": "2026-07-25T02:28:20.385416768Z",
+  "started_at": "2026-07-25T02:28:20.385416768Z",
   "closed_at": "2026-05-27T05:50:52Z",
-  "close_reason": "Added section 4.5: coordinator assigns when present, hash+DAD when isolated, signature mismatch detects collisions. spec/02-physical-link.md"
+  "close_reason": "Added section 4.5: coordinator assigns when present, hash+DAD when isolated, signature mismatch detects collisions. spec/02-physical-link.md",
+  "lease_expires_at": "2026-07-25T02:33:20.385416768Z",
+  "heartbeat_at": "2026-07-25T02:28:20.385416768Z"
 }
