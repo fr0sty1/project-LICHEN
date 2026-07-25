@@ -2,12 +2,16 @@
   "id": "project-LICHEN-22hu",
   "title": "codereview pass 3: coap_status.c final review for project-LICHEN-2u8v",
   "description": "Pass 3: full review, matches coding guidelines (no added comments), Zephyr compatible, tests pass, no P0 or P1. Ready for close.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:14:02.22964191Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:14:30.232230136Z",
+  "updated_at": "2026-07-25T02:27:55.810964978Z",
+  "started_at": "2026-07-25T02:27:55.810964978Z",
   "closed_at": "2026-07-22T16:14:30.232230136Z",
-  "close_reason": "Pass 3 complete, no P0/P1 after Zephyr native_sim test build succeeded. Fixed map_count uint16_t + bounds per CCP-17 in coap_status.c"
+  "close_reason": "Pass 3 complete, no P0/P1 after Zephyr native_sim test build succeeded. Fixed map_count uint16_t + bounds per CCP-17 in coap_status.c",
+  "lease_expires_at": "2026-07-25T02:32:55.810964978Z",
+  "heartbeat_at": "2026-07-25T02:27:55.810964978Z"
 }
