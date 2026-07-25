@@ -1289,6 +1289,72 @@ impl RoutingTable {
 
 // ── DAO manager ───────────────────────────────────────────────────────────────
 
+/// Tracks freshness of a DAO path or origin sequence, including expiry deadlines.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Freshness {
+    pub sequence: u8,
+    pub active_until: Option<u64>,
+    pub retain_until: u64,
+    pub updated_at: u64,
+}
+
+#[cfg(feature = "std")]
+impl Freshness {
+    pub fn new(sequence: u8, active_until: Option<u64>, updated_at: u64) -> Self {
+        Self {
+            sequence,
+            active_until,
+            retain_until: updated_at.saturating_add(FRESHNESS_TOMBSTONE_RETENTION_SECONDS),
+            updated_at,
+        }
+    }
+
+    pub fn is_reclaimable(&self, now_seconds: u64) -> bool {
+        self.active_until
+            .map_or(true, |deadline| deadline <= now_seconds)
+            && self.retain_until <= now_seconds
+    }
+}
+
+/// Packed candidate parent from a Transit Info option after parsing.
+#[cfg(feature = "std")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DaoCandidate {
+    pub parent: [u8; 16],
+    pub path_control: u8,
+    pub path_lifetime: u8,
+}
+
+#[cfg(feature = "std")]
+impl PartialOrd for DaoCandidate {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Ord for DaoCandidate {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.parent
+            .cmp(&other.parent)
+            .then_with(|| self.path_control.cmp(&other.path_control))
+            .then_with(|| self.path_lifetime.cmp(&other.path_lifetime))
+    }
+}
+
+/// Single update extracted from a parsed DAO: one target / parent pair.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DaoUpdate {
+    pub target: [u8; 16],
+    pub parent: [u8; 16],
+    pub path_control: u8,
+    pub path_sequence: u8,
+    pub path_lifetime: u8,
+    pub descriptor: Option<u32>,
+}
+
 /// Builds DAOs (non-root nodes) and assembles source routes from incoming DAOs (root).
 ///
 /// On the root, `routing_table` is updated in place as DAOs arrive.
@@ -1301,9 +1367,16 @@ pub struct DaoManager {
     dodag_id: [u8; 16],
     routing_table: RoutingTable,
     dao_sequence: u8,
-    parent_map: HashMap<[u8; 16], [u8; 16]>,
+    path_sequence: u8,
+    last_built_dao: Option<([u8; 16], u8)>,
+    parent_map: HashMap<[u8; 16], Vec<[u8; 16]>>,
     dao_seq_map: HashMap<[u8; 16], u8>,
-    last_dao_ts: u32,
+    edge_expiry: HashMap<([u8; 16], [u8; 16]), Option<u64>>,
+    origin_seq_map: HashMap<[u8; 16], Freshness>,
+    path_seq_map: HashMap<[u8; 16], Freshness>,
+    candidate_map: HashMap<[u8; 16], Vec<DaoCandidate>>,
+    descriptor_map: HashMap<[u8; 16], Option<u32>>,
+    origin_high_water: HashMap<[u8; 32], ([u8; 32], u64)>,
 }
 
 #[cfg(feature = "std")]
@@ -1320,7 +1393,12 @@ impl DaoManager {
             last_built_dao: None,
             parent_map: HashMap::new(),
             dao_seq_map: HashMap::new(),
-            last_dao_ts: 0,
+            edge_expiry: HashMap::new(),
+            origin_seq_map: HashMap::new(),
+            path_seq_map: HashMap::new(),
+            candidate_map: HashMap::new(),
+            descriptor_map: HashMap::new(),
+            origin_high_water: HashMap::new(),
         }
     }
 
@@ -1341,6 +1419,7 @@ impl DaoManager {
             path_sequence: self.path_sequence,
             last_built_dao: self.last_built_dao,
             parent_map: self.parent_map.clone(),
+            dao_seq_map: self.dao_seq_map.clone(),
             edge_expiry: self.edge_expiry.clone(),
             origin_seq_map: self.origin_seq_map.clone(),
             path_seq_map: self.path_seq_map.clone(),
