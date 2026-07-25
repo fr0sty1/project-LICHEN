@@ -205,11 +205,16 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
 /**
  * @brief Construct primary Yggdrasil address from Ed25519 pubkey
  *
- * Builds 02xx::/64 address per Yggdrasil spec (project-LICHEN-p8i6):
- * - byte 0 = 0x02
- * - bytes 1-7 = SHA-512(pubkey)[0:7]
- * - bytes 8-15 = IID from SHA-256(pubkey)[0:8] with U/L bit cleared
- * This is the primary mesh address.
+ * Implements the exact `AddrForKey` algorithm from yggdrasil-go
+ * (`src/address/address.go`), matching the official Yggdrasil daemon
+ * bit-for-bit:
+ *   1. Compute `h = SHA-512(pubkey)`
+ *   2. `addr = [0x02] || h[0:7] || h[0:8]`
+ *   3. Clear U/L bit in IID byte: `addr[8] &= 0xfd`
+ *
+ * The 0200::/7 prefix byte (`0x02`) is the Yggdrasil global routing prefix.
+ * Bytes 1-7 (from `h[0:7]`) provide /7 dispersion across the Yggdrasil DHT.
+ * Bytes 8-15 (from `h[0:8]`) form the IID, binding the address to the pubkey.
  *
  * @param pubkey 32-byte Ed25519 public key
  * @param addr Output struct in6_addr for the Yggdrasil address

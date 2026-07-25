@@ -66,9 +66,18 @@ impl NodeId {
     }
 }
 
-/// Derive the IID (Interface Identifier) from an Ed25519 public key.
+/// Derive the IID (Interface Identifier) from an Ed25519 public key for the
+/// Yggdrasil 02xx::/7 primary address.
 ///
-/// Uses SHA-512 truncation and clears the U/L bit per RFC 4291 §2.5.1.
+/// Implements the exact Yggdrasil `AddrForKey` derivation from yggdrasil-go
+/// (`src/address/address.go`):
+///   SHA-512(pubkey)[0:8], then clear the U/L bit per RFC 4291 §2.5.1.
+///
+/// The full Yggdrasil address is:
+///   addr[0] = 0x02
+///   addr[1:8] = SHA-512(pubkey)[0:7]     (subnet prefix for 0200::/7)
+///   addr[8:16] = SHA-512(pubkey)[0:8]     (IID; U/L bit cleared)
+///
 /// This is the single canonical implementation; all callers MUST use it
 /// to ensure cross-implementation consistency.
 /// Re-exported via lichen-link::iid_from_pubkey for convenience.
@@ -80,6 +89,18 @@ pub fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
     iid
 }
 
+/// Derive the full 16-byte Yggdrasil 02xx::/7 address from an Ed25519 pubkey.
+///
+/// Implements the exact `AddrForKey` algorithm from yggdrasil-go
+/// (`src/address/address.go`), matching the official Yggdrasil daemon bit-for-bit:
+///
+///   1. Compute `h = SHA-512(pubkey)`
+///   2. `addr = [0x02] || h[0:7] || h[0:8]`
+///   3. Clear U/L bit in IID byte: `addr[8] &= 0xfd`
+///
+/// The 0200::/7 prefix byte (`0x02`) is the Yggdrasil global routing prefix.
+/// Bytes 1-7 (from `h[0:7]`) provide /7 dispersion across the Yggdrasil DHT.
+/// Bytes 8-15 (from `h[0:8]`) form the IID, binding the address to the pubkey.
 pub fn ygg_addr_from_pubkey(pubkey: &[u8; 32]) -> [u8; 16] {
     let iid = iid_from_pubkey_bytes(pubkey);
     let hash512 = Sha512::digest(pubkey);
