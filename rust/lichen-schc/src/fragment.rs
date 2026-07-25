@@ -171,7 +171,10 @@ impl<'a> Fragment<'a> {
         Ok(needed)
     }
 
-    pub fn from_bytes<'out>(data: &[u8], out: &'out mut [u8]) -> Result<Fragment<'out>, FragmentError> {
+    pub fn from_bytes<'out>(
+        data: &[u8],
+        out: &'out mut [u8],
+    ) -> Result<Fragment<'out>, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
@@ -1052,9 +1055,7 @@ mod std_ext {
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
             let window = abs_window as u8;
-            self.iter()
-                .filter(|f| f.window == window)
-                .collect()
+            self.iter().filter(|f| f.window == window).collect()
         }
     }
 }
