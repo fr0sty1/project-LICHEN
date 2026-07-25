@@ -1031,8 +1031,6 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	memcpy(oscore->recipient_id, ctx->c_r, ctx->c_r_len);
 	oscore->recipient_id_len = ctx->c_r_len;
 
-	ctx->state = EDHOC_STATE_EXPORTED;
-
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
@@ -1543,8 +1541,6 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	oscore->sender_id_len = ctx->c_r_len;
 	memcpy(oscore->recipient_id, ctx->c_i, ctx->c_i_len);
 	oscore->recipient_id_len = ctx->c_i_len;
-
-	ctx->state = EDHOC_STATE_EXPORTED;
 
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
