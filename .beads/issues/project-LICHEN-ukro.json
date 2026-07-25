@@ -2,18 +2,16 @@
   "id": "project-LICHEN-ukro",
   "title": "[CODEREVIEW-2] generate.py FORMAT_VERSION=2 change may break existing vector consumers that hardcode v1 expectation",
   "description": "test/vectors/generate.py:29 - Changing default to 2 without updating all generated JSON files or test loaders in Python/C/Rust may cause validation failures in test/vectors/test_vectors.py or Zephyr tests. Needs regeneration of all vectors.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T16:50:55.792123103Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-25T02:51:22.349926506Z",
+  "updated_at": "2026-07-25T02:51:42.745991115Z",
   "started_at": "2026-07-22T16:51:59.882143335Z",
-  "closed_at": "2026-07-25T01:10:24.401745633Z",
+  "closed_at": "2026-07-25T02:51:42.745991115Z",
   "close_reason": "Already fixed",
-  "lease_expires_at": "2026-07-25T02:56:22.349926506Z",
-  "heartbeat_at": "2026-07-25T02:51:22.349926506Z",
   "labels": [
     "codereview"
   ]
