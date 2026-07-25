@@ -2169,9 +2169,19 @@ mod tests {
             hex!("fc7811c2b14cf00ac220cc7ad98e1900f950809fce87fc862c784704b80c0796")
         );
 
+        // KDF test vectors from independent Python oracle
+        // (lichen.crypto.edhoc + cbor2 + cryptography.hazmat HKDFExpand).
         let prk_out_vec = edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap();
+        assert_eq!(
+            prk_out_vec.as_slice(),
+            &hex!("4b71e171b0bdc32b80d1c8cf0e76d13d983d278c1617470a02e80544ae605643")
+        );
         let prk_out: &[u8; 32] = prk_out_vec[..32].try_into().expect("PRK_out is 32 bytes");
         let prk_exporter_vec = edhoc_kdf(prk_out, &th_4, "10", &[], 32).unwrap();
+        assert_eq!(
+            prk_exporter_vec.as_slice(),
+            &hex!("27dd11fd563d4553b8b1651cbe7df628e925e9fa1b5adb00439395311bb8064f")
+        );
         let prk_exporter: &[u8; 32] = prk_exporter_vec[..32]
             .try_into()
             .expect("prk_exporter is 32 bytes");
@@ -2179,13 +2189,13 @@ mod tests {
             edhoc_kdf(prk_exporter, &th_4, "0", &[], 16)
                 .unwrap()
                 .as_slice(),
-            &hex!("e13c5ad36d18844ff9db313aaefc922c")
+            &hex!("0b53a88bc7d8688bfbc8dc8aee8aafac")
         );
         assert_eq!(
             edhoc_kdf(prk_exporter, &th_4, "1", &[], 8)
                 .unwrap()
                 .as_slice(),
-            &hex!("e0cbdb8e8c4a4496")
+            &hex!("d94446754f3e3f07")
         );
     }
 

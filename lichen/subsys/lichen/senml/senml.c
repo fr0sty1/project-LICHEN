@@ -77,10 +77,8 @@ int senml_pack_init(struct senml_pack *pack,
 	}
 
 	pack->base_name = base_name;
-	if (base_time > 0) {
-		pack->base_time = base_time;
-		pack->has_base_time = true;
-	}
+	pack->base_time = base_time;
+	pack->has_base_time = true;
 
 	return 0;
 }
@@ -96,6 +94,10 @@ int senml_add_float(struct senml_pack *pack,
 
 	if (validate_name(name) < 0 || validate_unit(unit) < 0) {
 		return -EMSGSIZE;
+	}
+
+	if (isnan(value) || isinf(value)) {
+		return -EINVAL;
 	}
 
 	if (pack->record_count >= SENML_MAX_RECORDS) {
@@ -125,6 +127,10 @@ int senml_add_float_t(struct senml_pack *pack,
 
 	if (validate_name(name) < 0 || validate_unit(unit) < 0) {
 		return -EMSGSIZE;
+	}
+
+	if (isnan(value) || isinf(value)) {
+		return -EINVAL;
 	}
 
 	if (pack->record_count >= SENML_MAX_RECORDS) {
