@@ -36,6 +36,7 @@
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/ring_buffer.h>
+#include <zephyr/init.h>
 #include <zephyr/sys/atomic.h>
 
 LOG_MODULE_REGISTER(slip_transport, CONFIG_SLIP_TRANSPORT_LOG_LEVEL);
@@ -80,6 +81,9 @@ struct slip_transport_ctx {
 	/* Statistics - protected by stats_mutex */
 	struct k_mutex stats_mutex;
 	struct slip_transport_stats stats;
+
+	/* ISR-safe overflow counter (UART ring buffer overflows from ISR) */
+	atomic_t isr_rx_overflow;
 
 	/* Link address (8 bytes for consistency with other LCI interfaces) */
 	uint8_t link_addr[8];
@@ -414,7 +418,7 @@ static void uart_rx_callback(const struct device *dev, void *user_data)
 			if (written == 0) {
 				/* Ring buffer full - drop byte */
 				LOG_WRN("SLIP RX: ring buffer overflow");
-				atomic_inc((atomic_t *)&ctx->stats.rx_overflow);
+				atomic_inc(&ctx->isr_rx_overflow);
 			}
 			k_sem_give(&ctx->rx_sem);
 		}
@@ -681,6 +685,7 @@ int slip_transport_get_stats(struct slip_transport_stats *stats)
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	memcpy(stats, &ctx->stats, sizeof(*stats));
+	stats->rx_overflow += (uint32_t)atomic_get(&ctx->isr_rx_overflow);
 	k_mutex_unlock(&ctx->stats_mutex);
 	return 0;
 }
@@ -695,6 +700,7 @@ void slip_transport_reset_stats(void)
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
+	atomic_clear(&ctx->isr_rx_overflow);
 	k_mutex_unlock(&ctx->stats_mutex);
 }
 
@@ -825,9 +831,23 @@ void slip_transport_test_reset(void)
 	ctx->last_tx_len = 0;
 	ring_buf_reset(&ctx->rx_ring);
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
+	atomic_clear(&ctx->isr_rx_overflow);
 
 	k_mutex_unlock(&ctx->stats_mutex);
 	k_mutex_unlock(&ctx->rx_mutex);
 	k_mutex_unlock(&ctx->tx_mutex);
 }
 #endif /* CONFIG_ZTEST */
+
+/* --------------------------------------------------------------------------
+ * Auto-initialization
+ * -------------------------------------------------------------------------- */
+
+#ifdef CONFIG_SLIP_TRANSPORT_AUTO_INIT
+static int slip_transport_sys_init(void)
+{
+	return slip_transport_init();
+}
+
+SYS_INIT(slip_transport_sys_init, APPLICATION, 90);
+#endif
