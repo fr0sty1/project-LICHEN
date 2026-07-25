@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:25:39.01723Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:20:20.698790848Z",
+  "updated_at": "2026-07-25T00:45:27.836778135Z",
   "started_at": "2026-07-22T20:19:41.963591101Z",
   "closed_at": "2026-07-22T20:20:20.698790848Z",
   "close_reason": "Reset of _lowest_rank on UNJOINED already in select_parent (prevents stuck node after isolation). Removed explanatory comments per no-comments rule. ruff passes. Commit b20a1b346."
