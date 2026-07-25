@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:55:12.925939Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:58:51.892276321Z",
+  "updated_at": "2026-07-25T00:44:05.325437812Z",
   "started_at": "2026-07-22T22:55:41.65235164Z",
   "closed_at": "2026-07-22T22:58:51.892276321Z",
   "close_reason": "Implemented guard for initialized state before copying conn_cb/user_ctx in all BLE connection callbacks under mutex protection. Resolves use-after-free race with deinit. Verified in code at lichen/subsys/lichen/transport/ble_ipsp_transport.c:130-135 etc. Related P3/P4 beads in same file addressed in prior passes."
