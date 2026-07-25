@@ -828,6 +828,58 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         }
     }
 
+    /// Complete full DAO processing (signature verification, admission check,
+    /// route-table update) from a compressed L2 frame payload.
+    ///
+    /// Call after [`RplNode::handle_frame_rpl`] returns `DaoReceived` when the
+    /// stack is acting as a root.
+    pub fn complete_dao_from_frame(
+        &mut self,
+        frame: &[u8],
+        sender_iid: [u8; 8],
+        now_ms: u64,
+    ) -> Option<DaoHandlingOutcome> {
+        if classify_l2_payload(frame) != L2PayloadKind::Schc {
+            return None;
+        }
+        let mut ipv6 = [0u8; 256];
+        let n = match codec::decompress(l2_payload_body(frame), &mut ipv6) {
+            Ok(n) if n >= IPV6_HEADER_LEN + hdr_field::BODY_OFFSET + 4 => n,
+            _ => return None,
+        };
+        if !valid_rpl_ipv6(&ipv6[..n]) || ipv6[IPV6_HEADER_LEN + 1] != rpl_code::DAO {
+            return None;
+        }
+        let source: [u8; 16] = ipv6[field::SRC_OFFSET..field::DST_OFFSET].try_into().ok()?;
+        let dao = &ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..n];
+
+        let origin_iid: [u8; 8] = source[8..].try_into().unwrap();
+        let admitted = self
+            .announces
+            .pinned_pubkey_for(&origin_iid)
+            .is_some_and(|key| {
+                self.dao_admissions
+                    .as_ref()
+                    .is_some_and(|admissions| admissions.contains(key.as_bytes()))
+            });
+        if !admitted {
+            return Some(DaoHandlingOutcome::NotAdmitted);
+        }
+        let RplRole::Root(rx) = &mut self.role else {
+            return None;
+        };
+        let outcome = self.rpl.handle_dao(
+            dao,
+            source,
+            sender_iid,
+            &self.announces,
+            rx,
+            &mut self.storage,
+            now_ms,
+        );
+        Some(outcome)
+    }
+
     pub fn configure_radio(&mut self, config: &RadioConfig) {
         self.stack.radio().configure(config);
     }

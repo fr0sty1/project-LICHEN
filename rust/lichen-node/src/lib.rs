@@ -77,6 +77,8 @@ pub use hybrid::{HybridRouter, MeshPrefix, PendingPacket};
 #[cfg(feature = "std")]
 pub use node::RplNode;
 pub use node::{Node, RplEvent};
+#[cfg(feature = "std")]
+pub use node::DaoHandlingOutcome;
 pub use port_dispatch::{
     dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError,
 };

@@ -16,7 +16,7 @@ use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_node::{
     announce::AnnounceProcessor, gradient::GradientTable, rpl_stack::RplStack, secure::SecureStack,
-    stack::add_rpl_source_route, RplEvent,
+    stack::add_rpl_source_route, DaoHandlingOutcome, RplEvent,
 };
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
@@ -170,10 +170,20 @@ impl Gateway {
         self.maintain(now_ms);
         let sender_iid = extract_sender_iid(frame);
         let mut reply = vec![0u8; 512];
-        let (reply_len, event) = self
+        let (reply_len, mut event) = self
             .rpl_stack
             .rpl_node()
             .handle_frame_rpl(frame, sender_iid, &mut reply, now_ms);
+        if matches!(event, RplEvent::DaoReceived { .. }) {
+            if let Some(outcome) =
+                self.rpl_stack
+                    .complete_dao_from_frame(frame, sender_iid, now_ms)
+            {
+                event = RplEvent::DaoReceived {
+                    route_updated: matches!(outcome, DaoHandlingOutcome::Applied),
+                };
+            }
+        }
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
             Some(reply)
