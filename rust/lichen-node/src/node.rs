@@ -83,6 +83,7 @@ pub enum DaoHandlingOutcome {
     Exhausted,
     Corrupt,
     RouteRejected,
+    NotAdmitted,
 }
 
 /// Top-level node state.
@@ -341,6 +342,7 @@ impl RplNode {
         rx_state: &mut DaoRxState,
         storage: &mut S,
         now_ms: u64,
+        dao_admission: &lichen_rpl::routing::DaoAdmissionState,
     ) -> DaoHandlingOutcome {
         let iid = origin[8..].try_into().expect("IPv6 IID is eight bytes");
         let verified = match SignatureVerifiedDao::verify_signature(
@@ -365,6 +367,7 @@ impl RplNode {
             rx_state,
             storage,
             now_ms,
+            dao_admission,
         ) {
             Ok(DaoProcessOutcome::Applied) => DaoHandlingOutcome::Applied,
             Ok(DaoProcessOutcome::Duplicate) => DaoHandlingOutcome::Duplicate,
@@ -374,6 +377,7 @@ impl RplNode {
             Err(DaoProcessError::Exhausted) => DaoHandlingOutcome::Exhausted,
             Err(DaoProcessError::Corrupt) => DaoHandlingOutcome::Corrupt,
             Err(DaoProcessError::RouteRejected) => DaoHandlingOutcome::RouteRejected,
+            Err(DaoProcessError::NotAdmitted) => DaoHandlingOutcome::NotAdmitted,
         }
     }
 
@@ -517,7 +521,7 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         if self.router.is_root() {
-                            return (0, RplEvent::DaoReceived { route_updated: false });
+                            return (0, RplEvent::DaoReceived);
                         }
                         let Some(advertised_parents) =
                             crate::routing::dao_parents_for_source(dao_bytes, &sender_addr)

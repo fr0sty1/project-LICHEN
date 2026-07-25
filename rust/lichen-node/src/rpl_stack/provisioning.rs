@@ -12,7 +12,6 @@ use lichen_rpl::routing::{
     DaoTxState,
 };
 
-use lichen_core::rf_health::RfHealthMetrics;
 
 use crate::announce::AnnounceProcessor;
 use crate::node::{Node, RplNode};
@@ -45,7 +44,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let rpl = RplNode {
             node: Node::new(stack.node_id()),
             router: Router::new(local_rpl_addr, dodag_id),
-            rf_health: RfHealthMetrics::new(),
         };
         Ok(Self {
             stack,
@@ -83,7 +81,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let rpl = RplNode {
             node: Node::new(stack.node_id()),
             router: Router::new(local_rpl_addr, dodag_id),
-            rf_health: RfHealthMetrics::new(),
         };
         Ok(Self {
             stack,
@@ -122,7 +119,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             rpl: RplNode {
                 node: Node::new(stack.node_id()),
                 router,
-                rf_health: RfHealthMetrics::new(),
             },
             stack,
             announces,
@@ -159,9 +155,10 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         )
         .map_err(RplStackOpenError::Admission)?;
         if router
-            .dao_origin_keys()
+            .dao_manager
+            .origin_high_water()
             .iter()
-            .any(|key| !admissions.contains(key))
+            .any(|hw| !admissions.contains(&hw.public_key))
         {
             return Err(RplStackOpenError::AdmissionInconsistent);
         }
@@ -169,7 +166,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             rpl: RplNode {
                 node: Node::new(stack.node_id()),
                 router,
-                rf_health: RfHealthMetrics::new(),
             },
             stack,
             announces,
@@ -247,7 +243,7 @@ pub(crate) fn provision_or_resume_root_state<S: NonVolatile>(
     if admissions.as_ref().is_some_and(|state| !state.is_empty())
         || replay
             .as_ref()
-            .is_some_and(|(router, _)| !router.dao_origin_keys().is_empty())
+            .is_some_and(|(router, _)| !router.dao_manager.origin_high_water().is_empty())
     {
         return Err(RplStackProvisionError::ExistingNonEmpty);
     }

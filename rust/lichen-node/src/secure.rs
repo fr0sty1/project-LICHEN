@@ -50,6 +50,8 @@ pub enum SecureError {
     CorrelationMismatch,
     /// CoAP encoding error.
     CoapEncode,
+    /// Malformed OSCORE option.
+    MalformedOscore,
     /// TX error from underlying stack.
     Tx(TxError),
 }
@@ -68,6 +70,7 @@ impl core::fmt::Display for SecureError {
             Self::DecryptFailed => write!(f, "OSCORE decryption failed"),
             Self::CorrelationMismatch => write!(f, "response correlation mismatch"),
             Self::CoapEncode => write!(f, "CoAP encoding failed"),
+            Self::MalformedOscore => write!(f, "malformed OSCORE option"),
             Self::Tx(e) => write!(f, "TX error: {}", e),
         }
     }
@@ -276,16 +279,13 @@ impl<R: Radio> SecureStack<R> {
         }
     }
 
-    /// Create from radio and identity directly with default epoch.
-    ///
-    /// SECURITY: Uses minimum compliant epoch (128). For production, prefer
-    /// constructing a Stack with a random epoch in [128, 255].
-    pub fn from_radio(radio: R, identity: lichen_link::identity::Identity, epoch: u8) -> Self {
-        Self::new(Stack::new(radio, identity, epoch, 0))
-    }
-
     pub(crate) fn radio(&mut self) -> &mut R {
         self.stack.radio()
+    }
+
+    /// Get the CCP operating channel.
+    pub(crate) fn channel(&self) -> u8 {
+        self.stack.channel()
     }
 
     pub(crate) fn link(&mut self) -> &mut LinkLayer {
@@ -357,6 +357,20 @@ impl<R: Radio> SecureStack<R> {
         Ok(())
     }
 
+    /// Restore and install an existing OSCORE context.
+    ///
+    /// Unlike [`register_fresh_context`], this does not perform atomic registration
+    /// since the context was previously registered with the store.
+    pub fn restore_context<S: SenderStateStore>(
+        &mut self,
+        peer_iid: [u8; 8],
+        context: Context,
+        _store: &mut S,
+    ) -> Result<(), SecureError> {
+        self.contexts.insert(peer_iid, context);
+        Ok(())
+    }
+
     /// Get mutable context for peer.
     fn get_context_mut(&mut self, peer_iid: &[u8; 8]) -> Option<&mut Context> {
         self.contexts.get_mut(peer_iid)
@@ -370,6 +384,11 @@ impl<R: Radio> SecureStack<R> {
     /// Get local node ID.
     pub fn node_id(&self) -> NodeId {
         self.stack.node_id()
+    }
+
+    /// Get local public key.
+    pub fn local_public_key(&self) -> lichen_link::keys::PublicKey {
+        self.stack.local_public_key()
     }
 
     /// Send an OSCORE-protected GET after atomically reserving its sender sequence.
@@ -461,6 +480,7 @@ impl<R: Radio> SecureStack<R> {
         ctx.preflight_protect_request(&class_e[..class_e_len], &[])
             .map_err(map_protect_error)?;
         let oscore_option_len = ctx.next_request_option_len().map_err(map_protect_error)?;
+        let context_id = ctx.context_id();
         preflight_secure_frame(
             route.source,
             route.destination,
@@ -482,10 +502,11 @@ impl<R: Radio> SecureStack<R> {
             .map_err(map_protect_error)?;
 
         let piv_len = (oscore_opt[0] & 0x07) as usize;
-        if oscore_opt.len() < 1 + piv_len {
+        if oscore_opt.len() < 1 + piv_len || piv_len > PIV_MAX_LEN {
             return Err(SecureError::MalformedOscore);
         }
-        let request_piv = oscore_opt[1..1 + piv_len].to_vec();
+        let mut request_piv = [0u8; PIV_MAX_LEN];
+        request_piv[..piv_len].copy_from_slice(&oscore_opt[1..1 + piv_len]);
 
         // Build outer CoAP with OSCORE option
         let mid = self.stack.next_message_id();
@@ -1008,7 +1029,7 @@ pub(crate) fn secure_datagram_from_received(
     let coap = &udp_bytes[UDP_HEADER_LEN..udp_len];
     let mut expected_udp = [0; UDP_HEADER_LEN];
     UdpHeader::new(udp.src_port, udp.dst_port)
-        .write_to(&header.src, &final_destination, coap, &mut expected_udp)
+        .write_header_to(&header.src, &final_destination, coap, &mut expected_udp)
         .map_err(|_| RxError::SchcDecompress)?;
     if udp_bytes[6..8] != expected_udp[6..8] {
         return Err(RxError::SchcDecompress);
@@ -1578,7 +1599,7 @@ mod tests {
             )
             .unwrap();
         UdpHeader::new(PORT_COAP, 49_152)
-            .write_to(
+            .write_header_to(
                 &source,
                 &destination,
                 &coap,

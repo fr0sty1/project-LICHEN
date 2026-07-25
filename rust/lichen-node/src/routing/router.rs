@@ -11,15 +11,15 @@ use lichen_rpl::message::{Dao, DodagConfig, Dio, OptionIter, TransitInfo, DODAG_
 use lichen_rpl::trickle::TrickleTimer;
 
 use super::{
-    DaoManager, DaoProcessError, DaoProcessOutcome, DaoProcessTiming, DaoTxError, DaoTxState,
-    DaoPersistentOpenError, DaoProvisionError, DaoRxState, SignatureVerifiedDao,
-    dao_origin_digest, DAO_ORIGIN_SIGNATURE_LEN, DaoOriginSignature, OPT_DODAG_CONFIG,
+    DaoAdmissionState, DaoManager, DaoProcessError, DaoProcessOutcome, DaoProcessTiming,
+    DaoTxError, DaoTxState, DaoPersistentOpenError, DaoProvisionError, DaoRxState,
+    SignatureVerifiedDao, dao_origin_digest, DAO_ORIGIN_SIGNATURE_LEN, DaoOriginSignature,
+    OPT_DODAG_CONFIG,
 };
-pub use lichen_rpl::dodag::{DodagState, ROOT_RANK};
+pub use lichen_rpl::dodag::DodagState;
 
 use super::neighbor::{
-    GeoCoords, LinkEtx, NeighborTable, TrickleAwareNeighborLiveness, TrickleSafeLivenessPolicy,
-    MAX_NEIGHBORS,
+    GeoCoords, LinkEtx, NeighborTable, TrickleSafeLivenessPolicy, MAX_NEIGHBORS,
 };
 use super::gpsr::{haversine, is_valid_coords};
 
@@ -72,7 +72,7 @@ fn sign_dao(
         return None;
     }
     let dao = Dao::from_bytes(unsigned_dao).ok()?;
-    for option in OptionIter::new(dao.options_tail(unsigned_dao)) {
+    for option in OptionIter::new(Dao::options_tail(unsigned_dao)) {
         if option.ok()?.opt_type == lichen_rpl::message::OPT_DAO_ORIGIN_SIGNATURE {
             return None;
         }
@@ -511,6 +511,7 @@ impl Router {
         rx_state: &mut DaoRxState,
         storage: &mut S,
         now_ms: u64,
+        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         self.process_signature_verified_dao_from_at_ms(
             dao,
@@ -518,6 +519,7 @@ impl Router {
             rx_state,
             storage,
             now_ms,
+            dao_admission,
         )
     }
 
@@ -528,6 +530,7 @@ impl Router {
         rx_state: &mut DaoRxState,
         storage: &mut S,
         now_ms: u64,
+        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         if !self.dodag.is_root() {
             return Err(DaoProcessError::RouteRejected);
@@ -545,6 +548,7 @@ impl Router {
                 lifetime_unit_seconds: u64::from(self.dodag_config.lifetime_unit),
                 max_deadline_seconds: u64::MAX / 1_000,
             },
+            dao_admission,
         )?;
         if outcome == DaoProcessOutcome::Applied {
             self.last_now_ms = now_ms;
@@ -649,7 +653,7 @@ impl Router {
         if !self.dodag.is_root() {
             return None;
         }
-        self.dao_manager.routing_table.lookup(dst)
+        self.dao_manager.routing_table().lookup(dst)
     }
 
     /// Expire finite routes and look up a destination using monotonic time.
@@ -872,15 +876,14 @@ impl Router {
 }
 
 // Helper functions for DAO processing
-#[cfg(test)]
-fn dao_parents_for_source(dao_bytes: &[u8], packet_source: &[u8; 16]) -> Option<Vec<[u8; 16]>> {
+pub(crate) fn dao_parents_for_source(dao_bytes: &[u8], packet_source: &[u8; 16]) -> Option<Vec<[u8; 16]>> {
     use lichen_rpl::message::{OPT_RPL_TARGET, OPT_TRANSIT_INFO, RplTarget};
 
-    let dao = Dao::from_bytes(dao_bytes).ok()?;
+    let _dao = Dao::from_bytes(dao_bytes).ok()?;
     let mut parents = Vec::new();
     let mut current_target: Option<[u8; 16]> = None;
 
-    for option in OptionIter::new(dao.options_tail(dao_bytes)) {
+    for option in OptionIter::new(Dao::options_tail(dao_bytes)) {
         let option = option.ok()?;
         match option.opt_type {
             OPT_RPL_TARGET => {

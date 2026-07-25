@@ -200,6 +200,7 @@ impl<R: Radio> Stack<R> {
             node: Node::new(node_id),
             epoch,
             seqnum: LinkSeqNum::new(seq),
+            sequence_exhausted: false,
             message_id: 0,
             forward_buffer: ForwardBuffer::new(),
         }
@@ -217,6 +218,11 @@ impl<R: Radio> Stack<R> {
 
     pub fn local_public_key(&self) -> lichen_link::keys::PublicKey {
         self.link.local_public_key()
+    }
+
+    /// Get the CCP operating channel.
+    pub fn channel(&self) -> u8 {
+        self.channel
     }
 
     /// Add a peer for signature verification.
@@ -270,7 +276,7 @@ impl<R: Radio> Stack<R> {
         let mut ipv6 = [0u8; 256];
 
         // IPv6 header (payload_len = UDP datagram size)
-        let ip_hdr = Ipv6Header::new(next_header::UDP, src, *dst);
+        let ip_hdr = Ipv6Header::new(next_header::UDP, *src, *dst);
         ip_hdr
             .write_to(udp_total as u16, &mut ipv6[..IPV6_HEADER_LEN])
             .map_err(|_| TxError::BufferTooSmall)?;
@@ -310,7 +316,7 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall => TxError::BufferTooSmall,
+                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 
@@ -384,7 +390,7 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_payload, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall => TxError::BufferTooSmall,
+                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 

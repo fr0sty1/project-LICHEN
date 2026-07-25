@@ -3,6 +3,7 @@
 
 //! IPv6 and L2 address utility functions.
 
+use std::vec;
 use std::vec::Vec;
 
 use lichen_core::announce::Announce;
@@ -117,6 +118,7 @@ pub(crate) fn bootstrap_announce_peer(wire: &[u8]) -> Option<PeerIdentity> {
             frame.epoch,
             frame.seqnum,
             frame.dst_addr,
+            &peer.iid,
             frame.payload,
             frame.mic,
             &peer.pubkey,

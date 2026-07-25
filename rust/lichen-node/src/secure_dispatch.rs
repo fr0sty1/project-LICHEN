@@ -37,11 +37,11 @@ pub enum SecureDispatchOutcome {
 /// sender IID for context selection. The inner request is dispatched to the resource
 /// handler and the response is encrypted. Plaintext requests (from local admin per LCI)
 /// are dispatched directly.
-pub async fn dispatch_secure<'a, R: Radio, S: SenderStateStore>(
+pub async fn dispatch_secure<R: Radio, S: SenderStateStore>(
     stack: &mut SecureStack<R>,
     store: &mut S,
     received: &ReceivedSecureDatagram,
-    dispatcher: &Dispatcher<'a, 5>,
+    dispatcher: &Dispatcher<5>,
 ) -> Result<SecureDispatchOutcome, SecureError> {
     let packet = CoapPacket::from_bytes(received.coap()).map_err(|_| SecureError::DecryptFailed)?;
 
@@ -62,7 +62,7 @@ async fn dispatch_encrypted<R: Radio, S: SenderStateStore>(
     stack: &mut SecureStack<R>,
     store: &mut S,
     received: &ReceivedSecureDatagram,
-    dispatcher: &Dispatcher<'_, 5>,
+    dispatcher: &Dispatcher<5>,
 ) -> Result<SecureDispatchOutcome, SecureError> {
     let request = stack.decrypt_request(received)?;
 
@@ -98,7 +98,7 @@ async fn dispatch_encrypted<R: Radio, S: SenderStateStore>(
 
 fn dispatch_plaintext(
     received: &ReceivedSecureDatagram,
-    dispatcher: &Dispatcher<'_, 5>,
+    dispatcher: &Dispatcher<5>,
 ) -> Result<SecureDispatchOutcome, SecureError> {
     let mut resp_buf = [0u8; 256];
     let resp_len = dispatcher.handle_coap(received.coap(), &mut resp_buf);

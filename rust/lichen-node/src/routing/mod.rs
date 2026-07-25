@@ -32,6 +32,8 @@ pub use neighbor::TrickleAwareNeighborLiveness;
 pub use router::{
     DioProcessOutcome, RplMaintenanceOutcome, Router,
 };
+#[cfg(feature = "std")]
+pub(crate) use router::dao_parents_for_source;
 
 // Re-exports from dtn module
 #[cfg(feature = "std")]
@@ -56,8 +58,8 @@ pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
 // Internal re-exports for router module
 #[cfg(feature = "std")]
 pub(crate) use lichen_rpl::routing::{
-    dao_origin_digest, DaoManager, DaoProcessError, DaoProcessOutcome, DaoProcessTiming,
-    DaoTxError, DaoTxState, DaoVerifyError,
+    dao_origin_digest, DaoAdmissionState, DaoManager, DaoProcessError, DaoProcessOutcome,
+    DaoProcessTiming, DaoTxError, DaoTxState, DaoVerifyError,
 };
 #[cfg(feature = "std")]
 pub(crate) use lichen_rpl::routing::SignatureVerifiedDao;

@@ -51,7 +51,7 @@ pub(crate) const HIGH_WATER_SCOPE_LEN: usize = 16 + 1 + 16;
 pub(crate) const HIGH_WATER_HEADER_LEN: usize = HIGH_WATER_SCOPE_LEN + 2;
 #[cfg(feature = "std")]
 pub(crate) const HIGH_WATER_PAYLOAD_LEN: usize =
-    HIGH_WATER_HEADER_LEN + super::MAX_DAO_ORIGINS * HIGH_WATER_ENTRY_LEN;
+    HIGH_WATER_HEADER_LEN + crate::routing::MAX_DAO_ORIGINS * HIGH_WATER_ENTRY_LEN;
 #[cfg(feature = "std")]
 pub(crate) const SLOT_OVERHEAD: usize = 24;
 #[cfg(feature = "std")]
@@ -65,7 +65,7 @@ pub(crate) const DAO_TX_PAYLOAD_LEN: usize = DAO_TX_HEADER_LEN + MAX_SIGNED_DAO_
 pub(crate) const DAO_ADMISSION_HEADER_LEN: usize = HIGH_WATER_SCOPE_LEN + 2;
 #[cfg(feature = "std")]
 pub(crate) const DAO_ADMISSION_PAYLOAD_LEN: usize =
-    DAO_ADMISSION_HEADER_LEN + super::MAX_DAO_ORIGINS * 32;
+    DAO_ADMISSION_HEADER_LEN + crate::routing::MAX_DAO_ORIGINS * 32;
 #[cfg(feature = "std")]
 pub(crate) type HighWaterMap = HashMap<[u8; 32], ([u8; 32], u64)>;
 
@@ -476,7 +476,7 @@ impl DaoAdmissionState {
         if self.admitted.contains(&key) {
             return Ok(());
         }
-        if self.admitted.len() == super::MAX_DAO_ORIGINS {
+        if self.admitted.len() == crate::routing::MAX_DAO_ORIGINS {
             return Err(DaoAdmissionUpdateError::Capacity);
         }
         let mut proposed = self.admitted.clone();
@@ -547,12 +547,13 @@ pub(crate) fn map_tx_update_error<E>(error: RedundantUpdateError<E>) -> DaoTxErr
 #[cfg(feature = "std")]
 pub(crate) fn map_rx_update_error<E>(
     error: RedundantUpdateError<E>,
-) -> super::DaoProcessError<E> {
+) -> crate::routing::DaoProcessError<E> {
+    use crate::routing::DaoProcessError;
     match error {
-        RedundantUpdateError::Storage(error) => super::DaoProcessError::Persistence(error),
-        RedundantUpdateError::Stale => super::DaoProcessError::Stale,
-        RedundantUpdateError::Exhausted => super::DaoProcessError::Exhausted,
-        RedundantUpdateError::Corrupt => super::DaoProcessError::Corrupt,
+        RedundantUpdateError::Storage(error) => DaoProcessError::Persistence(error),
+        RedundantUpdateError::Stale => DaoProcessError::Stale,
+        RedundantUpdateError::Exhausted => DaoProcessError::Exhausted,
+        RedundantUpdateError::Corrupt => DaoProcessError::Corrupt,
     }
 }
 
@@ -574,7 +575,7 @@ pub(crate) fn encode_admissions(
     dodag_id: [u8; 16],
     admitted: &HashSet<[u8; 32]>,
 ) -> Option<Vec<u8>> {
-    if admitted.len() > super::MAX_DAO_ORIGINS {
+    if admitted.len() > crate::routing::MAX_DAO_ORIGINS {
         return None;
     }
     let mut keys: Vec<_> = admitted.iter().copied().collect();
@@ -619,7 +620,7 @@ pub(crate) fn decode_admissions(
             .try_into()
             .map_err(|_| AdmissionDecodeError::Corrupt)?,
     ) as usize;
-    if count > super::MAX_DAO_ORIGINS || payload.len() != DAO_ADMISSION_HEADER_LEN + count * 32 {
+    if count > crate::routing::MAX_DAO_ORIGINS || payload.len() != DAO_ADMISSION_HEADER_LEN + count * 32 {
         return Err(AdmissionDecodeError::Corrupt);
     }
     let mut admitted = HashSet::with_capacity(count);
@@ -643,7 +644,7 @@ pub(crate) fn encode_high_water(
     map: &HighWaterMap,
     out: &mut [u8],
 ) -> Option<usize> {
-    if map.len() > super::MAX_DAO_ORIGINS {
+    if map.len() > crate::routing::MAX_DAO_ORIGINS {
         return None;
     }
     let len = HIGH_WATER_HEADER_LEN + map.len() * HIGH_WATER_ENTRY_LEN;
@@ -676,7 +677,7 @@ pub(crate) fn decode_high_water(data: &[u8]) -> Option<HighWaterMap> {
             .try_into()
             .ok()?,
     ) as usize;
-    if count > super::MAX_DAO_ORIGINS
+    if count > crate::routing::MAX_DAO_ORIGINS
         || data.len() != HIGH_WATER_HEADER_LEN + count * HIGH_WATER_ENTRY_LEN
     {
         return None;

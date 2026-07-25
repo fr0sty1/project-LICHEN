@@ -181,7 +181,7 @@ impl NeighborTable {
         policy: &P,
         now_ms: u64,
         max_age_ms: u64,
-        heard_consistent: u32,
+        _heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
@@ -268,9 +268,20 @@ impl NeighborTable {
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
+        // Inline the trickle-aware liveness check to avoid borrow conflict
+        let k = u64::from(trickle.k);
+        let c = u64::from(trickle.counter.min(trickle.k));
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().is_some_and(|neighbor| {
-                !self.is_trickle_aware_live(&neighbor.addr, trickle, now_ms, max_age_ms)
+                let age = now_ms.saturating_sub(neighbor.last_seen_ms);
+                if age <= max_age_ms {
+                    return false;
+                }
+                if k == 0 {
+                    return true;
+                }
+                let scale = 1 + (2 * c / k);
+                age > max_age_ms * scale
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");

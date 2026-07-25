@@ -361,6 +361,16 @@ impl LinkLayer {
         self.pinned.get(iid).map(|p| &p.pubkey)
     }
 
+    /// Return this link layer's local public key.
+    pub fn local_public_key(&self) -> PublicKey {
+        self.identity.pubkey
+    }
+
+    /// Sign a digest with this link layer's private key (for DAO origin signatures).
+    pub fn sign_digest(&self, digest: &[u8]) -> [u8; SIGNATURE_LENGTH] {
+        schnorr::sign(&self.identity.privkey, &self.identity.pubkey, digest)
+    }
+
     pub fn peer_auth_state(&self, iid: &[u8; 8]) -> PeerAuthState {
         match (self.peers.get(iid), self.pinned.get(iid)) {
             (Some(peer), Some(pinned)) if pinned.pubkey == peer.identity.pubkey => {

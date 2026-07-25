@@ -8,11 +8,10 @@ use lichen_hal::{NonVolatile, Radio};
 use crate::routing::TrickleSafeLivenessPolicy;
 use crate::runtime::{RplRuntime, RplRuntimeAction, RplRuntimeActionError, RplRuntimePoll};
 use crate::stack::{RxError, MAX_FRAME_SIZE};
-use crate::RplMaintenanceOutcome;
+use crate::routing::RplMaintenanceOutcome;
 
-use super::error::{
-    RplReceiveError, RplRuntimeReceiveError, RplRuntimeTrickleError, RplTrickleTransmitOutcome,
-};
+use super::error::{RplReceiveError, RplRuntimeReceiveError, RplRuntimeTrickleError};
+use super::RplTrickleTransmitOutcome;
 use super::util::RPL_ALL_NODES;
 use super::{RplReceiveOutcome, RplRuntimeReceiveOutcome, RplStack};
 
@@ -58,7 +57,8 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             .receive_timeout(action, self.generation)
             .map_err(RplRuntimeReceiveError::Action)?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
-        let rx = self.stack.radio().receive(&mut wire, timeout_ms).await;
+        let channel = self.stack.channel();
+        let rx = self.stack.radio().receive(channel, &mut wire, timeout_ms).await;
         let post_await_ms = observe_now_ms();
         let received = match rx {
             Ok(Some(packet)) => {
@@ -76,7 +76,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     .await
                     .map_err(RplRuntimeReceiveError::Receive);
                 match process_result {
-                    Ok(outcome) => Some(outcome),
+                    Ok(outcome) => outcome,
                     Err(e) => {
                         let _ = runtime.complete_receive(
                             &mut self.rpl,

@@ -3,6 +3,7 @@
 
 //! Packet receive and dispatch logic.
 
+use std::vec;
 use std::vec::Vec;
 
 use lichen_core::announce::Announce;
@@ -47,10 +48,11 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         now_ms: u64,
     ) -> Result<Option<RplReceiveOutcome>, RplReceiveError> {
         let mut wire = [0u8; MAX_FRAME_SIZE];
+        let channel = self.stack.channel();
         let packet = self
             .stack
             .radio()
-            .receive(&mut wire, timeout_ms)
+            .receive(channel, &mut wire, timeout_ms)
             .await
             .map_err(|_| RplReceiveError::Receive(RxError::RadioRx))?;
         let Some(packet) = packet else {
@@ -362,6 +364,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 if !admitted {
                     return Ok(RplReceiveOutcome::DaoOriginNotAdmitted);
                 }
+                let admissions = self.dao_admissions.as_ref().expect("root has admissions");
                 let outcome = self.rpl.handle_dao(
                     dao,
                     source,
@@ -370,6 +373,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     rx,
                     &mut self.storage,
                     now_ms,
+                    admissions,
                 );
                 Ok(RplReceiveOutcome::Dao(outcome))
             }
@@ -447,11 +451,13 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     .is_some_and(|admissions| admissions.contains(key.as_bytes()))
             });
         if !admitted {
-            return Some(DaoHandlingOutcome::NotAdmitted);
+            // Origin not admitted - return None to indicate no DAO processing occurred
+            return None;
         }
         let RplRole::Root(rx) = &mut self.role else {
             return None;
         };
+        let admissions = self.dao_admissions.as_ref()?;
         let outcome = self.rpl.handle_dao(
             dao,
             source,
@@ -460,6 +466,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             rx,
             &mut self.storage,
             now_ms,
+            admissions,
         );
         Some(outcome)
     }

@@ -27,13 +27,13 @@ use crate::node::{DaoHandlingOutcome, RplEvent, RplNode};
 use crate::routing::DaoRxState;
 use crate::secure::SecureStack;
 use crate::stack::ReceivedIpv6;
-use crate::RplMaintenanceOutcome;
+use crate::routing::RplMaintenanceOutcome;
 
 pub use self::error::{
     DaoAdmissionError, DaoSendError, RplControlError, RplReceiveError, RplRuntimeReceiveError,
     RplRuntimeTrickleError, RplStackOpenError, RplStackProvisionError,
 };
-pub use self::util::ipv6_eui64;
+pub(crate) use self::util::ipv6_eui64;
 
 /// Outcome of Trickle transmit completion.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

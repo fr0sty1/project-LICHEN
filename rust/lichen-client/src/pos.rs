@@ -82,7 +82,7 @@ impl Position {
 
     /// Encode as a SenML-CBOR pack (spec §18.2 `application/senml+cbor`).
     pub fn to_senml_cbor(&self) -> Result<Vec<u8>, Error> {
-        let mut recs: [Record; 8] = [Record::empty(); 8];
+        let mut recs: [Record; 8] = [const { Record::empty() }; 8];
         let mut n = 0;
 
         if self.device.is_some() || self.time.is_some() {
@@ -129,7 +129,7 @@ impl Position {
     /// `lat` and `lon` are required; `bn` and other fields are retained when
     /// present. Base fields may appear on any record per RFC 8428.
     pub fn from_senml_cbor(bytes: &[u8]) -> Result<Self, Error> {
-        let mut recs = [Record::empty(); DEC_MAX_RECORDS];
+        let mut recs = [const { Record::empty() }; DEC_MAX_RECORDS];
         let count = cbor::decode(bytes, &mut recs)
             .map_err(|e| Error::Decode(format!("SenML decode: {e:?}")))?;
 
@@ -208,7 +208,7 @@ mod tests {
         };
         let bytes = p.to_senml_cbor().unwrap();
 
-        let mut recs = [Record::empty(); DEC_MAX_RECORDS];
+        let mut recs = [const { Record::empty() }; DEC_MAX_RECORDS];
         let n = cbor::decode(&bytes, &mut recs).unwrap();
 
         assert_eq!(recs[0].base_name, Some("urn:dev:mac:0011223344556677:"));

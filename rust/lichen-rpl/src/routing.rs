@@ -35,23 +35,20 @@ use std::{
 
 #[cfg(feature = "std")]
 use crate::message::{
-    Dao, OptionIter, RplTarget, SignedDaoEnvelope, TransitInfo, OPT_RPL_TARGET,
-    OPT_RPL_TARGET_DESCRIPTOR, OPT_TRANSIT_INFO,
+    Dao, OptionIter, RplTarget, TransitInfo, OPT_RPL_TARGET, OPT_RPL_TARGET_DESCRIPTOR,
+    OPT_TRANSIT_INFO,
 };
 #[cfg(feature = "std")]
 use crate::persistence::{
     decode_high_water, encode_high_water, map_open_error, map_rx_update_error, HighWaterMap,
-    DAO_ADMISSION_KEYS, DAO_ADMISSION_MAGIC, DAO_RX_KEYS, DAO_RX_MAGIC, DAO_TX_KEYS, DAO_TX_MAGIC,
-    HIGH_WATER_HEADER_LEN, HIGH_WATER_PAYLOAD_LEN, HIGH_WATER_SCOPE_LEN, SLOT_OVERHEAD,
+    DAO_RX_KEYS, DAO_RX_MAGIC, HIGH_WATER_HEADER_LEN, HIGH_WATER_PAYLOAD_LEN,
+    HIGH_WATER_SCOPE_LEN, SLOT_OVERHEAD,
 };
 #[cfg(feature = "std")]
 use lichen_hal::{
     storage::{open_redundant, provision_redundant, update_redundant, RedundantProvisionError},
     NonVolatile,
 };
-#[cfg(feature = "std")]
-use sha2::{Digest, Sha256};
-
 #[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
 #[cfg(feature = "std")]
@@ -600,9 +597,9 @@ impl DaoManager {
         found_origin
     }
 
-    fn has_exact_origin_target(dao: &Dao, dao_bytes: &[u8], origin: [u8; 16]) -> bool {
+    fn has_exact_origin_target(_dao: &Dao, dao_bytes: &[u8], origin: [u8; 16]) -> bool {
         let mut target = None;
-        for option in OptionIter::new(dao.options_tail(dao_bytes)) {
+        for option in OptionIter::new(Dao::options_tail(dao_bytes)) {
             let Ok(option) = option else {
                 return false;
             };
@@ -1210,11 +1207,11 @@ impl DaoManager {
         if dao.flags != 0 || dao_bytes.get(2).copied()? != 0 {
             return None;
         }
-        let options = dao.options_tail(dao_bytes);
-        let mut updates = [None; MAX_DAO_UPDATES];
+        let options = Dao::options_tail(dao_bytes);
+        let mut updates = [const { None }; MAX_DAO_UPDATES];
         let mut update_count = 0;
-        let mut targets = [None; MAX_DAO_UPDATES];
-        let mut descriptors = [None; MAX_DAO_UPDATES];
+        let mut targets = [const { None }; MAX_DAO_UPDATES];
+        let mut descriptors = [const { None }; MAX_DAO_UPDATES];
         let mut target_count = 0;
         let mut transits = core::array::from_fn(|_| None);
         let mut transit_count = 0;
@@ -1495,7 +1492,7 @@ impl DaoManager {
         parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
         candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
         existing: &RoutingTable,
-        changed_targets: &HashSet<[u8; 16]>,
+        _changed_targets: &HashSet<[u8; 16]>,
     ) -> Option<RoutingTable> {
         let mut routes = RoutingTable::new();
         // Copy prefix routes
@@ -1533,7 +1530,7 @@ impl DaoManager {
                     let _ = entry.mark_expired();
                 }
             } else if let Some(path) = routes.lookup(egress) {
-                let mut egress_path = path.to_vec();
+                let egress_path = path.to_vec();
                 if !egress_path.is_empty() {
                     routes.routes.insert(*prefix, RouteEntry::fresh(&egress_path));
                     routes.unavailable_managed_prefixes.remove(prefix);
