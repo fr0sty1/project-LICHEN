@@ -478,11 +478,13 @@ fn transcript_3(
 
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext_3: &[u8],
+    cred_i: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext_3)?;
+    encode_bstr(&mut buf, cred_i)?;
     Ok(compute_th(&buf))
 }
 
@@ -1230,7 +1232,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0, &credential_i)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1673,7 +1675,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext_3)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext_3, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1962,9 +1964,9 @@ mod tests {
         let credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
-        let th_4 = hex!("32d8aecab9315693ae14a428149e7acd3c757265800ef9bdf8134448c6c8b099");
+        let th_4 = hex!("9ab6cfa75266fd7044f8e88625311012fe3f4812a48a6c331b663e01a46ab397");
         assert_eq!(
-            transcript_4(&th_3, &ciphertext_3).unwrap(),
+            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
             th_4,
         );
 
