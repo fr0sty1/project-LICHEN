@@ -184,6 +184,7 @@ class TestIndexCards:
         targets = sorted(set(re.findall(r'hx-get="([^"]+)"', resp.text)))
         assert targets == [
             "/partial/location",
+            "/partial/mesh-stats",
             "/partial/messages",
             "/partial/neighbors",
             "/partial/presence",
@@ -195,6 +196,45 @@ class TestIndexCards:
             with _mock_fetch([]):
                 partial = await client.get(target)
             assert partial.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Live mesh endpoints
+# ---------------------------------------------------------------------------
+
+
+class TestMeshEndpoints:
+    async def test_topology_data_returns_json(self, client: AsyncClient) -> None:
+        resp = await client.get("/partial/topology-data")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "nodes" in data
+        assert isinstance(data["nodes"], list)
+
+    async def test_topology_data_has_expected_keys(self, client: AsyncClient) -> None:
+        resp = await client.get("/partial/topology-data")
+        data = resp.json()
+        assert len(data["nodes"]) > 0
+        node = data["nodes"][0]
+        for key in ("id", "x", "y", "group", "connected"):
+            assert key in node
+
+    async def test_mesh_metrics_returns_json(self, client: AsyncClient) -> None:
+        resp = await client.get("/partial/mesh-metrics")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "transmissions" in data
+        assert "receptions" in data
+
+    async def test_mesh_stats_page_contains_partial(self, client: AsyncClient) -> None:
+        resp = await client.get("/")
+        assert "/partial/mesh-stats" in resp.text
+
+    async def test_mesh_stats_html_endpoint(self, client: AsyncClient) -> None:
+        resp = await client.get("/partial/mesh-stats")
+        assert resp.status_code == 200
+        assert "Nodes:" in resp.text
+        assert "PPS:" in resp.text
 
 
 # ---------------------------------------------------------------------------

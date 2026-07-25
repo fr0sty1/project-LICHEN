@@ -22,12 +22,14 @@ import logging
 from typing import Any
 
 import cbor2
+import httpx
 import uvicorn
 from aiocoap import GET, Context, Message
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
-from starlette.routing import Route
+from starlette.routing import Route, WebSocketRoute
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,10 @@ logger = logging.getLogger(__name__)
 
 _coap_ctx: Context | None = None
 _node_addr: str = "coap://[::1]"
+_sim_url: str | None = None
+_topology_cache: dict[str, Any] = {}
+_metrics_cache: dict[str, Any] = {}
+_ws_clients: set[WebSocket] = set()
 
 
 async def _get_coap_ctx() -> Context:
@@ -100,6 +106,53 @@ def _render_list(data: Any, empty_msg: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Simulator data helpers
+# ---------------------------------------------------------------------------
+
+async def _fetch_sim(path: str) -> Any:
+    """GET a simulator REST resource, return parsed JSON or None."""
+    if not _sim_url:
+        return None
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{_sim_url}{path}", timeout=5.0)
+            if resp.status_code == 200:
+                return resp.json()
+            return None
+    except Exception as exc:
+        logger.debug("Sim fetch %s failed: %s", path, exc)
+        return None
+
+
+async def _refresh_sim_data() -> None:
+    """Periodically refresh topology and metrics caches from the simulator."""
+    while True:
+        if _sim_url:
+            topo = await _fetch_sim("/sim/demo/topology")
+            if topo is not None:
+                global _topology_cache
+                _topology_cache = topo
+                await _broadcast_ws({"event": "topology", "data": topo})
+            metrics = await _fetch_sim("/sim/demo/metrics")
+            if metrics is not None:
+                global _metrics_cache
+                _metrics_cache = metrics
+                await _broadcast_ws({"event": "metrics", "data": metrics})
+        await asyncio.sleep(3)
+
+
+async def _broadcast_ws(data: dict[str, Any]) -> None:
+    dead: set[WebSocket] = set()
+    payload = json.dumps(data)
+    for ws in _ws_clients:
+        try:
+            await ws.send_text(payload)
+        except Exception:
+            dead.add(ws)
+    _ws_clients.difference_update(dead)
+
+
+# ---------------------------------------------------------------------------
 # Route handlers
 # ---------------------------------------------------------------------------
 
@@ -141,21 +194,77 @@ async def partial_location(request: Request) -> HTMLResponse:
 
 
 async def partial_mesh_stats(request: Request) -> HTMLResponse:
-    """Mock live stats for 500-node conference mesh demo."""
-    # TODO: aggregate CoAP from gateways for real topology/packet data.
-    stats = {"nodes": "500/500", "pps": 1243, "loss": "0.3%", "hops": 2.4, "gws": 4, "tdma": "98.7%"}
-    html = f'''<div style="font-size:1.1em;line-height:1.8">
-<div><strong>Nodes:</strong> {stats["nodes"]}</div>
-<div><strong>PPS:</strong> {stats["pps"]}</div>
-<div><strong>Loss:</strong> {stats["loss"]}</div>
-<div><strong>Hops:</strong> {stats["hops"]}</div>
-<div><strong>GWs:</strong> {stats["gws"]}</div>
-<div><strong>TDMA:</strong> {stats["tdma"]}</div>
-<div style="margin-top:1rem;font-size:0.8em;color:#58a6ff">Live • 4 gateways</div>
-</div><div style="margin-top:1rem;height:120px;background:#161b22;border:1px solid #30363d;border-radius:4px;position:relative">
-<div style="position:absolute;bottom:10px;left:10px;font-size:0.7em;color:#58a6ff">Converged, no collisions</div>
-</div>'''
+    """Live stats from simulator REST API, falling back to mock."""
+    metrics = _metrics_cache
+    if metrics:
+        t = metrics.get("transmissions", 0)
+        cr = round(metrics.get("collision_rate", 0) * 100, 1)
+        latency = metrics.get("latency_us", {})
+        hops = round(latency.get("mean", 0) / 1000, 1) if latency.get("mean") else 0
+        node_count = topology_node_count()
+        active = f"{node_count}/{node_count}"
+        loss = f"{round(cr, 1)}%"
+        pps = t if t else 0
+    else:
+        active = "—"
+        pps = 0
+        loss = "—"
+        hops = "—"
+    html = f'''<div id="mesh-stats-content" style="font-size:1.1em;line-height:1.8"
+      hx-get="/partial/mesh-stats" hx-trigger="load, every 5s" hx-swap="outerHTML">
+<div><strong>Nodes:</strong> {active}</div>
+<div><strong>PPS:</strong> {pps}</div>
+<div><strong>Loss:</strong> {loss}</div>
+<div><strong>Hops:</strong> {hops}</div>
+<div><strong>GWs:</strong> —</div>
+<div style="margin-top:0.5rem;font-size:0.8em;color:#58a6ff">Live {'• simulator' if _sim_url else '• mock'}</div>
+</div><div style="margin-top:1rem;height:120px;background:#161b22;border:1px solid #30363d;border-radius:4px;position:relative" id="mini-waterfall"></div>'''
     return HTMLResponse(html)
+
+
+def topology_node_count() -> int:
+    nodes = _topology_cache.get("nodes", [])
+    return len(nodes) if nodes else 20
+
+
+async def partial_topology_data(request: Request) -> JSONResponse:
+    """Return topology node positions as JSON for D3.js rendering."""
+    nodes = _topology_cache.get("nodes", [])
+    if nodes:
+        return JSONResponse({"nodes": nodes})
+    # Fallback mock data
+    import random
+    random.seed(42)
+    mock = [{"id": f"n{i}", "x": random.uniform(0, 800), "y": random.uniform(0, 380),
+             "group": i % 4, "connected": True} for i in range(20)]
+    return JSONResponse({"nodes": mock})
+
+
+async def partial_mesh_metrics(request: Request) -> JSONResponse:
+    """Return simulator metrics as JSON."""
+    if _metrics_cache:
+        return JSONResponse(_metrics_cache)
+    return JSONResponse({"transmissions": 0, "receptions": 0, "collisions": 0,
+                         "delivery_rate": 0, "collision_rate": 0,
+                         "latency_us": {"count": 0, "min": None, "max": None, "mean": None}})
+
+
+async def ws_events(websocket: WebSocket) -> None:
+    """WebSocket endpoint for live dashboard events."""
+    await websocket.accept()
+    _ws_clients.add(websocket)
+    try:
+        while True:
+            try:
+                _ = await asyncio.wait_for(websocket.receive_text(), timeout=30)
+            except TimeoutError:
+                await websocket.send_text('{"event":"ping"}')
+            except WebSocketDisconnect:
+                break
+            except Exception:
+                break
+    finally:
+        _ws_clients.discard(websocket)
 
 
 async def api_status(request: Request) -> JSONResponse:
@@ -201,7 +310,10 @@ def create_app() -> Starlette:
             Route("/partial/sensors", partial_sensors),
             Route("/partial/location", partial_location),
             Route("/partial/mesh-stats", partial_mesh_stats),
+            Route("/partial/topology-data", partial_topology_data),
+            Route("/partial/mesh-metrics", partial_mesh_metrics),
             Route("/api/status", api_status),
+            WebSocketRoute("/ws", ws_events),
         ]
     )
 
@@ -323,37 +435,97 @@ _PAGE_HTML = """\
     </div>
 
     <div class="card" style="grid-column: span 3; height: 420px;">
-      <h2>Topology (500 nodes) <span class="htmx-indicator">&#8635;</span></h2>
+      <h2>Topology <span class="htmx-indicator">&#8635;</span></h2>
       <div id="topology" style="width:100%; height:380px; background:#161b22; border:1px solid #30363d; border-radius:4px; position:relative;">
         <svg id="mesh-svg" width="100%" height="100%" style="position:absolute;"></svg>
       </div>
       <script src="https://d3js.org/d3.v7.min.js"></script>
       <script>
-        function initTopology() {
+        // Live topology from /partial/topology-data, falls back to mock
+        (function() {
           const svg = d3.select("#mesh-svg");
           const width = 800, height = 380;
           svg.attr("viewBox", `0 0 ${width} ${height}`);
-          // Mock 500-node graph (20 for perf; WebGL for full)
-          const nodes = Array.from({length:20},(_,i)=>({id:i,x:Math.random()*width,y:Math.random()*height,group:i%4}));
-          const links = nodes.slice(1).map((n,i)=>({source:0,target:i+1,value:Math.random()}));
-          const simulation = d3.forceSimulation(nodes)
-            .force("link",d3.forceLink(links).distance(30))
-            .force("charge",d3.forceManyBody().strength(-80))
-            .force("center",d3.forceCenter(width/2,height/2));
-          const link = svg.append("g").selectAll("line")
-            .data(links).join("line")
-            .attr("stroke","#58a6ff").attr("stroke-opacity",0.6);
-          const node = svg.append("g").selectAll("circle")
-            .data(nodes).join("circle")
-            .attr("r",5).attr("fill",d=>["#ff7f0e","#2ca02c","#1f77b4","#d62728"][d.group]);
-          simulation.on("tick",()=>{link
-            .attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
-            .attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
-            node.attr("cx",d=>d.x).attr("cy",d=>d.y);});
-          setInterval(()=>{node.attr("r",d=>5+Math.random()*3);
-            setTimeout(()=>node.attr("r",5),300);},800);
-        }
-        setTimeout(initTopology, 100);
+          const colors = ["#ff7f0e","#2ca02c","#1f77b4","#d62728"];
+          let simulation, link, node;
+
+          function updateTopology(data) {
+            const rawNodes = (data && data.nodes) ? data.nodes : [];
+            const nodes = rawNodes.map(function(d) {
+              return {id: d.id, x: d.x * width / 1000 || Math.random()*width,
+                      y: d.y * height / 500 || Math.random()*height, group: d.group || 0};
+            });
+            if (nodes.length === 0) {
+              for (var i=0; i<20; i++)
+                nodes.push({id:"n"+i,x:Math.random()*width,y:Math.random()*height,group:i%4});
+            }
+            // Build links: connect each node to nearest 2
+            var links = [];
+            for (var i=0; i<nodes.length; i++) {
+              var dists = [];
+              for (var j=0; j<nodes.length; j++) {
+                if (i===j) continue;
+                dists.push({j:j, d:Math.pow(nodes[i].x-nodes[j].x,2)+Math.pow(nodes[i].y-nodes[j].y,2)});
+              }
+              dists.sort(function(a,b){return a.d-b.d;});
+              for (var k=0; k<Math.min(2,dists.length); k++)
+                links.push({source:nodes[i].id, target:nodes[dists[k].j].id});
+            }
+            svg.selectAll("*").remove();
+            simulation = d3.forceSimulation(nodes)
+              .force("link", d3.forceLink(links).id(function(d){return d.id;}).distance(40))
+              .force("charge", d3.forceManyBody().strength(-60))
+              .force("center", d3.forceCenter(width/2,height/2));
+            link = svg.append("g").selectAll("line")
+              .data(links).join("line")
+              .attr("stroke","#58a6ff").attr("stroke-opacity",0.5).attr("stroke-width",0.5);
+            node = svg.append("g").selectAll("circle")
+              .data(nodes).join("circle")
+              .attr("r",4).attr("fill",function(d){return colors[d.group%4];});
+            simulation.on("tick",function(){
+              link.attr("x1",function(d){return d.source.x;}).attr("y1",function(d){return d.source.y;})
+                  .attr("x2",function(d){return d.target.x;}).attr("y2",function(d){return d.target.y;});
+              node.attr("cx",function(d){return d.x;}).attr("cy",function(d){return d.y;});
+            });
+            // Pulse animation for packet activity
+            setInterval(function(){node.attr("r",function(d){return 4+Math.random()*3;});
+              setTimeout(function(){node.attr("r",4);},300);},800);
+          }
+
+          function fetchTopology() {
+            fetch("/partial/topology-data", {headers:{"HX-Request":"true"}})
+              .then(function(r){return r.json();})
+              .then(updateTopology)
+              .catch(function(){updateTopology(null);});
+          }
+          fetchTopology();
+          setInterval(fetchTopology, 5000);
+
+          // Live updates via WebSocket
+          (function(){
+            var proto = location.protocol === "https:" ? "wss:" : "ws:";
+            var ws = new WebSocket(proto + "//" + location.host + "/ws");
+            ws.onmessage = function(e) {
+              try {
+                var msg = JSON.parse(e.data);
+                if (msg.event === "topology") updateTopology(msg.data);
+                if (msg.event === "metrics" && msg.data) {
+                  var m = msg.data;
+                  var el = document.querySelector("#mesh-stats-content");
+                  if (el) {
+                    el.innerHTML = "<div><strong>Nodes:</strong> " + (m.node_count || "—") + "</div>" +
+                      "<div><strong>PPS:</strong> " + (m.transmissions||0) + "</div>" +
+                      "<div><strong>Loss:</strong> " + (Math.round((m.collision_rate||0)*100*10)/10) + "%</div>" +
+                      "<div><strong>Hops:</strong> —</div>" +
+                      "<div><strong>GWs:</strong> —</div>" +
+                      "<div style='margin-top:0.5rem;font-size:0.8em;color:#58a6ff'>Live &#8226; WebSocket</div>";
+                  }
+                }
+              } catch(e) {}
+            };
+            ws.onclose = function(){setTimeout(function(){location.reload();},5000);};
+          })();
+        })();
       </script>
     </div>
 
@@ -420,16 +592,30 @@ def main() -> None:
         metavar="HOST",
         help="HTTP bind address (default: 127.0.0.1)",
     )
+    parser.add_argument(
+        "--sim-url",
+        default=None,
+        metavar="URL",
+        help="Simulator REST API URL for live data (e.g. http://localhost:9000)",
+    )
     args = parser.parse_args()
 
-    global _node_addr
+    global _node_addr, _sim_url
     _node_addr = f"coap://{args.node}"
+    _sim_url = args.sim_url
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     logger.info("Dashboard: http://%s:%d  →  CoAP node %s", args.bind, args.port, _node_addr)
+    if _sim_url:
+        logger.info("  Live data: %s", _sim_url)
 
-    app = create_app()
-    uvicorn.run(app, host=args.bind, port=args.port, log_level="warning")
+    config = uvicorn.Config(create_app(), host=args.bind, port=args.port, log_level="warning")
+    server = uvicorn.Server(config)
+
+    loop = asyncio.new_event_loop()
+    if _sim_url:
+        loop.create_task(_refresh_sim_data())
+    loop.run_until_complete(server.serve())
 
 
 if __name__ == "__main__":
