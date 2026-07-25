@@ -157,6 +157,9 @@ struct lichen_frame {
 	uint16_t seqnum;         /**< Sequence number (replay protection) */
 	uint8_t dst_addr[8];     /**< Destination address (0-8 bytes) */
 	uint8_t dst_addr_len;    /**< Destination address length */
+	uint8_t signer_iid[8];   /**< Signer IID (0-8 bytes) */
+	uint8_t signer_iid_len;  /**< Signer IID length (0 or 8) */
+	bool signer_iid_present; /**< Signer IID present in frame */
 	const uint8_t *_Nullable payload;  /**< Inner payload */
 	size_t payload_len;      /**< Inner payload length */
 	size_t inner_payload_len; /**< Same as payload_len; signature is in MIC */
@@ -352,7 +355,7 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
 uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
 #endif
 
-uint32_t lichen_hash_32(const uint8_t *data, size_t len);
+uint32_t lichen_hash_32(const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Select a LoRa channel per CCP-12 synchronized hopping.

@@ -93,7 +93,7 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	}
 
 	frame->epoch = data[off++];
-	frame->seqnum = ((uint16_t)data[off] << 8) | data[off + 1];
+	frame->seqnum = (uint16_t)(((uint16_t)data[off] << 8) | data[off + 1]);
 	off += 2;
 
 	/* Destination address */
