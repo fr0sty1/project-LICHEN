@@ -812,8 +812,6 @@ class SqliteOscoreContextStore:
                 if current is not None:
                     while current.cancelling():
                         current.uncancel()
-            except BaseException:
-                break
         return task.result()
 
     @staticmethod
