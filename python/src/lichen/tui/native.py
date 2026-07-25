@@ -9,6 +9,7 @@ import asyncio
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, ClassVar, Protocol
 
@@ -393,7 +394,18 @@ def field_line(name: str, value: str, status: str = "", width: int = 80) -> str:
 def message_preview(record: MessageRecord, *, unread: bool = False) -> MessagePreview:
     """Convert a normalized LCI message record into a compact terminal row."""
     target = record.sender or record.recipient or "--"
-    age = str(record.received or record.timestamp or "--")
+    ts = record.received or record.timestamp
+    if isinstance(ts, datetime):
+        age = ts.strftime("%H:%M")
+    elif isinstance(ts, int | float):
+        age = datetime.fromtimestamp(ts).strftime("%H:%M")
+    elif isinstance(ts, str):
+        try:
+            age = datetime.fromisoformat(ts).strftime("%H:%M")
+        except (ValueError, TypeError):
+            age = ts
+    else:
+        age = "--"
     state = "inbox" if record.sender else "sent"
     return MessagePreview(
         target=target,
@@ -462,14 +474,14 @@ def safe_float(value: object | None) -> float | None:
         return None
 
 
-def safe_int(value: object | None) -> int:
-    """Safely convert to int, defaulting to 0 on parse failure."""
+def safe_int(value: object | None, default: int = 0) -> int:
+    """Safely convert to int, returning default on parse failure."""
     if value is None:
-        return 0
+        return default
     try:
         return int(float(value))
     except (ValueError, TypeError, OverflowError):
-        return 0
+        return default
 
 
 def _is_sensitive_display_name(name: str) -> bool:
@@ -477,10 +489,7 @@ def _is_sensitive_display_name(name: str) -> bool:
     leaf = lowered.rsplit(".", maxsplit=1)[-1]
     if leaf == "frame":
         return True
-    return (
-        any(part in lowered for part in SENSITIVE_FIELD_PARTS)
-        and "fingerprint" not in lowered
-    )
+    return any(part in lowered for part in SENSITIVE_FIELD_PARTS) and "fingerprint" not in lowered
 
 
 def status_rows(state: DashboardState, width: int = 76) -> tuple[str, ...]:
@@ -688,9 +697,7 @@ def diagnostics_rows(state: DiagnosticsState, width: int = 76) -> tuple[Diagnost
         )
     rows = list(state.rows)
     if state.raw_available is not None:
-        rows.append(
-            DiagnosticRow("raw.admin", "enabled" if state.admin_enabled else "required")
-        )
+        rows.append(DiagnosticRow("raw.admin", "enabled" if state.admin_enabled else "required"))
         rows.append(
             DiagnosticRow("raw.resources", "available" if state.raw_available else "unsupported")
         )
@@ -1587,9 +1594,7 @@ class NativeClientApp(App[None]):  # type: ignore[misc]  # textual lacks py.type
         self._raw_rx_task: asyncio.Task[None] | None = None
         self.raw_diagnostics_admin_enabled = False
         self.mode_index = (
-            ModeNav.MODES.index(self.status.context)
-            if self.status.context in ModeNav.MODES
-            else 0
+            ModeNav.MODES.index(self.status.context) if self.status.context in ModeNav.MODES else 0
         )
         self.prompt_mode: str | None = None
 
@@ -2220,20 +2225,18 @@ class NativeClientApp(App[None]):  # type: ignore[misc]  # textual lacks py.type
             status = await self.client.get_status()
             radio_info = status.radio or {}
 
-            # Extract duty cycle info from radio status if available
-            duty_usage = float(radio_info.get("duty_cycle_usage_pct", 0.0))
-            duty_remaining = int(radio_info.get("duty_cycle_remaining_ms", 36000))
-            duty_refill = int(radio_info.get("duty_cycle_refill_ms", 0))
+            duty_usage = safe_float(radio_info.get("duty_cycle_usage_pct")) or 0.0
+            duty_remaining = safe_int(radio_info.get("duty_cycle_remaining_ms"), 36000)
+            duty_refill = safe_int(radio_info.get("duty_cycle_refill_ms"))
 
-            # Extract TX queue info if available
             queue_info = radio_info.get("tx_queue", {})
             depth_by_priority = tuple(
-                (int(k), int(v))
+                (safe_int(k) or 0, safe_int(v) or 0)
                 for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
             )
-            total_bytes = int(queue_info.get("total_bytes", 0))
-            drain_time = int(queue_info.get("drain_time_ms", 0))
-            oldest_age = int(queue_info.get("oldest_age_ms", 0))
+            total_bytes = safe_int(queue_info.get("total_bytes"))
+            drain_time = safe_int(queue_info.get("drain_time_ms"))
+            oldest_age = safe_int(queue_info.get("oldest_age_ms"))
 
             self._set_radio_state(
                 RadioTuiState(

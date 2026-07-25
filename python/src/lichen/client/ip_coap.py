@@ -10,10 +10,10 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, Protocol, Self
 
-import aiocoap
+import aiocoap  # type: ignore[import-untyped]  # no official stubs
 import cbor2
 from aiocoap import Message
-from aiocoap.numbers import ContentFormat
+from aiocoap.numbers import ContentFormat  # type: ignore[import-untyped]
 
 from lichen.client.lci import ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
@@ -196,7 +196,7 @@ class AiocoapResourceSubscription(ResourceSubscription):
         if self._last_seq is None:
             self._last_seq = seq
             return True
-        diff = (seq - self._last_seq) & 0xffffff
+        diff = (seq - self._last_seq) & 0xFFFFFF
         if 0 < diff < 0x800000:
             self._last_seq = seq
             return True

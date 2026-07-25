@@ -153,9 +153,7 @@ class MeshtasticGattService:
                     self._write_buffer.extend(chunk)
                     return None
                 self._write_buffer.extend(chunk[:header_bytes_needed])
-                self._write_expected_len = struct.unpack(
-                    "<H", self._write_buffer[:2]
-                )[0]
+                self._write_expected_len = struct.unpack("<H", self._write_buffer[:2])[0]
                 self._write_buffer.clear()
                 if len(chunk) > header_bytes_needed:
                     self._write_buffer.extend(chunk[header_bytes_needed:])

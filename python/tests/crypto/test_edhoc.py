@@ -5,6 +5,7 @@
 import cbor2
 import pytest
 
+import lichen.crypto.edhoc as edhoc_module
 from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder, Method
 from lichen.crypto.identity import Identity
 
@@ -41,9 +42,7 @@ def _assert_session_material_cleared(role: EdhocInitiator | EdhocResponder) -> N
     for name in fields:
         assert getattr(role, name) == b""
     peer_fields = (
-        ("_g_y", "_c_i", "_c_r")
-        if isinstance(role, EdhocInitiator)
-        else ("_g_x", "_c_i", "_c_r")
+        ("_g_y", "_c_i", "_c_r") if isinstance(role, EdhocInitiator) else ("_g_x", "_c_i", "_c_r")
     )
     for name in peer_fields:
         assert getattr(role, name) == b""
@@ -124,12 +123,8 @@ class TestEdhocHandshake:
         responder_id = Identity.generate()
 
         # Initiator uses SIGN_STATIC, responder expects SIGN_SIGN
-        initiator = EdhocInitiator.create(
-            initiator_id, c_i=b"\x00", method=Method.SIGN_STATIC
-        )
-        responder = EdhocResponder.create(
-            responder_id, c_r=b"\x01", method=Method.SIGN_SIGN
-        )
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00", method=Method.SIGN_STATIC)
+        responder = EdhocResponder.create(responder_id, c_r=b"\x01", method=Method.SIGN_SIGN)
 
         msg1 = initiator.create_message_1()
 
@@ -399,6 +394,7 @@ class TestEdhocValidation:
             b"",
             b"\x58",
             _sequence(1, 0, b"x" * 32),
+            _sequence(4, 0, b"x" * 32, b"\x00"),
             _sequence(True, 0, b"x" * 32, b"\x00"),
             _sequence(1.0, 0, b"x" * 32, b"\x00"),
             _sequence(1, 1, b"x" * 32, b"\x00"),
@@ -414,6 +410,7 @@ class TestEdhocValidation:
             "empty",
             "truncated",
             "too-few-items",
+            "method-corr",
             "method-corr-bool",
             "method-corr-float",
             "suite",
@@ -440,9 +437,7 @@ class TestEdhocValidation:
         with pytest.raises(ValueError):
             responder.export_oscore()
 
-    def test_invalid_method_is_rejected_before_dh(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_invalid_method_is_rejected_before_dh(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def unexpected_dh(_private_key: bytes, _public_key: bytes) -> bytes:
             raise AssertionError("DH must not run for an invalid METHOD_CORR")
 
@@ -451,7 +446,7 @@ class TestEdhocValidation:
 
         with pytest.raises(ValueError, match="METHOD_CORR"):
             responder.process_message_1(
-                _sequence(0, 0, b"x" * 32, b"\x00"),
+            _sequence(4, 0, b"x" * 32, b"\x00"),
                 Identity.generate().pubkey,
             )
 
@@ -498,9 +493,7 @@ class TestEdhocValidation:
         with pytest.raises(ValueError):
             initiator.export_oscore()
 
-    @pytest.mark.parametrize(
-        "failure", ["empty", "truncated", "ciphertext", "signature", "key"]
-    )
+    @pytest.mark.parametrize("failure", ["empty", "truncated", "ciphertext", "signature", "key"])
     def test_bad_message_3_fails_without_commit_or_retry(
         self, failure: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -514,6 +507,7 @@ class TestEdhocValidation:
         elif failure == "ciphertext":
             bad_msg3 = bytes([msg3[0] ^ 1]) + msg3[1:]
         elif failure == "signature":
+
             class RejectingVerifyKey:
                 def __init__(self, _key: bytes) -> None:
                     pass

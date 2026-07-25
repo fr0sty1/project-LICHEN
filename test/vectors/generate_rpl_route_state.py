@@ -162,7 +162,8 @@ def unsupported_option(option_type: int, data: bytes = b"") -> dict:
 def transit(
     parent: str, sequence: int, lifetime: int, control: int, *, external: bool = False
 ) -> dict:
-    encoded = bytes([6, 20, 0x80 if external else 0, control, sequence, lifetime]) + bytes.fromhex(
+    e_flag = 0x80 if parent != DODAG else 0x00
+    encoded = bytes([6, 20, e_flag, control, sequence, lifetime]) + bytes.fromhex(
         parent
     )
     return {

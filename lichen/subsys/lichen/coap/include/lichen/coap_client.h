@@ -20,22 +20,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <zephyr/net/coap.h>
+#include <lichen/compiler.h>
 
 #if defined(CONFIG_LICHEN_COAP_CLIENT_OSCORE) || defined(__DOXYGEN__)
 #include <lichen/oscore.h>
-#endif
-
-/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
-#ifndef __has_feature
-#define __has_feature(x) 0
-#endif
-#if !defined(__clang__) || !__has_feature(nullability)
-#ifndef _Nonnull
-#define _Nonnull
-#endif
-#ifndef _Nullable
-#define _Nullable
-#endif
 #endif
 
 #ifdef __cplusplus

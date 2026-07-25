@@ -30,8 +30,10 @@ def test_header_to_bytes_known_vector() -> None:
         bytes([0x60, 0x00, 0x00, 0x00])  # version 6, tc 0, flow 0
         + bytes([0x00, 0x00])  # payload length 0
         + bytes([0x3A, 0x40])  # next header 58 (ICMPv6), hop limit 64
-        + bytes(15) + bytes([0x01])  # ::1
-        + bytes(15) + bytes([0x02])  # ::2
+        + bytes(15)
+        + bytes([0x01])  # ::1
+        + bytes(15)
+        + bytes([0x02])  # ::2
     )
     assert hdr.to_bytes() == expected
     assert len(hdr.to_bytes()) == HEADER_LENGTH
@@ -159,6 +161,39 @@ def test_packet_rejects_truncated_payload() -> None:
         IPv6Packet.from_bytes(hdr.to_bytes() + b"short")
 
 
+def test_packet_from_bytes_ignores_trailing_data_by_default() -> None:
+    pkt = IPv6Packet(
+        header=IPv6Header("fe80::1", "fe80::2", NextHeader.UDP),
+        payload=b"hello",
+    )
+    raw = pkt.to_bytes()
+    padded = raw + b"trailing"
+    parsed = IPv6Packet.from_bytes(padded)
+    assert parsed.payload == b"hello"
+    assert parsed.header.next_header == NextHeader.UDP
+
+
+def test_packet_from_bytes_strict_rejects_trailing_data() -> None:
+    pkt = IPv6Packet(
+        header=IPv6Header("fe80::1", "fe80::2", NextHeader.UDP),
+        payload=b"hello",
+    )
+    raw = pkt.to_bytes()
+    padded = raw + b"trailing"
+    with pytest.raises(PacketError, match="trailing"):
+        IPv6Packet.from_bytes(padded, strict=True)
+
+
+def test_packet_from_bytes_strict_accepts_exact_data() -> None:
+    pkt = IPv6Packet(
+        header=IPv6Header("fe80::1", "fe80::2", NextHeader.UDP),
+        payload=b"hello",
+    )
+    raw = pkt.to_bytes()
+    parsed = IPv6Packet.from_bytes(raw, strict=True)
+    assert parsed.payload == b"hello"
+
+
 def test_packet_rejects_oversized_payload() -> None:
     pkt = IPv6Packet(
         header=IPv6Header("::1", "::2", NextHeader.UDP),
@@ -166,9 +201,7 @@ def test_packet_rejects_oversized_payload() -> None:
     )
     with pytest.raises(PacketError):
         pkt.to_bytes()
-    ext = ExtensionHeader(
-        header_type=NextHeader.HOP_BY_HOP, data=b"\x00" * 6
-    )
+    ext = ExtensionHeader(header_type=NextHeader.HOP_BY_HOP, data=b"\x00" * 6)
     pkt = IPv6Packet(
         header=IPv6Header("::1", "::2", NextHeader.UDP),
         payload=b"x" * 65530,

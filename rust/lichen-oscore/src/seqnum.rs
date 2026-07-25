@@ -185,9 +185,9 @@ mod tests {
 
     #[test]
     fn increment_near_max_succeeds() {
-        let seq = OscoreSeqNum::new(OscoreSeqNum::MAX - 1).unwrap();
+        let seq = OscoreSeqNum::new((u32::MAX - 1) as u64).unwrap();
         let next = seq.increment().expect("should succeed at MAX-1");
-        assert_eq!(next.get(), OscoreSeqNum::MAX);
+        assert_eq!(next.get(), u32::MAX as u64);
     }
 
     #[test]

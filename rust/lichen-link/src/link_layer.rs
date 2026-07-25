@@ -393,12 +393,12 @@ impl LinkLayer {
     pub fn forget_peer(&mut self, iid: &[u8; 8]) {
         let peer_key = self.peers.remove(iid).map(|peer| peer.identity.pubkey);
         let pinned_key = self.pinned.remove(iid);
-        if let Some(ref key) = peer_key {
-            self.replay.reset_peer(key);
+        if let Some(key) = peer_key {
+            self.replay.reset_peer(&key);
         }
-        if let Some(ref pinned) = pinned_key {
-            if peer_key.as_ref() != Some(&pinned.pubkey) {
-                self.replay.reset_peer(&pinned.pubkey);
+        if let Some(key) = pinned_key {
+            if Some(key.pubkey) != peer_key {
+                self.replay.reset_peer(&key.pubkey);
             }
         }
     }

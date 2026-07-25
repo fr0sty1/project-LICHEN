@@ -21,9 +21,8 @@ import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
-from lichen.link.frame import AddrMode, LichenFrame
+from lichen.link.frame import AddrMode, FrameError, LichenFrame
 from lichen.link.link_layer import (
-    PLACEHOLDER_MIC,
     ReceiveError,
     RxFrame,
     SIGNATURE_LENGTH,
@@ -54,7 +53,7 @@ class MockRadio:
         self.cad_started: asyncio.Event | None = None
         self.cad_release: asyncio.Event | None = None
 
-    async def transmit(self, payload: bytes) -> bool:
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
         """Record transmitted frames."""
         self.active_transmits += 1
         self.max_active_transmits = max(self.max_active_transmits, self.active_transmits)
@@ -67,9 +66,7 @@ class MockRadio:
             if self.transmit_release is not None:
                 await self.transmit_release.wait()
             result = (
-                self.transmit_results.pop(0)
-                if self.transmit_results
-                else self.transmit_returns
+                self.transmit_results.pop(0) if self.transmit_results else self.transmit_returns
             )
             if result:
                 self.tx_history.append(payload)
@@ -77,7 +74,7 @@ class MockRadio:
         finally:
             self.active_transmits -= 1
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
+    async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
         """Return next queued frame or None."""
         if self.rx_queue:
             return self.rx_queue.pop(0)
@@ -87,7 +84,7 @@ class MockRadio:
         """No-op for mock."""
         pass
 
-    async def cad(self, timeout_ms: int) -> bool:
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
         """Return configured CAD result (default: channel clear)."""
         if self.cad_started is not None:
             self.cad_started.set()
@@ -196,9 +193,7 @@ class TestLinkLayerTx:
         payload = bytes.fromhex("0a0b")
 
         with_address = link_layer._build_signable_data(0, 0, address, payload, 62, 0x22)
-        without_address = link_layer._build_signable_data(
-            0, 0, b"", address + payload, 62, 0x20
-        )
+        without_address = link_layer._build_signable_data(0, 0, b"", address + payload, 62, 0x20)
 
         assert with_address == b">\x22\x00\x00\x00\x08" + address + payload
         assert without_address == b">\x20\x00\x00\x00\x00" + (address + payload)
@@ -271,9 +266,11 @@ class TestLinkLayerTx:
         assert frames[1].seqnum == 0
 
     @pytest.mark.asyncio
-    async def test_signing_failure_consumes_tuple(
+    async def test_signing_failure_does_not_consume_tuple(
         self, link_layer: LinkLayer, monkeypatch: pytest.MonkeyPatch
     ):
+        """Signing failure before queue push must not consume the tuple."""
+
         class SigningError(Exception):
             pass
 
@@ -283,9 +280,10 @@ class TestLinkLayerTx:
         monkeypatch.setattr("lichen.link.link_layer.sign", fail_sign)
         with pytest.raises(SigningError):
             await link_layer.send(b"payload")
-        assert link_layer.get_sequence() == (0, 1)
-        with pytest.raises(RuntimeError, match="cannot be reset after use"):
-            link_layer.set_sequence(0, 0)
+        # Tuple NOT consumed — signing happens before _next_seqnum()
+        assert link_layer.get_sequence() == (0, 0)
+        # _sequence_started was never set, so reset is allowed
+        link_layer.set_sequence(0, 0)
 
     @pytest.mark.asyncio
     async def test_terminal_tuple_is_used_once_then_exhausts(
@@ -299,7 +297,7 @@ class TestLinkLayerTx:
 
         with pytest.raises(OverflowError, match="sequence exhausted"):
             link_layer.get_sequence()
-        with pytest.raises(OverflowError, match="sequence exhausted"):
+        with pytest.raises(OverflowError, match="tuple exhaustion"):
             await link_layer.send(b"reused")
         frames = [LichenFrame.from_bytes(data) for data in mock_radio.tx_history]
         assert [(frame.epoch, frame.seqnum) for frame in frames] == [
@@ -338,8 +336,8 @@ class TestLinkLayerTx:
         sequence = link_layer.get_sequence()
         queue_len = len(link_layer.tx_queue)
 
-        with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
-            await link_layer.send(b"\xaa" * 203)
+        with pytest.raises(FrameError, match="frame body is 256 bytes, exceeds 255"):
+            await link_layer.send(b"\xaa" * 204)
 
         assert link_layer.get_sequence() == sequence
         assert len(link_layer.tx_queue) == queue_len
@@ -435,10 +433,13 @@ class TestLinkLayerRx:
         payload = b"test"
 
         # Build valid signed frame
+        # Signable: LENGTH || LLSec || EPO || SEQ || DST_LEN(1) || DST || PLD
+        # length = 4 + dst_addr(0) + payload(4) + sig(48) = 56 = 0x38
         signable = (
             bytes([0x38, 0x20, 0])
             + (0).to_bytes(2, "big")  # seqnum
-            + b""  # dst_addr
+            + bytes([0])              # dst_addr length (0 = broadcast)
+            + b""                      # dst_addr
             + payload
         )
         signature = sign(peer_identity.privkey, peer_identity.pubkey, signable)
@@ -476,6 +477,7 @@ class TestLinkLayerRoundTrip:
         node_identity: Identity,
     ):
         """Node can receive its own signed frames (loopback)."""
+
         # Create link layer that knows about itself
         def self_lookup(hint: bytes) -> PeerIdentity | None:
             return PeerIdentity.from_pubkey(node_identity.pubkey)
@@ -506,6 +508,7 @@ class TestLinkLayerRoundTrip:
         peer_identity: Identity,
     ):
         """Frame from peer is accepted with valid signature."""
+
         # Create peer's link layer
         def no_lookup(hint: bytes) -> PeerIdentity | None:
             return None
@@ -545,29 +548,35 @@ class TestLinkLayerRoundTrip:
         node_identity: Identity,
         peer_identity: Identity,
     ):
-        """Frame from IID with mismatched pinned key returns KEY_CHANGE."""
-        no_lookup = lambda _: None
-        peer_ll = LinkLayer(
-            radio=MockRadio(),
-            identity=peer_identity,
-            peer_lookup=no_lookup,
-        )
-        await peer_ll.send(b"peer frame")
-        peer_frame_bytes = peer_ll.radio.tx_history[0]
+        """Overwriting pinned key then receiving from same peer yields KEY_CHANGE."""
+        peer_radio = MockRadio()
 
-        peer_id = PeerIdentity.from_pubkey(peer_identity.pubkey)
+        def peer_lookup(hint: bytes) -> PeerIdentity | None:
+            return PeerIdentity.from_pubkey(peer_identity.pubkey)
 
         node_ll = LinkLayer(
             radio=mock_radio,
             identity=node_identity,
-            peer_lookup=lambda _: peer_id,
+            peer_lookup=peer_lookup,
         )
 
-        node_ll._pinned_keys[peer_id.iid] = bytes([0x99] * 32)
+        peer_ll = LinkLayer(
+            radio=peer_radio,
+            identity=peer_identity,
+            peer_lookup=lambda h: None,
+        )
 
-        mock_radio.queue_rx(peer_frame_bytes)
+        await peer_ll.send(b"first")
+        mock_radio.queue_rx(peer_radio.tx_history[0])
         result = await node_ll.receive(timeout_ms=100)
-        assert result == ReceiveError.KEY_CHANGE
+        assert isinstance(result, RxFrame)
+
+        node_ll._pinned_keys[peer_identity.iid] = bytes([0x99] * 32)
+
+        await peer_ll.send(b"second")
+        mock_radio.queue_rx(peer_radio.tx_history[0])
+        result2 = await node_ll.receive(timeout_ms=100)
+        assert result2 == ReceiveError.KEY_CHANGE
 
 
 class TestSequenceManagement:
@@ -628,6 +637,7 @@ class TestSequenceManagement:
             link_layer.set_sequence(0, 0)
 
         assert link_layer.get_sequence() == (0, 1)
+
 
 class TestLinkLayerConstruction:
     """Tests for LinkLayer construction and validation."""
@@ -704,9 +714,7 @@ class TestTxQueueIntegration:
         assert len(mock_radio.tx_history) == 2
 
     @pytest.mark.asyncio
-    async def test_priority_ordering_on_drain(
-        self, mock_radio: MockRadio, node_identity: Identity
-    ):
+    async def test_priority_ordering_on_drain(self, mock_radio: MockRadio, node_identity: Identity):
         """Higher priority packets are transmitted first."""
 
         def no_lookup(hint: bytes) -> PeerIdentity | None:
@@ -734,9 +742,7 @@ class TestTxQueueIntegration:
         assert len(mock_radio.tx_history) == 3
 
     @pytest.mark.asyncio
-    async def test_queue_full_raises_error(
-        self, mock_radio: MockRadio, node_identity: Identity
-    ):
+    async def test_queue_full_raises_error(self, mock_radio: MockRadio, node_identity: Identity):
         """QueueFullError raised when queue is full and can't preempt."""
 
         def no_lookup(hint: bytes) -> PeerIdentity | None:
@@ -818,9 +824,7 @@ class TestTxQueueIntegration:
         assert len(ll.tx_queue) == 1
 
     @pytest.mark.asyncio
-    async def test_high_priority_preempts_low(
-        self, mock_radio: MockRadio, node_identity: Identity
-    ):
+    async def test_high_priority_preempts_low(self, mock_radio: MockRadio, node_identity: Identity):
         """High priority packet preempts low priority when full."""
 
         def no_lookup(hint: bytes) -> PeerIdentity | None:

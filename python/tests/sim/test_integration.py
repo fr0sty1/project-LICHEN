@@ -42,9 +42,7 @@ class TestTwoNodeTxRx:
     """Integration tests for two-node communication."""
 
     @pytest.mark.asyncio
-    async def test_basic_tx_rx(
-        self, simulator_server: tuple[SimulatorServer, Simulation]
-    ) -> None:
+    async def test_basic_tx_rx(self, simulator_server: tuple[SimulatorServer, Simulation]) -> None:
         """Node A transmits, Node B receives with correct RSSI.
 
         This is the fundamental integration test: proves the full stack works
@@ -57,11 +55,10 @@ class TestTwoNodeTxRx:
 
         # Create two nodes at different positions
         # Node A at origin, Node B at 100m away
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-b", (100.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-b", (100.0, 0.0, 0.0)) as radio_b,
+        ):
             # Node A transmits first
             # Note: In barrier sync mode, TX must complete before RX can see it
             payload = b"Hello from A!"
@@ -91,11 +88,10 @@ class TestTwoNodeTxRx:
         node_port = server.get_node_server_port("test-sim")
         assert node_port is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             # A -> B
             await radio_a.transmit(b"Hello B")
             result = await radio_b.receive(1000)
@@ -125,11 +121,10 @@ class TestTwoNodeTxRx:
 
         # Place nodes very far apart (50km - beyond LoRa range with default model)
         # Max range at 22dBm is ~32km, so 50km should be out of range
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-b", (50000.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-b", (50000.0, 0.0, 0.0)) as radio_b,
+        ):
             # Node A transmits
             await radio_a.transmit(b"Hello")
 
@@ -153,11 +148,10 @@ class TestTwoNodeTxRx:
         node_port = server.get_node_server_port("test-sim")
         assert node_port is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             # First TX/RX works
             await radio_a.transmit(b"First")
             result = await radio_b.receive(1000)
@@ -197,11 +191,12 @@ class TestRssiAccuracy:
             assert test_port is not None
 
             try:
-                async with SimRadio(
-                    "127.0.0.1", test_port, sim_id, "tx", (0.0, 0.0, 0.0)
-                ) as radio_tx, SimRadio(
-                    "127.0.0.1", test_port, sim_id, "rx", (distance, 0.0, 0.0)
-                ) as radio_rx:
+                async with (
+                    SimRadio("127.0.0.1", test_port, sim_id, "tx", (0.0, 0.0, 0.0)) as radio_tx,
+                    SimRadio(
+                        "127.0.0.1", test_port, sim_id, "rx", (distance, 0.0, 0.0)
+                    ) as radio_rx,
+                ):
                     await radio_tx.transmit(b"test")
                     result = await radio_rx.receive(1000)
 
@@ -211,8 +206,7 @@ class TestRssiAccuracy:
                         assert result is not None, f"Failed at {distance}m"
                         _, rssi, _ = result
                         assert abs(rssi - expected_rssi) < 1.0, (
-                            f"RSSI mismatch at {distance}m: "
-                            f"got {rssi}, expected {expected_rssi}"
+                            f"RSSI mismatch at {distance}m: got {rssi}, expected {expected_rssi}"
                         )
                     else:
                         # Too far, should timeout
@@ -231,11 +225,10 @@ class TestRssiAccuracy:
         assert node_port is not None
 
         # Very close nodes (10m)
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-b", (10.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-b", (10.0, 0.0, 0.0)) as radio_b,
+        ):
             await radio_a.transmit(b"test")
             result = await radio_b.receive(1000)
 
@@ -249,9 +242,7 @@ class TestSimulationTime:
     """Tests for simulation time queries."""
 
     @pytest.mark.asyncio
-    async def test_get_time(
-        self, simulator_server: tuple[SimulatorServer, Simulation]
-    ) -> None:
+    async def test_get_time(self, simulator_server: tuple[SimulatorServer, Simulation]) -> None:
         """Nodes can query current simulation time."""
         server, sim = simulator_server
 
@@ -306,9 +297,7 @@ class TestConnectionManagement:
         node_port = server.get_node_server_port("test-sim")
         assert node_port is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)
-        ):
+        async with SimRadio("127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)):
             # Node should be connected
             node = sim.get_node("node-a")
             assert node is not None
@@ -334,13 +323,11 @@ class TestConnectionManagement:
         node_port = server.get_node_server_port("test-sim")
         assert node_port is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-b", (10.0, 0.0, 0.0)
-        ) as radio_b, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "node-c", (20.0, 0.0, 0.0)
-        ) as radio_c:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-b", (10.0, 0.0, 0.0)) as radio_b,
+            SimRadio("127.0.0.1", node_port, "test-sim", "node-c", (20.0, 0.0, 0.0)) as radio_c,
+        ):
             # All three nodes should be connected
             assert sim.get_connected_node_count() == 3
 
@@ -369,13 +356,11 @@ class TestCollisionAndCaptureEffect:
         assert node_port is not None
 
         # Receiver at origin, two transmitters equidistant (100m each)
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (0.0, 0.0, 0.0)
-        ) as radio_rx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx1", (100.0, 0.0, 0.0)
-        ) as radio_tx1, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx2", (-100.0, 0.0, 0.0)
-        ) as radio_tx2:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (0.0, 0.0, 0.0)) as radio_rx,
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx1", (100.0, 0.0, 0.0)) as radio_tx1,
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx2", (-100.0, 0.0, 0.0)) as radio_tx2,
+        ):
             # Both transmit simultaneously (at sim time 0)
             await radio_tx1.transmit(b"from tx1")
             await radio_tx2.transmit(b"from tx2")
@@ -395,13 +380,15 @@ class TestCollisionAndCaptureEffect:
 
         # Receiver at origin
         # Strong TX at 50m, weak TX at 500m (~27dB difference, well above 6dB)
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (0.0, 0.0, 0.0)
-        ) as radio_rx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx_strong", (50.0, 0.0, 0.0)
-        ) as radio_strong, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx_weak", (500.0, 0.0, 0.0)
-        ) as radio_weak:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (0.0, 0.0, 0.0)) as radio_rx,
+            SimRadio(
+                "127.0.0.1", node_port, "test-sim", "tx_strong", (50.0, 0.0, 0.0)
+            ) as radio_strong,
+            SimRadio(
+                "127.0.0.1", node_port, "test-sim", "tx_weak", (500.0, 0.0, 0.0)
+            ) as radio_weak,
+        ):
             # Both transmit
             await radio_strong.transmit(b"STRONG")
             await radio_weak.transmit(b"weak")
@@ -422,13 +409,11 @@ class TestCollisionAndCaptureEffect:
 
         # Receiver at origin
         # TX1 at 100m, TX2 at ~130m (gives ~3dB difference, below 6dB threshold)
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (0.0, 0.0, 0.0)
-        ) as radio_rx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx1", (100.0, 0.0, 0.0)
-        ) as radio_tx1, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx2", (-130.0, 0.0, 0.0)
-        ) as radio_tx2:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (0.0, 0.0, 0.0)) as radio_rx,
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx1", (100.0, 0.0, 0.0)) as radio_tx1,
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx2", (-130.0, 0.0, 0.0)) as radio_tx2,
+        ):
             # Both transmit
             await radio_tx1.transmit(b"tx1")
             await radio_tx2.transmit(b"tx2")
@@ -452,11 +437,10 @@ class TestNodeMobility:
 
         propagation = PropagationModel()
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (100.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (100.0, 0.0, 0.0)) as radio_rx,
+        ):
             # First transmission at 100m
             await radio_tx.transmit(b"test")
             result1 = await radio_rx.receive(1000)
@@ -492,11 +476,10 @@ class TestNodeMobility:
         node_port = server.get_node_server_port("test-sim")
         assert node_port is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (100.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (100.0, 0.0, 0.0)) as radio_rx,
+        ):
             # First transmission at 100m - should work
             await radio_tx.transmit(b"test")
             result1 = await radio_rx.receive(1000)
@@ -521,11 +504,10 @@ class TestNodeMobility:
         node_port = server.get_node_server_port("test-sim")
         assert node_port is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (100.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (100.0, 0.0, 0.0)) as radio_rx,
+        ):
             rx_node = sim.get_node("rx")
             assert rx_node is not None
 
@@ -562,11 +544,10 @@ class TestChaosMonkeyOperations:
         chaos_engine = server._api._chaos_engines.get("test-sim")
         assert chaos_engine is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (50.0, 0.0, 0.0)) as radio_rx,
+        ):
             # Baseline: packets work
             await radio_tx.transmit(b"before")
             result = await radio_rx.receive(1000)
@@ -574,6 +555,7 @@ class TestChaosMonkeyOperations:
 
             # Add drop rule for tx node
             from lichen.sim.chaos import DropRule
+
             drop_rule = DropRule(node_id="tx", direction="tx")
             chaos_engine.add_rule(drop_rule)
 
@@ -602,13 +584,11 @@ class TestChaosMonkeyOperations:
         chaos_engine = server._api._chaos_engines.get("test-sim")
         assert chaos_engine is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "a1", (0.0, 0.0, 0.0)
-        ) as radio_a1, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "a2", (10.0, 0.0, 0.0)
-        ) as radio_a2, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "b1", (20.0, 0.0, 0.0)
-        ) as radio_b1:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "a1", (0.0, 0.0, 0.0)) as radio_a1,
+            SimRadio("127.0.0.1", node_port, "test-sim", "a2", (10.0, 0.0, 0.0)) as radio_a2,
+            SimRadio("127.0.0.1", node_port, "test-sim", "b1", (20.0, 0.0, 0.0)) as radio_b1,
+        ):
             # Baseline: all can communicate
             await radio_a1.transmit(b"to a2")
             assert await radio_a2.receive(1000) is not None
@@ -618,6 +598,7 @@ class TestChaosMonkeyOperations:
 
             # Add partition: group A = {a1, a2}, group B = {b1}
             from lichen.sim.chaos import PartitionRule
+
             partition = PartitionRule(groups=[{"a1", "a2"}, {"b1"}])
             chaos_engine.add_rule(partition)
 
@@ -643,11 +624,10 @@ class TestChaosMonkeyOperations:
         chaos_engine = server._api._chaos_engines.get("test-sim")
         assert chaos_engine is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "test-sim", "rx", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "test-sim", "tx", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "test-sim", "rx", (50.0, 0.0, 0.0)) as radio_rx,
+        ):
             # Baseline RSSI
             await radio_tx.transmit(b"test")
             result1 = await radio_rx.receive(1000)
@@ -656,6 +636,7 @@ class TestChaosMonkeyOperations:
 
             # Add 20dB degradation
             from lichen.sim.chaos import DegradeRule
+
             degrade = DegradeRule(node_id="tx", rssi_penalty_db=20.0)
             chaos_engine.add_rule(degrade)
 

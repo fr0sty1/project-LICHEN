@@ -47,7 +47,6 @@ from lichen.l2_payload import (
 )
 from lichen.link.link_layer import LinkLayer, ReceiveError, RxFrame
 from lichen.radio.base import Radio
-from lichen.rpl.dodag import DodagState
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
 from lichen.state_machine import StateMachine
@@ -117,6 +116,7 @@ class NodeConfig:
     pending_timeout_ms: int = 5_000
     rreq_jitter_min_ms: int = 0
     rreq_jitter_max_ms: int = 100
+    persist_path: str | None = None
 
 
 @dataclass
@@ -149,10 +149,11 @@ class Node:
     gradient_table: GradientTable = field(default_factory=GradientTable)
     router: Router = field(init=False, repr=False)
     announce_processor: AnnounceProcessor = field(init=False, repr=False)
-    dodag: DodagState | None = field(default=None, repr=False)
 
     # Peer database - nodes we know about
     peer_db: dict[bytes, PeerIdentity] = field(default_factory=dict, repr=False)
+    # Per-peer RX channel from announces (CCP-9 rendezvous)
+    _peer_rx_channel: dict[bytes, int] = field(default_factory=dict, repr=False)
 
     # Lifecycle state
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
@@ -193,6 +194,7 @@ class Node:
             identity=self.identity,
             peer_lookup=self._peer_lookup,
             peer_lookup_all=lambda: list(self.peer_db.values()),
+            persist_path=self.config.persist_path,
         )
 
         self.router = Router(
@@ -257,8 +259,11 @@ class Node:
 
         Why a method on Node: Node owns the link layer. Scheduler calls this
         to actually send the announce bytes over the air.
+
+        Announces are sent on the control channel (CH0) per CCP-9 so that
+        unknown peers can discover this node.
         """
-        return await self.link.send(wrap_routing_payload(data))
+        return await self.link.send(wrap_routing_payload(data), channel=0)
 
     def set_on_receive(self, callback: Callable[[bytes, PeerIdentity], None]) -> None:
         """Set callback for received application data.
@@ -355,9 +360,7 @@ class Node:
         if task is not None and task.done():
             task.result()
 
-    async def _cleanup_started(
-        self, *, adapter: bool, scheduler: bool
-    ) -> BaseException | None:
+    async def _cleanup_started(self, *, adapter: bool, scheduler: bool) -> BaseException | None:
         error: BaseException | None = None
         if adapter and self._meshtastic_adapter is not None:
             try:
@@ -391,11 +394,15 @@ class Node:
         """
         while True:
             try:
-                rx = await self.link.receive(self.config.receive_timeout_ms)
+                rx = await self.link.receive(self.config.receive_timeout_ms, channel=0)
                 if rx is not None and not isinstance(rx, ReceiveError):
                     await self._process_received(rx)
                 elif isinstance(rx, ReceiveError):
-                    if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):
+                    if rx in (
+                        ReceiveError.KEY_CHANGE,
+                        ReceiveError.REPLAY,
+                        ReceiveError.MIC_FAILED,
+                    ):
                         logger.warning("link RX security event: %s", rx)
                     else:
                         logger.debug("link RX rejected: %s", rx)
@@ -415,11 +422,7 @@ class Node:
         kind = classify_l2_payload(payload)
         body = l2_payload_body(payload)
 
-        if (
-            kind == L2PayloadKind.ROUTING
-            and len(body) > 0
-            and body[0] == L2_ROUTING_TYPE_ANNOUNCE
-        ):
+        if kind == L2PayloadKind.ROUTING and len(body) > 0 and body[0] == L2_ROUTING_TYPE_ANNOUNCE:
             await self._process_announce(body, rx.sender, rx.rssi_dbm)
             return
 
@@ -452,11 +455,14 @@ class Node:
                 # Why half: amortizes eviction cost while keeping recent entries.
                 for _ in range(RELAY_SEEN_MAX_SIZE // 2):
                     self._relay_seen.popitem(last=False)
-            await self.link.send(payload)
+            ch = self.link.select_channel(
+                dst_addr=rx.sender.iid,
+                peer_rx_channel=self._peer_rx_channel.get(rx.sender.iid),
+                known_peer=rx.sender.iid in self._peer_rx_channel,
+            )
+            await self.link.send(payload, channel=ch)
 
-    async def _process_announce(
-        self, payload: bytes, sender: PeerIdentity, rssi_dbm: int
-    ) -> None:
+    async def _process_announce(self, payload: bytes, sender: PeerIdentity, rssi_dbm: int) -> None:
         """Process an announce message.
 
         Why async: May need to relay the announce.
@@ -483,6 +489,9 @@ class Node:
             if result.peer:
                 self.add_peer(result.peer)
 
+            # Track peer's RX channel for CCP-9 rendezvous
+            self._peer_rx_channel[sender.iid] = announce.rx_channel
+
             # Relay if needed
             if result.should_relay:
                 await self._relay_announce(announce)
@@ -491,12 +500,13 @@ class Node:
         """Relay an announce to neighbors.
 
         Why separate method: Relay involves incrementing hop count and resending.
+        Relays are sent on control channel (CH0) so unknown neighbors can hear.
         """
         relay = self.announce_processor.get_relay_message(announce)
         if relay is None:
             return
 
-        success = await self.link.send(wrap_routing_payload(relay.to_bytes()))
+        success = await self.link.send(wrap_routing_payload(relay.to_bytes()), channel=0)
         if success:
             logger.debug("relayed announce from %s", announce.originator_iid.hex())
 
@@ -505,10 +515,11 @@ class Node:
 
         Why separate method: Allows testing and manual triggering.
         Delegates to scheduler for announce building (signing, seq_num).
+        Announces sent on control channel (CH0) per CCP-9.
         """
         announce = self._scheduler.build_announce()
         data = wrap_routing_payload(announce.to_bytes())
-        success = await self.link.send(data)
+        success = await self.link.send(data, channel=0)
         if success:
             logger.info("sent announce seq=%d", announce.seq_num)
 
@@ -583,33 +594,19 @@ class Node:
         delay_ms = random.randint(min_delay_ms, max_delay_ms)
 
         async def _delayed_send() -> bool:
-            await asyncio.sleep(delay_ms / 1000)
             try:
-                return await self.link.send(wrap_routing_payload(data))
+                await asyncio.sleep(delay_ms / 1000)
+                return await self.link.send(wrap_routing_payload(data), channel=0)
+            except asyncio.CancelledError:
+                raise
             except Exception:
-                logger.exception("scheduled_send: link.send failed")
+                logger.exception("scheduled send failed (delay=%dms)", delay_ms)
                 raise
 
         return asyncio.create_task(
             _delayed_send(),
             name=f"scheduled-send-{delay_ms}ms",
         )
-
-    def update_dodag_scheduler(self) -> None:
-        """Propagate DODAG gateway-centric state to the announce scheduler.
-
-        Call whenever DODAG state changes (join, leave, DIO with new flags).
-        """
-        if self.dodag is not None:
-            try:
-                loop = asyncio.get_running_loop()
-                now_ms = int(loop.time() * 1000)
-            except RuntimeError:
-                now_ms = 0
-            self._scheduler.set_gateway_centric(
-                self.dodag.is_joined() and self.dodag.gateway_centric,
-                now_ms=now_ms,
-            )
 
     def get_status(self) -> dict[str, object]:
         """Get node status for debugging/monitoring.
@@ -666,10 +663,12 @@ class Node:
         neighbors = []
         for iid in self.peer_db:
             addr = IPv6Address(b"\xfe\x80\x00\x00\x00\x00\x00\x00" + iid)
-            neighbors.append({
-                "addr": str(addr),
-                "rssi": -100,  # ponytail: no per-peer RSSI tracking yet
-            })
+            neighbors.append(
+                {
+                    "addr": str(addr),
+                    "rssi": -100,  # ponytail: no per-peer RSSI tracking yet
+                }
+            )
         return neighbors
 
     def get_config(self) -> dict[str, int]:

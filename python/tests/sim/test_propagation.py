@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for LoRa propagation model."""
 
+import math
+
 import pytest
 
 from lichen.sim.propagation import (
@@ -9,11 +11,11 @@ from lichen.sim.propagation import (
     PATH_LOSS_FREE_SPACE,
     PATH_LOSS_INDOOR,
     PATH_LOSS_URBAN,
-    SENSITIVITY_LR_FHSS,
     SENSITIVITY_SF7,
     SENSITIVITY_SF10,
     SENSITIVITY_SF12,
     PropagationModel,
+    link_budget,
 )
 
 
@@ -272,23 +274,120 @@ class TestInitialization:
         assert model.d0_m == 5.0
 
 
-class TestLrFhssSensitivity:
-    """Test LR-FHSS sensitivity constants."""
+class TestShadowing:
+    """Test log-normal shadowing."""
 
-    def test_lr_fhss_sensitivity_defined(self) -> None:
-        assert SENSITIVITY_LR_FHSS == -137.0
+    def test_shadowing_disabled_by_default(self) -> None:
+        """Shadowing is disabled when shadow_std_db == 0."""
+        model = PropagationModel()
+        pl1 = model.path_loss(100.0)
+        pl2 = model.path_loss(100.0)
+        assert pl1 == pl2  # deterministic when disabled
 
-    def test_lr_fhss_equal_to_sf12(self) -> None:
-        assert SENSITIVITY_LR_FHSS == SENSITIVITY_SF12
+    def test_shadowing_zero_std_is_deterministic(self) -> None:
+        """Zero shadowing std produces deterministic output."""
+        model = PropagationModel(shadow_std_db=0.0)
+        pl_twice = [model.path_loss(100.0) for _ in range(5)]
+        assert all(pl == pl_twice[0] for pl in pl_twice)
 
-    def test_lr_fhss_longer_range_than_sf10(self) -> None:
-        model = PropagationModel(pl0_dbm=32.44, n=PATH_LOSS_URBAN)
-        lr_fhss_range = model.max_range(14.0, sensitivity_dbm=SENSITIVITY_LR_FHSS)
-        sf10_range = model.max_range(14.0, sensitivity_dbm=SENSITIVITY_SF10)
-        assert lr_fhss_range > sf10_range
+    def test_shadowing_negative_std_raises(self) -> None:
+        """Negative shadow_std_db raises ValueError."""
+        with pytest.raises(ValueError, match="Shadow standard deviation must be >= 0"):
+            PropagationModel(shadow_std_db=-1.0)
 
-    def test_lr_fhss_decode_at_sf12_boundary(self) -> None:
-        model = PropagationModel(pl0_dbm=32.44, n=PATH_LOSS_URBAN)
-        rx_at_sf12_limit = model.received_power(14.0, model.max_range(14.0, sensitivity_dbm=SENSITIVITY_SF12))
-        assert rx_at_sf12_limit >= SENSITIVITY_SF12
-        assert rx_at_sf12_limit >= SENSITIVITY_LR_FHSS
+    def test_shadowing_seed_override(self) -> None:
+        """Seed override provides deterministic shadow offset."""
+        model = PropagationModel(shadow_std_db=4.0, _seed=2.0)
+        pl = model.path_loss(100.0)
+        expected_base = 86.44
+        assert pl == pytest.approx(expected_base + 8.0, rel=1e-6)
+
+
+class TestFading:
+    """Test small-scale fading."""
+
+    def test_fading_disabled_by_default(self) -> None:
+        """Fading is disabled when fading_std_db == 0."""
+        model = PropagationModel()
+        pl1 = model.path_loss(100.0)
+        pl2 = model.path_loss(100.0)
+        assert pl1 == pl2
+
+    def test_fading_zero_std_is_deterministic(self) -> None:
+        """Zero fading std produces deterministic output."""
+        model = PropagationModel(fading_std_db=0.0)
+        pl_twice = [model.path_loss(100.0) for _ in range(5)]
+        assert all(pl == pl_twice[0] for pl in pl_twice)
+
+    def test_fading_negative_std_raises(self) -> None:
+        """Negative fading_std_db raises ValueError."""
+        with pytest.raises(ValueError, match="Fading standard deviation must be >= 0"):
+            PropagationModel(fading_std_db=-1.0)
+
+    def test_fading_seed_override(self) -> None:
+        """Seed override provides deterministic fading offset."""
+        model = PropagationModel(fading_std_db=6.0, _seed=1.5)
+        pl = model.path_loss(100.0)
+        expected_base = 86.44
+        assert pl == pytest.approx(expected_base + 9.0, rel=1e-6)
+
+    def test_fading_invalid_type_raises(self) -> None:
+        """Invalid fading_type raises ValueError."""
+        with pytest.raises(ValueError, match="fading_type must be 'rayleigh' or 'ricean'"):
+            PropagationModel(fading_type="unknown")
+
+    def test_ricean_fading_nonnegative(self) -> None:
+        """Ricean fading produces non-negative fading loss (abs)."""
+        model = PropagationModel(fading_std_db=3.0, fading_type="ricean", _seed=-2.0)
+        pl = model.path_loss(100.0)
+        expected_base = 86.44 + 6.0  # abs(-2.0) * 3.0 = 6.0
+        assert pl == pytest.approx(expected_base, rel=1e-6)
+
+
+class TestSINR:
+    """Test SINR calculations."""
+
+    def test_sinr_no_interference(self) -> None:
+        """SINR equals SNR when no interference."""
+        model = PropagationModel(noise_floor_dbm=-120.0)
+        sinr_val = model.sinr(tx_power_dbm=14.0, distance_m=100.0, interfering_powers_linear=[])
+        snr_val = model.snr(tx_power_dbm=14.0, distance_m=100.0)
+        assert sinr_val == pytest.approx(snr_val, rel=1e-6)
+
+    def test_sinr_with_interference(self) -> None:
+        """SINR is lower than SNR when interference present."""
+        model = PropagationModel(noise_floor_dbm=-120.0)
+        # One interferer at same power
+        rx_power = model.received_power(14.0, 100.0)
+        rx_linear = 10.0 ** (rx_power / 10.0)
+        sinr_val = model.sinr(14.0, 100.0, interfering_powers_linear=[rx_linear])
+        snr_val = model.snr(14.0, 100.0)
+        assert sinr_val < snr_val
+
+    def test_sinr_strong_signal_dominates(self) -> None:
+        """SINR is high when desired signal is much stronger than interferers."""
+        model = PropagationModel(noise_floor_dbm=-120.0)
+        # Weak interferer at -90 dBm
+        weak_interferer_linear = 10.0 ** (-90.0 / 10.0)
+        # Strong signal at -60 dBm equivalent
+        sinr_val = model.sinr(0.0, 1.0, interfering_powers_linear=[weak_interferer_linear])
+        signal_linear = 10.0 ** (model.received_power(0.0, 1.0) / 10.0)
+        noise_linear = 10.0 ** (-120.0 / 10.0)
+        expected = 10.0 * math.log10(signal_linear / (noise_linear + weak_interferer_linear))
+        assert sinr_val == pytest.approx(expected, rel=1e-6)
+
+    def test_sinr_multiple_interferers(self) -> None:
+        """SINR aggregates multiple interferers correctly."""
+        model = PropagationModel(noise_floor_dbm=-120.0)
+        signal_linear = 10.0 ** (-80.0 / 10.0)
+        int1 = 10.0 ** (-90.0 / 10.0)
+        int2 = 10.0 ** (-95.0 / 10.0)
+        noise_linear = 10.0 ** (-120.0 / 10.0)
+        total_noise = noise_linear + int1 + int2
+        expected = 10.0 * math.log10(signal_linear / total_noise) if total_noise > 0 else float("inf")
+        # We pass rssi directly via an overridden distance for the signal
+        model2 = PropagationModel(pl0_dbm=0.0, d0_m=1.0, n=0.01, noise_floor_dbm=-120.0)
+        sinr_val = model2.sinr(0.0, 1.0, interfering_powers_linear=[int1, int2])
+        assert sinr_val == pytest.approx(expected, rel=0.5)
+
+

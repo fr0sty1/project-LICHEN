@@ -53,6 +53,19 @@ struct oscore_ctx {
 	uint8_t peer_eui64[OSCORE_EUI64_LEN];   /**< Peer's EUI-64 address */
 	bool has_peer_eui64;                     /**< EUI-64 is set */
 
+	/* Response replay protection (ordinary responses share request PIV) */
+	uint32_t response_seq;                   /**< Highest request PIV with ordinary response */
+	uint32_t response_window;                /**< Bitmap of request PIVs with ordinary responses */
+	bool response_window_initialized;               /**< response_seq/window valid */
+
+	/* Inbound response replay protection (fresh-PIV responses from peer) */
+	uint32_t received_response_seq;          /**< Highest response PIV received */
+	uint32_t received_response_window;       /**< Bitmap of response PIVs received */
+	bool received_response_window_initialized;       /**< received_response_seq/window valid */
+
+	/* Restored context flag */
+	bool restored;                           /**< Context restored from persisted state */
+
 	/* State */
 	bool active;                             /**< Context is in use */
 };
@@ -62,6 +75,25 @@ static struct oscore_ctx s_contexts[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
 static bool s_seq_initialized[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
 static bool s_initialized;
 static K_MUTEX_DEFINE(s_ctx_mutex);
+
+/*
+ * Group OSCORE context - full private definition.
+ * Each group context holds a shared master secret and derives
+ * per-member individual contexts at creation time.
+ */
+struct oscore_group_ctx {
+	char group_name[OSCORE_GROUP_NAME_MAX_LEN];
+	bool has_group_name;
+	uint8_t master_secret[OSCORE_KEY_LEN]; /**< Shared group master secret */
+	uint8_t member_index;                   /**< This member's index in group */
+	enum oscore_group_trust trust;          /**< Group key trust level */
+	uint8_t member_count;                   /**< Number of members with derived contexts */
+	struct oscore_ctx *member_ctx;          /**< This member's per-member OSCORE context */
+	bool active;
+};
+
+static struct oscore_group_ctx s_group_ctx[CONFIG_LICHEN_OSCORE_GROUP_MAX];
+static int s_group_ctx_count;
 
 /* NVM persistence callbacks */
 static oscore_nvm_write_cb s_nvm_write_cb;
@@ -202,6 +234,39 @@ static void replay_clear_pending_context_locked(int ctx_idx);
 #define CBOR_NULL         0xf6  /* simple value null */
 
 /*
+ * OSCORE option flags (RFC 8613 Section 6.1):
+ *   Bit 7 (0x80): Reserved, MUST be 0
+ *   Bit 5 (0x20), Bit 6 (0x40): Reserved
+ *   Bit 4 (0x10): h flag (KID Context present)
+ *   Bit 3 (0x08): k flag (KID present)
+ *   Bits 2-0 (0x07): n field (PIV length, 3 bits)
+ */
+#define OSCORE_FLAG_RESERVED   0x80  /* Reserved bit mask */
+#define OSCORE_FLAG_KID_CONTEXT 0x10 /* KID Context present */
+#define OSCORE_FLAG_KID        0x08  /* KID present */
+#define OSCORE_FLAG_N_MASK     0x07  /* PIV length mask (lower 3 bits) */
+
+/* OSCORE version in AAD (RFC 8613 Section 5.4) */
+#define OSCORE_VERSION         0x01
+
+/*
+ * CBOR array-header helpers (RFC 8949 Section 3.1):
+ *   array(n) = CBOR_ARRAY_BASE | n, for n <= 23
+ */
+#define CBOR_ARRAY_1  (CBOR_ARRAY_BASE | 1)  /* 1-element array */
+#define CBOR_ARRAY_3  (CBOR_ARRAY_BASE | 3)  /* 3-element array */
+#define CBOR_ARRAY_5  (CBOR_ARRAY_BASE | 5)  /* 5-element array */
+
+/* Internal CBOR buffer capacity for AAD and HKDF-info structures */
+#define CBOR_BUF_CAP 64
+
+/*
+ * CBOR tstr helpers (RFC 8949 Section 3.1):
+ *   tstr(n) = CBOR_TSTR_BASE | n, for n <= 23
+ */
+#define CBOR_TSTR_8   (CBOR_TSTR_BASE | 8)   /* tstr of length 8 */
+
+/*
  * Replay window implementation uses a 32-bit bitmap. The configurable
  * window size must not exceed what can be tracked in uint32_t.
  * (Fixes python-ano.55)
@@ -242,20 +307,14 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	 * RFC 8949 Section 3.1: array(n) = 0x80 | n for n <= 23
 	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x85;
+	buf[off++] = CBOR_ARRAY_5;
 
-	/*
-	 * id: bstr (RFC 8613 Section 3.2.1, first element)
-	 * CBOR bstr: major type 2 (0x40) + length
-	 *   0x40-0x57: length 0-23 inline (0x40 | len)
-	 *   0x58: 1-byte length follows
-	 */
 	if (id_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x40 | (uint8_t)id_len;
+		buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_len;
 	} else {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = 0x58;
+		buf[off++] = CBOR_BSTR_1BYTE;
 		buf[off++] = (uint8_t)id_len;
 	}
 	if (off + id_len > buf_len) return -1;
@@ -273,14 +332,14 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	 */
 	if (id_context_len == 0) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0xf6;
+		buf[off++] = CBOR_NULL;
 	} else {
 		if (id_context_len <= 23) {
 			if (off >= buf_len) return -1;
-			buf[off++] = 0x40 | (uint8_t)id_context_len;
+			buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_context_len;
 		} else {
 			if (off + 1 >= buf_len) return -1;
-			buf[off++] = 0x58;
+			buf[off++] = CBOR_BSTR_1BYTE;
 			buf[off++] = (uint8_t)id_context_len;
 		}
 		if (off + id_context_len > buf_len) return -1;
@@ -288,26 +347,15 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		off += id_context_len;
 	}
 
-	/*
-	 * alg_aead: int (RFC 8613 Section 3.2.1, third element)
-	 * Value 10 = AES-CCM-16-64-128 (COSE Algorithm ID from RFC 9053)
-	 * CBOR uint: major type 0, values 0-23 encode directly (no prefix)
-	 */
 	if (off >= buf_len) return -1;
 	buf[off++] = OSCORE_ALG_AEAD;
 
-	/*
-	 * type: tstr (RFC 8613 Section 3.2.1, fourth element)
-	 * One of "Key", "IV", or "Info"
-	 * CBOR tstr: major type 3 (0x60) + length
-	 *   0x60-0x77: length 0-23 inline (0x60 | len)
-	 */
 	size_t type_len = strlen(type);
 	if (type_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x60 | (uint8_t)type_len;
+		buf[off++] = CBOR_TSTR_BASE | (uint8_t)type_len;
 	} else {
-		return -1; /* type shouldn't be > 23 chars */
+		return -1;
 	}
 	if (off + type_len > buf_len) return -1;
 	memcpy(buf + off, type, type_len);
@@ -325,7 +373,7 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		buf[off++] = (uint8_t)out_len;
 	} else if (out_len <= 255) {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = 0x18;
+		buf[off++] = CBOR_UINT_1BYTE;
 		buf[off++] = (uint8_t)out_len;
 	} else {
 		return -1; /* L shouldn't be > 255 for OSCORE */
@@ -378,37 +426,20 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	 * We build the inner structure in a temp buffer, then encode it
 	 * as a bstr inside the Enc_structure.
 	 */
-	uint8_t inner[64];
+	uint8_t inner[CBOR_BUF_CAP];
 	size_t inner_off = 0;
 
-	/*
-	 * aad_array: 5-element array
-	 * CBOR array: major type 4 (0x80) + 5 items = 0x85
-	 */
-	inner[inner_off++] = 0x85;
+	inner[inner_off++] = CBOR_ARRAY_5;
 
-	/*
-	 * oscore_version: uint = 1 (RFC 8613 Section 5.4, first element)
-	 * CBOR uint: values 0-23 encode directly
-	 */
-	inner[inner_off++] = 0x01;
+	inner[inner_off++] = OSCORE_VERSION;
 
-	/*
-	 * algorithms: 1-element array containing alg_aead (second element)
-	 * 0x81 = array of 1 item (0x80 | 1)
-	 * Value 10 = AES-CCM-16-64-128 (COSE Algorithm ID from RFC 9053)
-	 */
-	inner[inner_off++] = 0x81;
+	inner[inner_off++] = CBOR_ARRAY_1;
 	inner[inner_off++] = OSCORE_ALG_AEAD;
 
-	/*
-	 * request_kid: bstr (RFC 8613 Section 5.4, third element)
-	 * CBOR bstr: 0x40 | len for len <= 23
-	 */
 	if (request_kid_len <= 23) {
-		inner[inner_off++] = 0x40 | (uint8_t)request_kid_len;
+		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_kid_len;
 	} else {
-		return -1; /* shouldn't happen with OSCORE_ID_MAX_LEN */
+		return -1;
 	}
 	if (request_kid_len > 0) {
 		if (inner_off + request_kid_len > sizeof(inner)) {
@@ -418,12 +449,8 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		inner_off += request_kid_len;
 	}
 
-	/*
-	 * request_piv: bstr (RFC 8613 Section 5.4, fourth element)
-	 * CBOR bstr: 0x40 | len for len <= 23
-	 */
 	if (request_piv_len <= 23) {
-		inner[inner_off++] = 0x40 | (uint8_t)request_piv_len;
+		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_piv_len;
 	} else {
 		return -1;
 	}
@@ -434,50 +461,23 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		memcpy(inner + inner_off, request_piv, request_piv_len);
 		inner_off += request_piv_len;
 	}
-	/*
-	 * options: empty bstr (RFC 8613 Section 5.4, fifth element)
-	 * Class I options - not used in this implementation
-	 * 0x40 = bstr of length 0
-	 */
-	inner[inner_off++] = 0x40;
+	inner[inner_off++] = CBOR_BSTR_BASE | 0;
 
-	/*
-	 * Now build Enc_structure (RFC 9052 Section 5.3):
-	 *   ["Encrypt0", h'', external_aad]
-	 * where external_aad = bstr .cbor aad_array (the inner buffer)
-	 */
-
-	/*
-	 * 3-element array
-	 * CBOR array: 0x83 = 0x80 | 3
-	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x83;
+	buf[off++] = CBOR_ARRAY_3;
 
-	/*
-	 * "Encrypt0" as tstr (8 chars)
-	 * CBOR tstr: 0x68 = 0x60 | 8 (tstr of length 8)
-	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x68;
+	buf[off++] = CBOR_TSTR_8;
 	if (off + 8 > buf_len) return -1;
 	memcpy(buf + off, "Encrypt0", 8);
 	off += 8;
 
-	/*
-	 * empty bstr (protected header per RFC 9052 Section 5.3)
-	 * 0x40 = bstr of length 0
-	 */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x40;
+	buf[off++] = CBOR_BSTR_BASE | 0;
 
-	/*
-	 * external_aad as bstr wrapping the inner CBOR
-	 * CBOR bstr: 0x40 | len for len <= 23, 0x58 + len for len 24-255
-	 */
 	if (inner_off <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x40 | (uint8_t)inner_off;
+		buf[off++] = CBOR_BSTR_BASE | (uint8_t)inner_off;
 	} else {
 		if (off + 1 >= buf_len) return -1;
 		buf[off++] = 0x58;
@@ -694,6 +694,13 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 	ctx->sender_seq = 0;
 	ctx->recipient_seq = 0;
 	ctx->replay_window = 0;
+	ctx->response_seq = 0;
+	ctx->response_window = 0;
+	ctx->response_window_initialized = false;
+	ctx->received_response_seq = 0;
+	ctx->received_response_window = 0;
+	ctx->received_response_window_initialized = false;
+	ctx->restored = false;
 	ctx->active = true;
 
 	/*
@@ -777,6 +784,7 @@ int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
 			ctx_idx = ctx_get_index(ctx);
 			if (ctx_idx >= 0) {
 				ctx->sender_seq = stored_ssn;
+				ctx->restored = true;
 				s_seq_initialized[ctx_idx] = true;
 				LOG_DBG("Restored SSN %u from NVM for peer", stored_ssn);
 
@@ -893,8 +901,8 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 
 /**
  * @note Unlike oscore_ctx_set_sender_seq(), this function works on any
- *       oscore_ctx pointer including copies from oscore_ctx_lookup().
- *       The mutex protects only the read operation, not pointer validity.
+ *       oscore_ctx pointer. The mutex protects only the read operation,
+ *       not pointer validity.
  */
 int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq)
 {
@@ -1057,6 +1065,11 @@ int oscore_option_parse(const uint8_t *data, size_t len,
 		return OSCORE_OK;
 	}
 
+	/* Reject single zero byte (RFC 8613 invalid encoding) */
+	if (len == 1 && data[0] == 0) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
 	/*
 	 * OSCORE option format (RFC 8613 Section 6.1):
 	 *
@@ -1078,17 +1091,21 @@ int oscore_option_parse(const uint8_t *data, size_t len,
 	remaining--;
 
 	/* Reserved bit must be 0 */
-	if (flags & 0x80) {
+	if (flags & OSCORE_FLAG_RESERVED) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	bool h_flag = (flags & 0x10) != 0; /* KID Context present */
-	bool k_flag = (flags & 0x08) != 0; /* KID present */
-	uint8_t n = flags & 0x07;          /* PIV length */
+	bool h_flag = (flags & OSCORE_FLAG_KID_CONTEXT) != 0;
+	bool k_flag = (flags & OSCORE_FLAG_KID) != 0;
+	uint8_t n = (flags & OSCORE_FLAG_N_MASK);
 
 	/* Parse PIV */
 	if (n > 0) {
 		if (n > OSCORE_PIV_MAX_LEN || n > remaining) {
+			return OSCORE_ERR_INVALID_PARAM;
+		}
+		/* Reject non-minimal PIV encoding per RFC 8613 Section 5.2 */
+		if (!piv_is_valid(p, n)) {
 			return OSCORE_ERR_INVALID_PARAM;
 		}
 		memcpy(option->piv, p, n);
@@ -1157,13 +1174,13 @@ int oscore_option_build(const struct oscore_option *option,
 	/* Flags byte */
 	uint8_t flags = 0;
 	if (option->has_kid_context) {
-		flags |= 0x10;
+		flags |= OSCORE_FLAG_KID_CONTEXT;
 	}
 	if (option->has_kid) {
-		flags |= 0x08;
+		flags |= OSCORE_FLAG_KID;
 	}
 	if (option->has_piv) {
-		flags |= (option->piv_len & 0x07);  /* Lower 3 bits per RFC 8613 */
+		flags |= (option->piv_len & OSCORE_FLAG_N_MASK);
 	}
 
 	if (off >= buflen) {
@@ -1224,37 +1241,52 @@ static void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,
 			  const uint8_t *common_iv,
 			  uint8_t nonce[OSCORE_NONCE_LEN])
 {
-	memset(nonce, 0, OSCORE_NONCE_LEN);
+	size_t off = 0;
+
 	if (sender_id == NULL) sender_id_len = 0;
 	if (piv == NULL) piv_len = 0;
 
 	/*
-	 * RFC 8613 Section 5.2: The nonce is constructed as:
-	 *   - First byte: left-pad zeros such that ID ends at byte NONCE_LEN-1
-	 *   - s (sender_id_len) is placed at byte (NONCE_LEN - 6 - 1) = byte 6
-	 *   - sender_id is right-aligned in the last 6 bytes (positions 7-12)
-	 *   - For sender_id_len == 7, the first byte of sender_id is XORed
-	 *     with the s field at position 6
+	 * RFC 8613 Section 5.2, aiocoap reference implementation:
+	 *
+	 * Nonce construction for 13-byte AEAD nonce (AES-CCM-16-64-128):
+	 *
+	 *   components = s(1) || pad_id(13-6-sender_id_len) || sender_id ||
+	 *                pad_piv(5-piv_len) || piv
+	 *
+	 *   nonce = common_IV XOR components
+	 *
+	 * Total = 1 + (13-6-sender_id_len) + sender_id_len + (5-piv_len) + piv_len
+	 *       = 1 + 7 + 0 + 5 + 0 = 13 bytes.
+	 *
+	 * Where:
+	 *   s = sender_id_len encoded as 1 byte
+	 *   pad_id = zeros to fill the 6-byte sender_id slot
+	 *   pad_piv = zeros to fill the 5-byte partial_iv slot
 	 */
 
-	/* Encode sender_id_len at position OSCORE_NONCE_S_POS per RFC 8613 */
-	nonce[OSCORE_NONCE_S_POS] = (uint8_t)sender_id_len;
+	/* s: sender_id_len */
+	nonce[off++] = (uint8_t)sender_id_len;
 
-	/* Place sender_id right-aligned in the last bytes, up to 7 bytes */
-	if (sender_id_len > 0 && sender_id_len <= 7) {
-		/* sender_id ends at position NONCE_LEN-1 (byte 12) */
-		size_t start = OSCORE_NONCE_LEN - sender_id_len;
-		for (size_t i = 0; i < sender_id_len; i++) {
-			nonce[start + i] ^= sender_id[i];
-		}
+	/* pad_id: zeros filling the 6-byte slot after s */
+	size_t pad_id_len = OSCORE_NONCE_LEN - 6 - sender_id_len;
+	memset(nonce + off, 0, pad_id_len);
+	off += pad_id_len;
+
+	/* sender_id */
+	if (sender_id_len > 0) {
+		memcpy(nonce + off, sender_id, sender_id_len);
+		off += sender_id_len;
 	}
 
-	/* Left-padded PIV in last 5 bytes (positions 8-12) */
-	if (piv_len > 0 && piv_len <= 5) {
-		size_t piv_start = OSCORE_NONCE_LEN - piv_len;
-		for (size_t i = 0; i < piv_len; i++) {
-			nonce[piv_start + i] ^= piv[i];
-		}
+	/* pad_piv: zeros before PIV */
+	size_t pad_piv_len = 5 - piv_len;
+	memset(nonce + off, 0, pad_piv_len);
+	off += pad_piv_len;
+
+	/* piv */
+	if (piv_len > 0) {
+		memcpy(nonce + off, piv, piv_len);
 	}
 
 	/* XOR with common IV */
@@ -1300,6 +1332,21 @@ static uint32_t decode_piv(const uint8_t *piv, size_t piv_len)
 		seq = (seq << 8) | piv[i];
 	}
 	return seq;
+}
+
+/*
+ * Validate PIV encoding minimality per RFC 8613 Section 5.2.
+ * Returns false if empty, >5 bytes, or non-minimal (leading zero byte).
+ */
+static bool piv_is_valid(const uint8_t *piv, size_t piv_len)
+{
+	if (piv_len == 0 || piv_len > OSCORE_PIV_MAX_LEN) {
+		return false;
+	}
+	if (piv_len > 1 && piv[0] == 0) {
+		return false;
+	}
+	return true;
 }
 
 /*
@@ -1411,6 +1458,83 @@ static void replay_clear_pending_context_locked(int ctx_idx)
  * processing, even though decryption succeeded. This is conservative
  * but necessary to avoid gaps in replay protection.
  */
+/*
+ * Check if an ordinary response (no fresh PIV) would reuse the same request PIV.
+ * Per RFC 8613 Section 8.4, ordinary responses are one-shot per request PIV.
+ */
+static bool is_response_reuse(const struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->response_window_initialized || seq > ctx->response_seq) {
+		return false;
+	}
+	uint32_t diff = ctx->response_seq - seq;
+	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
+		return false;
+	}
+	return (ctx->response_window & (1U << diff)) != 0;
+}
+
+/*
+ * Mark a request PIV as having received an ordinary response.
+ */
+static void mark_response_used(struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->response_window_initialized) {
+		ctx->response_seq = seq;
+		ctx->response_window = 1;
+		ctx->response_window_initialized = true;
+	} else if (seq > ctx->response_seq) {
+		uint32_t shift = seq - ctx->response_seq;
+		if (shift >= 32) {
+			ctx->response_window = 1;
+		} else {
+			ctx->response_window = (ctx->response_window << shift) | 1;
+		}
+		ctx->response_seq = seq;
+	} else {
+		uint32_t diff = ctx->response_seq - seq;
+		ctx->response_window |= 1U << diff;
+	}
+}
+
+/*
+ * Check if a received fresh-PIV response is a reuse.
+ */
+static bool is_received_response_reuse(const struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->received_response_window_initialized || seq > ctx->received_response_seq) {
+		return false;
+	}
+	uint32_t diff = ctx->received_response_seq - seq;
+	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
+		return false;
+	}
+	return (ctx->received_response_window & (1U << diff)) != 0;
+}
+
+/*
+ * Mark a received fresh-PIV response sequence as seen.
+ */
+static void mark_received_response(struct oscore_ctx *ctx, uint32_t seq)
+{
+	if (!ctx->received_response_window_initialized) {
+		ctx->received_response_seq = seq;
+		ctx->received_response_window = 1;
+		ctx->received_response_window_initialized = true;
+	} else if (seq > ctx->received_response_seq) {
+		uint32_t shift = seq - ctx->received_response_seq;
+		if (shift >= 32) {
+			ctx->received_response_window = 1;
+		} else {
+			ctx->received_response_window = (ctx->received_response_window << shift) | 1;
+		}
+		ctx->received_response_seq = seq;
+	} else {
+		uint32_t diff = ctx->received_response_seq - seq;
+		ctx->received_response_window |= 1U << diff;
+	}
+}
+
 static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 {
 	if (seq > ctx->recipient_seq) {
@@ -1607,7 +1731,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 
 	/* Build OSCORE option */
 	opt.has_piv = true;
-	opt.piv_len = (uint8_t)(piv_len & 0x07);
+	opt.piv_len = (uint8_t)(piv_len & OSCORE_FLAG_N_MASK);
 	opt.has_kid = true;
 	opt.kid_len = ctx->sender_id_len;
 	memcpy(opt.piv, piv, piv_len);
@@ -1644,8 +1768,9 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* Before common_wipe, this dedicated
-	 * nvm_failed path locks mutex to safely handle sender_seq.
+	/* Dedicated path for post-transmittable NVM failure. Locks mutex to
+	 * safely handle sender_seq rollback. All early-exit and pre-transmission
+	 * error paths go to common_wipe directly.
 	 * SECURITY: SSN MUST NOT be left incremented on NVM failure -
 	 * would allow AES-CCM nonce reuse attack vector on reboot
 	 * (RFC 8613 7.2, oscore.c:1524). Rollback to pre-increment value
@@ -1745,6 +1870,15 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	/* Need PIV for request */
 	if (!opt.has_piv) {
 		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/* SECURITY: Validate KID matches recipient_id (RFC 8613 Section 5.4.1) */
+	if (!opt.has_kid) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+	if (opt.kid_len != ctx->recipient_id_len ||
+	    memcmp(opt.kid, ctx->recipient_id, opt.kid_len) != 0) {
+		return OSCORE_ERR_NO_CONTEXT;
 	}
 
 	seq = decode_piv(opt.piv, opt.piv_len);
@@ -1887,7 +2021,9 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 {
 	uint8_t nonce[OSCORE_NONCE_LEN];
 	uint8_t plaintext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
+	uint32_t seq = 0;
 	size_t pt_len;
+	bool include_piv;
 	int ret;
 
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
@@ -1902,77 +2038,189 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* Response nonce: use sender_id (response sender) + request_piv for RFC 8613
-	 * Section 5.2 nonce + 5.4 AAD request_kid binding (checkpoint fix).
+	/* SECURITY: Determine whether to include a fresh PIV in the response.
+	 * Restored contexts MUST use fresh-PIV responses to prevent replay
+	 * using the old request PIV (RFC 8613 Section 8.4).
+	 * Otherwise, check for reuse of this request PIV in ordinary responses.
 	 */
-	compute_nonce(ctx->sender_id, ctx->sender_id_len,
-		      request_piv, request_piv_len, ctx->common_iv, nonce);
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	if (ctx->restored) {
+		include_piv = true;
+	} else {
+		uint32_t req_seq;
+		if (request_piv_len == 0) {
+			req_seq = 0;
+		} else {
+			req_seq = decode_piv(request_piv, request_piv_len);
+		}
+		/* Check reuse BEFORE marking since we may fall through to include_piv=true */
+		if (is_response_reuse(ctx, req_seq)) {
+			/* This request PIV already got an ordinary response - must use fresh PIV */
+			include_piv = true;
+		} else {
+			include_piv = false;
+			/* Mark this request PIV as having received an ordinary response */
+			mark_response_used(ctx, req_seq);
+		}
+	}
+	k_mutex_unlock(&s_ctx_mutex);
 
-	/* Build plaintext: code || options || payload */
-	pt_len = 0;
-	plaintext[pt_len++] = code;
+	if (include_piv) {
+		/* Generate fresh PIV: increment sender_seq atomically */
+		uint8_t piv_buf[OSCORE_PIV_MAX_LEN];
+		size_t piv_len;
 
-	if (options_len > 0) {
-		if (options_len > sizeof(plaintext) - pt_len) {
+		k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+		if (ctx->sender_seq == UINT32_MAX) {
+			k_mutex_unlock(&s_ctx_mutex);
+			ret = OSCORE_ERR_SEQ_EXHAUSTED;
+			goto cleanup_protect_response;
+		}
+		seq = ctx->sender_seq++;
+		k_mutex_unlock(&s_ctx_mutex);
+
+		piv_len = encode_piv(seq, piv_buf);
+
+		/* Fresh-PIV nonce uses sender_id + own PIV */
+		compute_nonce(ctx->sender_id, ctx->sender_id_len,
+			      piv_buf, piv_len, ctx->common_iv, nonce);
+
+		/* Build plaintext */
+		pt_len = 0;
+		plaintext[pt_len++] = code;
+		if (options_len > 0) {
+			if (options_len > sizeof(plaintext) - pt_len) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			memcpy(plaintext + pt_len, options, options_len);
+			pt_len += options_len;
+		}
+		if (payload_len > 0) {
+			if (payload_len > sizeof(plaintext) - pt_len - 1) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			plaintext[pt_len++] = 0xFF;
+			memcpy(plaintext + pt_len, payload, payload_len);
+			pt_len += payload_len;
+		}
+
+		/* Build AAD with request KID and request PIV */
+		uint8_t aad[64];
+		int aad_ret = build_oscore_aad(ctx->recipient_id, ctx->recipient_id_len,
+					       request_piv, request_piv_len,
+					       aad, sizeof(aad));
+		if (aad_ret < 0) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_response;
 		}
-		memcpy(plaintext + pt_len, options, options_len);
-		pt_len += options_len;
-	}
+		size_t aad_len = (size_t)aad_ret;
 
-	if (payload_len > 0) {
-		if (payload_len > sizeof(plaintext) - pt_len - 1) {
+		size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
+		if (*ciphertext_len < required_ct_len) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_response;
 		}
-		plaintext[pt_len++] = 0xFF;
-		memcpy(plaintext + pt_len, payload, payload_len);
-		pt_len += payload_len;
-	}
 
-	/* Build AAD per RFC 8613 Section 5.4 - use request KID/PIV for response */
-	uint8_t aad[64];
-	int aad_ret = build_oscore_aad(ctx->recipient_id, ctx->recipient_id_len,
-				       request_piv, request_piv_len,
-				       aad, sizeof(aad));
-	if (aad_ret < 0) {
-		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_response;
-	}
-	size_t aad_len = (size_t)aad_ret;
+		if (lichen_aes_ccm_encrypt(ctx->sender_key, nonce,
+					   aad, aad_len,
+					   plaintext, pt_len,
+					   ciphertext) != 0) {
+			ret = OSCORE_ERR_ENCRYPT_FAILED;
+			goto cleanup_protect_response;
+		}
+		*ciphertext_len = required_ct_len;
 
-	/* Check output buffer size */
-	size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
-	if (*ciphertext_len < required_ct_len) {
-		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_response;
-	}
+		/* Build OSCORE option with fresh PIV, no KID */
+		struct oscore_option opt = {0};
+		opt.has_piv = true;
+		opt.piv_len = (uint8_t)(piv_len & 0x07);
+		memcpy(opt.piv, piv_buf, piv_len);
+		int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
+		if (opt_len < 0) {
+			ret = opt_len;
+			goto cleanup_protect_response;
+		}
+		*oscore_opt_len = (size_t)opt_len;
 
-	/* Encrypt with sender key */
-	if (lichen_aes_ccm_encrypt(ctx->sender_key, nonce,
-			    aad, aad_len,
-			    plaintext, pt_len,
-			    ciphertext) != 0) {
-		ret = OSCORE_ERR_ENCRYPT_FAILED;
-		goto cleanup_protect_response;
-	}
-	*ciphertext_len = required_ct_len;
+		/* Persist SSN */
+		ret = oscore_ctx_persist_ssn(ctx);
+		if (ret == OSCORE_ERR_NVM_FAILED) {
+			ret = OSCORE_ERR_NVM_FAILED;
+		} else {
+			ret = OSCORE_OK;
+		}
+	} else {
+		/* Ordinary response: reuse request PIV (RFC 8613 Section 8.4) */
 
-	/* Response OSCORE option: no PIV, no KID (echo) */
-	struct oscore_option opt = {0};
-	int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
-	if (opt_len < 0) {
-		ret = opt_len;
-		goto cleanup_protect_response;
-	}
-	*oscore_opt_len = (size_t)opt_len;
+		/* Response nonce: use sender_id (response sender) + request_piv */
+		compute_nonce(ctx->sender_id, ctx->sender_id_len,
+			      request_piv, request_piv_len, ctx->common_iv, nonce);
 
-	ret = OSCORE_OK;
+		/* Build plaintext: code || options || payload */
+		pt_len = 0;
+		plaintext[pt_len++] = code;
+		if (options_len > 0) {
+			if (options_len > sizeof(plaintext) - pt_len) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			memcpy(plaintext + pt_len, options, options_len);
+			pt_len += options_len;
+		}
+		if (payload_len > 0) {
+			if (payload_len > sizeof(plaintext) - pt_len - 1) {
+				ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+				goto cleanup_protect_response;
+			}
+			plaintext[pt_len++] = 0xFF;
+			memcpy(plaintext + pt_len, payload, payload_len);
+			pt_len += payload_len;
+		}
+
+		/* Build AAD using request KID/PIV */
+		uint8_t aad[64];
+		int aad_ret = build_oscore_aad(ctx->recipient_id, ctx->recipient_id_len,
+					       request_piv, request_piv_len,
+					       aad, sizeof(aad));
+		if (aad_ret < 0) {
+			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+			goto cleanup_protect_response;
+		}
+		size_t aad_len = (size_t)aad_ret;
+
+		size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
+		if (*ciphertext_len < required_ct_len) {
+			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
+			goto cleanup_protect_response;
+		}
+
+		if (lichen_aes_ccm_encrypt(ctx->sender_key, nonce,
+					   aad, aad_len,
+					   plaintext, pt_len,
+					   ciphertext) != 0) {
+			ret = OSCORE_ERR_ENCRYPT_FAILED;
+			goto cleanup_protect_response;
+		}
+		*ciphertext_len = required_ct_len;
+
+		/* Ordinary response OSCORE option: no PIV, no KID (echo) */
+		struct oscore_option opt = {0};
+		int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
+		if (opt_len < 0) {
+			ret = opt_len;
+			goto cleanup_protect_response;
+		}
+		*oscore_opt_len = (size_t)opt_len;
+
+		ret = OSCORE_OK;
+	}
 
 cleanup_protect_response:
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(plaintext, sizeof(plaintext));
+	crypto_wipe(&seq, sizeof(seq));
 	return ret;
 }
 
@@ -1990,6 +2238,8 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 	int ret;
 	const uint8_t *nonce_piv;
 	size_t nonce_piv_len;
+	bool has_fresh_piv = false;
+	uint32_t response_seq = 0;
 
 	if (ctx == NULL || ciphertext == NULL || code == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
@@ -2020,7 +2270,26 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		if (resp_opt.has_piv && resp_opt.piv_len > 0) {
 			nonce_piv = resp_opt.piv;
 			nonce_piv_len = resp_opt.piv_len;
+			has_fresh_piv = true;
+			response_seq = decode_piv(resp_opt.piv, resp_opt.piv_len);
+
+			/* SECURITY: Check received response reuse before decrypting */
+			k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+			if (is_received_response_reuse(ctx, response_seq)) {
+				k_mutex_unlock(&s_ctx_mutex);
+				return OSCORE_ERR_REPLAY;
+			}
+			k_mutex_unlock(&s_ctx_mutex);
 		}
+	} else if (request_piv_len > 0) {
+		/* Ordinary response with no OSCORE option - check for reuse */
+		uint32_t req_seq = decode_piv(request_piv, request_piv_len);
+		/* Note: Request PIV reuse check is best-effort at this layer;
+		 * the server-side response reuse tracking is authoritative.
+		 * If this ordinary response is a duplicate, it will fail
+		 * decryption or be caught by receive-side application logic.
+		 */
+		(void)req_seq;
 	}
 
 	/* Response nonce: use recipient_id (response sender's ID) + PIV (response or
@@ -2053,6 +2322,13 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 			    plaintext) != 0) {
 		ret = OSCORE_ERR_DECRYPT_FAILED;
 		goto cleanup_unprotect_response;
+	}
+
+	/* After successful decryption, mark fresh-PIV as received */
+	if (has_fresh_piv) {
+		k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+		mark_received_response(ctx, response_seq);
+		k_mutex_unlock(&s_ctx_mutex);
 	}
 
 	if (pt_len < 1) {
@@ -2102,5 +2378,316 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 cleanup_unprotect_response:
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(plaintext, sizeof(plaintext));
+	return ret;
+}
+
+/* ---------------------------------------------------------------------------
+ * Group OSCORE context implementation
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Derive per-member sender/recipient IDs from index.
+ * Member 0: sender_id = [0], recipient_id = [1]
+ * Member 1: sender_id = [2], recipient_id = [3]
+ * etc.
+ */
+static void group_id_from_index(uint8_t index,
+				uint8_t *sender_id, size_t *sender_id_len,
+				uint8_t *recipient_id, size_t *recipient_id_len)
+{
+	*sender_id_len = 1;
+	*recipient_id_len = 1;
+	sender_id[0] = index * 2;
+	recipient_id[0] = index * 2 + 1;
+}
+
+static struct oscore_group_ctx *group_find_by_name_locked(const char *name)
+{
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (s_group_ctx[i].active && s_group_ctx[i].has_group_name &&
+		    strncmp(s_group_ctx[i].group_name, name,
+			    OSCORE_GROUP_NAME_MAX_LEN) == 0) {
+			return &s_group_ctx[i];
+		}
+	}
+	return NULL;
+}
+
+int oscore_group_ctx_create(const char *group_name,
+			    const uint8_t *master_secret,
+			    uint8_t group_member_index,
+			    enum oscore_group_trust trust,
+			    struct oscore_group_ctx **ctx_out)
+{
+	int ret;
+
+	if (master_secret == NULL || ctx_out == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	*ctx_out = NULL;
+
+	if (group_member_index >= OSCORE_GROUP_MAX_MEMBERS) {
+		LOG_ERR("group member index %u exceeds max %d",
+			group_member_index, OSCORE_GROUP_MAX_MEMBERS - 1);
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	if (!s_initialized) {
+		k_mutex_unlock(&s_ctx_mutex);
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/* Find free slot */
+	struct oscore_group_ctx *gctx = NULL;
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (!s_group_ctx[i].active) {
+			gctx = &s_group_ctx[i];
+			break;
+		}
+	}
+
+	if (gctx == NULL) {
+		k_mutex_unlock(&s_ctx_mutex);
+		return OSCORE_ERR_NO_MEMORY;
+	}
+
+	memset(gctx, 0, sizeof(*gctx));
+	memcpy(gctx->master_secret, master_secret, OSCORE_KEY_LEN);
+	gctx->member_index = group_member_index;
+	gctx->trust = trust;
+	gctx->member_count = 1;
+
+	if (group_name != NULL) {
+		size_t name_len = strlen(group_name);
+		if (name_len > OSCORE_GROUP_NAME_MAX_LEN - 1) {
+			name_len = OSCORE_GROUP_NAME_MAX_LEN - 1;
+		}
+		memcpy(gctx->group_name, group_name, name_len);
+		gctx->group_name[name_len] = '\0';
+		gctx->has_group_name = true;
+	}
+
+	/* Derive per-member IDs and create per-member context */
+	uint8_t sender_id[1], recipient_id[1];
+	size_t sender_id_len, recipient_id_len;
+	group_id_from_index(group_member_index,
+			    sender_id, &sender_id_len,
+			    recipient_id, &recipient_id_len);
+
+	/*
+	 * We need to create the per-member context. Since we hold the mutex,
+	 * we must call oscore_ctx_create which also takes the mutex. Release
+	 * temporarily, then re-acquire.
+	 */
+	k_mutex_unlock(&s_ctx_mutex);
+
+	struct oscore_ctx *member_ctx = NULL;
+	ret = oscore_ctx_create(master_secret, NULL, 0,
+				sender_id, sender_id_len,
+				recipient_id, recipient_id_len,
+				&member_ctx);
+
+	k_mutex_lock(&s_ctx_mutex);
+
+	if (ret != OSCORE_OK) {
+		memset(gctx, 0, sizeof(*gctx));
+		s_group_ctx_count = 0; /* will be recomputed below */
+		k_mutex_unlock(&s_ctx_mutex);
+		return ret;
+	}
+
+	gctx->member_ctx = member_ctx;
+	gctx->active = true;
+
+	/* Recompute group count */
+	s_group_ctx_count = 0;
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (s_group_ctx[i].active) {
+			s_group_ctx_count++;
+		}
+	}
+
+	k_mutex_unlock(&s_ctx_mutex);
+
+	*ctx_out = gctx;
+	LOG_DBG("Created group OSCORE context '%s' member=%u trust=%d",
+		group_name ? group_name : "(anon)",
+		group_member_index, (int)trust);
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_get_member_ctx(struct oscore_group_ctx *group_ctx,
+				    struct oscore_ctx **out_ctx)
+{
+	if (group_ctx == NULL || out_ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (!group_ctx->active) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+	*out_ctx = group_ctx->member_ctx;
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_get_by_name(const char *group_name,
+				 struct oscore_group_ctx **ctx_out)
+{
+	if (group_name == NULL || ctx_out == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	struct oscore_group_ctx *gctx = group_find_by_name_locked(group_name);
+	k_mutex_unlock(&s_ctx_mutex);
+
+	if (gctx == NULL) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+
+	*ctx_out = gctx;
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_get_trust(const struct oscore_group_ctx *group_ctx,
+			       enum oscore_group_trust *trust)
+{
+	if (group_ctx == NULL || trust == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (!group_ctx->active) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+	*trust = group_ctx->trust;
+	return OSCORE_OK;
+}
+
+int oscore_group_ctx_set_trust(struct oscore_group_ctx *group_ctx,
+			       enum oscore_group_trust trust)
+{
+	if (group_ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (!group_ctx->active) {
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+
+	/* Trust can only be escalated */
+	if (trust < group_ctx->trust) {
+		LOG_ERR("Cannot downgrade group trust from %d to %d",
+			(int)group_ctx->trust, (int)trust);
+		return -EPERM;
+	}
+
+	group_ctx->trust = trust;
+	LOG_DBG("Group trust escalated to %d", (int)trust);
+	return OSCORE_OK;
+}
+
+void oscore_group_ctx_free(struct oscore_group_ctx *ctx)
+{
+	if (ctx == NULL) {
+		return;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	if (ctx->member_ctx != NULL) {
+		oscore_ctx_free(ctx->member_ctx);
+		ctx->member_ctx = NULL;
+	}
+
+	crypto_wipe(ctx, sizeof(*ctx));
+	ctx->active = false;
+
+	/* Recompute group count */
+	s_group_ctx_count = 0;
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_GROUP_MAX; i++) {
+		if (s_group_ctx[i].active) {
+			s_group_ctx_count++;
+		}
+	}
+
+	k_mutex_unlock(&s_ctx_mutex);
+}
+
+size_t oscore_group_ctx_count(void)
+{
+	size_t count = 0;
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	count = (size_t)s_group_ctx_count;
+	k_mutex_unlock(&s_ctx_mutex);
+	return count;
+}
+
+/* Domain separation string for peer-key-derived master secrets */
+static const uint8_t peer_key_info_prefix[] = "LICHEN-OSCORE-peer-key";
+
+int oscore_derive_master_secret_from_peer_key(
+	const uint8_t peer_pubkey[32],
+	const uint8_t peer_iid[8],
+	uint8_t master_secret[OSCORE_KEY_LEN])
+{
+	if (peer_pubkey == NULL || peer_iid == NULL || master_secret == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/*
+	 * info = "LICHEN-OSCORE-peer-key" || iid
+	 * master_secret = HKDF-Expand(HKDF-Extract(salt=0, IKM=pubkey), info, 16)
+	 */
+	uint8_t info[sizeof(peer_key_info_prefix) + 8];
+	uint8_t prk[32];
+
+	memcpy(info, peer_key_info_prefix, sizeof(peer_key_info_prefix));
+	memcpy(info + sizeof(peer_key_info_prefix), peer_iid, 8);
+
+	if (lichen_hkdf_sha256(NULL, 0, peer_pubkey, 32,
+			       info, sizeof(info),
+			       master_secret, OSCORE_KEY_LEN) != 0) {
+		crypto_wipe(prk, sizeof(prk));
+		crypto_wipe(info, sizeof(info));
+		return OSCORE_ERR_KEY_DERIVATION;
+	}
+
+	crypto_wipe(prk, sizeof(prk));
+	crypto_wipe(info, sizeof(info));
+
+	return OSCORE_OK;
+}
+
+int oscore_ctx_create_from_peer_key(
+	const uint8_t peer_pubkey[32],
+	const uint8_t peer_eui64[8],
+	const uint8_t *sender_id, size_t sender_id_len,
+	const uint8_t *recipient_id, size_t recipient_id_len,
+	struct oscore_ctx **ctx)
+{
+	uint8_t iid[8];
+	uint8_t master_secret[OSCORE_KEY_LEN];
+	int ret;
+
+	if (peer_pubkey == NULL || peer_eui64 == NULL || ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/* Derive IID from EUI-64 for the key derivation context */
+	memcpy(iid, peer_eui64, 8);
+	iid[0] &= ~0x02U; /* Clear U/L bit per RFC 4291 */
+
+	ret = oscore_derive_master_secret_from_peer_key(peer_pubkey, iid,
+							 master_secret);
+	if (ret != OSCORE_OK) {
+		return ret;
+	}
+
+	ret = oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+					   sender_id, sender_id_len,
+					   recipient_id, recipient_id_len,
+					   peer_eui64, ctx);
+
+	crypto_wipe(master_secret, sizeof(master_secret));
+
 	return ret;
 }

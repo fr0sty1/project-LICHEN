@@ -44,8 +44,12 @@ void lichen_rpl_root_tick(struct lichen_rpl_root *root, uint32_t now)
 	}
 }
 
-bool lichen_rpl_root_handle_dao(struct lichen_rpl_root *root, const uint8_t *data, size_t len, uint32_t now)
+bool lichen_rpl_root_handle_dao(struct lichen_rpl_root *root, const uint8_t *data,
+				size_t len, uint32_t now, bool authenticated)
 {
+	if (!authenticated) {
+		return false;
+	}
 	return lichen_rpl_dao_manager_process_dao(&root->dao_manager, data, len, now);
 }
 

@@ -56,9 +56,7 @@ class PacketCoapConfig:
     @property
     def local_endpoint(self) -> str:
         """Return the local endpoint identity presented to aiocoap."""
-        return parse_channel_endpoint(
-            self.local_host, default_port=self.src_port
-        ).authority
+        return parse_channel_endpoint(self.local_host, default_port=self.src_port).authority
 
 
 class PacketCoapResourceTransport(ResourceTransport):
@@ -468,8 +466,6 @@ class PacketDatagramChannel(DatagramChannel):
                     self._handle_packet(packet)
                 except Exception:
                     logger.exception("unhandled error in _handle_packet")
-        except StopAsyncIteration:
-            pass
         except Exception:
             logger.exception("packet reader failed")
             self.close()

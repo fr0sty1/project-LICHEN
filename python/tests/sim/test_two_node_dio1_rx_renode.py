@@ -86,9 +86,7 @@ async def test_sx1262_peripheral_loads_and_connects(tmp_path: Path) -> None:
     sim = Simulation("renode-connect-test", time_mode=TimeMode.BARRIER_SYNC)
 
     # Start a RenodeServer (TCP bridge)
-    server, port = await start_renode_server(
-        sim, "test-node", port=0, position=(0.0, 0.0, 0.0)
-    )
+    server, port = await start_renode_server(sim, "test-node", port=0, position=(0.0, 0.0, 0.0))
 
     try:
         sx1262_cs = PROJECT_ROOT / "lichen/boards/renode/peripherals/SX1262.cs"
@@ -131,7 +129,8 @@ quit
         proc = await asyncio.create_subprocess_exec(
             "renode",
             "--disable-gui",
-            "--port", str(monitor_port),
+            "--port",
+            str(monitor_port),
             str(script_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -180,12 +179,8 @@ async def test_two_node_platforms_load(tmp_path: Path) -> None:
     sim = Simulation("renode-two-node-test", time_mode=TimeMode.BARRIER_SYNC)
 
     # Start servers for two nodes
-    server_a, port_a = await start_renode_server(
-        sim, "node-a", port=0, position=(0.0, 0.0, 0.0)
-    )
-    server_b, port_b = await start_renode_server(
-        sim, "node-b", port=0, position=(50.0, 0.0, 0.0)
-    )
+    server_a, port_a = await start_renode_server(sim, "node-a", port=0, position=(0.0, 0.0, 0.0))
+    server_b, port_b = await start_renode_server(sim, "node-b", port=0, position=(50.0, 0.0, 0.0))
 
     try:
         sx1262_cs = PROJECT_ROOT / "lichen/boards/renode/peripherals/SX1262.cs"
@@ -229,7 +224,8 @@ quit
         proc_a = await asyncio.create_subprocess_exec(
             "renode",
             "--disable-gui",
-            "--port", str(monitor_port_a),
+            "--port",
+            str(monitor_port_a),
             str(script_a_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -237,7 +233,8 @@ quit
         proc_b = await asyncio.create_subprocess_exec(
             "renode",
             "--disable-gui",
-            "--port", str(monitor_port_b),
+            "--port",
+            str(monitor_port_b),
             str(script_b_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,

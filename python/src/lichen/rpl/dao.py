@@ -93,6 +93,8 @@ class TransitInformation:
     external: bool = False
 
     def to_option(self) -> RplOption:
+        if self.external:
+            raise DaoError("external encoding not supported")
         e_flag = 0x80 if self.parent_address is not None else 0x00
         data = bytes([e_flag, self.path_control, self.path_sequence, self.path_lifetime])
         if self.parent_address is not None:
@@ -105,10 +107,12 @@ class TransitInformation:
             raise DaoError(f"not a Transit Information option: type {opt.type}")
         if len(opt.data) < 4:
             raise DaoError("Transit Information option too short")
+        if (opt.data[0] & 0x7F) != 0:
+            raise DaoError("flags must be zero")
         e_flag = opt.data[0] & 0x80
         if e_flag:
             if len(opt.data) < 4 + 16:
-                raise DaoError("Transit Information option missing parent address")
+                raise DaoError("Transit Information option must contain parent address")
             parent = IPv6Address(opt.data[4:20])
         else:
             parent = None
@@ -303,20 +307,8 @@ class DaoManager:
         """
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
-        # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
-        # Accepting DAOs from a different instance could corrupt the routing table.
-        if dao.rpl_instance_id != self.rpl_instance_id:
-            raise DaoError(
-                f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
-            )
-        if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
-            raise DaoError(
-                f"DAO DODAG ID {dao.dodag_id} != {self.dodag_id}"
-            )
-
-        target, parent = self._extract_edge(dao)
-        self._parent_map[target] = parent
-        self._rebuild_routes()
+        now = self.clock()
+        return self.process_dao_at(dao, now)
 
     def process_dao_at(self, dao: DAO, now_seconds: float) -> DAOAck | None:
         """Validate and atomically apply a DAO at a deterministic monotonic time."""
@@ -335,12 +327,20 @@ class DaoManager:
     def _apply_dao_at(self, dao: DAO, now_seconds: float) -> DaoOutcome:
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
+        # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
+        # Accepting DAOs from a different instance could corrupt the routing table.
         if dao.rpl_instance_id != self.rpl_instance_id:
-            raise DaoError(f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}")
+            raise DaoError(
+                f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}",
+                reason="instance_mismatch",
+            )
         if dao.flags != 0 or dao.reserved != 0:
             raise DaoError("DAO reserved base fields must be zero", reason="malformed_group")
         if self.dodag_id is not None and dao.dodag_id is not None and dao.dodag_id != self.dodag_id:
-            raise DaoError("DAO DODAGID does not match the active DODAG")
+            raise DaoError(
+                f"DAO DODAGID {dao.dodag_id} != {self.dodag_id}",
+                reason="dodag_mismatch",
+            )
 
         updates = self._extract_updates(dao)
         incoming: dict[IPv6Address, tuple[_Candidate, ...]] = {}
@@ -386,8 +386,10 @@ class DaoManager:
                             "equal Path Sequence changed candidate snapshot",
                             reason="equal_sequence_mutation",
                         )
-                    if not changed and target not in parents and any(
-                        candidate.path_lifetime != 0 for candidate in snapshot
+                    if (
+                        not changed
+                        and target not in parents
+                        and any(candidate.path_lifetime != 0 for candidate in snapshot)
                     ):
                         reason = "equal_expired_no_revival"
                     continue
@@ -477,7 +479,8 @@ class DaoManager:
         if self._contains_cycle(parents):
             raise DaoError("candidate graph contains a cycle", reason="cycle")
 
-        routes = self._build_routes(parents, candidates)
+        host_routes = self._build_routes(parents, candidates)
+        routes = self._merge_prefix_routes(host_routes)
         if len(routes) > self.max_routes:
             raise DaoError("route capacity exceeded", reason="capacity")
 
@@ -485,7 +488,7 @@ class DaoManager:
             bool(changed)
             or parents != self._parent_map
             or expiry != self._edge_expiry
-            or routes != self.routing_table._routes
+            or host_routes != self._existing_host_routes()
         )
 
         self._parent_map = parents
@@ -495,8 +498,20 @@ class DaoManager:
         self._path_sequences = path_sequences
         self._freshness = freshness
         self._edge_expiry = expiry
-        self.routing_table._routes = routes
+        self.routing_table.replace_routes(routes)
         return DaoOutcome(True, state_changed, False, reason)
+
+    def _existing_host_routes(self) -> dict[IPv6Address, list[IPv6Address]]:
+        return self.routing_table.routes()
+
+    def _merge_prefix_routes(
+        self, host_routes: dict[IPv6Address, list[IPv6Address]]
+    ) -> dict[IPv6Address, list[IPv6Address]]:
+        merged = dict(host_routes)
+        for rt, entry in self.routing_table._routes.items():
+            if rt.prefix_len < 128 and entry.is_usable():
+                merged[rt.prefix] = list(entry.path)
+        return merged
 
     def expire_routes(self, now_seconds: float | None = None) -> bool:
         """Remove expired active edges and routes while retaining snapshot tombstones."""
@@ -507,15 +522,16 @@ class DaoManager:
             for edge, deadline in self._edge_expiry.items()
             if deadline is None or deadline > now
         }
-        routes = self._build_routes(parents, self._candidate_map)
+        host_routes = self._build_routes(parents, self._candidate_map)
+        routes = self._merge_prefix_routes(host_routes)
         changed = (
             parents != self._parent_map
             or expiry != self._edge_expiry
-            or routes != self.routing_table._routes
+            or routes != self.routing_table.routes()
         )
         self._parent_map = parents
         self._edge_expiry = expiry
-        self.routing_table._routes = routes
+        self.routing_table.replace_routes(routes)
         return changed
 
     def remove_edge(self, target: IPv6Address | str) -> bool:
@@ -528,7 +544,9 @@ class DaoManager:
         self._edge_expiry = {
             edge: deadline for edge, deadline in self._edge_expiry.items() if edge[0] != target
         }
-        self.routing_table._routes = self._build_routes(self._parent_map, self._candidate_map)
+        host_routes = self._build_routes(self._parent_map, self._candidate_map)
+        routes = self._merge_prefix_routes(host_routes)
+        self.routing_table.replace_routes(routes)
         current = self._freshness.get(target)
         if current is not None:
             self._freshness[target] = _Freshness(
@@ -577,7 +595,7 @@ class DaoManager:
                 }
             )
         route_records: list[dict[str, Any]] = []
-        for target in sorted(self.routing_table._routes):
+        for target in sorted(self.routing_table.routes()):
             selected = self._select_path(target, self._parent_map, self._candidate_map, set())
             if selected is None:
                 raise AssertionError("installed route has no selected candidate")
@@ -602,7 +620,7 @@ class DaoManager:
         """Return exact installed complete paths keyed by target hex."""
         return {
             target.packed.hex(): [hop.packed.hex() for hop in path]
-            for target, path in sorted(self.routing_table._routes.items())
+            for target, path in sorted(self.routing_table.routes().items())
         }
 
     def build_dao_ack(self, dao: DAO, status: int = 0) -> DAOAck:
@@ -651,11 +669,19 @@ class DaoManager:
                     )
             for target, descriptor in targets:
                 for transit in transits.values():
+                    parent = transit.parent_address
+                    if parent is None:
+                        if dao.dodag_id is None:
+                            raise DaoError(
+                                "Transit without parent address and no DODAG ID",
+                                reason="malformed_group",
+                            )
+                        parent = dao.dodag_id
                     updates.append(
                         _Update(
                             target,
                             _Candidate(
-                                transit.parent_address,
+                                parent,
                                 transit.path_control,
                                 transit.path_lifetime,
                                 transit.external,
@@ -703,13 +729,21 @@ class DaoManager:
                 in_transits = True
                 descriptor_allowed = False
                 parsed_transit = TransitInformation.from_option(opt)
-                existing = transits.get(parsed_transit.parent_address)
+                transit_parent = parsed_transit.parent_address
+                if transit_parent is None:
+                    if dao.dodag_id is None:
+                        raise DaoError(
+                            "Transit without parent address and no DODAG ID",
+                            reason="malformed_group",
+                        )
+                    transit_parent = dao.dodag_id
+                existing = transits.get(transit_parent)
                 if existing is not None and existing != parsed_transit:
                     raise DaoError(
                         "conflicting duplicate Transit candidate",
                         reason="inconsistent_group",
                     )
-                transits[parsed_transit.parent_address] = parsed_transit
+                transits[transit_parent] = parsed_transit
             else:
                 raise DaoError("unsupported DAO option", reason="malformed_group")
         if targets or transits:

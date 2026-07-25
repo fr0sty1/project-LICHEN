@@ -40,8 +40,8 @@ LICHEN/
 │   ├── drivers/
 │   │   └── lora/               # LoRa-specific adaptations
 │   ├── boards/                 # Board-specific overlays
-   │   │   ├── heltec_lora32_v3.overlay
-   │   │   ├── rak4631.overlay
+   │   │   ├── heltec_wifi_lora32_v3_esp32s3_procpu.overlay
+   │   │   ├── rak4631_nrf52840.overlay
    │   │   ├── tbeam_supreme.overlay (BLOCKED: no canonical board)
    │   │   └── nucleo_wl55jc.overlay
 

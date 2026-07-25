@@ -43,6 +43,7 @@ class ChecklistStatus(StrEnum):
     VALIDATED = "validated"
     FAILED = "failed"
 
+
 RADIO_CAPABILITIES = {
     "SX1261": ("sx126x", "CONFIG_LICHEN_RADIO_MODEL_SX126X"),
     "SX1262": ("sx126x", "CONFIG_LICHEN_RADIO_MODEL_SX126X"),
@@ -368,9 +369,7 @@ def infer_from_facts(facts: list[Fact]) -> list[Inference]:
         if identity in seen:
             return
         seen.add(identity)
-        inferences.append(
-            Inference(category, key, value, confidence, reason, fact.source_refs)
-        )
+        inferences.append(Inference(category, key, value, confidence, reason, fact.source_refs))
 
     for fact in facts:
         text = _fact_text(fact)
@@ -487,9 +486,7 @@ def find_unresolved_questions(facts: list[Fact]) -> list[dict[str, Any]]:
         )
 
     mcu_facts = [
-        fact
-        for fact in facts
-        if fact.category == "mcu" or fact.key in {"mcu", "board_build.mcu"}
+        fact for fact in facts if fact.category == "mcu" or fact.key in {"mcu", "board_build.mcu"}
     ]
     variant_facts = [
         fact
@@ -553,18 +550,10 @@ def find_unresolved_questions(facts: list[Fact]) -> list[dict[str, Any]]:
         )
 
     radio_facts = [
-        fact
-        for fact in facts
-        for chip in RADIO_CAPABILITIES
-        if chip in _fact_text(fact)
+        fact for fact in facts for chip in RADIO_CAPABILITIES if chip in _fact_text(fact)
     ]
     radio_chips = sorted(
-        {
-            chip
-            for fact in radio_facts
-            for chip in RADIO_CAPABILITIES
-            if chip in _fact_text(fact)
-        }
+        {chip for fact in radio_facts for chip in RADIO_CAPABILITIES if chip in _fact_text(fact)}
     )
     if len(radio_chips) > 1:
         sources = [ref.to_dict() for fact in radio_facts for ref in fact.source_refs]
@@ -586,18 +575,14 @@ def find_unresolved_questions(facts: list[Fact]) -> list[dict[str, Any]]:
             }
         )
     has_mcu = any(
-        fact.category == "mcu" or fact.key in {"mcu", "board_build.mcu"}
-        for fact in facts
+        fact.category == "mcu" or fact.key in {"mcu", "board_build.mcu"} for fact in facts
     )
     has_variant = any(fact.category == "variant" or "variant" in fact.key for fact in facts)
     has_pins = any(
-        fact.key.upper().startswith(("PIN_", "LORA_", "SPI_", "I2C_", "UART_"))
-        for fact in facts
+        fact.key.upper().startswith(("PIN_", "LORA_", "SPI_", "I2C_", "UART_")) for fact in facts
     )
     has_gnss = any(
-        token in _fact_text(fact)
-        for fact in facts
-        for token in ("GPS", "GNSS", "L76K", "AG3335")
+        token in _fact_text(fact) for fact in facts for token in ("GPS", "GNSS", "L76K", "AG3335")
     )
     observed = {
         "mcu": has_mcu,
@@ -673,8 +658,7 @@ def build_follow_up_beads(board_id: str, source_project: str) -> list[dict[str, 
     return [
         {
             "title": (
-                f"Port {source_project} {board_id} facts into a reviewed "
-                "Zephyr board checklist"
+                f"Port {source_project} {board_id} facts into a reviewed Zephyr board checklist"
             ),
             "description": (
                 "Use the board intake report to decide Zephyr board/overlay work; "

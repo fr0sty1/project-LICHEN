@@ -185,6 +185,8 @@ static inline enum lora_state lora_get_state(void)
  * per-instance context structs, instance enumeration, RX thread ownership, and
  * API changes to accept an instance handle.
  */
+BUILD_ASSERT(DT_NODE_EXISTS(DT_ALIAS(lora0)),
+             "lora_l2 requires a 'lora0' devicetree alias for single-radio operation");
 
 /* RX thread and stack */
 static K_THREAD_STACK_DEFINE(rx_stack, RX_THREAD_STACK_SIZE);
@@ -311,6 +313,9 @@ BUILD_ASSERT(LICHEN_HWID_MAX_LEN >= LICHEN_EXPECTED_MAX_HWID_LEN,
 
 static int generate_eui64(uint8_t *eui64)
 {
+    if (eui64 == NULL) {
+        return -EINVAL;
+    }
     int ret = 0;
     uint8_t hwid[LICHEN_HWID_MAX_LEN];
     ssize_t hwid_len;
@@ -762,24 +767,14 @@ int lichen_lora_l2_start(void)
      * Matches spec; preamble 8 default. New Kconfigs enable DIO/hash SF
      * assignment and gateway CAD for multi-SF (CONFIG_LICHEN_GATEWAY_MULTI_SF).
      *
-     * RADIO CAPABILITY NOTE: Different LoRa transceivers have different SF ranges:
-     *   - SX1261/62, SX1276/77/78/79: SF5-SF12 (SX126x), SF6-SF12 (SX127x)
-     *   - LLCC68:               SF5-SF11 only (no SF12)
-     *   - LR1110:               SF5-SF12
-     * The selected SF must be supported by the board's radio hardware.
-     * lora_config() at runtime validates this and returns -EINVAL if the
-     * radio cannot support the requested datarate. See BUILD_ASSERT below
-     * for compile-time range checking.
-     *
-     * Stack-local struct is safe: lora_config() copies values.
+     * Static struct: safe even if a driver retains the pointer, since
+     * lichen_lora_l2_start() holds lora_mutex and is non-re-entrant.
      *
      * RX then TX pass programs both directions (RX config reused by recv).
      * CAD scan added in rx_thread under multi-SF config (lr1110 IRQ extended
      * for PREAMBLEDETECTED per ASSIGNED_SF in DIO).
      */
-    BUILD_ASSERT(CONFIG_LICHEN_DEFAULT_SF >= 6 && CONFIG_LICHEN_DEFAULT_SF <= 12,
-                 "LICHEN_DEFAULT_SF must be 6-12; note LLCC68 only supports SF5-SF11");
-    struct lora_modem_config config = {
+    static struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
         .bandwidth = BW_125_KHZ,
         .datarate = IS_ENABLED(CONFIG_LICHEN_SF_ASSIGNMENT_ENABLED) ? SF_9 : SF_10,
@@ -791,26 +786,31 @@ int lichen_lora_l2_start(void)
 
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: RX config failed with freq=%u bw=%d sf=%d cr=%d power=%d (%d)",
-                config.frequency, config.bandwidth, config.datarate,
-                config.coding_rate, config.tx_power, ret);
+        LOG_ERR("lora_l2: RX config failed (%d)", ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
 
-    config.tx = true;              /* pass 2: program TX + airtime cache */
+    config.tx = true;              /* pass 2: program TX + airtime cache.
+                                    * TX-only fields (tx_power, tx=true) configure
+                                    * the sx12xx driver's shared TX/RX modem state.
+                                    * Half-duplex arbitration uses modem_mutex (TX
+                                    * acquires before lora_send(), RX before
+                                    * lora_recv()), not the driver's tx flag. The
+                                    * tx=true call is still required because
+                                    * lora_config() sets per-direction registers
+                                    * and the airtime/symbol-time cache used by
+                                    * lora_send() internally. */
     ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: TX config failed with freq=%u bw=%d sf=%d cr=%d power=%d (%d)",
-                config.frequency, config.bandwidth, config.datarate,
-                config.coding_rate, config.tx_power, ret);
+        LOG_ERR("lora_l2: TX config failed (%d)", ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
 
     if (lora_transition_from(LORA_STOPPED, LORA_RUNNING) != 0) {
         k_mutex_unlock(&lora_mutex);
-        return -EIO;
+        return -EAGAIN;
     }
 
     /* Start RX thread.
@@ -906,7 +906,7 @@ int lichen_lora_l2_stop(void)
          */
         join_ret = k_thread_join(&rx_thread_data, K_MSEC(RX_TIMEOUT_MS));
         if (join_ret == -EAGAIN) {
-            LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting",
+            LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting — possible data loss",
                     RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);
             k_thread_abort(&rx_thread_data);
             join_ret = k_thread_join(&rx_thread_data, K_MSEC(100));

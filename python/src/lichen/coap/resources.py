@@ -24,7 +24,7 @@ Observable resources (RFC 7641):
   neighbour nodes; updated by calling :meth:`~PresenceResource.seen` whenever a
   beacon arrives from a mesh peer.
 
-* :class:`SosResource` — ``/sos`` — emergency beacon.  PUT activates SOS;
+* :class:`SosResource` — ``/sos`` — emergency beacon.  POST activates SOS;
   DELETE cancels; GET and Observe let any node monitor the state.
 
 Because the integrated Node class does not exist yet, the local resources read
@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlparse
 
-import aiocoap
+import aiocoap  # type: ignore[import-untyped]  # no official stubs
 import cbor2
 from aiocoap import (
     BAD_GATEWAY,
@@ -63,7 +63,7 @@ from aiocoap import (
     Message,
     resource,
 )
-from aiocoap.numbers import ContentFormat, constants
+from aiocoap.numbers import ContentFormat, constants  # type: ignore[import-untyped]
 
 from lichen.coap.transport import EndpointPolicy
 
@@ -231,9 +231,7 @@ def _scan_cbor_item(
             chunk = payload[offset]
             if chunk >> 5 != major or chunk & 0x1F == 31:
                 raise ValueError("invalid indefinite CBOR string chunk")
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
 
     if major == 4:
         if indefinite:
@@ -246,16 +244,12 @@ def _scan_cbor_item(
                 count += 1
                 if count > _CBOR_MAX_ARRAY_ENTRIES:
                     raise ValueError("CBOR array exceeds mutation limit")
-                offset = _scan_cbor_item(
-                    payload, offset, depth=depth + 1, budget=budget
-                )
+                offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
         length, offset = _cbor_argument(payload, offset, additional)
         if length > _CBOR_MAX_ARRAY_ENTRIES:
             raise ValueError("CBOR array exceeds mutation limit")
         for _ in range(length):
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
         return offset
 
     if major == 5:
@@ -275,17 +269,13 @@ def _scan_cbor_item(
             if count > _CBOR_MAX_MAP_ENTRIES:
                 raise ValueError("CBOR map exceeds mutation limit")
             key_start = offset
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
             key_raw = payload[key_start:offset]
             key = cbor2.loads(key_raw)
             if any(_same_cbor_key(key, old, key_raw, old_raw) for old, old_raw in keys):
                 raise ValueError("duplicate CBOR map key")
             keys.append((key, key_raw))
-            offset = _scan_cbor_item(
-                payload, offset, depth=depth + 1, budget=budget
-            )
+            offset = _scan_cbor_item(payload, offset, depth=depth + 1, budget=budget)
         return offset
 
     if major == 6:
@@ -466,6 +456,7 @@ class SenMLSensorsResource(resource.ObservableResource):  # type: ignore[misc]  
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._records: list[Any] = []
         self._payload: bytes = pack([])
 
@@ -502,6 +493,7 @@ class SenMLLocationResource(resource.ObservableResource):  # type: ignore[misc] 
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._payload: bytes = pack([])
 
     def update(self, lat: float, lon: float, alt: float | None = None) -> None:
@@ -536,6 +528,7 @@ class SenMLMetricsResource(resource.ObservableResource):  # type: ignore[misc]  
         """Initialize with empty SenML pack."""
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._payload: bytes = pack([])
 
     def update(
@@ -549,6 +542,7 @@ class SenMLMetricsResource(resource.ObservableResource):  # type: ignore[misc]  
         """Update telemetry+battery readings and notify all observers."""
         from lichen.senml.codec import pack  # noqa: PLC0415
         from lichen.senml.profiles import metrics  # noqa: PLC0415
+
         self._payload = pack(
             metrics(
                 rssi=rssi,
@@ -713,7 +707,7 @@ class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap
         msg.opt.content_format = CBOR
         return msg
 
-    async def render_put(self, request: Message) -> Message:
+    async def render_post(self, request: Message) -> Message:
         if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
         try:
@@ -722,10 +716,10 @@ class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(body, dict):
             return Message(code=aiocoap.BAD_REQUEST)
-        from_hex = body.get("from") or body.get("node")
-        timestamp = body.get("t") or body.get("ts")
-        if "type" in body and body["type"] != "sos":
-            pass  # support other types per spec in future
+        from_hex = body.get("from", body.get("node"))
+        timestamp = body.get("t", body.get("ts"))
+        if body.get("type", "sos") != "sos":
+            return Message(code=aiocoap.BAD_REQUEST)
         if from_hex is None or timestamp is None:
             return Message(code=aiocoap.BAD_REQUEST)
         if (
@@ -742,7 +736,7 @@ class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(bytes.fromhex(from_hex), timestamp)
-        return Message(code=aiocoap.CHANGED)
+        return Message(code=aiocoap.CREATED)
 
     async def render_delete(self, request: Message) -> Message:
         self.cancel()
@@ -869,7 +863,7 @@ class MessagesResource(resource.ObservableResource):  # type: ignore[misc]  # ai
         """
         self._inbox.append(message)
         if len(self._inbox) > self._max_messages:
-            self._inbox = self._inbox[-self._max_messages:]
+            self._inbox = self._inbox[-self._max_messages :]
         self.updated_state()
         for alias in self._legacy_aliases:
             alias.updated_state()
@@ -913,9 +907,7 @@ class MessagesResource(resource.ObservableResource):  # type: ignore[misc]  # ai
         if not (isinstance(body.get("body"), str) or isinstance(body.get("text"), str)):
             return Message(code=aiocoap.BAD_REQUEST)
         if "id" in body and (
-            type(body["id"]) is not int
-            or body["id"] < 0
-            or body["id"] > _MESSAGE_ID_MAX
+            type(body["id"]) is not int or body["id"] < 0 or body["id"] > _MESSAGE_ID_MAX
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         body = dict(body)
@@ -982,10 +974,12 @@ class SentMessageDetailsResource(resource.Resource, resource.PathCapable):  # ty
         return _cbor_response(dict(message))
 
     def get_resources_as_linkheader(self) -> Any:
-        return resource.LinkFormat([
-            resource.Link(f"/{msg_id}", ct=str(int(CBOR)))
-            for msg_id in self._messages._sent_order
-        ])
+        return resource.LinkFormat(
+            [
+                resource.Link(f"/{msg_id}", ct=str(int(CBOR)))
+                for msg_id in self._messages._sent_order
+            ]
+        )
 
 
 class MessageReceiptsResource(resource.Resource):
@@ -1123,9 +1117,7 @@ class ResourceDirectoryResource(resource.Resource):  # type: ignore[misc]  # aio
     ) -> None:
         super().__init__()
         self._site = site
-        self._route_remover = route_remover or (
-            lambda reg_id: site.remove_resource(["rd", reg_id])
-        )
+        self._route_remover = route_remover or (lambda reg_id: site.remove_resource(["rd", reg_id]))
         self._entries: dict[str, _RdEntry] = {}  # keyed by reg_id
 
     def _lookup(self, ep: str | None = None) -> list[dict[str, Any]]:
@@ -1197,11 +1189,7 @@ class ResourceDirectoryResource(resource.Resource):  # type: ignore[misc]  # aio
                 ep = q[3:]
             elif q.startswith("lt="):
                 raw_lifetime = q[3:]
-                if (
-                    not raw_lifetime
-                    or not raw_lifetime.isascii()
-                    or not raw_lifetime.isdecimal()
-                ):
+                if not raw_lifetime or not raw_lifetime.isascii() or not raw_lifetime.isdecimal():
                     return Message(code=BAD_REQUEST)
                 lt = int(raw_lifetime)
                 if not 1 <= lt <= (1 << 32) - 1:
@@ -1382,9 +1370,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         if publications:
             await asyncio.gather(*publications, return_exceptions=True)
         if completing:
-            await asyncio.gather(
-                *(session["finalized_event"].wait() for session in completing)
-            )
+            await asyncio.gather(*(session["finalized_event"].wait() for session in completing))
 
     def __del__(self) -> None:
         with contextlib.suppress(Exception):
@@ -1426,18 +1412,16 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         except ValueError:
             return None
 
-    def _peer_session(
-        self, peer_host: str, c_i: bytes | None = None
-    ) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
+    def _peer_session(self, peer_host: str) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
         for key, session in self._sessions.items():
-            if key[0] == peer_host and (c_i is None or key[1] == c_i):
+            if key[0] == peer_host:
                 return key, session
         return None
 
     @staticmethod
     def _edhoc_response(payload: bytes) -> Message:
         response = Message(code=CHANGED, payload=payload)
-        response.opt.content_format = ContentFormat(65535)
+        response.opt.content_format = ContentFormat(60)  # application/edhoc per RFC 9528
         return response
 
     async def render_post(self, request: Message) -> Message:
@@ -1462,39 +1446,29 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
 
         payload = request.payload
         self._expire_sessions()
-
-        c_i = self._message_1_connection_id(payload)
+        active = self._peer_session(peer_host)
 
         try:
-            if c_i is not None:
+            if active is None:
                 # This is Message 1 - start new session
-                active = self._peer_session(peer_host, c_i)
-                if active is not None:
-                    # Duplicate Message 1 - return cached Message 2
-                    active_key, active_session = active
-                    if active_session.get("msg2") is not None:
-                        return self._edhoc_response(active_session["msg2"])
                 return await self._handle_message_1(peer_host, payload)
             else:
-                # This is Message 3 - find matching session by host
-                active = self._peer_session(peer_host)
-                if active is None:
-                    return await self._handle_message_1(peer_host, payload)
-                active_key, active_session = active
-                return await self._handle_message_3(peer_host, payload, active_session)
+                # This is Message 3 - complete handshake.
+                # Use the session from the exact (peer_host, c_i) key lookup,
+                # not a host-only scan — a host-only scan could match the wrong
+                # session when multiple concurrent handshakes exist from the
+                # same peer (SECURITY).
+                key, session = active
+                return await self._handle_message_3(peer_host, payload, key, session)
         except _EdhocTransientError:
             return Message(code=SERVICE_UNAVAILABLE)
         except ValueError:
-            active = self._peer_session(peer_host)
             if active is not None:
-                active_key, active_session = active
-                self._remove_session(active_key, active_session, abort=True)
+                self._remove_session(active[0], active[1], abort=True)
             return Message(code=BAD_REQUEST)
         except Exception:
-            active = self._peer_session(peer_host)
             if active is not None:
-                active_key, active_session = active
-                self._remove_session(active_key, active_session, abort=True)
+                self._remove_session(active[0], active[1], abort=True)
             return Message(code=INTERNAL_SERVER_ERROR)
 
     async def _handle_message_1(self, peer_host: str, msg1: bytes) -> Message:
@@ -1534,13 +1508,13 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         if any(key[0] == peer_host for key in self._completing):
             return Message(code=SERVICE_UNAVAILABLE)
 
+        self._cleanup_session(peer_host)
         responder = EdhocResponder.create(self._identity)
         msg2 = responder.process_message_1(msg1, peer_pubkey)
         c_i = responder._c_i
         deadline = self._monotonic() + self._session_lifetime
         session_key = (peer_host, c_i)
         session = {
-            "key": session_key,
             "responder": responder,
             "peer_pubkey": peer_pubkey,
             "expected_generation": expected_generation,
@@ -1562,7 +1536,11 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         return self._edhoc_response(msg2)
 
     async def _handle_message_3(
-        self, peer_host: str, msg3: bytes, session: dict[str, Any]
+        self,
+        peer_host: str,
+        msg3: bytes,
+        session_key: tuple[str, bytes],
+        session: dict[str, Any],
     ) -> Message:
         """Process EDHOC Message 3 and establish OSCORE context."""
         from lichen.crypto.oscore import MemorySecurityContext
@@ -1570,7 +1548,6 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         responder = session["responder"]
         peer_pubkey = session["peer_pubkey"]
         expected_generation = session["expected_generation"]
-        session_key = session["key"]
 
         self._expire_sessions()
         if self._sessions.get(session_key) is not session:
@@ -1599,8 +1576,15 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
             self._remove_session(session_key, session, abort=True)
             raise
 
+        # Pin the peer key if using TOFU (do this BEFORE storing context
+        # to avoid leaving invalid context if pin_peer raises on key mismatch)
+        from lichen.coap.secure import TofuPeerResolver
+        if isinstance(self._peer_resolver, TofuPeerResolver):
+            await self._peer_resolver.pin_peer(peer_host, peer_pubkey)
+
         publication: asyncio.Task[None] | None = None
         try:
+
             async def publish() -> None:
                 await self._peer_resolver.ensure_bound()
                 await self._context_store.put(
@@ -1633,9 +1617,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
                 await asyncio.gather(*pending_tasks, return_exceptions=True)
             self._finalize_completion(session_key, session)
 
-    def _schedule_expiry(
-        self, session_key: tuple[str, bytes], session: dict[str, Any]
-    ) -> None:
+    def _schedule_expiry(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
         delay = max(0.0, session["deadline"] - self._monotonic())
         scheduler = self._call_later or asyncio.get_running_loop().call_later
         resource_ref = weakref.ref(self)
@@ -1651,9 +1633,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         else:
             handle.cancel()
 
-    def _expire_session(
-        self, session_key: tuple[str, bytes], session: dict[str, Any]
-    ) -> None:
+    def _expire_session(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
         if self._sessions.get(session_key) is not session:
             return
         if self._monotonic() < session["deadline"]:
@@ -1696,9 +1676,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         self._completing[session_key] = session
         return True
 
-    def _finalize_completion(
-        self, session_key: tuple[str, bytes], session: dict[str, Any]
-    ) -> None:
+    def _finalize_completion(self, session_key: tuple[str, bytes], session: dict[str, Any]) -> None:
         if self._completing.get(session_key) is session:
             del self._completing[session_key]
         session["publication_task"] = None
@@ -1716,9 +1694,7 @@ class EdhocResource(resource.Resource):  # type: ignore[misc]  # aiocoap lacks p
         """Synchronously catch deadlines before request processing."""
         now = self._monotonic()
         expired = [
-            (key, session)
-            for key, session in self._sessions.items()
-            if now >= session["deadline"]
+            (key, session) for key, session in self._sessions.items() if now >= session["deadline"]
         ]
         for key, session in expired:
             self._remove_session(key, session, abort=True)
@@ -1788,6 +1764,7 @@ def build_site(
     if rollcall_resource is not None:
         site.add_resource(["rollcall"], rollcall_resource)
     if resource_directory:
+
         def remove_rd_registration(reg_id: str) -> None:
             site.remove_resource(["rd", reg_id])
 

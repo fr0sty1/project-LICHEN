@@ -49,7 +49,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # A signed frame puts the full Schnorr-48 value in the MIC field.
-# Signed frames also include an 8-byte signer IID after the dst_addr field.
 SIGNATURE_LENGTH = 48
 
 # Track whether we've warned about encrypted frames being rejected.
@@ -203,7 +202,6 @@ class LinkLayer:
         payload: bytes,
         length: int | None = None,
         llsec: int | None = None,
-        signer_iid: bytes = b"",
     ) -> bytes:
         """Construct the data that gets signed.
 
@@ -213,21 +211,20 @@ class LinkLayer:
 
         Signed fields follow the draft exactly with dst_addr_len domain
         separation (per j7rk): LENGTH || LLSec || EPO || SEQ || DST_LEN(1)
-        || DST || SIGNER_IID(8) || PLD.
+        || DST || PLD.
 
         Returns:
             Bytes to be signed.
         """
         if length is None:
-            length = 4 + len(dst_addr) + 8 + len(payload) + SIGNATURE_LENGTH
+            length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
         if llsec is None:
-            llsec = int(AddrMode.NONE) | (1 << 5) | (1 << 7)
+            llsec = int(AddrMode.NONE) | (1 << 5)
         return (
             bytes([length, llsec, epoch])
             + seqnum.to_bytes(2, "big")
             + bytes([len(dst_addr)])
             + dst_addr
-            + signer_iid
             + payload
         )
 
@@ -277,9 +274,8 @@ class LinkLayer:
                 f"requires {expected_len} bytes"
             )
 
-        signer_iid = self.identity.iid
         # Validate frame fits on-air size constraint BEFORE signing
-        frame_length = 4 + len(dst_addr) + 8 + len(payload) + SIGNATURE_LENGTH
+        frame_length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
         if frame_length > MAX_FRAME_BODY:
             raise FrameError(
                 f"frame body is {frame_length} bytes, exceeds {MAX_FRAME_BODY}"
@@ -290,9 +286,9 @@ class LinkLayer:
         # waste a sequence number. Only consume after successful push.
         epoch, seqnum = self._epoch, self._seqnum
 
-        llsec = int(addr_mode) | (1 << 5) | (1 << 7)
+        llsec = int(addr_mode) | (1 << 5)
         signable = self._build_signable_data(
-            epoch, seqnum, dst_addr, payload, frame_length, llsec, signer_iid
+            epoch, seqnum, dst_addr, payload, frame_length, llsec
         )
         signature = sign(self.identity.privkey, self.identity.pubkey, signable)
 
@@ -306,8 +302,6 @@ class LinkLayer:
             mic_length=MicLength.BITS32,
             signature_present=True,
             encrypted=False,
-            signer_iid=signer_iid,
-            signer_iid_present=True,
         )
 
         frame_bytes = frame.to_bytes()
@@ -484,9 +478,16 @@ class LinkLayer:
         inner_payload = frame.payload
 
         # Step 3: Look up sender
-        # The frame contains the signer IID directly (when SI=1, which is all
-        # signed frames), enabling O(1) lookup via peer_lookup(hint=iid).
-        sender = self._find_sender(frame, signature, inner_payload, signer_iid=frame.signer_iid)
+        # Why use IID from signature verification: We need the sender's pubkey
+        # to verify. The frame itself doesn't contain the sender's IID directly;
+        # we must try known peers.
+        #
+        # TODO: For broadcast frames, we need to try multiple potential senders
+        # or have the sender IID embedded somewhere. For now, this is a
+        # limitation: we need out-of-band knowledge of who might be sending.
+        #
+        # Workaround for now: Try all known peers. This is O(n) but n is small.
+        sender = self._find_sender(frame, signature, inner_payload)
         if sender is None:
             logger.warning("RX frame from unknown sender or bad signature")
             return ReceiveError.BAD_SIGNATURE
@@ -550,8 +551,6 @@ class LinkLayer:
             mic_length=frame.mic_length,
             signature_present=True,
             encrypted=frame.encrypted,
-            signer_iid=frame.signer_iid,
-            signer_iid_present=frame.signer_iid_present,
         )
 
         return RxFrame(
@@ -566,13 +565,21 @@ class LinkLayer:
         frame: LichenFrame,
         signature: bytes,
         payload: bytes,
-        signer_iid: bytes = b"",
     ) -> PeerIdentity | None:
-        """Find the sender by IID or by trying known peers.
+        """Find the sender by trying known peers' pubkeys.
 
-        When signer_iid is provided (from frame.signer_iid), we do an O(1)
-        lookup first. The O(n) brute-force fallback is preserved for cases
-        where the signer IID is not available (legacy frames).
+        Why brute-force: Without sender IID in the frame, we must try each
+        known peer. This is a design limitation we might address later by
+        including sender IID in a header extension.
+
+        Performance: O(n) where n = number of known peers. For mesh networks
+        with <100 peers and fast Ed25519 verification, this is acceptable.
+        If it becomes a bottleneck, we can add sender hints.
+
+        SEMANTICS: This method uses peer_lookup_all() for exhaustive search.
+        It does NOT call peer_lookup() with an empty hint (b""), because
+        empty bytes is not a valid IID and the callback's behavior for that
+        input is undefined. See project-LICHEN-3skp.
 
         Returns:
             PeerIdentity if found and signature valid, None otherwise.
@@ -582,9 +589,8 @@ class LinkLayer:
             frame.seqnum,
             frame.dst_addr,
             payload,
-            4 + len(frame.dst_addr) + 8 + len(payload) + SIGNATURE_LENGTH,
+            4 + len(frame.dst_addr) + len(payload) + SIGNATURE_LENGTH,
             frame.llsec_byte(),
-            signer_iid,
         )
 
         # Why try self first: In loopback/testing scenarios, we might receive
@@ -594,14 +600,15 @@ class LinkLayer:
             logger.debug("RX frame from self (loopback)")
             return PeerIdentity.from_pubkey(self.identity.pubkey)
 
-        # Direct lookup by signer IID (O(1) when the peer is known).
-        if signer_iid:
-            peer = self.peer_lookup(signer_iid)
-            if peer is not None and verify(peer.pubkey, signable, signature):
-                return peer
-
-        # Fallback: brute-force try all known peers (e.g. when IID lookup failed
-        # or signer_iid is empty for legacy frames).
+        # Exhaustive search: try each known peer until signature verifies.
+        # O(n) is unavoidable without sender IID in frame format.
+        #
+        # peer_lookup_all() returns the complete list of known peers;
+        # the signature itself disambiguates the sender.
+        # peer_lookup(hint) is reserved for future hint-based lookups when
+        # the frame format includes a sender IID. It MUST NOT be called
+        # with b"" as a sentinel — that creates ambiguous semantics
+        # (see project-LICHEN-3skp).
         if self.peer_lookup_all is not None:
             for candidate in self.peer_lookup_all():
                 if verify(candidate.pubkey, signable, signature):

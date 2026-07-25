@@ -68,8 +68,6 @@ pub enum RadioError<E> {
     Connection,
     /// Operation not supported by this radio (e.g. multi-channel on single-radio impl).
     NotSupported,
-    /// CCP-15 CCA: channel is busy, cannot transmit.
-    ChannelBusy,
 }
 
 impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
@@ -80,7 +78,6 @@ impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
             Self::Protocol => write!(f, "protocol error"),
             Self::Connection => write!(f, "connection lost"),
             Self::NotSupported => write!(f, "not supported"),
-            Self::ChannelBusy => write!(f, "channel busy"),
         }
     }
 }
@@ -151,9 +148,6 @@ pub trait Radio {
     }
 }
 
-/// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).
-pub type ChannelPlan = u8;
-
 /// Operating class identifier for regional channel plans (CCP-3/CCP-4).
 ///
 /// Each variant maps to a set of radio parameters (frequency, SF, BW, CR, power)
@@ -171,12 +165,9 @@ pub enum OperatingClass {
 }
 
 impl OperatingClass {
-    /// All defined operating classes, ordered.
-    pub const ALL: &[Self] = &[Self::UsCa, Self::Eu, Self::AuNz];
+    /// All known operating classes.
+    pub const ALL: &'static [Self] = &[Self::UsCa, Self::Eu, Self::AuNz];
 
-    /// Lookup an operating class by its integer discriminant.
-    ///
-    /// Returns `None` for unknown values (graceful fallback to CH0-only).
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
             0 => Some(Self::UsCa),
@@ -186,15 +177,8 @@ impl OperatingClass {
         }
     }
 
-    /// Return the default (first) operating class.
     pub const fn default() -> Self {
         Self::UsCa
-    }
-}
-
-impl Default for OperatingClass {
-    fn default() -> Self {
-        Self::default()
     }
 }
 
@@ -205,35 +189,23 @@ impl From<OperatingClass> for u8 {
 }
 
 /// Radio parameters associated with a single operating class.
-///
-/// Every class defines a fixed PHY profile (SF, BW, CR) per CCP PHY profile ID
-/// `0x01` plus the per-class CH0 frequency and regulatory constraints.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OperatingClassParams {
-    /// Operating class discriminant (matches [`OperatingClass`] repr).
     pub class_id: u8,
-    /// Human-readable label (e.g. "US/CA", "EU", "AU/NZ").
     pub label: &'static str,
-    /// CH0 centre frequency in Hz.
     pub frequency_hz: u32,
-    /// Spreading factor (7-12).
     pub spreading_factor: u8,
-    /// Bandwidth in Hz.
     pub bandwidth_hz: u32,
-    /// Coding rate denominator (5 = 4/5, 6 = 4/6, etc.).
     pub coding_rate: u8,
-    /// Max transmit power in dBm.
     pub tx_power_dbm: i8,
-    /// Duty cycle region discriminant (matches [`duty_cycle`] `REGION_*` constants).
     pub duty_region: u8,
-    /// Base duty cycle in permille (10 = 1%, 1000 = 100%).
     pub duty_permille: u16,
 }
 
 /// Operating class lookup table (CCP-3/CCP-4).
 ///
-/// Indexed by [`OperatingClass`] discriminant. Using a slice rather than an
-/// array preserves the ability to add entries without changing public API size.
+/// Provisioned at compile time; over-the-air messages MUST NOT expand the
+/// local plan per spec/02a-coordinated-capacity.md §CCP-4.
 pub static OPERATING_CLASS_TABLE: &[OperatingClassParams] = &[
     OperatingClassParams {
         class_id: 0,
@@ -243,8 +215,8 @@ pub static OPERATING_CLASS_TABLE: &[OperatingClassParams] = &[
         bandwidth_hz: 125_000,
         coding_rate: 5,
         tx_power_dbm: 20,
-        duty_region: 1,     // REGION_US
-        duty_permille: 1000, // 100 %
+        duty_region: 1,
+        duty_permille: 1000,
     },
     OperatingClassParams {
         class_id: 1,
@@ -254,8 +226,8 @@ pub static OPERATING_CLASS_TABLE: &[OperatingClassParams] = &[
         bandwidth_hz: 125_000,
         coding_rate: 5,
         tx_power_dbm: 14,
-        duty_region: 0,     // REGION_EU
-        duty_permille: 10,   // 1 %
+        duty_region: 0,
+        duty_permille: 10,
     },
     OperatingClassParams {
         class_id: 2,
@@ -265,23 +237,18 @@ pub static OPERATING_CLASS_TABLE: &[OperatingClassParams] = &[
         bandwidth_hz: 125_000,
         coding_rate: 5,
         tx_power_dbm: 30,
-        duty_region: 0,     // REGION_EU-like limits
-        duty_permille: 50,   // 5 %
+        duty_region: 0,
+        duty_permille: 50,
     },
 ];
 
-/// Look up operating class parameters by class ID.
-///
-/// Returns `None` if the class ID is not in the table (caller should fall back
-/// to CH0-only operation per spec CCP-4 §2a.6).
 pub fn lookup_operating_class(class_id: u8) -> Option<&'static OperatingClassParams> {
-    OPERATING_CLASS_TABLE.iter().find(|p| p.class_id == class_id)
+    OPERATING_CLASS_TABLE
+        .iter()
+        .find(|p| p.class_id == class_id)
 }
 
 impl RadioConfig {
-    /// Build a [`RadioConfig`] from operating class parameters.
-    ///
-    /// Convenience constructor for single-channel radios configured to CH0.
     pub fn from_operating_class(params: &OperatingClassParams) -> Self {
         Self {
             spreading_factor: params.spreading_factor,
@@ -348,7 +315,7 @@ pub trait NonVolatile {
     ///
     /// Callers can detect truncation or size mismatch by comparing the returned
     /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
-    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
+    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
 
     /// Atomically and durably replace one value.
     ///
@@ -383,9 +350,10 @@ pub trait Concentrator {
         &mut self,
         payload: &[u8],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-
-    /// Receive a packet from the concentrator. Returns `Some((payload, rssi, snr))` on success,
-    /// `None` if no frame is pending. The timeout is used to bound waiting for IRQ.
+    /// Receive a packet from any channel on the concentrator.
+    ///
+    /// Returns `Some((payload, rssi, snr))` on reception, `None` on timeout.
+    /// Buffer must be at least 255 bytes for max LoRa payload.
     fn receive(
         &mut self,
         buf: &mut [u8],
@@ -434,11 +402,7 @@ impl Concentrator for Sx1302Concentrator {
         _buf: &mut [u8],
         _timeout_ms: u32,
     ) -> Result<Option<(usize, i16, i8)>, Self::Error> {
-        let irq = self.irq_status().await?;
-        if irq & 1 == 0 {
-            return Ok(None);
-        }
-        Ok(Some((0, -80, 5)))
+        Ok(None)
     }
 }
 
@@ -455,21 +419,12 @@ mod tests {
     }
 
     #[test]
-    fn operating_class_from_u8_known() {
+    fn operating_class_from_u8() {
         assert_eq!(OperatingClass::from_u8(0), Some(OperatingClass::UsCa));
         assert_eq!(OperatingClass::from_u8(1), Some(OperatingClass::Eu));
         assert_eq!(OperatingClass::from_u8(2), Some(OperatingClass::AuNz));
-    }
-
-    #[test]
-    fn operating_class_from_u8_unknown() {
         assert_eq!(OperatingClass::from_u8(3), None);
         assert_eq!(OperatingClass::from_u8(255), None);
-    }
-
-    #[test]
-    fn operating_class_default_is_us_ca() {
-        assert_eq!(OperatingClass::default(), OperatingClass::UsCa);
     }
 
     #[test]
@@ -480,55 +435,57 @@ mod tests {
     }
 
     #[test]
-    fn lookup_known_class() {
-        let p = lookup_operating_class(0).expect("UsCa must be in table");
-        assert_eq!(p.frequency_hz, 903_900_000);
-        assert_eq!(p.duty_permille, 1000);
-
-        let p = lookup_operating_class(1).expect("EU must be in table");
-        assert_eq!(p.frequency_hz, 868_100_000);
-        assert_eq!(p.duty_permille, 10);
-
-        let p = lookup_operating_class(2).expect("AU/NZ must be in table");
-        assert_eq!(p.frequency_hz, 916_800_000);
-        assert_eq!(p.duty_permille, 50);
+    fn operating_class_default() {
+        assert_eq!(OperatingClass::default(), OperatingClass::UsCa);
     }
 
     #[test]
-    fn lookup_missing_class_returns_none() {
+    fn lookup_known_operating_class() {
+        let params = lookup_operating_class(0).expect("US/CA should exist");
+        assert_eq!(params.class_id, 0);
+        assert_eq!(params.frequency_hz, 903_900_000);
+        assert_eq!(params.spreading_factor, 10);
+        assert_eq!(params.duty_permille, 1000);
+
+        let params = lookup_operating_class(1).expect("EU should exist");
+        assert_eq!(params.class_id, 1);
+        assert_eq!(params.frequency_hz, 868_100_000);
+        assert_eq!(params.duty_permille, 10);
+
+        let params = lookup_operating_class(2).expect("AU/NZ should exist");
+        assert_eq!(params.class_id, 2);
+        assert_eq!(params.frequency_hz, 916_800_000);
+        assert_eq!(params.duty_permille, 50);
+
         assert!(lookup_operating_class(3).is_none());
         assert!(lookup_operating_class(255).is_none());
     }
 
     #[test]
-    fn all_classes_have_labels() {
-        for c in OperatingClass::ALL {
-            let p = lookup_operating_class(*c as u8).expect("every variant must have params");
-            assert!(!p.label.is_empty());
+    fn all_operating_classes_have_labels() {
+        for &oc in OperatingClass::ALL {
+            let params = lookup_operating_class(oc as u8).expect("all classes in table");
+            assert!(!params.label.is_empty(), "label must not be empty");
+            assert!(params.bandwidth_hz > 0);
+            assert!(params.spreading_factor >= 7 && params.spreading_factor <= 12);
         }
     }
 
     #[test]
     fn radio_config_from_operating_class() {
-        let params = lookup_operating_class(0).unwrap();
+        let params = lookup_operating_class(1).expect("EU class");
         let cfg = RadioConfig::from_operating_class(params);
-        assert_eq!(cfg.frequency, 903_900_000);
+        assert_eq!(cfg.frequency, 868_100_000);
         assert_eq!(cfg.spreading_factor, 10);
         assert_eq!(cfg.bandwidth, 125_000);
-        assert_eq!(cfg.coding_rate, 5);
-        assert_eq!(cfg.tx_power, 20);
+        assert_eq!(cfg.tx_power, 14);
     }
 
     #[test]
-    fn table_entries_match_constants_toml() {
-        // Cross-check against canonical frequency constants
-        let us = lookup_operating_class(0).unwrap();
-        assert_eq!(us.frequency_hz, 903_900_000);
-
-        let eu = lookup_operating_class(1).unwrap();
-        assert_eq!(eu.frequency_hz, 868_100_000);
-
-        let au = lookup_operating_class(2).unwrap();
-        assert_eq!(au.frequency_hz, 916_800_000);
+    fn table_entries_match_constants() {
+        for &oc in OperatingClass::ALL {
+            let params = lookup_operating_class(oc as u8).expect("table entry");
+            assert_eq!(params.class_id, oc as u8);
+        }
     }
 }

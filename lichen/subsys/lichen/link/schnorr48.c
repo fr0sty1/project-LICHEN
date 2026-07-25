@@ -142,8 +142,12 @@ bool schnorr48_verify(const uint8_t *pubkey,
 	uint8_t e_hash[64];
 	crypto_sha512_ctx ctx;
 
-	/* Defensive bounds check: sig must be at least SCHNORR48_SIG_LEN */
-	if (sig_len < SCHNORR48_SIG_LEN) {
+	/*
+	 * Validate: sig_len must be exactly SCHNORR48_SIG_LEN.
+	 * This is a defensive bounds check to prevent OOB reads even if a
+	 * caller passes an undersized buffer (e.g. from a corrupted frame).
+	 */
+	if (sig_len != SCHNORR48_SIG_LEN) {
 		return false;
 	}
 
@@ -384,8 +388,8 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
 {
-	/* Defensive bounds check: sig must be at least SCHNORR48_SIG_LEN */
-	if (sig_len < SCHNORR48_SIG_LEN) {
+	/* Validate sig_len before pointer arithmetic */
+	if (sig_len != SCHNORR48_SIG_LEN) {
 		return -EINVAL;
 	}
 

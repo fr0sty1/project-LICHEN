@@ -51,8 +51,8 @@ static struct lichen_coap_server_handlers s_handlers;
  * Common response helper for all CoAP resources (including deaddrop_post).
  * Centralizes duplicated logic from coap_*.c files. Matches Python/Rust reference
  * behavior and spec/18-applications for DTN. Type=ACK for CON requests.
- * Zephyr coap_resource_send + pending slab performs synchronous memcpy of packet data,
- * so a stack-allocated buffer is safe (no use-after-return) and avoids reentrancy races.
+ * Uses per-call static buffer to avoid both shared race and stack use-after-return.
+ * Zephyr coap_resource_send + pending slab performs synchronous memcpy of packet data.
  */
 int lichen_coap_respond(struct coap_resource *resource,
 			struct coap_packet *request,
@@ -60,7 +60,7 @@ int lichen_coap_respond(struct coap_resource *resource,
 			uint8_t resp_code, uint16_t content_format,
 			const uint8_t *payload, size_t payload_len)
 {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet response;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
@@ -105,21 +105,6 @@ int lichen_coap_respond(struct coap_resource *resource,
 }
 
 /*
- * Helper to send a simple ACK with a response code.
- * Uses the common respond path (payload=NULL for empty ACK).
- */
-static int send_ack(struct coap_resource *resource,
-		    struct coap_packet *request,
-		    struct sockaddr *addr, socklen_t addr_len,
-		    uint8_t code)
-{
-	return lichen_coap_respond(resource, request, addr, addr_len, code, 0, NULL, 0);
-}
-
-
-
-
-/*
  * /status resource - GET returns node status as CBOR
  */
 static int status_get(struct coap_resource *resource,
@@ -146,7 +131,7 @@ static int status_get(struct coap_resource *resource,
 
 static const char * const status_path[] = { "status", NULL };
 static const char * const status_attrs[] = {
-	"rt=\"lichen.status\"",
+	"rt=\"status\"",
 	"ct=\"60\"",
 	NULL,
 };
@@ -188,86 +173,51 @@ static int config_put(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
-	const uint8_t *payload;
-	uint16_t payload_len;
+	struct coap_oscore_unprotect_result oscore;
 	int ret;
-	uint8_t peer_eui64[8] = {0};
-	uint8_t plain[LICHEN_COAP_SERVER_MAX_PAYLOAD];
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	struct oscore_ctx *ctx = NULL;
-	uint8_t piv[OSCORE_PIV_MAX_LEN];
-	size_t piv_len = 0;
-	bool is_protected = false;
-#endif
 
 	if (s_handlers.config_put == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
-	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
-		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
-		lichen_eui64_to_iid(peer_eui64, peer_eui64);
+	ret = coap_oscore_unprotect_resource_request(resource, request, addr,
+						     addr_len, COAP_METHOD_PUT,
+						     &oscore);
+	if (ret != 0) {
+		return ret;
+	}
+	if (!oscore.is_protected &&
+	    !lichen_coap_is_local_admin(addr, addr_len)) {
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_UNAUTHORIZED,
+						    0, NULL, 0);
 	}
 
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	is_protected = coap_oscore_is_protected(request);
-	if (is_protected) {
-		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
-			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
-		}
-		uint8_t orig_code;
-		uint8_t opts[32];
-		size_t opt_len = sizeof(opts);
-		size_t plain_len = sizeof(plain);
-		piv_len = sizeof(piv);
-		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len,
-						      plain, &plain_len, piv, &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
-		if (orig_code != COAP_METHOD_PUT) {
-			return COAP_RESPONSE_CODE_NOT_ALLOWED;
-		}
-		payload = plain;
-		payload_len = (uint16_t)plain_len;
-	} else {
-#endif
-		if (!lichen_coap_is_local_admin(addr, addr_len)) {
-			return lichen_coap_respond(resource, request, addr, addr_len,
-						   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
-		}
-		payload = coap_packet_get_payload(request, &payload_len);
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	}
-#endif
-
-	if (payload == NULL || payload_len == 0) {
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	if (oscore.payload == NULL || oscore.payload_len == 0) {
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    0, NULL, 0);
 	}
 
-	ret = s_handlers.config_put(payload, payload_len);
+	ret = s_handlers.config_put(oscore.payload, oscore.payload_len);
 	if (ret < 0) {
 		LOG_ERR("Config PUT callback failed: %d", ret);
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-		if (is_protected && ctx != NULL && piv_len > 0) {
-			return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
-		}
-#endif
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    0, NULL, 0);
 	}
 
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-	if (is_protected && ctx != NULL && piv_len > 0) {
-		return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_CHANGED);
-	}
-#endif
-
-	return send_ack(resource, request, addr, addr_len,
-			COAP_RESPONSE_CODE_CHANGED);
+	return coap_oscore_respond_resource(resource, request, addr, addr_len,
+					    &oscore, COAP_RESPONSE_CODE_CHANGED,
+					    0, NULL, 0);
 }
 
 static const char * const config_path[] = { "config", NULL };
 static const char * const config_attrs[] = {
-	"rt=\"lichen.config\"",
+	"rt=\"config\"",
 	"ct=\"60\"",
 	NULL,
 };
@@ -307,9 +257,9 @@ static int neighbors_get(struct coap_resource *resource,
 	return ret < 0 ? ret : 0;
 }
 
-static const char * const neighbors_path[] = { "neighbors", NULL };
+static const char * const neighbors_path[] = { "status", "neighbors", NULL };
 static const char * const neighbors_attrs[] = {
-	"rt=\"lichen.neighbors\"",
+	"rt=\"status\"",
 	"ct=\"60\"",
 	NULL,
 };
@@ -414,7 +364,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 	}
 #endif
 
-	uint8_t response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet response;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;

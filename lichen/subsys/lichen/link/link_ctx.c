@@ -10,7 +10,7 @@
 #include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
-#include <lichen_util.h>
+#include <lichen/tx_queue.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -183,6 +183,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	}
 #endif
 
+	tx_queue_init(&ctx->tx_queue);
+
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
@@ -278,6 +280,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 #ifdef CONFIG_NVS
 	(void)save_tuple(ctx); /* persist new key + reset tuple; ignore errors to not block boot */
 #endif
+	(void)seq_unlock(ctx);
 	return 0;
 }
 
@@ -463,6 +466,11 @@ int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
 
 	memcpy(new_link_key, link_key, sizeof(new_link_key));
 
+	if (seq_lock(ctx) != 0) {
+		secure_wipe(new_link_key, sizeof(new_link_key));
+		return -EIO;
+	}
+
 	if (ctx->has_link_key) {
 		secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 	}
@@ -470,6 +478,8 @@ int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
 	memcpy(ctx->link_key, new_link_key, LICHEN_LINK_KEY_LEN);
 	secure_wipe(new_link_key, sizeof(new_link_key));
 	ctx->has_link_key = true;
+
+	(void)seq_unlock(ctx);
 
 	return 0;
 }
@@ -565,7 +575,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 		return;
 	}
 
-	seq_lock(ctx);
+	int locked = seq_lock(ctx);
 
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
@@ -578,11 +588,80 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 
-	(void)seq_unlock(ctx);
+	if (locked == 0) {
+		(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-	pthread_mutex_destroy(&ctx->seq_lock);
+		pthread_mutex_destroy(&ctx->seq_lock);
 #endif
+	}
 }
+
+#ifdef CONFIG_LICHEN_LINK_CCP16_LOAD_BALANCING
+int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
+			       uint32_t epoch,
+			       uint8_t density,
+			       uint8_t num_channels,
+			       uint8_t *channel)
+{
+	uint8_t data[12];
+	uint32_t hash;
+	uint8_t n;
+
+	if (eui64 == NULL || channel == NULL) {
+		return -EINVAL;
+	}
+
+	/* spec/02a-coordinated-capacity.md:121 — Density > 8 returns control channel 0 */
+	if (density > 8) {
+		*channel = 0;
+		return 0;
+	}
+
+	/* spec/02a-coordinated-capacity.md:122 — Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes) */
+	memcpy(&data[0], eui64, LICHEN_EUI64_LEN);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+
+	/* spec/02a-coordinated-capacity.md:123 — Hash = FNV1A32(Data) basis 0x811c9dc5 */
+	hash = lichen_hash_32(data, sizeof(data));
+
+	/* spec/02a-coordinated-capacity.md:124-125 — N = MAX(NChannels, 3); RETURN 1 + (Hash MOD N) */
+	n = (num_channels < 3) ? 3 : num_channels;
+	*channel = 1 + (uint8_t)(hash % n);
+	return 0;
+}
+#else
+int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
+			       uint32_t epoch,
+			       uint8_t density,
+			       uint8_t num_channels,
+			       uint8_t *channel)
+{
+	uint8_t data[12];
+	uint32_t hash;
+	uint8_t n;
+
+	(void)density;
+
+	if (eui64 == NULL || channel == NULL) {
+		return -EINVAL;
+	}
+
+	memcpy(&data[0], eui64, LICHEN_EUI64_LEN);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+
+	hash = lichen_hash_32(data, sizeof(data));
+
+	n = (num_channels < 3) ? 3 : num_channels;
+	*channel = 1 + (uint8_t)(hash % n);
+	return 0;
+}
+#endif
 
 int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {
@@ -651,93 +730,5 @@ int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
 	return LICHEN_COORD_HASH_BASED;
 }
 #endif /* CONFIG_LICHEN_LINK_COORDINATION */
-
-uint8_t lichen_select_channel(const uint8_t eui64[8], uint32_t epoch,
-			      uint8_t density, uint8_t n_channels)
-{
-	uint8_t data[12];
-
-	if (density > 8) {
-		return 0;
-	}
-
-	memcpy(data, eui64, 8);
-	data[8] = (uint8_t)(epoch & 0xff);
-	data[9] = (uint8_t)((epoch >> 8) & 0xff);
-	data[10] = (uint8_t)((epoch >> 16) & 0xff);
-	data[11] = (uint8_t)((epoch >> 24) & 0xff);
-
-	uint32_t h = lichen_hash_32(data, 12);
-	uint8_t n = (n_channels < 3) ? 3 : n_channels;
-
-	return (uint8_t)(1 + (h % n));
-}
-
-int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
-					   uint8_t ygg_addr[16])
-{
-	int ret;
-	uint8_t hash512[64];
-	uint8_t iid[8];
-
-	if (pubkey == NULL || ygg_addr == NULL) {
-		return -EINVAL;
-	}
-
-	crypto_sha512(hash512, pubkey, 32);
-
-	ret = lichen_sha256(pubkey, 32, iid);
-	if (ret != 0) {
-		memset(ygg_addr, 0, 16);
-		return ret;
-	}
-
-	iid[0] &= 0xfd;
-
-	ygg_addr[0] = 0x02;
-	memcpy(&ygg_addr[1], hash512, 7);
-	memcpy(&ygg_addr[8], iid, 8);
-
-	memset(hash512, 0, sizeof(hash512));
-	return 0;
-}
-
-uint8_t lichen_adaptive_sf_select(uint8_t assigned_sf, int8_t snr_ema,
-				  uint8_t density, uint16_t utilization,
-				  uint16_t loss_rate_ema, bool *tx_allowed)
-{
-	uint8_t sf = (assigned_sf == 0) ? 10 : assigned_sf;
-
-	if (density > 10 || utilization > 150) {
-		if (sf <= 10) {
-			sf += 2;
-		} else {
-			sf = 12;
-		}
-	}
-
-	if (snr_ema > 8 && density < 5) {
-		if (sf > 7) {
-			sf -= 1;
-		}
-	}
-
-	if (loss_rate_ema > 2500 || utilization > 200) {
-		if (sf < 12) {
-			sf += 1;
-		}
-		if (utilization > 200) {
-			if (tx_allowed != NULL) {
-				*tx_allowed = false;
-			}
-			return sf;
-		}
-	}
-
-	if (tx_allowed != NULL) {
-		*tx_allowed = true;
-	}
-	return sf;
-}
 
 

@@ -35,9 +35,7 @@ class NextHeader(IntEnum):
 
 # Extension headers that share the common "next_header / hdr_ext_len / data"
 # layout where the total length is (hdr_ext_len + 1) * 8 octets (RFC 8200 4).
-_TLV_EXT_HEADERS = frozenset(
-    {NextHeader.HOP_BY_HOP, NextHeader.ROUTING, NextHeader.DEST_OPTIONS}
-)
+_TLV_EXT_HEADERS = frozenset({NextHeader.HOP_BY_HOP, NextHeader.ROUTING, NextHeader.DEST_OPTIONS})
 
 
 class PacketError(Exception):
@@ -99,9 +97,7 @@ class IPv6Header:
     def to_bytes(self) -> bytes:
         """Serialize to the 40-byte on-wire header."""
         self._validate()
-        first_word = (
-            (self.version << 28) | (self.traffic_class << 20) | self.flow_label
-        )
+        first_word = (self.version << 28) | (self.traffic_class << 20) | self.flow_label
         return (
             first_word.to_bytes(4, "big")
             + self.payload_length.to_bytes(2, "big")
@@ -114,9 +110,7 @@ class IPv6Header:
     def from_bytes(cls, data: bytes) -> IPv6Header:
         """Parse a 40-byte header from the start of ``data``."""
         if len(data) < HEADER_LENGTH:
-            raise PacketError(
-                f"need {HEADER_LENGTH} bytes for header, got {len(data)}"
-            )
+            raise PacketError(f"need {HEADER_LENGTH} bytes for header, got {len(data)}")
         first_word = int.from_bytes(data[0:4], "big")
         version = first_word >> 28
         if version != 6:
@@ -206,9 +200,7 @@ class IPv6Packet:
                 f"{len(self.payload)} payload = {total_payload} > 65535"
             )
         wire_next_header = (
-            self.extension_headers[0].header_type
-            if self.extension_headers
-            else upper
+            self.extension_headers[0].header_type if self.extension_headers else upper
         )
         header = replace(
             self.header,
@@ -218,24 +210,25 @@ class IPv6Packet:
         return header.to_bytes() + ext_bytes + self.payload
 
     @classmethod
-    def from_bytes(cls, data: bytes, *, strict: bool = False) -> IPv6Packet:
+    def from_bytes(cls, data: bytes, strict: bool = False) -> IPv6Packet:
         """Parse a full packet, walking any extension-header chain.
 
-        When *strict* is True, trailing bytes beyond the payload_length
-        are treated as an error instead of being silently discarded.
+        Args:
+            data: Raw bytes to parse.
+            strict: If True, raise :class:`PacketError` when *data* contains
+                trailing bytes beyond the parsed packet. Defaults to False for
+                compatibility with padded buffers and similar use cases.
         """
         header = IPv6Header.from_bytes(data)
-        expected_len = HEADER_LENGTH + header.payload_length
-        body = data[HEADER_LENGTH:expected_len]
-        if strict and len(data) > expected_len:
-            raise PacketError(
-                f"trailing {len(data) - expected_len} byte(s) after "
-                f"payload_length of {header.payload_length}"
-            )
+        end = HEADER_LENGTH + header.payload_length
+        body = data[HEADER_LENGTH:end]
         if len(body) != header.payload_length:
             raise PacketError(
-                f"payload_length says {header.payload_length} but "
-                f"{len(body)} bytes present"
+                f"payload_length says {header.payload_length} but {len(body)} bytes present"
+            )
+        if strict and len(data) > end:
+            raise PacketError(
+                f"{len(data) - end} trailing byte(s) after packet"
             )
 
         ext_headers: list[ExtensionHeader] = []
@@ -257,6 +250,7 @@ class IPv6Packet:
         if next_header == NextHeader.FRAGMENT:
             raise PacketError("IPv6 Fragment headers are not supported (use SCHC)")
 
+        # next_header is now the upper-layer protocol; surface it on the header.
         parsed_header = replace(header, next_header=next_header)
         return cls(
             header=parsed_header,

@@ -139,11 +139,7 @@ class EchoRequest:
             raise Icmpv6Error(f"identifier out of range: {self.identifier}")
         if not 0 <= self.sequence <= 0xFFFF:
             raise Icmpv6Error(f"sequence out of range: {self.sequence}")
-        body = (
-            self.identifier.to_bytes(2, "big")
-            + self.sequence.to_bytes(2, "big")
-            + self.data
-        )
+        body = self.identifier.to_bytes(2, "big") + self.sequence.to_bytes(2, "big") + self.data
         return Icmpv6Message(Icmpv6Type.ECHO_REQUEST, 0, body)
 
     @classmethod
@@ -166,11 +162,7 @@ class EchoReply:
             raise Icmpv6Error(f"identifier out of range: {self.identifier}")
         if not 0 <= self.sequence <= 0xFFFF:
             raise Icmpv6Error(f"sequence out of range: {self.sequence}")
-        body = (
-            self.identifier.to_bytes(2, "big")
-            + self.sequence.to_bytes(2, "big")
-            + self.data
-        )
+        body = self.identifier.to_bytes(2, "big") + self.sequence.to_bytes(2, "big") + self.data
         return Icmpv6Message(Icmpv6Type.ECHO_REPLY, 0, body)
 
     @classmethod
@@ -221,22 +213,14 @@ class Icmpv6ErrorMessage:
             raise Icmpv6Error(f"mtu out of range: {self.mtu}")
 
     def to_message(self) -> Icmpv6Message:
-        rest = (
-            self.mtu.to_bytes(4, "big")
-            if self.type == Icmpv6Type.PACKET_TOO_BIG
-            else bytes(4)
-        )
+        rest = self.mtu.to_bytes(4, "big") if self.type == Icmpv6Type.PACKET_TOO_BIG else bytes(4)
         quoted = self.invoking_packet[:MAX_INVOKING_PACKET]
         return Icmpv6Message(self.type, self.code, rest + quoted)
 
 
-def make_dest_unreachable(
-    invoking_packet: bytes, code: DestUnreachableCode
-) -> Icmpv6ErrorMessage:
+def make_dest_unreachable(invoking_packet: bytes, code: DestUnreachableCode) -> Icmpv6ErrorMessage:
     """Build a Destination Unreachable error for a packet."""
-    return Icmpv6ErrorMessage(
-        Icmpv6Type.DEST_UNREACHABLE, int(code), invoking_packet
-    )
+    return Icmpv6ErrorMessage(Icmpv6Type.DEST_UNREACHABLE, int(code), invoking_packet)
 
 
 def make_time_exceeded(
@@ -250,14 +234,10 @@ def make_packet_too_big(invoking_packet: bytes, mtu: int) -> Icmpv6ErrorMessage:
     """Build a Packet Too Big error advertising ``mtu``."""
     if not 0 <= mtu <= 0xFFFFFFFF:
         raise Icmpv6Error(f"mtu out of range: {mtu}")
-    return Icmpv6ErrorMessage(
-        Icmpv6Type.PACKET_TOO_BIG, 0, invoking_packet, mtu=mtu
-    )
+    return Icmpv6ErrorMessage(Icmpv6Type.PACKET_TOO_BIG, 0, invoking_packet, mtu=mtu)
 
 
-def handle_icmpv6(
-    packet: IPv6Packet, local_addr: IPv6Address | None = None
-) -> IPv6Packet | None:
+def handle_icmpv6(packet: IPv6Packet, local_addr: IPv6Address | None = None) -> IPv6Packet | None:
     """Process an inbound ICMPv6 packet, returning a reply if one is due.
 
     Restores explicit bounds checks for packet length, malformed source

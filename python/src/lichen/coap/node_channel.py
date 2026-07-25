@@ -114,36 +114,25 @@ class NodeChannel(DatagramChannel):
             return
         try:
             if classify_l2_payload(payload) is not L2PayloadKind.SCHC:
-                logger.info(
-                    "NodeChannel: dropped non-SCHC L2 payload from %s", sender
-                )
+                logger.info("NodeChannel: dropped non-SCHC L2 payload from %s", sender)
                 if self._metrics is not None:
                     self._metrics.record_error("dropped non-SCHC L2 payload")
                 return
             ipv6_bytes = decompress_packet(l2_payload_body(payload))
             packet = IPv6Packet.from_bytes(ipv6_bytes)
-            if (
-                packet.header.src_addr.is_unspecified
-                or packet.header.src_addr.is_multicast
-            ):
-                logger.warning(
-                    "NodeChannel: dropped malformed source from %s", sender
-                )
+            if packet.header.src_addr.is_unspecified or packet.header.src_addr.is_multicast:
+                logger.warning("NodeChannel: dropped malformed source from %s", sender)
                 if self._metrics is not None:
                     self._metrics.record_error("dropped malformed source")
                 return
             if packet.header.next_header != NextHeader.UDP:
-                logger.info(
-                    "NodeChannel: dropped non-UDP IPv6 from %s", sender
-                )
+                logger.info("NodeChannel: dropped non-UDP IPv6 from %s", sender)
                 if self._metrics is not None:
                     self._metrics.record_error("dropped non-UDP IPv6")
                 return
             udp = UdpDatagram.from_bytes(packet.payload)
             if packet.header.dst_addr.packed != self._local.packed:
-                logger.info(
-                    "NodeChannel: dropped IPv6 for wrong dst from %s", sender
-                )
+                logger.info("NodeChannel: dropped IPv6 for wrong dst from %s", sender)
                 if self._metrics is not None:
                     self._metrics.record_error("dropped wrong destination")
                 return

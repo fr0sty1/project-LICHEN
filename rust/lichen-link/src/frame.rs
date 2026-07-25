@@ -603,10 +603,10 @@ mod tests {
             encryption: Encryption::Plaintext,
         };
         let mut small_buf = [0u8; 5];
-        assert!(matches!(
+        assert_eq!(
             frame.write_to(&mut small_buf),
-            Err(FrameError::BufferTooSmall(_))
-        ));
+            Err(FrameError::BufferTooSmall(BufferTooSmall::new(9, 5)))
+        );
 
         let large_payload = vec![0u8; 260];
         let large_frame = LichenFrame {

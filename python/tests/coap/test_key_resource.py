@@ -75,9 +75,7 @@ async def test_key_pubkey_is_raw_bytes() -> None:
 async def test_key_not_exposed_without_pubkey() -> None:
     info = StaticNodeInfo()
     net = InMemoryNetwork()
-    server = await create_lichen_context(
-        net.channel("server"), "server", site=build_site(info)
-    )
+    server = await create_lichen_context(net.channel("server"), "server", site=build_site(info))
     client = await create_lichen_context(net.channel("client"), "client")
     try:
         resp = await client.request(Message(code=GET, uri="coap://server/keys")).response

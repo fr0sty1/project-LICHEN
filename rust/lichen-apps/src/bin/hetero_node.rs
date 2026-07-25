@@ -12,7 +12,9 @@
 use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
-use lichen_core::constants::{ANNOUNCE_TYPE_BYTE, L2_DISPATCH_ROUTING};
+
+use hex;
+use sha2::{Digest, Sha256};
 
 /// Metrics collected during node operation.
 struct NodeMetrics {
@@ -100,7 +102,8 @@ fn main() {
                 peer_id: Option<String>,
                 rssi: Option<i32>,
                 snr: Option<i32>| {
-        let hash = format!("{:x}", Sha256::digest(payload));
+        let hash = Sha256::digest(payload);
+        let hash_hex = hex::encode(&hash[..16]);
         println!(
             "TELEMETRY {}",
             serde_json::json!({
@@ -109,8 +112,8 @@ fn main() {
                 "ts_us": ts_us,
                 "node_id": format!("rust-{}", node_id),
                 "impl": "rust",
-                "tx_id": hash[..16].to_string(),
-                "packet_hash": hash[..16].to_string(),
+                "tx_id": hash_hex,
+                "packet_hash": hash_hex,
                 "direction": if event.starts_with("tx") { "tx" } else { "rx" },
                 "peer_id": peer_id,
                 "payload_len": payload.len(),
@@ -127,8 +130,8 @@ fn main() {
         // Build announce-like message
         // Format: [0x15 dispatch][type=0x01][seq:2][hop:1][iid:8][signature:48]
         let mut announce = Vec::with_capacity(64);
-        announce.push(L2_DISPATCH_ROUTING);
-        announce.push(ANNOUNCE_TYPE_BYTE);
+        announce.push(0x15); // routing dispatch
+        announce.push(0x01); // announce type
         announce.extend_from_slice(&seq_num.to_be_bytes());
         announce.push(0x00); // hop count
         announce.extend_from_slice(&identity.iid);
@@ -177,7 +180,7 @@ fn main() {
                     let hash = Sha256::digest(&buf[..pkt.len]);
                     let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
                     metrics.packet_hashes_received.insert(hash_prefix);
-                    let peer_id = if pkt.len > 12 && buf[0] == L2_DISPATCH_ROUTING && buf[1] == ANNOUNCE_TYPE_BYTE {
+                    let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {
                         None
@@ -196,7 +199,7 @@ fn main() {
                     // Check if it's from a different implementation
                     if pkt.len > 0 {
                         let dispatch = buf[0];
-                        let source = if dispatch == L2_DISPATCH_ROUTING {
+                        let source = if dispatch == 0x15 {
                             "announce"
                         } else {
                             "other"
@@ -208,7 +211,7 @@ fn main() {
 
                         // Parse announce to extract peer IID
                         // Format: [0x15 dispatch][type=0x01][seq:2][hop:1][iid:8]...
-                        if pkt.len > 10 && buf[0] == L2_DISPATCH_ROUTING && buf[1] == ANNOUNCE_TYPE_BYTE {
+                        if pkt.len > 10 && buf[0] == 0x15 && buf[1] == 0x01 {
                             let peer_iid: [u8; 8] = buf[5..13].try_into().unwrap();
                             if peer_iid != identity.iid {
                                 metrics.unique_peers.insert(peer_iid);

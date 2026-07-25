@@ -11,5 +11,5 @@ pub mod slip;
 pub mod tun;
 
 pub use aprs_is::{aprs_to_cot, cot_to_aprs, AprsIsClient, CompactCot};
-pub use gateway::Gateway;
-pub use lichen_node::{RplEvent, RplNode};
+pub use gateway::{Gateway, NullRadio};
+pub(crate) use lichen_node::{RplEvent, RplNode};

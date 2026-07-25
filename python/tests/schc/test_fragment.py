@@ -75,8 +75,12 @@ def test_window_and_fcn_schedule() -> None:
     frags = sender.all_fragments()
     assert sender.fragment_count == 7
     assert [(f.window, f.fcn) for f in frags] == [
-        (0, 2), (0, 1), (0, 0),
-        (1, 2), (1, 1), (1, 0),
+        (0, 2),
+        (0, 1),
+        (0, 0),
+        (1, 2),
+        (1, 1),
+        (1, 0),
         (0, ALL_1),
     ]
     assert all(f.mic == b"" for f in frags[:-1])

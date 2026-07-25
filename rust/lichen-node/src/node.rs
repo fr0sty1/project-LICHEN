@@ -20,7 +20,7 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome, TrickleSafeLivenessPolicy};
+use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome};
 #[cfg(feature = "std")]
 use crate::{
     announce::AnnounceProcessor,
@@ -31,9 +31,7 @@ use lichen_hal::NonVolatile;
 #[cfg(feature = "std")]
 use lichen_ipv6::{icmpv6_checksum, Addr};
 #[cfg(feature = "std")]
-use lichen_rpl::message::DodagConfig;
-#[cfg(feature = "std")]
-use lichen_rpl::routing::{DaoManager, DaoProvisionError, SignatureVerifiedDao};
+use lichen_rpl::routing::SignatureVerifiedDao;
 
 /// ICMPv6 RPL message codes.
 pub mod rpl_code {
@@ -85,6 +83,7 @@ pub enum DaoHandlingOutcome {
     Exhausted,
     Corrupt,
     RouteRejected,
+    NotAdmitted,
 }
 
 /// Top-level node state.
@@ -280,19 +279,20 @@ impl RplNode {
         }
     }
 
-    /// Create a new RPL DODAG root node with in-memory storage.
+    /// Create a new root RPL node (test only).
+    #[cfg(test)]
     pub fn new_root(node_id: NodeId) -> Self {
         let node_addr = node_id.link_local_addr().0;
-        let mut storage = lichen_hal::storage::mem::MemStorage::new();
-        let (manager, _state) =
-            DaoManager::provision_root(&mut storage, node_addr, RPL_INSTANCE_ID, node_addr)
-                .expect("in-memory root provisioning should never fail");
-        let router = Router::root_with_manager(node_addr, DodagConfig::default(), manager)
-            .expect("default DODAG config is valid");
         Self {
             node: Node::new(node_id),
-            router,
+            router: Router::new_root(node_addr),
         }
+    }
+
+    /// Seed a route for testing purposes.
+    #[cfg(test)]
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.router.add_test_route(target, path)
     }
 
     /// Provision component-level root routing state.
@@ -391,6 +391,7 @@ impl RplNode {
             Err(DaoProcessError::Exhausted) => DaoHandlingOutcome::Exhausted,
             Err(DaoProcessError::Corrupt) => DaoHandlingOutcome::Corrupt,
             Err(DaoProcessError::RouteRejected) => DaoHandlingOutcome::RouteRejected,
+            Err(DaoProcessError::NotAdmitted) => DaoHandlingOutcome::NotAdmitted,
         }
     }
 
@@ -399,9 +400,7 @@ impl RplNode {
     /// `sender_iid` is the identity established by link-layer signature verification.
     ///
     /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
-    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the root
-    /// processed a DAO; for [`RplEvent::DisReceived`], send a DIO; otherwise a
-    /// nonzero output is a reply.
+    /// the output bytes to `next_hop`; otherwise a nonzero output is a reply.
     pub fn handle_frame_rpl(
         &mut self,
         l2_payload: &[u8],
@@ -414,9 +413,6 @@ impl RplNode {
 
     /// Process an authenticated SCHC payload with measured link quality.
     /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
-    ///
-    /// Returns `(output_len, rpl_event)`. See [`handle_frame_rpl`] for variant
-    /// descriptions.
     pub fn handle_frame_rpl_with_link(
         &mut self,
         l2_payload: &[u8],
@@ -615,9 +611,10 @@ impl RplNode {
         &self.router
     }
 
+    /// Mutable router access (test only).
     #[cfg(test)]
-    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
-        self.router.add_test_route(target, path)
+    pub fn router_mut(&mut self) -> &mut Router {
+        &mut self.router
     }
 
     /// Check if this node is the DODAG root.
@@ -636,13 +633,8 @@ impl RplNode {
     }
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
-    pub fn maintain<P: TrickleSafeLivenessPolicy>(
-        &mut self,
-        now_ms: u64,
-        neighbor_timeout_ms: u64,
-        policy: &P,
-    ) -> RplMaintenanceOutcome {
-        self.router.maintain(now_ms, neighbor_timeout_ms, policy)
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        self.router.maintain(now_ms, neighbor_timeout_ms)
     }
 
     /// Return the current Trickle deadline without advancing it.
@@ -684,7 +676,7 @@ fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
 #[cfg(feature = "std")]
 fn is_ula_or_global(address: &[u8; 16]) -> bool {
     let address = Ipv6Addr(*address);
-    address[0] == 0x02 || address.is_ula() || address.is_gua()
+    address.is_ula() || address.is_gua()
 }
 
 #[cfg(feature = "std")]

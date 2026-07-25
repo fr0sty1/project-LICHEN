@@ -256,11 +256,14 @@ class TestCongestionTransmission:
         assert original_bytes is not None, "serialization must succeed"
         assert len(original_bytes) > 0, "serialized announce must not be empty"
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "backpressure-test", "tx-node", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "backpressure-test", "rx-node", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "backpressure-test", "tx-node", (0.0, 0.0, 0.0)
+            ) as radio_tx,
+            SimRadio(
+                "127.0.0.1", node_port, "backpressure-test", "rx-node", (50.0, 0.0, 0.0)
+            ) as radio_rx,
+        ):
             tx_success = await radio_tx.transmit(original_bytes)
             assert tx_success is True, "transmit must succeed"
 
@@ -412,11 +415,14 @@ class TestCongestionExtraction:
             address_builder=build_address_from_iid,
         )
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "backpressure-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "backpressure-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "backpressure-test", "node-a", (0.0, 0.0, 0.0)
+            ) as radio_a,
+            SimRadio(
+                "127.0.0.1", node_port, "backpressure-test", "node-b", (50.0, 0.0, 0.0)
+            ) as radio_b,
+        ):
             # A transmits
             tx_success = await radio_a.transmit(announce_bytes)
             assert tx_success is True, "A must transmit successfully"
@@ -588,11 +594,10 @@ class TestBackpressureSimulationIntegration:
         pos_a = (0.0, 0.0, 0.0)
         pos_b = (50.0, 0.0, 0.0)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "backpressure-test", "node-a-int", pos_a
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "backpressure-test", "node-b-int", pos_b
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "backpressure-test", "node-a-int", pos_a) as radio_a,
+            SimRadio("127.0.0.1", node_port, "backpressure-test", "node-b-int", pos_b) as radio_b,
+        ):
             # B announces
             tx_success = await radio_b.transmit(announce_b.to_bytes())
             assert tx_success, "B must transmit successfully"

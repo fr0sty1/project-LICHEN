@@ -45,6 +45,18 @@ from lichen.schc.fragment import (
 )
 from lichen.schc.headers import compress_packet, decompress_packet
 from lichen.schc.reassembly import FragmentReceiver
+from lichen.sim.propagation import PropagationModel, link_budget
+
+
+def _db_to_linear(dbm: float) -> float:
+    return 10.0 ** (dbm / 10.0)
+
+
+def _linear_to_db(linear: float) -> float:
+    if linear <= 1e-15:
+        return -float("inf")
+    import math
+    return 10.0 * math.log10(linear)
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
@@ -55,26 +67,12 @@ from generate import (  # noqa: E402
     ccp9_vectors,
     edhoc_vectors,
     frame_vectors,
+    hash_32,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
 )
 from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
-
-
-def _fnv1a32(data: bytes) -> int:
-    h = 0x811c9dc5
-    for b in data:
-        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
-    return h
-
-
-def _synchronized_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
-    data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
-    h = _fnv1a32(data)
-    n = num_channels if num_channels >= 3 else 3
-    return 1 + (h % n)
-
 
 CONFIG_SECTION_EXPECTATIONS = [
     ("device", 1, [(1, 0), (7, 900)]),
@@ -109,6 +107,7 @@ def test_vectors_directory_exists() -> None:
         "ccp9-rendezvous.json",
         "l2_payload.json",
         "ipv6_malformed.json",
+        "propagation.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -122,7 +121,6 @@ def _schc_cases():
     doc = _load("schc_compression.json")
     assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"] if v.get("category") != "malformed"]
-
 
 
 def _fragmentation_cases():
@@ -300,7 +298,7 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
     category = vector["category"]
     if category in ("recovery", "window_transition"):
         packet = _expand_vector_bytes(vector["packet"])
-        sender = FragmentSender(packet, vector["rule_id"], MAX_PACKET_SIZE)
+        sender = FragmentSender(packet, vector["rule_id"], MAX_PACKET_SIZE, window_size=63)
         fragments = sender.all_fragments()
         for expected in vector["fragments"]:
             ordinal = expected["tile_ordinal"]
@@ -398,7 +396,7 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
                         bytes.fromhex(vector["rcs"]) if final else b"",
                     )
                 )
-            receiver = FragmentReceiver() if len(packet) <= 1281 else FragmentReceiver(len(packet))
+            receiver = FragmentReceiver() if len(packet) <= 1281 else FragmentReceiver(max_size=len(packet))
             result = None
             for fragment in fragments:
                 result = receiver.receive(fragment)
@@ -408,7 +406,7 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
             assert result.reassembled == packet
         else:
             with pytest.raises(FragmentError):
-                FragmentSender(packet, receiver_limit=MAX_PACKET_SIZE)
+                FragmentSender(packet, receiver_limit=len(packet) - 1)
         return
 
     wire = _expand_vector_bytes(vector["wire"])
@@ -530,71 +528,30 @@ def test_ccp9_vectors_match_generator() -> None:
     assert doc["vectors"] == ccp9_vectors()
 
 
-def _ccp9_rendezvous_cases():
-    doc = _load("ccp9-rendezvous.json")
-    assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"]]
-
-
-@pytest.mark.parametrize("name,vector", _ccp9_rendezvous_cases())
-def test_ccp9_rendezvous_vector(name: str, vector: dict) -> None:
-    mechanism = vector.get("mechanism", vector.get("expected", {}).get("mechanism"))
-    if mechanism == "hash_based":
-        sfn = vector["sfn"]
-        n_channels = vector["n_channels"]
-        seed = 0
-        data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
-        h = _fnv1a32(data)
-        expected_ch = 1 + (h % (n_channels - 1))
-        assert expected_ch == vector["expected_channel"], (
-            f"hash-ch drift: {name} (got {expected_ch}, expected {vector['expected_channel']})"
-        )
-    elif mechanism == "scheduled":
-        assert vector["assigned_channel"] == 2
-        assert vector["assigned_slot"] == 5
-        assert vector["expected"]["mechanism"] == "scheduled"
-        assert vector["expected"]["valid_until_sfn"] == 12350
-    elif mechanism == "announce_driven":
-        assert vector["rx_channel"] == vector["expected_channel"]
-    elif mechanism == "fallback":
-        assert vector["expected_channel"] == 0
-        assert vector["expected_slot"] == 0
-
-
-def _hash_32_cases():
-    doc = _load("hash_32.json")
-    assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"]]
-
-
-@pytest.mark.parametrize("name,vector", _hash_32_cases())
-def test_hash_32_vector(name: str, vector: dict) -> None:
-    if "input_hex" in vector:
-        data = bytes.fromhex(vector["input_hex"])
-    else:
-        data = vector["input"].encode() if isinstance(vector["input"], str) else bytes(vector["input"])
-    expected_raw = vector["output"]
-    if isinstance(expected_raw, str) and expected_raw.startswith("0x"):
-        expected = int(expected_raw, 16)
-    else:
-        expected = int(expected_raw)
-    assert _fnv1a32(data) == expected, f"hash_32 drift: {name}"
-
-
-def _ccp16_hop_cases():
-    doc = _load("ccp16-hop.json")
-    assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"]]
-
-
-@pytest.mark.parametrize("name,vector", _ccp16_hop_cases())
-def test_ccp16_hop_vector(name: str, vector: dict) -> None:
-    sfn = vector["sfn"]
-    seed = vector.get("seed", 0)
-    num_channels = vector.get("num_channels", 8)
-    expected = vector["expected_channel"]
-    channel = _synchronized_hop_channel(sfn, seed, num_channels)
-    assert channel == expected, f"synchronized_hop_channel drift: {name} (got {channel}, expected {expected})"
+def test_ccp_tdma_vectors_independent_oracle() -> None:
+    doc = _load("ccp_tdma.json")
+    for v in doc["vectors"]:
+        if "eui64_hex" in v:
+            eui = bytes.fromhex(v["eui64_hex"])
+            n_slots = v.get("n_slots", 8)
+            epoch = v.get("epoch", 0)
+            data = eui + epoch.to_bytes(4, "little")
+            h = hash_32(data)
+            computed = h % n_slots
+            assert computed == v["expected_slot"], f"{v['name']}: slot {computed} != {v['expected_slot']}"
+        elif "local_beacon_rx_ms" in v:
+            correction_ms = abs(v["local_beacon_rx_ms"] - v["expected_beacon_ms"])
+            assert correction_ms == v["expected_correction_ms"], f"{v['name']}: correction {correction_ms} != {v['expected_correction_ms']}"
+        elif "slot_start_ms" in v:
+                t = v["current_ms"]
+                start = v["slot_start_ms"]
+                dur = v.get("slot_duration_ms", 250)
+                g = v.get("guard_ms", 50)
+                in_guard = t < start or t > (start + dur)
+                expected_in_guard = v.get("expected_in_guard", False)
+                assert in_guard == expected_in_guard, f"{v['name']}: guard mismatch (in_guard={in_guard} != expected={expected_in_guard})"
+        else:
+            raise AssertionError(f"Unknown vector type: {v.get('name', '?')}")
 
 
 def _ccp16_cases():
@@ -626,12 +583,42 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     else:
         sf = 10
     assert sf == o.get("sf", 10)
-    n = i.get("n_channels", 3)
+    n = max(i.get("n_channels", 3), 3)
     ch = 0 if i["density"] > 8 else (1 + (h % n))
     assert ch == o.get("select_channel", o.get("expected_channel", o.get("channel", ch)))
     assert ch == o.get("channel", ch)
     now = i.get("now", 0)
     assert now == o.get("now", now)
+
+
+def _ccp16_hop_cases():
+    doc = _load("ccp16-hop.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_hop_cases())
+def test_ccp16_hop_vectors(name: str, vector: dict) -> None:
+    from lichen.sim.tdma import synchronized_hop_channel
+
+    if vector.get("rx_channel") is not None:
+        assert vector["expected_channel"] == vector["rx_channel"], \
+            f"{name}: rx_channel override mismatch"
+        return
+    if vector.get("density", 0) > 8:
+        assert vector["expected_channel"] == 0, \
+            f"{name}: density>8 should give channel 0"
+        return
+    sfn = vector["sfn"]
+    seed = vector.get("seed", 0)
+    num_channels = vector.get("num_channels", 8)
+    computed = synchronized_hop_channel(sfn, seed, num_channels)
+    assert computed == vector["expected_channel"], \
+        f"{name}: channel {computed} != expected {vector['expected_channel']}"
+    data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
+    h = hash_32(data)
+    assert h == vector["hash_32"], \
+        f"{name}: hash_32 {h} != vector {vector['hash_32']}"
 
 
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
@@ -1027,7 +1014,7 @@ def _dao_structure(wire: bytes) -> tuple[str | None, list[tuple[int, bytes]], in
         end = offset + 2 + length
         if end > len(wire):
             return "truncated", options, origin_offset
-        data = wire[offset + 2:end]
+        data = wire[offset + 2 : end]
         if option_type == 0x12:
             if length != 56:
                 return "bad_option_length", options, origin_offset
@@ -1187,14 +1174,33 @@ def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
     coverage = {vector["coverage"] for vector in vectors}
     assert len(vectors) == len(coverage) == 50
     assert {
-        "d1", "d0_effective_dodag", "identical_retransmission", "reconcile_after_crash",
-        "replay_target_mismatch", "replay_malformed_semantics", "replay_structural",
-        "missing_signature", "zero_sequence", "bad_option_length", "truncated_option",
-        "malformed_base", "truncated_dodag", "unsupported_flags", "nonzero_reserved",
-        "d1_active_dodag_mismatch", "missing_target", "missing_transit", "duplicate_target",
-        "inconsistent_transit_sequence", "inconsistent_transit_lifetime",
-        "unsupported_transit_e", "cross_prefix_equal", "cross_prefix_lower",
-        "fresh_cross_prefix_target", "multiple_distinct_targets", "replay_non128_target",
+        "d1",
+        "d0_effective_dodag",
+        "identical_retransmission",
+        "reconcile_after_crash",
+        "replay_target_mismatch",
+        "replay_malformed_semantics",
+        "replay_structural",
+        "missing_signature",
+        "zero_sequence",
+        "bad_option_length",
+        "truncated_option",
+        "malformed_base",
+        "truncated_dodag",
+        "unsupported_flags",
+        "nonzero_reserved",
+        "d1_active_dodag_mismatch",
+        "missing_target",
+        "missing_transit",
+        "duplicate_target",
+        "inconsistent_transit_sequence",
+        "inconsistent_transit_lifetime",
+        "unsupported_transit_e",
+        "cross_prefix_equal",
+        "cross_prefix_lower",
+        "fresh_cross_prefix_target",
+        "multiple_distinct_targets",
+        "replay_non128_target",
         "context_malformed_option",
     } <= coverage
     for vector in vectors:
@@ -1202,10 +1208,13 @@ def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
         if len(unsigned) >= 20 and unsigned[1] & 0x40:
             assert unsigned[4:20].hex() == vector["effective_dodag_id"]
         if vector["expected"]["reason"] == "accepted":
-            assert _dao_semantics(
-                _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
-                bytes.fromhex(vector["source_ipv6"]),
-            ) is None
+            assert (
+                _dao_semantics(
+                    _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
+                    bytes.fromhex(vector["source_ipv6"]),
+                )
+                is None
+            )
 
 
 def test_dao_origin_signature_schema_is_closed_and_relational() -> None:
@@ -1389,3 +1398,78 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert len(options) == len(expected), f"{name}: options count"
         for i, opt in enumerate(options):
             assert opt.type == expected[i]["type"], f"{name}: option {i} type"
+
+
+def _propagation_cases():
+    doc = _load("propagation.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _propagation_cases())
+def test_propagation_vector(name: str, vector: dict) -> None:
+    if "expected_path_loss_db" in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+        )
+        pl = model.path_loss(vector["distance_m"])
+        assert pl == pytest.approx(vector["expected_path_loss_db"], abs=vector.get("tolerance_db", 0.001))
+
+    if "expected_rx_power_dbm" in vector and "tx_power_dbm" in vector and "expected_link_margin_db" not in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+        )
+        rx = model.received_power(vector["tx_power_dbm"], vector["distance_m"])
+        assert rx == pytest.approx(vector["expected_rx_power_dbm"], abs=vector.get("tolerance_db", 0.001))
+
+    if "expected_snr_db" in vector and "noise_floor_dbm" in vector and "expected_link_margin_db" not in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+            noise_floor_dbm=vector["noise_floor_dbm"],
+        )
+        snr = model.snr(vector["tx_power_dbm"], vector["distance_m"])
+        assert snr == pytest.approx(vector["expected_snr_db"], abs=vector.get("tolerance_db", 0.001))
+
+    if "expected_max_range_m" in vector:
+        model = PropagationModel(
+            pl0_dbm=vector["pl0_dbm"],
+            d0_m=vector["d0_m"],
+            n=vector["n"],
+        )
+        r = model.max_range(
+            vector["tx_power_dbm"],
+            sensitivity_dbm=vector["sensitivity_dbm"],
+        )
+        assert r == pytest.approx(vector["expected_max_range_m"], rel=vector.get("tolerance_relative", 0.01))
+
+    if "expected_link_margin_db" in vector:
+        budget = link_budget(
+            tx_power_dbm=vector["tx_power_dbm"],
+            tx_antenna_gain_dbi=vector["tx_antenna_gain_dbi"],
+            rx_antenna_gain_dbi=vector["rx_antenna_gain_dbi"],
+            cable_loss_db=vector["cable_loss_db"],
+            distance_m=vector["distance_m"],
+            n=vector.get("n", 2.7),
+            pl0_dbm=vector.get("pl0_dbm", 32.44),
+            d0_m=vector.get("d0_m", 1.0),
+        )
+        assert budget["rx_power_dbm"] == pytest.approx(vector["expected_rx_power_dbm"], abs=vector.get("tolerance_db", 0.01))
+        assert budget["link_margin_db"] == pytest.approx(vector["expected_link_margin_db"], abs=vector.get("tolerance_db", 0.01))
+        assert budget["snr_db"] == pytest.approx(vector["expected_snr_db"], abs=vector.get("tolerance_db", 0.01))
+
+    if "expected_sinr_db" in vector:
+        model = PropagationModel(noise_floor_dbm=vector["noise_floor_dbm"])
+        interferers = [_db_to_linear(vector["interferer_rssi_dbm"])]
+        # Convert the desired signal RSSI back to a received_power equivalent
+        sinr_val = model.sinr(0.0, 1.0, interferers)
+        signal_linear = _db_to_linear(vector["signal_rssi_dbm"])
+        noise_linear = _db_to_linear(vector["noise_floor_dbm"])
+        total_noise = noise_linear + sum(interferers)
+        expected_sinr = _linear_to_db(signal_linear / total_noise) if total_noise > 0 else float("inf")
+        assert sinr_val == pytest.approx(expected_sinr, abs=vector.get("tolerance_db", 0.1))

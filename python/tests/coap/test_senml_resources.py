@@ -50,9 +50,7 @@ class TestSenMLSensorsGet:
     async def test_empty_sensors_returns_empty_pack(self) -> None:
         client, server, sensors, _loc = await _setup_with_sensors()
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sensors")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sensors")).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 112  # application/senml+cbor
             records = unpack(resp.payload)
@@ -65,9 +63,7 @@ class TestSenMLSensorsGet:
         client, server, sensors, _loc = await _setup_with_sensors()
         try:
             sensors.update([temperature(22.5)])
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sensors")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sensors")).response
             records = unpack(resp.payload)
             assert len(records) == 1
             assert records[0].n == "temperature"
@@ -81,9 +77,7 @@ class TestSenMLSensorsGet:
         try:
             sensors.update([temperature(20.0)])
             sensors.update([temperature(25.0)])
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sensors")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sensors")).response
             records = unpack(resp.payload)
             assert records[0].v == pytest.approx(25.0)
         finally:
@@ -92,12 +86,11 @@ class TestSenMLSensorsGet:
 
     async def test_sensors_multi_record(self) -> None:
         from lichen.senml.profiles import humidity
+
         client, server, sensors, _loc = await _setup_with_sensors()
         try:
             sensors.update([temperature(21.0), humidity(58.0)])
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sensors")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sensors")).response
             records = unpack(resp.payload)
             assert len(records) == 2
             assert {r.n for r in records} == {"temperature", "rel-humidity"}
@@ -140,9 +133,7 @@ class TestSenMLSensorsObserve:
         server = await create_lichen_context(net.channel("srv"), "srv", site=site)
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sensors")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sensors")).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()
@@ -159,9 +150,7 @@ class TestSenMLLocationGet:
         """Before update(), /location returns valid empty SenML (not raw empty bytes)."""
         client, server, _sensors, _location = await _setup_with_sensors()
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/location")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 112  # application/senml+cbor
             records = unpack(resp.payload)
@@ -174,9 +163,7 @@ class TestSenMLLocationGet:
         client, server, _sensors, location = await _setup_with_sensors()
         try:
             location.update(48.2049, 16.3710)
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/location")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 112
             records = unpack(resp.payload)
@@ -192,9 +179,7 @@ class TestSenMLLocationGet:
         client, server, _sensors, location = await _setup_with_sensors()
         try:
             location.update(-33.8688, -70.6693, alt=567.0)
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/location")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
             records = unpack(resp.payload)
             by_name = {r.n: r for r in records}
             assert by_name["alt"].v == pytest.approx(567.0)
@@ -209,9 +194,7 @@ class TestSenMLLocationGet:
         server = await create_lichen_context(net.channel("srv"), "srv", site=site)
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/location")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()
@@ -229,9 +212,7 @@ class TestSenMLLocationObserve:
         try:
             location.update(0.0, 0.0)
 
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/location")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/location"))
             first_resp = await req.response
             assert first_resp.code == aiocoap.CONTENT
 

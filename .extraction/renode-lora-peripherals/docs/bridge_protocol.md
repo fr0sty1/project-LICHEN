@@ -170,4 +170,4 @@ Peripheral                    Simulator
 
 3. RSSI and SNR values should be computed based on the RF propagation model (distance, path loss, etc.).
 
-4. The peripheral blocks on RX_ENTER until it receives RX_PACKET or RX_TIMEOUT. The simulator drives the timing.
+4. The peripheral does NOT block on RX_ENTER. RX_PACKET and RX_TIMEOUT are pushed asynchronously via a background reader thread. The SPI Transmit() path never blocks on socket I/O, so the firmware can leave RX mode (via SetTx or SetStandby) without deadlocking.

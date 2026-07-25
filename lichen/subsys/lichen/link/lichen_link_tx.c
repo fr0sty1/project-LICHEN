@@ -47,12 +47,14 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return -EINVAL;
 	}
 
-	if (IS_ENABLED(CONFIG_LICHEN_TDMA)) {
+#if defined(CONFIG_LICHEN_TDMA)
+	{
 		struct lichen_tdma_ctx tdma = {0};
 		if (!tdma_tx_allowed(&tdma, 0)) {
 			return -EBUSY;
 		}
 	}
+#endif
 
 	if (!ctx->has_key) {
 		return -ENOKEY;
@@ -73,11 +75,6 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	 */
 	if (*out_len < 16) {
 		return -ENOMEM;
-	}
-
-	/* Link-layer encryption is reserved until all implementations support it. */
-	if (ctx->has_link_key) {
-		return -EPROTONOSUPPORT;
 	}
 
 	/* Step 1: Compress IPv6 packet with SCHC */

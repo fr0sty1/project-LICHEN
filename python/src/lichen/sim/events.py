@@ -152,7 +152,8 @@ class EventQueue:
         """
         original_len = len(self._heap)
         self._heap = [
-            entry for entry in self._heap
+            entry
+            for entry in self._heap
             if not (hasattr(entry.event, "node_id") and entry.event.node_id == node_id)
         ]
         heapq.heapify(self._heap)

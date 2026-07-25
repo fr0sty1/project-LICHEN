@@ -119,9 +119,7 @@ class ReplayWindow:
             if shift >= self._window_size:
                 self._bitmap = 1
             else:
-                self._bitmap = ((self._bitmap << shift) | 1) & (
-                    (1 << self._window_size) - 1
-                )
+                self._bitmap = ((self._bitmap << shift) | 1) & ((1 << self._window_size) - 1)
             self._highest = counter
             # SECURITY: Warn once when approaching the terminal counter value.
             if not self._wraparound_warned and counter >= WRAPAROUND_WARNING_THRESHOLD:
@@ -161,9 +159,7 @@ class ReplayProtector:
         self._max_peers = max_peers
         self._windows: OrderedDict[bytes | str | int, ReplayWindow] = OrderedDict()
 
-    def check_and_update(
-        self, sender: bytes | str | int, epoch: int, seqnum: int
-    ) -> bool:
+    def check_and_update(self, sender: bytes | str | int, epoch: int, seqnum: int) -> bool:
         """Validate and record a frame from ``sender``.
 
         Returns:

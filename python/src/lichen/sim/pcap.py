@@ -59,9 +59,7 @@ def _pad_to_4(length: int) -> int:
     return (4 - (length % 4)) % 4
 
 
-def _write_option(
-    f: BinaryIO, code: int, value: bytes
-) -> None:
+def _write_option(f: BinaryIO, code: int, value: bytes) -> None:
     """Write a pcapng option with padding."""
     padded_len = len(value) + _pad_to_4(len(value))
     f.write(struct.pack("<HH", code, len(value)))
@@ -156,7 +154,9 @@ class PcapngWriter:
         # Options: interface name
         if_name = b"lichen-lora"
         options_len = (
-            4 + len(if_name) + _pad_to_4(len(if_name))  # if_name option
+            4
+            + len(if_name)
+            + _pad_to_4(len(if_name))  # if_name option
             + 4  # end of options
         )
 

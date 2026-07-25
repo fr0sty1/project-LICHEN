@@ -66,6 +66,7 @@ struct lichen_link_ctx {
 	uint8_t eui64[LICHEN_EUI64_LEN]; /**< Node's EUI-64 address */
 	uint8_t ed25519_sk[LICHEN_SK_LEN]; /**< Ed25519 secret key (clamped) */
 	uint8_t ed25519_pk[LICHEN_PK_LEN]; /**< Ed25519 public key */
+	uint8_t ygg_addr[16]; /**< Yggdrasil 0200::/7 address derived from Ed25519 public key */
 	uint8_t link_key[LICHEN_LINK_KEY_LEN]; /**< Retained legacy link key */
 	uint8_t epoch;    /**< Current epoch (key rotation counter) */
 	uint16_t tx_seq;  /**< TX sequence counter */
@@ -85,6 +86,7 @@ struct lichen_link_keypair_snapshot {
 	uint8_t eui64[LICHEN_EUI64_LEN];
 	uint8_t sk[LICHEN_SK_LEN];
 	uint8_t pk[LICHEN_PK_LEN];
+	uint8_t ygg_addr[16];
 };
 
 /**
@@ -310,17 +312,25 @@ void lichen_link_cleanup(struct lichen_link_ctx *_Nullable ctx);
 int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
 			      uint8_t eui64[_Nullable LICHEN_EUI64_LEN],
 			      uint8_t pk[_Nullable LICHEN_PK_LEN],
+			      uint8_t ygg_addr[_Nullable 16],
 			      bool *_Nullable has_key);
 
 /**
  * @brief Derive 16-byte Yggdrasil address from Ed25519 public key
  *
- * Consistent with Rust yggdrasil_addr_from_pubkey and spec/04-network.md:
- * - byte 0 = 0x02 (Yggdrasil 0200::/7 range)
- * - bytes 1-7 = SHA-512(pubkey)[0:7]
- * - bytes 8-15 = IID derived from pubkey (ensures IID matches node's primary address)
+ * Implements the exact `AddrForKey` algorithm from yggdrasil-go
+ * (`src/address/address.go`), matching the official Yggdrasil daemon
+ * bit-for-bit:
+ *   1. Compute `h = SHA-512(pubkey)`
+ *   2. `addr = [0x02] || h[0:7] || h[0:8]`
+ *   3. Clear U/L bit in IID byte: `addr[8] &= 0xfd`
  *
- * Matches test vectors in test/vectors/yggdrasil-derivation.json (cross-validated with official Yggdrasil, Rust, Python, C oracles).
+ * The 0200::/7 prefix byte (`0x02`) is the Yggdrasil global routing prefix.
+ * Bytes 1-7 (from `h[0:7]`) provide /7 dispersion across the Yggdrasil DHT.
+ * Bytes 8-15 (from `h[0:8]`) form the IID, binding the address to the pubkey.
+ *
+ * Matches test vectors in test/vectors/yggdrasil-derivation.json (cross-validated
+ * with official Yggdrasil, Rust, Python, C oracles).
  *
  * @param pubkey 32-byte Ed25519 public key
  * @param ygg_addr Output buffer for 16-byte address

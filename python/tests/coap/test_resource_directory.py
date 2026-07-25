@@ -18,7 +18,7 @@ from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 
 _LINKS = [
     {"href": "/sensors", "rt": "senml"},
-    {"href": "/status",  "rt": "status"},
+    {"href": "/status", "rt": "status"},
 ]
 
 
@@ -75,8 +75,9 @@ class TestRdPost:
         client, server = await _setup()
         try:
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/rd",
-                        payload=cbor2.dumps(_LINKS), content_format=60)
+                Message(
+                    code=POST, uri="coap://srv/rd", payload=cbor2.dumps(_LINKS), content_format=60
+                )
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -100,9 +101,7 @@ class TestRdPost:
         try:
             minimum = await _register(client, ep="minimum", lt=1)
             maximum = await _register(client, ep="maximum", lt=(1 << 32) - 1)
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             assert minimum.code == aiocoap.CREATED
             assert maximum.code == aiocoap.CREATED
             assert [entry["lt"] for entry in cbor2.loads(listing.payload)] == [
@@ -117,9 +116,7 @@ class TestRdPost:
         "lifetime",
         ["", "true", "false", "1.0", "+1", "-1", "0", str(1 << 32)],
     )
-    async def test_lifetime_rejects_invalid_values_without_mutation(
-        self, lifetime: str
-    ) -> None:
+    async def test_lifetime_rejects_invalid_values_without_mutation(self, lifetime: str) -> None:
         client, server = await _setup()
         try:
             response = await client.request(
@@ -129,9 +126,7 @@ class TestRdPost:
                     payload=cbor2.dumps(_LINKS),
                 )
             ).response
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             discovery = await client.request(
                 Message(code=GET, uri="coap://srv/.well-known/core")
             ).response
@@ -147,8 +142,12 @@ class TestRdPost:
         client, server = await _setup()
         try:
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/rd?ep=node-01",
-                        payload=b"\xa5\x01", content_format=60)
+                Message(
+                    code=POST,
+                    uri="coap://srv/rd?ep=node-01",
+                    payload=b"\xa5\x01",
+                    content_format=60,
+                )
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -159,9 +158,7 @@ class TestRdPost:
         """Empty body is legal — the endpoint just has no declared links."""
         client, server = await _setup()
         try:
-            resp = await client.request(
-                Message(code=POST, uri="coap://srv/rd?ep=node-99")
-            ).response
+            resp = await client.request(Message(code=POST, uri="coap://srv/rd?ep=node-99")).response
             assert resp.code == aiocoap.CREATED
         finally:
             await client.shutdown()
@@ -195,9 +192,7 @@ class TestRdPost:
                     payload=cbor2.dumps(links),
                 )
             ).response
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             discovery = await client.request(
                 Message(code=GET, uri="coap://srv/.well-known/core")
             ).response
@@ -215,19 +210,11 @@ class TestRdPost:
         client, server = await _setup()
         try:
             key = cbor2.dumps("href")
-            payload = (
-                b"\x81\xa2"
-                + key
-                + cbor2.dumps("/sensors")
-                + key
-                + cbor2.dumps("/status")
-            )
+            payload = b"\x81\xa2" + key + cbor2.dumps("/sensors") + key + cbor2.dumps("/status")
             response = await client.request(
                 Message(code=POST, uri="coap://srv/rd?ep=node-01", payload=payload)
             ).response
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             assert response.code == aiocoap.BAD_REQUEST
             assert cbor2.loads(listing.payload) == []
         finally:
@@ -241,17 +228,13 @@ class TestRdPost:
             b"\x81\xa1" + cbor2.dumps("href") + b"\xd8\x1d\x00",
         ],
     )
-    async def test_register_rejects_tags_without_entry_or_route(
-        self, payload: bytes
-    ) -> None:
+    async def test_register_rejects_tags_without_entry_or_route(self, payload: bytes) -> None:
         client, server = await _setup()
         try:
             response = await client.request(
                 Message(code=POST, uri="coap://srv/rd?ep=node-01", payload=payload)
             ).response
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             discovery = await client.request(
                 Message(code=GET, uri="coap://srv/.well-known/core")
             ).response
@@ -267,9 +250,7 @@ class TestRdPost:
         "trailing",
         [cbor2.dumps({"extra": True}), b"trailing-junk"],
     )
-    async def test_register_rejects_trailing_cbor_without_mutation(
-        self, trailing: bytes
-    ) -> None:
+    async def test_register_rejects_trailing_cbor_without_mutation(self, trailing: bytes) -> None:
         client, server = await _setup()
         try:
             response = await client.request(
@@ -280,9 +261,7 @@ class TestRdPost:
                     content_format=60,
                 )
             ).response
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
 
             assert response.code == aiocoap.BAD_REQUEST
             assert cbor2.loads(listing.payload) == []
@@ -300,9 +279,7 @@ class TestRdGet:
     async def test_empty_directory(self) -> None:
         client, server = await _setup()
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             assert resp.code == aiocoap.CONTENT
             assert cbor2.loads(resp.payload) == []
         finally:
@@ -313,9 +290,7 @@ class TestRdGet:
         client, server = await _setup()
         try:
             await _register(client, ep="node-01")
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             entries = cbor2.loads(resp.payload)
             assert len(entries) == 1
             assert entries[0]["ep"] == "node-01"
@@ -328,9 +303,7 @@ class TestRdGet:
         client, server = await _setup()
         try:
             await _register(client, ep="node-01", links=_LINKS)
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             entry = cbor2.loads(resp.payload)[0]
             hrefs = {lnk["href"] for lnk in entry["links"]}
             assert hrefs == {"/sensors", "/status"}
@@ -343,9 +316,7 @@ class TestRdGet:
         try:
             await _register(client, ep="node-01")
             await _register(client, ep="node-02")
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/rd?ep=node-01")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/rd?ep=node-01")).response
             entries = cbor2.loads(resp.payload)
             assert len(entries) == 1
             assert entries[0]["ep"] == "node-01"
@@ -358,9 +329,7 @@ class TestRdGet:
         try:
             await _register(client, ep="node-01")
             await _register(client, ep="node-02")
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             entries = cbor2.loads(resp.payload)
             eps = {e["ep"] for e in entries}
             assert eps == {"node-01", "node-02"}
@@ -393,9 +362,7 @@ class TestRdDelete:
                 Message(code=GET, uri="coap://srv/.well-known/core")
             ).response
 
-            get_resp = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            get_resp = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             assert second_delete.code == aiocoap.NOT_FOUND
             assert f"</rd/{reg_id}>" not in discovery.payload.decode()
             assert cbor2.loads(get_resp.payload) == []
@@ -406,9 +373,7 @@ class TestRdDelete:
     async def test_delete_unknown_id_returns_not_found(self) -> None:
         client, server = await _setup()
         try:
-            resp = await client.request(
-                Message(code=DELETE, uri="coap://srv/rd/99999")
-            ).response
+            resp = await client.request(Message(code=DELETE, uri="coap://srv/rd/99999")).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()
@@ -430,9 +395,7 @@ class TestRdDelete:
             discovery = await client.request(
                 Message(code=GET, uri="coap://srv/.well-known/core")
             ).response
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             body = discovery.payload.decode()
             assert all(path not in body for path in deleted_paths)
             assert cbor2.loads(listing.payload) == []
@@ -460,9 +423,7 @@ class TestRdDelete:
             failed = await client.request(
                 Message(code=DELETE, uri=f"coap://srv/rd/{reg_id}")
             ).response
-            listing = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            listing = await client.request(Message(code=GET, uri="coap://srv/rd")).response
 
             assert failed.code == aiocoap.INTERNAL_SERVER_ERROR
             assert cbor2.loads(listing.payload)[0]["id"] == reg_id
@@ -490,9 +451,7 @@ class TestRdNotExposed:
     async def test_rd_not_exposed_by_default(self) -> None:
         client, server = await _setup(resource_directory=False)
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/rd")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/rd")).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()

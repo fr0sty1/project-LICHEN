@@ -101,11 +101,10 @@ class TestLinkFailure:
         identity_a = make_identity(0)
         announce_a = build_announce_bytes(identity_a)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             # Before partition: A->B works
             await radio_a.transmit(announce_a)
             result = await radio_b.receive(1000)
@@ -149,15 +148,12 @@ class TestLinkFailure:
 
         # B's gradient table and processor
         gradient_b = GradientTable()
-        processor_b = AnnounceProcessor(
-            gradient_table=gradient_b, address_builder=build_address
-        )
+        processor_b = AnnounceProcessor(gradient_table=gradient_b, address_builder=build_address)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             now_ms = 1000
 
             # Initial announce establishes gradient
@@ -208,11 +204,10 @@ class TestNodeFailure:
         identity_a = make_identity(0)
         announce_a = build_announce_bytes(identity_a)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             # Before failure: communication works
             await radio_a.transmit(announce_a)
             result = await radio_b.receive(1000)
@@ -259,13 +254,11 @@ class TestNodeFailure:
         announce_a = build_announce_bytes(identity_a)
 
         # A at 0m, B at 50m, C at 100m (all within range of each other)
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-c", (100.0, 0.0, 0.0)
-        ) as radio_c:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-c", (100.0, 0.0, 0.0)) as radio_c,
+        ):
             # Before B failure: C can receive from A (directly or via B)
             await radio_a.transmit(announce_a)
             result_c = await radio_c.receive(1000)
@@ -299,11 +292,10 @@ class TestNodeMobility:
         identity_a = make_identity(0)
         announce_a = build_announce_bytes(identity_a)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (500.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (500.0, 0.0, 0.0)) as radio_b,
+        ):
             # Initial RSSI at 500m
             await radio_a.transmit(announce_a)
             result = await radio_b.receive(1000)
@@ -340,16 +332,13 @@ class TestNodeMobility:
 
         # B's gradient table
         gradient_b = GradientTable()
-        processor_b = AnnounceProcessor(
-            gradient_table=gradient_b, address_builder=build_address
-        )
+        processor_b = AnnounceProcessor(gradient_table=gradient_b, address_builder=build_address)
 
         # E starts far from B (at 1000m, weak signal)
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (0.0, 0.0, 0.0)
-        ) as radio_b, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-e", (1000.0, 0.0, 0.0)
-        ) as radio_e:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (0.0, 0.0, 0.0)) as radio_b,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-e", (1000.0, 0.0, 0.0)) as radio_e,
+        ):
             now_ms = 1000
 
             # E announces from 1000m
@@ -406,11 +395,10 @@ class TestNodeMobility:
         identity_a = make_identity(0)
         announce_a = build_announce_bytes(identity_a)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (100.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (100.0, 0.0, 0.0)) as radio_b,
+        ):
             # Initially reachable
             await radio_a.transmit(announce_a)
             result = await radio_b.receive(1000)
@@ -445,15 +433,12 @@ class TestConvergenceTime:
         identity_a = make_identity(0)
 
         gradient_b = GradientTable()
-        processor_b = AnnounceProcessor(
-            gradient_table=gradient_b, address_builder=build_address
-        )
+        processor_b = AnnounceProcessor(gradient_table=gradient_b, address_builder=build_address)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             # Send multiple announces at increasing times
             for seq in range(3):
                 now_ms = 1000 + (seq * 100000)  # 100 second intervals
@@ -493,15 +478,12 @@ class TestConvergenceTime:
         announce_a = build_announce_bytes(identity_a)
 
         gradient_b = GradientTable()
-        processor_b = AnnounceProcessor(
-            gradient_table=gradient_b, address_builder=build_address
-        )
+        processor_b = AnnounceProcessor(gradient_table=gradient_b, address_builder=build_address)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", node_port, "topo-test", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             now_ms = 1000
 
             # Initial announce

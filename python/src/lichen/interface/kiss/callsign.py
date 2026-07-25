@@ -128,7 +128,7 @@ def callsign_to_suffix(callsign: str) -> int | None:
     if not call.startswith(LICHEN_PREFIX):
         return None
 
-    encoded = call[len(LICHEN_PREFIX):]
+    encoded = call[len(LICHEN_PREFIX) :]
 
     if not encoded:
         return None

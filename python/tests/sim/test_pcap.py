@@ -137,9 +137,7 @@ class TestPcapngWriter:
                 assert block_type == _BLOCK_TYPE_EPB
 
                 # Read fixed fields
-                iface_id, ts_high, ts_low, cap_len, orig_len = struct.unpack(
-                    "<IIIII", f.read(20)
-                )
+                iface_id, ts_high, ts_low, cap_len, orig_len = struct.unpack("<IIIII", f.read(20))
                 assert iface_id == 0
                 timestamp = (ts_high << 32) | ts_low
                 assert timestamp == test_timestamp

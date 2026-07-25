@@ -12,11 +12,11 @@ The LICHEN simulation infrastructure supports distributed testing across multipl
 ## Architecture
 
 ```
-[Coordinator Node] ← TCP → [Python Nodes] 
-         ↑
-[Redis/MQTT] ← TCP → [Rust Nodes] 
-         ↑
-[Renode Nodes] ← TCP → [Zephyr Nodes]
+[Coordinator Node] ← TCP → [Python Nodes]
+         ↑                ↕ (TCP)
+         |          [Rust Nodes]
+         |                ↕ (TCP)
+         ←── TCP ──→ [Renode/Zephyr Nodes]
 ```
 
 ## Components
@@ -291,6 +291,8 @@ Consider these improvements for larger-scale deployments:
 - **LICHEN AGENTS.md**: Main project documentation for EC2 setup
 - **Scripts**: `ec2-hetero-fleet.sh`, `ec2-renode-fleet.sh`
 - **AWS CLI Documentation**: Official AWS EC2 and CloudWatch documentation
+- **Enhanced Debugging**: `docs/enhanced-debugging-observability.md` for debugging & observability setup
+- **Renode Workflow**: `docs/renode-workflow.md` for local Renode multi-node testing
 - **Simulation Protocol**: `lichen/sim/protocol.py` for wire format details
 
 > **What is a PRFAQ?** A PRFAQ (Press Release / FAQ) is an Amazon-originated product planning technique. It starts with a fictional press release written as if the product has already launched successfully, forcing clarity on customer benefit and desired outcome. The FAQ section then anticipates hard internal and external questions. Writing the press release first ensures the team aligns on what success looks like before committing to implementation.

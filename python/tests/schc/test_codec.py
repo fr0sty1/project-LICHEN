@@ -125,9 +125,7 @@ def test_field_descriptor_accepts_zero_bit_constant() -> None:
 def test_rule_rejects_id_outside_compression_range(rule_id: int) -> None:
     with pytest.raises(ValueError) as exc_info:
         Rule(rule_id, ())
-    assert str(exc_info.value) == (
-        f"compression rule_id must be between 0 and 127, got {rule_id}"
-    )
+    assert str(exc_info.value) == (f"compression rule_id must be between 0 and 127, got {rule_id}")
 
 
 def test_rule_accepts_highest_compression_id() -> None:
@@ -296,9 +294,7 @@ def test_field_descriptor_accepts_zero_bit_constant() -> None:
 def test_rule_rejects_id_outside_compression_range(rule_id: int) -> None:
     with pytest.raises(ValueError) as exc_info:
         Rule(rule_id, ())
-    assert str(exc_info.value) == (
-        f"compression rule_id must be between 0 and 127, got {rule_id}"
-    )
+    assert str(exc_info.value) == (f"compression rule_id must be between 0 and 127, got {rule_id}")
 
 
 def test_rule_accepts_highest_compression_id() -> None:
@@ -434,8 +430,7 @@ class TestCoapRule:
         """
         out = compress(
             COAP_RULE,
-            {"CoAP.version": 1, "CoAP.type": 0, "CoAP.tkl": 0,
-             "CoAP.code": 1, "CoAP.mid": 0x1234},
+            {"CoAP.version": 1, "CoAP.type": 0, "CoAP.tkl": 0, "CoAP.code": 1, "CoAP.mid": 0x1234},
         )
         assert out == bytes([64, 0x00, 0x04, 0x48, 0xD0])
 
@@ -462,8 +457,10 @@ class TestCoapRule:
 
     def test_equal_mismatch_raises(self) -> None:
         with pytest.raises(SchcError, match="EQUAL mismatch"):
-            compress(COAP_RULE, {"CoAP.version": 2, "CoAP.type": 0,
-                                 "CoAP.tkl": 0, "CoAP.code": 0, "CoAP.mid": 0})
+            compress(
+                COAP_RULE,
+                {"CoAP.version": 2, "CoAP.type": 0, "CoAP.tkl": 0, "CoAP.code": 0, "CoAP.mid": 0},
+            )
 
     def test_missing_field_raises(self) -> None:
         with pytest.raises(SchcError, match="missing required field"):
@@ -471,8 +468,10 @@ class TestCoapRule:
 
     def test_value_out_of_range_raises(self) -> None:
         with pytest.raises(SchcError, match="does not fit"):
-            compress(COAP_RULE, {"CoAP.version": 1, "CoAP.type": 4,
-                                 "CoAP.tkl": 0, "CoAP.code": 0, "CoAP.mid": 0})
+            compress(
+                COAP_RULE,
+                {"CoAP.version": 1, "CoAP.type": 4, "CoAP.tkl": 0, "CoAP.code": 0, "CoAP.mid": 0},
+            )
 
 
 class TestUdpPortRule:
@@ -485,9 +484,9 @@ class TestUdpPortRule:
         assert out == bytes([65, 0x34])
 
     def test_roundtrip(self) -> None:
-        rule_id, fields = decompress(compress(
-            UDP_PORT_RULE, {"UDP.src_port": 5683, "UDP.dst_port": 5690}
-        ))
+        rule_id, fields = decompress(
+            compress(UDP_PORT_RULE, {"UDP.src_port": 5683, "UDP.dst_port": 5690})
+        )
         assert rule_id == 65
         assert fields["UDP.src_port"] == 5683
         assert fields["UDP.dst_port"] == 5690

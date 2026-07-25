@@ -379,7 +379,7 @@ class TestRxEnterMessage:
         encoded = encode_rx_enter(0xAABBCCDD)
 
         assert encoded[0] == MSG_RX_ENTER
-        assert encoded[1:5] == b"\xDD\xCC\xBB\xAA"
+        assert encoded[1:5] == b"\xdd\xcc\xbb\xaa"
 
     def test_encode_rejects_negative(self) -> None:
         """Encoding should fail for negative timeout."""

@@ -150,9 +150,7 @@ async def test_rejects_overlapping_client() -> None:
     server, port = await start_renode_server(sim, "renode-node", port=0)
     first_reader, first_writer = await asyncio.open_connection("127.0.0.1", port)
     payload = b"first"
-    await _send_message(
-        first_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
-    )
+    await _send_message(first_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload)
     assert (await _read_message(first_reader))[0] == 0x11
 
     second_reader, second_writer = await asyncio.open_connection("127.0.0.1", port)
@@ -172,9 +170,7 @@ async def test_stale_rx_callback_does_not_reach_reconnected_client() -> None:
     server, port = await start_renode_server(sim, "renode-node", port=0)
     first_reader, first_writer = await asyncio.open_connection("127.0.0.1", port)
     payload = b"first"
-    await _send_message(
-        first_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
-    )
+    await _send_message(first_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload)
     assert (await _read_message(first_reader))[0] == 0x11
     _, stale_timeout = await _enter_rx_and_get_callbacks(sim, first_writer)
     first_writer.close()
@@ -183,9 +179,7 @@ async def test_stale_rx_callback_does_not_reach_reconnected_client() -> None:
 
     second_reader, second_writer = await asyncio.open_connection("127.0.0.1", port)
     payload = b"second"
-    await _send_message(
-        second_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
-    )
+    await _send_message(second_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload)
     assert (await _read_message(second_reader))[0] == 0x11
 
     stale_timeout()
@@ -208,9 +202,7 @@ async def test_renode_on_rx_packet_callback() -> None:
     try:
         reader, writer = await asyncio.open_connection("127.0.0.1", port)
         payload = b"connected"
-        await _send_message(
-            writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
-        )
+        await _send_message(writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload)
         assert (await _read_message(reader))[0] == 0x11
 
         on_packet, _ = await _enter_rx_and_get_callbacks(sim, writer)
@@ -241,9 +233,7 @@ async def test_renode_on_rx_timeout_callback() -> None:
     try:
         reader, writer = await asyncio.open_connection("127.0.0.1", port)
         payload = b"connected"
-        await _send_message(
-            writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
-        )
+        await _send_message(writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload)
         assert (await _read_message(reader))[0] == 0x11
 
         _, on_timeout = await _enter_rx_and_get_callbacks(sim, writer)
@@ -382,11 +372,12 @@ async def test_renode_barrier_sync_packet_delivery() -> None:
     sim = Simulation("test", time_mode=TimeMode.BARRIER_SYNC)
 
     # Create two Renode servers at different positions (close enough to receive)
-    rx_server, rx_port = await start_renode_server(
-        sim, "rx-node", port=0, position=(0.0, 0.0, 0.0)
-    )
+    rx_server, rx_port = await start_renode_server(sim, "rx-node", port=0, position=(0.0, 0.0, 0.0))
     tx_server, tx_port = await start_renode_server(
-        sim, "tx-node", port=0, position=(100.0, 0.0, 0.0)  # 100m away
+        sim,
+        "tx-node",
+        port=0,
+        position=(100.0, 0.0, 0.0),  # 100m away
     )
 
     received_packets: list[tuple[bytes, int, int]] = []

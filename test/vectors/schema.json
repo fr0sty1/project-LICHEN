@@ -43,7 +43,8 @@
               {"$ref": "#/definitions/hash_32_vector"},
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
               {"$ref": "#/definitions/ipv6_malformed_vector"},
-              {"$ref": "#/definitions/ccp9_rendezvous_vector"}
+              {"$ref": "#/definitions/deaddrop_vector"},
+              {"$ref": "#/definitions/confessions_vector"}
             ]
           }
         }
@@ -100,7 +101,8 @@
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
           {"$ref": "#/definitions/ccp_load_balancing_vector"},
-          {"$ref": "#/definitions/ccp9_rendezvous_vector"}
+          {"$ref": "#/definitions/deaddrop_vector"},
+          {"$ref": "#/definitions/confessions_vector"}
         ]
       },
       "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
@@ -238,6 +240,30 @@
           "properties": {
             "vectors": {
               "items": {"$ref": "#/definitions/ccp_load_balancing_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "deaddrop_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/deaddrop_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "confessions_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/confessions_vector"}
             }
           }
         }
@@ -801,12 +827,12 @@
       "type": "object",
       "required": ["name", "type"],
       "additionalProperties": false,
-      "description": "OSCORE (RFC 8613) test vector for key derivation, request/response protection, replay detection, or invalid input.",
+      "description": "OSCORE (RFC 8613) test vector for key derivation, request/response protection, replay detection, invalid input, or SSN restore.",
       "properties": {
         "name": {"type": "string"},
         "type": {
           "type": "string",
-          "enum": ["key_derivation", "request_protection", "response_protection", "roundtrip", "replay", "invalid"]
+          "enum": ["key_derivation", "request_protection", "response_protection", "roundtrip", "replay", "invalid", "ssn_restore"]
         },
         "description": {"type": "string"},
         "master_secret": {"$ref": "#/definitions/hex", "description": "16-byte master secret (AES-128)"},
@@ -828,6 +854,16 @@
           "type": "integer",
           "minimum": 0,
           "description": "Sender sequence number for protection"
+        },
+        "starting_sequence_number": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Initial sender sequence number for restored context (NVM recovery)"
+        },
+        "prior_sequence_number": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Last sequence number used before simulated NVM failure (ssn_restore vectors)"
         },
         "request_piv": {
           "$ref": "#/definitions/hex",
@@ -869,6 +905,7 @@
             "sender_key": {"$ref": "#/definitions/hex"},
             "recipient_key": {"$ref": "#/definitions/hex"},
             "common_iv": {"$ref": "#/definitions/hex"},
+            "nonce": {"$ref": "#/definitions/hex", "description": "AEAD nonce for request/response protection vectors"},
             "oscore_option": {"$ref": "#/definitions/hex"},
             "ciphertext": {"$ref": "#/definitions/hex"},
             "is_replay": {"type": "boolean"},
@@ -945,10 +982,12 @@
       "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
-        "sf": {"type": "integer", "enum": [7, 10, 12]},
+        "sf": {"type": "integer", "minimum": 7, "maximum": 12},
         "ema": {"type": "number"},
         "load_factor": {"type": "number"},
-        "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
+        "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "interference_score": {"type": "number"},
+        "backoff_jitter_ms": {"type": "integer", "minimum": 0}
       }
     },
     "ccp13_vector": {
@@ -1003,7 +1042,7 @@
     "ccp_vector": {
       "type": "object",
       "required": ["name", "description"],
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
@@ -1046,7 +1085,7 @@
             },
             "now": {
               "type": "integer",
-              "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
+              "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test. Validated against epoch_floor from beacon ts per spec/09-packets-timing.md:261. Init order: lichen_link_load_key() before lichen_tdma_init() per AGENTS.md subsystem init graph."
             },
             "select_channel": {
               "type": "integer",
@@ -1079,13 +1118,90 @@
         "current_sfn": {"type": "integer"},
         "last_sfn": {"type": "integer"},
         "sfn": {"type": "integer"},
-        "expected": {"type": "string"},
+        "expected": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "object"}
+          ]
+        },
         "version": {"type": "integer"},
         "alternate_version": {"type": "integer"},
         "drift_ppm": {"type": "integer"},
         "guard_ppm": {"type": "integer"},
         "superframe_ms": {"type": "integer"},
-        "slot_adjust_ticks": {"type": "integer"}
+        "slot_adjust_ticks": {"type": "integer"},
+        "action": {"type": "string"},
+        "assigned_channel": {"type": "integer"},
+        "assigned_slot": {"type": "integer"},
+        "beacon_nominal_ms": {"type": "integer"},
+        "can_transmit": {"type": "boolean"},
+        "can_transmit_100ms": {"type": "boolean"},
+        "channel": {"type": "integer"},
+        "control_fallback": {"type": "boolean"},
+        "current_ms": {"type": "integer"},
+        "density": {"type": "integer", "minimum": 0},
+        "duration_ms": {"type": "integer"},
+        "ema": {"type": "number"},
+        "encoded": {"type": "string"},
+        "epoch": {"type": "integer"},
+        "etx": {"type": "number", "minimum": 0},
+        "eui64_hex": {"$ref": "#/definitions/hex"},
+        "expected_beacon_ms": {"type": "integer"},
+        "expected_channel": {"type": "integer", "minimum": 0},
+        "expected_correction_ms": {"type": "integer"},
+        "expected_flags": {"type": "integer"},
+        "expected_in_guard": {"type": "boolean"},
+        "expected_ppm": {"type": "integer"},
+        "expected_slot": {"type": "integer"},
+        "expected_tx_window_start": {"type": "integer"},
+        "guard_ms": {"type": "integer"},
+        "hash_method": {"type": "string"},
+        "hash_output": {"type": "string"},
+        "l2_dispatch": {"type": "integer"},
+        "limit_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "load_factor": {"type": "number"},
+        "local_beacon_rx_ms": {"type": "integer"},
+        "mechanism": {
+          "type": "string",
+          "enum": ["hash_based", "announce_driven", "fallback"]
+        },
+        "n_channels": {"type": "integer", "minimum": 1},
+        "n_slots": {"type": "integer", "minimum": 1},
+        "next_available_ms": {"type": "integer"},
+        "next_rendezvous_us": {"type": "integer"},
+        "now_ms": {"type": "integer"},
+        "num_channels": {"type": "integer", "minimum": 1},
+        "num_slots": {"type": "integer", "minimum": 1},
+        "observed_ms": {
+          "type": "array",
+          "items": {"type": "integer"}
+        },
+        "peer_eui64": {"$ref": "#/definitions/hex"},
+        "peer_known": {"type": "boolean"},
+        "queue_peak": {"type": "integer", "minimum": 0},
+        "remaining_ms": {"type": "integer"},
+        "rx_channel": {"type": "integer"},
+        "score": {"type": "number"},
+        "seed": {"type": "integer"},
+        "sf": {"type": "integer", "minimum": 7, "maximum": 12},
+        "slot_duration_ms": {"type": "integer"},
+        "slot_ms": {"type": "integer"},
+        "slot_start_ms": {"type": "integer"},
+        "t": {"type": "integer"},
+        "txs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ts": {"type": "integer"},
+              "dur": {"type": "integer"}
+            }
+          }
+        },
+        "usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "uses_sync_hop": {"type": "boolean"},
+        "util": {"type": "number", "minimum": 0, "maximum": 1},
+        "window_ms": {"type": "integer"}
       },
       "allOf": [
         {
@@ -1152,43 +1268,76 @@
         "queue_peak": {"type": "integer", "minimum": 0},
         "etx": {"type": "number", "minimum": 0},
         "score": {"type": "number"},
-        "action": {"type": "string"}
+        "action": {"type": "string"},
+        "now": {
+          "type": "integer",
+          "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
+        },
+        "select_channel": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Channel selected via hash_32(now() ^ iid) % num_channels"
+        },
+        "num_channels": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of channels for select_channel modulo"
+        }
       }
     },
-    "ccp9_rendezvous_vector": {
+    "deaddrop_vector": {
       "type": "object",
-      "required": ["name"],
+      "required": ["name", "type", "encoded"],
       "additionalProperties": false,
+      "description": "Test vector for /deaddrop store-and-forward CoAP resource. Validates POST submissions, GET pickups, OSCORE-wrapped payloads, and rejection cases.",
       "properties": {
         "name": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["post_submission", "pickup", "oscore_wrapped", "rejection"]
+        },
         "description": {"type": "string"},
-        "mechanism": {"type": "string", "enum": ["hash_based", "scheduled", "announce_driven", "fallback"]},
-        "expected_channel": {"type": "integer"},
-        "expected_slot": {"type": "integer"},
-        "sfn": {"type": "integer"},
-        "peer_eui64": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
-        "n_channels": {"type": "integer"},
-        "rx_channel": {"type": "integer"},
-        "assigned_channel": {"type": "integer"},
-        "assigned_slot": {"type": "integer"},
+        "recipient": {"type": "string"},
+        "ciphertext": {"$ref": "#/definitions/hex"},
+        "ttl": {"type": "integer", "minimum": 0},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "senml_payload": {"$ref": "#/definitions/hex"},
         "expected": {
           "type": "object",
           "properties": {
-            "mechanism": {"type": "string"},
-            "valid_until_sfn": {"type": "integer"}
-          }
+            "response_code": {"type": "integer", "minimum": 0, "maximum": 255},
+            "num_pending": {"type": "integer", "minimum": 0},
+            "oscore_option": {"$ref": "#/definitions/hex"}
+          },
+          "additionalProperties": false
         }
       }
     },
-    "ccp9_rendezvous_document": {
-      "allOf": [
-        {"$ref": "#/definitions/document_base"},
-        {
+    "confessions_vector": {
+      "type": "object",
+      "required": ["name", "type", "encoded"],
+      "additionalProperties": false,
+      "description": "Test vector for /confessions anonymous board CoAP resource. Validates POST submissions, GET retrieval, SenML payloads, and rejection cases.",
+      "properties": {
+        "name": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["post_submission", "get", "senml_wrapped", "rejection"]
+        },
+        "description": {"type": "string"},
+        "payload": {"$ref": "#/definitions/hex"},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "senml_payload": {"$ref": "#/definitions/hex"},
+        "expected": {
+          "type": "object",
           "properties": {
-            "vectors": {"items": {"$ref": "#/definitions/ccp9_rendezvous_vector"}}
-          }
+            "response_code": {"type": "integer", "minimum": 0, "maximum": 255},
+            "content_format": {"type": "integer"},
+            "oscore_option": {"$ref": "#/definitions/hex"}
+          },
+          "additionalProperties": false
         }
-      ]
+      }
     },
     "schnorr48_vector": {
       "type": "object",

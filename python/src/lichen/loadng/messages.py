@@ -85,8 +85,7 @@ class RREQ:
         signature = data[36:]
         if len(signature) not in (0, SIGNATURE_LENGTH):
             raise LoadngError(
-                f"invalid signature length: {len(signature)}, "
-                f"expected 0 or {SIGNATURE_LENGTH}"
+                f"invalid signature length: {len(signature)}, expected 0 or {SIGNATURE_LENGTH}"
             )
         return cls(
             flags=data[0],
@@ -129,8 +128,7 @@ class RREP:
         signature = data[36:]
         if len(signature) not in (0, SIGNATURE_LENGTH):
             raise LoadngError(
-                f"invalid signature length: {len(signature)}, "
-                f"expected 0 or {SIGNATURE_LENGTH}"
+                f"invalid signature length: {len(signature)}, expected 0 or {SIGNATURE_LENGTH}"
             )
         return cls(
             flags=data[0],
@@ -167,8 +165,7 @@ class RERR:
         signature = data[18:]
         if len(signature) not in (0, SIGNATURE_LENGTH):
             raise LoadngError(
-                f"invalid signature length: {len(signature)}, "
-                f"expected 0 or {SIGNATURE_LENGTH}"
+                f"invalid signature length: {len(signature)}, expected 0 or {SIGNATURE_LENGTH}"
             )
         return cls(
             flags=data[0],

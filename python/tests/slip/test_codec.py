@@ -99,8 +99,8 @@ class TestStreamDecoder:
         dec = StreamDecoder()
         # frame: END ESC ESC_END END  (encodes a single END byte)
         frame = bytes([END, ESC, ESC_END, END])
-        p1 = dec.feed(frame[:2])   # END ESC — partial
-        p2 = dec.feed(frame[2:])   # ESC_END END
+        p1 = dec.feed(frame[:2])  # END ESC — partial
+        p2 = dec.feed(frame[2:])  # ESC_END END
         assert p1 == []
         assert p2 == [bytes([END])]
 

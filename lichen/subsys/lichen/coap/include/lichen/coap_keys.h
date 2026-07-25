@@ -17,6 +17,9 @@
 #include <stdbool.h>
 #include <zephyr/net/coap.h>
 
+/* Forward declaration - oscore.h is optional; we only need the pointer */
+struct oscore_ctx;
+
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
 #define __has_feature(x) 0
@@ -65,6 +68,22 @@ enum lichen_key_trust {
 	LICHEN_KEY_TRUST_TOFU,
 	LICHEN_KEY_TRUST_VERIFIED,
 	LICHEN_KEY_TRUST_DANE,
+};
+
+/**
+ * @brief Group key trust levels
+ *
+ * Indicate how a group OSCORE key was established:
+ * - UNKNOWN: Default/no trust
+ * - PROVISIONED: Directly provisioned (out-of-band)
+ * - ESTABLISHED: Established via key agreement protocol
+ * - VERIFIED: Verified group membership
+ */
+enum lichen_group_key_trust {
+	LICHEN_GROUP_KEY_TRUST_UNKNOWN = 0,
+	LICHEN_GROUP_KEY_TRUST_PROVISIONED,
+	LICHEN_GROUP_KEY_TRUST_ESTABLISHED,
+	LICHEN_GROUP_KEY_TRUST_VERIFIED,
 };
 
 /**
@@ -191,6 +210,91 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
  */
 int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN]);
+
+/**
+ * @brief Create an OSCORE context from a stored peer key (TOFU).
+ *
+ * Looks up the peer's public key from the key store by IID, derives
+ * an OSCORE master secret from it (via HKDF-SHA256), and creates an
+ * OSCORE context. The master secret is ephemeral and wiped after
+ * context creation.
+ *
+ * This enables E2E encryption for dead drops, confessions, and other
+ * CoAP resources without requiring a separate EDHOC exchange.
+ *
+ * @param[in]  peer_iid        8-byte peer IID
+ * @param[in]  peer_eui64      8-byte peer EUI-64
+ * @param[in]  sender_id       Sender ID for OSCORE (e.g., local IID[0:1])
+ * @param[in]  sender_id_len   Sender ID length
+ * @param[in]  recipient_id    Recipient ID for OSCORE (e.g., peer IID[0:1])
+ * @param[in]  recipient_id_len Recipient ID length
+ * @param[out] ctx             Output OSCORE context pointer
+ * @return 0 on success, -ENOENT if peer key not found, negative on error
+ */
+int lichen_key_store_get_oscore_ctx(
+	const uint8_t peer_iid[_Nonnull LICHEN_KEY_IID_LEN],
+	const uint8_t peer_eui64[_Nonnull 8],
+	const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+	const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+	struct oscore_ctx *_Nullable *_Nonnull ctx);
+
+/**
+ * @brief Register a group key for OSCORE group communication.
+ *
+ * Stores the group master secret and creates a group OSCORE context.
+ * The master_secret is copied internally.
+ *
+ * @param[in]  group_name       Group name (for lookup)
+ * @param[in]  master_secret    16-byte group master secret
+ * @param[in]  member_index     This node's member index in the group
+ * @param[in]  trust            Group key trust level
+ * @return 0 on success, -ENOSPC if group store is full, negative on error
+ */
+int lichen_key_store_group_put(const char *_Nonnull group_name,
+			       const uint8_t master_secret[_Nonnull 16],
+			       uint8_t member_index,
+			       enum lichen_group_key_trust trust);
+
+/**
+ * @brief Get an OSCORE context for a registered group.
+ *
+ * Returns the per-member OSCORE context for sending/receiving
+ * within the group.
+ *
+ * @param[in]  group_name Group name
+ * @param[out] ctx        Output OSCORE context pointer
+ * @return 0 on success, -ENOENT if group not found
+ */
+int lichen_key_store_group_get_ctx(const char *_Nonnull group_name,
+				   struct oscore_ctx *_Nullable *_Nonnull ctx);
+
+/**
+ * @brief Get group key trust level.
+ *
+ * @param[in]  group_name Group name
+ * @param[out] trust      Output trust level
+ * @return 0 on success, -ENOENT if group not found
+ */
+int lichen_key_store_group_get_trust(const char *_Nonnull group_name,
+				     enum lichen_group_key_trust *_Nonnull trust);
+
+/**
+ * @brief Set group key trust level (escalation only).
+ *
+ * @param[in] group_name Group name
+ * @param[in] trust      New trust level
+ * @return 0 on success, -ENOENT if group not found, -EPERM on downgrade
+ */
+int lichen_key_store_group_set_trust(const char *_Nonnull group_name,
+				     enum lichen_group_key_trust trust);
+
+/**
+ * @brief Remove a registered group key.
+ *
+ * @param[in] group_name Group name
+ * @return 0 on success, -ENOENT if group not found
+ */
+int lichen_key_store_group_delete(const char *_Nonnull group_name);
 
 #ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
 /**

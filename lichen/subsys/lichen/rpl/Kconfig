@@ -49,6 +49,17 @@ config LICHEN_RPL_MAX_ACTIVE_DAO_CANDIDATES
 	  Maximum aggregate number of active target-to-parent candidates retained
 	  by a root. A grouped DAO that would exceed this limit is rejected atomically.
 
+config LICHEN_RPL_MAX_PREFIX_ROUTES
+	int "Maximum prefix routes"
+	default 32
+	range 1 64
+	help
+	  Maximum number of non-/128 prefix routes and managed-prefix tracking
+	  entries. Prefix routes share the total route capacity (LICHEN_RPL_MAX_ROUTES)
+	  but are tracked separately for longest-prefix-match lookup and managed-prefix
+	  lifecycle. The managed-prefix arrays (managed hosts, managed prefix→egress)
+	  use this bound.
+
 config LICHEN_RPL_TRICKLE_IMIN_MS
 	int "Trickle Imin (ms)"
 	default 4000

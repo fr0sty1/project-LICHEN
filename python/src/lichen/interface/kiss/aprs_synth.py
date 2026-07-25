@@ -17,6 +17,7 @@ from typing import Any
 
 try:
     import cbor2
+
     HAS_CBOR = True
 except ImportError:
     HAS_CBOR = False
@@ -24,6 +25,7 @@ except ImportError:
 
 class AprsDataType(Enum):
     """Detected APRS-compatible data type."""
+
     POSITION = "position"
     WEATHER = "weather"
     TELEMETRY = "telemetry"
@@ -33,6 +35,7 @@ class AprsDataType(Enum):
 @dataclass
 class SynthResult:
     """Result of APRS synthesis."""
+
     data_type: AprsDataType
     aprs_payload: bytes  # Raw APRS info field (without AX.25 wrapper)
 
@@ -226,7 +229,9 @@ def _format_weather(
             lon_deg = int(lon_f)
             lon_min = (lon_f - lon_deg) * 60
 
-            parts.append(f"!{lat_deg:02d}{lat_min:05.2f}{lat_dir}/{lon_deg:03d}{lon_min:05.2f}{lon_dir}_")
+            parts.append(
+                f"!{lat_deg:02d}{lat_min:05.2f}{lat_dir}/{lon_deg:03d}{lon_min:05.2f}{lon_dir}_"
+            )
         except (TypeError, ValueError):
             parts.append("_")
     else:
@@ -373,6 +378,7 @@ def _format_telemetry(seq: int, values: list[float], bits: int = 0) -> str:
 
 
 # --- Helpers ---
+
 
 def _get_key(obj: dict, keys: tuple[str, ...]) -> Any:
     """Get value from dict trying multiple key names."""

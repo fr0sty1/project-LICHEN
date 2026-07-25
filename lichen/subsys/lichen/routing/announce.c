@@ -297,7 +297,7 @@ int lichen_announce_ingest_authenticated(
 		return ret;
 	}
 	if (!schnorr48_verify(announce.pubkey, signed_data, signed_data_len,
-			      announce.signature, SCHNORR48_SIG_LEN)) {
+			      announce.signature, LICHEN_ANNOUNCE_SIGNATURE_LEN)) {
 		return -EACCES;
 	}
 
@@ -319,6 +319,25 @@ int lichen_announce_ingest_authenticated(
 		location_seq_num = announce.wire_seq_num;
 	}
 	if (peer == NULL) {
+		/* TOFU pins (spec 8.6) must not be silently evicted */
+		bool has_free = false;
+
+		for (size_t i = 0U; i < ARRAY_SIZE(announce_peers); i++) {
+			if (!announce_peers[i].active) {
+				has_free = true;
+				break;
+			}
+		}
+		if (!has_free) {
+			LOG_ERR("announce: TOFU pin table full, rejecting IID %02x%02x%02x%02x",
+				announce.originator_iid[0],
+				announce.originator_iid[1],
+				announce.originator_iid[2],
+				announce.originator_iid[3]);
+			k_mutex_unlock(&announce_mutex);
+			k_mutex_unlock(&ingest_mutex);
+			return -ENOSPC;
+		}
 		peer = allocate_peer_locked(observed_uptime_s);
 		if (peer == NULL) {
 			k_mutex_unlock(&announce_mutex);
@@ -696,6 +715,60 @@ static void sched_work_handler(struct k_work *work)
 
 	(void)send_announce();
 	schedule_next();
+}
+
+static void dodag_loss_resume_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool running = sched.running;
+	bool joined = sched.dodag_joined;
+
+	if (running && !joined) {
+		LOG_INF("DODAG loss resume timeout: reverting to normal announce interval");
+	}
+	k_mutex_unlock(&sched.mutex);
+
+	if (running) {
+		schedule_next();
+	}
+}
+
+void lichen_announce_sched_set_dodag_state(bool joined, bool gateway_centric)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
+		return;
+	}
+
+	bool prev_gateway = sched.dodag_joined && sched.gateway_centric;
+	sched.dodag_joined = joined;
+	sched.gateway_centric = joined ? gateway_centric : false;
+	bool new_gateway = sched.dodag_joined && sched.gateway_centric;
+
+	if (prev_gateway != new_gateway) {
+		LOG_INF("DODAG state change: joined=%d gateway=%d, rescheduling announce",
+			joined, gateway_centric);
+		k_mutex_unlock(&sched.mutex);
+
+		/* Reschedule with new interval immediately */
+		(void)k_work_cancel_delayable(&sched.work);
+		schedule_next();
+	} else {
+		k_mutex_unlock(&sched.mutex);
+	}
+
+	/* Schedule or cancel DODAG loss resume timer */
+	if (!joined) {
+		uint32_t delay_s = CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT;
+		if (delay_s > 0) {
+			k_work_schedule(&sched.dodag_loss_work, K_SECONDS(delay_s));
+		}
+	} else {
+		(void)k_work_cancel_delayable(&sched.dodag_loss_work);
+	}
 }
 
 static void dodag_loss_resume_handler(struct k_work *work)

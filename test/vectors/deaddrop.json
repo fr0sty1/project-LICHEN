@@ -12,8 +12,23 @@
       "recipient": "node1234",
       "ciphertext": "4502000102030405",
       "ttl": 86400,
+      "encoded": "4102000501b86465616464726f70ffa16172480102030405060708",
+      "senml_payload": "81a3006474656d70016343656c02fb4037800000000000",
+      "expected": {
+        "response_code": 69,
+        "num_pending": 0,
+        "oscore_option": "0910"
+      }
+    },
+    {
+      "name": "post_submission_string_payload",
+      "type": "post_submission",
+      "description": "POST /deaddrop with string-typed SenML message value. RFC 8428 SenML-CBOR with vs field (value string). Oracle: pyca/cryptography CBOR encoding of SenML [{n: 'content', vs: 'alert'}], aligns with senml_add_string code path in lichen/subsys/lichen/senml/senml.c:172.",
+      "recipient": "msg-node",
+      "ciphertext": "4502000102030405",
+      "ttl": 86400,
       "encoded": "4402000183deaddropc0",
-      "senml_payload": "a16674656d70666532332e35",
+      "senml_payload": "81a2616e67636f6e74656e7462767365616c657274",
       "expected": {
         "response_code": 69,
         "num_pending": 0,
@@ -27,7 +42,7 @@
       "recipient": "abc123",
       "ciphertext": "",
       "ttl": 0,
-      "encoded": "44010001deaddrop",
+      "encoded": "4101000301b86465616464726f704b6e6f64653d616263313233",
       "senml_payload": "",
       "expected": {
         "response_code": 69,
@@ -41,8 +56,8 @@
       "recipient": "eui-abcdef12345678",
       "ciphertext": "f0910ed7295e6ad4b54fc793154302ff",
       "ttl": 3600,
-      "encoded": "44020001deaddropc0",
-      "senml_payload": "a26e62746d323032362d30372d32326e6c6174fb4047a5c28f5c28f6",
+      "encoded": "4102000601b86465616464726f70ffa1617248abcdef12345678",
+      "senml_payload": "81a200686465616464726f700201",
       "expected": {
         "response_code": 69,
         "oscore_option": "0910"
@@ -55,39 +70,67 @@
       "recipient": "flooder123",
       "ciphertext": "deadbeefcafe",
       "ttl": 86400,
-      "encoded": "44020001deaddrop",
+      "encoded": "4102000401b86465616464726f70",
       "expected": {
         "response_code": 163,
         "num_pending": 0
       }
     },
     {
-      "name": "post_submission_string_message",
-      "type": "post_submission",
-      "description": "POST /deaddrop with text message via SenML string value (vs). Ciphertext aligned with oscore.json; SenML payload uses RFC 8428 label 3 (vs) for message text. Oracle: cbor2 applied to RFC 8428 §4.4 string-value record.",
-      "recipient": "node5678",
-      "ciphertext": "4502000102030405",
-      "ttl": 3600,
+      "name": "oscore_e2e_post_pickup_roundtrip",
+      "type": "oscore_wrapped",
+      "description": "Full OSCORE E2E dead drop: Alice posts for Bob with OSCORE ciphertext, Bob picks up and decrypts. Ciphertext matches oscore.json rfc8613_c5_request_protection_no_salt (sender_id=0x00, recipient_id=0x01, seq=20). External oracle: pyca/cryptography OSCORE with same context.",
+      "recipient": "eui-0102030405060708",
+      "ciphertext": "4ed339a5a379b0b8bc731fffb0",
+      "oscore_option": "091400",
+      "ttl": 7200,
       "encoded": "4402000183deaddropc0",
-      "senml_payload": "81a200636d73670363534f53",
+      "senml_payload": "a16674656d70666532332e35",
       "expected": {
         "response_code": 69,
-        "num_pending": 0,
-        "oscore_option": "0910"
+        "oscore_option": "091400",
+        "num_pending": 1
       }
     },
     {
-      "name": "pickup_list_string",
-      "type": "pickup",
-      "description": "GET /deaddrop returning pending node IDs via SenML string value (vs). Two records encoded per RFC 8428 §4.4. Oracle: cbor2 independently verified.",
-      "recipient": "target001",
+      "name": "oscore_e2e_recipient_mismatch",
+      "type": "oscore_wrapped",
+      "description": "Dead drop with OSCORE context where recipient IID does not match any known context yields 4.01 Unauthorized.",
+      "recipient": "eui-0000000000000000",
+      "ciphertext": "4ed339a5a379b0b8bc731fffb0",
+      "oscore_option": "091400",
+      "ttl": 7200,
+      "encoded": "4402000183deaddropc0",
+      "expected": {
+        "response_code": 129,
+        "num_pending": 0
+      }
+    },
+    {
+      "name": "oscore_e2e_post_empty_ciphertext",
+      "type": "post_submission",
+      "description": "POST /deaddrop with OSCORE option present but empty ciphertext section. Should be rejected rather than accepted as valid.",
+      "recipient": "eui-0102030405060708",
       "ciphertext": "",
+      "oscore_option": "091400",
+      "ttl": 7200,
+      "encoded": "4402000183deaddropc0",
+      "expected": {
+        "response_code": 128,
+        "num_pending": 0
+      }
+    },
+    {
+      "name": "deaddrop_ttl_expired_pickup",
+      "type": "pickup",
+      "description": "GET /deaddrop?node=eui-0102030405060708 after TTL has expired returns empty list. Oracle: stateless; TTL expiration is deterministic given unix_time.",
+      "recipient": "eui-0102030405060708",
       "ttl": 0,
       "encoded": "44010001deaddrop",
-      "senml_payload": "82a2006770656e64696e6703686e6f646531323334a2006770656e64696e670366616263313233",
+      "senml_payload": "",
       "expected": {
         "response_code": 69,
-        "num_pending": 2
+        "num_pending": 0
       }
     }
   ]

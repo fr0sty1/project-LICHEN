@@ -9,11 +9,11 @@ from dataclasses import dataclass, field
 N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1
 MAX_WINDOW_SIZE = ALL_1
-DEFAULT_WINDOW_SIZE = 63
+DEFAULT_WINDOW_SIZE = 7
 MIC_LENGTH = 4
 RULE_IDS = (0x78, 0x79)
 TILE_SIZE = 187
-MAX_PACKET_SIZE = 65535
+MAX_PACKET_SIZE = 24000
 DEFAULT_RECEIVER_LIMIT = 1281
 MAX_ACK_REQUESTS = 4
 WINDOW_SIZE = 63
@@ -140,6 +140,11 @@ class Ack:
             return bytes([self.rule_id, (self.window << 7) | 0x40])
         if len(self.bitmap) != WINDOW_SIZE:
             raise FragmentError("C=0 ACK requires a 63-bit bitmap")
+        # Bit layout: W(1) | C=0(1) | bitmap(up to 63) | padding(to byte-align)
+        # Trailing 1-bits are implicit and can be elided to save bytes.
+        # When trailing 1s exist, keep only the prefix + enough restored 1s
+        # to reach a byte boundary (C=0 occupies 2 bits, so padding targets
+        # (2 + kept) % 8 == 0).
         bits = list(self.bitmap)
         trailing = 0
         for bit in reversed(bits):
@@ -154,7 +159,8 @@ class Ack:
         else:
             encoded = bits
             padding = (-(2 + len(encoded))) % 8
-        value = self.window << 1  # W followed by C=0
+        # Pack: W-bit first, then C=0 bit, then encoded bitmap, then padding zeros.
+        value = self.window << 1
         for bit in encoded:
             value = (value << 1) | bit
         value <<= padding
@@ -172,6 +178,9 @@ class Ack:
                 raise FragmentError("malformed C=1 ACK or control")
             return cls(data[0], window, (), True)
         bit_count = len(data[1:]) * 8 - 2
+        max_bytes = (2 + WINDOW_SIZE + 7) // 8
+        if len(data[1:]) > max_bytes:
+            raise FragmentError("ACK bitmap size exceeds SCHC maximum window size")
         raw = int.from_bytes(data[1:], "big") & ((1 << bit_count) - 1)
         if bit_count >= WINDOW_SIZE:
             padding = bit_count - WINDOW_SIZE
@@ -198,7 +207,7 @@ class FragmentSender:
     rule_id: int = 0x78
     receiver_limit: int = DEFAULT_RECEIVER_LIMIT
     tile_size: int = TILE_SIZE
-    window_size: int = DEFAULT_WINDOW_SIZE
+    window_size: int = WINDOW_SIZE
     _fragments: list[Fragment] = field(init=False, repr=False)
     attempts: int = field(default=0, init=False)
     status: str = field(default="ready", init=False)
@@ -213,6 +222,9 @@ class FragmentSender:
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:
+        # max(len(payload), 1) ensures at least one tile for empty payloads
+        # per RFC 8724 §8.1.1 (empty datagram support). An empty payload
+        # produces a 6-byte fragment: header + MIC.
         tiles = [
             self.payload[i : i + self.tile_size]
             for i in range(0, max(len(self.payload), 1), self.tile_size)
@@ -245,6 +257,24 @@ class FragmentSender:
         start = abs_window * self.window_size
         return self._fragments[start : start + self.window_size]
 
+    def start(self) -> None:
+        self.attempts = 0
+        self.status = "sending"
+
+    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        ack = Ack.from_bytes(data)
+        if ack.complete or ack.window not in (0, 1):
+            raise FragmentError("handle_ack_bytes: expected C=0 ACK")
+        missing = self.retransmit(ack.window, ack.bitmap)
+        result = [f.to_bytes() for f in missing]
+        next_window = ack.window + 1 if ack.window < self.window_count - 1 else ack.window
+        result.append(ack_request(self.rule_id, next_window))
+        return result
+
+    def timeout(self) -> bytes:
+        self.status = "aborted"
+        return sender_abort(self.rule_id)
+
     def retransmit(
         self, abs_window: int, bitmap: Sequence[bool]
     ) -> list[Fragment]:
@@ -253,31 +283,48 @@ class FragmentSender:
             bitmap = bitmap[:len(window_frags)]
         missing: list[Fragment] = []
         for pos, frag in enumerate(window_frags):
-            if frag.is_all_1:
-                continue
             if pos >= len(bitmap) or not bitmap[pos]:
-                missing.append(frag)
+                if not frag.is_all_1:
+                    missing.append(frag)
         return missing
 
-    def start(self) -> None:
-        self.status = "started"
+    def start(self) -> list[bytes]:
+        if self.status != "ready":
+            raise FragmentError("sender not in ready state")
+        self.status = "active"
+        self.attempts = 1
+        return [self._fragments[0].to_bytes()]
+
+    def final_window(self) -> int:
+        return self._fragments[-1].window
 
     def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        if self.status != "active" or not data or data[0] != self.rule_id:
+            return []
         ack = Ack.from_bytes(data)
         if ack.complete:
+            self.status = "succeeded"
             return []
         window = ack.window
-        missing = self.retransmit(window, ack.bitmap)
-        messages: list[bytes] = []
-        for frag in missing:
-            messages.append(frag.to_bytes())
-        all1_window = self._fragments[-1].window
-        messages.append(ack_request(self.rule_id, all1_window))
-        return messages
+        window_frags = self.fragments_in_window(window)
+        missing = []
+        for frag in window_frags:
+            bitmap_pos = 62 if frag.is_all_1 else (62 - frag.fcn)
+            bitmap_bit = bitmap_pos < len(ack.bitmap) and ack.bitmap[bitmap_pos]
+            if not bitmap_bit:
+                missing.append(frag)
+        if self.attempts >= MAX_ACK_REQUESTS:
+            return [sender_abort(self.rule_id)]
+        self.attempts += 1
+        result = [frag.to_bytes() for frag in missing]
+        result.append(ack_request(self.rule_id, self.final_window()))
+        return result
 
     def timeout(self) -> bytes:
-        self.attempts += 1
+        if self.status != "active":
+            return b""
         if self.attempts >= MAX_ACK_REQUESTS:
             self.status = "aborted"
             return sender_abort(self.rule_id)
-        return ack_request(self.rule_id, 0)
+        self.attempts += 1
+        return ack_request(self.rule_id, self.final_window())

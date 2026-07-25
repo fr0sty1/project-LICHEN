@@ -84,9 +84,7 @@ class TestMessagesGet:
     async def test_empty_inbox(self) -> None:
         client, server, _ = await _setup()
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 60
             assert _inbox(resp.payload) == []
@@ -98,9 +96,7 @@ class TestMessagesGet:
         client, server, msgs = await _setup()
         try:
             msgs.deliver(_MSG1)
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             inbox = _inbox(resp.payload)
             assert len(inbox) == 1
             assert inbox[0]["text"] == "hello mesh"
@@ -114,9 +110,7 @@ class TestMessagesGet:
         try:
             msgs.deliver(_MSG1)
             msgs.deliver(_MSG2)
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             inbox = _inbox(resp.payload)
             assert len(inbox) == 2
             assert inbox[0]["text"] == "hello mesh"
@@ -127,13 +121,12 @@ class TestMessagesGet:
 
     async def test_inbox_capped_at_max(self) -> None:
         from lichen.coap.resources import _MESSAGES_MAX
+
         client, server, msgs = await _setup()
         try:
             for i in range(_MESSAGES_MAX + 10):
                 msgs.deliver({"from": _FROM, "to": "all", "text": str(i), "t": _T0 + i})
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             inbox = _inbox(resp.payload)
             assert len(inbox) == _MESSAGES_MAX
             # oldest messages were dropped; newest survive
@@ -149,9 +142,7 @@ class TestMessagesGet:
         server = await create_lichen_context(net.channel("srv"), "srv", site=site)
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()
@@ -161,9 +152,7 @@ class TestMessagesGet:
         client, server, msgs = await _setup()
         try:
             msgs.deliver(_MSG1)
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/messages")).response
             inbox = _inbox(resp.payload)
             assert inbox[0]["text"] == "hello mesh"
         finally:
@@ -174,9 +163,7 @@ class TestMessagesGet:
         client, server, msgs = await _setup()
         try:
             msgs.deliver({"from": _FROM, "to": _TO_A, "body": "body-only"})
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/messages")).response
             inbox = _inbox(resp.payload)
             assert inbox[0]["body"] == "body-only"
             assert inbox[0]["text"] == "body-only"
@@ -344,9 +331,7 @@ class TestMessageReceipts:
         "trailing",
         [cbor2.dumps({"extra": True}), b"trailing-junk"],
     )
-    async def test_ack_rejects_trailing_cbor_without_mutation(
-        self, trailing: bytes
-    ) -> None:
+    async def test_ack_rejects_trailing_cbor_without_mutation(self, trailing: bytes) -> None:
         net = InMemoryNetwork()
         dispatched: list[dict[str, object]] = []
         receipts = MessageReceiptsResource(handler=dispatched.append)
@@ -507,9 +492,7 @@ class TestMessagesPost:
             ).response
             assert _inbox(sent_collection.payload)[0]["body"] == "hello mesh"
             # Verify it landed in inbox
-            get_resp = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            get_resp = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             inbox = _inbox(get_resp.payload)
             assert len(inbox) == 1
             assert inbox[0]["text"] == "hello mesh"
@@ -531,9 +514,7 @@ class TestMessagesPost:
                 )
             ).response
             assert resp.code == aiocoap.CREATED
-            get_resp = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            get_resp = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             inbox = _inbox(get_resp.payload)
             assert inbox[0]["body"] == "hello lci"
             assert inbox[0]["ack"] is True
@@ -647,9 +628,7 @@ class TestMessagesPost:
             response = await client.request(
                 Message(code=POST, uri="coap://srv/msg/inbox", payload=payload)
             ).response
-            current = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            current = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             discovery = await client.request(
                 Message(code=GET, uri="coap://srv/.well-known/core")
             ).response
@@ -683,17 +662,16 @@ class TestMessagesPost:
                 b"\xbf"
                 + cbor2.dumps("body")
                 + cbor2.dumps("valid")
-                + b"".join(
-                    cbor2.dumps(f"k{index}") + cbor2.dumps(index)
-                    for index in range(64)
-                )
+                + b"".join(cbor2.dumps(f"k{index}") + cbor2.dumps(index) for index in range(64))
                 + b"\xff"
             )
             indefinite_array = b"\x9f" + b"\x00" * 257 + b"\xff"
-            total_items = cbor2.dumps({
-                "body": "valid",
-                "items": [[0, 0, 0] for _ in range(256)],
-            })
+            total_items = cbor2.dumps(
+                {
+                    "body": "valid",
+                    "items": [[0, 0, 0] for _ in range(256)],
+                }
+            )
             oversized_bytes = cbor2.dumps({"body": "x" * 4096})
             payloads = [
                 cbor2.dumps(oversized_map),
@@ -765,9 +743,7 @@ class TestMessagesPost:
             assert msgs.sent_messages() == [{"id": 1, "body": "integer one"}]
             assert msgs._next_id == 2
             assert notifications == 0
-            detail = await client.request(
-                Message(code=GET, uri="coap://srv/msg/sent/1")
-            ).response
+            detail = await client.request(Message(code=GET, uri="coap://srv/msg/sent/1")).response
             discovery = await client.request(
                 Message(code=GET, uri="coap://srv/.well-known/core")
             ).response
@@ -895,12 +871,8 @@ class TestMessagesPost:
                 ).response
                 assert tuple(response.opt.location_path) == ("msg", "sent", str(index))
 
-            inbox = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
-            sent = await client.request(
-                Message(code=GET, uri="coap://srv/msg/sent")
-            ).response
+            inbox = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
+            sent = await client.request(Message(code=GET, uri="coap://srv/msg/sent")).response
             assert [item["id"] for item in _inbox(inbox.payload)] == [3, 4]
             assert [item["id"] for item in _inbox(sent.payload)] == [3, 4]
 
@@ -936,12 +908,8 @@ class TestMessagesPost:
                         payload=cbor2.dumps(body),
                     )
                 ).response
-            sent = await client.request(
-                Message(code=GET, uri="coap://srv/msg/sent")
-            ).response
-            inbox = await client.request(
-                Message(code=GET, uri="coap://srv/msg/inbox")
-            ).response
+            sent = await client.request(Message(code=GET, uri="coap://srv/msg/sent")).response
+            inbox = await client.request(Message(code=GET, uri="coap://srv/msg/inbox")).response
             assert [(item["id"], item["body"]) for item in _inbox(sent.payload)] == [
                 (7, "new"),
                 (8, "generated"),
@@ -950,9 +918,7 @@ class TestMessagesPost:
                 (7, "new"),
                 (8, "generated"),
             ]
-            detail = await client.request(
-                Message(code=GET, uri="coap://srv/msg/sent/7")
-            ).response
+            detail = await client.request(Message(code=GET, uri="coap://srv/msg/sent/7")).response
             assert cbor2.loads(detail.payload)["body"] == "new"
         finally:
             await client.shutdown()
@@ -962,9 +928,7 @@ class TestMessagesPost:
         "path",
         ["01", "-1", "not-an-id", str(1 << 64), "1/extra"],
     )
-    async def test_detail_router_rejects_noncanonical_or_extra_paths(
-        self, path: str
-    ) -> None:
+    async def test_detail_router_rejects_noncanonical_or_extra_paths(self, path: str) -> None:
         client, server, _ = await _setup_bounded(1)
         try:
             await client.request(
@@ -1027,9 +991,7 @@ class TestMessagesObserve:
     async def test_observe_notified_on_deliver(self) -> None:
         client, server, msgs = await _setup()
         try:
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/msg/inbox")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/msg/inbox"))
             first = await req.response
             assert first.code == aiocoap.CONTENT
             assert _inbox(first.payload) == []
@@ -1047,9 +1009,7 @@ class TestMessagesObserve:
     async def test_observe_notified_on_post(self) -> None:
         client, server, msgs = await _setup()
         try:
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/msg/inbox")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/msg/inbox"))
             await req.response
 
             obs_iter = req.observation.__aiter__()
@@ -1072,9 +1032,7 @@ class TestMessagesObserve:
     async def test_legacy_messages_alias_observe_notified_on_deliver(self) -> None:
         client, server, msgs = await _setup()
         try:
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/messages")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/messages"))
             await req.response
 
             obs_iter = req.observation.__aiter__()

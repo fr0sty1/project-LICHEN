@@ -83,6 +83,14 @@ struct lichen_rpl_parent {
 };
 
 /**
+ * @brief Callback for DODAG state changes.
+ *
+ * @param joined true if node joined or re-joined a DODAG, false if it left
+ * @param user_data User context pointer set in dodag struct
+ */
+typedef void (*lichen_rpl_dodag_state_cb)(bool joined, void *_Nullable user_data);
+
+/**
  * @brief RPL DODAG membership state for a single node
  *
  * All parent candidates are stored in a fixed-size array to avoid allocation.
@@ -105,11 +113,15 @@ struct lichen_rpl_dodag {
 	/* Parent candidates */
 	struct lichen_rpl_parent parents[CONFIG_LICHEN_RPL_MAX_PARENTS];
 
+	/* Gateway-centric mode (from DODAG Configuration option) */
+	bool gateway_centric;
+
 	/* Lowest rank ever achieved (for MaxRankIncrease check) */
 	uint16_t lowest_rank;
 
-	/* Gateway-centric flag propagated from DODAG config */
-	bool gateway_centric;
+	/* DODAG state change notification */
+	lichen_rpl_dodag_state_cb _Nullable state_cb;
+	void *_Nullable state_cb_user_data;
 };
 
 /* ── Functions ─────────────────────────────────────────────────────────────── */
@@ -135,13 +147,6 @@ int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *_Nonnull d,
 			       uint8_t version);
 
 /**
- * @brief Demote a root to UNJOINED, clearing parent state and rank.
- *
- * No-op if the node is not currently a root.
- */
-void lichen_rpl_dodag_demote(struct lichen_rpl_dodag *_Nullable d);
-
-/**
  * @brief Check if node is root.
  */
 static inline bool lichen_rpl_dodag_is_root(const struct lichen_rpl_dodag *_Nonnull d)
@@ -165,15 +170,19 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
  * @param now          Current timestamp for lifetime tracking
- * @param config       DODAG config from DIO options (may be NULL)
+ * @param authenticated True if the DIO was received with a valid frame signature
+ *
+ * @note All RPL control messages MUST be received over an authenticated link
+ *       (S=1 per LICHEN link-layer spec). Unauthenticated DIOs are rejected.
  */
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
+				  const struct lichen_rpl_dodag_config *_Nullable config,
 				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
 				  uint32_t now,
-				  const struct lichen_rpl_dodag_config *_Nullable config);
+				  bool authenticated);
 
 /**
  * @brief Drop a neighbor (e.g., link failure) and re-select parent.
@@ -193,6 +202,20 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *_Nonnull d);
  * @brief Force parent re-selection (e.g., after link quality change).
  */
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *_Nonnull d);
+
+/**
+ * @brief Register a DODAG state change callback.
+ *
+ * Called whenever the node joins or leaves a DODAG (role transitions
+ * between UNJOINED and JOINED/ROOT).
+ *
+ * @param d          DODAG state
+ * @param cb         Callback, or NULL to unregister
+ * @param user_data  Opaque context passed to callback
+ */
+void lichen_rpl_dodag_set_state_cb(struct lichen_rpl_dodag *_Nonnull d,
+				   lichen_rpl_dodag_state_cb _Nullable cb,
+				   void *_Nullable user_data);
 
 /**
  * @brief Expire stale parent candidates.

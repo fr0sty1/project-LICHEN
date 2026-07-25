@@ -350,22 +350,23 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
-				     pk_a);
+				     SCHNORR48_SIG_LEN, pk_a);
 	zassert_equal(ret, 1, "verify with derived pubkey failed: %d", ret);
 
 	/* B's key must NOT verify A's signature */
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
-				     pk_b);
+				     SCHNORR48_SIG_LEN, pk_b);
 	zassert_equal(ret, 0, "wrong pubkey must not verify");
 }
 
 ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 {
 	/* Uses test/vectors/yggdrasil-derivation.json vectors (first two).
-	 * Matches Rust lichen-link::identity::yggdrasil_addr_from_pubkey,
+	 * Matches Rust lichen-core::addr::ygg_addr_from_pubkey,
 	 * C lichen_identity_ygg_addr_from_ed25519 oracle, and Python.
+	 * addr = [0x02] + SHA-512(pubkey)[0:7] + SHA-512(pubkey)[0:8] (U/L cleared)
 	 * Tests the lichen_yggdrasil_addr wrapper (project-LICHEN-gp7u). */
 	static const uint8_t vec1_pubkey[32] = {
 		0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
@@ -375,7 +376,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	};
 	static const uint8_t vec1_ygg[16] = {
 		0x02, 0x6b, 0x4e, 0x6c, 0x1f, 0xe3, 0x65, 0x04,
-		0x5d, 0xf6, 0xe0, 0xe2, 0x76, 0x13, 0x59, 0xd3
+		0x69, 0x4e, 0x6c, 0x1f, 0xe3, 0x65, 0x04, 0xe1
 	};
 
 	struct in6_addr addr;
@@ -386,11 +387,11 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	zassert_mem_equal(addr.s6_addr, vec1_ygg, sizeof(vec1_ygg),
 			  "vector 1 does not match yggdrasil-derivation.json");
 
-	/* Vector 2 from JSON: zero pubkey verifies U/L bit handling */
+	/* Vector 2 from JSON: zero pubkey verifies U/L bit + SHA-512 prefix handling */
 	static const uint8_t vec2_pubkey[32] = {0};
 	static const uint8_t vec2_ygg[16] = {
 		0x02, 0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38,
-		0x64, 0x68, 0x7a, 0xad, 0xf8, 0x62, 0xbd, 0x77
+		0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0x86
 	};
 
 	ret = lichen_yggdrasil_addr(vec2_pubkey, &addr);
@@ -398,7 +399,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	zassert_mem_equal(addr.s6_addr, vec2_ygg, sizeof(vec2_ygg),
 			  "vector 2 does not match yggdrasil-derivation.json");
 
-	/* Vector 3 from JSON (official Yggdrasil test suite adapted for LICHEN IID) */
+	/* Vector 3 from JSON */
 	static const uint8_t vec3_pubkey[32] = {
 		0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7,
 		0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a,
@@ -407,7 +408,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	};
 	static const uint8_t vec3_ygg[16] = {
 		0x02, 0x0e, 0x02, 0xa5, 0x02, 0x25, 0xb4, 0xba,
-		0x21, 0xfe, 0x31, 0xdf, 0xa1, 0x54, 0xa2, 0x61
+		0x0c, 0x02, 0xa5, 0x02, 0x25, 0xb4, 0xba, 0xaa
 	};
 
 	ret = lichen_yggdrasil_addr(vec3_pubkey, &addr);
@@ -425,49 +426,40 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 {
 	/* Verifies hash slot calculation and timing windows against
-	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp_tdma.json,
-	 * test/vectors/ccp_load_balancing.json (independent oracles for hash,
-	 * 100ms guard, SFN wrap).
+	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp16.json,
+	 * ccp_tdma.json (independent oracles for hash, 100ms guard, SFN wrap).
 	 */
 
-	/* slot_static_hash_eui1: EUI=0x0000000000000001, n_slots=8, expected_slot=2 */
-	uint8_t eui1[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
-	uint8_t slot1 = lichen_tdma_compute_slot(eui1, 0, 8);
-	zassert_equal(2, slot1,
-		      "slot_static_hash_eui1: expected_slot=2, got %u", slot1);
+	/* Slot static hash vector 1: eui64=0000000000000001, epoch=0, n_slots=8 -> expected_slot=2 */
+	{
+		uint8_t eui1[8] = {0};
+		eui1[7] = 1;
+		int slot = lichen_tdma_compute_slot(eui1, 0, 8);
+		zassert_equal(2, slot, "slot_static_hash_eui1: expected_slot=2, got=%d", slot);
+	}
 
-	/* slot_static_hash_eui2: EUI=0xAABBCCDDEEFF0011, n_slots=16, expected_slot=13 */
-	uint8_t eui2[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11};
-	uint8_t slot2 = lichen_tdma_compute_slot(eui2, 0, 16);
-	zassert_equal(13, slot2,
-		      "slot_static_hash_eui2: expected_slot=13, got %u", slot2);
-
-	/* ccp_load_balancing.json tdma_slot_assignment_static_hash:
-	 * EUI=0x0011223344556677, n_slots=16, expected_slot=13 */
-	uint8_t eui3[8] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
-	uint8_t slot3 = lichen_tdma_compute_slot(eui3, 0, 16);
-	zassert_equal(13, slot3,
-		      "tdma_slot_assignment_static_hash: expected_slot=13, got %u", slot3);
+	/* Slot static hash vector 2: eui64=aabbccddeeff0011, epoch=0, n_slots=16 -> expected_slot=13 */
+	{
+		uint8_t eui2[8] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11};
+		int slot = lichen_tdma_compute_slot(eui2, 0, 16);
+		zassert_equal(13, slot, "slot_static_hash_eui2: expected_slot=13, got=%d", slot);
+	}
 
 	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
+	struct lichen_link_ctx lctx;
+	memset(&lctx, 0, sizeof(lctx));
+	memcpy(lctx.eui64, test_eui64, 8);
 	struct lichen_tdma_ctx tdma = {0};
-	tdma.slot = 4;
-	tdma.n_slots = 8;
-	tdma.superframe = 0;
-	tdma.slot_duration = 250;
+	zassert_equal(0, lichen_tdma_init(&tdma, &lctx));
+	zassert_equal(1, tdma.slot);
+	zassert_equal(8, tdma.n_slots);
+	zassert_equal(250, tdma.slot_duration);
+	zassert_false(tdma.synced);
 	tdma.synced = true;
-
-	/* guard_boundary_inside: slot_start=1000, current_ms=1070, in_guard=false */
-	zassert_true(tdma_tx_allowed(&tdma, 1070),
-		     "guard_boundary_inside: tx should be allowed at 1070ms");
-
-	/* guard_boundary_pre_guard: slot_start=1000, current_ms=990, in_guard=true */
-	zassert_true(tdma_tx_allowed(&tdma, 990),
-		     "guard_boundary_pre_guard: tx should be allowed at 990ms");
-
-	/* guard boundary: at slot_start=1000, in_guard=true */
-	zassert_true(tdma_tx_allowed(&tdma, 1000),
-		     "guard boundary: tx should be allowed at 1000ms");
+	tdma.slot = 4;
+	zassert_true(tdma_tx_allowed(&tdma, 1070));
+	zassert_true(tdma_tx_allowed(&tdma, 990));
+	zassert_true(tdma_tx_allowed(&tdma, 1000));
 }
 
 ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vectors)

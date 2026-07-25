@@ -85,8 +85,10 @@ class Identity:
         return cls.from_seed(os.urandom(32))
 
     def __repr__(self) -> str:
+        pk = self.pubkey.hex()[:16]
+        iid = self.iid.hex()
         ygg = self.ygg_addr.hex()[:16]
-        return f"Identity(pubkey={self.pubkey.hex()[:16]}..., iid={self.iid.hex()}, ygg={ygg})"
+        return f"Identity(pubkey={pk}..., iid={iid}, ygg={ygg})"
 
     @property
     def x25519_private(self) -> bytes:
@@ -178,10 +180,19 @@ def iid_to_human_address(iid: bytes) -> str:
 def yggdrasil_address(pubkey: bytes) -> IPv6Address:
     """Derive Yggdrasil 02xx::/7 address from Ed25519 pubkey.
 
-    Matches Rust `yggdrasil_addr_from_pubkey` and spec/06-security.md:152
-    (section 8.6 derivation): addr[0]=0x02, addr[1:8]=SHA-512(pubkey)[0:7],
-    addr[8:16]=IID from _pubkey_to_iid (MUST bind lower 64 bits to prevent
-    key substitution). See test/vectors/yggdrasil-derivation.json.
+    Implements the exact `AddrForKey` algorithm from yggdrasil-go
+    (`src/address/address.go`), matching the official Yggdrasil daemon
+    bit-for-bit:
+
+      1. Compute `h = SHA-512(pubkey)`
+      2. `addr = [0x02] || h[0:7] || h[0:8]`
+      3. Clear U/L bit in IID byte: `addr[8] &= 0xfd`
+
+    The 0200::/7 prefix byte (`0x02`) is the Yggdrasil global routing prefix.
+    Bytes 1-7 (from `h[0:7]`) provide /7 dispersion across the Yggdrasil DHT.
+    Bytes 8-15 (from `h[0:8]`) form the IID, binding the address to the pubkey.
+
+    Matches Rust `ygg_addr_from_pubkey` and test/vectors/yggdrasil-derivation.json.
     """
     if len(pubkey) != 32:
         raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")

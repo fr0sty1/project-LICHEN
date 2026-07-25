@@ -1,0 +1,12 @@
+/*
+ * Overlay for Nucleo-WL55JC (STM32WL55) - Renode simulation with LichenSubGHz.
+ * Adds zephyr,lora to chosen so the lora_ping sample can bind it.
+ * Used with EXTRA_DTC_OVERLAY_FILE=lichen/boards/renode/nucleo_wl55jc/nucleo_wl55jc_renode.overlay
+ * which provides the lora_renode node.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora_renode;
+	};
+};

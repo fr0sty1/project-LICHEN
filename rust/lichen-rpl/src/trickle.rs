@@ -90,8 +90,8 @@ impl TrickleTimer {
     /// Begin the first interval per RFC 6206 §4.2 rule 1 (I chosen in [Imin, Imax]).
     pub fn start(&mut self, now: u64, rand_offset: u32) {
         self.interval = self.imin;
-        self.begin_interval(now, rand_offset)
-            .expect("stopped or active Trickle timer can begin an interval");
+        let r = self.begin_interval(now, rand_offset);
+        debug_assert!(r.is_ok(), "stopped or active Trickle timer can begin an interval");
     }
 
     fn begin_interval(
@@ -105,8 +105,10 @@ impl TrickleTimer {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
-        // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). (interval+1)/2 avoids bias.
-        let half = (self.interval + 1) / 2;
+        // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). Bitwise form is
+        // bias-free for odd I and safe at u32::MAX (avoids overflow). Matches
+        // C impl, tests, and Python equivalent.
+        let half = (self.interval >> 1) + (self.interval & 1);
         let range = self.interval - half;
         let offset = if range > 0 { rand_offset % range } else { 0 };
         self.transmit_time = now
@@ -132,7 +134,9 @@ impl TrickleTimer {
 
     /// Mark the transmit point reached; returns `true` if a DIO should be sent.
     pub fn fire_transmit(&mut self) -> bool {
-        self.try_fire_transmit().unwrap_or(false)
+        let r = self.try_fire_transmit();
+        debug_assert!(r.is_ok(), "fire_transmit only valid in WaitingTransmit state");
+        r.unwrap()
     }
 
     pub fn try_fire_transmit(&mut self) -> Result<bool, InvalidTrickleTransition> {
@@ -143,8 +147,8 @@ impl TrickleTimer {
 
     /// End the current interval: double I (capped at Imax) and start next per RFC 6206 §4.2 rule 5.
     pub fn expire(&mut self, now: u64, rand_offset: u32) {
-        self.try_expire(now, rand_offset)
-            .expect("expire only valid after transmit");
+        let r = self.try_expire(now, rand_offset);
+        debug_assert!(r.is_ok(), "expire only valid after transmit");
     }
 
     pub fn try_expire(
@@ -162,12 +166,12 @@ impl TrickleTimer {
         self.begin_interval(now, rand_offset)
     }
 
-    /// Handle an inconsistency: if I > Imin set I = Imin and restart per RFC 6206 §4.2 rule 6.
-    ///
-    /// Starts if stopped; no-op if I == Imin and running.
+    /// Handle an inconsistency per RFC 6206 §4.2 rule 6: if Stopped or
+    /// interval > imin, set I=imin and restart. No-op if at imin and running.
+    /// State proxy for cross-impl (cf. C interval==0, Python generation==0).
     pub fn reset(&mut self, now: u64, rand_offset: u32) {
-        self.try_reset(now, rand_offset)
-            .expect("invalid trickle timer transition");
+        let r = self.try_reset(now, rand_offset);
+        debug_assert!(r.is_ok(), "invalid trickle timer transition");
     }
 
     pub fn try_reset(
@@ -311,8 +315,8 @@ mod tests {
 
     #[test]
     fn odd_interval_bias_free_transmit_time() {
-        // I=5 (odd): half=(5+1)/2=3, range=5-3=2 → transmit in [now+3, now+5)
-        // Matches C/Python; old `/ 2` was biased (only [2,4)).
+        // I=5 (odd): half=(5>>1)+(5&1)=3, range=2 → transmit in [now+3, now+5)
+        // Matches C/Python; old `/ 2` was biased (only [2,4)). Safe at u32::MAX.
         let mut t = TrickleTimer::new(5, 0, 10); // no doublings
         t.start(0, 0);
         assert_eq!(t.transmit_time, 3);
@@ -369,5 +373,71 @@ mod tests {
         let mut t = TrickleTimer::new(1000, 4, 10);
         t.start(u64::MAX - 999, 0);
         assert_eq!(t.next_event(), TrickleEvent::Stopped);
+    }
+
+    #[test]
+    fn zero_k_suppresses_transmit_always() {
+        // k=0: counter (0) is never < k (0), so should_transmit is always false.
+        let mut t = TrickleTimer::new(1000, 4, 0);
+        t.start(0, 0);
+        assert!(!t.should_transmit(), "k=0: should_transmit false at start");
+        assert!(!t.fire_transmit(), "k=0: fire_transmit returns false");
+        t.heard_consistent();
+        assert!(!t.should_transmit(), "k=0: still false after heard_consistent");
+    }
+
+    #[test]
+    fn positive_k_should_transmit_when_counter_below_k() {
+        let mut t = TrickleTimer::new(1000, 4, 1);
+        t.start(0, 0);
+        assert!(t.should_transmit(), "k=1, counter=0 < 1");
+        assert!(t.fire_transmit(), "k=1, fire returns true");
+        t.heard_consistent();
+        assert!(!t.should_transmit(), "k=1, counter=1 >= 1");
+    }
+
+    #[test]
+    fn counter_does_not_overflow_on_repeated_heard_consistent() {
+        let mut t = TrickleTimer::new(1000, 4, u32::MAX);
+        t.start(0, 0);
+        t.counter = u32::MAX;
+        t.heard_consistent();
+        assert_eq!(t.counter, u32::MAX, "counter saturates at u32::MAX");
+        assert!(!t.should_transmit(), "counter == k: should not transmit when c >= k");
+    }
+
+    #[test]
+    fn expire_before_start_initializes_interval() {
+        // expire() called before start() should begin a new interval at imin.
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        // Cannot call expire directly - need to go through try_expire which checks state.
+        // After new(), state is Stopped; expire would fail. This is correct per RFC 6206.
+        assert_eq!(t.state, TrickleState::Stopped);
+        let result = t.try_expire(0, 0);
+        assert!(result.is_err(), "expire before start rejected");
+    }
+
+    #[test]
+    fn fire_transmit_before_start_rejected() {
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        let result = t.try_fire_transmit();
+        assert!(result.is_err(), "fire_transmit before start rejected");
+    }
+
+    #[test]
+    fn start_after_expire_normal_operation() {
+        // Start, fire, expire, then start again should reset to fresh interval.
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        t.start(0, 0);
+        t.fire_transmit();
+        t.expire(1000, 0);
+        assert_eq!(t.interval, 2000);
+
+        // Second start (in WaitingTransmit state after expire creates a new
+        // interval via begin_interval) - this is calling start again.
+        // start() always sets interval=imin and begins fresh interval.
+        t.start(2000, 0);
+        assert_eq!(t.interval, 1000);
+        assert_eq!(t.transmit_time, 2500);
     }
 }

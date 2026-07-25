@@ -43,44 +43,40 @@ static int tests_passed = 0;
 /* ─── test vectors ────────────────────────────────────────────────────────── */
 
 /*
- * Test vector: temperature 25.0 Celsius with base time 0
- * Python: cbor2.dumps([{-3: 0, 0: 'temp', 1: 'Cel', 2: 25.0}]) (float32)
+ * Test vector: temperature 25.0 Celsius, no base name/time
+ * Python: cbor2.dumps([{0: 'temp', 1: 'Cel', 2: 25.0}])  (with float32)
+ * Base time 0 is omitted (defaults to 0 per RFC 8428 §6.1).
  * CBOR structure:
  *   81        array(1)
- *   a4        map(4)
- *   22        label -3 (bt)
- *   00        uint 0
- *   00        label 0 (n)
- *   64 74656d70 tstr "temp"
- *   01        label 1 (u)
- *   63 43656c tstr "Cel"
- *   02        label 2 (v)
- *   fa 41c80000 float32(25.0)
+ *   a3        map(3)
+ *   00        label 0 (n = name)
+ *   64 74656d70   tstr(4) "temp"
+ *   01        label 1 (u = unit)
+ *   63 43656c     tstr(3) "Cel"
+ *   02        label 2 (v = value)
+ *   fa 41c80000   float32(25.0)
  */
 static const uint8_t VEC_TEMP_SIMPLE[] = {
-	0x81, 0xa4,
-	0x22, 0x00,
+	0x81, 0xa3,
 	0x00, 0x64, 0x74, 0x65, 0x6d, 0x70,
 	0x01, 0x63, 0x43, 0x65, 0x6c,
 	0x02, 0xfa, 0x41, 0xc8, 0x00, 0x00
 };
 
 /*
- * Test vector: boolean value (charging: true) with base time 0
- * Python: cbor2.dumps([{-3: 0, 0: 'charging', 4: True}])
+ * Test vector: boolean value (charging: true), no base name/time
+ * Python: cbor2.dumps([{0: 'charging', 4: True}])
+ * Base time 0 is omitted (defaults to 0 per RFC 8428 §6.1).
  * CBOR structure:
  *   81        array(1)
- *   a3        map(3)
- *   22        label -3 (bt)
- *   00        0
+ *   a2        map(2)
  *   00        label 0 (n)
- *   68 6368617267696e67 tstr "charging"
- *   04        label 4 (vb)
+ *   68 6368617267696e67   tstr(8) "charging"
+ *   04        label 4 (vb = boolean value)
  *   f5        true
  */
 static const uint8_t VEC_BOOL_TRUE[] = {
-	0x81, 0xa3,
-	0x22, 0x00,
+	0x81, 0xa2,
 	0x00, 0x68, 0x63, 0x68, 0x61, 0x72, 0x67, 0x69, 0x6e, 0x67,
 	0x04, 0xf5
 };
@@ -532,6 +528,74 @@ static int test_null_name_rejected(void)
 	return 1;
 }
 
+static int test_add_float_rejects_nan(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float(&pack, "test", NULL, NAN);
+	ASSERT_EQ(ret, -EINVAL, "NaN value rejected by senml_add_float");
+	ASSERT_EQ(pack.record_count, 0, "rejected NaN not counted");
+
+	return 1;
+}
+
+static int test_add_float_rejects_inf(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float(&pack, "test", NULL, INFINITY);
+	ASSERT_EQ(ret, -EINVAL, "+Inf value rejected by senml_add_float");
+	ASSERT_EQ(pack.record_count, 0, "rejected +Inf not counted");
+
+	ret = senml_add_float(&pack, "test", NULL, -INFINITY);
+	ASSERT_EQ(ret, -EINVAL, "-Inf value rejected by senml_add_float");
+	ASSERT_EQ(pack.record_count, 0, "rejected -Inf not counted");
+
+	return 1;
+}
+
+static int test_add_float_t_rejects_nan(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float_t(&pack, "test", NULL, NAN, 1);
+	ASSERT_EQ(ret, -EINVAL, "NaN value rejected by senml_add_float_t");
+	ASSERT_EQ(pack.record_count, 0, "rejected NaN not counted");
+
+	return 1;
+}
+
+static int test_add_float_t_rejects_inf(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float_t(&pack, "test", NULL, INFINITY, 1);
+	ASSERT_EQ(ret, -EINVAL, "+Inf value rejected by senml_add_float_t");
+	ASSERT_EQ(pack.record_count, 0, "rejected +Inf not counted");
+
+	ret = senml_add_float_t(&pack, "test", NULL, -INFINITY, 1);
+	ASSERT_EQ(ret, -EINVAL, "-Inf value rejected by senml_add_float_t");
+	ASSERT_EQ(pack.record_count, 0, "rejected -Inf not counted");
+
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -567,6 +631,10 @@ int main(void)
 	RUN_TEST(test_location_rejects_out_of_range_lon);
 	RUN_TEST(test_location_valid_coordinates);
 	RUN_TEST(test_null_name_rejected);
+	RUN_TEST(test_add_float_rejects_nan);
+	RUN_TEST(test_add_float_rejects_inf);
+	RUN_TEST(test_add_float_t_rejects_nan);
+	RUN_TEST(test_add_float_t_rejects_inf);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

@@ -302,14 +302,13 @@ class TestAnnouncing:
         assert len(radio.tx_history) == 1
         # Frame should be parseable
         from lichen.link.frame import LichenFrame
+
         frame = LichenFrame.from_bytes(radio.tx_history[0])
         assert frame.signature_present is True
         assert frame.payload[0] == L2_DISPATCH_ROUTING
 
     @pytest.mark.asyncio
-    async def test_transmit_announce_wraps_routing_payload(
-        self, node: Node, radio: MockRadio
-    ):
+    async def test_transmit_announce_wraps_routing_payload(self, node: Node, radio: MockRadio):
         """Scheduler announce sends use the authenticated routing namespace."""
         await node.transmit_announce(b"\x01announce")
 
@@ -430,10 +429,12 @@ def test_set_config_validates_all_values_before_mutation(node: Node) -> None:
     }
 
     with pytest.raises(ValueError):
-        node.set_config({
-            "receive_timeout_ms": "300",
-            "announce_interval_ms": "invalid",
-        })
+        node.set_config(
+            {
+                "receive_timeout_ms": "300",
+                "announce_interval_ms": "invalid",
+            }
+        )
 
     assert node.get_config() == {
         "receive_timeout_ms": 250,

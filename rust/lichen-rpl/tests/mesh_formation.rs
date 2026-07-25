@@ -6,9 +6,12 @@
 //!   - Downward routing: root assembles source routes from DAOs
 //!   - Parent switching on link failure
 
+use lichen_hal::storage::mem::MemStorage;
+use lichen_link::{identity::Identity, keys::Seed};
 use lichen_rpl::{
     dodag::{DodagState, MIN_HOP_RANK_INCREASE, ROOT_RANK},
     message::Dio,
+    routing::DaoManager,
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -36,6 +39,17 @@ fn dio(rank: u16) -> Dio {
         flags: 0,
         dodag_id: dodag_id(),
     }
+}
+
+fn identity(seed: u8) -> Identity {
+    Identity::from_seed(Seed::new([seed; 32]))
+}
+
+fn origin(identity: &Identity) -> [u8; 16] {
+    let mut addr = [0u8; 16];
+    addr[..2].copy_from_slice(&[0xfe, 0x80]);
+    addr[8..].copy_from_slice(&identity.iid);
+    addr
 }
 
 fn dio_with_instance(rank: u16, rpl_instance_id: u8) -> Dio {
@@ -111,7 +125,62 @@ fn upward_routing_via_preferred_parents() {
     assert_eq!(n2.preferred_parent, Some(ll(1)));
 }
 
-// ── Test 3: Parent switching on link failure ──────────────────────────────────
+// ── Test 3: Downward routing — root assembles source routes from DAOs ─────────
+
+#[test]
+fn downward_routes_assembled_from_daos() {
+    let root_addr = ll(1);
+    let mut storage = MemStorage::new();
+    let (mut root, mut _state) =
+        DaoManager::provision_root(&mut storage, root_addr, 0, dodag_id()).unwrap();
+    let id2 = identity(2);
+    let id3 = identity(3);
+    let id4 = identity(4);
+    let id5 = identity(5);
+    let n2 = origin(&id2);
+    let n3 = origin(&id3);
+    let n4 = origin(&id4);
+    let n5 = origin(&id5);
+
+    // n2 sends DAO: target=n2, parent=root
+    let mut mgr2 = DaoManager::new(ll(2), 0, dodag_id());
+    assert!(root.process_dao(&mgr2.build_dao(root_addr)));
+    assert_eq!(
+        root.routing_table().lookup(&ll(2)),
+        Some(&[ll(2)] as &[[u8; 16]])
+    );
+    assert_eq!(root.routing_table().lookup(&n2), Some(&[n2] as &[[u8; 16]]));
+
+    // n3 sends DAO: target=n3, parent=n2
+    let mut mgr3 = DaoManager::new(ll(3), 0, dodag_id());
+    assert!(root.process_dao(&mgr3.build_dao(ll(2))));
+    assert_eq!(
+        root.routing_table().lookup(&n3),
+        Some(&[n2, n3] as &[[u8; 16]])
+    );
+
+    // n5 sends DAO: target=n5, parent=root (single hop)
+    let mut mgr5 = DaoManager::new(ll(5), 0, dodag_id());
+    assert!(root.process_dao(&mgr5.build_dao(root_addr)));
+    assert_eq!(
+        root.routing_table().lookup(&ll(5)),
+        Some(&[ll(5)] as &[[u8; 16]])
+    );
+    assert_eq!(root.routing_table().lookup(&n5), Some(&[n5] as &[[u8; 16]]));
+
+    // n4 sends DAO: target=n4, parent=n2 (two hops: root→n2→n4)
+    let mut mgr4 = DaoManager::new(ll(4), 0, dodag_id());
+    assert!(root.process_dao(&mgr4.build_dao(ll(2))));
+    assert_eq!(
+        root.routing_table().lookup(&n4),
+        Some(&[n2, n4] as &[[u8; 16]])
+    );
+
+    // Root has routes to all 4 non-root nodes
+    assert_eq!(root.routing_table().len(), 4);
+}
+
+// ── Test 4: Parent switching on link failure ──────────────────────────────────
 
 #[test]
 fn parent_switch_on_link_failure() {
@@ -131,6 +200,44 @@ fn parent_switch_on_link_failure() {
     // n3 also fails → n4 goes unjoined
     n4.remove_parent(&ll(3));
     assert!(!n4.is_joined());
+}
+
+// ── Test 5: Downward route updates after topology change ─────────────────────
+
+#[test]
+fn route_updates_when_node_reparents() {
+    let root_addr = ll(1);
+    let mut storage = MemStorage::new();
+    let (mut root, mut _state) =
+        DaoManager::provision_root(&mut storage, root_addr, 0, dodag_id()).unwrap();
+    let id2 = identity(2);
+    let id3 = identity(3);
+    let id4 = identity(4);
+    let n2 = origin(&id2);
+    let n3 = origin(&id3);
+    let n4 = origin(&id4);
+
+    // Initial topology: n4 is behind n3
+    let mut mgr2 = DaoManager::new(n2, 0, dodag_id());
+    let mut mgr3 = DaoManager::new(n3, 0, dodag_id());
+    let mut mgr4 = DaoManager::new(n4, 0, dodag_id());
+
+    root.process_dao(&mgr2.build_dao(root_addr)); // n2 → root
+    root.process_dao(&mgr3.build_dao(ll(2))); // n3 → n2
+    root.process_dao(&mgr4.build_dao(ll(3))); // n4 → n3
+
+    assert_eq!(
+        root.routing_table().lookup(&n4),
+        Some(&[n2, n3, n4] as &[[u8; 16]])
+    );
+
+    // n3 fails; n4 reparents to n2 and sends a new DAO
+    root.process_dao(&mgr4.build_dao(ll(2))); // n4 → n2 (shorter path)
+
+    assert_eq!(
+        root.routing_table().lookup(&n4),
+        Some(&[n2, n4] as &[[u8; 16]])
+    );
 }
 
 #[test]

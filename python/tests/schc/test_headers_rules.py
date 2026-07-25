@@ -72,7 +72,11 @@ def test_icmpv6_echo_reply_round_trip() -> None:
 
 def test_rpl_dio_rule3_round_trip() -> None:
     dio = DIO(
-        rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id="fe80::1",
+        rpl_instance_id=0,
+        version=1,
+        rank=256,
+        dtsn=0,
+        dodag_id="fe80::1",
         grounded=True,
     )
     raw = _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio))
@@ -103,7 +107,11 @@ def test_dio_options_travel_as_tail() -> None:
     from lichen.rpl.messages import RplOption, RplOptionType
 
     dio = DIO(
-        rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id="fe80::1",
+        rpl_instance_id=0,
+        version=1,
+        rank=256,
+        dtsn=0,
+        dodag_id="fe80::1",
         options=[RplOption(RplOptionType.PADN, b"\x00\x00")],
     )
     raw = _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio))

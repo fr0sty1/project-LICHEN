@@ -105,11 +105,13 @@ static inline void secure_zero(void *ptr, size_t len)
      *
      * No explicit read-back verification (project-LICHEN-tvfm.94):
      * The volatile qualifier on both word and byte writes is the security
-     * mechanism - it forces the stores to execute. Read-back would be belt-
-     * and-suspenders paranoia but adds code complexity and provides no
-     * additional protection beyond what volatile already guarantees. The
-     * compiler_barrier() at function end prevents LTO from removing any
-     * stores and ensures ordering relative to subsequent code.
+     * mechanism - it forces the stores to execute. This applies equally
+     * to the word-aligned path (the volatile unsigned long pointer) and
+     * the byte path. Read-back would be belt-and-suspenders paranoia but
+     * adds code complexity and provides no additional protection beyond
+     * what volatile already guarantees. The compiler_barrier() at function
+     * end prevents LTO from removing any stores and ensures ordering
+     * relative to subsequent code.
      */
     if (len >= 32) {
         /* Align to word boundary first using byte writes */
@@ -138,15 +140,20 @@ static inline void secure_zero(void *ptr, size_t len)
 /**
  * @brief Compute SHA-256 hash with secure cleanup
  *
+ * SECURITY: The output buffer MUST be at least TC_SHA256_DIGEST_SIZE (32) bytes.
+ * The array parameter syntax provides no compile-time bounds checking - it decays
+ * to a pointer. Passing a smaller buffer causes undefined behavior (buffer overflow).
+ * Callers should declare: uint8_t hash[TC_SHA256_DIGEST_SIZE];
+ *
  * @param input Input data (may be NULL if inlen is 0)
  * @param inlen Input length in bytes
- * @param output Output buffer
- * @param outlen Output buffer size (must be >= TC_SHA256_DIGEST_SIZE)
+ * @param output Output buffer, must be >= 32 bytes (not bounds-checked at runtime)
  * @return 0 on success, -EINVAL if output is NULL or input is NULL with inlen > 0,
- *         -ENOMEM if outlen < TC_SHA256_DIGEST_SIZE
+ *         -EIO if SHA-256 init fails, -EMSGSIZE if SHA-256 update fails,
+ *         -EBADMSG if SHA-256 final fails
  */
 int lichen_sha256(const uint8_t *input, size_t inlen,
-                  uint8_t *output, size_t outlen);
+                  uint8_t output[TC_SHA256_DIGEST_SIZE]);
 uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 
 /**

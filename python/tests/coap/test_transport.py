@@ -74,9 +74,7 @@ def test_remote_identity_and_uri() -> None:
         ("2001:db8::1", 61616, "[2001:db8::1]:61616", "coap://[2001:db8::1]:61616"),
     ],
 )
-def test_endpoint_canonical_formatting(
-    host: str, port: int, authority: str, uri: str
-) -> None:
+def test_endpoint_canonical_formatting(host: str, port: int, authority: str, uri: str) -> None:
     endpoint = Endpoint(host, port)
     assert endpoint.authority == authority
     assert endpoint.uri == uri
@@ -147,9 +145,7 @@ def test_endpoint_policy_round_trips_and_enforces_owning_scope() -> None:
 
     assert EndpointPolicy.deserialize(policy.serialize()) == policy
     assert policy.normalize("fe80::1").authority == "[fe80::1%ble0]"
-    assert policy.normalize("[fe80::1%ble0]:61616").authority == (
-        "[fe80::1%ble0]:61616"
-    )
+    assert policy.normalize("[fe80::1%ble0]:61616").authority == ("[fe80::1%ble0]:61616")
     assert policy.normalize("2001:db8::1").authority == "[2001:db8::1]"
     with pytest.raises(ValueError, match="does not match"):
         policy.normalize("fe80::1%other")
@@ -169,8 +165,19 @@ def test_endpoint_policy_valid_scopes_round_trip(scope: str) -> None:
 
 @pytest.mark.parametrize(
     "scope",
-    ["", "bad@scope", "bad?scope", "bad#scope", "bad[scope", "bad]scope", "bad/scope",
-     "bad scope", "bad\x00scope", "bad%scope", chr(0xD800)],
+    [
+        "",
+        "bad@scope",
+        "bad?scope",
+        "bad#scope",
+        "bad[scope",
+        "bad]scope",
+        "bad/scope",
+        "bad scope",
+        "bad\x00scope",
+        "bad%scope",
+        chr(0xD800),
+    ],
 )
 def test_endpoint_and_policy_reject_same_malformed_scopes(scope: str) -> None:
     with pytest.raises(ValueError, match="scope"):
@@ -454,9 +461,7 @@ async def test_transport_concurrent_shutdown_shares_cleanup_and_primary_error() 
         ("2001:db8::1", 61616, "[2001:db8::1]:61616", "coap://[2001:db8::1]:61616"),
     ],
 )
-def test_endpoint_canonical_formatting(
-    host: str, port: int, authority: str, uri: str
-) -> None:
+def test_endpoint_canonical_formatting(host: str, port: int, authority: str, uri: str) -> None:
     endpoint = Endpoint(host, port)
     assert endpoint.authority == authority
     assert endpoint.uri == uri
@@ -527,9 +532,7 @@ def test_endpoint_policy_round_trips_and_enforces_owning_scope() -> None:
 
     assert EndpointPolicy.deserialize(policy.serialize()) == policy
     assert policy.normalize("fe80::1").authority == "[fe80::1%ble0]"
-    assert policy.normalize("[fe80::1%ble0]:61616").authority == (
-        "[fe80::1%ble0]:61616"
-    )
+    assert policy.normalize("[fe80::1%ble0]:61616").authority == ("[fe80::1%ble0]:61616")
     assert policy.normalize("2001:db8::1").authority == "[2001:db8::1]"
     with pytest.raises(ValueError, match="does not match"):
         policy.normalize("fe80::1%other")
@@ -549,8 +552,19 @@ def test_endpoint_policy_valid_scopes_round_trip(scope: str) -> None:
 
 @pytest.mark.parametrize(
     "scope",
-    ["", "bad@scope", "bad?scope", "bad#scope", "bad[scope", "bad]scope", "bad/scope",
-     "bad scope", "bad\x00scope", "bad%scope", chr(0xD800)],
+    [
+        "",
+        "bad@scope",
+        "bad?scope",
+        "bad#scope",
+        "bad[scope",
+        "bad]scope",
+        "bad/scope",
+        "bad scope",
+        "bad\x00scope",
+        "bad%scope",
+        chr(0xD800),
+    ],
 )
 def test_endpoint_and_policy_reject_same_malformed_scopes(scope: str) -> None:
     with pytest.raises(ValueError, match="scope"):
@@ -832,9 +846,7 @@ async def test_get_request_over_loopback() -> None:
     server = await create_lichen_context(net.channel("server"), "server", site=site)
     client = await create_lichen_context(net.channel("client"), "client")
     try:
-        response = await client.request(
-            Message(code=GET, uri="coap://server/test")
-        ).response
+        response = await client.request(Message(code=GET, uri="coap://server/test")).response
         assert response.payload == b"hello"
         assert response.code == aiocoap.CONTENT
     finally:
@@ -848,9 +860,7 @@ async def test_server_remote_has_peer_local_identity_and_request_uri() -> None:
     inspect_remote = _InspectRemote()
     site = resource.Site()
     site.add_resource(["inspect"], inspect_remote)
-    server = await create_lichen_context(
-        net.channel("server:61616"), "server:61616", site=site
-    )
+    server = await create_lichen_context(net.channel("server:61616"), "server:61616", site=site)
     client = await create_lichen_context(net.channel("client:61617"), "client:61617")
     try:
         response = await client.request(
@@ -894,9 +904,7 @@ async def test_request_to_unknown_resource_returns_not_found() -> None:
     server = await create_lichen_context(net.channel("server"), "server", site=site)
     client = await create_lichen_context(net.channel("client"), "client")
     try:
-        response = await client.request(
-            Message(code=GET, uri="coap://server/nope")
-        ).response
+        response = await client.request(Message(code=GET, uri="coap://server/nope")).response
         assert response.code == aiocoap.NOT_FOUND
     finally:
         await client.shutdown()

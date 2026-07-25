@@ -289,9 +289,7 @@ class TestMeshtasticGattService:
         msg = FromRadio(id=1)
         data = msg.to_bytes()
         # Manually add expired entry
-        service._from_radio_queue.append(
-            QueueEntry(data=data, deadline=time.monotonic() - 1)
-        )
+        service._from_radio_queue.append(QueueEntry(data=data, deadline=time.monotonic() - 1))
 
         # Peek should return None (entry expired)
         assert service.peek_from_radio() is None

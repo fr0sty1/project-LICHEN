@@ -336,7 +336,7 @@ def _decode_pli(subtype: CompactCotType, data: bytes) -> CompactCot:
         raise DecodeError(f"Course {course} out of range [0, 35999]")
     if speed > int(MAX_PLAUSIBLE_SPEED_M_S * 100):
         warnings.warn(
-            f"Implausible speed {speed}cm/s ({speed/100.0:.1f}m/s) in PLI "
+            f"Implausible speed {speed}cm/s ({speed / 100.0:.1f}m/s) in PLI "
             f"from mesh (0xFFFF may indicate sensor error/no GPS fix)",
             stacklevel=2,
         )

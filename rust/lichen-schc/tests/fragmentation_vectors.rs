@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use lichen_schc::fragment::{
     ack_request, compute_mic, receiver_abort, sender_abort, Ack, Fragment, FragmentReceiver,
-    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, MAX_SCHC_PACKET, TILE_SIZE,
+    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, TILE_SIZE,
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -129,13 +129,13 @@ fn expand(value: &BytesValue) -> Vec<u8> {
 }
 
 fn write_fragment(fragment: &Fragment<'_>) -> Vec<u8> {
-    let mut wire = [0u8; TILE_SIZE + 7];
+    let mut wire = [0u8; TILE_SIZE + 6];
     let length = fragment.write_to(&mut wire).unwrap();
     wire[..length].to_vec()
 }
 
 fn write_response(response: ReceiverResponse) -> Vec<u8> {
-    let mut wire = [0u8; 11];
+    let mut wire = [0u8; 10];
     let length = response.write_to(&mut wire).unwrap();
     wire[..length].to_vec()
 }
@@ -203,20 +203,15 @@ fn exercise_transfer(vector: &Vector) {
         assert_eq!(fragment.window, expected.window);
         assert_eq!(fragment.fcn, expected.fcn);
         let wire = expand(&expected.wire);
-        let got = write_fragment(&fragment);
-        if got != wire {
-            eprintln!("MISMATCH {} {}: got[..6]={:02x?} wire[..6]={:02x?}",
-                vector.name, expected.name, &got[..6.min(got.len())], &wire[..6.min(wire.len())]);
-        }
         assert_eq!(
-            got,
+            write_fragment(&fragment),
             wire,
             "{} {}",
             vector.name,
             expected.name
         );
-        let mut tile = [0u8; TILE_SIZE];
-        let parsed = Fragment::from_bytes(&wire, &mut tile).unwrap();
+        let mut buf = vec![0u8; wire.len()];
+        let parsed = Fragment::from_bytes(&wire, &mut buf).unwrap();
         assert_eq!(parsed, fragment);
     }
 
@@ -242,8 +237,8 @@ fn exercise_transfer(vector: &Vector) {
 
     if let Some(retransmission) = &loss.retransmission {
         let wire = expand(retransmission);
-        let mut tile = [0u8; TILE_SIZE];
-        let fragment = Fragment::from_bytes(&wire, &mut tile).unwrap();
+        let mut buf = vec![0u8; wire.len()];
+        let fragment = Fragment::from_bytes(&wire, &mut buf).unwrap();
         assert_eq!(receiver.receive(&fragment).response, None);
         let result = receiver.receive_bytes(&expand(&loss.ack_req)).unwrap();
         assert_eq!(
@@ -266,7 +261,7 @@ fn exercise_transfer(vector: &Vector) {
         let mut sender = FragmentSender::new(&packet, rule_id, packet.len()).unwrap();
         sender.start().unwrap();
         let mut output = sender.handle_ack_bytes(&expand(expected)).unwrap();
-        let mut wire = [0u8; TILE_SIZE + 7];
+        let mut wire = [0u8; TILE_SIZE + 6];
         let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
         assert_eq!(
             &wire[..length],
@@ -279,7 +274,7 @@ fn exercise_controls(controls: &Controls) {
     for (rule_id, set) in [(0x78, &controls.rule_78), (0x79, &controls.rule_79)] {
         for (window, expected) in [(0, &set.ack_success_w0), (1, &set.ack_success_w1)] {
             let ack = Ack::new(rule_id, window, 0, true);
-    let mut wire = [0u8; 11];
+            let mut wire = [0u8; 10];
             let length = ack.write_to(&mut wire).unwrap();
             assert_eq!(&wire[..length], expand(expected));
             assert_eq!(Ack::from_bytes(&wire[..length]).unwrap(), ack);
@@ -298,7 +293,7 @@ fn exercise_controls(controls: &Controls) {
 }
 
 fn exercise_retry(vector: &Vector) {
-    assert_eq!(vector.attempts_before, Some(3));
+    assert_eq!(vector.attempts_before, Some(4));
     assert_eq!(vector.expect_status.as_deref(), Some("aborted"));
     let rule_id = vector.rule_id.unwrap();
     let expected = expand(vector.expected_message.as_ref().unwrap());
@@ -310,7 +305,7 @@ fn exercise_retry(vector: &Vector) {
         let packet = [0xa5];
         let mut sender = FragmentSender::new(&packet, rule_id, 1).unwrap();
         sender.start().unwrap();
-        for _ in 1..3 {
+        for _ in 1..4 {
             sender.timeout().unwrap();
         }
         let mut output = sender.timeout().unwrap();
@@ -321,7 +316,7 @@ fn exercise_retry(vector: &Vector) {
     } else {
         let mut storage = [0u8; 1];
         let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
-        for _ in 0..3 {
+        for _ in 0..4 {
             receiver.receive_bytes(&[rule_id, 0x80]).unwrap();
         }
         let result = receiver.receive_bytes(&[rule_id, 0x80]).unwrap();
@@ -347,7 +342,7 @@ fn exercise_capacity(vector: &Vector) {
         decode_hex(vector.rcs.as_ref().unwrap())
     );
     assert_eq!(vector.expect_status.as_deref(), Some("ok"));
-    if packet.len() <= MAX_SCHC_PACKET {
+    if packet.len() <= 1281 {
         let mut storage = vec![0u8; packet.len()];
         let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
         let mut result = None;
@@ -381,8 +376,10 @@ fn exercise_malformed(vector: &Vector) {
             assert!(Ack::from_bytes_for(&wire, Some(mask)).is_err());
         }
         _ => {
-            let mut tile = [0u8; TILE_SIZE];
-            assert!(Fragment::from_bytes(&wire, &mut tile).is_err());
+            assert!({
+                let mut buf = vec![0u8; wire.len()];
+                Fragment::from_bytes(&wire, &mut buf).is_err()
+            });
         }
     }
 }

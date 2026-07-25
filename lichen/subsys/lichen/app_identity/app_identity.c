@@ -122,6 +122,7 @@ int lichen_app_identity_set_self(
 	memcpy(normalized.public_key, identity->public_key,
 	       sizeof(normalized.public_key));
 	normalized.has_public_key = true;
+	lichen_identity_ygg_addr_from_ed25519(normalized.public_key, normalized.ygg_addr);
 	ret = copy_string(normalized.display_name,
 			  sizeof(normalized.display_name),
 			  identity->display_name);
@@ -160,7 +161,7 @@ int lichen_app_identity_set_self_from_link_ctx(
 	 * a race with lichen_link_cleanup() that could yield a zeroed key.
 	 */
 	memset(&identity, 0, sizeof(identity));
-	ret = lichen_link_copy_identity(ctx, identity.eui64, identity.public_key, NULL);
+	ret = lichen_link_copy_identity(ctx, identity.eui64, identity.public_key, identity.ygg_addr, NULL);
 	if (ret < 0) {
 		return ret;
 	}
@@ -247,6 +248,7 @@ int lichen_app_identity_upsert_peer(
 	memset(normalized.display_name + len + 1, 0,
 	       sizeof(normalized.display_name) - len - 1);
 	derive_iid(normalized.public_key, normalized.iid);
+	lichen_identity_ygg_addr_from_ed25519(normalized.public_key, normalized.ygg_addr);
 	s_peers[slot].peer = normalized;
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);

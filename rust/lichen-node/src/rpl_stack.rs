@@ -35,7 +35,7 @@ use crate::node::{
     claims_rpl_ipv6, is_rpl_ipv6, rpl_code, valid_ipv6_envelope, valid_rpl_ipv6,
     DaoHandlingOutcome, Node, RplEvent, RplNode,
 };
-use crate::routing::{DaoRxState, Router};
+use crate::routing::{DaoRxState, Router, TrickleSafeLivenessPolicy};
 use crate::runtime::{RplRuntime, RplRuntimeAction, RplRuntimeActionError, RplRuntimePoll};
 use crate::secure::{
     secure_datagram_from_received, ReceivedSecureDatagram, RequestCorrelation, SecureError,
@@ -491,12 +491,16 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
     ///
-    /// Uses [`TrickleAwareNeighborLiveness`] to respect Trickle suppression.
     /// This is an advanced caller-clock API. Production single-owner loops should
     /// use [`Self::runtime_poll`] so clock clamping and cadence remain centralized.
-    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+    pub fn maintain<P: TrickleSafeLivenessPolicy>(
+        &mut self,
+        now_ms: u64,
+        neighbor_timeout_ms: u64,
+        policy: &P,
+    ) -> RplMaintenanceOutcome {
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
-        self.rpl.maintain(now_ms, neighbor_timeout_ms)
+        self.rpl.maintain(now_ms, neighbor_timeout_ms, policy)
     }
 
     /// Advance an executor-neutral runtime using this stack as the single owner.
@@ -532,7 +536,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(Some(packet)) => {
                 if packet.len > wire.len() {
                     let (now_ms, _maintenance) = runtime
-                        .complete_receive(&mut self.rpl, action, post_await_ms)
+                        .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
                         .map_err(RplRuntimeReceiveError::Action)?;
                     self.routing_now_ms = self.routing_now_ms.max(now_ms);
                     return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -546,10 +550,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 match process_result {
                     Ok(outcome) => Some(outcome),
                     Err(e) => {
-                        let (now_ms, _maintenance) = runtime
-                            .complete_receive(&mut self.rpl, action, post_await_ms)
-                            .map_err(RplRuntimeReceiveError::Action)?;
-                        self.routing_now_ms = self.routing_now_ms.max(now_ms);
+                        let _ = runtime.complete_receive(&mut self.rpl, action, post_await_ms, self.generation);
                         return Err(e);
                     }
                 }
@@ -557,7 +558,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(None) => None,
             Err(_) => {
                 let (now_ms, _maintenance) = runtime
-                    .complete_receive(&mut self.rpl, action, post_await_ms)
+                    .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
                     .map_err(RplRuntimeReceiveError::Action)?;
                 self.routing_now_ms = self.routing_now_ms.max(now_ms);
                 return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -566,7 +567,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             }
         };
         let (now_ms, maintenance) = runtime
-            .complete_receive(&mut self.rpl, action, post_await_ms)
+            .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
             .map_err(RplRuntimeReceiveError::Action)?;
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
         Ok(RplRuntimeReceiveOutcome {
@@ -825,6 +826,58 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             RplRole::Leaf(state) => state.last_signed_dao(),
             RplRole::Root(_) => None,
         }
+    }
+
+    /// Complete full DAO processing (signature verification, admission check,
+    /// route-table update) from a compressed L2 frame payload.
+    ///
+    /// Call after [`RplNode::handle_frame_rpl`] returns `DaoReceived` when the
+    /// stack is acting as a root.
+    pub fn complete_dao_from_frame(
+        &mut self,
+        frame: &[u8],
+        sender_iid: [u8; 8],
+        now_ms: u64,
+    ) -> Option<DaoHandlingOutcome> {
+        if classify_l2_payload(frame) != L2PayloadKind::Schc {
+            return None;
+        }
+        let mut ipv6 = [0u8; 256];
+        let n = match codec::decompress(l2_payload_body(frame), &mut ipv6) {
+            Ok(n) if n >= IPV6_HEADER_LEN + hdr_field::BODY_OFFSET + 4 => n,
+            _ => return None,
+        };
+        if !valid_rpl_ipv6(&ipv6[..n]) || ipv6[IPV6_HEADER_LEN + 1] != rpl_code::DAO {
+            return None;
+        }
+        let source: [u8; 16] = ipv6[field::SRC_OFFSET..field::DST_OFFSET].try_into().ok()?;
+        let dao = &ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..n];
+
+        let origin_iid: [u8; 8] = source[8..].try_into().unwrap();
+        let admitted = self
+            .announces
+            .pinned_pubkey_for(&origin_iid)
+            .is_some_and(|key| {
+                self.dao_admissions
+                    .as_ref()
+                    .is_some_and(|admissions| admissions.contains(key.as_bytes()))
+            });
+        if !admitted {
+            return Some(DaoHandlingOutcome::NotAdmitted);
+        }
+        let RplRole::Root(rx) = &mut self.role else {
+            return None;
+        };
+        let outcome = self.rpl.handle_dao(
+            dao,
+            source,
+            sender_iid,
+            &self.announces,
+            rx,
+            &mut self.storage,
+            now_ms,
+        );
+        Some(outcome)
     }
 
     pub fn configure_radio(&mut self, config: &RadioConfig) {
@@ -1165,7 +1218,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         sender_iid: [u8; 8],
     ) -> Result<Option<RplReceiveOutcome>, RplReceiveError> {
         let local_link_addr = self.stack.local_addr().0;
-        let current_destination: [u8; 16] = received.ipv6[field::DST_OFFSET..IPV6_HEADER_LEN].try_into().unwrap();
+        let current_destination: [u8; 16] = received.ipv6[24..40].try_into().unwrap();
         if current_destination != self.local_rpl_addr && current_destination != local_link_addr {
             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
         }
@@ -1177,7 +1230,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         {
             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
         }
-        let source: [u8; 16] = received.ipv6[field::SRC_OFFSET..field::DST_OFFSET].try_into().unwrap();
+        let source: [u8; 16] = received.ipv6[8..24].try_into().unwrap();
         if source != self.rpl.router.dodag_id() {
             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
         }
@@ -1340,29 +1393,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     &mut self.storage,
                     now_ms,
                 );
-                if outcome == DaoHandlingOutcome::Applied {
-                    if let Ok(parsed) = lichen_rpl::message::Dao::from_bytes(dao) {
-                        if parsed.ack_requested {
-                            let mut ack_body = [0u8; 20];
-                            ack_body[0] = parsed.rpl_instance_id;
-                            ack_body[1] = 0x80;
-                            ack_body[2] = parsed.dao_sequence;
-                            ack_body[3] = 0;
-                            ack_body[4..20].copy_from_slice(&self.rpl.router.dodag_id());
-                            if let Some(ack_packet) = rpl_ipv6_packet(
-                                self.local_rpl_addr,
-                                source,
-                                rpl_code::DAO_ACK,
-                                &ack_body,
-                            ) {
-                                let _ = self
-                                    .stack
-                                    .send_ipv6_to(&ack_packet, &ipv6_eui64(source))
-                                    .await;
-                            }
-                        }
-                    }
-                }
                 Ok(RplReceiveOutcome::Dao(outcome))
             }
             RplEvent::DaoForwarded { next_hop } => {
@@ -1422,7 +1452,7 @@ fn advance_rpl_source_route(
     current_destination: [u8; 16],
     sender_iid: [u8; 8],
 ) -> Result<Option<[u8; 16]>, RxError> {
-    if ipv6.len() < 64 || ipv6[6] != 43 || ipv6[field::DST_OFFSET..IPV6_HEADER_LEN] != current_destination {
+    if ipv6.len() < 64 || ipv6[6] != 43 || ipv6[24..40] != current_destination {
         return Err(RxError::InvalidSourceRoute);
     }
     let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
@@ -1473,7 +1503,7 @@ fn advance_rpl_source_route(
         return Err(RxError::InvalidSourceRoute);
     }
     ipv6[next_start..next_start + 16].copy_from_slice(&current_destination);
-    ipv6[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&next_destination);
+    ipv6[24..40].copy_from_slice(&next_destination);
     ipv6[43] -= 1;
     Ok(Some(next_destination))
 }
@@ -2027,7 +2057,7 @@ mod tests {
         )
         .unwrap();
         let mut routed = wire[..len].to_vec();
-        assert_eq!(&routed[field::DST_OFFSET..IPV6_HEADER_LEN], &relay_one);
+        assert_eq!(&routed[24..40], &relay_one);
         assert_eq!(&routed[40..48], &[59, 4, 3, 2, 0, 0, 0, 0]);
         assert_eq!(&routed[48..64], &relay_two);
         assert_eq!(&routed[64..80], &destination);
@@ -3281,7 +3311,7 @@ mod tests {
             &leaf_identity.iid,
             &request,
             SecureResponseData {
-                code: lichen_coap::message::MessageCode::CONTENT,
+                code: lichen_coap::message::MessageCode(0x45),
                 options: &[],
                 payload: b"ok",
             },

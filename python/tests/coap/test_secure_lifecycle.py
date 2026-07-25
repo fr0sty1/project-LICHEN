@@ -71,9 +71,7 @@ class _RecordingChannel(DatagramChannel):
         if self.shutdown_error is not None:
             raise self.shutdown_error
 
-    def request_started(
-        self, peer: str, token: bytes, *, locally_originated: bool
-    ) -> object:
+    def request_started(self, peer: str, token: bytes, *, locally_originated: bool) -> object:
         return self.identities.setdefault((peer, token, locally_originated), object())
 
     def request_interest_ended(
@@ -104,9 +102,7 @@ class _FakeOscore:
         self.request_ids.append(request_id)
         if self.fail_protect:
             raise ValueError("injected protection failure")
-        protected = Message(
-            code=message.code, payload=f"protected-{self.protect_calls}".encode()
-        )
+        protected = Message(code=message.code, payload=f"protected-{self.protect_calls}".encode())
         protected.opt.oscore = b"\x01"
         if self.fail_encode:
             protected.encode = cast(Any, self._fail_encode)
@@ -140,9 +136,7 @@ class _ManualTimer:
             self.callback()
 
 
-def _capture_timer(
-    timers: list[_ManualTimer], delay: float, callback: Any
-) -> _ManualTimer:
+def _capture_timer(timers: list[_ManualTimer], delay: float, callback: Any) -> _ManualTimer:
     timer = _ManualTimer(delay, callback)
     timers.append(timer)
     return timer
@@ -178,9 +172,7 @@ class _BlockingSite:
         await asyncio.Event().wait()
 
 
-def _activate(
-    channel: SecureDatagramChannel, oscore: Any
-) -> PeerContext:
+def _activate(channel: SecureDatagramChannel, oscore: Any) -> PeerContext:
     peer = PeerContext(oscore, b"peer-key")
     channel._active_peer_contexts["peer"] = peer
 
@@ -201,9 +193,7 @@ def test_equal_tokens_are_isolated_by_direction() -> None:
     peer.outbound_requests[token] = outbound
     peer.inbound_requests[token] = inbound
 
-    channel.request_interest_ended(
-        "peer", token, outbound.lifecycle_id, locally_originated=True
-    )
+    channel.request_interest_ended("peer", token, outbound.lifecycle_id, locally_originated=True)
 
     assert token not in peer.outbound_requests
     assert token in peer.inbound_requests
@@ -261,25 +251,17 @@ async def test_real_oscore_equal_token_bidirectional_responses_decrypt() -> None
     await alice._send_protected(cast(bytes, alice_response.encode()), "bob")
     await bob._send_protected(cast(bytes, bob_response.encode()), "alice")
 
-    protected_for_alice = Message.decode(
-        bob_inner.sent[-1][0], LichenRemote("bob")
-    )
+    protected_for_alice = Message.decode(bob_inner.sent[-1][0], LichenRemote("bob"))
     protected_for_alice.direction = Direction.INCOMING
-    protected_for_bob = Message.decode(
-        alice_inner.sent[-1][0], LichenRemote("alice")
-    )
+    protected_for_bob = Message.decode(alice_inner.sent[-1][0], LichenRemote("alice"))
     protected_for_bob.direction = Direction.INCOMING
     alice_plaintext = await alice._unprotect_datagram(protected_for_alice, "bob")
     bob_plaintext = await bob._unprotect_datagram(protected_for_bob, "alice")
 
     assert alice_plaintext is not None
     assert bob_plaintext is not None
-    assert Message.decode(
-        alice_plaintext.data, LichenRemote("bob")
-    ).payload == b"bob-response"
-    assert Message.decode(
-        bob_plaintext.data, LichenRemote("alice")
-    ).payload == b"alice-response"
+    assert Message.decode(alice_plaintext.data, LichenRemote("bob")).payload == b"bob-response"
+    assert Message.decode(bob_plaintext.data, LichenRemote("alice")).payload == b"alice-response"
 
 
 @pytest.mark.asyncio
@@ -349,9 +331,7 @@ async def test_observe_notifications_retain_id_until_cancel() -> None:
     await channel._process_incoming(cast(bytes, outer.encode()), "peer")
     assert peer.outbound_requests[token] is correlation
 
-    channel.request_interest_ended(
-        "peer", token, correlation.lifecycle_id, locally_originated=True
-    )
+    channel.request_interest_ended("peer", token, correlation.lifecycle_id, locally_originated=True)
     assert token not in peer.outbound_requests
 
 
@@ -428,9 +408,7 @@ async def test_established_observe_cancel_releases_exchange_and_rsts_next_notifi
         assert correlation.cancellation_deadline is not None
         assert observe_message.transport_tuning.EXCHANGE_LIFETIME == 247.0
         assert correlation.cancellation_deadline - asyncio.get_running_loop().time() == (
-            pytest.approx(
-                observe_message.transport_tuning.EXCHANGE_LIFETIME, abs=0.1
-            )
+            pytest.approx(observe_message.transport_tuning.EXCHANGE_LIFETIME, abs=0.1)
         )
 
         notification = Message(
@@ -451,9 +429,7 @@ async def test_established_observe_cancel_releases_exchange_and_rsts_next_notifi
         outer.opt.oscore = b"\x01"
         outer.remote = LichenRemote("peer")
 
-        async def unprotect(
-            _message: Message, _source: str
-        ) -> _UnprotectedDatagram:
+        async def unprotect(_message: Message, _source: str) -> _UnprotectedDatagram:
             return _UnprotectedDatagram(
                 cast(bytes, notification.encode()),
                 notification,
@@ -490,9 +466,7 @@ async def test_cancel_tombstone_decrypts_two_real_con_retransmissions_then_expir
     request.opt.observe = 0
     request.remote = LichenRemote("server")
     await client._send_protected(cast(bytes, request.encode()), "server")
-    protected_request = Message.decode(
-        client_inner.sent[-1][0], LichenRemote("client")
-    )
+    protected_request = Message.decode(client_inner.sent[-1][0], LichenRemote("client"))
     protected_request.direction = Direction.INCOMING
     assert await server._unprotect_datagram(protected_request, "client") is not None
 
@@ -505,9 +479,7 @@ async def test_cancel_tombstone_decrypts_two_real_con_retransmissions_then_expir
 
     client._schedule_cancellation_expiry = cast(Any, schedule)
     exchange_lifetime = request.transport_tuning.EXCHANGE_LIFETIME
-    client.observation_cancelled(
-        "server", token, correlation.lifecycle_id, exchange_lifetime
-    )
+    client.observation_cancelled("server", token, correlation.lifecycle_id, exchange_lifetime)
     context = await create_lichen_context(client, "client")
     try:
         notification = Message(
@@ -519,9 +491,7 @@ async def test_cancel_tombstone_decrypts_two_real_con_retransmissions_then_expir
         )
         notification.opt.observe = 1
         notification.remote = LichenRemote("client")
-        await server._send_protected(
-            cast(bytes, notification.encode()), "client"
-        )
+        await server._send_protected(cast(bytes, notification.encode()), "client")
         protected_notification = server_inner.sent[-1][0]
 
         for _ in range(2):
@@ -529,9 +499,7 @@ async def test_cancel_tombstone_decrypts_two_real_con_retransmissions_then_expir
             await client._process_incoming(protected_notification, "server")
             await asyncio.gather(*tuple(client._tasks))
             assert len(client_inner.sent) == sent_before + 1
-            rst = Message.decode(
-                client_inner.sent[sent_before][0], LichenRemote("server")
-            )
+            rst = Message.decode(client_inner.sent[sent_before][0], LichenRemote("server"))
             assert rst.code is EMPTY
             assert rst.mtype is RST
             assert rst.mid == 811
@@ -560,9 +528,7 @@ async def test_silent_cancel_tombstone_expires_without_timer_leak() -> None:
     )
 
     exchange_lifetime = 13.0
-    channel.observation_cancelled(
-        "peer", token, correlation.lifecycle_id, exchange_lifetime
-    )
+    channel.observation_cancelled("peer", token, correlation.lifecycle_id, exchange_lifetime)
     assert len(timers) == 1
     assert timers[0].delay == exchange_lifetime
     timers[0].advance(exchange_lifetime - 0.001)
@@ -588,9 +554,7 @@ async def test_non_cancel_notifications_do_not_refresh_tombstone_expiry() -> Non
         lambda delay, callback: _capture_timer(timers, delay, callback),
     )
     exchange_lifetime = 17.0
-    channel.observation_cancelled(
-        "peer", token, correlation.lifecycle_id, exchange_lifetime
-    )
+    channel.observation_cancelled("peer", token, correlation.lifecycle_id, exchange_lifetime)
     original_deadline = correlation.cancellation_deadline
     timers[0].advance(5.0)
     notification = Message(code=CONTENT, _mtype=NON, _mid=812, _token=token)
@@ -600,9 +564,7 @@ async def test_non_cancel_notifications_do_not_refresh_tombstone_expiry() -> Non
     outer.opt.oscore = b"\x01"
     outer.remote = LichenRemote("peer")
 
-    async def unprotect(
-        _message: Message, _source: str
-    ) -> _UnprotectedDatagram:
+    async def unprotect(_message: Message, _source: str) -> _UnprotectedDatagram:
         return _UnprotectedDatagram(
             cast(bytes, notification.encode()),
             notification,
@@ -612,9 +574,7 @@ async def test_non_cancel_notifications_do_not_refresh_tombstone_expiry() -> Non
     channel._unprotect_datagram = cast(Any, unprotect)
     channel.set_receiver(lambda _data, _source: None)
     await channel._process_incoming(cast(bytes, outer.encode()), "peer")
-    channel.observation_cancelled(
-        "peer", token, correlation.lifecycle_id, exchange_lifetime
-    )
+    channel.observation_cancelled("peer", token, correlation.lifecycle_id, exchange_lifetime)
 
     assert peer.outbound_requests[token] is correlation
     assert len(timers) == 1
@@ -660,9 +620,7 @@ async def test_cancel_timers_clear_on_close_and_context_replacement() -> None:
         Any,
         lambda delay, callback: _capture_timer(first_timers, delay, callback),
     )
-    first.observation_cancelled(
-        "peer", b"close", first_correlation.lifecycle_id, 247.0
-    )
+    first.observation_cancelled("peer", b"close", first_correlation.lifecycle_id, 247.0)
     first.close()
     assert first_timers[0].cancelled
     assert first_correlation.cancellation_timer is None
@@ -676,12 +634,8 @@ async def test_cancel_timers_clear_on_close_and_context_replacement() -> None:
         Any,
         lambda delay, callback: _capture_timer(second_timers, delay, callback),
     )
-    second.observation_cancelled(
-        "peer", b"replace", second_correlation.lifecycle_id, 247.0
-    )
-    second._publish_peer_context(
-        "peer", PeerContext(_FakeOscore(), b"peer-key", generation=2)
-    )
+    second.observation_cancelled("peer", b"replace", second_correlation.lifecycle_id, 247.0)
+    second._publish_peer_context("peer", PeerContext(_FakeOscore(), b"peer-key", generation=2))
     assert second_timers[0].cancelled
     assert second_correlation.cancellation_timer is None
 
@@ -748,9 +702,7 @@ async def test_deferred_terminal_observe_response_survives_until_send(
     lock = channel._peer_locks.setdefault("peer", asyncio.Lock())
     await lock.acquire()
     try:
-        channel.send_datagram(
-            _message(code=CONTENT, mtype=mtype, mid=42, token=token), "peer"
-        )
+        channel.send_datagram(_message(code=CONTENT, mtype=mtype, mid=42, token=token), "peer")
         channel.response_completed("peer", token, correlation.lifecycle_id)
         channel.request_interest_ended(
             "peer", token, correlation.lifecycle_id, locally_originated=False
@@ -772,9 +724,7 @@ async def test_deferred_terminal_observe_response_survives_until_send(
 async def test_same_token_pipe_replacement_cannot_end_new_correlation() -> None:
     channel, _inner = _channel()
     peer = _activate(channel, _FakeOscore())
-    context = await create_lichen_context(
-        channel, "local", site=cast(Any, _BlockingSite())
-    )
+    context = await create_lichen_context(channel, "local", site=cast(Any, _BlockingSite()))
     token = b"refresh"
     try:
         first = _RequestCorrelation(object(), observe=True)
@@ -842,9 +792,7 @@ async def test_remove_context_serializes_and_clears_lifecycle() -> None:
         Any,
         lambda delay, callback: _capture_timer(timers, delay, callback),
     )
-    channel.observation_cancelled(
-        "peer", b"observe", correlation.lifecycle_id, 247.0
-    )
+    channel.observation_cancelled("peer", b"observe", correlation.lifecycle_id, 247.0)
 
     await channel.remove_context("peer")
 
@@ -872,9 +820,7 @@ async def test_context_replacement_retires_queued_old_response() -> None:
             channel.add_context("peer", _context(b"\x03", b"\x04"), b"peer-key")
         )
         await asyncio.sleep(0)
-        channel.send_datagram(
-            _message(code=CONTENT, mtype=NON, mid=52, token=token), "peer"
-        )
+        channel.send_datagram(_message(code=CONTENT, mtype=NON, mid=52, token=token), "peer")
     finally:
         lock.release()
 
@@ -930,9 +876,7 @@ async def test_failed_terminal_con_protection_retires_on_expiry() -> None:
     correlation = _RequestCorrelation(object(), observe=False, terminal=True)
     peer.inbound_requests[token] = correlation
 
-    await channel._send_protected(
-        _message(code=CONTENT, mtype=CON, mid=59, token=token), "peer"
-    )
+    await channel._send_protected(_message(code=CONTENT, mtype=CON, mid=59, token=token), "peer")
 
     assert peer.inbound_requests[token] is correlation
     assert correlation.con_mids == {59}
@@ -948,9 +892,7 @@ async def test_shutdown_cancels_queued_packet_tasks_and_rejects_new_send() -> No
     peer.outbound_requests[b"receive"] = _RequestCorrelation(object(), observe=False)
     lock = channel._peer_locks.setdefault("peer", asyncio.Lock())
     await lock.acquire()
-    channel.send_datagram(
-        _message(code=GET, mtype=NON, mid=60, token=b"queued-send"), "peer"
-    )
+    channel.send_datagram(_message(code=GET, mtype=NON, mid=60, token=b"queued-send"), "peer")
     incoming = Message(code=CONTENT, _mtype=NON, _mid=61, _token=b"receive")
     incoming.opt.oscore = b"\x01"
     incoming.remote = LichenRemote("peer")
@@ -967,9 +909,7 @@ async def test_shutdown_cancels_queued_packet_tasks_and_rejects_new_send() -> No
     assert inner.sent == []
     assert inner.closed
     with pytest.raises(RuntimeError, match="closing"):
-        channel.send_datagram(
-            _message(code=GET, mtype=NON, mid=62, token=b"late"), "peer"
-        )
+        channel.send_datagram(_message(code=GET, mtype=NON, mid=62, token=b"late"), "peer")
 
 
 @pytest.mark.asyncio
@@ -1004,9 +944,7 @@ async def test_shutdown_cleans_up_and_shares_edhoc_failure() -> None:
     edhoc = _FailingEdhocContext()
     channel._edhoc_ctx = cast(Any, edhoc)
 
-    results = await asyncio.gather(
-        channel.shutdown(), channel.shutdown(), return_exceptions=True
-    )
+    results = await asyncio.gather(channel.shutdown(), channel.shutdown(), return_exceptions=True)
     repeated = await asyncio.gather(channel.shutdown(), return_exceptions=True)
 
     assert results == [edhoc_error, edhoc_error]
@@ -1026,9 +964,7 @@ async def test_shutdown_continues_after_receiver_detach_failure() -> None:
     clear_error = RuntimeError("injected receiver detach failure")
     inner.clear_error = clear_error
 
-    results = await asyncio.gather(
-        channel.shutdown(), channel.shutdown(), return_exceptions=True
-    )
+    results = await asyncio.gather(channel.shutdown(), channel.shutdown(), return_exceptions=True)
 
     assert results == [clear_error, clear_error]
     assert inner.clear_calls == 1
@@ -1090,15 +1026,16 @@ async def test_nstart_cancelled_backlogged_observe_never_sends() -> None:
         assert second.observation is not None
         assert len(inner.sent) == 1
         second_identity = second_message._lichen_lifecycle_id
-        assert channel.request_started(
-            "peer", second_message.token, locally_originated=True
-        ) is second_identity
+        assert (
+            channel.request_started("peer", second_message.token, locally_originated=True)
+            is second_identity
+        )
 
         second.observation.cancel()
         second.response.cancel()
-        assert channel.request_started(
-            "peer", second_message.token, locally_originated=True
-        ) is None
+        assert (
+            channel.request_started("peer", second_message.token, locally_originated=True) is None
+        )
 
         response = Message(
             code=CONTENT,
@@ -1197,20 +1134,17 @@ async def test_max_retransmit_abandons_all_backlog_lifecycle_state() -> None:
         await asyncio.sleep(0)
         await asyncio.sleep(0)
         queued_identity = queued_message._lichen_lifecycle_id
-        assert channel.request_started(
-            "peer", queued_message.token, locally_originated=True
-        ) is queued_identity
+        assert (
+            channel.request_started("peer", queued_message.token, locally_originated=True)
+            is queued_identity
+        )
 
         token_manager = context.request_interfaces[0]
         message_manager = token_manager.token_interface
         response_token = b"timeout"
-        terminal_correlation = _RequestCorrelation(
-            object(), observe=True, interested=False
-        )
+        terminal_correlation = _RequestCorrelation(object(), observe=True, interested=False)
         peer.inbound_requests[response_token] = terminal_correlation
-        incoming = Message(
-            code=GET, _mtype=NON, _mid=72, _token=response_token
-        )
+        incoming = Message(code=GET, _mtype=NON, _mid=72, _token=response_token)
         incoming.opt.observe = 0
         incoming.remote = LichenRemote("peer")
         incoming._lichen_lifecycle_id = terminal_correlation.lifecycle_id
@@ -1298,9 +1232,7 @@ async def test_ordinary_inbound_correlation_retires_after_response(mtype: Any) -
     peer.inbound_requests[token] = correlation
     channel.response_completed("peer", token, correlation.lifecycle_id)
 
-    await channel._send_protected(
-        _message(code=CONTENT, mtype=mtype, mid=9, token=token), "peer"
-    )
+    await channel._send_protected(_message(code=CONTENT, mtype=mtype, mid=9, token=token), "peer")
 
     assert token not in peer.inbound_requests
 
@@ -1330,9 +1262,7 @@ async def test_con_retransmission_reuses_bytes_and_retires(ending: str) -> None:
     oscore = _FakeOscore()
     peer = _activate(channel, oscore)
     token = b"response"
-    correlation = _RequestCorrelation(
-        object(), observe=False, interested=False, terminal=True
-    )
+    correlation = _RequestCorrelation(object(), observe=False, interested=False, terminal=True)
     peer.inbound_requests[token] = correlation
     wire = _message(code=CONTENT, mtype=CON, mid=17, token=token)
 
@@ -1408,9 +1338,7 @@ async def test_failed_request_delivery_rolls_back_new_inbound_mapping() -> None:
     plaintext.remote = LichenRemote("peer")
 
     async def unprotect(_message: Message, _source: str) -> _UnprotectedDatagram:
-        return _UnprotectedDatagram(
-            cast(bytes, plaintext.encode()), plaintext, correlation
-        )
+        return _UnprotectedDatagram(cast(bytes, plaintext.encode()), plaintext, correlation)
 
     channel._unprotect_datagram = cast(Any, unprotect)
 
@@ -1445,9 +1373,7 @@ def test_close_clears_bounded_lifecycle_state() -> None:
     channel, inner = _channel()
     peer = _activate(channel, _FakeOscore())
     peer.outbound_requests[b"request"] = _RequestCorrelation(object(), observe=True)
-    channel._protected_cons[("peer", 1)] = _ProtectedCon(
-        b"ciphertext", b"request", True
-    )
+    channel._protected_cons[("peer", 1)] = _ProtectedCon(b"ciphertext", b"request", True)
 
     channel.close()
 

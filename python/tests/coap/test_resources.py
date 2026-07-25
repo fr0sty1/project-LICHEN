@@ -59,9 +59,7 @@ async def test_neighbors_returns_table() -> None:
     info = _node_info()
     client, server = await _client_server(info)
     try:
-        resp = await client.request(
-            Message(code=GET, uri="coap://server/neighbors")
-        ).response
+        resp = await client.request(Message(code=GET, uri="coap://server/neighbors")).response
         assert cbor2.loads(resp.payload) == info.neighbors
     finally:
         await client.shutdown()
@@ -281,9 +279,7 @@ async def test_config_put_rejects_tags_and_remains_serializable(
         response = await client.request(
             Message(code=PUT, uri="coap://server/config", payload=payload)
         ).response
-        current = await client.request(
-            Message(code=GET, uri="coap://server/config")
-        ).response
+        current = await client.request(Message(code=GET, uri="coap://server/config")).response
         assert response.code == aiocoap.BAD_REQUEST
         assert cbor2.loads(current.payload) == info.config
         assert info.config["tx_power_dbm"] == 14

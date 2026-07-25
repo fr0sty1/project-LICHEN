@@ -148,7 +148,8 @@ class WebSocketManager:
         # Snapshot clients to allow concurrent modification
         async with self._lock:
             clients = [
-                c for c in self._clients.values()
+                c
+                for c in self._clients.values()
                 if c.sim_id == sim_id and c.is_subscribed(event_type)
             ]
 
@@ -235,9 +236,7 @@ class WebSocketObserver:
     def _broadcast(self, event_type: str, **data: Any) -> None:
         try:
             loop = asyncio.get_running_loop()
-            task = loop.create_task(
-                self._manager.broadcast_to_sim(self._sim_id, event_type, data)
-            )
+            task = loop.create_task(self._manager.broadcast_to_sim(self._sim_id, event_type, data))
             task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
         except RuntimeError:
             pass
@@ -379,21 +378,25 @@ async def handle_websocket(
 
     try:
         # Send initial connection confirmation
-        await websocket.send_json({
-            "event": "connected",
-            "client_id": client.id,
-            "sim_id": sim_id,
-        })
+        await websocket.send_json(
+            {
+                "event": "connected",
+                "client_id": client.id,
+                "sim_id": sim_id,
+            }
+        )
 
         # Process incoming commands
         while True:
             try:
                 data = await websocket.receive_json()
             except json.JSONDecodeError:
-                await websocket.send_json({
-                    "event": "error",
-                    "message": "Invalid JSON",
-                })
+                await websocket.send_json(
+                    {
+                        "event": "error",
+                        "message": "Invalid JSON",
+                    }
+                )
                 continue
 
             cmd = data.get("cmd")
@@ -405,43 +408,55 @@ async def handle_websocket(
                 events = data.get("events", [])
                 if isinstance(events, list):
                     if not all(isinstance(e, str) for e in events):
-                        await websocket.send_json({
-                            "event": "error",
-                            "message": "events must be a list of strings",
-                        })
+                        await websocket.send_json(
+                            {
+                                "event": "error",
+                                "message": "events must be a list of strings",
+                            }
+                        )
                         continue
                     client.subscriptions.update(events)
-                    await websocket.send_json({
-                        "event": "subscribed",
-                        "events": list(client.subscriptions),
-                    })
+                    await websocket.send_json(
+                        {
+                            "event": "subscribed",
+                            "events": list(client.subscriptions),
+                        }
+                    )
 
             elif cmd == "unsubscribe":
                 events = data.get("events", [])
                 if isinstance(events, list):
                     if not all(isinstance(e, str) for e in events):
-                        await websocket.send_json({
-                            "event": "error",
-                            "message": "events must be a list of strings",
-                        })
+                        await websocket.send_json(
+                            {
+                                "event": "error",
+                                "message": "events must be a list of strings",
+                            }
+                        )
                         continue
                     client.subscriptions.difference_update(events)
-                    await websocket.send_json({
-                        "event": "unsubscribed",
-                        "events": list(client.subscriptions),
-                    })
+                    await websocket.send_json(
+                        {
+                            "event": "unsubscribed",
+                            "events": list(client.subscriptions),
+                        }
+                    )
 
             elif cmd == "clear_subscriptions":
                 client.subscriptions.clear()
-                await websocket.send_json({
-                    "event": "subscriptions_cleared",
-                })
+                await websocket.send_json(
+                    {
+                        "event": "subscriptions_cleared",
+                    }
+                )
 
             else:
-                await websocket.send_json({
-                    "event": "error",
-                    "message": f"Unknown command: {cmd}",
-                })
+                await websocket.send_json(
+                    {
+                        "event": "error",
+                        "message": f"Unknown command: {cmd}",
+                    }
+                )
 
     except WebSocketDisconnect:
         pass  # Normal disconnection

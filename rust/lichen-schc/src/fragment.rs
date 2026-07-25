@@ -1,26 +1,22 @@
 //! Rule Set Version 2 SCHC ACK-on-Error fragmentation (RFC 8724 section 8).
 
-use lichen_core::{
-    constants::SCHC_MAX_DECOMPRESSED,
-    error::{BufferTooSmall, TooShort},
-};
+use lichen_core::error::{BufferTooSmall, TooShort};
 
 pub const FRAGMENT_M: u8 = 1;
 pub const FRAGMENT_N: u8 = 6;
 pub const FRAGMENT_T: u8 = 0;
 pub const ALL_1_FCN: u8 = (1 << FRAGMENT_N) - 1;
 pub const MIC_LENGTH: usize = 4;
-pub const TILE_SIZE: usize = 187;
 pub const WINDOW_SIZE: usize = 63;
-pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
-pub const DEFAULT_WINDOW_SIZE: usize = 32;
-pub const MAX_WINDOW_SIZE: usize = 62;
+pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
+pub const MAX_ACK_REQUESTS: u8 = 4;
+pub const INACTIVITY_TIMEOUT_S: u32 = 60;
+pub const TILE_SIZE: usize = 187;
+pub const MAX_PACKET_SIZE: usize = 2 * WINDOW_SIZE * TILE_SIZE;
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
-pub const MAX_PACKET_SIZE: usize = 16384;
-pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
-pub const MAX_ACK_REQUESTS: u8 = 3;
-pub const INACTIVITY_TIMEOUT_S: u32 = 60;
+pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
+pub const DEFAULT_RECEIVER_LIMIT: usize = 1281;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -87,7 +83,7 @@ impl From<BufferTooSmall> for FragmentError {
 }
 
 fn check_rule(rule_id: u8) -> Result<(), FragmentError> {
-    if matches!(rule_id, RULE_ID_A_TO_B | RULE_ID_B_TO_A) {
+    if rule_id == RULE_ID_A_TO_B || rule_id == RULE_ID_B_TO_A {
         Ok(())
     } else {
         Err(FragmentError::UnsupportedRule)
@@ -153,9 +149,9 @@ impl<'a> Fragment<'a> {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[..needed].fill(0);
+        let mut index = 0usize;
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
-        let mut index = 0;
+        out[1] = ((self.window & 1) << 7) | (self.fcn << 1);
         if self.is_all_1() {
             for byte in self.mic {
                 out[1 + index] |= byte >> 7;
@@ -171,58 +167,55 @@ impl<'a> Fragment<'a> {
         Ok(needed)
     }
 
-    pub fn from_bytes<'out>(
-        data: &[u8],
-        out: &'out mut [u8],
-    ) -> Result<Fragment<'out>, FragmentError> {
+    pub fn from_bytes<'b>(data: &[u8], out: &'b mut [u8]) -> Result<Fragment<'b>, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
+        let content_len = data.len() - 2;
+        if out.len() < content_len {
+            return Err(BufferTooSmall::new(content_len, out.len()).into());
+        }
         let rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let fcn = data[1] & ((1 << FRAGMENT_N) - 1);
-        if fcn > ALL_1_FCN {
+        check_rule(rule_id)?;
+        let window = data[1] >> 7;
+        let fcn = (data[1] >> 1) & 0x3f;
+        if window == 1 && fcn == 0 {
             return Err(FragmentError::InvalidFcn);
         }
-        if window > 1 {
-            return Err(FragmentError::InvalidWindow);
+        if data[data.len() - 1] & 1 != 0 {
+            return Err(FragmentError::InvalidTileLength);
         }
-        check_rule(rule_id)?;
-        let content_len = data.len() - 2;
-        let content_offset = if fcn == ALL_1_FCN { MIC_LENGTH } else { 0 };
         if fcn == ALL_1_FCN {
-            if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&content_len) {
+            if content_len < MIC_LENGTH + 1 || content_len > MIC_LENGTH + TILE_SIZE {
                 return Err(FragmentError::InvalidTileLength);
             }
+        } else if content_len != TILE_SIZE {
+            return Err(FragmentError::InvalidTileLength);
+        }
+        for i in 0..content_len {
+            let low = data[2 + i] >> 1;
+            let high = (data[1 + i] & 1) << 7;
+            out[i] = low | high;
+        }
+        if fcn == ALL_1_FCN {
+            let mut mic = [0u8; MIC_LENGTH];
+            mic.copy_from_slice(&out[..MIC_LENGTH]);
+            Ok(Fragment {
+                rule_id,
+                window,
+                fcn,
+                payload: &out[MIC_LENGTH..content_len],
+                mic,
+            })
         } else {
-            if data.len() != TILE_SIZE + 2 {
-                return Err(FragmentError::InvalidTileLength);
-            }
-            if window == 1 && fcn == 0 {
-                return Err(FragmentError::InvalidFcn);
-            }
+            Ok(Fragment {
+                rule_id,
+                window,
+                fcn,
+                payload: &out[..content_len],
+                mic: [0u8; MIC_LENGTH],
+            })
         }
-        let payload_len = content_len - content_offset;
-        if out.len() < payload_len {
-            return Err(BufferTooSmall::new(payload_len, out.len()).into());
-        }
-        for (i, byte) in out[..payload_len].iter_mut().enumerate() {
-            let wire = 1 + content_offset + i;
-            *byte = (data[wire] << 7) | (data[wire + 1] >> 1);
-        }
-        let mut mic = [0; MIC_LENGTH];
-        if fcn == ALL_1_FCN {
-            for i in 0..MIC_LENGTH {
-                mic[i] = (data[1 + i] << 7) | (data[2 + i] >> 1);
-            }
-        }
-        Ok(Fragment {
-            rule_id: data[0],
-            window,
-            fcn,
-            payload: &out[..payload_len],
-            mic,
-        })
     }
 }
 
@@ -276,7 +269,12 @@ impl Ack {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
+        out[1] = ((self.window & 1) << 7) | ((if self.complete { 1u8 } else { 0u8 }) << 6);
+        for position in 0..kept {
+            if (self.bitmap & (1u64 << (62 - position))) != 0 {
+                set_bit(&mut out[1..needed], 2 + position, true);
+            }
+        }
         for position in 0..restored {
             set_bit(&mut out[1..needed], 2 + kept + position, true);
         }
@@ -291,22 +289,17 @@ impl Ack {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let n = data[2] as usize;
-        let body_bytes = n.div_ceil(8);
-        let required = 3 + body_bytes;
-        if data.len() < required {
-            return Err(TooShort::new(required, data.len()).into());
-        }
-        let body = &data[3..];
-        let mut bitmap = [false; MAX_WINDOW_SIZE];
-        for i in 0..n.min(MAX_WINDOW_SIZE) {
-            let byte = body[i / 8];
-            bitmap[i] = (byte >> (7 - (i % 8))) & 1 != 0;
-        }
+        let rule_id = data[0];
+        check_rule(rule_id)?;
+        let window = data[1] >> 7;
+        let complete = (data[1] & 0x40) != 0;
         let bit_count = (data.len() - 1) * 8 - 2;
         let mut bitmap = 0u64;
-        if bit_count >= WINDOW_SIZE {
+        if complete {
+            if bit_count > 7 {
+                return Err(FragmentError::MalformedAck);
+            }
+        } else if bit_count >= WINDOW_SIZE {
             let padding = bit_count - WINDOW_SIZE;
             if padding > 7 || (0..padding).any(|i| get_bit(&data[1..], 2 + WINDOW_SIZE + i)) {
                 return Err(FragmentError::MalformedAck);
@@ -326,7 +319,7 @@ impl Ack {
                 bitmap |= 1u64 << (62 - position);
             }
         }
-        let ack = Self::new(data[0], window, bitmap, false);
+        let ack = Self::new(rule_id, window, bitmap, complete);
         let mut canonical = [0u8; 10];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {
@@ -438,8 +431,8 @@ impl<'a> FragmentSender<'a> {
         if payload.is_empty() {
             return Err(FragmentError::EmptyPacket);
         }
-        if payload.len() > SCHC_MAX_DECOMPRESSED {
-            return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
+        if payload.len() > MAX_PACKET_SIZE {
+            return Err(BufferTooSmall::new(MAX_PACKET_SIZE, payload.len()).into());
         }
         Ok(FragmentSender {
             payload,
@@ -659,6 +652,13 @@ impl<'a> FragmentSender<'a> {
                 }
         })
     }
+
+    /// Return an iterator over fragments belonging to window `abs_window`.
+    pub fn fragments_in_window(&self, abs_window: usize) -> impl Iterator<Item = Fragment<'a>> + '_ {
+        let start = abs_window * WINDOW_SIZE;
+        let end = (start + WINDOW_SIZE).min(self.count);
+        (start..end).map(move |index| self.get_fragment(index).unwrap())
+    }
 }
 
 fn fragment_bit(fragment: Fragment<'_>) -> u64 {
@@ -790,8 +790,8 @@ impl<'a> FragmentReceiver<'a> {
             }
             return self.receive_ack_request(rule_id);
         }
-        let mut tile = [0u8; TILE_SIZE];
-        match Fragment::from_bytes(data, &mut tile) {
+        let mut buf = [0u8; TILE_SIZE + MIC_LENGTH];
+        match Fragment::from_bytes(data, &mut buf) {
             Ok(fragment) => {
                 if self.done {
                     self.reset();
@@ -1042,20 +1042,256 @@ impl<'s, 'b> Iterator for RetransmitIter<'s, 'b> {
 // ─── std-only: all_fragments + FragmentReceiver ───────────────────────────────
 
 #[cfg(feature = "std")]
+pub use std_ext::*;
+
+#[cfg(feature = "std")]
 mod std_ext {
     extern crate std;
+    use std::collections::{HashMap, HashSet};
     use std::vec::Vec;
 
     use super::*;
 
     impl<'a> FragmentSender<'a> {
+        /// Collect all fragments into a Vec (convenience for tests and sim).
         pub fn all_fragments(&self) -> Vec<Fragment<'a>> {
             self.iter().collect()
         }
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
-            let window = abs_window as u8;
-            self.iter().filter(|f| f.window == window).collect()
+            self.fragments_in_window(abs_window).collect()
+        }
+    }
+
+    /// Reassembles a single datagram from ACK-on-Error fragments.
+    #[derive(Debug)]
+    pub struct StdFragmentReceiver {
+        window_size: usize,
+        rule_id: Option<u8>,
+        tiles: HashMap<usize, Vec<u8>>,
+        current_window: usize,
+        completed_windows: HashSet<usize>,
+        all1_seen: bool,
+        all1_window: usize,
+        all1_payload: Vec<u8>,
+        mic: [u8; MIC_LENGTH],
+        pub done: bool,
+        pub reassembled: Option<Vec<u8>>,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct StdReceiverResult {
+        pub ack: Option<Ack>,
+        pub reassembled: Option<Vec<u8>>,
+        pub mic_ok: Option<bool>,
+    }
+
+    impl StdFragmentReceiver {
+        pub fn new(window_size: usize) -> Self {
+            debug_assert!(
+                window_size <= WINDOW_SIZE,
+                "window_size {} exceeds SCHC maximum {}",
+                window_size,
+                WINDOW_SIZE
+            );
+            StdFragmentReceiver {
+                window_size,
+                rule_id: None,
+                tiles: HashMap::new(),
+                current_window: 0,
+                completed_windows: HashSet::new(),
+                all1_seen: false,
+                all1_window: 0,
+                all1_payload: Vec::new(),
+                mic: [0u8; MIC_LENGTH],
+                done: false,
+                reassembled: None,
+            }
+        }
+
+        fn abs_window(&self, frag: &Fragment<'_>) -> usize {
+            if !frag.is_all_1() {
+                let pos = self.window_size - 1 - frag.fcn as usize;
+                let parity = frag.window as usize;
+                let current_parity = self.current_window % 2;
+                let mut older = if parity == current_parity {
+                    if self.current_window >= 2 {
+                        self.current_window - 2
+                    } else {
+                        0
+                    }
+                } else {
+                    if self.current_window >= 1 {
+                        self.current_window - 1
+                    } else {
+                        0
+                    }
+                };
+                while older > 0 {
+                    if !self.completed_windows.contains(&older) {
+                        let older_idx = older * self.window_size + pos;
+                        if self.tiles.contains_key(&older_idx) {
+                            // duplicate or filled; continue to find gap or treat as current
+                        } else {
+                            // gap in incomplete older window: likely retransmission
+                            return older;
+                        }
+                    } else if self.tiles.contains_key(&(older * self.window_size + pos)) {
+                        return older;
+                    }
+                    older = older.saturating_sub(2);
+                }
+            }
+            if frag.window == (self.current_window % 2) as u8 {
+                self.current_window
+            } else {
+                self.current_window + 1
+            }
+        }
+
+        fn window_bitmap(&self, abs_window: usize) -> Vec<bool> {
+            let base = abs_window * self.window_size;
+            (0..self.window_size)
+                .map(|p| self.tiles.contains_key(&(base + p)))
+                .collect()
+        }
+
+        fn window_full(&self, abs_window: usize) -> bool {
+            let base = abs_window * self.window_size;
+            (0..self.window_size).all(|p| self.tiles.contains_key(&(base + p)))
+        }
+
+        pub fn receive(&mut self, frag: &Fragment<'_>) -> StdReceiverResult {
+            if self.done {
+                return StdReceiverResult {
+                    ack: None,
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
+            if self.rule_id.is_none() {
+                self.rule_id = Some(frag.rule_id);
+            } else if self.rule_id != Some(frag.rule_id) {
+                return StdReceiverResult {
+                    ack: None,
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
+            let abs_window = self.abs_window(frag);
+            if self.completed_windows.contains(&abs_window) {
+                return StdReceiverResult {
+                    ack: None,
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
+            if abs_window > self.current_window {
+                self.current_window = abs_window;
+            }
+
+            if frag.is_all_1() {
+                self.all1_seen = true;
+                self.all1_window = abs_window;
+                self.all1_payload = frag.payload.to_vec();
+                self.mic = frag.mic;
+                return self.finalize();
+            }
+
+            if frag.fcn as usize >= self.window_size {
+                return StdReceiverResult {
+                    ack: None,
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
+            let pos = self.window_size - 1 - frag.fcn as usize;
+            let global_idx = abs_window * self.window_size + pos;
+            if !self.tiles.contains_key(&global_idx) {
+                self.tiles.insert(global_idx, frag.payload.to_vec());
+            }
+
+            if self.all1_seen {
+                return self.finalize();
+            }
+
+            if frag.is_all_0() || self.window_full(abs_window) {
+                let bitmap_vec = self.window_bitmap(abs_window);
+                let bitmap: u64 = bitmap_vec
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, &b)| b)
+                    .fold(0, |acc, (i, _)| acc | (1u64 << (62 - i)));
+                if self.window_full(abs_window) {
+                    self.completed_windows.insert(abs_window);
+                    self.current_window = abs_window + 1;
+                }
+                return StdReceiverResult {
+                    ack: Some(Ack::new(
+                        self.rule_id.unwrap(),
+                        (abs_window % 2) as u8,
+                        bitmap,
+                        false,
+                    )),
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
+            StdReceiverResult {
+                ack: None,
+                reassembled: None,
+                mic_ok: None,
+            }
+        }
+
+        fn finalize(&mut self) -> StdReceiverResult {
+            let bitmap_vec = self.window_bitmap(self.all1_window);
+            let bitmap: u64 = bitmap_vec
+                .iter()
+                .enumerate()
+                .filter(|(_, &b)| b)
+                .fold(0, |acc, (i, _)| acc | (1u64 << (62 - i)));
+            let rule_id = self.rule_id.unwrap();
+            let nack = Ack::new(rule_id, (self.all1_window % 2) as u8, bitmap, false);
+
+            // O(n) contiguity check: if we have n tiles and max index is n-1,
+            // all indices 0..n must be present (HashMap keys are unique).
+            let n = self.tiles.len();
+            let contiguous = n > 0 && self.tiles.keys().max() == Some(&(n - 1));
+            if !contiguous {
+                return StdReceiverResult {
+                    ack: Some(nack),
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
+
+            let mut data: Vec<u8> = Vec::new();
+            for i in 0..n {
+                data.extend_from_slice(self.tiles[&i].as_slice());
+            }
+            data.extend_from_slice(&self.all1_payload);
+
+            if compute_mic(&data) == self.mic {
+                self.done = true;
+                self.reassembled = Some(data.clone());
+                StdReceiverResult {
+                    ack: Some(Ack::new(
+                        rule_id,
+                        (self.all1_window % 2) as u8,
+                        bitmap,
+                        true,
+                    )),
+                    reassembled: Some(data),
+                    mic_ok: Some(true),
+                }
+            } else {
+                StdReceiverResult {
+                    ack: Some(nack),
+                    reassembled: None,
+                    mic_ok: Some(false),
+                }
+            }
         }
     }
 }

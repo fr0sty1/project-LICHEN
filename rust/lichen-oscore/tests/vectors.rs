@@ -111,15 +111,15 @@ fn context_at(
     sequence: u64,
 ) -> (Context, TestStore) {
     let mut store = TestStore::existing(sequence);
-    let context = Context::load_existing(
+    let context = Context::new(
         master_secret,
         master_salt,
         id_context,
         sender_id,
         recipient_id,
-        &mut store,
     )
     .unwrap();
+    let context = context.restore_existing(&mut store).unwrap();
     (context, store)
 }
 
@@ -145,9 +145,9 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let bytes = hex_to_bytes(hex);
     let len = bytes.len();
-    bytes.try_into().unwrap_or_else(|_| {
-        panic!("hex_to_array: expected {} bytes, got {}", N, len)
-    })
+    bytes
+        .try_into()
+        .unwrap_or_else(|_| panic!("hex_to_array: expected {} bytes, got {}", N, len))
 }
 
 // Replay window tests are covered by the unit tests in lib.rs since they
@@ -212,14 +212,9 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::load_existing(
-        &master_secret,
-        None,
-        None,
-        &too_long_id,
-        &[1],
-        &mut TestStore::existing(0),
-    );
+    let result = Context::new(&master_secret, None, None, &too_long_id, &[1])
+        .map_err(ContextStoreError::Oscore)
+        .and_then(|ctx| ctx.restore_existing(&mut TestStore::existing(0)));
     assert!(
         matches!(
             result,
@@ -234,14 +229,9 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::load_existing(
-        &master_secret,
-        None,
-        None,
-        &[0],
-        &too_long_id,
-        &mut TestStore::existing(0),
-    );
+    let result = Context::new(&master_secret, None, None, &[0], &too_long_id)
+        .map_err(ContextStoreError::Oscore)
+        .and_then(|ctx| ctx.restore_existing(&mut TestStore::existing(0)));
     assert!(
         matches!(
             result,
@@ -268,14 +258,9 @@ fn present_empty_id_context_is_distinct_and_encoded() {
 
 #[test]
 fn id_context_over_implementation_capacity_is_rejected() {
-    let result = Context::load_existing(
-        &[0u8; 16],
-        None,
-        Some(&[0; 9]),
-        &[0],
-        &[1],
-        &mut TestStore::existing(0),
-    );
+    let result = Context::new(&[0u8; 16], None, Some(&[0; 9]), &[0], &[1])
+        .map_err(ContextStoreError::Oscore)
+        .and_then(|ctx| ctx.restore_existing(&mut TestStore::existing(0)));
     assert!(matches!(
         result,
         Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
@@ -415,12 +400,10 @@ fn test_response_protection_vectors() {
 
 #[test]
 fn test_edhoc_interop_vectors() {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../test/vectors/edhoc.json"
-    );
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test/vectors/edhoc.json");
     let content = fs::read_to_string(path).expect("Failed to read edhoc.json");
-    let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse edhoc.json");
+    let doc: serde_json::Value =
+        serde_json::from_str(&content).expect("Failed to parse edhoc.json");
     let v = &doc["vectors"][0];
     assert_eq!(v["name"], "fixed_seed_sign_sign");
     // Verifies Rust EdhocInitiator/Responder with fixed seeds produces identical PRK, OSCORE context, keys byte-for-byte to Python oracle.

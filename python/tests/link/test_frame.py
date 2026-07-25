@@ -43,7 +43,7 @@ class TestSerialize:
             addr_mode=AddrMode.NONE,
         )
         # body = LLSec(00) Epoch(00) SeqNum(0000) Payload(99) = 5 bytes
-        assert frame.to_bytes() == bytes.fromhex("05" "00" "00" "0000" "99")
+        assert frame.to_bytes() == bytes.fromhex("050000000099")
 
     def test_llsec_flag_packing(self) -> None:
         """LLSec independently packs the signature and encryption bits."""
@@ -100,9 +100,13 @@ class TestRoundTrip:
 class TestValidation:
     def _base(self, **kw: object) -> LichenFrame:
         defaults: dict[str, object] = {
-            "epoch": 1, "seqnum": 1, "dst_addr": b"\xaa\xbb",
-            "payload": b"", "mic": b"",
-            "addr_mode": AddrMode.SHORT, "mic_length": MicLength.BITS32,
+            "epoch": 1,
+            "seqnum": 1,
+            "dst_addr": b"\xaa\xbb",
+            "payload": b"",
+            "mic": b"",
+            "addr_mode": AddrMode.SHORT,
+            "mic_length": MicLength.BITS32,
         }
         defaults.update(kw)
         return LichenFrame(**defaults)  # type: ignore[arg-type]
@@ -158,9 +162,7 @@ class TestValidation:
                 raise AssertionError("payload was concatenated before bounds check")
 
         with pytest.raises(FrameError, match="exceeds 254"):
-            self._base(
-                dst_addr=b"", addr_mode=AddrMode.NONE, payload=ExplodingPayload()
-            ).to_bytes()
+            self._base(dst_addr=b"", addr_mode=AddrMode.NONE, payload=ExplodingPayload()).to_bytes()
 
 
 class TestAddrModeLookup:
@@ -233,12 +235,12 @@ class TestParseErrors:
             LichenFrame.from_bytes(b"\x04\x01\x00\x00\x00")
 
     def test_signature_present_requires_48_byte_mic(self) -> None:
-        data = bytes.fromhex("12" "20" "00" "0000" + "00" * 10 + "deadbeef")
+        data = bytes.fromhex("1220000000" + "00" * 10 + "deadbeef")
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(data)
 
     def test_signature_present_short_payload_parses(self) -> None:
-        data = bytes.fromhex("3a" "20" "00" "0000" + "00" * 6 + "11" * 48)
+        data = bytes.fromhex("3a20000000" + "00" * 6 + "11" * 48)
         frame = LichenFrame.from_bytes(data)
         assert frame.signature_present is True
         assert frame.payload == bytes(6)
@@ -299,8 +301,9 @@ class TestSpecVectors:
 
         assert frame.addr_mode == expected["addr_mode"], f"{name}: addr_mode"
         assert frame.mic_length == expected["mic_length"], f"{name}: mic_length"
-        assert frame.signature_present == expected["signature_present"], \
+        assert frame.signature_present == expected["signature_present"], (
             f"{name}: signature_present"
+        )
         assert frame.encrypted == expected["encrypted"], f"{name}: encrypted"
         assert frame.epoch == expected["epoch"], f"{name}: epoch"
         assert frame.seqnum == expected["seqnum"], f"{name}: seqnum"

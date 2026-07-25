@@ -13,7 +13,7 @@ add_executable(tx_queue_test
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/tx_queue.c
 )
 
-target_compile_definitions(tx_queue_test PRIVATE CONFIG_TX_QUEUE_TEST_TIME)
+target_compile_definitions(tx_queue_test PRIVATE CONFIG_TX_QUEUE_TEST_TIME CONFIG_LICHEN_LINK_MAX_NEIGHBORS=16)
 target_compile_options(tx_queue_test PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(tx_queue_test pthread)
 

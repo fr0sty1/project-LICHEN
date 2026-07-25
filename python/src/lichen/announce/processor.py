@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Announce message processing (spec section 9.3).
-"""
+"""Announce message processing (spec section 9.3)."""
 
 from __future__ import annotations
 
@@ -48,7 +47,7 @@ class AnnounceRejectReason(Enum):
     STALE_SEQNUM = auto()
     HOP_LIMIT_EXCEEDED = auto()
     MALFORMED = auto()
-    KEY_CHANGE_DETECTED = auto()
+    PIN_TABLE_FULL = auto()
 
 
 @dataclass
@@ -66,9 +65,7 @@ class AnnounceProcessor:
     gradient_table: GradientTable
     address_builder: Callable[[bytes], IPv6Address]
     _seen: OrderedDict[bytes, int] = field(default_factory=OrderedDict, repr=False)
-    _pinned_keys: OrderedDict[bytes, bytes] = field(
-        default_factory=OrderedDict, repr=False
-    )
+    _pinned_keys: OrderedDict[bytes, bytes] = field(default_factory=OrderedDict, repr=False)
 
     def process(
         self,
@@ -101,20 +98,6 @@ class AnnounceProcessor:
                 accepted=False,
                 should_relay=False,
                 reject_reason=AnnounceRejectReason.INVALID_SIGNATURE,
-            )
-
-        pinned_pubkey = self._pinned_keys.get(iid)
-        if pinned_pubkey is not None and pinned_pubkey != announce.pubkey:
-            logger.error(
-                "KEY CHANGE DETECTED for IID %s: pinned=%s got=%s — rejecting",
-                iid.hex(),
-                pinned_pubkey.hex()[:16],
-                announce.pubkey.hex()[:16],
-            )
-            return AnnounceResult(
-                accepted=False,
-                should_relay=False,
-                reject_reason=AnnounceRejectReason.KEY_CHANGE_DETECTED,
             )
 
         existing_seq = self._seen.get(iid)
@@ -157,10 +140,19 @@ class AnnounceProcessor:
         )
         self.gradient_table.update(entry, now=now_ms)
 
+        if iid not in self._pinned_keys and len(self._pinned_keys) >= MAX_ENTRIES:
+            logger.warning(
+                "announce pin table full: originator=%s max=%d",
+                iid.hex(),
+                MAX_ENTRIES,
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.PIN_TABLE_FULL,
+            )
         self._pinned_keys[iid] = announce.pubkey
         self._pinned_keys.move_to_end(iid)
-        while len(self._pinned_keys) > MAX_ENTRIES:
-            self._pinned_keys.popitem(last=False)
 
         self._seen[iid] = announce.seq_num
         self._seen.move_to_end(iid)
@@ -190,12 +182,6 @@ class AnnounceProcessor:
         if not announce.should_relay():
             return None
         return announce.with_incremented_hop_count()
-
-    def reset_seen(self, iid: bytes) -> None:
-        self._seen.pop(iid, None)
-
-    def unpin(self, iid: bytes) -> None:
-        self._pinned_keys.pop(iid, None)
 
     def pinned_pubkey_for(self, iid: bytes) -> bytes | None:
         return self._pinned_keys.get(iid)

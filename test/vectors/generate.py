@@ -26,12 +26,7 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.fragment import FragmentSender, compute_mic
 from lichen.schc.headers import compress_packet
 
-
-def hash_32(data: bytes) -> int:
-    h = 0x811c9dc5
-    for b in data:
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
-    return h
+from lichen.sim.tdma import hash_32
 
 
 def _hop_hash(eui: bytes, epoch: int) -> int:
@@ -1664,6 +1659,18 @@ def schc_fragment_vectors() -> list[dict]:
         }
 
     return [
+        {
+            "name": "canonical_crc32",
+            "description": "Canonical CRC-32/ISO-HDLC oracle from external source (RFC 3720 §B.2.1).",
+            "mic": "00c49e49",
+        },
+        {
+            "name": "7tiles",
+            "description": "7 tiles with tile_size=1, window_size=3, rule_id=0x2a, payload=bytes(range(7)).",
+            "rule_id": 0x2a,
+            "packet": "00010203040506",
+            "mic": "16cefd3c",
+        },
         _vector(
             "single_fragment",
             "10111213",
@@ -1691,6 +1698,12 @@ def schc_fragment_vectors() -> list[dict]:
             mode="ack_on_error",
             expect={"out_of_order": True, "retransmits": [0]},
             description="OOO + retransmit on NACK bitmap (RFC 8.4.2).",
+        ),
+        _vector(
+            "window_boundary",
+            "a5" * 29,
+            tile_size=4,
+            description="7 regular tiles in window 0 then All-1 in window 1 (window bit 0->1).",
         ),
     ]
 
@@ -1729,6 +1742,30 @@ def ccp_load_balancing_vectors() -> list[dict]:
             "score": 0.81,
             "action": "prefer_alt_channel_dynamic_slot",
         },
+        {
+            "name": "select_channel_timing_now_near_wrap",
+            "description": "select_channel via hash_32(now() ^ iid) with now near u32 wrap, 8 channels. Independent FNV-1a32 oracle per spec/02a-coordinated-capacity.md.",
+            "eui64_hex": "0011223344556677",
+            "now": 4294967280,
+            "num_channels": 8,
+            "select_channel": 0,
+        },
+        {
+            "name": "select_channel_timing_now_zero",
+            "description": "select_channel via hash_32(now() ^ iid) with now=0 (epoch start), 8 channels. Independent FNV-1a32 oracle.",
+            "eui64_hex": "0011223344556677",
+            "now": 0,
+            "num_channels": 8,
+            "select_channel": 3,
+        },
+        {
+            "name": "select_channel_timing_now_mid",
+            "description": "select_channel via hash_32(now() ^ iid) with mid-range now=12345678, 8 channels. Independent FNV-1a32 oracle.",
+            "eui64_hex": "0011223344556677",
+            "now": 12345678,
+            "num_channels": 8,
+            "select_channel": 2,
+        },
     ]
 
 
@@ -1745,77 +1782,110 @@ def _l2_announce_with_channel(channel: int) -> bytes:
 
 def ccp16_vectors() -> list[dict]:
     eui = bytes.fromhex("0011223344556677")
-    return [
-        {
-            "name": "synchronized_hop_channel_consistency",
-            "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and independent hash_32(FNV-1a32 basis 0x811c9dc5) oracle per spec/02a-coordinated-capacity.md:123. Receiver prediction matches sender.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 1,
-                "density": 3,
-                "snr_db": 12,
-                "now": 4660
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 1),
-                "channel": 2,
-                "expected_channel": 2,
-                "sf": 9,
-                "select_channel": 2,
-                "now": 4660
-            }
-        },
-        {
-            "name": "epoch_wrap_hop_change",
-            "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 0,
-                "density": 4,
-                "snr_db": 5,
-                "now": 100
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 0),
-                "channel": 2,
-                "expected_channel": 2,
-                "sf": 10,
-                "select_channel": 2,
-                "now": 100
-            }
-        },
-        {
-            "name": "select_channel_timing_test",
-            "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per spec/02a-coordinated-capacity.md:123 and 09-packets-timing.md. Independent oracle.",
-            "type": "slot_selection",
-            "input": {
-                "eui64": "0011223344556677",
-                "epoch": 0,
-                "density": 9,
-                "snr_db": -1,
-                "now": 0xfffffff0
-            },
-            "output": {
-                "hash_32": _hop_hash(eui, 0),
-                "channel": 0,
-                "expected_channel": 0,
-                "sf": 11,
-                "select_channel": 0,
-                "now": 0xfffffff0
-            }
+
+    def _v(name, desc, epoch, density, snr, now, load=0, nch=3):
+        h = _hop_hash(eui, epoch)
+        if density > 20 or snr < -5:
+            sf = 12
+        elif density > 8 or snr < 0 or load > 0.8:
+            sf = 11
+        elif density < 5 and snr > 8:
+            sf = 9
+        else:
+            sf = 10
+        ch = 0 if density > 8 else (1 + (h % nch))
+        inp = {
+            "eui64": "0011223344556677",
+            "epoch": epoch,
+            "density": density,
+            "snr_db": snr,
+            "now": now,
         }
+        if load:
+            inp["load_factor"] = load
+        return {
+            "name": name,
+            "description": desc,
+            "type": "slot_selection",
+            "input": inp,
+            "output": {
+                "hash_32": h,
+                "channel": ch,
+                "expected_channel": ch,
+                "sf": sf,
+                "select_channel": ch,
+                "now": now,
+            },
+        }
+
+    return [
+        _v(
+            "synchronized_hop_channel_consistency",
+            "synchronized_hop_channel yields expected per CCP-12 pseudocode and independent hash_32 oracle. sf=9: density<5 AND snr>8.",
+            1, 3, 12, 4660,
+        ),
+        _v(
+            "epoch_wrap_hop_change",
+            "Epoch increment changes hop sequence. Tests desync recovery. sf=10: default branch (no thresholds triggered).",
+            0, 4, 5, 100,
+        ),
+        _v(
+            "select_channel_timing_test",
+            "density>8 triggers CH0 fallback with sf=11 (density>8) and now near u32 wrap.",
+            0, 9, -1, 0xfffffff0,
+        ),
+        _v(
+            "select_channel_sf12_high_density",
+            "density>20 triggers sf=12 (max SF). Channel forced to 0 by density>8.",
+            0, 25, 5, 0,
+        ),
+        _v(
+            "select_channel_sf12_low_snr",
+            "snr<-5 triggers sf=12. Channel computed via hash (density<=8 so non-zero).",
+            2, 4, -10, 500,
+        ),
+        _v(
+            "select_channel_sf11_snr_threshold",
+            "snr<0 triggers sf=11. Channel via hash.",
+            3, 6, -3, 1000,
+        ),
+        _v(
+            "select_channel_sf11_load_threshold",
+            "load>0.8 triggers sf=11. density<=8 so channel via hash.",
+            4, 5, 5, 1500, load=0.9,
+        ),
+        _v(
+            "select_channel_sf9_low_density_high_snr",
+            "density<5 and snr>8 triggers sf=9 upgrade. Channel via hash.",
+            5, 2, 15, 2000,
+        ),
+        _v(
+            "select_channel_default_sf10",
+            "sf=10 default: no thresholds triggered. Channel via hash.",
+            6, 7, 3, 2500,
+        ),
+        _v(
+            "select_channel_density_high_ch0",
+            "density=10 forces channel 0, sf=11 (density>8).",
+            7, 10, 5, 3000,
+        ),
+        _v(
+            "select_channel_sfn_wrap_now",
+            "now=0 (SFN base) with moderate density/snr. Tests edge of u32 domain.",
+            8, 5, 7, 0,
+        ),
     ]
 
 
-def _sync_hop_hash(seed: int, sfn: int) -> int:
-    return hash_32(seed.to_bytes(4, "little") + (sfn & 0xffffffff).to_bytes(4, "little"))
+def _sync_hop_hash(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    data = seed.to_bytes(4, "little") + ((sfn & 0xffffffff).to_bytes(4, "little"))
+    return hash_32(data)
 
 
 def _sync_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    h = _sync_hop_hash(sfn, seed, num_channels)
     n = max(num_channels, 3)
-    return 1 + (_sync_hop_hash(seed, sfn) % n)
+    return 1 + (h % n)
 
 
 def ccp12_synchronized_hop_vectors() -> list[dict]:
@@ -1825,27 +1895,18 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 0,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 6,
-            "hash_32": hash_32(b"\x00\x00\x00\x00\x00\x00\x00\x00"),
-            "description": "SFN=0 selects channel via hash_32(seed||sfn) per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
+            "expected_channel": _sync_hop_channel(0, 0, 8),
+            "hash_32": _sync_hop_hash(0, 0, 8),
+            "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
         },
         {
             "name": "hop_sfn1_16ch",
             "sfn": 1,
             "seed": 42,
             "num_channels": 16,
-            "expected_channel": 15,
-            "hash_32": _sync_hop_hash(42, 1),
-            "description": "SFN=1, seed=42 selects channel via hash_32 per spec 02a:120. Independent oracle.",
-        },
-        {
-            "name": "hop_sfn4294967295_8ch",
-            "sfn": 0xffffffff,
-            "seed": 42,
-            "num_channels": 8,
-            "expected_channel": 4,
-            "hash_32": _sync_hop_hash(42, 0xffffffff),
-            "description": "SFN wraparound with non-zero seed via hash_32 per spec 02a:120. Independent oracle.",
+            "expected_channel": _sync_hop_channel(1, 42, 16),
+            "hash_32": _sync_hop_hash(1, 42, 16),
+            "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
         },
         {
             "name": "density_high_ch0",
@@ -1854,7 +1915,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "num_channels": 8,
             "density": 9,
             "expected_channel": 0,
-            "hash_32": hash_32(b"\x00\x00\x00\x00\x00\x00\x00\x00"),
+            "hash_32": _sync_hop_hash(0, 0, 8),
             "description": "Density>8 returns 0 per SelectChannel pseudocode line 1.",
         },
         {
@@ -1862,8 +1923,8 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 0xffffffff,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 2,
-            "hash_32": _sync_hop_hash(0, 0xffffffff),
+            "expected_channel": _sync_hop_channel(0xffffffff, 0, 8),
+            "hash_32": _sync_hop_hash(0xffffffff, 0, 8),
             "description": "SFN wraparound per spec Now() u32 mod and SelectChannel.",
         },
         {
@@ -1921,6 +1982,16 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
+def cc_density_high(sf: int = 10, density: int = 15, utilization: int = 100) -> int:
+    return min(12, sf + 2) if density > 10 or utilization > 150 else sf
+
+
+def cc_density_low(sf: int, density: int, snr_ema: float) -> int:
+    if density < 5 and snr_ema > 8:
+        return max(7, sf - 1)
+    return sf
+
+
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1929,6 +2000,30 @@ def ccp15_vectors() -> list[dict]:
         ema = 0.1 * load_factor + 0.9 * 0.4
         sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
         v.append({"name": f"seed{seed}","sf":sf,"ema":round(ema,6),"load_factor":round(load_factor,6),"hash_32":f"{h:08x}"})
+    v.append({
+        "name": "density_estimate_high",
+        "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2→12 with density=15, utilization=100.",
+        "assigned_sf": 10,
+        "density": 15,
+        "utilization": 100,
+        "load_factor": 0.3,
+        "neighbor_snr_ema": 5,
+        "neighbor_loss": 0.05,
+        "expected_sf": cc_density_high(sf=10, density=15, utilization=100),
+        "tx_allowed": True,
+    })
+    v.append({
+        "name": "sf_selection_low_density_capacity",
+        "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1→9 with density=3, SNR_EMA=10.",
+        "assigned_sf": 10,
+        "density": 3,
+        "utilization": 50,
+        "load_factor": 0.2,
+        "neighbor_snr_ema": 10,
+        "neighbor_loss": 0.02,
+        "expected_sf": cc_density_low(sf=10, density=3, snr_ema=10),
+        "tx_allowed": True,
+    })
     return v
 
 
@@ -2014,15 +2109,15 @@ def rpl_messages_vectors() -> list[dict]:
             "name": "dio_base",
             "type": "dio",
             "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
-            "encoded": "01001e0001000000000000000000000000000000",
-            "fields": {"rpl_instance_id": 0, "version": 1, "rank": 256, "grounded": True},
+            "encoded": "0001010091000000fd000000000000000000000000000001",
+            "fields": {"rpl_instance_id": 0, "version": 1, "rank": 256, "grounded": True, "mode_of_operation": 2, "preference": 1, "dtsn": 0, "flags": 0, "dodag_id": "fd00::1"},
         },
         {
             "name": "dao_base",
             "type": "dao",
             "description": "Base RPL DAO with DODAGID (RFC 6550).",
-            "encoded": "0201050000000000000000000000000000000000",
-            "fields": {"rpl_instance_id": 0, "dao_sequence": 5},
+            "encoded": "00000005",
+            "fields": {"rpl_instance_id": 0, "dao_sequence": 5, "ack_requested": False, "flags": 0, "dodag_id": None},
         },
     ]
 
@@ -2040,7 +2135,7 @@ def ipv6_malformed_vectors() -> list[dict]:
     bad_t[40] = 0
     udp_good = _udp_ipv6(ll_src, ll_dst, b"data")
     bad_u = bytearray(udp_good)
-    bad_u[44] = 0
+    bad_u[45] = 0
     cases = [
         ("packet_version", bytes(bad_ver), "packet_version"),
         ("icmpv6_too_short", short, "icmpv6_too_short"),
@@ -2157,7 +2252,7 @@ def edhoc_vectors() -> list[dict]:
     """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds, records PRK, OscoreContext, TH, messages, keys (oscore/schnorr48 pattern). Python reference oracle only."""
     import os
     from lichen.crypto.identity import Identity
-    from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder, _edhoc_kdf
+    from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
     old = os.urandom
     os.urandom = lambda n: bytes([0x42] * n)
     try:
@@ -2169,15 +2264,18 @@ def edhoc_vectors() -> list[dict]:
         m2 = resp.process_message_1(m1, i.pubkey)
         m3 = init.process_message_2(m2, r.pubkey)
         resp.process_message_3(m3, i.pubkey)
-        th_2 = init._th_2
-        th_3 = init._th_3
-        th_4 = init._th_4
-        prk_2e = init._prk_2e
-        prk_3e2m = init._prk_3e2m
-        prk_4e3m = init._prk_4e3m
-        prk_out = _edhoc_kdf(prk_4e3m, th_4, 7, th_4, 32)
-        prk_exporter = _edhoc_kdf(prk_out, th_4, 10, b"", 32)
-        ctx = init.export_oscore()
+        # Capture state BEFORE export_oscore clears it
+        prk_2e = init._prk_2e.hex()
+        prk_3e2m = init._prk_3e2m.hex()
+        prk_4e3m = init._prk_4e3m.hex()
+        th_2 = init._th_2.hex()
+        th_3 = init._th_3.hex()
+        th_4 = init._th_4.hex()
+        r_th_2 = resp._th_2.hex()
+        r_th_3 = resp._th_3.hex()
+        r_th_4 = resp._th_4.hex()
+        ctx_i = init.export_oscore()
+        ctx_r = resp.export_oscore()
         return [{
             "name": "fixed_seed_sign_sign",
             "seed_i": bytes(range(32)).hex(),
@@ -2185,17 +2283,19 @@ def edhoc_vectors() -> list[dict]:
             "msg1": m1.hex(),
             "msg2": m2.hex(),
             "msg3": m3.hex(),
-            "prk_2e": prk_2e.hex(),
-            "prk_3e2m": prk_3e2m.hex(),
-            "prk_4e3m": prk_4e3m.hex(),
-            "th_2": th_2.hex(),
-            "th_3": th_3.hex(),
-            "th_4": th_4.hex(),
-            "prk_out": prk_out.hex(),
-            "prk_exporter": prk_exporter.hex(),
-            "oscore_master_secret": ctx.master_secret.hex(),
-            "oscore_master_salt": ctx.master_salt.hex(),
-            "oscore_sender_id": ctx.sender_id.hex(),
+            "prk_2e": prk_2e,
+            "prk_3e2m": prk_3e2m,
+            "prk_4e3m": prk_4e3m,
+            "th_2": th_2,
+            "th_3": th_3,
+            "th_4": th_4,
+            "responder_th_2": r_th_2,
+            "responder_th_3": r_th_3,
+            "responder_th_4": r_th_4,
+            "oscore_master_secret": ctx_i.master_secret.hex(),
+            "oscore_master_salt": ctx_i.master_salt.hex(),
+            "oscore_sender_id": ctx_i.sender_id.hex(),
+            "oscore_recipient_id": ctx_r.sender_id.hex(),
         }]
     finally:
         os.urandom = old

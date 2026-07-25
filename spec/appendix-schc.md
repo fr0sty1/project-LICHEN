@@ -10,7 +10,7 @@ See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T
 | Rule ID | Use Case | Compressed Size | Notes |
 |---------|----------|-----------------|-------|
 | 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports MSB(12)/LSB(4) for CoAP/SenML range |
-| 1 | Mesh-local IPv6 + UDP + CoAP | ~26 bytes + tail | MSB(64)/LSB(64) IID-only for addresses matching /64 prefix |
+| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | 02xx source, full dst as needed |
 | 2 | ICMPv6 Echo | 3 bytes | Type 128/129, Code=0 not-sent |
 | 3 | RPL DIO (link-local) | 8 bytes | ICMPv6 type=155/code=0 + options |
 | 4 | RPL DAO (routable 02xx source for multi-hop) | 6 bytes | Multi-hop source preservation |
@@ -25,7 +25,7 @@ Current constants (Rust/C synchronized):
 | Rule ID | Name | Use Case |
 |---------|------|----------|
 | 0 | LINK_LOCAL_COAP | Link-local IPv6 + UDP + CoAP |
-| 1 | GLOBAL_COAP | Mesh-local IPv6 + UDP + CoAP |
+| 1 | GLOBAL_COAP | Global IPv6 + UDP + CoAP |
 | 2 | ICMPV6_ECHO | ICMPv6 Echo Request/Reply |
 | 3 | RPL_DIO | RPL DIO over link-local ICMPv6 |
 | 4 | RPL_DAO | RPL DAO with DODAGID over link-local ICMPv6 |
@@ -35,7 +35,7 @@ Current constants (Rust/C synchronized):
 | 8 | SRH | RPL Source Routing Header wrapper (NH=43) |
 | 255 | UNCOMPRESSED | No compression (full headers passthrough) |
 
-See rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/include/lichen/schc.h:93, constants.toml:29-36, and test/vectors/schc_compression.json for exact matching logic and test vectors. Fragmentation uses [schc.fragment]: M=1, N=6, T=0, RCS=4 bytes, RETX=10s, MAX_ACK=3, INACTIVITY=60s (MSB-first bitmap).
+See rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/include/lichen/schc.h:93, constants.toml:29-36, and test/vectors/schc_compression.json for exact matching logic and test vectors. Fragmentation uses [schc.fragment]: M=1, N=6, T=0, WINDOW_SIZE=63, RCS=4 bytes, RETX=10s, MAX_ACK=4, INACTIVITY=60s (MSB-first bitmap).
 
 ## A.2. Fragmentation (from constants.toml [schc.fragment])
 
@@ -55,7 +55,7 @@ No deviid/port-MSB optimizations yet. Hop limit value-sent. Exact descriptors an
 
 Rules 3/4 compress base fields (IPv6+ICMPv6+RPL base). Options use MATCH_MAPPING on Type field (prioritized list of common TLVs) + per-type descriptors.
 
-The mapping contains 4 common RPL option types: Pad1(type=0, index 0), PIO(type=3, index 1), DAG Metric(type=2, index 2), Target(type=5, index 3). `mapping_bits() = (len(mapping)-1).bit_length()` bits for the residue index; e.g., a mapping with 6 options yields `(6-1).bit_length() = 3` bits (see `python/src/lichen/schc/rules.py:131`).
+The mapping contains 4 common RPL option types: Pad1(type=0, index 0), PIO(type=3, index 1), DAG Metric(type=2, index 2), Target(type=5, index 3). `mapping_bits() = (4-1).bit_length() = 2` bits for the residue index (see `python/src/lichen/schc/rules.py:131`).
 
 For PIO (type=3, common for prefix ads):
 

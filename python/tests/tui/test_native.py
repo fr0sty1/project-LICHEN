@@ -179,9 +179,7 @@ class FakeMessagingClient:
                 CoapResult(
                     code="2.05",
                     payload={
-                        "records": [
-                            {"level": "warn", "module": "coap", "message": "timeout"}
-                        ]
+                        "records": [{"level": "warn", "module": "coap", "message": "timeout"}]
                     },
                 )
             ]
@@ -648,9 +646,7 @@ async def test_message_send_failure_marks_failed_and_preserves_draft() -> None:
 
 
 async def test_message_rejection_without_detail_is_error_and_recovery_clears_status() -> None:
-    client = FakeMessagingClient(
-        result=SendResult(state=DeliveryState.REJECTED, coap_code="4.04")
-    )
+    client = FakeMessagingClient(result=SendResult(state=DeliveryState.REJECTED, coap_code="4.04"))
     app = NativeClientApp(
         ShellStatus(context="Chats", state=UiState.SYNCED),
         client=client,

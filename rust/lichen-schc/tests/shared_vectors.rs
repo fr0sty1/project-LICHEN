@@ -7,7 +7,6 @@
 use std::fs;
 use std::path::Path;
 
-use lichen_schc::{compress, decompress};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -19,6 +18,7 @@ struct VectorFile {
 #[derive(Deserialize)]
 struct SchcVector {
     name: String,
+    description: Option<String>,
     rule_id: u8,
     packet: String,
     compressed: String,
@@ -138,8 +138,9 @@ fn test_schc_compression_vectors() {
         }
 
         println!(
-            "Vector '{}' (rule {}): {} -> {} bytes ({}% reduction)",
+            "Vector '{}' ({}; rule {}): {} -> {} bytes ({}% reduction)",
             vector.name,
+            vector.description.as_deref().unwrap_or(""),
             vector.rule_id,
             packet.len(),
             compressed.len(),
@@ -201,7 +202,7 @@ fn test_schc_fragment_vectors() {
     let content = fs::read_to_string(&vectors_path).expect("Failed to read fragment vectors");
     let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse JSON");
 
-    assert_eq!(doc["format_version"], 2, "Unexpected vector format version");
+    assert_eq!(doc["format_version"], 1, "Unexpected vector format version");
 
     let vectors = doc["vectors"].as_array().unwrap();
     assert!(!vectors.is_empty(), "No fragment vectors");

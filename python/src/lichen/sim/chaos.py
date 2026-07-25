@@ -120,9 +120,7 @@ class LossRule(ChaosRule):
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.loss_probability <= 1.0:
-            raise ValueError(
-                f"loss_probability must be in [0, 1], got {self.loss_probability}"
-            )
+            raise ValueError(f"loss_probability must be in [0, 1], got {self.loss_probability}")
 
     def matches(self, tx: Transmission, rx_node_id: str) -> bool:
         """Match if node_id is sender (tx) or receiver (rx) based on direction."""
@@ -346,9 +344,7 @@ class TxJitterRule(ChaosRule):
 
     def __post_init__(self) -> None:
         if self.jitter_min_us < 0:
-            raise ValueError(
-                f"jitter_min_us must be non-negative, got {self.jitter_min_us}"
-            )
+            raise ValueError(f"jitter_min_us must be non-negative, got {self.jitter_min_us}")
         if self.jitter_max_us < self.jitter_min_us:
             raise ValueError(
                 f"jitter_max_us ({self.jitter_max_us}) must be >= "

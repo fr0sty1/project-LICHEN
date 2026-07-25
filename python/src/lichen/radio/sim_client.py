@@ -101,14 +101,10 @@ class SimRadio:
             raise ValueError("sim_id and node_id cannot be empty")
         sim_id_bytes = sim_id.encode("utf-8")
         if len(sim_id_bytes) > MAX_ID_LENGTH:
-            raise ValueError(
-                f"sim_id too long: {len(sim_id_bytes)} > {MAX_ID_LENGTH} bytes"
-            )
+            raise ValueError(f"sim_id too long: {len(sim_id_bytes)} > {MAX_ID_LENGTH} bytes")
         node_id_bytes = node_id.encode("utf-8")
         if len(node_id_bytes) > MAX_ID_LENGTH:
-            raise ValueError(
-                f"node_id too long: {len(node_id_bytes)} > {MAX_ID_LENGTH} bytes"
-            )
+            raise ValueError(f"node_id too long: {len(node_id_bytes)} > {MAX_ID_LENGTH} bytes")
         self._host = host
         self._port = port
         self._sim_id = sim_id
@@ -135,11 +131,8 @@ class SimRadio:
             raise SimRadioError("Empty simulator response")
         msg_type = get_message_type(response)
         if len(response) < 2 and msg_type in (MSG_ERR, MSG_RX_PACKET, MSG_TIME_OK):
-            raise SimRadioError(
-                f"Simulator response type 0x{msg_type:02x} too short for payload"
-            )
+            raise SimRadioError(f"Simulator response type 0x{msg_type:02x} too short for payload")
         return msg_type
-
 
     async def connect(self) -> None:
         """Open TCP connection to the simulator and register this node.
@@ -209,11 +202,13 @@ class SimRadio:
         msg_type = self._validate_response(response)
         if msg_type == MSG_TX_DONE:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.info("tx",node_id=self._node_id,len=len(payload),packet_hash=packet_hash)
+            logger.info("tx", node_id=self._node_id, len=len(payload), packet_hash=packet_hash)
             return True
         elif msg_type == MSG_TX_FAIL:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.warning("tx_fail",node_id=self._node_id,len=len(payload),packet_hash=packet_hash)
+            logger.warning(
+                "tx_fail", node_id=self._node_id, len=len(payload), packet_hash=packet_hash
+            )
             return False
         elif msg_type == MSG_ERR:
             code, err_msg = decode_err(response[1:])
@@ -238,7 +233,14 @@ class SimRadio:
         if msg_type == MSG_RX_PACKET:
             payload, rssi, snr = decode_rx_packet(response[1:])
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.info("rx",node_id=self._node_id,len=len(payload),rssi=rssi,snr=snr,packet_hash=packet_hash)
+            logger.info(
+                "rx",
+                node_id=self._node_id,
+                len=len(payload),
+                rssi=rssi,
+                snr=snr,
+                packet_hash=packet_hash,
+            )
             return (payload, rssi, snr)
         elif msg_type == MSG_RX_TIMEOUT_PUSH:
             return None

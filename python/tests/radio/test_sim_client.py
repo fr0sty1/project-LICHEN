@@ -47,9 +47,7 @@ class MockServer:
 
     async def start(self) -> None:
         """Start the mock server on a random port."""
-        self._server = await asyncio.start_server(
-            self._handle_client, host="127.0.0.1", port=0
-        )
+        self._server = await asyncio.start_server(self._handle_client, host="127.0.0.1", port=0)
         # Get the assigned port
         addr = self._server.sockets[0].getsockname()
         self._port = addr[1]
@@ -78,9 +76,7 @@ class MockServer:
         (msg_len,) = struct.unpack("<I", length_data)
         return await reader.readexactly(msg_len)
 
-    async def _send_message(
-        self, writer: asyncio.StreamWriter, data: bytes
-    ) -> None:
+    async def _send_message(self, writer: asyncio.StreamWriter, data: bytes) -> None:
         """Send a length-prefixed message."""
         frame = struct.pack("<I", len(data)) + data
         writer.write(frame)
@@ -261,9 +257,7 @@ async def test_context_manager(mock_server: MockServer) -> None:
     """Test async context manager."""
     mock_server.responses = [encode_ok()]
 
-    async with SimRadio(
-        "127.0.0.1", mock_server.port, "sim1", "node1", (0, 0, 0)
-    ) as radio:
+    async with SimRadio("127.0.0.1", mock_server.port, "sim1", "node1", (0, 0, 0)) as radio:
         # Should be connected
         assert radio._stream is not None
 
@@ -310,9 +304,7 @@ async def test_recv_rejects_oversized_message() -> None:
     arrive (so this test would hang rather than pass).
     """
 
-    async def handle(
-        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-    ) -> None:
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         # Consume the REGISTER frame the client sends on connect.
         (n,) = struct.unpack("<I", await reader.readexactly(4))
         await reader.readexactly(n)

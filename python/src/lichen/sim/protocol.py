@@ -73,9 +73,7 @@ def _check_range(name: str, value: int, lo: int, hi: int) -> None:
         raise ProtocolError(f"{name} out of range: {value} not in [{lo}, {hi}]")
 
 
-def encode_register(
-    sim_id: str, node_id: str, x: float, y: float, z: float
-) -> bytes:
+def encode_register(sim_id: str, node_id: str, x: float, y: float, z: float) -> bytes:
     """Encode a REGISTER message.
 
     Format:
@@ -187,7 +185,7 @@ def decode_tx(data: bytes) -> tuple[bytes, int]:
         payload_start = 2
     if len(data) < payload_start + payload_len:
         raise ProtocolError("TX message truncated at payload")
-    return data[payload_start:payload_start + payload_len], channel
+    return data[payload_start : payload_start + payload_len], channel
 
 
 def encode_tx_done(airtime_us: int) -> bytes:
@@ -293,17 +291,11 @@ def encode_rx_packet(payload: bytes, rssi: int, snr: int) -> bytes:
             in an int16.
     """
     if len(payload) > MAX_PAYLOAD_LENGTH:
-        raise ProtocolError(
-            f"payload too long: {len(payload)} > {MAX_PAYLOAD_LENGTH}"
-        )
+        raise ProtocolError(f"payload too long: {len(payload)} > {MAX_PAYLOAD_LENGTH}")
     _check_range("rssi", rssi, _INT16_MIN, _INT16_MAX)
     _check_range("snr", snr, _INT16_MIN, _INT16_MAX)
 
-    return (
-        struct.pack("<BH", MSG_RX_PACKET, len(payload))
-        + payload
-        + struct.pack("<hh", rssi, snr)
-    )
+    return struct.pack("<BH", MSG_RX_PACKET, len(payload)) + payload + struct.pack("<hh", rssi, snr)
 
 
 def decode_rx_packet(data: bytes) -> tuple[bytes, int, int]:
@@ -474,9 +466,7 @@ def encode_err(code: int, msg: str) -> bytes:
     msg_bytes = msg.encode("utf-8")
 
     if len(msg_bytes) > MAX_ERR_MSG_LENGTH:
-        raise ProtocolError(
-            f"error message too long: {len(msg_bytes)} > {MAX_ERR_MSG_LENGTH}"
-        )
+        raise ProtocolError(f"error message too long: {len(msg_bytes)} > {MAX_ERR_MSG_LENGTH}")
 
     return struct.pack("<BBB", MSG_ERR, code, len(msg_bytes)) + msg_bytes
 
@@ -546,7 +536,7 @@ def get_message_payload(data: bytes) -> bytes:
 
 def hop_channel(sfn: int, eui64: bytes, num_channels: int = 8, epoch: int = 0) -> int:
     """Deterministic synchronized hop per spec/02a-coordinated-capacity.md:120-125 using hash_32(test/vectors/generate.py:30) as oracle."""
-    data = eui64 + ((sfn + epoch) & 0xffffffff).to_bytes(4, "little")
+    data = eui64 + ((sfn + epoch) & 0xFFFFFFFF).to_bytes(4, "little")
     h = hash_32(data)
     n = max(num_channels, 3)
     return 1 + (h % n)

@@ -275,12 +275,8 @@ class TestPythonToRust:
             assert parsed["mic_length"] == fields["mic_length"], (
                 f"Vector '{name}': mic_length mismatch"
             )
-            assert parsed["dst_addr"] == fields["dst_addr"], (
-                f"Vector '{name}': dst_addr mismatch"
-            )
-            assert parsed["payload"] == fields["payload"], (
-                f"Vector '{name}': payload mismatch"
-            )
+            assert parsed["dst_addr"] == fields["dst_addr"], f"Vector '{name}': dst_addr mismatch"
+            assert parsed["payload"] == fields["payload"], f"Vector '{name}': payload mismatch"
             assert parsed["mic"] == fields["mic"], f"Vector '{name}': mic mismatch"
             assert parsed["total_len"] == len(bytes.fromhex(vector["encoded"])), (
                 f"Vector '{name}': length mismatch"

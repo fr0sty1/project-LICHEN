@@ -33,26 +33,21 @@ async def _setup(*, config_allow_writes: bool = False):
     # Mesh node: serves /status, /neighbors, /config
     node_info = _mesh_node_info()
     mesh_node = await create_lichen_context(
-        mesh_net.channel("fd00::2"), "fd00::2",
+        mesh_net.channel("fd00::2"),
+        "fd00::2",
         site=build_site(node_info, config_allow_writes=config_allow_writes),
     )
 
     # Gateway mesh-side client (used by the proxy to forward requests)
-    gw_mesh_client = await create_lichen_context(
-        mesh_net.channel("fd00::1"), "fd00::1"
-    )
+    gw_mesh_client = await create_lichen_context(mesh_net.channel("fd00::1"), "fd00::1")
 
     # Gateway local server: proxy resource + its own status resource
     gw_info = StaticNodeInfo(status={"rank": 256, "role": "root"})
     gw_site = build_site(gw_info, mesh_client=gw_mesh_client)
-    gateway = await create_lichen_context(
-        local_net.channel("gw"), "gw", site=gw_site
-    )
+    gateway = await create_lichen_context(local_net.channel("gw"), "gw", site=gw_site)
 
     # Local client
-    local_client = await create_lichen_context(
-        local_net.channel("client"), "client"
-    )
+    local_client = await create_lichen_context(local_net.channel("client"), "client")
 
     return local_client, gateway, mesh_node, gw_mesh_client
 
@@ -110,9 +105,7 @@ class TestProxyForwardGet:
         """The gateway's own /status resource still works alongside the proxy."""
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
-            resp = await local_client.request(
-                Message(code=GET, uri="coap://gw/status")
-            ).response
+            resp = await local_client.request(Message(code=GET, uri="coap://gw/status")).response
             data = cbor2.loads(resp.payload)
             assert data["role"] == "root"  # gateway's own info, not mesh node's
         finally:
@@ -150,9 +143,7 @@ class TestProxyErrors:
         """A request to /proxy without Proxy-Uri returns 4.00 Bad Request."""
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
-            resp = await local_client.request(
-                Message(code=GET, uri="coap://gw/proxy")
-            ).response
+            resp = await local_client.request(Message(code=GET, uri="coap://gw/proxy")).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
             await _teardown(local_client, gateway, mesh_node, gw_mesh)
@@ -248,14 +239,10 @@ class TestBuildSite:
         """build_site without mesh_client does not expose /proxy."""
         net = InMemoryNetwork()
         info = StaticNodeInfo(status={"rank": 1})
-        ctx = await create_lichen_context(
-            net.channel("srv"), "srv", site=build_site(info)
-        )
+        ctx = await create_lichen_context(net.channel("srv"), "srv", site=build_site(info))
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/proxy")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/proxy")).response
             assert resp.code == aiocoap.NOT_FOUND
 
             core = await client.request(
@@ -275,14 +262,14 @@ class TestBuildSite:
 
         mesh_node_info = StaticNodeInfo(status={"rank": 1})
         mesh_node = await create_lichen_context(
-            mesh_net.channel("fd00::2"), "fd00::2",
+            mesh_net.channel("fd00::2"),
+            "fd00::2",
             site=build_site(mesh_node_info),
         )
-        gw_mesh_client = await create_lichen_context(
-            mesh_net.channel("fd00::1"), "fd00::1"
-        )
+        gw_mesh_client = await create_lichen_context(mesh_net.channel("fd00::1"), "fd00::1")
         gw = await create_lichen_context(
-            local_net.channel("gw"), "gw",
+            local_net.channel("gw"),
+            "gw",
             site=build_site(StaticNodeInfo(), mesh_client=gw_mesh_client),
         )
         cli = await create_lichen_context(local_net.channel("cli"), "cli")
@@ -301,18 +288,15 @@ class TestBuildSite:
         """Discovery advertises optional /proxy and not a /mesh proxy alias."""
         mesh_net = InMemoryNetwork()
         local_net = InMemoryNetwork()
-        gw_mesh_client = await create_lichen_context(
-            mesh_net.channel("fd00::1"), "fd00::1"
-        )
+        gw_mesh_client = await create_lichen_context(mesh_net.channel("fd00::1"), "fd00::1")
         gw = await create_lichen_context(
-            local_net.channel("gw"), "gw",
+            local_net.channel("gw"),
+            "gw",
             site=build_site(StaticNodeInfo(), mesh_client=gw_mesh_client),
         )
         cli = await create_lichen_context(local_net.channel("cli"), "cli")
         try:
-            resp = await cli.request(
-                Message(code=GET, uri="coap://gw/.well-known/core")
-            ).response
+            resp = await cli.request(Message(code=GET, uri="coap://gw/.well-known/core")).response
             body = resp.payload.decode()
 
             assert "</proxy>" in body

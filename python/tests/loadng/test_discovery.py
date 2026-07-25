@@ -94,9 +94,7 @@ def test_hop_limit_exhausted_drops() -> None:
 
 def test_intermediate_reply_from_gradient() -> None:
     r = _router(M)
-    r.gradient.update(
-        GradientEntry(D, IPv6Address("fe80::9"), 2, 1, GradientSource.RREP, 10_000)
-    )
+    r.gradient.update(GradientEntry(D, IPv6Address("fe80::9"), 2, 1, GradientSource.RREP, 10_000))
     rreq = RREQ(originator=ORIG, destination=D, seq_num=1)
     result = r.process_rreq(rreq, from_neighbor=ORIG, now=0)
     assert result.reply is not None

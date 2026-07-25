@@ -23,6 +23,7 @@ from lichen.constants import L2_DISPATCH_ROUTING, L2_DISPATCH_SCHC
 # Try to import cbor2 for CBOR decoding (optional dependency)
 try:
     import cbor2
+
     HAS_CBOR = True
 except ImportError:
     HAS_CBOR = False
@@ -171,7 +172,7 @@ def _format_hex(data: bytes, max_len: int) -> str:
     hex_str = data.hex()
 
     # Add spacing every 4 chars for readability
-    spaced = " ".join(hex_str[i:i+4] for i in range(0, len(hex_str), 4))
+    spaced = " ".join(hex_str[i : i + 4] for i in range(0, len(hex_str), 4))
 
     result = f"{prefix}{length}B: {spaced}"
     return _truncate(result, max_len)
@@ -181,7 +182,7 @@ def _truncate(s: str, max_len: int) -> str:
     """Truncate string with ellipsis if too long."""
     if len(s) <= max_len:
         return s
-    return s[:max_len - 3] + "..."
+    return s[: max_len - 3] + "..."
 
 
 def is_printable_text(data: bytes) -> bool:

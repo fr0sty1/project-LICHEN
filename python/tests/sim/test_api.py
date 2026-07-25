@@ -43,9 +43,7 @@ class TestSimulationCallbacks:
         async def on_deleted(sim_id: str) -> None:
             deleted.append(sim_id)
 
-        api = SimulatorAPI(
-            on_simulation_created=on_created, on_simulation_deleted=on_deleted
-        )
+        api = SimulatorAPI(on_simulation_created=on_created, on_simulation_deleted=on_deleted)
         transport = ASGITransport(app=api.create_app())
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             await client.post("/sim", json={"id": "sim1"})
@@ -603,9 +601,7 @@ class TestChaosRules:
     async def test_add_latency_rule_missing_node_id(self, client: AsyncClient) -> None:
         """POST /sim/{id}/chaos/latency requires node_id."""
         await client.post("/sim", json={"id": "sim1"})
-        response = await client.post(
-            "/sim/sim1/chaos/latency", json={"added_us": 1000}
-        )
+        response = await client.post("/sim/sim1/chaos/latency", json={"added_us": 1000})
         assert response.status_code == 400
 
     @pytest.mark.asyncio

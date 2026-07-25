@@ -25,15 +25,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <zephyr/sys/util.h>
-
-/* BUILD_ASSERT for non-Zephyr test builds (Zephyr provides via util.h) */
-#ifndef BUILD_ASSERT
-#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
-#endif
 
 #ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
+#else
+/* BUILD_ASSERT for non-Zephyr test builds */
+#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
 #endif
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
@@ -55,6 +52,8 @@ extern "C" {
 
 /** Maximum LICHEN frame payload size (LoRa SF10 255B - overhead) */
 #define LICHEN_MAX_PAYLOAD 200
+#define SLOT_DURATION_MS 250 /* spec/02a-coordinated-capacity.md:2a.2 (100ms guard, hash slot) */
+#define GUARD_TIME_MS 100 /* spec/02a-coordinated-capacity.md:2a.2 validated by ccp16.json */
 
 #ifdef CONFIG_LICHEN_TDMA
 struct LICHEN_TDMA_Slot {
@@ -72,6 +71,15 @@ BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
 
 #define LICHEN_TDMA_GUARD_MS 100 /* spec/02a-coordinated-capacity.md §2a.2 (ccp16.json, ccp_tdma.json) */
 #define LICHEN_TDMA_SLOT_MS 250 /* spec/02a-coordinated-capacity.md §2a.2 hash(EUI64^epoch)%num_slots via lichen_hash_32 */
+#define LICHEN_TDMA_BEACON_TIMEOUT_SUPERFRAMES 3 /* BEACON_TIMEOUT per 09-packets-timing.md FSM */
+#define LICHEN_TDMA_CONTENTION_RETRIES 5 /* Max DAO retransmissions in contention slot */
+#define LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS 100 /* CSMA min backoff */
+#define LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS 1000 /* CSMA max backoff */
+
+#ifdef CONFIG_LICHEN_TDMA
+struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
+#endif
+
 
 /** Maximum destination address length (EUI-64) */
 #define LICHEN_ADDR_MAX 8
@@ -98,7 +106,14 @@ enum lichen_mic_len {
  * @brief Coordination mechanisms per CCP-5 (da2q context)
  *
  * Priority order for negotiation: scheduled > hash_based > announce_driven > fallback
- * Matches ccp9-rendezvous.json test vectors.
+ *
+ * Exact mapping to ccp9-rendezvous.json test vector "mechanism" strings:
+ *   LICHEN_COORD_HASH_BASED      = 0  ↔  "hash_based"
+ *   LICHEN_COORD_SCHEDULED       = 1  ↔  "scheduled"
+ *   LICHEN_COORD_ANNOUNCE_DRIVEN = 2  ↔  "announce_driven"
+ *   LICHEN_COORD_FALLBACK        = 3  ↔  "fallback"
+ *
+ * Implementations MUST serialize/deserialize using these exact strings.
  */
 enum lichen_coordination_mechanism {
 	LICHEN_COORD_HASH_BASED = 0,
@@ -155,6 +170,7 @@ struct lichen_frame {
 	bool encrypted;          /**< Encrypted frame flag; currently unsupported */
 };
 
+#ifdef CONFIG_LICHEN_TDMA
 struct lichen_tdma_ctx {
 	uint32_t superframe;
 	uint8_t slot;
@@ -162,6 +178,7 @@ struct lichen_tdma_ctx {
 	uint16_t slot_duration;
 	bool synced;
 };
+#endif
 
 	/**
  * @brief Parse a LICHEN frame from wire bytes.
@@ -328,19 +345,47 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 		   uint8_t *_Nonnull out_ipv6, size_t *_Nonnull out_len,
 		   uint8_t *_Nonnull src_eui64);
 
-int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, const struct lichen_link_ctx *_Nonnull ctx);
+#ifdef CONFIG_LICHEN_TDMA
+int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, struct lichen_link_ctx *_Nonnull ctx);
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn);
 bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
-uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
+#endif
 
-uint8_t lichen_select_channel(const uint8_t eui64[8], uint32_t epoch, uint8_t density, uint8_t n_channels);
-uint8_t lichen_adaptive_sf_select(uint8_t assigned_sf, int8_t snr_ema, uint8_t density, uint16_t utilization, uint16_t loss_rate_ema, bool *tx_allowed);
+uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 
-static inline int32_t lichen_ema_update_i32(int32_t avg, int32_t sample)
-{
-	return avg + ((sample - avg) >> 2);
-}
+/**
+ * @brief Select a LoRa channel per CCP-12 synchronized hopping.
+ *
+ * Implements the SelectChannel pseudocode from spec/02a-coordinated-capacity.md:120.
+ * Uses FNV-1a32 hash over (EUI-64 || epoch) with the epoch providing the PHY time
+ * sync link — the epoch counter is derived from the link-layer time synchronization
+ * state (see lichen_link_next_tx and lichen_link_set_epoch). Both sender and receiver
+ * compute identical channels for the same (eui64, epoch) pair, enabling deterministic
+ * synchronized frequency hopping without explicit channel negotiation.
+ *
+ * @param[in]  eui64       8-byte EUI-64 address (big-endian)
+ * @param[in]  epoch       Current epoch (PHY time sync value from link context)
+ * @param[in]  density     Neighbor density count (0-8 normal; >8 forces channel 0)
+ * @param[in]  num_channels Number of available channels (clamped to min 3)
+ * @param[out] channel     Selected channel (0 = control channel, or 1..num_channels)
+ *
+ * @return 0 on success, -EINVAL if eui64 or channel is NULL
+ */
+int lichen_link_channel_select(const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN],
+			       uint32_t epoch,
+			       uint8_t density,
+			       uint8_t num_channels,
+			       uint8_t *_Nonnull channel);
+
+#ifdef CONFIG_LICHEN_CCP_TIME_SYNC
+int lichen_time_sync_init(void);
+uint32_t lichen_time_sync_get_sfn(void);
+int lichen_time_sync_set_sfn(uint32_t sfn);
+bool lichen_time_sync_is_synced(void);
+void lichen_time_sync_advance_sfn(void);
+void lichen_time_sync_desync(void);
+#endif
 
 #ifdef __cplusplus
 }

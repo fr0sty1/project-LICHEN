@@ -32,6 +32,8 @@
 use defmt::warn;
 #[cfg(all(feature = "log", not(feature = "defmt")))]
 use log::warn;
+#[cfg(all(feature = "defmt", feature = "log"))]
+use log::warn;
 
 use lichen_coap::codec::{CoapBuilder, CoapPacket};
 use lichen_coap::message::{MessageCode, MessageType};
@@ -52,6 +54,13 @@ pub struct Response {
 impl Response {
     pub fn content(payload: &[u8]) -> Self {
         let payload_len = payload.len().min(256);
+        if payload.len() > 256 {
+            #[cfg(any(feature = "defmt", feature = "log"))]
+            warn!(
+                "Response::content: payload truncated from {} to 256 bytes",
+                payload.len()
+            );
+        }
         let mut resp = Self {
             code: MessageCode::CONTENT,
             content_format: Some(CBOR),
@@ -290,7 +299,7 @@ impl<const N: usize> Dispatcher<N> {
 
 /// Well-known core resource (RFC 6690 discovery).
 pub fn handle_well_known_core(_req: &Request) -> Response {
-    Response::content(b"</sensors>,</config>")
+    Response::content(b"</sensors>,</config>,</deaddrop>,</confessions>")
 }
 
 /// Example sensors resource handler.
@@ -310,14 +319,44 @@ pub fn handle_config_put(req: &Request) -> Response {
     Response::changed()
 }
 
-/// Default dispatcher with /sensors and /config resources.
-pub const fn default_dispatcher() -> Dispatcher<3> {
+/// Dead-drop resource: POST a message for another node, GET to poll.
+pub fn handle_deaddrop_get(_req: &Request) -> Response {
+    Response::content(b"{\"pending\":0}")
+}
+
+pub fn handle_deaddrop_post(req: &Request) -> Response {
+    if req.payload.is_empty() {
+        return Response::bad_request();
+    }
+    Response::changed()
+}
+
+/// Confessions resource: POST an anonymous message, GET to poll.
+pub fn handle_confessions_get(_req: &Request) -> Response {
+    Response::content(b"{\"count\":0}")
+}
+
+pub fn handle_confessions_post(req: &Request) -> Response {
+    if req.payload.is_empty() {
+        return Response::bad_request();
+    }
+    Response::changed()
+}
+
+/// Default dispatcher with /sensors, /config, /deaddrop, and /confessions resources.
+pub const fn default_dispatcher() -> Dispatcher<5> {
     Dispatcher::new([
         Resource::new(&[b".well-known", b"core"]).get(handle_well_known_core),
         Resource::new(&[b"sensors"]).get(handle_sensors_get),
         Resource::new(&[b"config"])
             .get(handle_config_get)
             .put(handle_config_put),
+        Resource::new(&[b"deaddrop"])
+            .get(handle_deaddrop_get)
+            .post(handle_deaddrop_post),
+        Resource::new(&[b"confessions"])
+            .get(handle_confessions_get)
+            .post(handle_confessions_post),
     ])
 }
 
@@ -437,5 +476,96 @@ mod tests {
         let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
         assert_eq!(pkt.code(), MessageCode::CONTENT);
         assert!(pkt.payload().starts_with(b"</sensors>"));
+        assert!(pkt.payload().contains(b"</deaddrop>"));
+        assert!(pkt.payload().contains(b"</confessions>"));
+    }
+
+    #[test]
+    fn dispatch_deaddrop_get() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 64];
+        let req_len = build_get(&["deaddrop"], &mut req_buf);
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::CONTENT);
+    }
+
+    #[test]
+    fn dispatch_deaddrop_post() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 64];
+        let mut builder = CoapBuilder::new(
+            &mut req_buf,
+            MessageType::Confirmable,
+            MessageCode::POST,
+            0x1234,
+            &[],
+        )
+        .unwrap();
+        builder.uri_path("deaddrop").unwrap();
+        builder.payload(b"{\"r\":\"AQIDBAUGBwg=\"}").unwrap();
+        let req_len = builder.finish();
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::CHANGED);
+    }
+
+    #[test]
+    fn dispatch_deaddrop_post_empty() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 64];
+        let mut builder = CoapBuilder::new(
+            &mut req_buf,
+            MessageType::Confirmable,
+            MessageCode::POST,
+            0x1234,
+            &[],
+        )
+        .unwrap();
+        builder.uri_path("deaddrop").unwrap();
+        let req_len = builder.finish();
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn dispatch_confessions_get() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 64];
+        let req_len = build_get(&["confessions"], &mut req_buf);
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::CONTENT);
+    }
+
+    #[test]
+    fn dispatch_confessions_post() {
+        let dispatcher = default_dispatcher();
+        let mut req_buf = [0u8; 64];
+        let mut builder = CoapBuilder::new(
+            &mut req_buf,
+            MessageType::Confirmable,
+            MessageCode::POST,
+            0x1234,
+            &[],
+        )
+        .unwrap();
+        builder.uri_path("confessions").unwrap();
+        builder.payload(b"{\"msg\":\"hello\"}").unwrap();
+        let req_len = builder.finish();
+        let mut resp_buf = [0u8; 256];
+        let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
+        assert!(resp_len.is_some());
+        let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
+        assert_eq!(pkt.code(), MessageCode::CHANGED);
     }
 }

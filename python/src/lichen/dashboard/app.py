@@ -23,7 +23,7 @@ from typing import Any
 
 import cbor2
 import uvicorn
-from aiocoap import GET, Context, Message
+from aiocoap import GET, Context, Message  # type: ignore[import-untyped]  # no official stubs
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
@@ -66,6 +66,7 @@ async def _fetch(path: str) -> Any:
 # HTML rendering helpers
 # ---------------------------------------------------------------------------
 
+
 def _esc(v: Any) -> str:
     return html.escape(str(v))
 
@@ -102,6 +103,7 @@ def _render_list(data: Any, empty_msg: str) -> str:
 # ---------------------------------------------------------------------------
 # Route handlers
 # ---------------------------------------------------------------------------
+
 
 async def index(request: Request) -> HTMLResponse:
     node_display = _node_addr.replace("coap://", "")
@@ -143,8 +145,15 @@ async def partial_location(request: Request) -> HTMLResponse:
 async def partial_mesh_stats(request: Request) -> HTMLResponse:
     """Mock live stats for 500-node conference mesh demo."""
     # TODO: aggregate CoAP from gateways for real topology/packet data.
-    stats = {"nodes": "500/500", "pps": 1243, "loss": "0.3%", "hops": 2.4, "gws": 4, "tdma": "98.7%"}
-    html = f'''<div style="font-size:1.1em;line-height:1.8">
+    stats = {
+        "nodes": "500/500",
+        "pps": 1243,
+        "loss": "0.3%",
+        "hops": 2.4,
+        "gws": 4,
+        "tdma": "98.7%",
+    }
+    html = f"""<div style="font-size:1.1em;line-height:1.8">
 <div><strong>Nodes:</strong> {stats["nodes"]}</div>
 <div><strong>PPS:</strong> {stats["pps"]}</div>
 <div><strong>Loss:</strong> {stats["loss"]}</div>
@@ -154,8 +163,28 @@ async def partial_mesh_stats(request: Request) -> HTMLResponse:
 <div style="margin-top:1rem;font-size:0.8em;color:#58a6ff">Live • 4 gateways</div>
 </div><div style="margin-top:1rem;height:120px;background:#161b22;border:1px solid #30363d;border-radius:4px;position:relative">
 <div style="position:absolute;bottom:10px;left:10px;font-size:0.7em;color:#58a6ff">Converged, no collisions</div>
-</div>'''
+</div>"""
     return HTMLResponse(html)
+
+
+async def partial_confessions(request: Request) -> HTMLResponse:
+    data = await _fetch("/confessions")
+    return HTMLResponse(_render_confessions(data))
+
+
+async def partial_deaddrop(request: Request) -> HTMLResponse:
+    data = await _fetch("/deaddrop")
+    return HTMLResponse(_render_deaddrop(data))
+
+
+async def partial_crowd_map(request: Request) -> HTMLResponse:
+    data = await _fetch("/sensors/location")
+    return HTMLResponse(_render_crowd_map(data))
+
+
+async def partial_telemetry(request: Request) -> HTMLResponse:
+    data = await _fetch("/sensors")
+    return HTMLResponse(_render_telemetry(data))
 
 
 async def api_status(request: Request) -> JSONResponse:
@@ -190,6 +219,147 @@ def _render_senml(data: Any) -> str:
     return f"<table class='kv'>{''.join(rows)}</table>"
 
 
+def _render_confessions(data: Any) -> str:
+    if data is None:
+        return "<p class='err'>Unreachable</p>"
+    if isinstance(data, list):
+        if not data:
+            return "<p class='empty'>No confessions yet</p>"
+        rows = []
+        for entry in data:
+            if isinstance(entry, dict):
+                text = _esc(entry.get("text", entry.get("v", json.dumps(entry))))
+                ts = _esc(str(entry.get("t", entry.get("bt", ""))))
+                rows.append(f"<li><span class='conf-ts'>{ts}</span> {text}</li>")
+            elif isinstance(entry, list):
+                text = _esc(str(entry[1] if len(entry) > 1 else entry[0]))
+                rows.append(f"<li>{text}</li>")
+            else:
+                rows.append(f"<li>{_esc(str(entry))}</li>")
+        return f"<ul class='confessions'>{''.join(rows)}</ul>"
+    return f"<pre>{_esc(json.dumps(data, default=str))}</pre>"
+
+
+def _render_deaddrop(data: Any) -> str:
+    if data is None:
+        return "<p class='err'>Unreachable</p>"
+    if isinstance(data, list):
+        if not data:
+            return "<p class='empty'>No dead drops</p>"
+        rows = []
+        for i, entry in enumerate(data):
+            if isinstance(entry, dict):
+                dest = _esc(entry.get("dest", entry.get("r", "*")))
+                size = _esc(str(entry.get("size", entry.get("v", 0))))
+                expiry = _esc(str(entry.get("expiry", entry.get("bt", ""))))
+                rows.append(
+                    f"<li class='dd-entry'>"
+                    f"<span class='dd-dest'>{dest}</span> "
+                    f"<span class='dd-size'>{size}B</span> "
+                    f"<span class='dd-expiry'>exp {expiry}</span>"
+                    f"</li>"
+                )
+            else:
+                rows.append(f"<li>{_esc(str(entry))}</li>")
+        return f"<ul class='deaddrops'>{''.join(rows)}</ul>"
+    return f"<pre>{_esc(json.dumps(data, default=str))}</pre>"
+
+
+def _render_crowd_map(data: Any) -> str:
+    if data is None:
+        return "<p class='err'>Unreachable</p>"
+    try:
+        lat = lon = None
+        if isinstance(data, list):
+            for entry in data:
+                if isinstance(entry, dict):
+                    n = entry.get("n", "")
+                    v = entry.get("v", None)
+                    if "lat" in str(n).lower():
+                        lat = float(v) if v is not None else None
+                    elif "lon" in str(n).lower() or "lng" in str(n).lower():
+                        lon = float(v) if v is not None else None
+                elif isinstance(entry, list) and len(entry) >= 2:
+                    n, v = entry[0], entry[1]
+                    if "lat" in str(n).lower():
+                        lat = float(v) if v is not None else None
+                    elif "lon" in str(n).lower() or "lng" in str(n).lower():
+                        lon = float(v) if v is not None else None
+        if lat is not None and lon is not None:
+            return (
+                f"<div id='crowd-map-inner' data-lat='{lat}' data-lon='{lon}' "
+                f"style='height:200px;background:#161b22;border:1px solid #30363d;"
+                f"border-radius:4px;display:flex;align-items:center;justify-content:center;"
+                f"color:#58a6ff;font-size:0.85em;'>"
+                f"{lat:.4f}&deg;, {lon:.4f}&deg; &mdash; loading map&hellip;"
+                f"</div>"
+            )
+        return "<p class='empty'>No position data</p>"
+    except (TypeError, ValueError):
+        return f"<pre>{_esc(json.dumps(data, default=str))}</pre>"
+
+
+def _render_telemetry(data: Any) -> str:
+    if data is None:
+        return "<p class='err'>Unreachable</p>"
+    rows = []
+    labels: list[str] = []
+    values: list[float] = []
+    if isinstance(data, list):
+        for entry in data:
+            if isinstance(entry, dict):
+                n = entry.get("n", "")
+                v = entry.get("v", None)
+                u = entry.get("u", "")
+                if v is not None:
+                    labels.append(_esc(str(n)))
+                    value: float | str = _esc(str(v)) if not isinstance(v, (int, float)) else v  # type: ignore[assignment]
+                    if isinstance(value, (int, float)):
+                        values.append(float(value))
+                    else:
+                        values.append(0.0)
+                    rows.append(f"<tr><th>{_esc(str(n))}</th><td>{_esc(str(v))}{' ' + _esc(str(u)) if u else ''}</td></tr>")
+            elif isinstance(entry, list) and len(entry) >= 2:
+                labels.append(_esc(str(entry[0])))
+                v = entry[1]
+                if isinstance(v, (int, float)):
+                    values.append(float(v))
+                u = _esc(str(entry[2])) if len(entry) > 2 else ""
+                rows.append(f"<tr><th>{_esc(str(entry[0]))}</th><td>{_esc(str(v))}{' ' + u if u else ''}</td></tr>")
+    if not rows:
+        return "<p class='empty'>No telemetry</p>"
+    table = f"<table class='kv'>{''.join(rows)}</table>"
+    chart_id = "telemetry-chart"
+    chart_data_json = json.dumps([{"label": l, "value": v} for l, v in zip(labels, values)])
+    chart_js = (
+        f"<canvas id='{chart_id}' width='400' height='160' "
+        f"style='background:#0d1117;border-radius:4px;margin-top:0.5rem;width:100%;height:120px;'></canvas>"
+        f"<script>"
+        f"(function(){{"
+        f"var c=document.getElementById('{chart_id}');"
+        f"if(!c)return;"
+        f"var ctx=c.getContext('2d');"
+        f"var data={chart_data_json};"
+        f"if(!data.length){{ctx.fillStyle='#8b949e';ctx.fillText('no data',10,20);return;}}"
+        f"var w=c.width,h=c.height,pad=10;"
+        f"var max=Math.max(1,...data.map(function(d){{return d.value}}));"
+        f"var col=['#238636','#58a6ff','#d29922','#f85149','#bc8cff','#f0883e'];"
+        f"var bw=(w-2*pad)/data.length;"
+        f"data.forEach(function(d,i){{"
+        f"var bh=(d.value/max)*(h-2*pad);"
+        f"ctx.fillStyle=col[i%col.length];"
+        f"ctx.fillRect(pad+i*bw,h-pad-bh,bw-2,bh);"
+        f"ctx.fillStyle='#e6edf3';"
+        f"ctx.font='9px monospace';"
+        f"var label=d.label.length>6?d.label.slice(0,6):d.label;"
+        f"ctx.fillText(label,pad+i*bw,h-pad+10);"
+        f"}});"
+        f"}})();"
+        f"</script>"
+    )
+    return table + chart_js
+
+
 def create_app() -> Starlette:
     return Starlette(
         routes=[
@@ -201,6 +371,10 @@ def create_app() -> Starlette:
             Route("/partial/sensors", partial_sensors),
             Route("/partial/location", partial_location),
             Route("/partial/mesh-stats", partial_mesh_stats),
+            Route("/partial/confessions", partial_confessions),
+            Route("/partial/deaddrop", partial_deaddrop),
+            Route("/partial/crowd-map", partial_crowd_map),
+            Route("/partial/telemetry", partial_telemetry),
             Route("/api/status", api_status),
         ]
     )
@@ -316,6 +490,37 @@ _PAGE_HTML = """\
     </div>
 
     <div class="card" style="grid-column: span 2;">
+      <h2>Crowd Map <span class="htmx-indicator">&#8635;</span></h2>
+      <div id="crowd-map" hx-get="/partial/crowd-map" hx-trigger="load, every 30s" hx-indicator="closest .card">
+        Loading position&hellip;
+      </div>
+      <div style="margin-top:0.5rem;font-size:0.75em;color:#58a6ff;">
+        Node positions from /sensors/location &mdash; Leaflet.js
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Confessions <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/confessions" hx-trigger="load, every 15s" hx-indicator="closest .card">
+        Loading&hellip;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dead Drops <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/deaddrop" hx-trigger="load, every 20s" hx-indicator="closest .card">
+        Loading&hellip;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Telemetry <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/telemetry" hx-trigger="load, every 10s" hx-indicator="closest .card">
+        Loading&hellip;
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
       <h2>Live Mesh Stats (500 nodes) <span class="htmx-indicator">&#8635;</span></h2>
       <div id="mesh-stats" hx-get="/partial/mesh-stats" hx-trigger="load, every 5s" hx-indicator="closest .card">
         Loading conference mesh stats...
@@ -396,6 +601,7 @@ _PAGE_HTML = """\
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     import argparse

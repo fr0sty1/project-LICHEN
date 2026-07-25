@@ -115,7 +115,9 @@ class FieldDescriptor:
             if len(set(self.mapping)) != len(self.mapping):
                 raise ValueError(f"{self.field_id}: mapping values must be unique")
             if len(self.mapping) < 2:
-                raise ValueError(f"{self.field_id}: mapping must have >=2 elements (use NOT_SENT for single values)")
+                raise ValueError(
+                    f"{self.field_id}: mapping must have >=2 elements (use NOT_SENT for single values)"
+                )
 
     def lsb_bits(self) -> int:
         """Number of residue bits for an LSB action (length_bits - MSB length)."""
@@ -123,8 +125,7 @@ class FieldDescriptor:
             raise ValueError(f"{self.field_id}: LSB requires mo_arg (MSB length)")
         if self.mo_arg > self.length_bits:
             raise ValueError(
-                f"{self.field_id}: mo_arg ({self.mo_arg}) exceeds "
-                f"length_bits ({self.length_bits})"
+                f"{self.field_id}: mo_arg ({self.mo_arg}) exceeds length_bits ({self.length_bits})"
             )
         return self.length_bits - self.mo_arg
 
@@ -197,12 +198,8 @@ COAP_RULE = Rule(
 UDP_PORT_RULE = Rule(
     rule_id=65,
     fields=(
-        FieldDescriptor(
-            "UDP.src_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
-        ),
-        FieldDescriptor(
-            "UDP.dst_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
-        ),
+        FieldDescriptor("UDP.src_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),
+        FieldDescriptor("UDP.dst_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),
     ),
 )
 
@@ -241,8 +238,12 @@ _GLOBAL_PREFIX_TV = 0xFD00 << 112  # fd00::/64 ULA mesh prefix as a 128-bit targ
 def _addr_field(field_id: str, *, link_local: bool) -> FieldDescriptor:
     if link_local:
         return FieldDescriptor(
-            field_id, 128, MO.MSB, CDA.LSB,
-            target_value=_LINK_LOCAL_PREFIX_TV, mo_arg=64,
+            field_id,
+            128,
+            MO.MSB,
+            CDA.LSB,
+            target_value=_LINK_LOCAL_PREFIX_TV,
+            mo_arg=64,
         )
     return FieldDescriptor(
         field_id, 128, MO.MSB, CDA.LSB,
@@ -250,17 +251,13 @@ def _addr_field(field_id: str, *, link_local: bool) -> FieldDescriptor:
     )
 
 
-def _ipv6_header_fields(
-    next_header: int, *, link_local: bool
-) -> tuple[FieldDescriptor, ...]:
+def _ipv6_header_fields(next_header: int, *, link_local: bool) -> tuple[FieldDescriptor, ...]:
     return (
         FieldDescriptor("IPv6.version", 4, MO.EQUAL, CDA.NOT_SENT, target_value=6),
         FieldDescriptor("IPv6.traffic_class", 8, MO.EQUAL, CDA.NOT_SENT),
         FieldDescriptor("IPv6.flow_label", 20, MO.EQUAL, CDA.NOT_SENT),
         FieldDescriptor("IPv6.payload_length", 16, MO.IGNORE, CDA.COMPUTE),
-        FieldDescriptor(
-            "IPv6.next_header", 8, MO.EQUAL, CDA.NOT_SENT, target_value=next_header
-        ),
+        FieldDescriptor("IPv6.next_header", 8, MO.EQUAL, CDA.NOT_SENT, target_value=next_header),
         FieldDescriptor("IPv6.hop_limit", 8, MO.IGNORE, CDA.VALUE_SENT),
         _addr_field("IPv6.src", link_local=link_local),
         _addr_field("IPv6.dst", link_local=link_local),
@@ -269,8 +266,8 @@ def _ipv6_header_fields(
 
 def _udp_fields() -> tuple[FieldDescriptor, ...]:
     return (
-        FieldDescriptor("UDP.src_port", 16, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("UDP.dst_port", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("UDP.src_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),
+        FieldDescriptor("UDP.dst_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12),
         FieldDescriptor("UDP.length", 16, MO.IGNORE, CDA.COMPUTE),
         FieldDescriptor("UDP.checksum", 16, MO.IGNORE, CDA.COMPUTE),
     )
@@ -355,8 +352,7 @@ _DIO_OPTION_FIELDS = (
 )
 RPL_DIO_RULE = Rule(
     rule_id=3,
-    fields=_ipv6_header_fields(58, link_local=True) + _icmpv6_rpl_fields(1)
-    + _DIO_BASE_FIELDS,
+    fields=_ipv6_header_fields(58, link_local=True) + _icmpv6_rpl_fields(1) + _DIO_BASE_FIELDS,
 )
 
 # Rule 4: RPL DAO base object (RFC 6550 6.4) with DODAGID (D flag set), the
@@ -370,8 +366,7 @@ _DAO_BASE_FIELDS = (
 )
 RPL_DAO_RULE = Rule(
     rule_id=4,
-    fields=_ipv6_header_fields(58, link_local=True) + _icmpv6_rpl_fields(2)
-    + _DAO_BASE_FIELDS,
+    fields=_ipv6_header_fields(58, link_local=True) + _icmpv6_rpl_fields(2) + _DAO_BASE_FIELDS,
 )
 
 

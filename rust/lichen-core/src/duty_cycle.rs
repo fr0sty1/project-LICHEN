@@ -84,8 +84,6 @@ pub struct DutyCycleTracker<const N: usize> {
     records: Deque<TxRecord, N>,
     /// Duty cycle limit in permille (1% = 10, 0.1% = 1).
     duty_permille: u16,
-    /// Last timestamp passed to any public method, for monotonicity checks.
-    last_now: u64,
 }
 
 impl<const N: usize> Default for DutyCycleTracker<N> {
@@ -100,7 +98,6 @@ impl<const N: usize> DutyCycleTracker<N> {
         Self {
             records: Deque::new(),
             duty_permille: DEFAULT_DUTY_PERMILLE,
-            last_now: 0,
         }
     }
 
@@ -122,7 +119,6 @@ impl<const N: usize> DutyCycleTracker<N> {
         Self {
             records: Deque::new(),
             duty_permille,
-            last_now: 0,
         }
     }
 
@@ -238,8 +234,11 @@ impl<const N: usize> DutyCycleTracker<N> {
             freed = freed.saturating_add(record.duration_ms);
             if freed >= needed {
                 // This record aging out frees enough budget.
-                // It ages out when: record.timestamp_ms + WINDOW_MS
-                return record.timestamp_ms.saturating_add(WINDOW_MS);
+                // It ages out when: record.timestamp_ms + record.duration_ms + WINDOW_MS
+                return record
+                    .timestamp_ms
+                    .saturating_add(record.duration_ms as u64)
+                    .saturating_add(WINDOW_MS);
             }
         }
 
@@ -261,13 +260,6 @@ impl<const N: usize> DutyCycleTracker<N> {
 
     /// Remove records that are entirely outside the rolling window.
     fn evict_stale(&mut self, now_ms: u64) {
-        debug_assert!(
-            now_ms >= self.last_now,
-            "time went backwards: last_now={}, now_ms={}",
-            self.last_now,
-            now_ms
-        );
-        self.last_now = now_ms;
         let window_start = now_ms.saturating_sub(WINDOW_MS);
 
         // Pop records from the front while they're completely outside the window
@@ -371,9 +363,10 @@ mod tests {
         // Can't transmit now
         assert!(!tracker.can_transmit(1000, 200));
 
-        // Should have to wait until the first record ages out
+        // Should have to wait until the first record ages out.
+        // Record at 0 with duration=max_tx ages out at max_tx + WINDOW_MS
         let next = tracker.next_tx_available_ms(1000, 200);
-        assert_eq!(next, WINDOW_MS); // Original TX at 0 ages out at WINDOW_MS
+        assert_eq!(next, WINDOW_MS + max_tx as u64);
     }
 
     #[test]

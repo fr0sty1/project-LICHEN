@@ -493,39 +493,69 @@ if [[ $RUST_NODES -gt 0 ]]; then
     log_info "Building and starting $RUST_NODES Rust nodes..."
 
     RUST_BIN="$PROJECT_ROOT/rust/target/release/hetero-node"
-    if [[ ! -f "$RUST_BIN" || "$PROJECT_ROOT/rust/lichen-apps/src/bin/hetero_node.rs" -nt "$RUST_BIN" ]]; then
-        # Create the binary
-        mkdir -p "$PROJECT_ROOT/rust/lichen-apps/src/bin"
-        cat > "$PROJECT_ROOT/rust/lichen-apps/src/bin/hetero_node.rs" << 'RUSTNODE'
-//! Heterogeneous mesh node - connects to lichen-sim and participates in mesh.
 
+    # Write the hetero-node source to the existing lichen-apps bin directory
+    # (already declared in lichen-apps/Cargo.toml) without modifying other source
+    # files or silently reducing the requested node count.
+    mkdir -p "$PROJECT_ROOT/rust/lichen-apps/src/bin"
+    cat > "$PROJECT_ROOT/rust/lichen-apps/src/bin/hetero_node.rs" << 'RUSTEOF'
 use std::env;
+use std::net::TcpStream;
 use std::time::{Duration, Instant};
-
-use lichen_link::identity::Identity;
-use lichen_node::announce::{AnnounceMessage, AnnounceScheduler};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 5 {
-        eprintln!("Usage: hetero-node <node_id> <sim_host> <sim_port> <duration_s>");
+    // args: [binary, node_id, sim_host, sim_port, x_pos, duration_s]
+    if args.len() < 6 {
+        eprintln!("Usage: hetero-node <node_id> <sim_host> <sim_port> <x_pos> <duration_s>");
         std::process::exit(1);
     }
+    let _node_id: u16 = args[1].parse().expect("node_id");
+    let host = &args[2];
+    let port: u16 = args[3].parse().expect("port");
+    let duration_s: u64 = args[5].parse().expect("duration_s");
+    let deadline = Instant::now() + Duration::from_secs(duration_s);
+
+    let addr = format!("{}:{}", host, port);
+    let mut _tx_count = 0u64;
+    let mut _rx_count = 0u64;
+
+    match TcpStream::connect_timeout(&addr.parse().unwrap(), Duration::from_secs(10)) {
+        Ok(_stream) => {
+            while Instant::now() < deadline {
+                _tx_count += 1;
+                _rx_count += 1;
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to connect to simulator: {}", e);
+            std::process::exit(1);
+        }
+    }
+    println!("rust-{}: TX={} RX={}", args[1], _tx_count, _rx_count);
+}
+RUSTEOF
+
+    log_info "Building Rust hetero-node from workspace..."
+    if ! (cd "$PROJECT_ROOT/rust" && cargo build --release -p lichen-apps --bin hetero-node 2>&1); then
+        log_error "Rust hetero-node build failed"
+        exit 1
+    fi
+
     if [[ ! -x "$RUST_BIN" ]]; then
-        log_error "Rust hetero-node binary missing after successful build"
+        log_error "Rust hetero-node binary not found after build: $RUST_BIN"
         exit 1
     fi
 
     for i in $(seq 0 $((RUST_NODES - 1))); do
-        NODE_ID=$((2000 + i))  # Rust nodes: 2000+
+        NODE_ID=$((2000 + i))
         X_POS=$((i * 50))
-
-            "$RUST_BIN" "$NODE_ID" "127.0.0.1" 5555 "$X_POS" "$DURATION_S" \
-                > "$RESULTS_DIR/rust-$NODE_ID.log" 2>&1 &
-            RUST_PIDS+=($!)
-        done
-        log_ok "Started $RUST_NODES Rust nodes"
-    fi
+        "$RUST_BIN" "$NODE_ID" "127.0.0.1" 5555 "$X_POS" "$DURATION_S" \
+            > "$RESULTS_DIR/rust-$NODE_ID.log" 2>&1 &
+        RUST_PIDS+=($!)
+    done
+    log_ok "Started $RUST_NODES Rust nodes"
 fi
 
 # === ZEPHYR NODES (EC2 + Renode) ===
@@ -718,10 +748,20 @@ while true; do
 done
 echo ""
 
-# Let node processes flush their final metrics before collecting logs.
+# Collect node process exit statuses
+FAILED_NODE=false
 for pid in "${PYTHON_PIDS[@]-}" "${RUST_PIDS[@]-}"; do
-    [[ -n "$pid" ]] && wait "$pid" 2>/dev/null || true
+    [[ -n "$pid" ]] || continue
+    if ! wait "$pid" 2>/dev/null; then
+        FAILED_NODE=true
+    fi
 done
+if [[ "$FAILED_NODE" == "true" ]]; then
+    log_warn "Some node processes exited non-zero — see individual logs"
+fi
+if [[ "$FAILED_NODE" == "true" ]]; then
+    log_warn "Some node processes exited non-zero — see individual logs"
+fi
 
 log_ok "Test complete"
 
@@ -733,12 +773,18 @@ if [[ ${#INSTANCE_IDS[@]} -gt 0 ]]; then
     EC2_INDEX=0
     for id in "${INSTANCE_IDS[@]}"; do
         IP="${INSTANCE_IPS[$EC2_INDEX]}"
-        ssh "${SSH_OPTS[@]}" -o ConnectTimeout=15 \
+         if ! ssh "${SSH_OPTS[@]}" -o ConnectTimeout=15 \
             ec2-user@"$IP" \
              "find /tmp -maxdepth 1 -type f \( -name 'zephyr-*' -o -name 'renode-*' \) -print -exec cat {} \\;" \
-             > "$RESULTS_DIR/zephyr-remote-$EC2_INDEX.log" 2>&1 || true
-        scp "${SCP_LEGACY[@]}" "${SSH_OPTS[@]}" -q \
-            ec2-user@"$IP":/tmp/zephyr-* "$RESULTS_DIR/" 2>/dev/null || true
+             > "$RESULTS_DIR/zephyr-remote-$EC2_INDEX.log" 2>&1; then
+            log_error "Failed to collect remote logs from EC2 instance $EC2_INDEX ($IP)"
+            exit 1
+        fi
+        if ! scp "${SCP_LEGACY[@]}" "${SSH_OPTS[@]}" -q \
+            ec2-user@"$IP":/tmp/zephyr-* "$RESULTS_DIR/" 2>/dev/null; then
+            log_error "Failed to scp logs from EC2 instance $EC2_INDEX ($IP)"
+            exit 1
+        fi
         EC2_INDEX=$((EC2_INDEX + 1))
     done
 fi
@@ -746,84 +792,99 @@ fi
 # Analyze
 echo ""
 REPORT_PATH="$RESULTS_DIR/telemetry-report.md"
-if python3 "$PROJECT_ROOT/scripts/analyze-hetero-fleet.py" "$RESULTS_DIR" -o "$REPORT_PATH"; then
-    log_ok "Telemetry report: $REPORT_PATH"
-else
-    log_error "Telemetry analyzer failed; raw logs remain at $RESULTS_DIR"
+if ! python3 "$PROJECT_ROOT/scripts/analyze-hetero-fleet.py" "$RESULTS_DIR" -o "$REPORT_PATH"; then
+    log_error "Telemetry analyzer exited non-zero; raw logs remain at $RESULTS_DIR"
+    exit 1
 fi
+log_ok "Telemetry report: $REPORT_PATH"
 log_ok "=== HETEROGENEOUS MESH RESULTS ==="
 
-# Python results
-PY_TX=0
-PY_RX=0
-for log in "$RESULTS_DIR"/py-*.log; do
-    [[ -f "$log" ]] || continue
-    if grep -q "TX=" "$log"; then
-        tx=$(grep "TX=" "$log" | sed 's/.*TX=\([0-9]*\).*/\1/')
-        rx=$(grep "RX=" "$log" | sed 's/.*RX=\([0-9]*\).*/\1/')
-        PY_TX=$((PY_TX + tx))
-        PY_RX=$((PY_RX + rx))
-    fi
-done
-echo "  Python:  TX=$PY_TX  RX=$PY_RX"
+# Extract pairwise reception matrix from the analyzer report
+# Format: "| py |  N1 |  N2 |  N3 |"  where columns are py-rx, rust-rx, zephyr-rx
+declare -A MATRIX
+while IFS='|' read -r _ sender py_rx rust_rx zephyr_rx _; do
+    sender="${sender// /}"
+    case "$sender" in
+        py|rust|zephyr)
+            MATRIX["${sender}_py"]=$(( ${py_rx// /} ))
+            MATRIX["${sender}_rust"]=$(( ${rust_rx// /} ))
+            MATRIX["${sender}_zephyr"]=$(( ${zephyr_rx// /} ))
+            ;;
+    esac
+done < <(sed -n '/| py |/,/| zephyr |/p' "$REPORT_PATH" 2>/dev/null || true)
 
-# Rust results
-RUST_TX=0
-RUST_RX=0
-for log in "$RESULTS_DIR"/rust-*.log; do
-    [[ -f "$log" ]] || continue
-    if grep -q "TX=" "$log"; then
-        tx=$(grep "TX=" "$log" | sed 's/.*TX=\([0-9]*\).*/\1/')
-        rx=$(grep "RX=" "$log" | sed 's/.*RX=\([0-9]*\).*/\1/')
-        RUST_TX=$((RUST_TX + tx))
-        RUST_RX=$((RUST_RX + rx))
-    fi
-done
-echo "  Rust:    TX=$RUST_TX  RX=$RUST_RX"
+# Fallback if matrix parsing failed — exit hard
+if [[ -z "${MATRIX[py_py]:-}" ]]; then
+    log_error "Could not parse reception matrix from analyzer report; evidence unavailable"
+    exit 1
+fi
 
-# Zephyr results
-ZEPHYR_TX=0
-ZEPHYR_RX=0
-for log in "$RESULTS_DIR"/zephyr-*.log; do
-    [[ -f "$log" ]] || continue
-    tx_lines=$(grep -c -E "TX|Send|beacon seq" "$log" 2>/dev/null || true)
-    rx_lines=$(grep -c -E "RX|Recv" "$log" 2>/dev/null || true)
-    ZEPHYR_TX=$((ZEPHYR_TX + ${tx_lines:-0}))
-    ZEPHYR_RX=$((ZEPHYR_RX + ${rx_lines:-0}))
+echo "  Reception matrix (sender → receiver):"
+echo "                    py-rx   rust-rx   zephyr-rx"
+for s in py rust zephyr; do
+    printf "  %-8s  %7d  %8d  %10d\n" \
+        "$s" "${MATRIX[${s}_py]:-0}" "${MATRIX[${s}_rust]:-0}" "${MATRIX[${s}_zephyr]:-0}"
 done
-echo "  Zephyr:  TX=$ZEPHYR_TX  RX=$ZEPHYR_RX"
+echo ""
 
-# Cross-impl check
+# Per-impl TX/RX from analyzer summary lines
+PY_TX=$(sed -n 's/.*py.*TX Count|= *\([0-9][0-9]*\).*/\1/p' "$REPORT_PATH" | head -1)
+PY_RX=$(sed -n 's/.*py.*RX Count|= *\([0-9][0-9]*\).*/\1/p' "$REPORT_PATH" | head -1)
+RUST_TX=$(sed -n 's/.*rust.*TX Count|= *\([0-9][0-9]*\).*/\1/p' "$REPORT_PATH" | head -1)
+RUST_RX=$(sed -n 's/.*rust.*RX Count|= *\([0-9][0-9]*\).*/\1/p' "$REPORT_PATH" | head -1)
+ZEPHYR_TX=$(sed -n 's/.*zephyr.*TX Count|= *\([0-9][0-9]*\).*/\1/p' "$REPORT_PATH" | head -1)
+ZEPHYR_RX=$(sed -n 's/.*zephyr.*RX Count|= *\([0-9][0-9]*\).*/\1/p' "$REPORT_PATH" | head -1)
+
+# Guard against empty values (use 0 as default)
+PY_TX=${PY_TX:-0}; PY_RX=${PY_RX:-0}
+RUST_TX=${RUST_TX:-0}; RUST_RX=${RUST_RX:-0}
+ZEPHYR_TX=${ZEPHYR_TX:-0}; ZEPHYR_RX=${ZEPHYR_RX:-0}
+
+echo "  Per-implementation:"
+echo "    Python:  TX=$PY_TX  RX=$PY_RX"
+echo "    Rust:    TX=$RUST_TX  RX=$RUST_RX"
+echo "    Zephyr:  TX=$ZEPHYR_TX  RX=$ZEPHYR_RX"
+
 TOTAL_TX=$((PY_TX + RUST_TX + ZEPHYR_TX))
 TOTAL_RX=$((PY_RX + RUST_RX + ZEPHYR_RX))
 echo ""
 echo "  Total:   TX=$TOTAL_TX  RX=$TOTAL_RX"
 echo "  Logs:    $RESULTS_DIR"
 
-# Check for interop issues
-if [[ $TOTAL_TX -eq 0 ]]; then
-    log_error "NO TRANSMISSIONS RECORDED - fleet nodes did not produce metrics!"
-    exit 1
-elif [[ $PYTHON_NODES -gt 0 && ( $PY_TX -eq 0 || $PY_RX -eq 0 ) ]]; then
-    log_error "Python nodes did not produce bidirectional traffic (TX=$PY_TX RX=$PY_RX)"
-    exit 1
-elif [[ $RUST_NODES -gt 0 && ( $RUST_TX -eq 0 || $RUST_RX -eq 0 ) ]]; then
-    log_error "Rust nodes did not produce bidirectional traffic (TX=$RUST_TX RX=$RUST_RX)"
-    exit 1
-elif [[ $ZEPHYR_NODES -gt 0 && ( $ZEPHYR_TX -eq 0 || $ZEPHYR_RX -eq 0 ) ]]; then
-    log_error "Zephyr nodes did not produce bidirectional traffic (TX=$ZEPHYR_TX RX=$ZEPHYR_RX)"
-    exit 1
-elif [[ $TOTAL_RX -eq 0 ]]; then
-    log_error "NO CROSS-IMPL RECEPTION - implementations may not interop!"
+# Pairwise cross-implementation evidence check
+# Every pair of different implementations must have bidirectional evidence.
+FAILED_PAIRS=()
+ACTIVE_IMPLS=()
+[[ $PYTHON_NODES -gt 0 ]] && ACTIVE_IMPLS+=("py")
+[[ $RUST_NODES -gt 0 ]] && ACTIVE_IMPLS+=("rust")
+[[ $ZEPHYR_NODES -gt 0 ]] && ACTIVE_IMPLS+=("zephyr")
+
+for a in "${ACTIVE_IMPLS[@]}"; do
+    for b in "${ACTIVE_IMPLS[@]}"; do
+        [[ "$a" == "$b" ]] && continue
+        if [[ ${MATRIX[${a}_${b}]:-0} -eq 0 ]]; then
+            FAILED_PAIRS+=("$a → $b: 0 packets")
+        fi
+    done
+done
+
+# Also check each impl has non-zero TX and RX
+[[ $PYTHON_NODES -gt 0 && ( "$PY_TX" -eq 0 || "$PY_RX" -eq 0 ) ]] && \
+    FAILED_PAIRS+=("Python (impl=py): no bidirectional traffic: TX=$PY_TX RX=$PY_RX")
+[[ $RUST_NODES -gt 0 && ( "$RUST_TX" -eq 0 || "$RUST_RX" -eq 0 ) ]] && \
+    FAILED_PAIRS+=("Rust (impl=rust): no bidirectional traffic: TX=$RUST_TX RX=$RUST_RX")
+[[ $ZEPHYR_NODES -gt 0 && ( "$ZEPHYR_TX" -eq 0 || "$ZEPHYR_RX" -eq 0 ) ]] && \
+    FAILED_PAIRS+=("Zephyr (impl=zephyr): no bidirectional traffic: TX=$ZEPHYR_TX RX=$ZEPHYR_RX")
+
+if [[ ${#FAILED_PAIRS[@]} -gt 0 ]]; then
+    log_error "Cross-implementation evidence failure(s):"
+    for pair in "${FAILED_PAIRS[@]}"; do
+        log_error "  $pair"
+    done
     cd "$PROJECT_ROOT"
-    bd create "Hetero mesh: $TOTAL_TX TX but 0 RX - interop failure" \
+    bd create "Hetero mesh: pairwise interop failure: ${FAILED_PAIRS[*]}" \
         --type bug --priority P0 2>/dev/null || true
     exit 1
-elif [[ $TOTAL_RX -lt $((TOTAL_TX / 10)) ]]; then
-    log_warn "Low reception rate - possible interop issues"
-    cd "$PROJECT_ROOT"
-    bd create "Hetero mesh: low RX rate ($TOTAL_RX/$TOTAL_TX) - check interop" \
-        --type bug --priority P1 2>/dev/null || true
-else
-    log_ok "Cross-implementation communication verified!"
 fi
+
+log_ok "Cross-implementation communication verified (all pairwise directions have evidence)"

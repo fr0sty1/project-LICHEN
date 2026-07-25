@@ -61,9 +61,7 @@ class TestMessageFraming:
         test_data = b"hello world"
         received_data: list[bytes] = []
 
-        async def echo_handler(
-            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-        ) -> None:
+        async def echo_handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
             data = await read_message(reader)
             if data is not None:
                 received_data.append(data)
@@ -93,9 +91,7 @@ class TestMessageFraming:
         """Empty messages can be sent and received."""
         received_data: list[bytes] = []
 
-        async def echo_handler(
-            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-        ) -> None:
+        async def echo_handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
             data = await read_message(reader)
             if data is not None:
                 received_data.append(data)

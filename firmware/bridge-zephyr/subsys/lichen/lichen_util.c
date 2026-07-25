@@ -13,7 +13,7 @@ BUILD_ASSERT(TC_SHA256_DIGEST_SIZE == 32,
              "SHA-256 digest size must be 32 bytes");
 
 int lichen_sha256(const uint8_t *input, size_t inlen,
-                  uint8_t output[TC_SHA256_DIGEST_SIZE])
+                  uint8_t *output, size_t outlen)
 {
     struct tc_sha256_state_struct state;
     int ret = 0;
@@ -21,23 +21,18 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
     if ((input == NULL && inlen > 0) || output == NULL) {
         return -EINVAL;
     }
+    if (outlen < TC_SHA256_DIGEST_SIZE) {
+        return -ENOMEM;
+    }
 
     if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS) {
-        printk("lichen_sha256: tc_sha256_init failed\n");
         ret = -EIO;
-        goto out;
+    } else if (inlen > 0 &&
+               tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) {
+        ret = -EMSGSIZE;
+    } else if (tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
+        ret = -EBADMSG;
     }
-    if (inlen > 0 &&
-        tc_sha256_update(&state, input, inlen) != TC_CRYPTO_SUCCESS) {
-        printk("lichen_sha256: tc_sha256_update failed\n");
-        ret = -EIO;
-        goto out;
-    }
-    if (tc_sha256_final(output, &state) != TC_CRYPTO_SUCCESS) {
-        printk("lichen_sha256: tc_sha256_final failed\n");
-        ret = -EIO;
-    }
-out:
     secure_zero(&state, sizeof(state));
     return ret;
 }

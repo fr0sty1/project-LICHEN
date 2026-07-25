@@ -243,11 +243,7 @@ class AckTracker:
     def get_expired(self) -> list[int]:
         """Get list of expired (timed out) request IDs."""
         now = time.monotonic()
-        expired = [
-            req_id
-            for req_id, ts in self.pending.items()
-            if now - ts > self.timeout_secs
-        ]
+        expired = [req_id for req_id, ts in self.pending.items() if now - ts > self.timeout_secs]
         for req_id in expired:
             del self.pending[req_id]
         return expired

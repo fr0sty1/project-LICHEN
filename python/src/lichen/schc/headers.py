@@ -17,10 +17,9 @@ Profiles implemented (spec appendix A.1):
 
 The variable trailer (CoAP token/options/payload, or RPL options) travels
 verbatim after the byte-aligned residue. Lengths and checksums are recomputed on
-decompression. Address note: link-local /64 prefixes are elided (only 64-bit IID carried);
-global (02xx::/7 primary or 2000::/3 GUA) addresses carried in full. Prefix
-context elision for globals requires link-layer state (deferred). See
-_is_global() and spec/04-network.md for scope assumptions.
+decompression. Address note: both link-local (fe80::/64) and ULA-mesh (fd00::/64)
+prefixes are elided via MSB(64)/LSB(64), carrying only the 64-bit IID. GUA
+addresses without a /64 context match fall back to rule 255 (uncompressed).
 """
 
 from __future__ import annotations
@@ -63,8 +62,8 @@ def _is_global(addr: int) -> bool:
     # Primary: 02xx::/7 (Yggdrasil, first byte 0x02/0x03 per spec/04-network,
     # 06-security). Also standard GUA 2000::/3 (optional BR upstream). Matches
     # current deployment while avoiding some deprecated sub-prefixes.
-    first_byte = (addr >> 120) & 0xff
-    return (first_byte & 0xfe == 0x02) or (addr >> 125 == 0b001)
+    first_byte = (addr >> 120) & 0xFF
+    return (first_byte & 0xFE == 0x02) or (addr >> 125 == 0b001)
 
 
 def _is_ula(addr: int) -> bool:
@@ -240,8 +239,6 @@ class _CoapUdpProfile(PacketProfile):
     def _addr_ok(self, addr: int) -> bool: ...
 
     def matches(self, raw: bytes) -> bool:
-        if len(raw) < HEADER_LENGTH + UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
-            return False
         try:
             header = IPv6Header.from_bytes(raw)
         except PacketError:
@@ -308,7 +305,7 @@ class CoapUdpGlobalProfile(_CoapUdpProfile):
     rule = GLOBAL_COAP_RULE
 
     def _addr_ok(self, addr: int) -> bool:
-        return _is_global(addr)
+        return _is_ula(addr) or _is_global(addr)
 
 
 class _OscoreUdpProfile(_CoapUdpProfile):
@@ -350,7 +347,7 @@ class OscoreUdpGlobalProfile(_OscoreUdpProfile):
     rule = GLOBAL_OSCORE_RULE
 
     def _addr_ok(self, addr: int) -> bool:
-        return _is_global(addr)
+        return _is_ula(addr) or _is_global(addr)
 
 
 class _RplProfile(PacketProfile):
@@ -370,7 +367,7 @@ class _RplProfile(PacketProfile):
             return False
         if header.payload_length < _ICMPV6_HEADER + self.base_length:
             return False
-        if not (_is_routable(int(header.src_addr)) and _is_routable(int(header.dst_addr))):
+        if not (_is_link_local(int(header.src_addr)) and _is_link_local(int(header.dst_addr))):
             return False
         icmpv6 = raw[HEADER_LENGTH:]
         if icmpv6_checksum(header.src_addr, header.dst_addr, icmpv6):
@@ -591,9 +588,7 @@ def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT
             raw = profile.build(fields, tail)
             if not profile.matches(raw):
                 raise SchcError(f"rule {rule_id} residue does not reconstruct its packet profile")
-            if isinstance(profile, _CoapUdpProfile) and not isinstance(
-                profile, _OscoreUdpProfile
-            ):
+            if isinstance(profile, _CoapUdpProfile) and not isinstance(profile, _OscoreUdpProfile):
                 header = IPv6Header.from_bytes(raw)
                 udp = UdpDatagram.from_bytes(
                     raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]

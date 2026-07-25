@@ -408,7 +408,7 @@ nbr.ema_snr_fp = ema_update_fp(nbr.ema_snr_fp, snr_fp);
 let snr_ema = (nbr.ema_snr_fp + (1<<15)) >> 16;  // round to int
 ```
 
-This produces identical results to the floating-point pseudocode for the test vectors while fitting constrained MCUs. See lichen-core/src/rf_health.rs for full impl (saturating ops, constants matching DENSITY_* and SNR_* thresholds).
+This produces identical results to the floating-point pseudocode for the test vectors while fitting constrained MCUs. See lichen-core/src/rf_health.rs:13-20 for full impl (saturating ops, constants matching DENSITY_* and SNR_* thresholds).
 
 **Multi-Channel + Density Balancing**
 - CH0 always for control (DIOs, all listen). Data channels via hash or root-assigned (RPL DAO-ACK carries channel_map).

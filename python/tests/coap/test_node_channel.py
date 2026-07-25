@@ -34,9 +34,7 @@ class _Node:
         self.send_started = asyncio.Event()
         self.send_release: asyncio.Event | None = None
 
-    def register_on_receive(
-        self, owner: object, callback: Callable[[bytes, object], None]
-    ) -> None:
+    def register_on_receive(self, owner: object, callback: Callable[[bytes, object], None]) -> None:
         if self.on_receive is not None:
             raise RuntimeError("node receive callback already has an owner")
         self.owner = owner
@@ -75,9 +73,7 @@ async def test_node_channel_scoped_addresses_use_unscoped_wire_bytes() -> None:
     node = _Node()
     channel = NodeChannel(node, "fe80::1%mesh0")
 
-    channel.send_datagram(
-        _coap_request(), "[FE80:0:0:0:0:0:0:2]:61616"
-    )
+    channel.send_datagram(_coap_request(), "[FE80:0:0:0:0:0:0:2]:61616")
     await asyncio.sleep(0)
 
     packet = IPv6Packet.from_bytes(node.sent[0])
@@ -85,9 +81,7 @@ async def test_node_channel_scoped_addresses_use_unscoped_wire_bytes() -> None:
     assert packet.header.src_addr == IPv6Address("fe80::1")
     assert packet.header.dst_addr == IPv6Address("fe80::2")
     assert udp.dst_port == 61616
-    assert channel.normalize_endpoint("fe80::2") == channel.normalize_endpoint(
-        "[fe80::2%mesh0]"
-    )
+    assert channel.normalize_endpoint("fe80::2") == channel.normalize_endpoint("[fe80::2%mesh0]")
     with pytest.raises(ValueError, match="does not match"):
         channel.send_datagram(_coap_request(), "[fe80::2%other]")
 

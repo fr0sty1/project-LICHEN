@@ -53,10 +53,14 @@ pub mod scheduler;
 #[cfg(feature = "std")]
 pub mod secure;
 #[cfg(feature = "std")]
+pub mod secure_dispatch;
+#[cfg(feature = "std")]
 pub mod stack;
 #[cfg(feature = "std")]
 pub mod tdma_scheduler;
 
+#[cfg(feature = "std")]
+pub use rpl_stack::RplStack;
 #[cfg(feature = "std")]
 pub use announce::{
     seq_gt, AnnounceProcessor, AnnounceRejectReason, AnnounceResult, MAX_TRACKED_ORIGINATORS,
@@ -73,6 +77,8 @@ pub use hybrid::{HybridRouter, MeshPrefix, PendingPacket};
 #[cfg(feature = "std")]
 pub use node::RplNode;
 pub use node::{Node, RplEvent};
+#[cfg(feature = "std")]
+pub use node::DaoHandlingOutcome;
 pub use port_dispatch::{
     dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError,
 };
@@ -102,6 +108,8 @@ pub use lichen_link::link_layer::LinkRxError;
 pub use scheduler::{AnnounceScheduler, AnnounceTransmitter, SchedulerConfig, SchedulerError};
 #[cfg(feature = "std")]
 pub use tdma_scheduler::TdmaScheduler;
+#[cfg(feature = "std")]
+pub use tdma_scheduler::HOP_SCHEDULE_LEN;
 
 #[cfg(feature = "std")]
 extern crate std;

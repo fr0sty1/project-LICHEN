@@ -237,9 +237,7 @@ async def test_secure_edhoc_uses_canonical_ipv6_endpoint_uri(monkeypatch) -> Non
 
     assert response == b"response"
     assert context.message is not None
-    assert context.message.get_request_uri() == (
-        "coap://[2001:db8::1]:61616/.well-known/edhoc"
-    )
+    assert context.message.get_request_uri() == ("coap://[2001:db8::1]:61616/.well-known/edhoc")
 
 
 class TestEdhocResource:
@@ -843,21 +841,15 @@ class TestEdhocResource:
         first = EdhocInitiator.create(alice, c_i=b"\x00")
         second = EdhocInitiator.create(carol, c_i=b"\x01")
         second_message_1 = second.create_message_1()
-        message_2 = await edhoc.render_post(
-            _edhoc_request(first.create_message_1(), "alice")
-        )
+        message_2 = await edhoc.render_post(_edhoc_request(first.create_message_1(), "alice"))
         message_3 = first.process_message_2(message_2.payload, bob_identity.pubkey)
 
-        completion = asyncio.create_task(
-            edhoc.render_post(_edhoc_request(message_3, "alice"))
-        )
+        completion = asyncio.create_task(edhoc.render_post(_edhoc_request(message_3, "alice")))
         await store.started.wait()
         assert edhoc._sessions == {}
         assert len(edhoc._completing) == 1
 
-        overloaded = await edhoc.render_post(
-            _edhoc_request(second_message_1, "carol")
-        )
+        overloaded = await edhoc.render_post(_edhoc_request(second_message_1, "carol"))
         assert overloaded.code == aiocoap.SERVICE_UNAVAILABLE
 
         store.release.set()
@@ -866,9 +858,7 @@ class TestEdhocResource:
         assert first_result.code == expected
         assert edhoc._completing == {}
 
-        recovered = await edhoc.render_post(
-            _edhoc_request(second_message_1, "carol")
-        )
+        recovered = await edhoc.render_post(_edhoc_request(second_message_1, "carol"))
         assert recovered.code == aiocoap.CHANGED
 
     @pytest.mark.asyncio
@@ -906,9 +896,7 @@ class TestEdhocResource:
         bob_identity: Identity,
         commit_after_cancel: bool,
     ) -> None:
-        store = _CancellationDefinitiveStore(
-            commit_after_cancel=commit_after_cancel
-        )
+        store = _CancellationDefinitiveStore(commit_after_cancel=commit_after_cancel)
         resolver = TofuPeerResolver()
         await resolver.pin_peer("alice", alice_identity.pubkey)
         edhoc = EdhocResource(bob_identity, store, resolver, max_sessions=1)
@@ -1057,9 +1045,7 @@ class TestEdhocResource:
         assert context_store.get_sync("alice") is None
 
         fresh = EdhocInitiator.create(alice_identity, c_i=b"\x00")
-        fresh_response2 = await edhoc._handle_message_1(
-            "alice", fresh.create_message_1()
-        )
+        fresh_response2 = await edhoc._handle_message_1("alice", fresh.create_message_1())
         fresh_msg3 = fresh.process_message_2(fresh_response2.payload, bob_identity.pubkey)
         fresh_key, fresh_session = next(iter(edhoc._sessions.items()))
         response3 = await edhoc._handle_message_3(

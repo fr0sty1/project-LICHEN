@@ -202,12 +202,8 @@ def test_parents_dict_defensive_copy() -> None:
     from lichen.rpl.dodag import ParentCandidate
 
     shared_dict: dict[IPv6Address, ParentCandidate] = {}
-    state1 = DodagState(
-        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, parents=shared_dict
-    )
-    state2 = DodagState(
-        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, parents=shared_dict
-    )
+    state1 = DodagState(rpl_instance_id=0, dodag_id=DODAG_ID, version=1, parents=shared_dict)
+    state2 = DodagState(rpl_instance_id=0, dodag_id=DODAG_ID, version=1, parents=shared_dict)
 
     # Modify state1's parents
     state1.process_dio(_dio(256), P1, link_etx=1.0)
@@ -224,9 +220,7 @@ def test_parents_dict_defensive_copy() -> None:
 def test_process_dio_rejects_self_as_parent() -> None:
     """RFC 6550 Section 8.2.2.5: nodes MUST NOT select themselves as parent."""
     own_addr = IPv6Address("fe80::1234")
-    node = DodagState(
-        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr
-    )
+    node = DodagState(rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr)
     # DIO appearing to come from the node's own address should be ignored
     node.process_dio(_dio(256), own_addr, link_etx=1.0)
     assert own_addr not in node.parents
@@ -237,9 +231,7 @@ def test_process_dio_rejects_self_as_parent() -> None:
 def test_process_dio_rejects_self_as_parent_string_form() -> None:
     """RFC 6550 Section 8.2.2.5: self-rejection works with string neighbor_id."""
     own_addr = IPv6Address("fe80::1234")
-    node = DodagState(
-        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr
-    )
+    node = DodagState(rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr)
     # String form of the same address should also be rejected
     node.process_dio(_dio(256), "fe80::1234", link_etx=1.0)
     assert own_addr not in node.parents
@@ -249,9 +241,7 @@ def test_process_dio_rejects_self_as_parent_string_form() -> None:
 def test_process_dio_allows_others_when_node_address_set() -> None:
     """Verify that setting node_address does not block legitimate neighbors."""
     own_addr = IPv6Address("fe80::1234")
-    node = DodagState(
-        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr
-    )
+    node = DodagState(rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr)
     # DIO from a different address should still be processed
     node.process_dio(_dio(256), P1, link_etx=1.0)
     assert node.role is DodagRole.JOINED

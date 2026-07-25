@@ -9,7 +9,7 @@ import asyncio
 import aiocoap
 import cbor2
 import pytest
-from aiocoap import DELETE, GET, PUT, Message
+from aiocoap import DELETE, GET, POST, Message
 
 from lichen.coap.resources import SosResource, StaticNodeInfo, build_site
 from lichen.coap.transport import InMemoryNetwork, create_lichen_context
@@ -42,9 +42,7 @@ class TestSosGet:
     async def test_idle_state(self) -> None:
         client, server, _ = await _setup()
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sos")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sos")).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 60
             state = cbor2.loads(resp.payload)
@@ -59,9 +57,7 @@ class TestSosGet:
         client, server, sos = await _setup()
         try:
             sos.activate(_EUI, _T0)
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sos")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sos")).response
             state = cbor2.loads(resp.payload)
             assert state["active"] is True
             assert state["from"] == _EUI.hex()
@@ -75,9 +71,7 @@ class TestSosGet:
         try:
             sos.activate(_EUI, _T0)
             sos.cancel()
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sos")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sos")).response
             state = cbor2.loads(resp.payload)
             assert state["active"] is False
         finally:
@@ -91,9 +85,7 @@ class TestSosGet:
         server = await create_lichen_context(net.channel("srv"), "srv", site=site)
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
-            resp = await client.request(
-                Message(code=GET, uri="coap://srv/sos")
-            ).response
+            resp = await client.request(Message(code=GET, uri="coap://srv/sos")).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()
@@ -101,7 +93,7 @@ class TestSosGet:
 
 
 # ---------------------------------------------------------------------------
-# PUT / DELETE
+# POST / DELETE
 # ---------------------------------------------------------------------------
 
 
@@ -111,8 +103,7 @@ class TestSosPutDelete:
         try:
             body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
-                        payload=body, content_format=60)
+                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.CREATED
             assert sos._active is True
@@ -125,7 +116,7 @@ class TestSosPutDelete:
         client, server, sos = await _setup()
         try:
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos", payload=b"")
+                Message(code=POST, uri="coap://srv/sos", payload=b"")
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
             assert sos._active is False
@@ -138,7 +129,7 @@ class TestSosPutDelete:
         try:
             # b"\xa5\x01" is a truncated CBOR map (declares 5 entries, body cut short)
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos", payload=b"\xa5\x01")
+                Message(code=POST, uri="coap://srv/sos", payload=b"\xa5\x01")
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -152,8 +143,7 @@ class TestSosPutDelete:
             # "from" as integer instead of hex string
             body = cbor2.dumps({"from": 12345, "t": _T0})
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
-                        payload=body, content_format=60)
+                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
             assert sos._active is False  # should not activate
@@ -168,8 +158,7 @@ class TestSosPutDelete:
             # "t" as string instead of numeric
             body = cbor2.dumps({"from": _EUI.hex(), "t": "not-a-number"})
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
-                        payload=body, content_format=60)
+                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
             assert sos._active is False  # should not activate
@@ -181,9 +170,7 @@ class TestSosPutDelete:
         client, server, sos = await _setup()
         try:
             sos.activate(_EUI, _T0)
-            resp = await client.request(
-                Message(code=DELETE, uri="coap://srv/sos")
-            ).response
+            resp = await client.request(Message(code=DELETE, uri="coap://srv/sos")).response
             assert resp.code == aiocoap.DELETED
             assert sos._active is False
         finally:
@@ -193,9 +180,7 @@ class TestSosPutDelete:
     async def test_delete_when_idle_is_harmless(self) -> None:
         client, server, _ = await _setup()
         try:
-            resp = await client.request(
-                Message(code=DELETE, uri="coap://srv/sos")
-            ).response
+            resp = await client.request(Message(code=DELETE, uri="coap://srv/sos")).response
             assert resp.code == aiocoap.DELETED
         finally:
             await client.shutdown()
@@ -211,9 +196,7 @@ class TestSosObserve:
     async def test_observe_notified_on_activate(self) -> None:
         client, server, sos = await _setup()
         try:
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/sos")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/sos"))
             first = await req.response
             assert cbor2.loads(first.payload)["active"] is False
 
@@ -230,9 +213,7 @@ class TestSosObserve:
         try:
             sos.activate(_EUI, _T0)
 
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/sos")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/sos"))
             await req.response
 
             obs_iter = req.observation.__aiter__()
@@ -248,9 +229,7 @@ class TestSosObserve:
         try:
             sos.activate(_EUI, _T0)
 
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/sos")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/sos"))
             await req.response
 
             obs_iter = req.observation.__aiter__()
@@ -273,16 +252,13 @@ class TestSosObserve:
     async def test_observe_notified_on_put(self) -> None:
         client, server, _ = await _setup()
         try:
-            req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/sos")
-            )
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/sos"))
             await req.response
 
             obs_iter = req.observation.__aiter__()
             body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
             await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
-                        payload=body, content_format=60)
+                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
             note = await asyncio.wait_for(obs_iter.__anext__(), timeout=5.0)
             assert cbor2.loads(note.payload)["active"] is True

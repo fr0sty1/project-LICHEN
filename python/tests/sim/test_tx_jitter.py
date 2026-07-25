@@ -82,9 +82,7 @@ class TestJitterDelaysTransmission:
         assert tx_id == ""
 
         # Should have a TxStartDelayedEvent in the queue
-        delayed_events = [
-            e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)
-        ]
+        delayed_events = [e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)]
         assert len(delayed_events) == 1
 
         # The delayed event should fire within jitter range
@@ -140,9 +138,7 @@ class TestJitterDistribution:
             sim.start_transmission(f"sender-{i}", f"msg-{i}".encode())
 
         # Collect all delayed event times
-        delayed_events = [
-            e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)
-        ]
+        delayed_events = [e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)]
         assert len(delayed_events) == 10
 
         fire_times = [e.time_us for e in delayed_events]
@@ -251,6 +247,7 @@ class TestJitterDeterministicWithSeed:
 
     def test_delayed_events_deterministic_with_seed(self) -> None:
         """TxStartDelayedEvent times are deterministic with a seed."""
+
         def run_simulation(seed: int) -> list[int]:
             sim = Simulation(
                 f"test-det-{seed}",
@@ -263,9 +260,7 @@ class TestJitterDeterministicWithSeed:
             for i in range(5):
                 sim.start_transmission(f"node-{i}", b"test")
 
-            events = [
-                e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)
-            ]
+            events = [e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)]
             return [e.time_us for e in events]
 
         times1 = run_simulation(42)
@@ -470,18 +465,14 @@ class TestEdgeCases:
         sim.start_transmission("sender", b"test")
 
         # Verify event is queued
-        delayed_before = [
-            e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)
-        ]
+        delayed_before = [e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)]
         assert len(delayed_before) == 1
 
         # Remove the node
         sim.remove_node("sender")
 
         # Event should be removed from queue
-        delayed_after = [
-            e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)
-        ]
+        delayed_after = [e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)]
         assert len(delayed_after) == 0
 
     def test_node_disconnected_before_jitter_fires(self) -> None:
@@ -522,9 +513,7 @@ class TestEdgeCases:
 
         sim.start_transmission("sender", b"test")
 
-        delayed_events = [
-            e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)
-        ]
+        delayed_events = [e for e in sim.event_queue if isinstance(e, TxStartDelayedEvent)]
         assert len(delayed_events) == 1
 
         event = delayed_events[0]

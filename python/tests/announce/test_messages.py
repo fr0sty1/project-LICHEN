@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for announce message codec.
-"""
+"""Tests for announce message codec."""
 
 from pathlib import Path
 
@@ -132,12 +131,7 @@ class TestSignedData:
             rx_channel=5,
         )
         signed = msg.signed_data()
-        expected = (
-            b"\x01\x02\x03\x04\x05\x06\x07\x08"
-            + b"\x00" * 32
-            + b"\x12\x34"
-            + b"\x05"
-        )
+        expected = b"\x01\x02\x03\x04\x05\x06\x07\x08" + b"\x00" * 32 + b"\x12\x34" + b"\x05"
         assert signed == expected
         assert signed[42] == 5
 
@@ -246,9 +240,20 @@ class TestSerialization:
         wire = msg.to_bytes()
         assert wire[0] == ANNOUNCE_TYPE
 
+    def test_wire_format_rx_channel_position(self):
+        """rx_channel is at byte offset 1."""
+        msg = AnnounceMessage(
+            originator_iid=bytes(8),
+            pubkey=bytes(32),
+            seq_num=0,
+            rx_channel=4,
+            signature=bytes(SIGNATURE_LENGTH),
+        )
+        wire = msg.to_bytes()
+        assert wire[1] == 4
+
     def test_wire_format_hop_count_position(self):
         """Hop count is at byte offset 2."""
-        # Why test: Relays may want to read hop_count before full parse.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
@@ -288,7 +293,7 @@ class TestSerialization:
 
     def test_from_bytes_rejects_wrong_type(self):
         """Rejects messages with wrong type byte."""
-        wire = bytes([0xFF]) + bytes(92)
+        wire = bytes([0xFF]) + bytes(93)
         with pytest.raises(AnnounceError, match="wrong message type"):
             AnnounceMessage.from_bytes(wire)
 

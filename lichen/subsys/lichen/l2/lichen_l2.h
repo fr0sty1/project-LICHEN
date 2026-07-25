@@ -33,6 +33,10 @@
 extern "C" {
 #endif
 
+/* Forward declaration - gradient table is defined in routing/gradient.h.
+ * Avoids pulling routing headers into L2 header dependencies. */
+struct lichen_gradient_table;
+
 /* ─── Peer table ─────────────────────────────────────────────────────────── */
 
 /**
@@ -71,7 +75,7 @@ extern "C" {
  *         -ENOSPC if peer table is internally inconsistent (should not happen;
  *                 LRU eviction normally prevents table-full condition)
  */
-int lichen_peer_add(const uint8_t *eui64, const uint8_t *pubkey) __attribute__((nonnull(1, 2)));
+int lichen_peer_add(const uint8_t *eui64, const uint8_t *pubkey);
 
 /**
  * @brief Remove a peer from the peer table.
@@ -92,7 +96,7 @@ int lichen_peer_add(const uint8_t *eui64, const uint8_t *pubkey) __attribute__((
  * @return -ECANCELED if LoRa L2 requires re-initialization
  * @return -ENOTSUP if LICHEN link support is not enabled
  */
-int lichen_peer_remove(const uint8_t eui64[8]);
+int lichen_peer_remove(const uint8_t *eui64);
 
 /**
  * @brief Read the L2 TX outcome counters.
@@ -264,6 +268,20 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
  * The only truly safe recovery from thread-abort is k_sys_reboot().
  */
 void lichen_l2_reinit_after_abort(void);
+
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED) || defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
+/**
+ * @brief Set gradient table for per-neighbor tracking (SF + channel).
+ *
+ * The routing layer calls this during init to register the gradient table
+ * so the L2 path can feed SNR samples for per-neighbor SF selection
+ * (CCP-16) and look up announced RX channels for rendezvous (CCP-9).
+ * May be called once or updated if the table is reallocated.
+ *
+ * @param table Gradient table for per-neighbor tracking, or NULL to clear.
+ */
+void lichen_l2_set_gradient_table(struct lichen_gradient_table *table);
+#endif
 
 /* Declare the L2 struct for external reference */
 NET_L2_DECLARE_PUBLIC(LICHEN_L2);

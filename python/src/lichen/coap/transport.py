@@ -32,11 +32,11 @@ from ipaddress import IPv6Address, ip_address
 from typing import Any
 from urllib.parse import quote, unquote
 
-import aiocoap
+import aiocoap  # type: ignore[import-untyped]  # no official stubs
 from aiocoap import Message, error, interfaces
-from aiocoap.numbers import constants
-from aiocoap.numbers.codes import EMPTY
-from aiocoap.numbers.types import ACK
+from aiocoap.numbers import constants  # type: ignore[import-untyped]
+from aiocoap.numbers.codes import EMPTY  # type: ignore[import-untyped]
+from aiocoap.numbers.types import ACK  # type: ignore[import-untyped]
 
 ReceiveCallback = Callable[[bytes, str], None]
 DEFAULT_COAP_PORT = 5683
@@ -110,9 +110,7 @@ class Endpoint:
                 canonical_host = str(parsed_address)
             else:
                 if ":" in self.host:
-                    raise ValueError(
-                        "endpoint host with a colon must be a valid IPv6 literal"
-                    )
+                    raise ValueError("endpoint host with a colon must be a valid IPv6 literal")
                 if _REG_NAME.fullmatch(self.host) is None:
                     raise ValueError("endpoint reg-name contains invalid characters")
                 canonical_host = self.host.lower()
@@ -350,7 +348,7 @@ def parse_channel_endpoint(value: str, *, default_port: int = DEFAULT_COAP_PORT)
             address, separator, scope = host.partition("%")
             if separator:
                 encoded = f"{address}%25{quote(scope, safe='-._~')}"
-                value = f"[{encoded}]{value[closing + 1:]}"
+                value = f"[{encoded}]{value[closing + 1 :]}"
     return parse_uri_authority(value, default_port=default_port)
 
 
@@ -423,9 +421,7 @@ class DatagramChannel(ABC):
         """Retain a canceled Observe ID for its exchange lifetime."""
         return None
 
-    def response_completed(
-        self, peer: str, token: bytes, lifecycle_id: object | None
-    ) -> None:
+    def response_completed(self, peer: str, token: bytes, lifecycle_id: object | None) -> None:
         """Notify stateful wrappers that a terminal response was dispatched."""
         return None
 
@@ -448,9 +444,7 @@ class InMemoryNetwork:
         """Return a channel bound to ``host`` on this fabric."""
         return InMemoryChannel(self, host)
 
-    def _register(
-        self, endpoint: Endpoint, owner: object, receiver: ReceiveCallback
-    ) -> None:
+    def _register(self, endpoint: Endpoint, owner: object, receiver: ReceiveCallback) -> None:
         if endpoint in self._receivers:
             raise RuntimeError(f"endpoint {endpoint.authority} already has a receiver")
         self._receivers[endpoint] = (owner, receiver)
@@ -516,7 +510,7 @@ class InMemoryChannel(DatagramChannel):
         self._receiver = None
 
 
-class LichenRemote(interfaces.EndpointAddress):
+class LichenRemote(interfaces.EndpointAddress):  # type: ignore[misc]  # aiocoap lacks py.typed
     """An aiocoap endpoint address identified by a LICHEN host string."""
 
     scheme = "coap"
@@ -535,7 +529,9 @@ class LichenRemote(interfaces.EndpointAddress):
         self._local = (
             self._peer
             if local is None
-            else local if isinstance(local, Endpoint) else parse_channel_endpoint(local)
+            else local
+            if isinstance(local, Endpoint)
+            else parse_channel_endpoint(local)
         )
         self._owner = owner
 
@@ -573,7 +569,7 @@ class LichenRemote(interfaces.EndpointAddress):
         return f"<LichenRemote {self.hostinfo}>"
 
 
-class LichenTransport(interfaces.MessageInterface):
+class LichenTransport(interfaces.MessageInterface):  # type: ignore[misc]  # aiocoap lacks py.typed
     """A CoAP MessageInterface that carries datagrams over a DatagramChannel."""
 
     def __init__(
@@ -605,7 +601,7 @@ class LichenTransport(interfaces.MessageInterface):
 
     def _on_datagram(self, data: bytes, source: str) -> None:
         try:
-            message = Message.decode(data, LichenRemote(source, self._local.host, owner=self))
+            message = Message.decode(data, LichenRemote(source, self._local))
         except (error.UnparsableMessage, IndexError, struct.error, TypeError, ValueError):
             return
         self._mm.dispatch_message(message)
@@ -633,11 +629,7 @@ class LichenTransport(interfaces.MessageInterface):
                 peer = parse_uri_authority(message.unresolved_remote)
             elif message.opt.uri_host is not None:
                 host = message.opt.uri_host
-                port = (
-                    DEFAULT_COAP_PORT
-                    if message.opt.uri_port is None
-                    else message.opt.uri_port
-                )
+                port = DEFAULT_COAP_PORT if message.opt.uri_port is None else message.opt.uri_port
                 if any(character in host for character in "[]@/?#") or ":" in host:
                     if _is_ipv6(host):
                         peer = Endpoint(host, port)
@@ -812,9 +804,7 @@ class _AiocoapLifecycleAdapter:
             self._message_manager._remove_exchange(cancellation)
             current = self._message_manager._active_exchanges
             if current is None or current.get(exchange_key) is not matched:
-                self._channel.exchange_ended(
-                    remote.hostinfo, message.mid, reset=False
-                )
+                self._channel.exchange_ended(remote.hostinfo, message.mid, reset=False)
         outgoing = self._token_manager.outgoing_requests
         if outgoing is not None:
             pipe = outgoing.get((message.token, remote))
@@ -849,9 +839,7 @@ class _AiocoapLifecycleAdapter:
             )
 
     def _send_message(self, message: Message, messageerror_monitor: Any) -> Any:
-        lifecycle_id = self._channel.message_admitted(
-            message, message.remote.hostinfo
-        )
+        lifecycle_id = self._channel.message_admitted(message, message.remote.hostinfo)
         if lifecycle_id is not None:
             message._lichen_lifecycle_id = lifecycle_id
         try:
@@ -888,18 +876,14 @@ class _AiocoapLifecycleAdapter:
 
                 def cancelled() -> None:
                     if message.remote is not None:
-                        lifecycle_id = getattr(
-                            message, "_lichen_lifecycle_id", None
-                        )
+                        lifecycle_id = getattr(message, "_lichen_lifecycle_id", None)
                         established = (
                             result.response.done()
                             and not result.response.cancelled()
                             and result.response.exception() is None
                         )
                         if established:
-                            self._cancel_established_observation(
-                                message, lifecycle_id
-                            )
+                            self._cancel_established_observation(message, lifecycle_id)
                         else:
                             self._channel.request_interest_ended(
                                 message.remote.hostinfo,

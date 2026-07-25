@@ -86,13 +86,11 @@ class ResourceSubscription(Protocol):
     async def close(self) -> None:
         """Cancel the Observe relationship and release resources."""
 
-    async def __aenter__(self) -> Self:
-        ...
+    async def __aenter__(self) -> Self: ...
 
     async def __aexit__(
         self, exc_type: Any | None, exc_val: Any | None, exc_tb: Any | None
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class MessageSubscription:
@@ -334,9 +332,7 @@ class LciClient:
         if result.is_success:
             return ReceiptResult(state=DeliveryState.ACCEPTED, coap_code=result.code)
         state = (
-            DeliveryState.UNSUPPORTED
-            if result.code in {"4.04", "5.01"}
-            else DeliveryState.REJECTED
+            DeliveryState.UNSUPPORTED if result.code in {"4.04", "5.01"} else DeliveryState.REJECTED
         )
         return ReceiptResult(
             state=state,

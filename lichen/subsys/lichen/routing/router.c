@@ -12,12 +12,6 @@
 #include <errno.h>
 #include <string.h>
 
-/* Link-local prefix: fe80::/10 - inline check in is_link_local() */
-#define LINK_LOCAL_PREFIX_LEN 10
-
-/* ULA prefix: fd00::/8 - inline check in is_ula() */
-#define ULA_PREFIX_LEN 8
-
 /**
  * Check if an IPv6 address matches a prefix.
  */
@@ -51,14 +45,6 @@ static bool is_link_local(const uint8_t addr[16])
 {
 	/* fe80::/10 means first 10 bits must be 1111111010 */
 	return (addr[0] == 0xfe) && ((addr[1] & 0xc0) == 0x80);
-}
-
-/**
- * Check if address is ULA (fd00::/8).
- */
-static bool is_ula(const uint8_t addr[16])
-{
-	return addr[0] == 0xfd;
 }
 
 /**
@@ -121,10 +107,6 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		return LICHEN_ADDR_LINK_LOCAL;
 	}
 
-	if (is_ula(dst_addr)) {
-		return LICHEN_ADDR_MESH_LOCAL;
-	}
-
 	if (dst_addr[0] == 0x02) {
 		return LICHEN_ADDR_YGGDRASIL;
 	}
@@ -155,7 +137,7 @@ static int route_link_local(const uint8_t dst_addr[16],
 }
 
 /**
- * Route to a mesh-local address (ULA or mesh GUA).
+ * Route to a mesh-local address (configured prefix or 02xx primary).
  * Look up gradient table, initiate LOADng discovery if needed.
  */
 static int route_mesh_local(struct lichen_router *router,
@@ -228,7 +210,8 @@ int lichen_router_route(struct lichen_router *router,
 			uint32_t now_ms,
 			struct lichen_route_result *result)
 {
-	if (router == NULL || dst_addr == NULL || result == NULL) {
+	if (router == NULL || dst_addr == NULL || dst_iid == NULL ||
+	    result == NULL) {
 		return -EINVAL;
 	}
 
@@ -242,26 +225,24 @@ int lichen_router_route(struct lichen_router *router,
 
 	enum lichen_addr_class addr_class = lichen_router_classify(router, dst_addr);
 
-	const uint8_t *iid = dst_iid ? dst_iid : &dst_addr[8];
-
 	switch (addr_class) {
 	case LICHEN_ADDR_LINK_LOCAL:
 		return route_link_local(dst_addr, result);
 
 	case LICHEN_ADDR_MESH_LOCAL:
-		return route_mesh_local(router, iid, now_ms, result);
+		return route_mesh_local(router, dst_iid, now_ms, result);
 
 	case LICHEN_ADDR_YGGDRASIL: {
 		/* Local mesh first: gradient + LOADng, then Yggdrasil fallback via BR */
 		struct lichen_gradient_entry *ge =
-			lichen_gradient_lookup(&router->gradient_table, iid, now_ms);
+			lichen_gradient_lookup(&router->gradient_table, dst_iid, now_ms);
 		if (ge != NULL) {
 			result->decision = LICHEN_ROUTE_FORWARD;
 			memcpy(result->next_hop, ge->next_hop, 16);
 			return 0;
 		}
 		if (router->loadng.discover != NULL) {
-			int ret = router->loadng.discover(router->loadng.user_data, iid);
+			int ret = router->loadng.discover(router->loadng.user_data, dst_iid);
 			if (ret == 0) {
 				result->decision = LICHEN_ROUTE_QUEUE;
 				return 0;

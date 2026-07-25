@@ -97,9 +97,7 @@ class TestBearerAuthMiddleware:
             yield ac
 
     @pytest.mark.asyncio
-    async def test_request_without_token_returns_401(
-        self, client_with_auth: AsyncClient
-    ) -> None:
+    async def test_request_without_token_returns_401(self, client_with_auth: AsyncClient) -> None:
         """Requests without Authorization header return 401."""
         response = await client_with_auth.post("/sim", json={"id": "sim1"})
 
@@ -149,9 +147,7 @@ class TestBearerAuthMiddleware:
         assert response.json()["id"] == "sim1"
 
     @pytest.mark.asyncio
-    async def test_all_endpoints_require_auth(
-        self, client_with_auth: AsyncClient
-    ) -> None:
+    async def test_all_endpoints_require_auth(self, client_with_auth: AsyncClient) -> None:
         """All API endpoints require authentication."""
         # Test various endpoints without auth
         endpoints = [
@@ -196,9 +192,7 @@ class TestNoAuth:
             yield ac
 
     @pytest.mark.asyncio
-    async def test_request_without_token_succeeds(
-        self, client_no_auth: AsyncClient
-    ) -> None:
+    async def test_request_without_token_succeeds(self, client_no_auth: AsyncClient) -> None:
         """When auth is disabled, requests without token succeed."""
         response = await client_no_auth.post("/sim", json={"id": "sim1"})
 
