@@ -133,6 +133,11 @@ pub trait Radio {
         timeout_ms: u32,
     ) -> impl core::future::Future<Output = Result<Option<RxPacket>, Self::Error>>;
 
+    /// Store radio configuration locally.
+    ///
+    /// Configuration values (frequency, TX power, etc.) are stored locally
+    /// and applied on the next transmit. For simulated radios, this does
+    /// NOT send a CONFIG message to the simulator — TX carries only payload.
     fn configure(&mut self, config: &RadioConfig);
 
     /// Configure multiple channels for concentrator mode (SX1302 gateways).
