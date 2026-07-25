@@ -6,12 +6,12 @@
   "status": "closed",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:23.124753Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-22T23:18:55.015713609Z",
   "started_at": "2026-07-22T23:17:29.552721394Z",
   "closed_at": "2026-07-22T23:18:14.125247248Z",
-  "close_reason": "Added BUILD_ASSERT(SINK_MAX \u003c= 8) to prevent stack overflow in snapshot arrays; matches Kconfig range and codebase patterns; verified via build assertions in similar files"
+  "close_reason": "Added BUILD_ASSERT(SINK_MAX <= 8) to prevent stack overflow in snapshot arrays; matches Kconfig range and codebase patterns; verified via build assertions in similar files"
 }
