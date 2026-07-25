@@ -133,19 +133,17 @@ impl<'a> Fragment<'a> {
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, FragmentError> {
         check_rule(self.rule_id)?;
-        if self.window > 1 {
-            return Err(FragmentError::InvalidWindow);
-        }
         if self.fcn > ALL_1_FCN {
             return Err(FragmentError::InvalidFcn);
         }
+        let wire_window = self.window & 1;
         if self.is_all_1() {
             if !(1..=TILE_SIZE).contains(&self.payload.len()) {
                 return Err(FragmentError::InvalidTileLength);
             }
         } else if self.payload.len() != TILE_SIZE || self.mic != [0; MIC_LENGTH] {
             return Err(FragmentError::InvalidTileLength);
-        } else if self.window == 1 && self.is_all_0() {
+        } else if wire_window == 1 && self.is_all_0() {
             return Err(FragmentError::InvalidFcn);
         }
 
@@ -156,7 +154,7 @@ impl<'a> Fragment<'a> {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = (self.window << 7) | (self.fcn << 1);
+        out[1] = (wire_window << 7) | (self.fcn << 1);
         let mut index = 0;
         if self.is_all_1() {
             for byte in self.mic {
@@ -530,6 +528,14 @@ impl<'a> FragmentSender<'a> {
             .fold(0, |bitmap, fragment| bitmap | fragment_bit(fragment))
     }
 
+    fn ack_window_to_absolute(&self, parity: u8) -> u8 {
+        let mut abs = self.final_window();
+        if abs & 1 != parity {
+            abs = abs.saturating_sub(1);
+        }
+        abs
+    }
+
     pub fn handle_ack_bytes(&mut self, data: &[u8]) -> Result<SenderOutput, FragmentError> {
         if self.status != SenderStatus::Active || data.first().copied() != Some(self.rule_id) {
             return Ok(SenderOutput::None);
@@ -540,14 +546,17 @@ impl<'a> FragmentSender<'a> {
             self.status = SenderStatus::Aborted;
             return Ok(SenderOutput::None);
         }
-        let ack = Ack::from_bytes(data)?;
+        let mut ack = Ack::from_bytes(data)?;
         if ack.complete {
+            ack.window = self.ack_window_to_absolute(ack.window);
             return Ok(self.handle_ack(ack));
         }
-        if ack.window > self.final_window() {
+        let abs_window = self.ack_window_to_absolute(ack.window);
+        if abs_window > self.final_window() {
             return Ok(SenderOutput::None);
         }
-        let ack = Ack::from_bytes_for(data, Some(self.assigned_bitmap(ack.window)))?;
+        ack = Ack::from_bytes_for(data, Some(self.assigned_bitmap(abs_window)))?;
+        ack.window = abs_window;
         Ok(self.handle_ack(ack))
     }
 
@@ -625,7 +634,7 @@ impl<'a> FragmentSender<'a> {
                 if self.status != SenderStatus::Active || *written {
                     return Ok(None);
                 }
-                let length = ack_request(self.rule_id, self.final_window()).write_to(out)?;
+                let length = ack_request(self.rule_id, self.final_window() & 1).write_to(out)?;
                 *written = true;
                 Ok(Some(length))
             }
@@ -652,7 +661,7 @@ impl<'a> FragmentSender<'a> {
                     current += 1;
                 }
                 if *request {
-                    let length = ack_request(self.rule_id, self.final_window()).write_to(out)?;
+                    let length = ack_request(self.rule_id, self.final_window() & 1).write_to(out)?;
                     *position = WINDOW_SIZE as u8;
                     *request = false;
                     return Ok(Some(length));
