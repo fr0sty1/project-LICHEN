@@ -4,6 +4,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(replay_test C)
 
+# Common test config (sanitizers + hardening + CONFIG_* defaults)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/test_common.cmake)
+
 add_executable(replay_test
   main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/replay.c
@@ -11,7 +14,9 @@ add_executable(replay_test
 target_include_directories(replay_test PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/include
 )
-target_compile_options(replay_test PRIVATE -Wall -Wextra -Werror)
+
+# Apply sanitizers and hardening
+lichen_test_target(replay_test)
 
 include(CTest)
 add_test(NAME replay COMMAND replay_test)

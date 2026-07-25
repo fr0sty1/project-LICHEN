@@ -6,10 +6,14 @@
 cmake_minimum_required(VERSION 3.20)
 project(schnorr48_test C)
 
+# Common test config (sanitizers + hardening)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/test_common.cmake)
+
 # Include paths
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/include
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/crypto
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -30,8 +34,8 @@ target_compile_definitions(schnorr48_test PRIVATE
   LICHEN_MAX_FRAME_BODY_LEN=250
 )
 
-# Enable warnings
-target_compile_options(schnorr48_test PRIVATE -Wall -Wextra -Werror)
+# Apply sanitizers and hardening
+lichen_test_target(schnorr48_test)
 
 include(CTest)
 add_test(NAME schnorr48 COMMAND schnorr48_test)
