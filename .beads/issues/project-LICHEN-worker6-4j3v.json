@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-4j3v",
   "title": "[review] project-LICHEN-worker6-6lxk: unused imports in lichen-schc fragmentation test",
   "description": "In rust/lichen-schc/tests/fragmentation.rs: unused imports `DEFAULT_WINDOW_SIZE` and `compute_mic`. Remove them to clean up warnings.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:07:07.947260075Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:07:07.947260075Z"
+  "updated_at": "2026-07-25T02:36:03.894373212Z",
+  "started_at": "2026-07-25T02:36:03.894373212Z",
+  "lease_expires_at": "2026-07-25T02:41:03.894373212Z",
+  "heartbeat_at": "2026-07-25T02:36:03.894373212Z"
 }
