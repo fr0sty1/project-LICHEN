@@ -5,7 +5,7 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "Mark Atwood",
+  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T23:20:37.281028Z",
   "created_by": "Mark Atwood",
