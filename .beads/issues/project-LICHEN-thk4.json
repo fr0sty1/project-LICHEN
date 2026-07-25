@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:04:08.059017Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:09:56.131918792Z",
+  "updated_at": "2026-07-25T00:45:57.903883142Z",
   "started_at": "2026-07-22T20:07:58.824082361Z",
   "closed_at": "2026-07-22T20:09:56.131918792Z",
   "close_reason": "Added validation for positive limit_percent in __init__, updated docs and added test. Committed as bf6b107c4. Lint passes."
