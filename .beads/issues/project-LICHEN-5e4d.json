@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:43:02.097889Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:19:12.309678703Z",
+  "updated_at": "2026-07-25T00:37:34.481844512Z",
   "started_at": "2026-07-22T23:16:19.996453609Z",
   "closed_at": "2026-07-22T23:19:12.309678703Z",
   "close_reason": "Replaced silent memcpy truncation of source_name/rejection_source_name with explicit strnlen check returning -EINVAL if name would be truncated (23 char limit enforced). Updated both from_hal functions. Tests pass."
