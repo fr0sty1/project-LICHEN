@@ -6,11 +6,10 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:31.006261Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:21:43.941988929Z",
+  "updated_at": "2026-07-25T00:49:48.431973224Z",
   "started_at": "2026-07-22T20:21:11.134912487Z",
   "closed_at": "2026-07-22T20:21:43.941988929Z",
   "close_reason": "Cleanup now under _lock; commit df0206870"
