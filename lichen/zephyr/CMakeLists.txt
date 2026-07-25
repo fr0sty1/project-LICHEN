@@ -11,6 +11,9 @@
 # -Wconversion-clean (e.g. sys/util.h bcd2bin), breaking every board target.
 # -----------------------------------------------------------------------------
 set(LICHEN_HARDENING_FLAGS
+  # C23 standard — enables [[nodiscard]], [[maybe_unused]], nullptr, constexpr
+  -std=c23
+
   # Basic warnings as errors
   -Wall
   -Wextra
@@ -19,6 +22,7 @@ set(LICHEN_HARDENING_FLAGS
   # Format string security
   -Wformat=2
   -Wformat-security
+  -Wformat-truncation=2
 
   # Shadow detection
   -Wshadow
@@ -33,6 +37,36 @@ set(LICHEN_HARDENING_FLAGS
   -Wconversion
   -Wno-sign-conversion
   -Wno-error=conversion
+
+  # Pointer safety
+  -Wnull-dereference
+  -Wcast-align
+
+  # Implicit float promotion (catches float→double on soft-float MCUs)
+  -Wdouble-promotion
+
+  # Stack usage limit (2KB per function — catches runaway VLAs/alloca)
+  -Wstack-usage=2048
+
+  # Strict aliasing violations
+  -Wstrict-aliasing=2
+  -fstrict-aliasing
+
+  # Array bounds checking (GCC)
+  -Warray-bounds=2
+
+  # Uninitialized variables (aggressive)
+  -Wmaybe-uninitialized
+
+  # Logical op warnings
+  -Wlogical-op
+
+  # Duplicate conditions in if-else chains
+  -Wduplicated-cond
+  -Wduplicated-branches
+
+  # Switch/enum exhaustiveness
+  -Wswitch-enum
 
   # Stack protection: intentionally NOT passed as a raw flag here — without
   # CONFIG_STACK_CANARIES Zephyr provides no __stack_chk_guard setup and the

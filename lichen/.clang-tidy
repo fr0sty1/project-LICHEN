@@ -9,12 +9,23 @@ Checks: >
   bugprone-*,
   cert-*,
   clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  cppcoreguidelines-pro-bounds-constant-array-index,
+  cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  cppcoreguidelines-pro-type-const-cast,
+  cppcoreguidelines-narrowing-conversions,
+  hicpp-signed-bitwise,
   misc-*,
   performance-*,
+  portability-*,
   readability-braces-around-statements,
   readability-inconsistent-declaration-parameter-name,
+  readability-isolate-declaration,
   readability-misleading-indentation,
   readability-redundant-*,
+  readability-simplify-boolean-expr,
   -bugprone-easily-swappable-parameters,
   -cert-dcl37-c,
   -cert-dcl51-cpp,
@@ -26,7 +37,8 @@ Checks: >
   -misc-header-include-cycle,
   -bugprone-not-null-terminated-result,
   -clang-diagnostic-conversion,
-  -clang-analyzer-optin.core.EnumCastOutOfRange
+  -clang-analyzer-optin.core.EnumCastOutOfRange,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic
 
 # Checks disabled in the 2mla curation (lora_ipv6_mesh-2mla):
 #   misc-include-cleaner: Zephyr umbrella headers (kernel.h et al) make
