@@ -274,11 +274,12 @@ static int encode_record(zcbor_state_t *state,
 		}
 		break;
 
-	case SENML_VALUE_STRING:
-		if (rec->value.s == NULL ||
-		    !zcbor_int32_put(state, SENML_LABEL_VS) ||
-		    !zcbor_tstr_put_term(state, rec->value.s, 256)) {
+	case SENML_VALUE_STRING: {
+		const char *str = rec->value.s != NULL ? rec->value.s : "";
+		if (!zcbor_int32_put(state, SENML_LABEL_VS) ||
+		    !zcbor_tstr_put_term(state, str, 256)) {
 			return -ENOMEM;
+		}
 		}
 		break;
 

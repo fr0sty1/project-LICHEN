@@ -31,7 +31,9 @@ use lichen_hal::NonVolatile;
 #[cfg(feature = "std")]
 use lichen_ipv6::{icmpv6_checksum, Addr};
 #[cfg(feature = "std")]
-use lichen_rpl::routing::SignatureVerifiedDao;
+use lichen_rpl::message::DodagConfig;
+#[cfg(feature = "std")]
+use lichen_rpl::routing::{DaoManager, DaoProvisionError, SignatureVerifiedDao};
 
 /// ICMPv6 RPL message codes.
 pub mod rpl_code {
@@ -275,6 +277,21 @@ impl RplNode {
         Self {
             node: Node::new(node_id),
             router: Router::new(node_addr, dodag_id),
+        }
+    }
+
+    /// Create a new RPL DODAG root node with in-memory storage.
+    pub fn new_root(node_id: NodeId) -> Self {
+        let node_addr = node_id.link_local_addr().0;
+        let mut storage = lichen_hal::storage::mem::MemStorage::new();
+        let (manager, _state) =
+            DaoManager::provision_root(&mut storage, node_addr, RPL_INSTANCE_ID, node_addr)
+                .expect("in-memory root provisioning should never fail");
+        let router = Router::root_with_manager(node_addr, DodagConfig::default(), manager)
+            .expect("default DODAG config is valid");
+        Self {
+            node: Node::new(node_id),
+            router,
         }
     }
 

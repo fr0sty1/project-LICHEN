@@ -60,6 +60,35 @@
         "response_code": 163,
         "num_pending": 0
       }
+    },
+    {
+      "name": "post_submission_string_message",
+      "type": "post_submission",
+      "description": "POST /deaddrop with text message via SenML string value (vs). Ciphertext aligned with oscore.json; SenML payload uses RFC 8428 label 3 (vs) for message text. Oracle: cbor2 applied to RFC 8428 §4.4 string-value record.",
+      "recipient": "node5678",
+      "ciphertext": "4502000102030405",
+      "ttl": 3600,
+      "encoded": "4402000183deaddropc0",
+      "senml_payload": "81a200636d73670363534f53",
+      "expected": {
+        "response_code": 69,
+        "num_pending": 0,
+        "oscore_option": "0910"
+      }
+    },
+    {
+      "name": "pickup_list_string",
+      "type": "pickup",
+      "description": "GET /deaddrop returning pending node IDs via SenML string value (vs). Two records encoded per RFC 8428 §4.4. Oracle: cbor2 independently verified.",
+      "recipient": "target001",
+      "ciphertext": "",
+      "ttl": 0,
+      "encoded": "44010001deaddrop",
+      "senml_payload": "82a2006770656e64696e6703686e6f646531323334a2006770656e64696e670366616263313233",
+      "expected": {
+        "response_code": 69,
+        "num_pending": 2
+      }
     }
   ]
 }

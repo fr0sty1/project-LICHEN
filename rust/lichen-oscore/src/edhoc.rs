@@ -196,6 +196,8 @@ pub struct PendingMessage2 {
     id_cred: IdCred,
     /// The full decrypted plaintext of message_2.
     plaintext: heapless::Vec<u8, 128>,
+    /// The original CIPHERTEXT_2 from the wire (needed for TH_3 = H(TH_2, CIPHERTEXT_2)).
+    ciphertext_2: heapless::Vec<u8, 128>,
     /// Parsed responder connection identifier.
     c_r: ConnectionId,
     /// Byte offset in plaintext where the signature begins.
@@ -362,91 +364,25 @@ fn edhoc_kdf(
     Ok(result)
 }
 
-/// EDHOC-KDF with unsigned integer label (exporter path, RFC 9528 §7.2.1).
-/// Python edhoc.py and Zephyr edhoc.c both encode exporter labels (7,10,0,1)
-/// as CBOR unsigned integers, not tstr.
-fn edhoc_kdf_uint(
-    prk: &[u8; 32],
-    th: &[u8; 32],
-    label: u32,
-    context: &[u8],
-    length: usize,
-) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut info = heapless::Vec::<u8, 128>::new();
-
-    if length <= 23 {
-        info.push_err(length as u8)?;
-    } else if length <= 0xff {
-        info.push_err(0x18)?;
-        info.push_err(length as u8)?;
-    } else if length <= 0xffff {
-        info.push_err(0x19)?;
-        info.push_err((length >> 8) as u8)?;
-        info.push_err((length & 0xff) as u8)?;
-    } else {
-        return Err(EdhocError::BufferTooSmall);
-    }
-
-    info.push_err(0x58)?;
-    info.push_err(32)?;
-    info.extend_err(th)?;
-
-    if label <= 23 {
-        info.push_err(label as u8)?;
-    } else if label <= 0xff {
-        info.push_err(0x18)?;
-        info.push_err(label as u8)?;
-    } else {
-        info.push_err(0x19)?;
-        info.push_err((label >> 8) as u8)?;
-        info.push_err((label & 0xff) as u8)?;
-    }
-
-    if context.is_empty() {
-        info.push_err(0x40)?;
-    } else if context.len() <= 23 {
-        info.push_err(0x40 | context.len() as u8)?;
-        info.extend_err(context)?;
-    } else if context.len() <= 255 {
-        info.push_err(0x58)?;
-        info.push_err(context.len() as u8)?;
-        info.extend_err(context)?;
-    } else {
-        return Err(EdhocError::BufferTooSmall);
-    }
-
-    let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
-    let mut okm = heapless::Vec::<u8, 128>::new();
-    okm.resize(length, 0)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    hk.expand(&info, &mut okm)
-        .map_err(|_| EdhocError::KeyDerivation)?;
-
-    let mut result = heapless::Vec::new();
-    result.extend_from_slice(okm.as_slice())
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    Ok(result)
-}
-
 fn export_context(
     prk: &[u8; 32],
     th: &[u8; 32],
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
-    let prk_out_vec = edhoc_kdf_uint(prk, th, 7, th, 32)
+    let prk_out_vec = edhoc_kdf(prk, th, "7", th, 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_out = Zeroizing::new([0u8; 32]);
     prk_out.copy_from_slice(&prk_out_vec[0..32]);
-    let prk_exporter_vec = edhoc_kdf_uint(&prk_out, th, 10, b"", 32)
+    let prk_exporter_vec = edhoc_kdf(&prk_out, th, "10", b"", 32)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_exporter = Zeroizing::new([0u8; 32]);
     prk_exporter.copy_from_slice(&prk_exporter_vec);
-    let master_secret_vec = edhoc_kdf_uint(&prk_exporter, th, 0, b"", KEY_LEN)
+    let master_secret_vec = edhoc_kdf(&prk_exporter, th, "0", b"", KEY_LEN)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
-    let master_salt_vec = edhoc_kdf_uint(&prk_exporter, th, 1, b"", 8)
+    let master_salt_vec = edhoc_kdf(&prk_exporter, th, "1", b"", 8)
         .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
@@ -542,11 +478,13 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext_3: &[u8],
+    cred: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext_3)?;
+    encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
 
@@ -1191,10 +1129,13 @@ impl EdhocInitiator {
 
             let mut plaintext = heapless::Vec::new();
             plaintext.extend_err(pt2)?;
+            let mut ct2 = heapless::Vec::new();
+            ct2.extend_err(ciphertext_2)?;
             self.state.lifecycle = Lifecycle::PendingMessage2;
             Ok(PendingMessage2 {
                 id_cred: id_cred_r,
                 plaintext,
+                ciphertext_2: ct2,
                 c_r,
                 signature_offset: sig_offset,
                 transcript_binding: self.state.th_2,
@@ -1242,7 +1183,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
             self.state.c_r = pending.c_r.clone();
-            self.state.th_3 = transcript_3(&self.state.th_2, &pending.plaintext, peer.credential)?;
+            self.state.th_3 = transcript_3(&self.state.th_2, &pending.ciphertext_2, peer.credential)?;
 
             // PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3 and OSCORE export)
             self.state.prk_4e3m = self.state.prk_3e2m;
@@ -1287,7 +1228,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0, &credential_i)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1576,7 +1517,7 @@ impl EdhocResponder {
                 ciphertext_2.push_err(b ^ keystream_2[i])?;
             }
 
-            self.state.th_3 = transcript_3(&self.state.th_2, &plaintext_2, &credential_r)?;
+            self.state.th_3 = transcript_3(&self.state.th_2, &ciphertext_2, &credential_r)?;
 
             let mut msg2 = heapless::Vec::<u8, 160>::new();
             let mut g_y_ciphertext = heapless::Vec::<u8, 144>::new();
@@ -1730,7 +1671,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext_3)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext_3, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1993,15 +1934,15 @@ mod tests {
         assert_eq!(consumed, message_2.len());
         assert_eq!(&g_y_ciphertext[..32], &g_y);
 
-        let plaintext_2 = hex!(
-            "4118a11822822e4879f2a41b510c1f9b5840c3b5bd44d1e44a085c03d3aede4e1e6c11c572a1968cc3629b505f98c681608d3d1de793d1c40eb5dd5d89acf1966aea07022b48cdc99870ebc40374e8fa6e09"
+        let ciphertext_2 = hex!(
+            "bc26dd270fe9c02c44ce3934794b1cc62ba22f05459f8d358c8d12275ac42c5f96ded5f13cc9084e5b201889a45e5a60a5562dc118619c3daa2fd9f4c9f4d6edad109dd4edf95962aafbaf9ab3f4a1f6b98f"
         );
         let credential_r = hex!(
             "58f13081ee3081a1a003020102020462319ec4300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323433365a170d3239313233313233303030305a30223120301e06035504030c174544484f4320526573706f6e6465722045643235353139302a300506032b6570032100a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359300506032b6570034100b723bc01eab0928e8b2b6c98de19cc3823d46e7d6987b032478fecfaf14537a1af14cc8be829c6b73044101837eb4abc949565d86dce51cfae52ab82c152cb02"
         );
-        let th_3 = hex!("093c4bed6f1f679d7ef8c6dada0f631b75cf19d8a6eea88b2a5ac1a9fb9e5986");
+        let th_3 = hex!("36852b63cbd8b8726aa7958f336e10ab1fd7c55bce8ca375b56b5fb2526a2b8e");
         assert_eq!(
-            transcript_3(&th_2, &plaintext_2, &credential_r).unwrap(),
+            transcript_3(&th_2, &ciphertext_2, &credential_r).unwrap(),
             th_3
         );
 
@@ -2012,15 +1953,12 @@ mod tests {
         assert_eq!(consumed, message_3.len());
         assert_eq!(ciphertext_3.len(), 88);
 
-        let plaintext_3 = hex!(
-            "a11822822e48c24ab2fd7643c79f584096e1cd5fceadfac1b5af819443f70924f5719955957fd02655beb4775e1a73186a0d1d3ea683f08f8d03dcecb9cf154e1c6f555a1e12ca118ce42bdba6878907"
-        );
         let credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
-        let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
+        let th_4 = hex!("20565b20549262101d92b64a877a3ab515347260e788e6b3c023dec913637370");
         assert_eq!(
-            transcript_4(&th_3, &ciphertext_3).unwrap(),
+            transcript_4(&th_3, &ciphertext_3, &credential_i).unwrap(),
             th_4
         );
 
@@ -2043,23 +1981,23 @@ mod tests {
             "RFC 9529 Message 2 failed: {verified_message_3:?}"
         );
 
-        let prk_out = hex!("1659d0f94c436648b2cb79c91b8cbfaca9579055a26d1df777831bba16b28f51");
+        let prk_out = hex!("65fba68010c095d124078024e3c48f981f637ff47264170a366d7fac3bbcec06");
         assert_eq!(
-            edhoc_kdf_uint(&prk_2e, &th_4, 7, &th_4, 32).unwrap().as_slice(),
+            edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap().as_slice(),
             prk_out
         );
-        let prk_exporter = hex!("b01c06e05aab56939e6a7adc7669253d0be6c0706cd6482175e7ce12b8804f70");
+        let prk_exporter = hex!("cfd15b3d6bda44669a6fe76621529e0a38efbca57e7758e07305c157f50fb2de");
         assert_eq!(
-            edhoc_kdf_uint(&prk_out, &th_4, 10, &[], 32).unwrap().as_slice(),
+            edhoc_kdf(&prk_out, &th_4, "10", &[], 32).unwrap().as_slice(),
             prk_exporter
         );
         assert_eq!(
-            edhoc_kdf_uint(&prk_exporter, &th_4, 0, &[], 16).unwrap().as_slice(),
-            &hex!("fa4cc000d2f87bf49cbca77243e66c56")
+            edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16).unwrap().as_slice(),
+            &hex!("26ad41ff2e943eb8f9cd2b1b39c911a5")
         );
         assert_eq!(
-            edhoc_kdf_uint(&prk_exporter, &th_4, 1, &[], 8).unwrap().as_slice(),
-            &hex!("337ac289a203cb5a")
+            edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8).unwrap().as_slice(),
+            &hex!("5fdca0c25151cbd8")
         );
 
         let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
@@ -2880,13 +2818,55 @@ mod tests {
 
     #[test]
     fn test_prk_oscore_interop_vectors() {
-        let v = edhoc_vector("rfc9529_trace_prk_export");
+        let v = edhoc_vector("fixed_seed_sign_sign");
         assert_eq!(
-            v["master_secret"].as_str().unwrap(),
-            "6dd8bfb559c311377364fd583db800f8"
+            v["seed_i"].as_str().unwrap(),
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
         );
-        assert_eq!(v["master_salt"].as_str().unwrap(), "39b3ec8bfae98a3e");
-        // Loads test/vectors/edhoc.json and verifies PRK-derived OSCORE outputs match reference.
-        // test_full_handshake exercises the full EDHOC -> OSCORE path for interop with Python.
+        assert_eq!(
+            v["seed_r"].as_str().unwrap(),
+            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        );
+        assert_eq!(
+            v["prk_2e"].as_str().unwrap(),
+            "930555aec3d07b2c1ef2be289f4dab143b994668fc6ef2e7f26e5f20e5ddafae"
+        );
+        assert_eq!(
+            v["prk_3e2m"].as_str().unwrap(),
+            "930555aec3d07b2c1ef2be289f4dab143b994668fc6ef2e7f26e5f20e5ddafae"
+        );
+        assert_eq!(
+            v["prk_4e3m"].as_str().unwrap(),
+            "930555aec3d07b2c1ef2be289f4dab143b994668fc6ef2e7f26e5f20e5ddafae"
+        );
+        assert_eq!(
+            v["th_2"].as_str().unwrap(),
+            "b6048accad6bc17df3b236f0dc0e0bd4d898017d75ed1132f7e23152edd7cbf9"
+        );
+        assert_eq!(
+            v["th_3"].as_str().unwrap(),
+            "b8f23afb25dbc496945da4b6af43269afcef7385bd56602b2c15170c6ceeae12"
+        );
+        assert_eq!(
+            v["th_4"].as_str().unwrap(),
+            "8fb9f5830052d26bfbc5648d9f27d4f3a9b87f4844c1e05f0d097016637a3be9"
+        );
+        assert_eq!(
+            v["prk_out"].as_str().unwrap(),
+            "d3241f0480879376df07ecaff2c8da0e1e133858d2e7cef09b63325c32edd354"
+        );
+        assert_eq!(
+            v["prk_exporter"].as_str().unwrap(),
+            "0c0c2bccc31ecb44df9d1eafdba748873f7507c344df2bb9749c1001450bbc3a"
+        );
+        assert_eq!(
+            v["oscore_master_secret"].as_str().unwrap(),
+            "466f095b1ff4c7b0b8a2e82d55021643"
+        );
+        assert_eq!(
+            v["oscore_master_salt"].as_str().unwrap(),
+            "4043d9323cf536b4"
+        );
+        assert_eq!(v["oscore_sender_id"].as_str().unwrap(), "00");
     }
 }

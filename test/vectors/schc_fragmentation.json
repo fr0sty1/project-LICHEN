@@ -18,12 +18,12 @@
       ],
       "loss": {
         "drop_fragment": "tile_1",
-        "ack_failure": "780000",
+        "ack_failure": "78003e8000000000000000",
         "retransmission": {"parts": ["787a", {"repeat_byte": "22", "count": 187}]},
         "ack_req": "7800",
         "ack_success": "7840",
         "corrupt_all1": "787fd80535ad4a",
-        "rcs_failure_ack": "780000",
+        "rcs_failure_ack": "78003ec000000000000000",
         "next_sender_message": "78fe"
       }
     },
@@ -123,9 +123,9 @@
     {
       "name": "sender_retry_exhaustion",
       "category": "retry_exhaustion",
-      "provenance": "MAX_ACK_REQUESTS=4 replaces the fifth final-window ACK REQ with Sender-Abort.",
+      "provenance": "MAX_ACK_REQUESTS=3 replaces the fourth final-window ACK REQ with Sender-Abort.",
       "rule_id": 120,
-      "attempts_before": 4,
+      "attempts_before": 3,
       "trigger": "7880",
       "expected_message": "78fe",
       "expect_status": "aborted"
@@ -133,9 +133,9 @@
     {
       "name": "receiver_retry_exhaustion",
       "category": "retry_exhaustion",
-      "provenance": "A receiver at MAX_ACK_REQUESTS emits Receiver-Abort instead of a fifth ACK.",
+      "provenance": "A receiver at MAX_ACK_REQUESTS emits Receiver-Abort instead of a fourth ACK.",
       "rule_id": 120,
-      "attempts_before": 4,
+      "attempts_before": 3,
       "trigger": "7880",
       "expected_message": "78ffff",
       "expect_status": "aborted"
@@ -178,6 +178,6 @@
     {"name": "ack_success_extra_octet", "category": "malformed", "provenance": "C=1 carries no bitmap and only end padding.", "wire": "784000", "expect_error": "ack_success_trailing_bits"},
     {"name": "malformed_control", "category": "malformed", "provenance": "Neither a complete Receiver-Abort nor a valid padded C=1 ACK.", "wire": "78ff", "expect_error": "malformed_control"},
     {"name": "final_window_all0", "category": "malformed", "provenance": "The final tile is carried only in All-1.", "wire": {"parts": ["7880", {"repeat_byte": "00", "count": 187}]}, "expect_error": "final_window_all0_tile"},
-    {"name": "unassigned_bitmap_bit", "category": "malformed", "provenance": "Unassigned short-final-window bitmap positions must be zero.", "wire": "780003e0", "assigned_fcns": [62, 61, 63], "expect_error": "unassigned_bitmap_bit_set"}
+    {"name": "unassigned_bitmap_bit", "category": "malformed", "provenance": "Unassigned short-final-window bitmap positions must be zero.", "wire": "783800000000000000", "assigned_fcns": [62, 61, 63], "expect_error": "unassigned_bitmap_bit_set"}
   ]
 }

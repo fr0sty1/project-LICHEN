@@ -13,7 +13,6 @@
 
 #include <lichen/rpl_dodag.h>
 #include <lichen/rpl_addr.h>
-#include <lichen/rpl_messages.h>
 #include <string.h>
 
 /**
@@ -157,7 +156,6 @@ static void adopt_version(struct lichen_rpl_dodag *d,
 	d->rank = LICHEN_RPL_INFINITE_RANK;
 	d->lowest_rank = LICHEN_RPL_INFINITE_RANK;
 	d->role = LICHEN_RPL_UNJOINED;
-	d->gateway_centric = false;
 }
 
 /* ── Public API ────────────────────────────────────────────────────────────── */
@@ -202,13 +200,27 @@ int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
 	return 0;
 }
 
+void lichen_rpl_dodag_demote(struct lichen_rpl_dodag *d)
+{
+	if (d == NULL || d->role != LICHEN_RPL_ROOT) {
+		return;
+	}
+
+	d->role = LICHEN_RPL_UNJOINED;
+	d->has_preferred_parent = false;
+	d->rank = LICHEN_RPL_INFINITE_RANK;
+
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
+		d->parents[i].valid = false;
+	}
+}
+
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 {
 	if (d == NULL) {
 		return;
 	}
 
-	enum lichen_rpl_role prev_role = d->role;
 	uint16_t mhri = d->min_hop_rank_increase;
 	uint16_t threshold = d->parent_switch_threshold;
 
@@ -235,7 +247,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 			d->has_preferred_parent = false;
 			d->rank = LICHEN_RPL_INFINITE_RANK;
 		}
-		goto notify;
+		return;
 	}
 
 	uint8_t *best_addr = best->addr;
@@ -273,38 +285,28 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 	if (chosen_cost < d->lowest_rank) {
 		d->lowest_rank = chosen_cost;
 	}
-
-notify:
-	/* Fire state change callback on role transition */
-	if (d->state_cb != NULL && prev_role != d->role) {
-		bool joined = (d->role == LICHEN_RPL_JOINED || d->role == LICHEN_RPL_ROOT);
-		d->state_cb(joined, d->state_cb_user_data);
-	}
 }
 
 int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const struct lichen_rpl_dio *dio,
-				  const struct lichen_rpl_dodag_config *config,
 				  const uint8_t *neighbor_addr,
 				  uint16_t link_etx,
 				  uint8_t load_factor,
-				  uint32_t now,
-				  const struct lichen_rpl_dodag_config *config)
+				  uint32_t now)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
 		return 0;
 	}
 
-	if (d->role == LICHEN_RPL_ROOT) {
+	if (dio->mode_of_operation != 1 || !dio->grounded) {
 		return 0;
 	}
 
-	/* Propagate gateway_centric flag from DODAG Configuration option */
-	if (config != NULL) {
-		d->gateway_centric = config->gateway_centric;
-	}
-
-	if (dio->mode_of_operation != 1 || !dio->grounded) {
+	if (d->role == LICHEN_RPL_ROOT) {
+		if (version_is_newer(dio->version, d->version) &&
+		    rpl_addr_eq(dio->dodag_id, d->dodag_id)) {
+			adopt_version(d, dio);
+		}
 		return 0;
 	}
 
@@ -325,11 +327,6 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	if (dio->dtsn != d->dtsn) {
 		d->dtsn = dio->dtsn;
 		ret = 1;
-	}
-
-	/* Propagate gateway-centric flag from DODAG config */
-	if (config != NULL) {
-		d->gateway_centric = config->gateway_centric;
 	}
 
 	/* Poisoned route? Drop this candidate. */
@@ -389,55 +386,6 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	return ret;
 }
 
-int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
-					const uint8_t *dio_bytes,
-					size_t dio_len,
-					const uint8_t *neighbor_addr,
-					uint16_t link_etx,
-					uint8_t load_factor,
-					uint32_t now)
-{
-	if (d == NULL || dio_bytes == NULL || neighbor_addr == NULL) {
-		return LICHEN_RPL_ERR_INVALID;
-	}
-
-	struct lichen_rpl_dio dio;
-	int ret = lichen_rpl_dio_parse(&dio, dio_bytes, dio_len);
-	if (ret != LICHEN_RPL_OK) {
-		return ret;
-	}
-
-	const uint8_t *opts = lichen_rpl_dio_options(dio_bytes, dio_len);
-	size_t opts_len = lichen_rpl_dio_options_len(dio_len);
-
-	/* Parse DODAG Configuration option to extract gateway_centric */
-	struct lichen_rpl_opt_iter it;
-	struct lichen_rpl_raw_opt opt;
-	lichen_rpl_opt_iter_init(&it, opts, opts_len);
-	d->is_gateway_centric = false;
-
-	for (;;) {
-		int oret = lichen_rpl_opt_iter_next(&it, &opt);
-		if (oret == 1) {
-			break;
-		}
-		if (oret != LICHEN_RPL_OK) {
-			break;
-		}
-		if (opt.opt_type == LICHEN_RPL_OPT_DODAG_CONFIG) {
-			struct lichen_rpl_dodag_config cfg;
-			ret = lichen_rpl_dodag_config_parse(&cfg, opt.data, opt.data_len);
-			if (ret == LICHEN_RPL_OK) {
-				d->is_gateway_centric = cfg.gateway_centric;
-			}
-			break;
-		}
-	}
-
-	return lichen_rpl_dodag_process_dio(d, &dio, neighbor_addr,
-					    link_etx, load_factor, now);
-}
-
 void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 				    const uint8_t *addr)
 {
@@ -465,17 +413,6 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d)
 		}
 	}
 	return count;
-}
-
-void lichen_rpl_dodag_set_state_cb(struct lichen_rpl_dodag *d,
-				   lichen_rpl_dodag_state_cb cb,
-				   void *user_data)
-{
-	if (d == NULL) {
-		return;
-	}
-	d->state_cb = cb;
-	d->state_cb_user_data = user_data;
 }
 
 int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,

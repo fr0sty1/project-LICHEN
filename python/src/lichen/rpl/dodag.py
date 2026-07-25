@@ -147,6 +147,17 @@ class DodagState:
     def is_joined(self) -> bool:
         return self.role in (DodagRole.JOINED, DodagRole.ROOT)
 
+    def demote(self) -> None:
+        """Demote a root to UNJOINED, clearing parent state and rank.
+
+        No-op if the node is not currently a root.
+        """
+        if self.role is DodagRole.ROOT:
+            self.role = DodagRole.UNJOINED
+            self.preferred_parent = None
+            self.rank = INFINITE_RANK
+            self.parents.clear()
+
     def get_rank(self) -> int:
         return self.rank
 
@@ -173,6 +184,8 @@ class DodagState:
             )
         neighbor_id = to_ipv6(neighbor_id)
         if self.role is DodagRole.ROOT:
+            if version_is_newer(dio.version, self.version) and dio.dodag_id == self.dodag_id:
+                self._adopt_version(dio)
             return
         if self.node_address is not None and neighbor_id == self.node_address:
             return

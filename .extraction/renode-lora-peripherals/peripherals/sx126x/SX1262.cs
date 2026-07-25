@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // SX1262 LoRa radio peripheral for Renode - magic SPI interface.
-// ponytail: no real register emulation, just intercept TX/RX commands.
 //
-// Intercepts SX1262 opcodes and bridges to lichen-sim via TCP.
-// Config commands (SetPacketParams, SetModulationParams, etc.) are
-// acknowledged but ignored - simulation doesn't need RF config.
-//
-// Two modes:
+// Intercepts SX1262 opcodes. Two modes:
 //   - Loopback: TX data loops back to RX buffer (single-node testing)
 //   - Bridge: TCP connection to external RF simulator (multi-node)
 //
@@ -22,6 +17,7 @@
 
 using System;
 using System.Net.Sockets;
+using System.Threading;
 using Antmicro.Renode.Core;
 using Antmicro.Renode.Logging;
 using Antmicro.Renode.Peripherals.SPI;
@@ -41,6 +37,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
             Reset();
         }
 
+        /// <summary>
+        /// Enable loopback mode for single-node testing without external simulator.
+        /// In loopback mode, TX data is copied to RX buffer and triggers RxDone.
+        /// </summary>
         public bool Loopback
         {
             get => loopbackMode;
@@ -122,8 +122,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 clearIrqMask = 0;
                 rxMode = false;
                 rxOneShot = false;
-                pendingLoopbackRx = false;
-                loopbackDataAvailable = false;
                 Array.Clear(txBuffer, 0, txBuffer.Length);
                 Array.Clear(rxBuffer, 0, rxBuffer.Length);
                 Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
@@ -215,7 +213,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case State.SetRx:
-                    // Collect 3 timeout bytes (24-bit big-endian from SX1262)
                     if (byteIndex < 3)
                     {
                         rxTimeoutBytes[byteIndex] = data;
@@ -422,10 +419,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
             EnsureConnected();
             if (stream == null)
             {
-                this.Log(LogLevel.Warning, "TX failed: not connected to lichen-sim");
+                this.Log(LogLevel.Warning, "TX failed: not connected to simulator");
                 lock (stateLock)
                 {
-                    irqFlags |= 0x0040; // TxDone with implicit error
+                    irqFlags |= 0x0040;
                     IRQ.Set(true);
                 }
                 return;
@@ -462,30 +459,35 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         private void TriggerTxLoopback()
         {
-            this.Log(LogLevel.Debug, "Loopback TX: {0} bytes", txLen);
-
-            // Copy TX buffer to RX buffer
-            Array.Copy(txBuffer, 0, rxBuffer, 0, txLen);
-            rxLen = txLen;
-            rxRssi = -30; // Simulated good signal
-            rxSnr = 100;  // 10.0 dB * 10
-
             lock (stateLock)
             {
+                Array.Copy(txBuffer, 0, rxBuffer, 0, txLen);
+                rxLen = txLen;
+                rxRssi = -30;
+                rxSnr = 100;
+
+                irqFlags |= 0x0001; // TxDone
+
                 if (pendingLoopbackRx)
                 {
-                    irqFlags |= 0x0003; // TxDone + RxDone
+                    irqFlags |= 0x0002; // RxDone
                     pendingLoopbackRx = false;
-                    IRQ.Set(true);
-                    this.Log(LogLevel.Debug, "Loopback: TX done, {0} bytes available in RX, RxDone fired", rxLen);
+                    if (rxOneShot)
+                    {
+                        rxMode = false;
+                        rxOneShot = false;
+                    }
+                    this.Log(LogLevel.Debug, "Loopback: TX done, {0} bytes available in RX", rxLen);
                 }
                 else
                 {
-                    irqFlags |= 0x0001; // TxDone only
                     loopbackDataAvailable = true;
                     this.Log(LogLevel.Debug, "Loopback: TX done, data queued for next RX");
                 }
+
+                IRQ.Set(irqFlags != 0);
             }
+            txLen = 0;
         }
 
         private void SendRxEnter()
@@ -499,7 +501,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             EnsureConnected();
             if (stream == null)
             {
-                this.Log(LogLevel.Warning, "RX_ENTER failed: not connected to lichen-sim");
+                this.Log(LogLevel.Warning, "RX_ENTER failed: not connected to simulator");
                 return;
             }
 
@@ -509,12 +511,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
             bool oneShot = timeoutSteps != 0xFFFFFF;
             if (timeoutSteps == 0xFFFFFF)
             {
-                // Continuous RX
-                timeoutUs = 0xFFFFFFFF;
+                timeoutUs = 0xFFFFFFFF; // Continuous RX
             }
             else
             {
-                // 15.625us per step = 15625/1000
                 timeoutUs = (uint)((timeoutSteps * 15625UL) / 1000UL);
             }
 
@@ -538,8 +538,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     stream.Write(msg, 0, msg.Length);
                 }
                 // RX_PACKET / RX_TIMEOUT arrive asynchronously and are handled by
-                // the reader thread. Do NOT block the SPI bus here — blocking in
-                // RX mode would prevent the node from ever leaving RX to transmit.
+                // the reader thread. Do NOT block the SPI bus here.
             }
             catch (Exception e)
             {
@@ -558,23 +557,20 @@ namespace Antmicro.Renode.Peripherals.Wireless
             lock (stateLock)
             {
                 rxMode = true;
-                rxOneShot = true;
+                rxOneShot = false; // loopback continuous by default
 
-                // Check if there's queued data from a previous TX
                 if (loopbackDataAvailable)
                 {
                     irqFlags |= 0x0002; // RxDone
                     loopbackDataAvailable = false;
                     rxMode = false;
-                    rxOneShot = false;
                     IRQ.Set(true);
-                    this.Log(LogLevel.Debug, "Loopback RX: immediate RxDone, {0} bytes", rxLen);
+                    this.Log(LogLevel.Debug, "Loopback: immediate RX, {0} bytes", rxLen);
                 }
                 else
                 {
-                    // Mark that we're waiting for loopback data
                     pendingLoopbackRx = true;
-                    this.Log(LogLevel.Debug, "Loopback RX: waiting for TX data");
+                    this.Log(LogLevel.Debug, "Loopback: RX waiting for TX");
                 }
             }
         }
@@ -585,11 +581,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
             {
                 lock (stateLock)
                 {
+                    pendingLoopbackRx = false;
                     rxMode = false;
                     rxOneShot = false;
-                    pendingLoopbackRx = false;
                 }
-                this.Log(LogLevel.Debug, "Loopback RX exit");
+                this.Log(LogLevel.Debug, "Loopback: RX exit");
                 return;
             }
 
@@ -645,7 +641,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     socket.ReceiveTimeout = 100;
                     socket.Connect(simHost, simPort);
                     stream = socket.GetStream();
-                    this.Log(LogLevel.Info, "Connected to lichen-sim at {0}:{1}", simHost, simPort);
+                    this.Log(LogLevel.Info, "Connected to simulator at {0}:{1}", simHost, simPort);
                     StartReader(socket, stream);
                 }
                 catch (Exception e)
@@ -693,7 +689,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         {
             try
             {
-                readerSocket.ReceiveTimeout = 0; // block for full messages
+                readerSocket.ReceiveTimeout = 0;
             }
             catch (Exception)
             {
@@ -724,7 +720,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             }
         }
 
-        // Dispatch an async message from lichen-sim to the IRQ flags. Runs on
+        // Dispatch an async message from simulator to the IRQ flags. Runs on
         // the reader thread, NOT the SPI/emulation thread.
         private void DispatchMessage(byte[] resp)
         {
@@ -760,9 +756,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                             rxMode = false;
                             rxOneShot = false;
                         }
-                        // one-shot contract: clear rxMode and rxOneShot only on first packet for PollRx/SetRx(finite timeout);
-                        // continuous (0xFFFFFF timeout, rxOneShot=false) keeps rxMode=true for multiple packets.
-                        // All accesses under stateLock to eliminate rxMode/stateLock race with SPI/reader/CS paths.
                         this.Log(LogLevel.Debug, "RX_PACKET {0} bytes (async) oneShot={1}", rxLen, rxOneShot);
                         irqFlags |= 0x0002; // RxDone
                         IRQ.Set(true);
@@ -886,23 +879,17 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private bool pendingLoopbackRx;
 
         // Background reader: ALL socket reads happen here so the SPI Transmit()
-        // path never blocks. A blocking read on the RX-enter path (the old
-        // WaitForRxResponse) froze the SPI bus while the radio was in RX, which
-        // meant a node could never leave RX to transmit — both test nodes then
-        // deadlocked waiting for a packet neither could send. Messages from
-        // lichen-sim (TX_DONE, RX_PACKET, RX_TIMEOUT) are now dispatched to the
-        // IRQ flags asynchronously.
+        // path never blocks. Messages from the simulator (TX_DONE, RX_PACKET,
+        // RX_TIMEOUT) are dispatched to the IRQ flags asynchronously.
         //
-        // One-shot RX contract (for PollRx/SetRx one-shot behavior r7h4.6):
+        // One-shot RX contract:
         // - SendRxEnter with timeout != 0xFFFFFF sets rxMode=true, rxOneShot=true.
-        // - On RX_PACKET: if (rxOneShot) { rxMode=false; rxOneShot=false; } (exits after 1st packet);
-        //   continuous mode (0xFFFFFF timeout, rxOneShot=false) keeps rxMode=true to accept multiple packets.
+        // - On RX_PACKET: if (rxOneShot) { rxMode=false; rxOneShot=false; }
+        //   continuous mode (0xFFFFFF timeout, rxOneShot=false) keeps rxMode=true.
         // - RX_TIMEOUT always clears both rxMode and rxOneShot.
         // - SetTx/SetStandby/SendRxExit clear both flags.
         // - GetStatus reflects current rxMode under lock.
-        // - ALL rxMode/rxOneShot/irqFlags/rxLen/etc accesses use lock(stateLock)
-        //   to eliminate races between SPI Transmit(), reader thread, OnGPIO CS
-        //   FinishTransmission(), and SetRx state machine. (Codereview fixed P0-P4)
+        // - ALL rxMode/rxOneShot/irqFlags/rxLen/etc accesses use lock(stateLock).
         private System.Threading.Thread readerThread;
         private readonly object writeLock = new object();
         private readonly object stateLock = new object();

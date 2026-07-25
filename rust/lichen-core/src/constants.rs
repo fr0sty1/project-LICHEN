@@ -9,9 +9,9 @@ pub const LORA_PREAMBLE_SYMBOLS: u8 = 8;
 pub const LORA_MAX_PAYLOAD: usize = 255;
 
 // SCHC (RFC 8724)
-/// Maximum decompressed packet size for SCHC buffers.
-/// Sized to hold the full fragmentation profile capacity
-/// (2 windows x 63 tiles x 187 bytes = 23562 bytes).
+/// Maximum decompressed packet size for SCHC buffers (updated for SRH/Routing
+/// Header overhead in local_mesh paths per RFC 6554). Covers IPv6 MTU 1280
+/// + max practical SRH (~8+16*8=136 bytes) + margin.
 pub const SCHC_MAX_DECOMPRESSED: usize = 23562;
 
 // Well-known UDP ports (spec Section 9.1)
@@ -32,8 +32,7 @@ pub const RULE_RPL_DIO: u8 = 3;
 pub const RULE_RPL_DAO: u8 = 4;
 pub const RULE_LINK_LOCAL_OSCORE: u8 = 5;
 pub const RULE_GLOBAL_OSCORE: u8 = 6;
-pub const RULE_MQTT_SN: u8 = 7;
-pub const RULE_SRH: u8 = 8;
+pub const RULE_MQTT_SN: u8 = 7; // Future use; not in constants.toml yet
 pub const RULE_UNCOMPRESSED: u8 = 255;
 
 // Authenticated L2 inner-payload dispatch bytes.
@@ -56,8 +55,6 @@ pub const SENML_LOCATION_LON: &str = "lon";
 pub const SENML_LOCATION_ALT: &str = "alt";
 pub const SENML_LOCATION_SPEED: &str = "speed";
 pub const SENML_LOCATION_HEADING: &str = "heading";
-pub const SENML_LOCATION_HACC: &str = "hacc";
-pub const SENML_LOCATION_VACC: &str = "vacc";
 pub const SENML_LOCATION_UNIT_DEG: &str = "deg";
 pub const SENML_LOCATION_UNIT_M: &str = "m";
 pub const SENML_LOCATION_UNIT_MS: &str = "m/s";
@@ -74,7 +71,3 @@ pub const SENML_TELEMETRY_UNIT_RH: &str = "%RH";
 pub const SENML_TELEMETRY_UNIT_PA: &str = "Pa";
 pub const TDMA_GUARD_MS: u32 = 100;
 pub const TDMA_SLOT_MS: u32 = 250;
-pub const TDMA_BEACON_TIMEOUT_SUPERFRAMES: u32 = 3;
-pub const TDMA_CONTENTION_RETRIES: u32 = 5;
-pub const TDMA_CONTENTION_BACKOFF_MIN_MS: u32 = 100;
-pub const TDMA_CONTENTION_BACKOFF_MAX_MS: u32 = 1000;

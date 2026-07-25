@@ -27,15 +27,11 @@ __pycache__/
 .beads/proxieddb/
 rust/target/
 
-# Rust build artifacts
-*.rlib
-*.so
-*.dylib
+# Temporary files
+.tmp_check/
 
 # Build artifacts
-*.rlib
 .cache/
-.tmp_check/
 lichen/build/
 **/build*/
 build_*/

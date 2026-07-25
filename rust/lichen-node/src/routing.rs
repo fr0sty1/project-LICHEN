@@ -489,7 +489,7 @@ impl Router {
         }
     }
 
-    fn root_with_manager(
+    pub(crate) fn root_with_manager(
         node_addr: [u8; 16],
         dodag_config: DodagConfig,
         dao_manager: DaoManager,

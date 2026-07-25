@@ -159,9 +159,10 @@ mod tests {
 
     #[test]
     fn basic_operations() {
-        let mut seq = OscoreSeqNum::new(0).unwrap();
+        let seq = OscoreSeqNum::new(0).unwrap();
         assert_eq!(seq.get(), 0);
         assert_eq!(seq.increment().unwrap().get(), 1);
+    }
 
     #[test]
     fn fetch_increment() {
@@ -178,15 +179,14 @@ mod tests {
 
         let mut seq_mut = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
         assert!(seq_mut.fetch_increment().is_none());
-        // Value unchanged after failed increment
         assert_eq!(seq_mut.get(), OscoreSeqNum::MAX);
     }
 
     #[test]
     fn increment_near_max_succeeds() {
-        let seq = OscoreSeqNum::new(u64::from(u32::MAX) - 1).unwrap();
+        let seq = OscoreSeqNum::new(OscoreSeqNum::MAX - 1).unwrap();
         let next = seq.increment().expect("should succeed at MAX-1");
-        assert_eq!(next.get(), u64::from(u32::MAX));
+        assert_eq!(next.get(), OscoreSeqNum::MAX);
     }
 
     #[test]
