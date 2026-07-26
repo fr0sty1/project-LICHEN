@@ -170,8 +170,9 @@ pub(crate) fn encode_identifier<const N: usize>(
 ///
 /// SUITES_I can be either:
 /// - A single int (the selected suite)
-/// - An array of ints [selected_suite, ...other_supported_suites]
+/// - An array of ints [...other_supported_suites, selected_suite]
 ///
+/// Per RFC 9528 Section 3.3.2, the LAST element is the selected suite.
 /// Returns (selected_suite, bytes_consumed).
 pub(crate) fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
     if data.is_empty() {
@@ -192,46 +193,53 @@ pub(crate) fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
         return Ok((data[1], 2));
     }
 
-    // CBOR major type 4 (array): 0x80-0x97 (array of 0-23 items), 0x98 (1-byte length)
-    if (0x80..=0x97).contains(&first) {
-        let arr_len = (first - 0x80) as usize;
-        if arr_len == 0 {
-            return Err(EdhocError::InvalidMessage); // Empty array not valid
-        }
-        // Parse first element (selected suite)
+    // Parse array header to get length and header size
+    let (arr_len, header_size) = if (0x80..=0x97).contains(&first) {
+        ((first - 0x80) as usize, 1)
+    } else if first == 0x98 {
         if data.len() < 2 {
             return Err(EdhocError::InvalidMessage);
         }
-        let elem = data[1];
-        if elem <= 0x17 {
-            // Count bytes: 1 (array header) + arr_len (each int 0-23 is 1 byte)
-            // We only support suite values 0-23 for simplicity
-            Ok((elem, 1 + arr_len))
-        } else if elem == 0x18 && data.len() >= 3 {
-            // First element is 1-byte int
-            // Remaining elements assumed to be 1-byte each
-            Ok((data[2], 1 + 1 + (arr_len - 1) + 1))
-        } else {
-            Err(EdhocError::InvalidMessage)
-        }
-    } else if first == 0x98 {
-        // Array with 1-byte length
-        if data.len() < 3 {
-            return Err(EdhocError::InvalidMessage);
-        }
-        let arr_len = data[1] as usize;
-        if arr_len == 0 {
-            return Err(EdhocError::InvalidMessage);
-        }
-        let elem = data[2];
-        if elem <= 0x17 {
-            // 1 (0x98) + 1 (length) + arr_len (elements)
-            Ok((elem, 2 + arr_len))
-        } else {
-            Err(EdhocError::InvalidMessage)
-        }
+        (data[1] as usize, 2)
     } else {
-        Err(EdhocError::InvalidMessage)
+        return Err(EdhocError::InvalidMessage);
+    };
+
+    if arr_len == 0 {
+        return Err(EdhocError::InvalidMessage); // Empty array not valid
+    }
+
+    // Iterate through all elements to find the LAST one (selected suite)
+    // and correctly count consumed bytes
+    let mut offset = header_size;
+    let mut selected: Option<u8> = None;
+
+    for _ in 0..arr_len {
+        if offset >= data.len() {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let elem = data[offset];
+        if elem <= 0x17 {
+            // Direct int 0-23
+            selected = Some(elem);
+            offset = offset.checked_add(1).ok_or(EdhocError::InvalidMessage)?;
+        } else if elem == 0x18 {
+            // 1-byte follow
+            if offset.checked_add(2).ok_or(EdhocError::InvalidMessage)? > data.len() {
+                return Err(EdhocError::InvalidMessage);
+            }
+            selected = Some(data[offset + 1]);
+            offset = offset.checked_add(2).ok_or(EdhocError::InvalidMessage)?;
+        } else {
+            // Unsupported integer encoding for suite values
+            return Err(EdhocError::InvalidMessage);
+        }
+    }
+
+    // RFC 9528: last element is the selected suite
+    match selected {
+        Some(suite) => Ok((suite, offset)),
+        None => Err(EdhocError::InvalidMessage),
     }
 }
 
