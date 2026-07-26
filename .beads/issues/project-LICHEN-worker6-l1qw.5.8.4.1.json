@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.8.4.1",
   "title": "Python: RERR encode/decode",
   "notes": "Already implemented in messages.py",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:51.271179Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:51.271179Z",
+  "updated_at": "2026-07-26T22:32:43.438444Z",
+  "closed_at": "2026-07-26T22:32:43.438444Z",
+  "close_reason": "Already implemented: RERR.to_bytes() and RERR.from_bytes() in python/src/lichen/loadng/messages.py lines 142-173. Tests pass: test_rerr_known_vector, test_rerr_round_trip, test_from_bytes_rejects_truncated, test_icmpv6_wrap_and_dispatch",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.4.1",

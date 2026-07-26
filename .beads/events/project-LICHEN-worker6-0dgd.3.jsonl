@@ -1,1 +1,2 @@
 {"id":"019fa06b-106d-7ebd-9368-1d71ae6ffb4c","issue_id":"project-LICHEN-worker6-0dgd.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-26T21:53:18.957971Z"}
+{"id":"019fa090-3b6c-7274-8c61-1786d5a97859","issue_id":"project-LICHEN-worker6-0dgd.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Implemented TimeProvider protocol with Monotonic and Simulated impls","created_at":"2026-07-26T22:33:54.796162Z"}

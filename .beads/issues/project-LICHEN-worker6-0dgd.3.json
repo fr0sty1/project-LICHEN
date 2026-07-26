@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0dgd.3",
   "title": "Python: Add time provider abstraction",
   "description": "Create time provider abstraction for GNSS and fallback time sources.\n\n## File\npython/src/lichen/time_provider.py\n\n## Interface\n```python\nfrom abc import ABC, abstractmethod\nfrom typing import Optional\n\nclass TimeProvider(ABC):\n    @abstractmethod\n    def get_unix_time_ms(self) -\u003e Optional[int]:\n        \"\"\"Return current unix time in milliseconds, or None if unavailable.\"\"\"\n        pass\n    \n    @abstractmethod\n    def has_gnss_fix(self) -\u003e bool:\n        \"\"\"Return True if GNSS fix is available and time is accurate.\"\"\"\n        pass\n    \n    @property\n    def stratum(self) -\u003e int:\n        \"\"\"Time source quality: 0=GNSS, 1=NTP, 2=RTC, 3=monotonic.\"\"\"\n        pass\n```\n\n## Implementations\n1. **GnssTimeProvider**: Uses GNSS receiver for accurate time\n2. **MonotonicTimeProvider**: Fallback using monotonic clock + last known offset\n3. **SimTimeProvider**: For testing, allows setting arbitrary time\n\n## Tests\n- Unit tests for each implementation\n- Test fallback behavior when GNSS unavailable",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:53:18.949745Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:53:18.949745Z",
+  "updated_at": "2026-07-26T22:33:54.782073Z",
+  "closed_at": "2026-07-26T22:33:54.782073Z",
+  "close_reason": "Implemented TimeProvider protocol with Monotonic and Simulated impls",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0dgd.3",

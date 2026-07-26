@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.9.4.1",
   "title": "Python: Priority-based replacement",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:18.985135Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:18.985135Z",
+  "updated_at": "2026-07-26T22:32:38.494443Z",
+  "closed_at": "2026-07-26T22:32:38.494443Z",
+  "close_reason": "Already implemented: GradientEntry._rank() at gradient.py:105-107 returns (priority, SeqNum, -hop_count) tuple; used in GradientTable.update() line 156; tests pass (test_gradient.py: 11/11)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.4.1",

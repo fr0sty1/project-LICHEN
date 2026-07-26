@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.9.1.1",
   "title": "Python: GradientTable",
   "notes": "Already implemented in gradient.py",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:39.911227Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:39.911227Z",
+  "updated_at": "2026-07-26T22:32:27.188305Z",
+  "closed_at": "2026-07-26T22:32:27.188305Z",
+  "close_reason": "Already implemented: GradientTable class at python/src/lichen/gradient.py:110-194 with lookup/update/remove/remove_via/expire_old/LRU eviction; 11 tests in test_gradient.py all pass",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.1.1",

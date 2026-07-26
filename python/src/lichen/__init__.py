@@ -22,6 +22,11 @@ from lichen.channel_plan import (
     get_plan_by_name,
     select_channel,
 )
+from lichen.time_provider import (
+    MonotonicTimeProvider,
+    SimulatedTimeProvider,
+    TimeProvider,
+)
 
 __version__ = "0.1.0"
 
@@ -34,12 +39,15 @@ __all__ = [
     "EU868",
     "IN865",
     "KR920",
+    "MonotonicTimeProvider",
     "REGIONAL_PLANS",
     "REGIONAL_PLANS_BY_NAME",
+    "SimulatedTimeProvider",
+    "TimeProvider",
     "US915",
+    "__version__",
     "channel_frequency",
     "get_plan",
     "get_plan_by_name",
     "select_channel",
-    "__version__",
 ]

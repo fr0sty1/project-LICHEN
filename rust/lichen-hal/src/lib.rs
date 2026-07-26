@@ -271,6 +271,34 @@ pub trait Clock {
     fn now_us(&self) -> u64;
 }
 
+/// Provider of wall-clock time (GNSS, RTC, network sync).
+/// Distinct from Clock (monotonic) - this provides UTC for synchronized hopping.
+pub trait TimeProvider {
+    /// Return UTC time in microseconds, or None if unavailable.
+    fn unix_time_us(&self) -> Option<u64>;
+
+    /// Return true if time source is GNSS with valid fix.
+    fn has_gnss_fix(&self) -> bool;
+
+    /// Return time source quality/stratum (0 = best, 255 = unsynchronized).
+    fn stratum(&self) -> u8 {
+        255
+    }
+}
+
+/// Null implementation for devices without wall-clock time.
+pub struct NoTimeProvider;
+
+impl TimeProvider for NoTimeProvider {
+    fn unix_time_us(&self) -> Option<u64> {
+        None
+    }
+
+    fn has_gnss_fix(&self) -> bool {
+        false
+    }
+}
+
 /// Random number generator.
 pub trait Rng {
     /// Fill buffer with random bytes.

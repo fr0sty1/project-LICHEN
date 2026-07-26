@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.9.6.1",
   "title": "Python: LRU bounded table",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:41.530436Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:41.530436Z",
+  "updated_at": "2026-07-26T22:32:34.004209Z",
+  "closed_at": "2026-07-26T22:32:34.004209Z",
+  "close_reason": "Already implemented: GradientTable has _evict_if_needed (L182-184), max_entries param (L113), move_to_end in lookup/update. Tests test_lru_eviction and test_invalid_capacity pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.6.1",

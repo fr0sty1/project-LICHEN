@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0dgd.7",
   "title": "Rust: Add TimeProvider trait",
   "description": "Add time provider trait for GNSS and fallback time sources.\n\n## File\nrust/lichen-hal/src/time.rs (new or extend existing)\n\n## Trait Definition\n```rust\n/// Time provider abstraction for GNSS and fallback sources.\npub trait TimeProvider {\n    /// Get current unix time in milliseconds.\n    /// Returns None if time is unavailable or not yet synchronized.\n    fn unix_time_ms(\u0026self) -\u003e Option\u003cu64\u003e;\n    \n    /// Check if GNSS fix is available and time is accurate.\n    fn has_gnss(\u0026self) -\u003e bool;\n    \n    /// Time source quality: 0=GNSS, 1=NTP, 2=RTC, 3=monotonic\n    fn stratum(\u0026self) -\u003e u8 {\n        if self.has_gnss() { 0 } else { 3 }\n    }\n}\n```\n\n## Mock Implementation\n```rust\n#[cfg(test)]\npub struct MockTimeProvider {\n    pub unix_ms: Option\u003cu64\u003e,\n    pub gnss_available: bool,\n}\n\nimpl TimeProvider for MockTimeProvider {\n    fn unix_time_ms(\u0026self) -\u003e Option\u003cu64\u003e { self.unix_ms }\n    fn has_gnss(\u0026self) -\u003e bool { self.gnss_available }\n}\n```\n\n## Requirements\n- no_std compatible\n- Feature flag: sync-hop\n- Used by channel selection logic",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:53:39.385919Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:53:39.385919Z",
+  "updated_at": "2026-07-26T22:33:34.711158Z",
+  "closed_at": "2026-07-26T22:33:34.711158Z",
+  "close_reason": "Added TimeProvider trait with NoTimeProvider impl",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0dgd.7",
