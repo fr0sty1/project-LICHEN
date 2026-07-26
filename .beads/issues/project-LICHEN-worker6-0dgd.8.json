@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-0dgd.8",
+  "title": "Rust: Wire TimeProvider to channel selection",
+  "description": "Integrate TimeProvider with channel selection for GNSS-synchronized hopping.\n\n## Files\n- rust/lichen-link/src/channel.rs or rust/lichen-node/src/channel.rs\n\n## Changes\n\n### Add sync_hop_channel function\n```rust\n/// Select channel using GNSS-synchronized hopping.\n/// Falls back to epoch-based when GNSS unavailable.\n#[cfg(feature = \"sync-hop\")]\npub fn sync_hop_channel\u003cT: TimeProvider\u003e(\n    time_provider: \u0026T,\n    seed: u32,\n    n_channels: u8,\n    superframe_ms: u32,\n    epoch_base_ms: u64,\n    fallback_epoch: u32,\n    fallback_eui64: \u0026[u8; 8],\n) -\u003e u8 {\n    if time_provider.has_gnss() {\n        if let Some(unix_ms) = time_provider.unix_time_ms() {\n            let sfn = sfn_from_unix_ms(unix_ms, superframe_ms, epoch_base_ms);\n            return synchronized_hop_channel(sfn, seed, n_channels);\n        }\n    }\n    // Fallback to epoch-based\n    epoch_based_channel(fallback_eui64, fallback_epoch, n_channels)\n}\n```\n\n## Feature Flag\n- Add `sync-hop` feature to relevant Cargo.toml files\n- Gate all new code behind `#[cfg(feature = \"sync-hop\")]`\n\n## Dependencies\n- Issue: Rust synchronized_hop_channel\n- Issue: Rust TimeProvider trait",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-26T21:53:44.935511Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-26T21:53:44.935511Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0dgd.8",
+      "depends_on_id": "project-LICHEN-worker6-0dgd",
+      "type": "parent-child",
+      "created_at": "2026-07-26T21:53:45.20122Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

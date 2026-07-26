@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-0dgd.9",
+  "title": "Zephyr: Add CONFIG_LICHEN_SYNC_HOP Kconfig",
+  "description": "Add Kconfig options for GNSS-synchronized hopping.\n\n## File\nlichen/subsys/lichen/Kconfig (or lichen/subsys/lichen/link/Kconfig)\n\n## Options to Add\n```kconfig\nconfig LICHEN_SYNC_HOP\n    bool \"Enable GNSS-synchronized frequency hopping\"\n    depends on LICHEN_MULTI_CHANNEL_ENABLED\n    help\n      When enabled, nodes use GNSS-derived time to synchronize\n      frequency hopping across the network. Falls back to epoch-based\n      hopping when GNSS is unavailable.\n\nconfig LICHEN_SYNC_HOP_SUPERFRAME_MS\n    int \"Superframe duration in milliseconds\"\n    default 100\n    depends on LICHEN_SYNC_HOP\n    help\n      Duration of each superframe for synchronized hopping.\n      All nodes must use the same value.\n\nconfig LICHEN_SYNC_HOP_SEED\n    int \"Hopping seed\"\n    default 0\n    depends on LICHEN_SYNC_HOP\n    help\n      Seed value for the hopping sequence hash.\n      All nodes in a network must use the same seed.\n\nconfig LICHEN_SYNC_HOP_FALLBACK\n    bool \"Enable fallback to epoch-based hopping\"\n    default y\n    depends on LICHEN_SYNC_HOP\n    help\n      When GNSS is unavailable, fall back to epoch-based channel\n      selection instead of returning an error.\n```\n\n## Follow existing patterns\n- Match style of other LICHEN Kconfig options\n- Add help text for each option",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-26T21:53:50.508255Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-26T21:53:50.508255Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0dgd.9",
+      "depends_on_id": "project-LICHEN-worker6-0dgd",
+      "type": "parent-child",
+      "created_at": "2026-07-26T21:53:50.775251Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

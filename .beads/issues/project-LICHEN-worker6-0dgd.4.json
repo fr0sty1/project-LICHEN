@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-0dgd.4",
+  "title": "Python: Add synchronized_hop_channel to link/channel.py",
+  "description": "Add GNSS-synchronized hopping functions to channel.py.\n\n## File\npython/src/lichen/link/channel.py\n\n## Functions to Add\n\n### sfn_from_unix_time\n```python\ndef sfn_from_unix_time(\n    unix_time_ms: int,\n    superframe_duration_ms: int = 100,\n    epoch_base_ms: int = 1704067200000  # 2024-01-01 00:00:00 UTC\n) -\u003e int:\n    \"\"\"Derive SFN from unix timestamp.\"\"\"\n    return (unix_time_ms - epoch_base_ms) // superframe_duration_ms\n```\n\n### synchronized_hop_channel\n```python\ndef synchronized_hop_channel(sfn: int, seed: int, n_channels: int) -\u003e int:\n    \"\"\"\n    Calculate hop channel from SFN using LICHEN hash.\n    \n    Returns channel in range [1, n_channels].\n    \"\"\"\n    from lichen.crypto import lichen_hash_32\n    data = seed.to_bytes(4, 'little') + (sfn \u0026 0xFFFFFFFF).to_bytes(4, 'little')\n    h = lichen_hash_32(data)\n    return 1 + (h % max(n_channels, 3))\n```\n\n## Notes\n- Move/reuse from sim/tdma.py if already exists there\n- Must match Rust and C implementations exactly\n- Validate against test/vectors/sync_hop.json",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-26T21:53:24.311695Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-26T21:53:24.311695Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0dgd.4",
+      "depends_on_id": "project-LICHEN-worker6-0dgd",
+      "type": "parent-child",
+      "created_at": "2026-07-26T21:53:24.586064Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

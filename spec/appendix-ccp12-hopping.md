@@ -162,18 +162,36 @@ Procedure SynchronizedHopChannel(SFN, Seed, NChannels):
     4. RETURN 1 + (Hash MOD N)
 ```
 
-### 4.2. Synchronization Requirements
+### 4.2. Superframe Duration and LoRa Timing
 
-CCP-12 synchronized hopping requires **tight SFN alignment** across all nodes:
+The superframe duration must accommodate LoRa packet airtime:
 
-| Guard Time | Required Sync Accuracy | Achievable Via |
-|------------|------------------------|----------------|
-| 100ms | ~50ms | GNSS PPS, NTS |
-| 50ms | ~25ms | GNSS PPS only |
+| SF | 50-byte Airtime | Recommended Superframe |
+|----|-----------------|------------------------|
+| SF7 | ~100ms | 500ms |
+| SF10 | ~700ms | 2000ms |
+| SF12 | ~2.5s | 5000ms |
 
-**Mesh-derived sync (stratum 1) is NOT sufficient** for CCP-12 over multiple
-hops. Variable packet delays cause cumulative drift that exceeds guard time
-tolerances.
+**Default: 2000ms (2 seconds)** - fits SF10 packets with margin for RX window.
+
+Nodes hop **between packets**, not mid-packet. The sequence is:
+1. Compute channel from current SFN
+2. TX packet (may span multiple SFNs)
+3. After TX complete, compute new SFN, hop if changed
+4. RX on new channel
+
+### 4.3. Synchronization Requirements
+
+CCP-12 synchronized hopping requires **SFN alignment** across all nodes:
+
+| Superframe | Guard Time | Required Sync Accuracy | Achievable Via |
+|------------|------------|------------------------|----------------|
+| 2000ms | 200ms | ~100ms | GNSS PPS, NTS, mesh-sync |
+| 1000ms | 100ms | ~50ms | GNSS PPS, NTS |
+| 500ms | 50ms | ~25ms | GNSS PPS only |
+
+With 2-second superframes, **mesh-derived sync IS sufficient** - the 100ms
+accuracy achievable over 2-3 hops fits within the 200ms guard window.
 
 ### 4.3. Example Calculation
 

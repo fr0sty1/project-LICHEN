@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-0dgd.11",
+  "title": "Zephyr: Wire HAL time to channel selection",
+  "description": "Integrate GNSS time with channel selection in link_ctx.c.\n\n## File\nlichen/subsys/lichen/link/link_ctx.c\n\n## Changes to lichen_link_channel_select\n\n### Add GNSS-synced path\n```c\n#ifdef CONFIG_LICHEN_SYNC_HOP\n#include \u003clichen/sync_hop.h\u003e\n#include \u003clichen/hal/time.h\u003e\n\nint lichen_link_channel_select_sync(const uint8_t eui64[LICHEN_EUI64_LEN],\n                                     uint8_t num_channels,\n                                     uint8_t *channel)\n{\n    struct lichen_hal_time_snapshot ts;\n    \n    /* Try GNSS time first */\n    if (lichen_hal_time_snapshot_get(\u0026ts) == 0 \u0026\u0026 ts.gnss_valid) {\n        uint32_t sfn = lichen_sfn_from_unix_ms(ts.unix_time_ms);\n        *channel = lichen_sync_hop_channel(sfn, \n                                           CONFIG_LICHEN_SYNC_HOP_SEED,\n                                           num_channels);\n        return 0;\n    }\n    \n#ifdef CONFIG_LICHEN_SYNC_HOP_FALLBACK\n    /* Fallback to epoch-based */\n    return lichen_link_channel_select(eui64, num_channels, channel);\n#else\n    return -ENODATA;\n#endif\n}\n#endif /* CONFIG_LICHEN_SYNC_HOP */\n```\n\n### Header Declaration\nAdd to link.h:\n```c\n#ifdef CONFIG_LICHEN_SYNC_HOP\nint lichen_link_channel_select_sync(const uint8_t eui64[LICHEN_EUI64_LEN],\n                                     uint8_t num_channels,\n                                     uint8_t *channel);\n#endif\n```\n\n## Dependencies\n- Issue: Zephyr Kconfig options\n- Issue: Zephyr sync_hop.c/h\n- Requires lichen_hal_time_snapshot_get() with GNSS support",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-26T21:54:06.099355Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-26T21:54:06.099355Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0dgd.11",
+      "depends_on_id": "project-LICHEN-worker6-0dgd",
+      "type": "parent-child",
+      "created_at": "2026-07-26T21:54:06.375241Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
