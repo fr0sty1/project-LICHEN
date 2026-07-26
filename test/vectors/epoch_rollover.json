@@ -1,0 +1,179 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "LICHEN epoch rollover test vectors (spec section 4.4). Tests link-layer replay protection across epoch boundaries. The 24-bit counter = (epoch << 16) | seqnum uses unsigned integer ordering. Epoch MUST NOT wrap from 0xFF to 0x00; key rotation is required after (255, 65535).",
+  "vectors": [
+    {
+      "name": "normal_epoch_increment",
+      "description": "Normal transition: epoch increments when seqnum wraps from 65535 to 0",
+      "sender_sequence": [
+        {"epoch": 5, "seqnum": 65534, "counter": 393214, "accept": true},
+        {"epoch": 5, "seqnum": 65535, "counter": 393215, "accept": true},
+        {"epoch": 6, "seqnum": 0, "counter": 393216, "accept": true},
+        {"epoch": 6, "seqnum": 1, "counter": 393217, "accept": true}
+      ],
+      "comment": "After (5, 65535), sender increments epoch to 6 and restarts seqnum at 0"
+    },
+    {
+      "name": "epoch_max_boundary",
+      "description": "Maximum valid tuple before key rotation is required",
+      "sender_sequence": [
+        {"epoch": 255, "seqnum": 65534, "counter": 16777214, "accept": true},
+        {"epoch": 255, "seqnum": 65535, "counter": 16777215, "accept": true}
+      ],
+      "key_rotation_required_after": true,
+      "comment": "(255, 65535) = 0xFFFFFF is the maximum 24-bit counter. Sender MUST rotate link key before next transmission."
+    },
+    {
+      "name": "epoch_rollover_forbidden",
+      "description": "Epoch rollover from 255 to 0 is forbidden; receiver MUST reject",
+      "receiver_state": {"last_epoch": 255, "last_seqnum": 65535, "window": 0},
+      "received": {"epoch": 0, "seqnum": 0, "counter": 0},
+      "expected": {
+        "accept": false,
+        "reason": "epoch_rollover_rejected",
+        "comment": "A lower epoch (0 < 255) is always stale regardless of seqnum"
+      }
+    },
+    {
+      "name": "replay_same_epoch_lower_seqnum",
+      "description": "Replay detection: same epoch, lower seqnum outside window",
+      "receiver_state": {"last_epoch": 10, "last_seqnum": 1000, "window": 0},
+      "received": {"epoch": 10, "seqnum": 500, "counter": 655860},
+      "expected": {
+        "accept": false,
+        "reason": "seqnum_below_window_floor"
+      }
+    },
+    {
+      "name": "replay_lower_epoch",
+      "description": "Replay detection: lower epoch is always stale",
+      "receiver_state": {"last_epoch": 10, "last_seqnum": 100, "window": 0},
+      "received": {"epoch": 9, "seqnum": 65535, "counter": 655359},
+      "expected": {
+        "accept": false,
+        "reason": "epoch_stale",
+        "comment": "Even with max seqnum, epoch 9 < 10 means counter 655359 < 655460"
+      }
+    },
+    {
+      "name": "accept_higher_epoch",
+      "description": "Higher epoch is always accepted (fresh counter)",
+      "receiver_state": {"last_epoch": 10, "last_seqnum": 60000, "window": 0},
+      "received": {"epoch": 11, "seqnum": 0, "counter": 720896},
+      "expected": {
+        "accept": true,
+        "reason": "epoch_greater"
+      }
+    },
+    {
+      "name": "accept_same_epoch_higher_seqnum",
+      "description": "Same epoch, higher seqnum is accepted",
+      "receiver_state": {"last_epoch": 10, "last_seqnum": 100, "window": 0},
+      "received": {"epoch": 10, "seqnum": 101, "counter": 655461},
+      "expected": {
+        "accept": true,
+        "reason": "seqnum_greater"
+      }
+    },
+    {
+      "name": "tuple_ordering_near_rollover_254_max",
+      "description": "Tuple ordering: (254, 65535) is counter 16711679",
+      "tuple": {"epoch": 254, "seqnum": 65535},
+      "counter": 16711679,
+      "hex": "feffff"
+    },
+    {
+      "name": "tuple_ordering_near_rollover_255_0",
+      "description": "Tuple ordering: (255, 0) is counter 16711680, greater than (254, 65535)",
+      "tuple": {"epoch": 255, "seqnum": 0},
+      "counter": 16711680,
+      "hex": "ff0000",
+      "greater_than": {"epoch": 254, "seqnum": 65535, "counter": 16711679}
+    },
+    {
+      "name": "tuple_ordering_near_rollover_255_max",
+      "description": "Tuple ordering: (255, 65535) = 0xFFFFFF = 16777215 is the maximum",
+      "tuple": {"epoch": 255, "seqnum": 65535},
+      "counter": 16777215,
+      "hex": "ffffff",
+      "greater_than": {"epoch": 255, "seqnum": 0, "counter": 16711680}
+    },
+    {
+      "name": "tuple_ordering_epoch_0_seqnum_0",
+      "description": "Tuple ordering: (0, 0) = 0 is the minimum counter value",
+      "tuple": {"epoch": 0, "seqnum": 0},
+      "counter": 0,
+      "hex": "000000",
+      "less_than": {"epoch": 0, "seqnum": 1, "counter": 1}
+    },
+    {
+      "name": "replay_cross_epoch_boundary",
+      "description": "Replay detection across epoch boundary: old packet from previous epoch",
+      "receiver_state": {"last_epoch": 6, "last_seqnum": 100, "window": 0},
+      "received": {"epoch": 5, "seqnum": 65535, "counter": 393215},
+      "expected": {
+        "accept": false,
+        "reason": "epoch_stale",
+        "comment": "Even though seqnum=65535 is high, epoch 5 < 6 makes this stale"
+      }
+    },
+    {
+      "name": "epoch_skip_accepted",
+      "description": "Epoch can skip values (e.g., after reboot with random init)",
+      "receiver_state": {"last_epoch": 10, "last_seqnum": 5000, "window": 0},
+      "received": {"epoch": 128, "seqnum": 0, "counter": 8388608},
+      "expected": {
+        "accept": true,
+        "reason": "epoch_greater",
+        "comment": "Epoch 128 > 10, counter 8388608 > 660040, accepted"
+      }
+    },
+    {
+      "name": "window_acceptance_same_epoch",
+      "description": "Out-of-order packet within bitmap window (32-bit) is accepted",
+      "receiver_state": {"last_epoch": 10, "last_seqnum": 1000, "window": 0},
+      "received": {"epoch": 10, "seqnum": 990, "counter": 656350},
+      "expected": {
+        "accept": true,
+        "reason": "within_window",
+        "window_offset": 10,
+        "comment": "Seqnum 990 is within 32-packet window of 1000"
+      }
+    },
+    {
+      "name": "window_rejection_duplicate",
+      "description": "Duplicate packet within window is rejected",
+      "receiver_state": {"last_epoch": 10, "last_seqnum": 1000, "window": 1024},
+      "received": {"epoch": 10, "seqnum": 990, "counter": 656350},
+      "expected": {
+        "accept": false,
+        "reason": "duplicate_in_window",
+        "window_offset": 10,
+        "comment": "Bit 10 in window (1024 = 0x400) is set, indicating seqnum 990 was already seen"
+      }
+    },
+    {
+      "name": "counter_comparison_unsigned",
+      "description": "Counter comparison must be unsigned, not modular arithmetic",
+      "comparisons": [
+        {"a": {"epoch": 0, "seqnum": 0}, "b": {"epoch": 255, "seqnum": 65535}, "a_less_than_b": true},
+        {"a": {"epoch": 1, "seqnum": 0}, "b": {"epoch": 0, "seqnum": 65535}, "a_less_than_b": false},
+        {"a": {"epoch": 128, "seqnum": 0}, "b": {"epoch": 127, "seqnum": 65535}, "a_less_than_b": false}
+      ],
+      "comment": "Replay protection uses ordinary unsigned integer ordering, NOT serial-number arithmetic"
+    },
+    {
+      "name": "random_init_cold_boot",
+      "description": "Cold boot random epoch initialization in [128, 255] range",
+      "cold_boot_epoch_range": {"min": 128, "max": 255},
+      "examples": [
+        {"epoch": 128, "seqnum": 0, "counter": 8388608, "valid_init": true},
+        {"epoch": 200, "seqnum": 0, "counter": 13107200, "valid_init": true},
+        {"epoch": 255, "seqnum": 0, "counter": 16711680, "valid_init": true},
+        {"epoch": 64, "seqnum": 0, "counter": 4194304, "valid_init": false}
+      ],
+      "comment": "Without persisted state, epoch MUST init randomly in [128,255] per spec 4.4"
+    }
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.4.5",
   "title": "Vectors: RERR message encoding",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:56.331791Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:56.331791Z",
+  "updated_at": "2026-07-26T19:54:02.954173Z",
+  "closed_at": "2026-07-26T19:54:02.954173Z",
+  "close_reason": "Covered by loadng_messages.json",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.4.5",

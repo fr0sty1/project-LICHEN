@@ -1,0 +1,184 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "Gradient entry ranking and comparison",
+  "description": "Canonical test vectors for gradient table entry ranking (spec section 11). Entries are compared by (source_priority, seq_num, -hop_count) where higher wins. Sequence numbers use RFC 1982 serial arithmetic. GradientEntry is internal state; these vectors validate comparison logic, not wire format.",
+  "spec": "spec/05-routing.md section 11, spec/appendix-loadng.md section B2.2 (RFC 1982)",
+  "vectors": {
+    "source_priority": [
+      {
+        "name": "announce_beats_data",
+        "description": "ANNOUNCE (priority 1) outranks DATA (priority 0) even with worse seq_num and hop_count",
+        "entry_a": {"source": "announce", "seq_num": 1, "hop_count": 10},
+        "entry_b": {"source": "data", "seq_num": 100, "hop_count": 1},
+        "a_wins": true
+      },
+      {
+        "name": "rrep_beats_data",
+        "description": "RREP (priority 1) outranks DATA (priority 0)",
+        "entry_a": {"source": "rrep", "seq_num": 1, "hop_count": 5},
+        "entry_b": {"source": "data", "seq_num": 50, "hop_count": 2},
+        "a_wins": true
+      },
+      {
+        "name": "rpl_beats_data",
+        "description": "RPL (priority 1) outranks DATA (priority 0)",
+        "entry_a": {"source": "rpl", "seq_num": 1, "hop_count": 8},
+        "entry_b": {"source": "data", "seq_num": 200, "hop_count": 1},
+        "a_wins": true
+      },
+      {
+        "name": "same_priority_explicit_sources",
+        "description": "ANNOUNCE and RREP have equal priority (both 1); falls through to seq_num",
+        "entry_a": {"source": "announce", "seq_num": 10, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 5, "hop_count": 3},
+        "a_wins": true
+      },
+      {
+        "name": "data_vs_data_falls_through",
+        "description": "DATA vs DATA (both priority 0) falls through to seq_num comparison",
+        "entry_a": {"source": "data", "seq_num": 20, "hop_count": 5},
+        "entry_b": {"source": "data", "seq_num": 10, "hop_count": 3},
+        "a_wins": true
+      }
+    ],
+    "seq_num_comparison": [
+      {
+        "name": "fresher_seq_wins",
+        "description": "Same priority and hop_count, fresher seq_num wins (RFC 1982)",
+        "entry_a": {"source": "rrep", "seq_num": 100, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 50, "hop_count": 5},
+        "a_wins": true
+      },
+      {
+        "name": "seq_wrap_forward",
+        "description": "Seq 0 is fresher than 65535 after wrap (RFC 1982: diff=1 < 32768)",
+        "entry_a": {"source": "rrep", "seq_num": 0, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 65535, "hop_count": 5},
+        "a_wins": true
+      },
+      {
+        "name": "seq_wrap_backward_stale",
+        "description": "Seq 65535 is stale vs seq 0 (RFC 1982: diff=65535 >= 32768, not fresher)",
+        "entry_a": {"source": "rrep", "seq_num": 65535, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 0, "hop_count": 5},
+        "a_wins": false
+      },
+      {
+        "name": "seq_half_boundary_tie",
+        "description": "Seq 32768 vs seq 0: diff=32768 is NOT < 32768, neither is fresher (tie, falls through to hop_count)",
+        "entry_a": {"source": "rrep", "seq_num": 32768, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 0, "hop_count": 5},
+        "a_wins": true
+      },
+      {
+        "name": "seq_half_minus_one_is_fresher",
+        "description": "Seq 32767 vs seq 0: diff=32767 < 32768, so is fresher",
+        "entry_a": {"source": "rrep", "seq_num": 32767, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 0, "hop_count": 5},
+        "a_wins": true
+      },
+      {
+        "name": "seq_wrap_near_boundary",
+        "description": "Seq 5 vs seq 65530: forward wrap of 11 is fresher",
+        "entry_a": {"source": "rrep", "seq_num": 5, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 65530, "hop_count": 5},
+        "a_wins": true
+      },
+      {
+        "name": "equal_seq_falls_through",
+        "description": "Equal seq_num falls through to hop_count comparison",
+        "entry_a": {"source": "rrep", "seq_num": 100, "hop_count": 3},
+        "entry_b": {"source": "rrep", "seq_num": 100, "hop_count": 5},
+        "a_wins": true
+      }
+    ],
+    "hop_count_comparison": [
+      {
+        "name": "fewer_hops_wins",
+        "description": "Same priority and seq_num, fewer hops wins",
+        "entry_a": {"source": "rrep", "seq_num": 100, "hop_count": 2},
+        "entry_b": {"source": "rrep", "seq_num": 100, "hop_count": 8},
+        "a_wins": true
+      },
+      {
+        "name": "more_hops_loses",
+        "description": "More hops loses when priority and seq_num are equal",
+        "entry_a": {"source": "rrep", "seq_num": 100, "hop_count": 10},
+        "entry_b": {"source": "rrep", "seq_num": 100, "hop_count": 3},
+        "a_wins": false
+      },
+      {
+        "name": "equal_rank_tie",
+        "description": "Identical priority, seq_num, and hop_count is a tie (a_wins=true by >= semantics)",
+        "entry_a": {"source": "rrep", "seq_num": 100, "hop_count": 5},
+        "entry_b": {"source": "rrep", "seq_num": 100, "hop_count": 5},
+        "a_wins": true
+      }
+    ],
+    "combined_ranking": [
+      {
+        "name": "priority_trumps_all",
+        "description": "Higher priority wins despite much worse seq_num and hop_count",
+        "entry_a": {"source": "announce", "seq_num": 1, "hop_count": 255},
+        "entry_b": {"source": "data", "seq_num": 65534, "hop_count": 1},
+        "a_wins": true
+      },
+      {
+        "name": "seq_trumps_hops",
+        "description": "Fresher seq_num wins despite worse hop_count (same priority)",
+        "entry_a": {"source": "rrep", "seq_num": 200, "hop_count": 15},
+        "entry_b": {"source": "rrep", "seq_num": 100, "hop_count": 1},
+        "a_wins": true
+      },
+      {
+        "name": "realistic_rrep_update",
+        "description": "Typical RREP update: new route has fresher seq and better hop_count",
+        "entry_a": {"source": "rrep", "seq_num": 42, "hop_count": 3},
+        "entry_b": {"source": "rrep", "seq_num": 40, "hop_count": 5},
+        "a_wins": true
+      },
+      {
+        "name": "data_cannot_replace_explicit",
+        "description": "DATA-learned route cannot replace explicitly-advertised RREP even if fresher",
+        "entry_a": {"source": "data", "seq_num": 500, "hop_count": 1},
+        "entry_b": {"source": "rrep", "seq_num": 10, "hop_count": 10},
+        "a_wins": false
+      }
+    ],
+    "coordinate_encoding": [
+      {
+        "name": "coords_seattle",
+        "description": "GradientEntry.coords for Seattle (47.6062, -122.3321) from app_data Type=0x01",
+        "latitude_degrees": 47.6062,
+        "longitude_degrees": -122.3321,
+        "latitude_e7": 476062000,
+        "longitude_e7": -1223321000,
+        "coords_tuple": [47.6062, -122.3321]
+      },
+      {
+        "name": "coords_null",
+        "description": "GradientEntry.coords can be None when announce has no app_data",
+        "coords_tuple": null
+      },
+      {
+        "name": "coords_zero",
+        "description": "Equator and prime meridian coordinates",
+        "latitude_degrees": 0.0,
+        "longitude_degrees": 0.0,
+        "latitude_e7": 0,
+        "longitude_e7": 0,
+        "coords_tuple": [0.0, 0.0]
+      },
+      {
+        "name": "coords_negative_limits",
+        "description": "Minimum valid latitude and longitude",
+        "latitude_degrees": -90.0,
+        "longitude_degrees": -180.0,
+        "latitude_e7": -900000000,
+        "longitude_e7": -1800000000,
+        "coords_tuple": [-90.0, -180.0]
+      }
+    ]
+  }
+}

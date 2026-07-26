@@ -1654,3 +1654,332 @@ def test_loadng_discovery_vectors_match_generator() -> None:
         assert committed["name"] == gen["name"], f"name mismatch at index {i}"
         assert committed["type"] == gen["type"], f"type mismatch at {committed['name']}"
         assert committed["description"] == gen["description"], f"desc mismatch at {committed['name']}"
+
+
+def _epoch_rollover_cases():
+    doc = _load("epoch_rollover.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _epoch_counter(epoch: int, seqnum: int) -> int:
+    """Compute 24-bit replay counter from epoch and seqnum (spec 4.4)."""
+    return (epoch << 16) | seqnum
+
+
+@pytest.mark.parametrize("name,vector", _epoch_rollover_cases())
+def test_epoch_rollover_vector(name: str, vector: dict) -> None:
+    """Validate epoch rollover test vectors for link-layer replay protection (spec 4.4).
+
+    Tests counter computation, tuple ordering, and replay detection rules.
+    """
+    # Test sender_sequence vectors: verify counter computation
+    if "sender_sequence" in vector:
+        for entry in vector["sender_sequence"]:
+            computed = _epoch_counter(entry["epoch"], entry["seqnum"])
+            assert computed == entry["counter"], (
+                f"{name}: counter mismatch for ({entry['epoch']}, {entry['seqnum']}): "
+                f"got {computed}, expected {entry['counter']}"
+            )
+
+    # Test tuple ordering vectors: verify counter computation and ordering
+    if "tuple" in vector:
+        t = vector["tuple"]
+        computed = _epoch_counter(t["epoch"], t["seqnum"])
+        assert computed == vector["counter"], (
+            f"{name}: counter mismatch for ({t['epoch']}, {t['seqnum']})"
+        )
+        # Verify hex representation
+        expected_hex = vector["counter"].to_bytes(3, "big").hex()
+        assert expected_hex == vector["hex"], f"{name}: hex mismatch"
+
+        # Verify ordering relation if present
+        if "greater_than" in vector:
+            other = vector["greater_than"]
+            other_counter = _epoch_counter(other["epoch"], other["seqnum"])
+            assert other_counter == other["counter"]
+            assert computed > other_counter, f"{name}: ordering violation"
+
+        if "less_than" in vector:
+            other = vector["less_than"]
+            other_counter = _epoch_counter(other["epoch"], other["seqnum"])
+            assert other_counter == other["counter"]
+            assert computed < other_counter, f"{name}: ordering violation"
+
+    # Test receiver state vectors: verify replay detection logic
+    if "receiver_state" in vector and "received" in vector:
+        state = vector["receiver_state"]
+        received = vector["received"]
+        expected = vector["expected"]
+
+        last_counter = _epoch_counter(state["last_epoch"], state["last_seqnum"])
+        recv_counter = _epoch_counter(received["epoch"], received["seqnum"])
+
+        # Verify counter computation
+        assert recv_counter == received["counter"], f"{name}: received counter mismatch"
+
+        # Verify acceptance decision based on spec rules
+        reason = expected["reason"]
+        should_accept = expected["accept"]
+
+        if reason == "epoch_rollover_rejected":
+            # Epoch 0 < last_epoch 255: always stale
+            assert received["epoch"] < state["last_epoch"]
+            assert not should_accept
+
+        elif reason == "epoch_stale":
+            # Lower epoch is always stale
+            assert received["epoch"] < state["last_epoch"]
+            assert not should_accept
+
+        elif reason == "epoch_greater":
+            # Higher epoch is always fresh
+            assert received["epoch"] > state["last_epoch"]
+            assert should_accept
+
+        elif reason == "seqnum_greater":
+            # Same epoch, higher seqnum is fresh
+            assert received["epoch"] == state["last_epoch"]
+            assert received["seqnum"] > state["last_seqnum"]
+            assert should_accept
+
+        elif reason == "seqnum_below_window_floor":
+            # Same epoch, seqnum below window is stale
+            assert received["epoch"] == state["last_epoch"]
+            assert received["seqnum"] < state["last_seqnum"] - 32
+            assert not should_accept
+
+        elif reason == "within_window":
+            # Same epoch, seqnum within 32-packet window
+            assert received["epoch"] == state["last_epoch"]
+            offset = state["last_seqnum"] - received["seqnum"]
+            assert 0 < offset <= 32
+            assert expected["window_offset"] == offset
+            assert should_accept
+
+        elif reason == "duplicate_in_window":
+            # Window bit already set
+            offset = state["last_seqnum"] - received["seqnum"]
+            assert (state["window"] >> offset) & 1 == 1
+            assert not should_accept
+
+    # Test counter comparison vectors
+    if "comparisons" in vector:
+        for comp in vector["comparisons"]:
+            a_counter = _epoch_counter(comp["a"]["epoch"], comp["a"]["seqnum"])
+            b_counter = _epoch_counter(comp["b"]["epoch"], comp["b"]["seqnum"])
+            if comp["a_less_than_b"]:
+                assert a_counter < b_counter, f"{name}: {comp['a']} should be < {comp['b']}"
+            else:
+                assert a_counter >= b_counter, f"{name}: {comp['a']} should be >= {comp['b']}"
+
+    # Test cold boot random init vectors
+    if "cold_boot_epoch_range" in vector:
+        epoch_range = vector["cold_boot_epoch_range"]
+        for example in vector["examples"]:
+            epoch = example["epoch"]
+            computed = _epoch_counter(epoch, example["seqnum"])
+            assert computed == example["counter"]
+            in_range = epoch_range["min"] <= epoch <= epoch_range["max"]
+            assert in_range == example["valid_init"], (
+                f"{name}: epoch {epoch} valid_init mismatch"
+            )
+
+
+def test_epoch_rollover_counter_math() -> None:
+    """Cross-validate epoch rollover counter formula against spec section 4.4."""
+    # Boundary cases from spec
+    assert _epoch_counter(0, 0) == 0x000000
+    assert _epoch_counter(0, 65535) == 0x00FFFF
+    assert _epoch_counter(1, 0) == 0x010000
+    assert _epoch_counter(255, 65535) == 0xFFFFFF
+
+    # Verify monotonic increment across epoch boundary
+    assert _epoch_counter(5, 65535) < _epoch_counter(6, 0)
+    assert _epoch_counter(254, 65535) < _epoch_counter(255, 0)
+
+    # Verify epoch comparison dominates seqnum
+    assert _epoch_counter(1, 0) > _epoch_counter(0, 65535)
+    assert _epoch_counter(128, 0) > _epoch_counter(127, 65535)
+
+
+def test_epoch_rollover_vector_file_integrity() -> None:
+    """Verify epoch_rollover.json structure and coverage."""
+    doc = _load("epoch_rollover.json")
+    assert doc["format_version"] == 2
+    assert "epoch rollover" in doc["description"].lower()
+
+    names = {v["name"] for v in doc["vectors"]}
+    # Verify required coverage
+    assert "normal_epoch_increment" in names
+    assert "epoch_max_boundary" in names
+    assert "epoch_rollover_forbidden" in names
+    assert "tuple_ordering_near_rollover_254_max" in names
+    assert "tuple_ordering_near_rollover_255_0" in names
+    assert "counter_comparison_unsigned" in names
+    assert "random_init_cold_boot" in names
+
+
+# --- Gradient Entry Ranking Vectors ---
+
+
+def _gradient_entry_doc() -> dict:
+    return _load("gradient_entry.json")
+
+
+def _make_gradient_entry(fields: dict) -> "GradientEntry":
+    """Create a GradientEntry from vector fields for comparison testing."""
+    from ipaddress import IPv6Address
+
+    from lichen.gradient import GradientEntry, GradientSource
+
+    source_map = {
+        "announce": GradientSource.ANNOUNCE,
+        "rrep": GradientSource.RREP,
+        "rpl": GradientSource.RPL,
+        "data": GradientSource.DATA,
+    }
+    return GradientEntry(
+        destination=IPv6Address("fd00::1"),
+        next_hop=IPv6Address("fe80::1"),
+        hop_count=fields["hop_count"],
+        seq_num=fields["seq_num"],
+        source=source_map[fields["source"]],
+        expires=10000,
+    )
+
+
+def _gradient_source_priority_cases():
+    doc = _gradient_entry_doc()
+    return [(v["name"], v) for v in doc["vectors"]["source_priority"]]
+
+
+def _gradient_seq_num_cases():
+    doc = _gradient_entry_doc()
+    return [(v["name"], v) for v in doc["vectors"]["seq_num_comparison"]]
+
+
+def _gradient_hop_count_cases():
+    doc = _gradient_entry_doc()
+    return [(v["name"], v) for v in doc["vectors"]["hop_count_comparison"]]
+
+
+def _gradient_combined_cases():
+    doc = _gradient_entry_doc()
+    return [(v["name"], v) for v in doc["vectors"]["combined_ranking"]]
+
+
+def _gradient_coord_cases():
+    doc = _gradient_entry_doc()
+    return [(v["name"], v) for v in doc["vectors"]["coordinate_encoding"]]
+
+
+@pytest.mark.parametrize("name,vector", _gradient_source_priority_cases())
+def test_gradient_source_priority_vector(name: str, vector: dict) -> None:
+    """Validate GradientSource priority ordering per spec section 11."""
+    entry_a = _make_gradient_entry(vector["entry_a"])
+    entry_b = _make_gradient_entry(vector["entry_b"])
+
+    a_rank = entry_a._rank()
+    b_rank = entry_b._rank()
+
+    if vector["a_wins"]:
+        assert a_rank >= b_rank, f"{name}: expected a >= b"
+    else:
+        assert a_rank < b_rank, f"{name}: expected a < b"
+
+
+@pytest.mark.parametrize("name,vector", _gradient_seq_num_cases())
+def test_gradient_seq_num_vector(name: str, vector: dict) -> None:
+    """Validate RFC 1982 sequence number comparison in gradient ranking."""
+    entry_a = _make_gradient_entry(vector["entry_a"])
+    entry_b = _make_gradient_entry(vector["entry_b"])
+
+    a_rank = entry_a._rank()
+    b_rank = entry_b._rank()
+
+    if vector["a_wins"]:
+        assert a_rank >= b_rank, f"{name}: expected a >= b"
+    else:
+        assert a_rank < b_rank, f"{name}: expected a < b"
+
+
+@pytest.mark.parametrize("name,vector", _gradient_hop_count_cases())
+def test_gradient_hop_count_vector(name: str, vector: dict) -> None:
+    """Validate hop count comparison in gradient ranking (fewer hops wins)."""
+    entry_a = _make_gradient_entry(vector["entry_a"])
+    entry_b = _make_gradient_entry(vector["entry_b"])
+
+    a_rank = entry_a._rank()
+    b_rank = entry_b._rank()
+
+    if vector["a_wins"]:
+        assert a_rank >= b_rank, f"{name}: expected a >= b"
+    else:
+        assert a_rank < b_rank, f"{name}: expected a < b"
+
+
+@pytest.mark.parametrize("name,vector", _gradient_combined_cases())
+def test_gradient_combined_ranking_vector(name: str, vector: dict) -> None:
+    """Validate combined ranking: priority > seq_num > hop_count."""
+    entry_a = _make_gradient_entry(vector["entry_a"])
+    entry_b = _make_gradient_entry(vector["entry_b"])
+
+    a_rank = entry_a._rank()
+    b_rank = entry_b._rank()
+
+    if vector["a_wins"]:
+        assert a_rank >= b_rank, f"{name}: expected a >= b"
+    else:
+        assert a_rank < b_rank, f"{name}: expected a < b"
+
+
+@pytest.mark.parametrize("name,vector", _gradient_coord_cases())
+def test_gradient_coordinate_encoding_vector(name: str, vector: dict) -> None:
+    """Validate GradientEntry coordinate handling (e7 format from announce app_data)."""
+    from ipaddress import IPv6Address
+
+    from lichen.gradient import GradientEntry, GradientSource
+
+    coords = tuple(vector["coords_tuple"]) if vector["coords_tuple"] else None
+
+    entry = GradientEntry(
+        destination=IPv6Address("fd00::1"),
+        next_hop=IPv6Address("fe80::1"),
+        hop_count=3,
+        seq_num=1,
+        source=GradientSource.ANNOUNCE,
+        expires=10000,
+        coords=coords,
+    )
+
+    assert entry.coords == coords, f"{name}: coords mismatch"
+
+    if coords is not None:
+        lat, lon = coords
+        assert abs(lat - vector["latitude_degrees"]) < 1e-7, f"{name}: lat mismatch"
+        assert abs(lon - vector["longitude_degrees"]) < 1e-7, f"{name}: lon mismatch"
+
+        lat_e7 = int(round(lat * 10_000_000))
+        lon_e7 = int(round(lon * 10_000_000))
+        assert lat_e7 == vector["latitude_e7"], f"{name}: lat_e7 mismatch"
+        assert lon_e7 == vector["longitude_e7"], f"{name}: lon_e7 mismatch"
+
+
+def test_gradient_entry_vector_coverage() -> None:
+    """Verify gradient_entry.json has all expected vector categories."""
+    doc = _gradient_entry_doc()
+    assert doc["format_version"] == 2
+    vectors = doc["vectors"]
+
+    assert "source_priority" in vectors
+    assert "seq_num_comparison" in vectors
+    assert "hop_count_comparison" in vectors
+    assert "combined_ranking" in vectors
+    assert "coordinate_encoding" in vectors
+
+    assert len(vectors["source_priority"]) >= 5
+    assert len(vectors["seq_num_comparison"]) >= 7
+    assert len(vectors["hop_count_comparison"]) >= 3
+    assert len(vectors["combined_ranking"]) >= 4
+    assert len(vectors["coordinate_encoding"]) >= 4
