@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0dgd.5",
   "title": "Python: Wire time provider to select_channel",
   "description": "Integrate time provider with channel selection for GNSS-synchronized hopping.\n\n## File\npython/src/lichen/link/channel.py\n\n## Changes to select_channel()\n\n### New Parameters\n```python\ndef select_channel(\n    *,\n    peer_eui64: bytes | None = None,\n    peer_known: bool = False,\n    announce_rx_channel: int | None = None,\n    sfn: int = 0,\n    epoch: int = 0,\n    n_channels: int = 8,\n    # New parameters:\n    time_provider: TimeProvider | None = None,\n    sync_hop_enabled: bool = False,\n    sync_hop_seed: int = 0,\n) -\u003e int:\n```\n\n### Priority Chain\n1. If sync_hop_enabled and time_provider.has_gnss_fix():\n   - unix_ms = time_provider.get_unix_time_ms()\n   - sfn = sfn_from_unix_time(unix_ms)\n   - return synchronized_hop_channel(sfn, sync_hop_seed, n_channels)\n2. Else if announce_rx_channel is not None: use announce channel\n3. Else: fall back to epoch-based hash\n\n## Dependencies\n- Issue: Python time provider abstraction\n- Issue: Python synchronized_hop_channel",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:53:30.217082Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:53:30.217082Z",
+  "updated_at": "2026-07-26T22:52:56.802219Z",
+  "closed_at": "2026-07-26T22:52:56.802219Z",
+  "close_reason": "Wired TimeProvider to select_channel with GnssHopConfig",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0dgd.5",

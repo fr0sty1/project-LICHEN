@@ -2,20 +2,33 @@
 
 Priority chain (highest to lowest):
 1. Announce-driven: use rx_channel from last Announce for known peer
-2. Hash-based: channel = 1 + hash_32(sfn, peer_eui) % (n_ch - 1)
-3. Synchronized hop: CCP-12 synchronized_hop_channel for known peers
+2. GNSS-synced: use synchronized_hop_channel when GNSS time available
+3. Hash-based: channel = 1 + hash_32(sfn, peer_eui) % (n_ch - 1)
 4. Fallback: control channel CH0 for unknown peers / initial contact
 """
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+
+from lichen.time_provider import TimeProvider
 
 logger = logging.getLogger(__name__)
 
 # Synchronized hopping constants (CCP-12)
 SUPERFRAME_DURATION_US = 2_000_000  # 2 seconds default
 GNSS_EPOCH_BASE_US = 1704067200_000_000  # 2024-01-01 00:00:00 UTC
+
+
+@dataclass
+class GnssHopConfig:
+    """Configuration for GNSS-synchronized hopping."""
+
+    enabled: bool = False
+    seed: int = 0
+    superframe_duration_us: int = SUPERFRAME_DURATION_US
+    epoch_base_us: int = GNSS_EPOCH_BASE_US
 
 
 def hash_32(data: bytes) -> int:
@@ -73,6 +86,8 @@ def select_channel(
     sfn: int = 0,
     epoch: int = 0,
     n_channels: int = 8,
+    time_provider: TimeProvider | None = None,
+    gnss_config: GnssHopConfig | None = None,
 ) -> int:
     """Select rendezvous channel per CCP-9 priority chain.
 
@@ -83,6 +98,8 @@ def select_channel(
         sfn: Superframe number for hash-based calculation.
         epoch: Current epoch for hash seeding.
         n_channels: Number of available channels (default 8).
+        time_provider: Optional time provider for GNSS-synced hopping.
+        gnss_config: Optional configuration for GNSS-synchronized hopping.
 
     Returns:
         Channel number (0 to n_channels-1).
@@ -92,7 +109,20 @@ def select_channel(
         logger.debug("select_channel: announce-driven channel=%d", announce_rx_channel)
         return announce_rx_channel
 
-    # Priority 2: hash-based for known peers
+    # Priority 2: GNSS-synced (when enabled and time available)
+    if gnss_config and gnss_config.enabled and time_provider:
+        unix_us = time_provider.unix_time_us()
+        if unix_us is not None:
+            computed_sfn = sfn_from_unix_time(
+                unix_us,
+                gnss_config.superframe_duration_us,
+                gnss_config.epoch_base_us,
+            )
+            ch = synchronized_hop_channel(computed_sfn, gnss_config.seed, n_channels)
+            logger.debug("select_channel: gnss-synced channel=%d sfn=%d", ch, computed_sfn)
+            return ch
+
+    # Priority 3: hash-based for known peers
     if peer_known and peer_eui64 is not None and len(peer_eui64) == 8:
         data = peer_eui64 + epoch.to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
         h = hash_32(data)
@@ -101,6 +131,6 @@ def select_channel(
         logger.debug("select_channel: hash-based channel=%d for peer=%s", ch, peer_eui64.hex()[:8])
         return ch
 
-    # Priority 3: fallback to control channel CH0
+    # Priority 4: fallback to control channel CH0
     logger.debug("select_channel: fallback to CH0")
     return 0

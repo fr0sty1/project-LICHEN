@@ -6,6 +6,7 @@ Frame format, signatures, replay protection, link-layer security, TX queue,
 and operating class definitions (CCP-3/CCP-4).
 """
 
+from lichen.link.channel import GnssHopConfig
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.link.op_class import (
     OPERATING_CLASS_TABLE,
@@ -35,6 +36,7 @@ __all__ = [
     "DEADLINE_ACK_MS",
     "DEADLINE_APP_MS",
     "DEADLINE_ROUTING_MS",
+    "GnssHopConfig",
     "OPERATING_CLASS_TABLE",
     "OperatingClass",
     "OperatingClassParams",

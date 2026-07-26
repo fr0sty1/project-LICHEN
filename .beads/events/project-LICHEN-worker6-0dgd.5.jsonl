@@ -1,1 +1,2 @@
 {"id":"019fa06b-3c72-73c4-a606-a9535afd3906","issue_id":"project-LICHEN-worker6-0dgd.5","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-26T21:53:30.226247Z"}
+{"id":"019fa0a1-a86c-747c-a2c2-0311ca910628","issue_id":"project-LICHEN-worker6-0dgd.5","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Wired TimeProvider to select_channel with GnssHopConfig","created_at":"2026-07-26T22:52:56.812295Z"}

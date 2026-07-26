@@ -1,1 +1,2 @@
 {"id":"019fa06b-75ee-7b4e-a837-9a7d9263fd61","issue_id":"project-LICHEN-worker6-0dgd.8","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-26T21:53:44.942742Z"}
+{"id":"019fa0a2-50a1-7353-b801-e323097a5a1a","issue_id":"project-LICHEN-worker6-0dgd.8","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added GnssHopConfig struct and select_channel_with_gnss function to lichen-core with full priority chain: GNSS-synced -\u003e hash-based -\u003e CH0 fallback","created_at":"2026-07-26T22:53:39.873219Z"}

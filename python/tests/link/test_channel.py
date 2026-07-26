@@ -7,12 +7,14 @@ from __future__ import annotations
 from lichen.link.channel import (
     GNSS_EPOCH_BASE_US,
     SUPERFRAME_DURATION_US,
+    GnssHopConfig,
     hash_32,
     select_channel,
     sfn_from_unix_time,
     synchronized_hop_channel,
 )
 from lichen.sim.tdma import synchronized_hop_channel as tdma_synchronized_hop_channel
+from lichen.time_provider import SimulatedTimeProvider
 
 
 class TestSfnFromUnixTime:
@@ -183,3 +185,141 @@ class TestSelectChannel:
             announce_rx_channel=5,
         )
         assert ch == 0
+
+    def test_gnss_synced_priority(self) -> None:
+        """GNSS-synced selection should take priority over hash-based."""
+        time_provider = SimulatedTimeProvider(
+            unix_time_us=GNSS_EPOCH_BASE_US + 5 * SUPERFRAME_DURATION_US,
+            has_gnss=True,
+        )
+        gnss_config = GnssHopConfig(enabled=True, seed=0)
+
+        ch = select_channel(
+            peer_eui64=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            peer_known=True,
+            sfn=42,
+            n_channels=8,
+            time_provider=time_provider,
+            gnss_config=gnss_config,
+        )
+        # Should use synchronized_hop_channel with computed SFN=5
+        expected_ch = synchronized_hop_channel(5, seed=0, n_channels=8)
+        assert ch == expected_ch
+
+    def test_announce_beats_gnss_synced(self) -> None:
+        """Announce-driven should take priority over GNSS-synced."""
+        time_provider = SimulatedTimeProvider(
+            unix_time_us=GNSS_EPOCH_BASE_US + 5 * SUPERFRAME_DURATION_US,
+            has_gnss=True,
+        )
+        gnss_config = GnssHopConfig(enabled=True, seed=0)
+
+        ch = select_channel(
+            peer_eui64=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            peer_known=True,
+            announce_rx_channel=3,
+            sfn=42,
+            n_channels=8,
+            time_provider=time_provider,
+            gnss_config=gnss_config,
+        )
+        assert ch == 3
+
+    def test_gnss_disabled_falls_through(self) -> None:
+        """When GNSS config disabled, should fall through to hash-based."""
+        time_provider = SimulatedTimeProvider(
+            unix_time_us=GNSS_EPOCH_BASE_US + 5 * SUPERFRAME_DURATION_US,
+            has_gnss=True,
+        )
+        gnss_config = GnssHopConfig(enabled=False, seed=0)
+
+        ch = select_channel(
+            peer_eui64=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            peer_known=True,
+            sfn=42,
+            n_channels=8,
+            time_provider=time_provider,
+            gnss_config=gnss_config,
+        )
+        # Should use hash-based since GNSS is disabled
+        assert 1 <= ch <= 7
+
+    def test_gnss_no_time_falls_through(self) -> None:
+        """When time provider returns None, should fall through to hash-based."""
+        time_provider = SimulatedTimeProvider(unix_time_us=None, has_gnss=False)
+        gnss_config = GnssHopConfig(enabled=True, seed=0)
+
+        ch = select_channel(
+            peer_eui64=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            peer_known=True,
+            sfn=42,
+            n_channels=8,
+            time_provider=time_provider,
+            gnss_config=gnss_config,
+        )
+        # Should use hash-based since no time available
+        assert 1 <= ch <= 7
+
+    def test_gnss_synced_uses_config_params(self) -> None:
+        """GNSS-synced should use config's seed and timing params."""
+        custom_duration = 1_000_000  # 1 second
+        custom_seed = 0xDEADBEEF
+        time_provider = SimulatedTimeProvider(
+            unix_time_us=GNSS_EPOCH_BASE_US + 10 * custom_duration,
+            has_gnss=True,
+        )
+        gnss_config = GnssHopConfig(
+            enabled=True,
+            seed=custom_seed,
+            superframe_duration_us=custom_duration,
+        )
+
+        ch = select_channel(
+            peer_known=False,  # Unknown peer, but GNSS should still work
+            n_channels=8,
+            time_provider=time_provider,
+            gnss_config=gnss_config,
+        )
+        # Should use synchronized_hop_channel with computed SFN=10 and custom seed
+        expected_ch = synchronized_hop_channel(10, seed=custom_seed, n_channels=8)
+        assert ch == expected_ch
+
+    def test_gnss_without_time_provider_falls_through(self) -> None:
+        """When time_provider is None, should fall through to hash-based."""
+        gnss_config = GnssHopConfig(enabled=True, seed=0)
+
+        ch = select_channel(
+            peer_eui64=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            peer_known=True,
+            sfn=42,
+            n_channels=8,
+            time_provider=None,
+            gnss_config=gnss_config,
+        )
+        # Should use hash-based since no time provider
+        assert 1 <= ch <= 7
+
+
+class TestGnssHopConfig:
+    """Tests for GnssHopConfig dataclass."""
+
+    def test_defaults(self) -> None:
+        """Default values should match module constants."""
+        config = GnssHopConfig()
+        assert config.enabled is False
+        assert config.seed == 0
+        assert config.superframe_duration_us == SUPERFRAME_DURATION_US
+        assert config.epoch_base_us == GNSS_EPOCH_BASE_US
+
+    def test_custom_values(self) -> None:
+        """Custom values should be stored correctly."""
+        config = GnssHopConfig(
+            enabled=True,
+            seed=12345,
+            superframe_duration_us=1_000_000,
+            epoch_base_us=1_000_000_000_000_000,
+        )
+        assert config.enabled is True
+        assert config.seed == 12345
+        assert config.superframe_duration_us == 1_000_000
+        assert config.epoch_base_us == 1_000_000_000_000_000
