@@ -1,0 +1,840 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "LOADng discovery state transitions",
+  "description": "Cross-language test vectors for LOADng RREQ/RREP processing (spec sections 10.3-10.5, appendix B2.6). Each vector specifies initial state, input message, and expected action with cache/gradient mutations. Actions: 'suppressed' (duplicate RREQ or echo), 'reply' (destination or intermediate), 'forward' (hop limit > 1), 'dropped' (hop limit exhausted), 'delivered' (RREP at requester), 'forward_rrep' (RREP along reverse route), 'dropped_rrep' (no reverse route). All implementations must agree.",
+  "spec": "spec/05-routing.md sections 10.3-10.5, appendix B2.6",
+  "constants": {
+    "INITIAL_HOP_LIMIT": 4,
+    "MAX_HOP_LIMIT": 15,
+    "SUPPRESS_WINDOW_MS": 10000,
+    "ROUTE_TIMEOUT_MS": 300000,
+    "GRADIENT_TIMEOUT_MS": 600000
+  },
+  "vectors": [
+    {
+      "name": "rreq_echo_own",
+      "type": "rreq",
+      "description": "RREQ originated by this node echoes back; suppress without processing (spec 10.3 step 1: 'If originator == self, drop').",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::1",
+          "destination": "fe80::2",
+          "seq_num": 100,
+          "hop_limit": 3
+        },
+        "from_neighbor": "fe80::3",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "suppressed",
+        "reply": null,
+        "forward": null,
+        "cache_added": false,
+        "gradient_added": false,
+        "seen_updated": false
+      }
+    },
+    {
+      "name": "rreq_duplicate_suppressed",
+      "type": "rreq",
+      "description": "Duplicate RREQ (same originator/destination/seq seen within suppress window) is dropped (spec 10.3 step 3: 'If seen before, drop').",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": [
+          {
+            "originator": "fe80::2",
+            "destination": "fe80::3",
+            "seq_num": 50,
+            "seen_at_ms": 500
+          }
+        ]
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 50,
+          "hop_limit": 3
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "suppressed",
+        "reply": null,
+        "forward": null,
+        "cache_added": false,
+        "gradient_added": false,
+        "seen_updated": false
+      }
+    },
+    {
+      "name": "rreq_suppression_window_expired",
+      "type": "rreq",
+      "description": "Same RREQ after suppression window expires is processed normally (spec B2.6: suppress window = 10s). Forward with hop limit decremented.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": [
+          {
+            "originator": "fe80::2",
+            "destination": "fe80::3",
+            "seq_num": 50,
+            "seen_at_ms": 500
+          }
+        ]
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 50,
+          "hop_limit": 3
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 11000
+      },
+      "expected": {
+        "action": "forward",
+        "reply": null,
+        "forward": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 50,
+          "hop_limit": 2
+        },
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 1
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rreq_fresher_seq_not_suppressed",
+      "type": "rreq",
+      "description": "RREQ with fresher sequence number (per RFC 1982) is not suppressed even if same originator/destination seen. Processed normally.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": [
+          {
+            "originator": "fe80::2",
+            "destination": "fe80::3",
+            "seq_num": 50,
+            "seen_at_ms": 500
+          }
+        ]
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 51,
+          "hop_limit": 4
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "forward",
+        "reply": null,
+        "forward": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 51,
+          "hop_limit": 3
+        },
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 0
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rreq_destination_direct_reply",
+      "type": "rreq",
+      "description": "Node is the destination; generate RREP with own sequence number (spec 10.3 step 1: 'If I am destination, send RREP'). Reply goes to from_neighbor.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "own_seq": 10,
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::1",
+          "seq_num": 100,
+          "hop_limit": 3
+        },
+        "from_neighbor": "fe80::3",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "reply",
+        "reply": {
+          "originator": "fe80::1",
+          "destination": "fe80::2",
+          "seq_num": 11,
+          "hop_count": 0,
+          "flags": 0
+        },
+        "reply_next_hop": "fe80::3",
+        "forward": null,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::3",
+          "hop_count": 1
+        },
+        "gradient_added": false,
+        "seen_updated": true,
+        "own_seq_incremented": true
+      }
+    },
+    {
+      "name": "rreq_intermediate_gradient_reply",
+      "type": "rreq",
+      "description": "Intermediate node has gradient to destination; generate proxied RREP with flags=0x01 (spec 10.3 step 2: 'If I have gradient, send RREP').",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [
+          {
+            "destination": "fe80::3",
+            "next_hop": "fe80::5",
+            "hop_count": 2,
+            "seq_num": 200,
+            "expires_ms": 600000
+          }
+        ],
+        "seen_entries": []
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 4
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "reply",
+        "reply": {
+          "originator": "fe80::3",
+          "destination": "fe80::2",
+          "seq_num": 200,
+          "hop_count": 2,
+          "flags": 1
+        },
+        "reply_next_hop": "fe80::4",
+        "forward": null,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 0
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rreq_forward_decrement_hop",
+      "type": "rreq",
+      "description": "No route to destination and hop_limit > 1; forward with hop_limit decremented (spec 10.3 step 4). Record reverse route in cache.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 4
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "forward",
+        "reply": null,
+        "forward": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 3
+        },
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 0
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rreq_hop_limit_exhausted",
+      "type": "rreq",
+      "description": "Hop limit = 1; cannot forward further, drop silently (spec 10.3: 'decrement hop limit, rebroadcast' only if hop_limit > 1). Still record reverse route.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 1
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "dropped",
+        "reply": null,
+        "forward": null,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 3
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rrep_delivered_at_requester",
+      "type": "rrep",
+      "description": "RREP reaches original requester (destination == self); mark delivered (spec 10.4-10.5: 'RREP follows reverse path until it reaches the original requester').",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::1",
+          "seq_num": 200,
+          "hop_count": 2,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "delivered",
+        "forward": null,
+        "dropped": false,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 3
+        },
+        "gradient_added": true,
+        "gradient_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 3,
+          "seq_num": 200
+        }
+      }
+    },
+    {
+      "name": "rrep_forward_along_reverse_route",
+      "type": "rrep",
+      "description": "RREP not for this node; forward along reverse route from cache (spec 10.4: 'RREP follows reverse path'). Hop count incremented.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [
+          {
+            "destination": "fe80::5",
+            "next_hop": "fe80::4",
+            "hop_count": 1,
+            "metric": 1,
+            "seq_num": 50,
+            "valid_until_ms": 301000
+          }
+        ],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::5",
+          "seq_num": 200,
+          "hop_count": 1,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "forward_rrep",
+        "forward": {
+          "originator": "fe80::3",
+          "destination": "fe80::5",
+          "seq_num": 200,
+          "hop_count": 2,
+          "flags": 0
+        },
+        "forward_next_hop": "fe80::4",
+        "dropped": false,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2
+        },
+        "gradient_added": true,
+        "gradient_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2,
+          "seq_num": 200
+        }
+      }
+    },
+    {
+      "name": "rrep_dropped_no_reverse_route",
+      "type": "rrep",
+      "description": "RREP not for this node and no reverse route in cache; drop (spec 10.4: cannot forward without reverse path). Still install gradient.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::5",
+          "seq_num": 200,
+          "hop_count": 1,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "dropped_rrep",
+        "forward": null,
+        "forward_next_hop": null,
+        "dropped": true,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2
+        },
+        "gradient_added": true,
+        "gradient_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2,
+          "seq_num": 200
+        }
+      }
+    },
+    {
+      "name": "rreq_seq_wrap_forward_fresh",
+      "type": "rreq",
+      "description": "Sequence number wraps from 65535 to 0; 0 is fresher per RFC 1982 (diff < 32768). Process normally.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": [
+          {
+            "originator": "fe80::2",
+            "destination": "fe80::3",
+            "seq_num": 65535,
+            "seen_at_ms": 500
+          }
+        ]
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 0,
+          "hop_limit": 4
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "forward",
+        "reply": null,
+        "forward": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 0,
+          "hop_limit": 3
+        },
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 0
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rreq_seq_wrap_backward_stale",
+      "type": "rreq",
+      "description": "Sequence number 65534 after seeing 0 is stale per RFC 1982 (diff = 65534 >= 32768). Suppress.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": [
+          {
+            "originator": "fe80::2",
+            "destination": "fe80::3",
+            "seq_num": 0,
+            "seen_at_ms": 500
+          }
+        ]
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 65534,
+          "hop_limit": 4
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "suppressed",
+        "reply": null,
+        "forward": null,
+        "cache_added": false,
+        "gradient_added": false,
+        "seen_updated": false
+      }
+    },
+    {
+      "name": "rrep_gradient_fresher_updates",
+      "type": "rrep",
+      "description": "RREP with fresher sequence number updates existing gradient (spec 10.5: 'install forward gradient'). RFC 1982 freshness.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [
+          {
+            "destination": "fe80::3",
+            "next_hop": "fe80::5",
+            "hop_count": 4,
+            "seq_num": 100,
+            "expires_ms": 600000
+          }
+        ],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::1",
+          "seq_num": 101,
+          "hop_count": 2,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "delivered",
+        "forward": null,
+        "dropped": false,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 3
+        },
+        "gradient_added": true,
+        "gradient_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 3,
+          "seq_num": 101
+        }
+      }
+    },
+    {
+      "name": "rrep_gradient_stale_no_update",
+      "type": "rrep",
+      "description": "RREP with stale sequence number does not update existing gradient (RFC 1982: newer seq wins). Still delivered if destination.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [
+          {
+            "destination": "fe80::3",
+            "next_hop": "fe80::5",
+            "hop_count": 2,
+            "seq_num": 200,
+            "expires_ms": 600000
+          }
+        ],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::1",
+          "seq_num": 100,
+          "hop_count": 1,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "delivered",
+        "forward": null,
+        "dropped": false,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2
+        },
+        "gradient_added": false,
+        "gradient_unchanged": true
+      }
+    },
+    {
+      "name": "rreq_expired_gradient_no_reply",
+      "type": "rreq",
+      "description": "Gradient to destination exists but expired; do not use for intermediate reply. Forward RREQ instead.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [
+          {
+            "destination": "fe80::3",
+            "next_hop": "fe80::5",
+            "hop_count": 2,
+            "seq_num": 200,
+            "expires_ms": 500
+          }
+        ],
+        "seen_entries": []
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 4
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "forward",
+        "reply": null,
+        "forward": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 3
+        },
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 0
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rrep_expired_cache_dropped",
+      "type": "rrep",
+      "description": "Reverse route in cache exists but expired; cannot forward RREP, drop. Gradient still installed.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [
+          {
+            "destination": "fe80::5",
+            "next_hop": "fe80::4",
+            "hop_count": 1,
+            "metric": 1,
+            "seq_num": 50,
+            "valid_until_ms": 500
+          }
+        ],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::5",
+          "seq_num": 200,
+          "hop_count": 1,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "dropped_rrep",
+        "forward": null,
+        "forward_next_hop": null,
+        "dropped": true,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2
+        },
+        "gradient_added": true,
+        "gradient_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2,
+          "seq_num": 200
+        }
+      }
+    },
+    {
+      "name": "rreq_hop_count_calculation",
+      "type": "rreq",
+      "description": "Actual hop count derived from INITIAL_HOP_LIMIT (4) minus current hop_limit. RREQ at hop_limit=2 means 2 hops traveled.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rreq": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 2
+        },
+        "from_neighbor": "fe80::4",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "forward",
+        "reply": null,
+        "forward": {
+          "originator": "fe80::2",
+          "destination": "fe80::3",
+          "seq_num": 100,
+          "hop_limit": 1
+        },
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::2",
+          "next_hop": "fe80::4",
+          "hop_count": 2
+        },
+        "gradient_added": false,
+        "seen_updated": true
+      }
+    },
+    {
+      "name": "rrep_proxied_flag_preserved",
+      "type": "rrep",
+      "description": "RREP with proxy flag (0x01) forwarded with flag preserved. Flag indicates intermediate reply, not authoritative.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [
+          {
+            "destination": "fe80::5",
+            "next_hop": "fe80::4",
+            "hop_count": 1,
+            "metric": 1,
+            "seq_num": 50,
+            "valid_until_ms": 301000
+          }
+        ],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::5",
+          "seq_num": 200,
+          "hop_count": 1,
+          "flags": 1
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "forward_rrep",
+        "forward": {
+          "originator": "fe80::3",
+          "destination": "fe80::5",
+          "seq_num": 200,
+          "hop_count": 2,
+          "flags": 1
+        },
+        "forward_next_hop": "fe80::4",
+        "dropped": false,
+        "cache_added": true,
+        "cache_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2
+        },
+        "gradient_added": true,
+        "gradient_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 2,
+          "seq_num": 200
+        }
+      }
+    }
+  ]
+}

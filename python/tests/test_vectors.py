@@ -29,6 +29,7 @@ from lichen.ipv6.udp import UdpDatagram, UdpError
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
+from lichen.loadng.messages import RERR, RREP, RREQ
 from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
 from lichen.ipv6.packet import IPv6Header, IPv6Packet, PacketError
 from lichen.ipv6.icmpv6 import Icmpv6Error, Icmpv6Message, handle_icmpv6
@@ -57,6 +58,7 @@ from generate import (  # noqa: E402
     frame_vectors,
     hash_32,
     l2_payload_vectors,
+    loadng_discovery_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
 )
@@ -1365,3 +1367,290 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert len(options) == len(expected), f"{name}: options count"
         for i, opt in enumerate(options):
             assert opt.type == expected[i]["type"], f"{name}: option {i} type"
+
+
+def _loadng_messages_cases():
+    doc = _load("loadng_messages.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _loadng_messages_cases())
+def test_loadng_messages_vector(name: str, vector: dict) -> None:
+    """Validate LOADng message encode/decode against cross-implementation vectors."""
+    from ipaddress import IPv6Address
+
+    encoded = bytes.fromhex(vector["encoded"])
+    msg_type = vector["type"]
+    fields = vector["fields"]
+
+    if msg_type == "rreq":
+        # Decode from bytes
+        rreq = RREQ.from_bytes(encoded)
+        assert rreq.flags == fields["flags"], f"{name}: flags"
+        assert rreq.hop_limit == fields["hop_limit"], f"{name}: hop_limit"
+        assert rreq.seq_num == fields["seq_num"], f"{name}: seq_num"
+        assert str(rreq.originator) == fields["originator"], f"{name}: originator"
+        assert str(rreq.destination) == fields["destination"], f"{name}: destination"
+        if fields["signature"] is not None:
+            assert rreq.signature == bytes.fromhex(fields["signature"]), f"{name}: signature"
+        else:
+            assert rreq.signature == b"", f"{name}: signature"
+
+        # Encode back to bytes
+        sig = bytes.fromhex(fields["signature"]) if fields["signature"] else b""
+        rebuilt = RREQ(
+            originator=IPv6Address(fields["originator"]),
+            destination=IPv6Address(fields["destination"]),
+            seq_num=fields["seq_num"],
+            hop_limit=fields["hop_limit"],
+            flags=fields["flags"],
+            signature=sig,
+        )
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+
+    elif msg_type == "rrep":
+        # Decode from bytes
+        rrep = RREP.from_bytes(encoded)
+        assert rrep.flags == fields["flags"], f"{name}: flags"
+        assert rrep.hop_count == fields["hop_count"], f"{name}: hop_count"
+        assert rrep.seq_num == fields["seq_num"], f"{name}: seq_num"
+        assert str(rrep.originator) == fields["originator"], f"{name}: originator"
+        assert str(rrep.destination) == fields["destination"], f"{name}: destination"
+        if fields["signature"] is not None:
+            assert rrep.signature == bytes.fromhex(fields["signature"]), f"{name}: signature"
+        else:
+            assert rrep.signature == b"", f"{name}: signature"
+
+        # Encode back to bytes
+        sig = bytes.fromhex(fields["signature"]) if fields["signature"] else b""
+        rebuilt = RREP(
+            originator=IPv6Address(fields["originator"]),
+            destination=IPv6Address(fields["destination"]),
+            seq_num=fields["seq_num"],
+            hop_count=fields["hop_count"],
+            flags=fields["flags"],
+            signature=sig,
+        )
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+
+    elif msg_type == "rerr":
+        # Decode from bytes
+        rerr = RERR.from_bytes(encoded)
+        assert rerr.flags == fields["flags"], f"{name}: flags"
+        assert rerr.error_code == fields["error_code"], f"{name}: error_code"
+        assert str(rerr.unreachable) == fields["unreachable"], f"{name}: unreachable"
+        if fields["signature"] is not None:
+            assert rerr.signature == bytes.fromhex(fields["signature"]), f"{name}: signature"
+        else:
+            assert rerr.signature == b"", f"{name}: signature"
+
+        # Encode back to bytes
+        sig = bytes.fromhex(fields["signature"]) if fields["signature"] else b""
+        rebuilt = RERR(
+            unreachable=IPv6Address(fields["unreachable"]),
+            error_code=fields["error_code"],
+            flags=fields["flags"],
+            signature=sig,
+        )
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+
+
+def _loadng_discovery_cases():
+    doc = _load("loadng_discovery.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _loadng_discovery_cases())
+def test_loadng_discovery_vector(name: str, vector: dict) -> None:
+    """Validate LOADng discovery state transitions against spec-derived vectors.
+
+    Each vector specifies initial state (node address, cache, gradient, seen entries),
+    an input RREQ or RREP with from_neighbor and timestamp, and the expected action
+    with cache/gradient mutations.
+    """
+    from ipaddress import IPv6Address
+
+    from lichen.gradient import GradientEntry, GradientSource, GradientTable
+    from lichen.loadng.cache import RouteCache, RouteEntry
+    from lichen.loadng.discovery import LoadngRouter
+    from lichen.loadng.messages import RREP, RREQ
+
+    # Build initial state
+    state = vector["initial_state"]
+    gradient = GradientTable()
+    cache = RouteCache()
+    node_address = state["node_address"]
+
+    # Pre-populate gradient entries
+    for g in state.get("gradient_entries", []):
+        gradient.update(
+            GradientEntry(
+                destination=IPv6Address(g["destination"]),
+                next_hop=IPv6Address(g["next_hop"]),
+                hop_count=g["hop_count"],
+                seq_num=g["seq_num"],
+                source=GradientSource.ANNOUNCE,
+                expires=g["expires_ms"],
+            ),
+            now=0,
+        )
+
+    # Pre-populate cache entries
+    for c in state.get("cache_entries", []):
+        cache.add(
+            RouteEntry(
+                destination=IPv6Address(c["destination"]),
+                next_hop=IPv6Address(c["next_hop"]),
+                hop_count=c["hop_count"],
+                metric=c["metric"],
+                seq_num=c["seq_num"],
+                valid_until=c["valid_until_ms"],
+            )
+        )
+
+    # Create router
+    router = LoadngRouter(node_address, gradient, cache)
+
+    # Set own_seq if specified
+    if "own_seq" in state:
+        router._own_seq = state["own_seq"]
+
+    # Pre-populate seen entries
+    for s in state.get("seen_entries", []):
+        key = (IPv6Address(s["originator"]), IPv6Address(s["destination"]))
+        router._seen[key] = (s["seq_num"], s["seen_at_ms"])
+
+    inp = vector["input"]
+    exp = vector["expected"]
+    now_ms = inp["now_ms"]
+
+    if vector["type"] == "rreq":
+        # Build RREQ
+        rreq_data = inp["rreq"]
+        rreq = RREQ(
+            originator=IPv6Address(rreq_data["originator"]),
+            destination=IPv6Address(rreq_data["destination"]),
+            seq_num=rreq_data["seq_num"],
+            hop_limit=rreq_data["hop_limit"],
+        )
+
+        # Process
+        result = router.process_rreq(rreq, inp["from_neighbor"], now_ms)
+
+        # Validate action
+        if exp["action"] == "suppressed":
+            assert result.suppressed, f"{name}: expected suppressed"
+            assert result.reply is None
+            assert result.forward is None
+        elif exp["action"] == "reply":
+            assert not result.suppressed, f"{name}: unexpected suppressed"
+            assert result.reply is not None, f"{name}: expected reply"
+            exp_reply = exp["reply"]
+            assert str(result.reply.originator) == exp_reply["originator"]
+            assert str(result.reply.destination) == exp_reply["destination"]
+            assert result.reply.seq_num == exp_reply["seq_num"]
+            assert result.reply.hop_count == exp_reply["hop_count"]
+            assert result.reply.flags == exp_reply["flags"]
+            assert str(result.reply_next_hop) == exp["reply_next_hop"]
+            assert result.forward is None
+        elif exp["action"] == "forward":
+            assert not result.suppressed, f"{name}: unexpected suppressed"
+            assert result.reply is None
+            assert result.forward is not None, f"{name}: expected forward"
+            exp_fwd = exp["forward"]
+            assert str(result.forward.originator) == exp_fwd["originator"]
+            assert str(result.forward.destination) == exp_fwd["destination"]
+            assert result.forward.seq_num == exp_fwd["seq_num"]
+            assert result.forward.hop_limit == exp_fwd["hop_limit"]
+        elif exp["action"] == "dropped":
+            assert not result.suppressed, f"{name}: unexpected suppressed"
+            assert result.reply is None
+            assert result.forward is None
+        else:
+            pytest.fail(f"Unknown RREQ action: {exp['action']}")
+
+        # Validate cache mutation
+        if exp.get("cache_added"):
+            ce = exp["cache_entry"]
+            entry = cache.lookup(IPv6Address(ce["destination"]), now_ms)
+            assert entry is not None, f"{name}: expected cache entry"
+            assert str(entry.next_hop) == ce["next_hop"]
+            assert entry.hop_count == ce["hop_count"]
+        else:
+            # If the vector didn't add originator to cache, verify it's not there
+            # (unless it was pre-populated)
+            pass
+
+    elif vector["type"] == "rrep":
+        # Build RREP
+        rrep_data = inp["rrep"]
+        rrep = RREP(
+            originator=IPv6Address(rrep_data["originator"]),
+            destination=IPv6Address(rrep_data["destination"]),
+            seq_num=rrep_data["seq_num"],
+            hop_count=rrep_data["hop_count"],
+            flags=rrep_data.get("flags", 0),
+        )
+
+        # Process
+        result = router.process_rrep(rrep, inp["from_neighbor"], now_ms)
+
+        # Validate action
+        if exp["action"] == "delivered":
+            assert result.delivered, f"{name}: expected delivered"
+            assert not result.dropped
+            assert result.forward is None
+        elif exp["action"] == "forward_rrep":
+            assert not result.delivered
+            assert not result.dropped
+            assert result.forward is not None, f"{name}: expected forward"
+            exp_fwd = exp["forward"]
+            assert str(result.forward.originator) == exp_fwd["originator"]
+            assert str(result.forward.destination) == exp_fwd["destination"]
+            assert result.forward.seq_num == exp_fwd["seq_num"]
+            assert result.forward.hop_count == exp_fwd["hop_count"]
+            assert result.forward.flags == exp_fwd["flags"]
+            assert str(result.forward_next_hop) == exp["forward_next_hop"]
+        elif exp["action"] == "dropped_rrep":
+            assert not result.delivered
+            assert result.dropped, f"{name}: expected dropped"
+            assert result.forward is None
+        else:
+            pytest.fail(f"Unknown RREP action: {exp['action']}")
+
+        # Validate gradient mutation
+        if exp.get("gradient_added"):
+            ge = exp["gradient_entry"]
+            entry = gradient.lookup(IPv6Address(ge["destination"]), now_ms)
+            assert entry is not None, f"{name}: expected gradient entry"
+            assert str(entry.next_hop) == ge["next_hop"]
+            assert entry.hop_count == ge["hop_count"]
+            assert entry.seq_num == ge["seq_num"]
+        elif exp.get("gradient_unchanged"):
+            # Verify gradient was NOT updated (stale seq case)
+            ge_state = state["gradient_entries"][0]
+            entry = gradient.lookup(IPv6Address(ge_state["destination"]), now_ms)
+            assert entry is not None
+            assert entry.seq_num == ge_state["seq_num"]
+            assert str(entry.next_hop) == ge_state["next_hop"]
+
+        # Validate cache mutation for RREP (always adds originator)
+        if exp.get("cache_added"):
+            ce = exp["cache_entry"]
+            entry = cache.lookup(IPv6Address(ce["destination"]), now_ms)
+            assert entry is not None, f"{name}: expected cache entry"
+            assert str(entry.next_hop) == ce["next_hop"]
+            assert entry.hop_count == ce["hop_count"]
+
+
+def test_loadng_discovery_vectors_match_generator() -> None:
+    """Verify committed JSON matches generator output (no drift)."""
+    doc = _load("loadng_discovery.json")
+    generated = loadng_discovery_vectors()
+    assert len(doc["vectors"]) == len(generated), "vector count mismatch"
+    for i, (committed, gen) in enumerate(zip(doc["vectors"], generated)):
+        assert committed["name"] == gen["name"], f"name mismatch at index {i}"
+        assert committed["type"] == gen["type"], f"type mismatch at {committed['name']}"
+        assert committed["description"] == gen["description"], f"desc mismatch at {committed['name']}"

@@ -1,0 +1,1 @@
+{"id":"019f9ca1-ab98-78ca-82d6-38f1b8a4a193","issue_id":"lora-ipv6-mesh-doq","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: ChaosEngine integrated at radio.py:346-356 via apply_all() in _get_rx_result_internal()","created_at":"2026-07-26T04:14:28.760577Z"}

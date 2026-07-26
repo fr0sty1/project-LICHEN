@@ -2122,9 +2122,856 @@ def rpl_messages_vectors() -> list[dict]:
     ]
 
 
+def loadng_discovery_vectors() -> list[dict]:
+    """LOADng discovery state transition vectors (spec sections 10.3-10.5, B2.6).
+
+    These are spec-derived independent oracles, not generated from the
+    implementation. Each vector defines initial state, input message, and
+    expected action/mutations per the spec rules.
+    """
+    # Link-local addresses for test scenarios
+    node1 = "fe80::1"
+    node2 = "fe80::2"
+    node3 = "fe80::3"
+    node4 = "fe80::4"
+    node5 = "fe80::5"
+
+    return [
+        # RREQ vectors
+        {
+            "name": "rreq_echo_own",
+            "type": "rreq",
+            "description": "RREQ originated by this node echoes back; suppress without processing (spec 10.3 step 1: 'If originator == self, drop').",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node1,
+                    "destination": node2,
+                    "seq_num": 100,
+                    "hop_limit": 3,
+                },
+                "from_neighbor": node3,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "suppressed",
+                "reply": None,
+                "forward": None,
+                "cache_added": False,
+                "gradient_added": False,
+                "seen_updated": False,
+            },
+        },
+        {
+            "name": "rreq_duplicate_suppressed",
+            "type": "rreq",
+            "description": "Duplicate RREQ (same originator/destination/seq seen within suppress window) is dropped (spec 10.3 step 3: 'If seen before, drop').",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [
+                    {
+                        "originator": node2,
+                        "destination": node3,
+                        "seq_num": 50,
+                        "seen_at_ms": 500,
+                    }
+                ],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 50,
+                    "hop_limit": 3,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "suppressed",
+                "reply": None,
+                "forward": None,
+                "cache_added": False,
+                "gradient_added": False,
+                "seen_updated": False,
+            },
+        },
+        {
+            "name": "rreq_suppression_window_expired",
+            "type": "rreq",
+            "description": "Same RREQ after suppression window expires is processed normally (spec B2.6: suppress window = 10s). Forward with hop limit decremented.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [
+                    {
+                        "originator": node2,
+                        "destination": node3,
+                        "seq_num": 50,
+                        "seen_at_ms": 500,
+                    }
+                ],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 50,
+                    "hop_limit": 3,
+                },
+                "from_neighbor": node4,
+                "now_ms": 11000,
+            },
+            "expected": {
+                "action": "forward",
+                "reply": None,
+                "forward": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 50,
+                    "hop_limit": 2,
+                },
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 1,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        {
+            "name": "rreq_fresher_seq_not_suppressed",
+            "type": "rreq",
+            "description": "RREQ with fresher sequence number (per RFC 1982) is not suppressed even if same originator/destination seen. Processed normally.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [
+                    {
+                        "originator": node2,
+                        "destination": node3,
+                        "seq_num": 50,
+                        "seen_at_ms": 500,
+                    }
+                ],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 51,
+                    "hop_limit": 4,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "forward",
+                "reply": None,
+                "forward": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 51,
+                    "hop_limit": 3,
+                },
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 0,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        {
+            "name": "rreq_destination_direct_reply",
+            "type": "rreq",
+            "description": "Node is the destination; generate RREP with own sequence number (spec 10.3 step 1: 'If I am destination, send RREP'). Reply goes to from_neighbor.",
+            "initial_state": {
+                "node_address": node1,
+                "own_seq": 10,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node1,
+                    "seq_num": 100,
+                    "hop_limit": 3,
+                },
+                "from_neighbor": node3,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "reply",
+                "reply": {
+                    "originator": node1,
+                    "destination": node2,
+                    "seq_num": 11,
+                    "hop_count": 0,
+                    "flags": 0,
+                },
+                "reply_next_hop": node3,
+                "forward": None,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node3,
+                    "hop_count": 1,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+                "own_seq_incremented": True,
+            },
+        },
+        {
+            "name": "rreq_intermediate_gradient_reply",
+            "type": "rreq",
+            "description": "Intermediate node has gradient to destination; generate proxied RREP with flags=0x01 (spec 10.3 step 2: 'If I have gradient, send RREP').",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [
+                    {
+                        "destination": node3,
+                        "next_hop": node5,
+                        "hop_count": 2,
+                        "seq_num": 200,
+                        "expires_ms": 600000,
+                    }
+                ],
+                "seen_entries": [],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 4,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "reply",
+                "reply": {
+                    "originator": node3,
+                    "destination": node2,
+                    "seq_num": 200,
+                    "hop_count": 2,
+                    "flags": 1,
+                },
+                "reply_next_hop": node4,
+                "forward": None,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 0,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        {
+            "name": "rreq_forward_decrement_hop",
+            "type": "rreq",
+            "description": "No route to destination and hop_limit > 1; forward with hop_limit decremented (spec 10.3 step 4). Record reverse route in cache.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 4,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "forward",
+                "reply": None,
+                "forward": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 3,
+                },
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 0,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        {
+            "name": "rreq_hop_limit_exhausted",
+            "type": "rreq",
+            "description": "Hop limit = 1; cannot forward further, drop silently (spec 10.3: 'decrement hop limit, rebroadcast' only if hop_limit > 1). Still record reverse route.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 1,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "dropped",
+                "reply": None,
+                "forward": None,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 3,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        # RREP vectors
+        {
+            "name": "rrep_delivered_at_requester",
+            "type": "rrep",
+            "description": "RREP reaches original requester (destination == self); mark delivered (spec 10.4-10.5: 'RREP follows reverse path until it reaches the original requester').",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node1,
+                    "seq_num": 200,
+                    "hop_count": 2,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "delivered",
+                "forward": None,
+                "dropped": False,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 3,
+                },
+                "gradient_added": True,
+                "gradient_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 3,
+                    "seq_num": 200,
+                },
+            },
+        },
+        {
+            "name": "rrep_forward_along_reverse_route",
+            "type": "rrep",
+            "description": "RREP not for this node; forward along reverse route from cache (spec 10.4: 'RREP follows reverse path'). Hop count incremented.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [
+                    {
+                        "destination": node5,
+                        "next_hop": node4,
+                        "hop_count": 1,
+                        "metric": 1,
+                        "seq_num": 50,
+                        "valid_until_ms": 301000,
+                    }
+                ],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node5,
+                    "seq_num": 200,
+                    "hop_count": 1,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "forward_rrep",
+                "forward": {
+                    "originator": node3,
+                    "destination": node5,
+                    "seq_num": 200,
+                    "hop_count": 2,
+                    "flags": 0,
+                },
+                "forward_next_hop": node4,
+                "dropped": False,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                },
+                "gradient_added": True,
+                "gradient_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                    "seq_num": 200,
+                },
+            },
+        },
+        {
+            "name": "rrep_dropped_no_reverse_route",
+            "type": "rrep",
+            "description": "RREP not for this node and no reverse route in cache; drop (spec 10.4: cannot forward without reverse path). Still install gradient.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node5,
+                    "seq_num": 200,
+                    "hop_count": 1,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "dropped_rrep",
+                "forward": None,
+                "forward_next_hop": None,
+                "dropped": True,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                },
+                "gradient_added": True,
+                "gradient_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                    "seq_num": 200,
+                },
+            },
+        },
+        # Sequence wrap-around vectors
+        {
+            "name": "rreq_seq_wrap_forward_fresh",
+            "type": "rreq",
+            "description": "Sequence number wraps from 65535 to 0; 0 is fresher per RFC 1982 (diff < 32768). Process normally.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [
+                    {
+                        "originator": node2,
+                        "destination": node3,
+                        "seq_num": 65535,
+                        "seen_at_ms": 500,
+                    }
+                ],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 0,
+                    "hop_limit": 4,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "forward",
+                "reply": None,
+                "forward": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 0,
+                    "hop_limit": 3,
+                },
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 0,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        {
+            "name": "rreq_seq_wrap_backward_stale",
+            "type": "rreq",
+            "description": "Sequence number 65534 after seeing 0 is stale per RFC 1982 (diff = 65534 >= 32768). Suppress.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [
+                    {
+                        "originator": node2,
+                        "destination": node3,
+                        "seq_num": 0,
+                        "seen_at_ms": 500,
+                    }
+                ],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 65534,
+                    "hop_limit": 4,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "suppressed",
+                "reply": None,
+                "forward": None,
+                "cache_added": False,
+                "gradient_added": False,
+                "seen_updated": False,
+            },
+        },
+        # RREP gradient update vectors
+        {
+            "name": "rrep_gradient_fresher_updates",
+            "type": "rrep",
+            "description": "RREP with fresher sequence number updates existing gradient (spec 10.5: 'install forward gradient'). RFC 1982 freshness.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [
+                    {
+                        "destination": node3,
+                        "next_hop": node5,
+                        "hop_count": 4,
+                        "seq_num": 100,
+                        "expires_ms": 600000,
+                    }
+                ],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node1,
+                    "seq_num": 101,
+                    "hop_count": 2,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "delivered",
+                "forward": None,
+                "dropped": False,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 3,
+                },
+                "gradient_added": True,
+                "gradient_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 3,
+                    "seq_num": 101,
+                },
+            },
+        },
+        {
+            "name": "rrep_gradient_stale_no_update",
+            "type": "rrep",
+            "description": "RREP with stale sequence number does not update existing gradient (RFC 1982: newer seq wins). Still delivered if destination.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [
+                    {
+                        "destination": node3,
+                        "next_hop": node5,
+                        "hop_count": 2,
+                        "seq_num": 200,
+                        "expires_ms": 600000,
+                    }
+                ],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node1,
+                    "seq_num": 100,
+                    "hop_count": 1,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "delivered",
+                "forward": None,
+                "dropped": False,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                },
+                "gradient_added": False,
+                "gradient_unchanged": True,
+            },
+        },
+        # Expiration vectors
+        {
+            "name": "rreq_expired_gradient_no_reply",
+            "type": "rreq",
+            "description": "Gradient to destination exists but expired; do not use for intermediate reply. Forward RREQ instead.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [
+                    {
+                        "destination": node3,
+                        "next_hop": node5,
+                        "hop_count": 2,
+                        "seq_num": 200,
+                        "expires_ms": 500,
+                    }
+                ],
+                "seen_entries": [],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 4,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "forward",
+                "reply": None,
+                "forward": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 3,
+                },
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 0,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        {
+            "name": "rrep_expired_cache_dropped",
+            "type": "rrep",
+            "description": "Reverse route in cache exists but expired; cannot forward RREP, drop. Gradient still installed.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [
+                    {
+                        "destination": node5,
+                        "next_hop": node4,
+                        "hop_count": 1,
+                        "metric": 1,
+                        "seq_num": 50,
+                        "valid_until_ms": 500,
+                    }
+                ],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node5,
+                    "seq_num": 200,
+                    "hop_count": 1,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "dropped_rrep",
+                "forward": None,
+                "forward_next_hop": None,
+                "dropped": True,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                },
+                "gradient_added": True,
+                "gradient_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                    "seq_num": 200,
+                },
+            },
+        },
+        # Hop count calculation vector
+        {
+            "name": "rreq_hop_count_calculation",
+            "type": "rreq",
+            "description": "Actual hop count derived from INITIAL_HOP_LIMIT (4) minus current hop_limit. RREQ at hop_limit=2 means 2 hops traveled.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rreq": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 2,
+                },
+                "from_neighbor": node4,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "forward",
+                "reply": None,
+                "forward": {
+                    "originator": node2,
+                    "destination": node3,
+                    "seq_num": 100,
+                    "hop_limit": 1,
+                },
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node2,
+                    "next_hop": node4,
+                    "hop_count": 2,
+                },
+                "gradient_added": False,
+                "seen_updated": True,
+            },
+        },
+        # Proxy flag preservation
+        {
+            "name": "rrep_proxied_flag_preserved",
+            "type": "rrep",
+            "description": "RREP with proxy flag (0x01) forwarded with flag preserved. Flag indicates intermediate reply, not authoritative.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [
+                    {
+                        "destination": node5,
+                        "next_hop": node4,
+                        "hop_count": 1,
+                        "metric": 1,
+                        "seq_num": 50,
+                        "valid_until_ms": 301000,
+                    }
+                ],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node5,
+                    "seq_num": 200,
+                    "hop_count": 1,
+                    "flags": 1,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "forward_rrep",
+                "forward": {
+                    "originator": node3,
+                    "destination": node5,
+                    "seq_num": 200,
+                    "hop_count": 2,
+                    "flags": 1,
+                },
+                "forward_next_hop": node4,
+                "dropped": False,
+                "cache_added": True,
+                "cache_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                },
+                "gradient_added": True,
+                "gradient_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 2,
+                    "seq_num": 200,
+                },
+            },
+        },
+    ]
+
+
 def ipv6_malformed_vectors() -> list[dict]:
-    ll_src = IPv6Address("fe80::1")
-    ll_dst = IPv6Address("fe80::2")
     good = _icmpv6_ipv6(ll_src, ll_dst, EchoRequest(0x1234, 1, b"test").to_message())
     bad_csum = bytearray(good)
     bad_csum[42] ^= 0xff
@@ -2245,6 +3092,13 @@ def main() -> None:
         "edhoc.json",
         "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no code-under-test). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte. Follows oscore/schnorr48 patterns and test integrity rules.",
         edhoc_vectors(),
+    )
+    _write(
+        "loadng_discovery.json",
+        "LOADng discovery state transition vectors (spec sections 10.3-10.5, B2.6). "
+        "Each vector specifies initial state, input message, and expected action with "
+        "cache/gradient mutations. Independent oracle from spec rules.",
+        loadng_discovery_vectors(),
     )
 
 
