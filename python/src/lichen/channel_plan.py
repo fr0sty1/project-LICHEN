@@ -78,15 +78,11 @@ US915: ChannelPlan = ChannelPlan(
     plan_id=0x02,
     version=1,
     name="US915",
-    channels=(
-        ChannelEntry(frequency_hz=915_000_000, max_power_dbm=22, regulatory_group=2),
-        ChannelEntry(frequency_hz=915_200_000, max_power_dbm=22, regulatory_group=2),
-        ChannelEntry(frequency_hz=915_400_000, max_power_dbm=22, regulatory_group=2),
-        ChannelEntry(frequency_hz=915_600_000, max_power_dbm=22, regulatory_group=2),
-        ChannelEntry(frequency_hz=915_800_000, max_power_dbm=22, regulatory_group=2),
-        ChannelEntry(frequency_hz=916_000_000, max_power_dbm=22, regulatory_group=2),
-        ChannelEntry(frequency_hz=916_200_000, max_power_dbm=22, regulatory_group=2),
-        ChannelEntry(frequency_hz=916_400_000, max_power_dbm=22, regulatory_group=2),
+    # 64 channels for FCC Part 15.247 FHSS compliance (requires 50+)
+    # 902.3-914.9 MHz, 200kHz spacing (same as LoRaWAN uplink channels)
+    channels=tuple(
+        ChannelEntry(frequency_hz=902_300_000 + i * 200_000, max_power_dbm=22, regulatory_group=2)
+        for i in range(64)
     ),
 )
 
@@ -94,15 +90,10 @@ AU915: ChannelPlan = ChannelPlan(
     plan_id=0x03,
     version=1,
     name="AU915",
-    channels=(
-        ChannelEntry(frequency_hz=915_000_000, max_power_dbm=30, regulatory_group=3),
-        ChannelEntry(frequency_hz=915_200_000, max_power_dbm=30, regulatory_group=3),
-        ChannelEntry(frequency_hz=915_400_000, max_power_dbm=30, regulatory_group=3),
-        ChannelEntry(frequency_hz=915_600_000, max_power_dbm=30, regulatory_group=3),
-        ChannelEntry(frequency_hz=915_800_000, max_power_dbm=30, regulatory_group=3),
-        ChannelEntry(frequency_hz=916_000_000, max_power_dbm=30, regulatory_group=3),
-        ChannelEntry(frequency_hz=916_200_000, max_power_dbm=30, regulatory_group=3),
-        ChannelEntry(frequency_hz=916_400_000, max_power_dbm=30, regulatory_group=3),
+    # 64 channels, 915-928 MHz, 200kHz spacing (ACMA allows up to 30 dBm EIRP)
+    channels=tuple(
+        ChannelEntry(frequency_hz=915_200_000 + i * 200_000, max_power_dbm=30, regulatory_group=3)
+        for i in range(64)
     ),
 )
 
