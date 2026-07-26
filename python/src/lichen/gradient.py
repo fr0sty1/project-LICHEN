@@ -140,7 +140,20 @@ class GradientTable:
         existing = self._entries.get(dest)
         expired = now is not None and existing is not None and existing.expires <= now
 
-        if existing is None or expired or entry._rank() >= existing._rank():
+        # Wrap-detection heuristic: if existing seq is high (>49152), new seq is
+        # low (<16384), and entry has aged at least 50% of its TTL, assume wrap.
+        # RFC 1982 comparison fails when gap exceeds 32768.
+        wrap_detected = False
+        if existing is not None and now is not None and not expired:
+            age = now - (existing.expires - GRADIENT_TIMEOUT_MS)
+            if (
+                age > GRADIENT_TIMEOUT_MS // 2
+                and existing.seq_num > SEQ_HALF + SEQ_HALF // 2  # >49152
+                and entry.seq_num < SEQ_HALF // 2  # <16384
+            ):
+                wrap_detected = True
+
+        if existing is None or expired or wrap_detected or entry._rank() >= existing._rank():
             self._entries[dest] = entry
             self._entries.move_to_end(dest)
             self._evict_if_needed()

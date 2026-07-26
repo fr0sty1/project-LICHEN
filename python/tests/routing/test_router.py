@@ -738,8 +738,10 @@ class TestDtnBuffer:
         Uses time.time() mock to simulate NTP adjustment.
         """
         now = 1_000_000_000  # fixed epoch for deterministic test
+        mono_start = 1000.0  # monotonic clock start
         with patch("lichen.routing.router.time") as mock_time:
             mock_time.time.return_value = now
+            mock_time.monotonic.return_value = mono_start
 
             packet = make_packet("fd00::100")
             iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
@@ -749,22 +751,24 @@ class TestDtnBuffer:
             assert result is True
             assert len(router.dtn_buffer) == 1
 
-            # Simulate clock skew: time jumps backward by 2 hours
+            # Simulate clock skew: wall clock jumps backward by 2 hours
+            # but monotonic time only advances slightly (100 seconds)
             mock_time.time.return_value = now - 7200
+            mock_time.monotonic.return_value = mono_start + 100
 
             expired_count = router.dtn_expire_old()
 
-        # Message should NOT be expired — wall clock jumped back,
-        # but absolute expiry (now + 3600) is still in the future
-        # relative to the new "now" (now - 7200)
+        # Message should NOT be expired — monotonic deadline is still in future
         assert expired_count == 0
         assert len(router.dtn_buffer) == 1
 
-    def test_one_hour_ttl_message_expires_after_wall_clock_advance(self, router: Router):
-        """Message with 1-hour TTL expires when wall clock advances past expiry."""
+    def test_one_hour_ttl_message_expires_after_monotonic_advance(self, router: Router):
+        """Message with 1-hour TTL expires when monotonic clock advances past deadline."""
         now = 1_000_000_000
+        mono_start = 1000.0
         with patch("lichen.routing.router.time") as mock_time:
             mock_time.time.return_value = now
+            mock_time.monotonic.return_value = mono_start
 
             packet = make_packet("fd00::100")
             iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
@@ -774,8 +778,8 @@ class TestDtnBuffer:
             assert result is True
             assert len(router.dtn_buffer) == 1
 
-            # Advance wall clock past expiry
-            mock_time.time.return_value = now + 3600 + 1
+            # Advance monotonic clock past deadline (3600 seconds + 1)
+            mock_time.monotonic.return_value = mono_start + 3600 + 1
 
             expired_count = router.dtn_expire_old()
 

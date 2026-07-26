@@ -229,6 +229,5 @@ class LoadngRouter:
         return elapsed < self.suppress_window_ms
 
     def _prune_seen(self, now: int) -> None:
-        stale = [k for k, (_, ts) in self._seen.items() if now - ts >= self.suppress_window_ms]
-        for key in stale:
-            del self._seen[key]
+        # Atomic rebind avoids iterate-then-delete race
+        self._seen = {k: v for k, v in self._seen.items() if now - v[1] < self.suppress_window_ms}

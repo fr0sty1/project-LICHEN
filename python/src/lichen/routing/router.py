@@ -127,6 +127,7 @@ class DtnMessage:
     destination_iid: bytes
     expiry_unix: int
     buffered_at_ms: int
+    monotonic_deadline: float  # time.monotonic() deadline for clock-jump safety
     _cached_size: int = field(default=0, repr=False)
 
     def __post_init__(self) -> None:
@@ -747,11 +748,15 @@ class Router:
             logger.warning("dtn: rejecting message with excessive TTL")
             return False
 
+        # Convert Unix deadline to monotonic deadline for clock-jump safety
+        monotonic_deadline = time.monotonic() + (expiry_unix - now_unix)
+
         msg = DtnMessage(
             packet=packet,
             destination_iid=destination_iid,
             expiry_unix=expiry_unix,
             buffered_at_ms=now_ms,
+            monotonic_deadline=monotonic_deadline,
         )
 
         # Reject messages that exceed the maximum buffer size
@@ -808,12 +813,13 @@ class Router:
         """Remove expired messages from buffer. Returns count removed.
 
         Uses single-pass partitioning and updates running byte counter.
+        Uses monotonic clock for expiry to avoid clock-jump issues.
         """
-        now_unix = int(time.time())
+        now_mono = time.monotonic()
         expired = 0
         remaining: deque[DtnMessage] = deque()
         for msg in self.dtn_buffer:
-            if msg.expiry_unix > now_unix:
+            if msg.monotonic_deadline > now_mono:
                 remaining.append(msg)
             else:
                 expired += 1
