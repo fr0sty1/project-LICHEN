@@ -1,0 +1,1 @@
+{"id":"019f9cbd-12ca-7aa6-8085-e8630b496aa8","issue_id":"project-LICHEN-ow1e.140","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: DTN buffer uses monotonic_deadline for clock-jump safety","created_at":"2026-07-26T04:44:24.650699Z"}

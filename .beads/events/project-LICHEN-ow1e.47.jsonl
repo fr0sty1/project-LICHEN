@@ -1,0 +1,1 @@
+{"id":"019f9cbd-0e36-71c5-b72f-66592381d222","issue_id":"project-LICHEN-ow1e.47","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: atomic dict rebind replaces iterate-then-delete","created_at":"2026-07-26T04:44:23.478116Z"}
