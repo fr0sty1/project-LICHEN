@@ -22,6 +22,7 @@ import math
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+from lichen.sim.duty_cycle import DutyCycleTracker
 from lichen.sim.propagation import (
     CAPTURE_THRESHOLD_DB,
     SENSITIVITY_DEFAULT,
@@ -31,6 +32,10 @@ from lichen.sim.propagation import (
 )
 from lichen.sim.tdma import synchronized_hop_channel
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
+
+# EU868 default: 1% duty cycle over 1 hour
+DEFAULT_DUTY_CYCLE_LIMIT_PERCENT = 1.0
+DEFAULT_DUTY_CYCLE_WINDOW_SECONDS = 3600
 
 _LINEAR_EPSILON = 1e-15
 
@@ -169,6 +174,9 @@ class Medium:
         self,
         propagation: PropagationModel | None = None,
         noise_floor_dbm: float = -120.0,
+        duty_cycle_limit_percent: float = DEFAULT_DUTY_CYCLE_LIMIT_PERCENT,
+        duty_cycle_window_seconds: int = DEFAULT_DUTY_CYCLE_WINDOW_SECONDS,
+        enforce_duty_cycle: bool = True,
     ) -> None:
         """Initialize the radio medium.
 
@@ -176,6 +184,12 @@ class Medium:
             propagation: Propagation model for path loss calculations.
                 Uses default PropagationModel if not provided.
             noise_floor_dbm: Receiver noise floor in dBm. Default is -120.0.
+            duty_cycle_limit_percent: Default duty cycle limit as percentage.
+                Default is 1.0% (EU868 regulation).
+            duty_cycle_window_seconds: Sliding window for duty cycle tracking.
+                Default is 3600 seconds (1 hour).
+            enforce_duty_cycle: If True, start_tx() returns None when duty
+                cycle would be exceeded. Default is True.
         """
         self.propagation = propagation if propagation is not None else PropagationModel()
         self.noise_floor_dbm = noise_floor_dbm
@@ -185,6 +199,11 @@ class Medium:
         self._tdma_vector: TDMAVector | None = None
         self._announce_channels: dict[str, int] = {}
         self._known_peers: set[str] = set()
+        # Duty cycle tracking
+        self._default_duty_limit_percent = duty_cycle_limit_percent
+        self._default_duty_window_seconds = duty_cycle_window_seconds
+        self._enforce_duty_cycle = enforce_duty_cycle
+        self._duty_trackers: dict[str, DutyCycleTracker] = {}
 
     def select_rendezvous_channel(
         self,
@@ -308,6 +327,63 @@ class Medium:
                 return slot
         return None
 
+    def get_duty_tracker(self, node_id: str) -> DutyCycleTracker:
+        """Get or create the duty cycle tracker for a node.
+
+        Args:
+            node_id: ID of the node.
+
+        Returns:
+            DutyCycleTracker for the node.
+        """
+        if node_id not in self._duty_trackers:
+            self._duty_trackers[node_id] = DutyCycleTracker(
+                limit_percent=self._default_duty_limit_percent,
+                window_seconds=self._default_duty_window_seconds,
+            )
+        return self._duty_trackers[node_id]
+
+    def set_duty_cycle_limit(
+        self,
+        node_id: str | None = None,
+        limit_percent: float | None = None,
+        window_seconds: int | None = None,
+    ) -> None:
+        """Configure duty cycle limit for a node or globally.
+
+        When node_id is None, sets the default for new nodes.
+        When node_id is provided, creates/replaces the tracker for that node.
+
+        Args:
+            node_id: Node ID to configure, or None for global default.
+            limit_percent: Duty cycle limit as percentage (e.g., 1.0 for 1%).
+            window_seconds: Sliding window duration in seconds.
+        """
+        if node_id is None:
+            # Set global defaults
+            if limit_percent is not None:
+                self._default_duty_limit_percent = limit_percent
+            if window_seconds is not None:
+                self._default_duty_window_seconds = window_seconds
+        else:
+            # Set per-node configuration
+            lim = limit_percent if limit_percent is not None else self._default_duty_limit_percent
+            win = window_seconds if window_seconds is not None else self._default_duty_window_seconds
+            self._duty_trackers[node_id] = DutyCycleTracker(
+                limit_percent=lim,
+                window_seconds=win,
+            )
+
+    def set_enforce_duty_cycle(self, enforce: bool) -> None:
+        """Enable or disable duty cycle enforcement.
+
+        Args:
+            enforce: If True, start_tx() returns None when duty cycle
+                would be exceeded. If False, transmissions proceed but
+                are still recorded for tracking.
+        """
+        self._enforce_duty_cycle = enforce
+
     def get_channel_loads(self, time_us: int, num_channels: int = 8) -> list[ChannelLoad]:
         """Get utilization metrics for all channels.
 
@@ -382,15 +458,28 @@ class Medium:
         channel: int = 0,
         phy_mode: str = "lora",
         frequency_hz: int | None = None,
-    ) -> Transmission:
+    ) -> Transmission | None:
         """Create a transmission and add it to the active set.
 
         Channel is the caller-computed CCP-12 hop channel from SFN/EUI.
+
+        Returns:
+            Transmission object if successful, None if duty cycle exceeded
+            (when enforcement is enabled).
         """
         if phy_mode == "lr_fhss":
             duration_us = lr_fhss_airtime_us(len(payload))
         else:
             duration_us = airtime_us(len(payload))
+
+        # Check duty cycle before transmitting
+        tracker = self.get_duty_tracker(node_id)
+        if self._enforce_duty_cycle and not tracker.can_transmit(duration_us, time_us):
+            return None
+
+        # Record transmission in duty cycle tracker
+        tracker.record_tx(duration_us, time_us)
+
         if frequency_hz is None:
             frequency_hz = 915_000_000 + channel * 200_000
         tx = Transmission(

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fo6v",
+  "title": "Burst error model for Medium simulator",
+  "description": "Add temporally correlated packet loss to simulate real RF burst errors. Current LossRule is i.i.d. (each packet independent), but real RF has correlated failures (fade duration, interference bursts).\n\nOptions:\n- Gilbert-Elliott two-state Markov model (good/bad states with transition probabilities)\n- Sliding window correlation (loss probability increases after recent losses)\n- Slow fading envelope (fading persists across packets to same destination)\n\nImplementation: New ChaosRule or PropagationModel enhancement. Should be per-link (A→B can be in fade while A→C is clear).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T01:24:14.794596Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T01:24:14.794596Z"
+}

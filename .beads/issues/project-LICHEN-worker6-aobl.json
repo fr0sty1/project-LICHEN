@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-aobl",
+  "title": "Hardware quirks model for Medium simulator",
+  "description": "Model real radio hardware imperfections:\n\n1. **Warm-up time**: TX/RX mode switch takes 1-5ms, packets during transition are lost\n2. **PLL lock failures**: Occasional frequency lock failure (0.1-1% of TX attempts), retry needed\n3. **Crystal drift**: ±10-30ppm frequency offset, affects capture effect and collision detection\n4. **RSSI accuracy**: Real RSSI has ±3dB error, add noise to reported values\n5. **RX deaf time**: After TX, radio is deaf for ~100μs (TX/RX turnaround)\n6. **CAD false positives/negatives**: Real CAD has ~5% error rate\n\nImplementation: Optional RadioQuirks config on SimRadio, disabled by default for deterministic tests.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T01:24:20.753811Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T01:24:20.753811Z"
+}

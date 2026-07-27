@@ -1105,3 +1105,145 @@ class TestMarkPeerKnown:
 
         result_after = medium.select_rendezvous_channel(peer_eui64=peer, sfn=1)
         assert result_after.mechanism == RendezvousMechanism.HASH_BASED
+
+
+class TestDutyCycleEnforcement:
+    """Test duty cycle enforcement in Medium."""
+
+    def test_tx_allowed_under_limit(self) -> None:
+        """First TX should succeed when under duty cycle limit."""
+        # Use 50% duty cycle with 1-second window = 500ms budget
+        # A small packet (~248ms) fits within this budget
+        medium = Medium(
+            duty_cycle_limit_percent=50.0,
+            duty_cycle_window_seconds=1,
+            enforce_duty_cycle=True,
+        )
+
+        # First TX should succeed (airtime ~248ms < 500ms budget)
+        tx = medium.start_tx(
+            node_id="node1",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=0,
+        )
+
+        assert tx is not None
+        assert tx.source_node_id == "node1"
+
+    def test_tx_rejected_over_limit(self) -> None:
+        """Rapid TXs should eventually be rejected when duty cycle exceeded."""
+        # Use 30% duty cycle with 1-second window = 300ms budget
+        # A small packet (~248ms at SF10) uses ~83% of budget
+        # A second packet would exceed the limit
+        medium = Medium(
+            duty_cycle_limit_percent=30.0,
+            duty_cycle_window_seconds=1,
+            enforce_duty_cycle=True,
+        )
+
+        # First TX should succeed (~248ms < 300ms budget)
+        tx1 = medium.start_tx(
+            node_id="node1",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=0,
+        )
+        assert tx1 is not None
+
+        # Second TX should be rejected - duty cycle exceeded
+        # (~248ms + ~248ms = ~496ms > 300ms budget)
+        tx2 = medium.start_tx(
+            node_id="node1",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=tx1.end_time_us + 1,
+        )
+        assert tx2 is None
+
+    def test_duty_cycle_recovers_after_window(self) -> None:
+        """After waiting for the window to pass, TX should be allowed again."""
+        # Use 30% duty cycle with 1-second window = 300ms budget
+        window_seconds = 1
+        window_us = window_seconds * 1_000_000
+
+        medium = Medium(
+            duty_cycle_limit_percent=30.0,
+            duty_cycle_window_seconds=window_seconds,
+            enforce_duty_cycle=True,
+        )
+
+        # First TX succeeds at time 0 (~248ms < 300ms)
+        tx1 = medium.start_tx(
+            node_id="node1",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=0,
+        )
+        assert tx1 is not None
+
+        # Second TX rejected immediately after (would exceed limit)
+        tx2 = medium.start_tx(
+            node_id="node1",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=tx1.end_time_us + 1,
+        )
+        assert tx2 is None
+
+        # After the window passes (first TX slides out), new TX allowed
+        # We need to wait until tx1.end_time_us is older than the window
+        recovery_time = tx1.end_time_us + window_us + 1
+        tx3 = medium.start_tx(
+            node_id="node1",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=recovery_time,
+        )
+        assert tx3 is not None
+
+    def test_per_node_tracking(self) -> None:
+        """Node A's usage shouldn't affect node B."""
+        # Use 30% duty cycle with 1-second window = 300ms budget
+        medium = Medium(
+            duty_cycle_limit_percent=30.0,
+            duty_cycle_window_seconds=1,
+            enforce_duty_cycle=True,
+        )
+
+        # Node A transmits and exhausts most of its budget (~248ms < 300ms)
+        tx_a1 = medium.start_tx(
+            node_id="node_a",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=0,
+        )
+        assert tx_a1 is not None
+
+        # Node A's second TX is rejected (would exceed limit)
+        tx_a2 = medium.start_tx(
+            node_id="node_a",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=tx_a1.end_time_us + 1,
+        )
+        assert tx_a2 is None
+
+        # Node B should still be able to transmit - independent tracker
+        tx_b1 = medium.start_tx(
+            node_id="node_b",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(100.0, 0.0, 0.0),
+            time_us=tx_a1.end_time_us + 2,
+        )
+        assert tx_b1 is not None
+        assert tx_b1.source_node_id == "node_b"
