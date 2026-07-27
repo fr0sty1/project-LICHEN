@@ -160,3 +160,29 @@ class NodeManagementMixin:
             List of all SimNode objects.
         """
         return list(self._nodes.values())
+
+    def update_position(self, node_id: str, x: float, y: float, z: float) -> bool:
+        """Update a node's position for mobility simulation.
+
+        Args:
+            node_id: ID of the node to move.
+            x: New X coordinate in meters.
+            y: New Y coordinate in meters.
+            z: New Z coordinate in meters (altitude).
+
+        Returns:
+            True if node was found and moved, False if not found.
+        """
+        node = self._nodes.get(node_id)
+        if node is None:
+            return False
+        node.set_position(x, y, z)
+        self._observers.notify(  # type: ignore[attr-defined]
+            "on_node_moved",
+            sim_id=self._id,
+            node_id=node_id,
+            x=x,
+            y=y,
+            z=z,
+        )
+        return True

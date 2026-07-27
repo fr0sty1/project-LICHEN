@@ -40,6 +40,7 @@ dependencies = [
     "defusedxml>=0.7.1,<0.8",
     "intelhex>=2.3.0,<3.0",
     "typing-extensions>=4.15.0",
+    "pyyaml>=6.0,<7",
 ]
 
 [project.optional-dependencies]

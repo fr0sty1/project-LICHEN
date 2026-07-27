@@ -40,12 +40,21 @@ from lichen.sim.propagation import (
     PropagationModel,
 )
 from lichen.sim.renode_server import RenodeServer, start_renode_server
+from lichen.sim.scenario import Scenario, ScenarioEvent, ScenarioRunner, parse_duration
 from lichen.sim.tdma import (
     SuperframeClock,
     TDMAScheduler,
     TDMAState,
     hash_32,
     synchronized_hop_channel,
+)
+from lichen.sim.topology import (
+    NodePosition,
+    apply_topology,
+    grid,
+    line,
+    random_disk,
+    star,
 )
 
 __all__ = [
@@ -58,6 +67,7 @@ __all__ = [
     "EU868",
     "IN865",
     "KR920",
+    "NodePosition",
     "NodeState",
     "PATH_LOSS_FREE_SPACE",
     "PATH_LOSS_INDOOR",
@@ -74,16 +84,25 @@ __all__ = [
     "SENSITIVITY_SF10",
     "SENSITIVITY_SF11",
     "SENSITIVITY_SF12",
+    "Scenario",
+    "ScenarioEvent",
+    "ScenarioRunner",
     "SimNode",
     "SuperframeClock",
     "TDMAScheduler",
     "TDMAState",
     "US915",
+    "apply_topology",
     "channel_frequency",
     "get_plan",
     "get_plan_by_name",
+    "grid",
     "hash_32",
+    "line",
+    "parse_duration",
+    "random_disk",
     "select_channel",
+    "star",
     "start_renode_server",
     "synchronized_hop_channel",
 ]

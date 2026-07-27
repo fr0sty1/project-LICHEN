@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-ub4z",
   "title": "Wire DutyCycleTracker to Medium simulator",
   "description": "DutyCycleTracker exists but may not be enforced in Medium TX path. Verify and wire up:\n\n1. Check if Medium.start_tx() consults DutyCycleTracker before allowing TX\n2. If not, add per-node DutyCycleTracker instances\n3. Return TX_FAIL when duty cycle exceeded (EU868 1% limit)\n4. Track per-subband for EU868 (g, g1, g2 have different limits)\n5. Add metrics for duty cycle violations\n\nThis is critical for realistic EU868 simulation - nodes that ignore duty cycle will see TX_FAIL in reality.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-27T01:24:15.989037Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-27T01:24:15.989037Z"
+  "updated_at": "2026-07-27T01:31:01.345649Z",
+  "closed_at": "2026-07-27T01:31:01.345649Z",
+  "close_reason": "Closed"
 }
