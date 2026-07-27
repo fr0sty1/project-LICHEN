@@ -427,6 +427,9 @@ pub mod mem {
         type Error = MemStorageError;
 
         fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+            if self.fail_next_read.replace(false) {
+                return Err(MemStorageError);
+            }
             let Some(data) = self.data.get(key) else {
                 return Ok(None);
             };
@@ -719,11 +722,11 @@ mod tests {
         let mut s = FileStorage::new(d).unwrap();
         let seed = Seed::new([0x22u8; 32]);
         save_seed(&mut s, &seed).unwrap();
-        assert_eq!(load_seed(&s), Ok(Some(seed.clone())));
+        assert_eq!(load_seed(&s).unwrap(), Some(seed.clone()));
         let s2 = FileStorage::new(d).unwrap();
-        assert_eq!(load_seed(&s2), Ok(Some(seed)));
+        assert_eq!(load_seed(&s2).unwrap(), Some(seed));
         save_epoch(&mut s, 42).unwrap();
-        assert_eq!(load_epoch(&s), Ok(Some(42)));
+        assert_eq!(load_epoch(&s).unwrap(), Some(42));
         let _ = std::fs::remove_dir_all(d);
     }
 }

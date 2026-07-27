@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9zfd",
+  "title": "Meshtastic portduino SimRadio bridge for Medium simulator",
+  "description": "Enable running Meshtastic in the LICHEN Medium simulator for comparative benchmarking.\n\nApproach: Meshtastic native Linux build (portduino) with custom SimRadio backend.\n\nResearch:\n- Meshtastic portduino radio abstraction (RadioLibInterface or similar)\n- Their existing simulated radio implementation\n- Required callbacks: TX, RX, CAD, channel/power config\n\nImplementation:\n1. Write a RadioInterface shim that opens TCP to Medium simulator\n2. Map Meshtastic radio ops to our wire protocol (MSG_TX, MSG_RX_ENTER, etc.)\n3. Handle position reporting (Meshtastic has GPS, need to feed x/y/z to Medium)\n4. Package as a portduino platform variant or runtime flag\n\nTesting:\n- Single Meshtastic node TX/RX through Medium\n- Two Meshtastic nodes talking via Medium\n- Mixed topology: Meshtastic + LICHEN nodes in same Medium\n\nBenchmark scenarios:\n- 50 nodes, 10 concurrent conversations, measure delivery/latency\n- Flood routing collision storms under load\n- Channel utilization comparison\n\nDepends on: project-LICHEN-worker6-bl2u (lora-medium extraction, or at minimum stable wire protocol)",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T01:06:06.489807Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T01:06:06.489807Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9zfd",
+      "depends_on_id": "project-LICHEN-worker6-bl2u",
+      "type": "depends",
+      "created_at": "2026-07-27T01:06:11.195637Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

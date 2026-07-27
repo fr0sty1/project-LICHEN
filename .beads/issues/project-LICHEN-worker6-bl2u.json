@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-worker6-bl2u",
+  "title": "Extract generic lora-medium simulator package",
+  "description": "Extract Medium/PropagationModel into standalone lora-medium package usable by any LoRa stack (Meshtastic, LoRaWAN, RadioHead). Components: PropagationModel, Medium, DutyCycleTracker, ChaosEngine, wire protocol. Work: strip LICHEN imports, define stable protocol spec, package separately, add example client. Not urgent - file when external demand or sim cleanup.",
+  "notes": "Use case: comparative demo vs Meshtastic. Same topology/load/propagation, measure delivery rate and latency. Neutral simulator exposes flood-routing collision storms.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T01:02:54.895671Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T01:04:37.934949Z"
+}

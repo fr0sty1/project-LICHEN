@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-505f",
+  "title": "Rust SimRadio TCP client for Medium simulator",
+  "description": "Add a SimRadio implementation to lichen-hal that connects to the Medium simulator over TCP, enabling Rust nodes in mixed simulations with Python and Zephyr.\n\nImplementation:\n- New file: rust/lichen-hal/src/sim_radio.rs\n- Implement Radio trait with TCP backend\n- Wire protocol: MSG_TX, MSG_RX_ENTER, MSG_RX_EXIT, MSG_REGISTER\n- Feature-gated behind std (uses TcpStream)\n\nWire protocol (length-prefixed, 4-byte LE):\n- REGISTER (0x01): node_id + position\n- TX (0x10): channel + power + payload -\u003e TX_DONE\n- RX_ENTER (0x24): channel + timeout -\u003e RX_PACKET or RX_TIMEOUT\n- RX_EXIT (0x26): exit RX mode\n\nTest: cargo test with a mock TCP server or against running Medium instance.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T01:07:18.49667Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T01:07:18.49667Z"
+}

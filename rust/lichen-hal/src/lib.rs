@@ -14,6 +14,9 @@ extern crate std;
 #[cfg(feature = "std")]
 pub mod loopback;
 
+#[cfg(feature = "std")]
+pub mod sim_radio;
+
 pub mod storage;
 
 /// Received packet metadata.
