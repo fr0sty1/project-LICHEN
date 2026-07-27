@@ -439,6 +439,7 @@ class Medium:
         rx_position: tuple[float, float, float],
         time_us: int,
         channel: int = 0,
+        rx_frequency_hz: int | None = None,
     ) -> list[RxCandidate]:
         """Get all decodable transmissions for a receiver on given channel.
 
@@ -451,12 +452,16 @@ class Medium:
             rx_position: (x, y, z) position of the receiver in meters.
             time_us: Current simulation time in microseconds.
             channel: CCP-12 hop channel from SFN/EUI (default 0).
+            rx_frequency_hz: If provided, only include transmissions on this
+                exact frequency. When None, return all (existing behavior).
 
         Returns:
             List of RxCandidate objects for decodable transmissions.
         """
         candidates: list[RxCandidate] = []
         active = [tx for tx in self.get_active_transmissions(time_us) if tx.channel == channel]
+        if rx_frequency_hz is not None:
+            active = [tx for tx in active if tx.frequency_hz == rx_frequency_hz]
 
         for tx in active:
             if tx.source_node_id == rx_node_id:
@@ -561,6 +566,7 @@ class Medium:
         time_us: int,
         sensitivity_dbm: float = SENSITIVITY_DEFAULT,
         channel: int = 0,
+        rx_frequency_hz: int | None = None,
     ) -> bool:
         """Detect if any transmission is active and detectable at a position
         on the specified channel.
@@ -571,11 +577,15 @@ class Medium:
             sensitivity_dbm: Receiver sensitivity threshold in dBm.
                 Defaults to SF10 sensitivity (-132 dBm).
             channel: CCP-12 hop channel from SFN/EUI (default 0).
+            rx_frequency_hz: If provided, only detect transmissions on this
+                exact frequency. When None, detect all (existing behavior).
 
         Returns:
             True if channel activity is detected, False otherwise.
         """
         active = [tx for tx in self.get_active_transmissions(time_us) if tx.channel == channel]
+        if rx_frequency_hz is not None:
+            active = [tx for tx in active if tx.frequency_hz == rx_frequency_hz]
 
         for tx in active:
             tx_pos = self._tx_positions.get(tx.id)

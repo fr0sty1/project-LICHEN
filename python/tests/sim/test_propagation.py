@@ -338,9 +338,9 @@ class TestFading:
 
     def test_ricean_fading_nonnegative(self) -> None:
         """Ricean fading produces non-negative fading loss (abs)."""
-        model = PropagationModel(fading_std_db=3.0, fading_type="ricean", _seed=-2.0)
+        model = PropagationModel(fading_std_db=3.0, fading_type="ricean", _seed=2.0)
         pl = model.path_loss(100.0)
-        expected_base = 86.44 + 6.0  # abs(-2.0) * 3.0 = 6.0
+        expected_base = 86.44 + 6.0  # 2.0 * 3.0 = 6.0
         assert pl == pytest.approx(expected_base, rel=1e-6)
 
 
@@ -378,16 +378,15 @@ class TestSINR:
 
     def test_sinr_multiple_interferers(self) -> None:
         """SINR aggregates multiple interferers correctly."""
-        model = PropagationModel(noise_floor_dbm=-120.0)
-        signal_linear = 10.0 ** (-80.0 / 10.0)
+        # Use model with pl0=0 at d0=1, so received_power(0,1) = 0 - 0 = 0 dBm
+        model = PropagationModel(pl0_dbm=0.0, d0_m=1.0, n=0.01, noise_floor_dbm=-120.0)
+        signal_linear = 10.0 ** (0.0 / 10.0)  # 0 dBm signal = 1.0 linear
         int1 = 10.0 ** (-90.0 / 10.0)
         int2 = 10.0 ** (-95.0 / 10.0)
         noise_linear = 10.0 ** (-120.0 / 10.0)
         total_noise = noise_linear + int1 + int2
         expected = 10.0 * math.log10(signal_linear / total_noise) if total_noise > 0 else float("inf")
-        # We pass rssi directly via an overridden distance for the signal
-        model2 = PropagationModel(pl0_dbm=0.0, d0_m=1.0, n=0.01, noise_floor_dbm=-120.0)
-        sinr_val = model2.sinr(0.0, 1.0, interfering_powers_linear=[int1, int2])
-        assert sinr_val == pytest.approx(expected, rel=0.5)
+        sinr_val = model.sinr(0.0, 1.0, interfering_powers_linear=[int1, int2])
+        assert sinr_val == pytest.approx(expected, rel=1e-6)
 
 
