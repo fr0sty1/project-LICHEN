@@ -2,11 +2,12 @@
   "id": "project-LICHEN-worker6-0dgd",
   "title": "GNSS-synchronized frequency hopping (CCP-12)",
   "description": "Implement network-wide synchronized frequency hopping using GNSS-derived time.\n\n## Overview\nWhen GNSS time is available, nodes derive SFN (superframe number) from UTC and use\nsynchronized_hop_channel(sfn, seed, n_channels) so the entire network hops together.\nFalls back to epoch-based hash selection when GNSS unavailable.\n\n## Algorithm\n```\nsfn = (unix_time_ms - EPOCH_BASE_MS) // SUPERFRAME_DURATION_MS\nchannel = 1 + fnv1a32(seed || sfn) % (n_channels - 1)\n```\n\n## Requirements\n- SFN derivation from HAL time snapshot\n- Config: enable/disable, superframe duration (default 100ms), seed\n- Graceful fallback when GNSS lost\n- Shared test vectors across implementations\n- Python, Rust, Zephyr C implementations\n\n## References\n- spec/appendix-ccp12-hopping.md (already written)\n- test/vectors/ccp16.json (existing vectors)",
+  "notes": "2026-07-29: Found uncommitted work in worktree - Radio API updated to take channel parameter (transmit/receive). This is foundational for the hopping feature. Committing now.",
   "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:52:45.898919Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:52:45.898919Z"
+  "updated_at": "2026-07-29T16:29:20.626676Z"
 }

@@ -1743,6 +1743,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kiss-framing"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b1b41200ae016e37efb98d83484b985a71a90d7c5fa23dba056c2453ff852e1"
+dependencies = [
+ "heapless",
+]
+
+[[package]]
 name = "lab"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1923,6 +1932,7 @@ version = "0.1.0"
 dependencies = [
  "defmt 0.3.100",
  "heapless",
+ "kiss-framing",
  "lichen-link",
  "log",
 ]
@@ -1931,10 +1941,10 @@ dependencies = [
 name = "lichen-link"
 version = "0.1.0"
 dependencies = [
- "curve25519-dalek",
  "defmt 0.3.100",
  "lichen-core",
  "log",
+ "schnorr48",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -1980,23 +1990,14 @@ dependencies = [
 name = "lichen-oscore"
 version = "0.1.0"
 dependencies = [
- "aes",
- "ccm",
  "defmt 0.3.100",
- "ed25519-dalek",
  "heapless",
  "hex-literal",
- "hkdf",
- "hmac",
- "lichen-core",
  "log",
+ "oscore",
  "rand_core",
  "serde",
  "serde_json",
- "sha2 0.11.0",
- "subtle",
- "x25519-dalek",
- "zeroize",
 ]
 
 [[package]]
@@ -2020,6 +2021,7 @@ dependencies = [
  "defmt 0.3.100",
  "lichen-core",
  "log",
+ "schc",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -2032,7 +2034,7 @@ dependencies = [
  "defmt 0.3.100",
  "lichen-core",
  "log",
- "serde",
+ "senml-cbor",
 ]
 
 [[package]]
@@ -2356,6 +2358,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7bb71e1b3fa6ca1c61f383464aaf2bb0e2f8e772a1f01d486832464de363b951"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "oscore"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "998d290838d1ff9a68ba4595c92111a5d51cec87084102033dafa97d2bfad2ab"
+dependencies = [
+ "aes",
+ "ccm",
+ "defmt 0.3.100",
+ "ed25519-dalek",
+ "heapless",
+ "hkdf",
+ "hmac",
+ "log",
+ "rand_core",
+ "sha2 0.11.0",
+ "subtle",
+ "x25519-dalek",
+ "zeroize",
 ]
 
 [[package]]
@@ -2916,6 +2939,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
+name = "schc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ae908f967406eacc2ab6e0479bc2db6130f590ac8f0eb1ae69b533e3774ec5"
+
+[[package]]
+name = "schnorr48"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f4441e1339afd388a0a67b615c072ec9d897e919ab162c16b4d40c484ea6d4f"
+dependencies = [
+ "curve25519-dalek",
+ "sha2 0.10.9",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2947,6 +2988,15 @@ name = "semver-parser"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
+
+[[package]]
+name = "senml-cbor"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46b5a5a100da809a6f2419f5ad80e61e24df78d1af510d197c7a6ed41ff1393b"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "serde"
