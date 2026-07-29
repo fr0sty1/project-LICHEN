@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.5.6",
+  "title": "Real-time metrics dashboard",
+  "description": "Display live metrics: delivery rate, collision rate, duty cycle utilization. Use charts for time-series visualization.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:20:11.809751Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:20:11.809751Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.5.6",
+      "depends_on_id": "project-LICHEN-worker6-re0j.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:20:12.167735Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

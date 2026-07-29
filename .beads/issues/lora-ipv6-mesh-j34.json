@@ -14,5 +14,15 @@
   "closed_at": "2026-06-18T03:30:16Z",
   "close_reason": "Implemented in sim/simulation.py: Simulation gains seed param, rng property (random.Random), seed property, reseed(). Same seed -\u003e identical sequence. Added LossRule chaos rule (probabilistic drop drawing from an injected rng) for reproducible random chaos. 11 tests incl. reproducibility + LossRule wired to sim.rng. ruff clean.",
   "lease_expires_at": "2026-07-25T02:31:40.384938058Z",
-  "heartbeat_at": "2026-07-25T02:26:40.384938058Z"
+  "heartbeat_at": "2026-07-25T02:26:40.384938058Z",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-j34",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:03.085439Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

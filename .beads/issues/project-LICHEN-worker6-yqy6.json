@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-yqy6",
+  "title": "HAL: Hardware Abstraction Layer",
+  "description": "Complete the LICHEN Hardware Abstraction Layer for all reference boards. This epic covers the common HAL API, per-board capability validation, and cross-board integration testing. The HAL provides a consistent interface for radio, BLE, GNSS, battery, buttons/LEDs, storage, and identity across Zephyr C and Rust implementations. Parent beads: ev5b.3 (R1 HAL boundary), h7t5 (Zephyr HAL foundation).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:11:37.27032Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:11:37.27032Z"
+}

@@ -14,5 +14,15 @@
   "closed_at": "2026-05-28T01:08:52Z",
   "close_reason": "Duplicate of lora-ipv6-mesh-doq, already fixed",
   "lease_expires_at": "2026-07-24T21:47:54.430529776Z",
-  "heartbeat_at": "2026-07-24T21:42:54.430529776Z"
+  "heartbeat_at": "2026-07-24T21:42:54.430529776Z",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-g4e",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:34.668141Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

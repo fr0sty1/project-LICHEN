@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.3.6",
+  "title": "RAK4631: Buttons (carrier-dependent)",
+  "description": "Document button capability on RAK4631 as carrier-dependent. If WisBlock carrier provides buttons, validate sw0 alias and button_get().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:28.698792Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:28.698792Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.3.6",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:29.010305Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

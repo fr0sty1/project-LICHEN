@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.4.2",
+  "title": "T1000-E: BLE local transport",
+  "description": "Validate BLE local-client transport on T1000-E nRF52840. Same BLE-class MCU as RAK4631. Test peripheral mode and local client connection.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:43.297186Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:43.297186Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.4.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:43.613381Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

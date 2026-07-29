@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.6.4",
+  "title": "nRF52840 DK: User buttons",
+  "description": "Validate user buttons on nRF52840 DK. Board has multiple buttons. Ensure sw0-sw3 aliases work with button_get().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:28.340334Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:28.340334Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.6.4",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:28.624126Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

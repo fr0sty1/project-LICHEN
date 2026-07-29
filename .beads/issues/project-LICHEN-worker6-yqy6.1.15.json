@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.15",
+  "title": "Operating class table",
+  "description": "Validate OPERATING_CLASS_TABLE entries match Zephyr op_class.h definitions. Ensure lookup_operating_class() returns correct parameters for class IDs 0 (US/CA), 1 (EU), 2 (AU/NZ).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:42.700824Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:42.700824Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.15",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:42.981976Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

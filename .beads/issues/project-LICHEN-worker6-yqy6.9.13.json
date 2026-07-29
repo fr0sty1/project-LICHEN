@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.9.13",
+  "title": "Reset cause mapping consistency",
+  "description": "Cross-validate reset cause mapping across nRF52840, ESP32-S3, STM32WL platforms. Ensure lichen_hal_reset_cause flags map correctly per platform.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:35.754049Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:35.754049Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.9.13",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.9",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:36.079227Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

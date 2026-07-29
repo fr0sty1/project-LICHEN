@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.5",
+  "title": "apply_topology() helper validation",
+  "description": "Test apply_topology() helper that wires topology generators to simulation. Ensure node creation and positioning is atomic and consistent.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:14.273533Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:14.273533Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.5",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:14.561863Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

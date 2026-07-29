@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.2",
+  "title": "R1 Neo: BLE local transport",
+  "description": "Validate BLE local-client transport on R1 Neo nRF52840. Ensure CONFIG_LICHEN_HAS_BLE_LOCAL works with BT_PERIPHERAL. Test local client connection and frame exchange.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:54.722376Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:54.722376Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:55.010953Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

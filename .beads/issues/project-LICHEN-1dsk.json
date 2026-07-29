@@ -14,5 +14,15 @@
   "closed_at": "2026-07-22T14:22:43.123983242Z",
   "close_reason": "Added structured debug logs to start_transmission() and _handle_tx_start_delayed() with sim_id/node_id/payload_len/node_state/queue_size/jitter_enabled/current_time; updated lr1110_lora_send tx start in PHY; verified with pytest test_simulation_logging.py (3/3 passed)",
   "lease_expires_at": "2026-07-25T03:01:57.502123246Z",
-  "heartbeat_at": "2026-07-25T02:56:57.502123246Z"
+  "heartbeat_at": "2026-07-25T02:56:57.502123246Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1dsk",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:07.048716Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

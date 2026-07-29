@@ -1,0 +1,1 @@
+{"id":"019faf04-db90-7b71-abb9-7aa5a585195f","issue_id":"project-LICHEN-9nrr.17","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"STALE: AES-CCM already decoupled to lichen/subsys/lichen/crypto/, Rust uses external oscore crate","created_at":"2026-07-29T17:55:58.99275Z"}

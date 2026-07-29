@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.5.8",
+  "title": "Simulation playback controls",
+  "description": "Add play/pause/step/speed controls to visualization. Support jumping to specific simulation time.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:20:13.897381Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:20:13.897381Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.5.8",
+      "depends_on_id": "project-LICHEN-worker6-re0j.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:20:14.199012Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

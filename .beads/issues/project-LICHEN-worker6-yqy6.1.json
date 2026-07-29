@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1",
+  "title": "HAL: Common HAL API",
+  "description": "Shared HAL infrastructure used by all boards. Includes capability discovery, radio abstraction, time/location providers, power management APIs, reset diagnostics, duty cycle tracking, and Rust trait alignment.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:11:45.281813Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:11:45.281813Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:11:45.589681Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

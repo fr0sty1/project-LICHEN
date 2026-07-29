@@ -19,6 +19,14 @@
       "created_at": "2026-05-27T00:03:40Z",
       "created_by": "Mark Frost",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-7pq",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:38.918933Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
     }
   ]
 }

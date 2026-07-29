@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.10",
+  "title": "R1 Neo: Device identity",
+  "description": "Validate lichen_hal_identity_get() on R1 Neo. board_name should be 'r1_neo', zephyr_board should match CONFIG_BOARD. Verify capability flags match enabled DTS nodes.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:09.429255Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:09.429255Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.10",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:09.724926Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

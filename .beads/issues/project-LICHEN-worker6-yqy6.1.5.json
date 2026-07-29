@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.5",
+  "title": "Power snapshot API",
+  "description": "Implement lichen_hal_power_snapshot_get() returning battery percent, voltage, charging state, and external power. Support both voltage-divider ADC sensors and fuel gauge devices via battery0/pmic0 aliases.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:18.629098Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:18.629098Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.5",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:18.933549Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

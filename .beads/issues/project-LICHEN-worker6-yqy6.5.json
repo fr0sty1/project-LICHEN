@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5",
+  "title": "HAL: T-Echo Board",
+  "description": "LilyGO T-Echo (nRF52840 + SX1262 + e-ink + L76K GPS) HAL validation. Reference for display+buttons+GNSS profile. First-party board under lichen/boards/lilygo/t_echo.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:11:54.245428Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:11:54.245428Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:11:54.527697Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.8",
+  "title": "R1 Neo: LEDs",
+  "description": "Validate LED control on R1 Neo. Ensure led0 alias exists and lichen_hal_led_get() returns correct gpio_dt_spec. Test LED on/off/blink.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:05.340169Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:05.340169Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.8",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:05.633107Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

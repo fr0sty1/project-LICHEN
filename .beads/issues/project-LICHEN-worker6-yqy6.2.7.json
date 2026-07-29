@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.7",
+  "title": "R1 Neo: User button (sw0)",
+  "description": "Validate user button on R1 Neo. Ensure sw0 alias exists and lichen_hal_button_get() returns correct gpio_dt_spec. Test button press/release detection.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:04.142104Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:04.142104Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.7",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:04.43519Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.4.8",
+  "title": "Metrics comparison for A/B testing",
+  "description": "Compare metrics between simulation runs for A/B testing. Generate diff reports highlighting statistically significant changes.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:55.193214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:55.193214Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.4.8",
+      "depends_on_id": "project-LICHEN-worker6-re0j.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:55.487324Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

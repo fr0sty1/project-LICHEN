@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7.3",
+  "title": "native_sim: Serial local transport",
+  "description": "Validate serial local-client transport on native_sim. Uses host stdio or pty. Test frame exchange via serial pipe.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:46.157273Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:46.157273Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7.3",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:46.446304Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

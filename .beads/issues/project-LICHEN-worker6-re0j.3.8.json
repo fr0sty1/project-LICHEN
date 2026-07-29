@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.3.8",
+  "title": "Deterministic scenario replay",
+  "description": "Replay recorded scenarios with BARRIER_SYNC mode for deterministic reproduction. Support comparing replay results for regression testing.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:38.037983Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:38.037983Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.3.8",
+      "depends_on_id": "project-LICHEN-worker6-re0j.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:38.328746Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

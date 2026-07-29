@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7.2",
+  "title": "native_sim: Simulator LoRa TCP client",
+  "description": "Validate simulator LoRa on native_sim. LICHEN_RADIO_MODEL_SIM connects to Medium simulator via TCP. Test SimRadio TCP client in Rust HAL.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:44.702123Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:44.702123Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:44.991173Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

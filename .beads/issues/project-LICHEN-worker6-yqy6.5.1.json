@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.1",
+  "title": "T-Echo: LoRa radio (SX1262)",
+  "description": "Validate SX1262 radio on T-Echo. Radio is modeled and enabled by app overlays. Test SPI bus, reset GPIO, DIO1 interrupt, TCXO control.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:58.756121Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:58.756121Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.1",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:59.09573Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

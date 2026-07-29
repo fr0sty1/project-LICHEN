@@ -2,16 +2,19 @@
   "id": "project-LICHEN-7ceo",
   "title": "task",
   "description": "rust/lichen-rpl/src/routing.rs:310-319. Missing sequence validation enables replay attacks to install stale routes.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:34:51.228494Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:42:46.575041Z",
-  "closed_at": "2026-07-11T00:42:46.575041Z",
-  "close_reason": "done",
+  "updated_at": "2026-07-29T18:46:24.84196Z",
+  "closed_at": "2026-07-29T18:46:24.84196Z",
+  "close_reason": "Stale placeholder",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-7ceo",
@@ -19,8 +22,5 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:36:49.990694Z"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

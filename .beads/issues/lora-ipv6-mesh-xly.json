@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T07:01:13Z",
   "created_by": "Mark Atwood",
@@ -15,5 +14,15 @@
   "close_reason": "Created python/ with pyproject.toml, src/lichen/{sim,radio,link}/, tests/, all __init__.py files. Package installs and imports successfully.",
   "labels": [
     "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-xly",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:51.424715Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

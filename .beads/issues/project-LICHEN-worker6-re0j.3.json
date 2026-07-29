@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.3",
+  "title": "Scenario DSL and Scripting",
+  "description": "YAML-based scenario definition language with spawn/kill/move/chaos events and Python escape hatch for complex scripting. Includes chaos engineering rules for fault injection.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:33.282331Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:33.282331Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.3",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:18:33.564327Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

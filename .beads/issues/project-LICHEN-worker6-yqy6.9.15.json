@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.9.15",
+  "title": "HAL test suite on all targets",
+  "description": "Run lichen/tests/hal/ test suite on all reference targets (native_sim, qemu_x86, R1 Neo, RAK4631, T1000-E, T-Echo, nRF52840 DK). CI coverage matrix.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:39.143202Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:39.143202Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.9.15",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.9",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:39.488976Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

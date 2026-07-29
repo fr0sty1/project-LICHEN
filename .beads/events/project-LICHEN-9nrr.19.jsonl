@@ -1,0 +1,1 @@
+{"id":"019faf04-e069-7756-85ce-e847a6d84d0f","issue_id":"project-LICHEN-9nrr.19","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Deferred: EC2 workflow handles via zephyr-clean-worktree.sh. Local builds require manual submodule init. Design decision needed for west.yml.","created_at":"2026-07-29T17:56:00.233481Z"}

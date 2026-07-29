@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.9",
+  "title": "R1 Neo: Internal flash storage",
+  "description": "Validate internal flash partitions on R1 Neo. UF2-style layout is modeled. Test NonVolatile read/write/delete operations via settings or NVS subsystem.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:07.311579Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:07.311579Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.9",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:07.605437Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

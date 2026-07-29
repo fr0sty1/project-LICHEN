@@ -3,16 +3,18 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md §Compiler Hardening. Add -Wall -Wextra -Werror -Wformat=2 -Wformat-security -Wshadow -Wconversion -fstack-protector-strong to top-level CMake. Verify all C files compile clean.",
   "notes": "Work complete: compiler hardening flags added to lichen/zephyr/CMakeLists.txt via zephyr_compile_options(). Ready to close once parent epic mahy is resolved.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:44:02.168725Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T01:05:01.126361Z",
-  "closed_at": "2026-07-12T01:05:01.126361Z",
-  "close_reason": "Fixed: Compiler hardening flags (-Wall -Wextra -Werror -Wformat=2 -Wformat-security -Wshadow -Wconversion -fstack-protector-strong) already present in lichen/zephyr/CMakeLists.txt via zephyr_compile_options()",
+  "updated_at": "2026-07-29T18:51:15.224118Z",
+  "closed_at": "2026-07-29T18:51:15.224118Z",
+  "close_reason": "Stale placeholder",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-txlu",
@@ -20,8 +22,5 @@
       "type": "blocks",
       "created_at": "2026-07-10T23:44:06.619163Z"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

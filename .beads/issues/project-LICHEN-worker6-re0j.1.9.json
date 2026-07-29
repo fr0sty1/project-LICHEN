@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.1.9",
+  "title": "Observer pattern hooks completeness",
+  "description": "Audit observer hooks (tx_start, tx_end, rx_success, rx_timeout, collision, node_added, node_removed) for completeness. Ensure all significant simulation events are observable.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:03.048854Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:03.048854Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.1.9",
+      "depends_on_id": "project-LICHEN-worker6-re0j.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:03.333778Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

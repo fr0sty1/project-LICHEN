@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.6",
+  "title": "T-Echo: E-ink display (GDEW0154M10)",
+  "description": "Bring up GDEW0154M10 e-ink display on T-Echo. SPI bus is modeled but display child node needs bring-up overlay. Validate display driver and refresh.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:07.640451Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:07.640451Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.6",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:07.926707Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.4",
+  "title": "HAL: T1000-E Board",
+  "description": "Seeed SenseCAP T1000-E (nRF52840 + LR1110 + AG3335 GNSS) HAL validation. Advanced tracker target gated by LR1110 and GNSS bring-up. First-party board under lichen/boards/seeed/t1000_e.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:11:52.171575Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:11:52.171575Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.4",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:11:52.459398Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

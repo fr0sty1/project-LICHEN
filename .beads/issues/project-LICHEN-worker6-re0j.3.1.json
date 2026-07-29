@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.3.1",
+  "title": "YAML scenario parser and validator",
+  "description": "Test YAML scenario parsing with schema validation. Ensure clear error messages for malformed scenarios. File: python/src/lichen/sim/scenario.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:26.713824Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:26.713824Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.3.1",
+      "depends_on_id": "project-LICHEN-worker6-re0j.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:27.002338Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

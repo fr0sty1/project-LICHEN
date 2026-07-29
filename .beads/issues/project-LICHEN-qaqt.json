@@ -2,12 +2,14 @@
   "id": "project-LICHEN-qaqt",
   "title": "Abort EDHOC on all valid errors",
   "description": "Initiator recognizes only EDHOC error code 2; other valid error messages fall through as InvalidMessage and leave ephemeral session state retryable. Parse registered error forms and terminate the session as RFC 9528 requires. Found reviewing convergence EDHOC slice.",
-  "status": "deferred",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-21T02:14:39.095716518Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-21T02:14:54.900435049Z",
+  "updated_at": "2026-07-29T18:46:06.317205Z",
+  "closed_at": "2026-07-29T18:46:06.317205Z",
+  "close_reason": "Stale: internal EDHOC/OSCORE replaced by external crate",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-qaqt",

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.14",
+  "title": "Rust Concentrator trait",
+  "description": "Validate Concentrator trait for SX1302/RAK2287 multi-channel gateways. Currently stub implementation - no hardware driver exists. Track as blocked until concentrator hardware available.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:40.998452Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:40.998452Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.14",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:41.285919Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

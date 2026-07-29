@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.6.3",
+  "title": "nRF52840 DK: No LoRa radio",
+  "description": "Document nRF52840 DK has no LoRa radio. LICHEN_HAS_LORA should be false. Used for BLE/serial transport development only.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:26.4581Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:26.4581Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.6.3",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:26.749259Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

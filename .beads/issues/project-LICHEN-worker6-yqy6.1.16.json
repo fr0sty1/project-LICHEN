@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.16",
+  "title": "Build-time Kconfig/DT validation",
+  "description": "Add BUILD_ASSERTs to verify Kconfig symbols match devicetree nodes. Catch mismatches like CONFIG_LICHEN_HAS_GNSS=y without gnss0 alias at compile time.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:44.99326Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:44.99326Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.16",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:45.280928Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

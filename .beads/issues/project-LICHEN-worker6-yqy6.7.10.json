@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7.10",
+  "title": "native_sim: Host filesystem storage",
+  "description": "Validate NonVolatile storage on native_sim using host filesystem. Test FileStorage implementation in Rust HAL.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:55.228559Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:55.228559Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7.10",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:55.528337Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

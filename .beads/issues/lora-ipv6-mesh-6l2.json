@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-09T03:47:37Z",
   "created_by": "Mark Atwood",
@@ -15,5 +14,15 @@
   "close_reason": "Superseded by the metrics implementation in sim/metrics.py + Simulation integration + REST GET /sim/{id}/metrics. See 4r8/xep. Tests in tests/sim/test_metrics.py and tests/sim/test_api.py.",
   "labels": [
     "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-6l2",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:29.483541Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.6.5",
+  "title": "nRF52840 DK: LEDs",
+  "description": "Validate LED control on nRF52840 DK. Board has multiple LEDs. Ensure led0-led3 aliases work with led_get().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:29.387903Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:29.387903Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.6.5",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:29.6749Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

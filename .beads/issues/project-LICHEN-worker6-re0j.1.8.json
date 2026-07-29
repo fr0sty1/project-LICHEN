@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.1.8",
+  "title": "TDMA scheduler and synchronized hop channels",
+  "description": "Verify TDMA slot assignments and synchronized hop channel computation. Test rendezvous mechanisms for channel coordination. File: python/src/lichen/sim/tdma.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:00.788278Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:00.788278Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.1.8",
+      "depends_on_id": "project-LICHEN-worker6-re0j.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:01.07372Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.9",
+  "title": "UI profile selection",
+  "description": "Validate LICHEN_UI_PROFILE choice (HEADLESS, TRACKER, HANDHELD) correctly maps to lichen_hal_ui_profile enum and depends on display/button/LED capabilities.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:31.255164Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:31.255164Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.9",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:31.542867Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.9",
+  "title": "HAL: Cross-Validation",
+  "description": "Cross-board HAL validation tasks. Ensure consistent behavior across all targets. Integration tests, radio model validation, and transport interoperability.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:00.355902Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:00.355902Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.9",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:00.636649Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

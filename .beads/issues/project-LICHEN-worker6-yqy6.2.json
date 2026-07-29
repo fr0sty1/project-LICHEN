@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2",
+  "title": "HAL: R1 Neo Board",
+  "description": "Muzi Works R1 Neo (nRF52840 + SX1262) HAL validation. This is the MVP first-party target. Radio reset, bootloader, GNSS, battery, and USB flashing all require physical hardware validation. Parent bead: ev5b.3.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:11:47.729875Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:11:47.729875Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:11:48.025918Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

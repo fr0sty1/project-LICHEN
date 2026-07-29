@@ -1,19 +1,28 @@
 {
   "id": "lora-ipv6-mesh-r45",
-  "title": "Propagation can_decode uses > instead of >= for sensitivity threshold",
-  "description": "propagation.py:152 uses rx_power > sensitivity_dbm. A signal exactly at sensitivity threshold is NOT decodable. But sensitivity represents minimum decodable power, so >= is correct. Also affects max_range which solves for equality. Fix: change > to >=",
+  "title": "Propagation can_decode uses \u003e instead of \u003e= for sensitivity threshold",
+  "description": "propagation.py:152 uses rx_power \u003e sensitivity_dbm. A signal exactly at sensitivity threshold is NOT decodable. But sensitivity represents minimum decodable power, so \u003e= is correct. Also affects max_range which solves for equality. Fix: change \u003e to \u003e=",
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T19:07:15Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-05-28T02:22:29Z",
   "started_at": "2026-05-28T02:21:51Z",
   "closed_at": "2026-05-28T02:22:29Z",
-  "close_reason": "Fixed: Changed > to >= in can_decode(). At exactly sensitivity threshold, signal IS decodable. Updated test to reflect correct semantics.",
+  "close_reason": "Fixed: Changed \u003e to \u003e= in can_decode(). At exactly sensitivity threshold, signal IS decodable. Updated test to reflect correct semantics.",
   "labels": [
     "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-r45",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:32.631403Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

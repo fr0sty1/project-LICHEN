@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.4.4",
+  "title": "Latency statistics (min/max/avg/p99)",
+  "description": "Collect end-to-end latency statistics including percentiles. Support latency histograms for distribution analysis.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:49.127056Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:49.127056Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.4.4",
+      "depends_on_id": "project-LICHEN-worker6-re0j.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:49.422757Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

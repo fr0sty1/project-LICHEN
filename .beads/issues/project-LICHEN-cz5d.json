@@ -2,16 +2,18 @@
   "id": "project-LICHEN-cz5d",
   "title": "task",
   "description": "lichen/drivers/gnss/gnss_ag3335.c:211-224. Resource leak.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:36:24.93557Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T01:04:34.644357Z",
-  "closed_at": "2026-07-11T01:04:34.644357Z",
-  "close_reason": "done",
+  "updated_at": "2026-07-29T18:46:54.863902Z",
+  "closed_at": "2026-07-29T18:46:54.863902Z",
+  "close_reason": "Stale placeholder",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-cz5d",
@@ -19,8 +21,5 @@
       "type": "blocks",
       "created_at": "2026-07-11T00:37:11.924571Z"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

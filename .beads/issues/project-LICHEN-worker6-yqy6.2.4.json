@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.4",
+  "title": "R1 Neo: GNSS UART validation",
+  "description": "Enable and validate GNSS UART on R1 Neo. GNSS pins are known but UART is disabled pending hardware validation (ev5b.3). Test NMEA parsing and location submit to HAL.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:58.767011Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:58.767011Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.4",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:59.072108Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.3.8",
+  "title": "RAK4631: QSPI storage",
+  "description": "Validate QSPI flash storage on RAK4631 if carrier provides. Test external-flash0 alias and NonVolatile operations on external flash.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:30.82124Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:30.82124Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.3.8",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:31.18799Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

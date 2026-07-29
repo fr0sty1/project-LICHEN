@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.3.9",
+  "title": "RAK4631: Device identity",
+  "description": "Validate lichen_hal_identity_get() on RAK4631. board_name should report upstream board name. Verify capability flags match overlay-enabled features.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:32.40509Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:32.40509Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.3.9",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:32.729668Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

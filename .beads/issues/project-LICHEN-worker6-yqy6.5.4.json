@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.4",
+  "title": "T-Echo: GNSS (L76K)",
+  "description": "Enable and validate L76K GPS UART on T-Echo. UART is modeled but disabled pending focused validation. PPS on P1.04 is not yet modeled.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:03.440772Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:03.440772Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.4",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:03.774077Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

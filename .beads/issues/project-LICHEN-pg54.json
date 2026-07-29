@@ -18,6 +18,14 @@
       "created_at": "2026-07-20T19:07:41.661582Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-pg54",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:37.945814Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
     }
   ]
 }

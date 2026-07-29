@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7.4",
+  "title": "native_sim: Synthetic device identity",
+  "description": "Validate synthetic device identity on native_sim. lichen_hal_synthetic_device_identity_allowed() should return true. Test deterministic ID generation.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:47.263944Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:47.263944Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7.4",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:47.54548Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

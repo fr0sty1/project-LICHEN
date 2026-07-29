@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.7.6",
+  "title": "Mobility handoff scenario",
+  "description": "Create scenario with node moving between coverage areas. Test routing updates and handoff latency.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:20:45.619953Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:20:45.619953Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.7.6",
+      "depends_on_id": "project-LICHEN-worker6-re0j.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:20:45.927807Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

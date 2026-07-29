@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-09T04:16:54Z",
   "created_by": "Mark Atwood",
@@ -15,5 +14,15 @@
   "close_reason": "Implemented metrics collection. New sim/metrics.py Metrics class tracks transmissions, deduplicated receptions (per receiver,tx) and collisions (per receiver,overlapping-tx-set), per-delivery latency, and derived delivery_rate/collision_rate. Wired into Simulation (record on start_transmission and in get_rx_result). Dedup is essential because get_rx_result is polled ~1ms. Tests: tests/sim/test_metrics.py (unit + integration with independent oracles).",
   "labels": [
     "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-4r8",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:26.447761Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

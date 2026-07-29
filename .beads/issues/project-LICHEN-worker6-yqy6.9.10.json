@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.9.10",
+  "title": "Duty cycle compliance per region",
+  "description": "Cross-validate duty cycle tracking for US/CA (100%), EU (1%), AU/NZ (5%). Test lichen_duty_cycle_can_transmit() and remaining_ms calculations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:31.472047Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:31.472047Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.9.10",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.9",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:31.765461Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

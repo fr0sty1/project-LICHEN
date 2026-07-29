@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7",
+  "title": "HAL: native_sim",
+  "description": "Zephyr native_sim HAL validation. Host-executed simulation target for CI and development. Exercises software paths without hardware. Uses loopback or simulator LoRa model.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:11:57.68584Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:11:57.68584Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:11:57.96719Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

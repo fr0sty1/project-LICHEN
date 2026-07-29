@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.9",
+  "title": "T-Echo: LEDs",
+  "description": "Validate LED control on T-Echo. Ensure led0 alias exists and led_get() returns correct gpio_dt_spec.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:11.867515Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:11.867515Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.9",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:12.1465Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

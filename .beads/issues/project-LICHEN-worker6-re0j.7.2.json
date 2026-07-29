@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.7.2",
+  "title": "Hidden terminal problem scenario",
+  "description": "Create scenario demonstrating hidden terminal problem. Three nodes where A-B and B-C can communicate but A-C cannot hear each other.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:20:40.079401Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:20:40.079401Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.7.2",
+      "depends_on_id": "project-LICHEN-worker6-re0j.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:20:40.391022Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

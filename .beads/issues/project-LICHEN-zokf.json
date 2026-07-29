@@ -10,8 +10,19 @@
   "created_at": "2026-07-10T19:51:04.616504Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-10T19:57:09.001892Z",
-  "labels": ["defer-boardconfig", 
+  "labels": [
+    "defer-boardconfig",
     "renode",
     "extraction"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zokf",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:17.369562Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

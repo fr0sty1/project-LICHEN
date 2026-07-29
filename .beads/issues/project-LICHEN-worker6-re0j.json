@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-re0j",
+  "title": "Simulator: Test Infrastructure",
+  "description": "Comprehensive enhancement of the LICHEN network simulator covering core engine improvements, topology/mobility, scenario scripting, metrics/analysis, visualization, hardware-in-the-loop integration, and a test scenarios library. The simulator already has substantial capabilities including multi-channel radio medium, propagation modeling, topology generators, YAML scenario DSL, chaos engineering, and Renode HIL support. This epic focuses on filling gaps (visualization, batch runs, recording/replay, real hardware HIL) and ensuring existing features are complete and well-tested.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:23.294571Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:23.294571Z"
+}

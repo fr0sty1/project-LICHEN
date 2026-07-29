@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.3",
+  "title": "R1 Neo: Serial local transport",
+  "description": "Validate serial local-client transport via USB CDC on R1 Neo. Test native USB CDC ACM device, verify lichen_hal_serial_device_get() returns correct device.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:56.854464Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:56.854464Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.3",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:57.141572Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

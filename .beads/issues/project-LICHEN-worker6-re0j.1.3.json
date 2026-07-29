@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.1.3",
+  "title": "LR-FHSS propagation support",
+  "description": "Test and document LR-FHSS (Long Range Frequency Hopping Spread Spectrum) support in propagation model. Verify frequency-dependent path loss and interference calculations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:52.333549Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:52.333549Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.1.3",
+      "depends_on_id": "project-LICHEN-worker6-re0j.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:18:52.613326Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

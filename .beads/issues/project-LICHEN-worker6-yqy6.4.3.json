@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.4.3",
+  "title": "T1000-E: Serial local transport",
+  "description": "Validate serial local-client transport on T1000-E via native USB CDC. Test USB enumeration and frame exchange.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:44.345396Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:44.345396Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.4.3",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:44.660519Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

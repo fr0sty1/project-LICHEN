@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.8.2",
+  "title": "qemu_x86: Serial local transport",
+  "description": "Validate serial local-client transport on qemu_x86. Uses emulated UART. Test frame exchange via QEMU serial console.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:03.646645Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:03.646645Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.8.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.8",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:03.984035Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

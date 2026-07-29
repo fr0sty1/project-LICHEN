@@ -14,5 +14,15 @@
   "closed_at": "2026-06-09T03:47:23Z",
   "close_reason": "Closed",
   "lease_expires_at": "2026-07-24T21:47:53.894341341Z",
-  "heartbeat_at": "2026-07-24T21:42:53.894341341Z"
+  "heartbeat_at": "2026-07-24T21:42:53.894341341Z",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-1cg",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:33.621724Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.10",
+  "title": "T-Echo: PCF8563 RTC",
+  "description": "Validate PCF8563 RTC on T-Echo. RTC is enabled in DTS. Test time persistence across power cycles and RTC as time source.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:13.544339Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:13.544339Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.10",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:13.830091Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

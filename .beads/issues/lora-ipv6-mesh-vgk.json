@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T07:25:35Z",
   "created_by": "Mark Atwood",
@@ -36,6 +35,14 @@
       "type": "blocks",
       "created_at": "2026-05-27T00:25:43Z",
       "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-vgk",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:46.878468Z",
+      "created_by": "Mark Atwood",
       "metadata": "{}"
     }
   ]

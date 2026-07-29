@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T21:24:59Z",
   "created_by": "Mark Atwood",
@@ -15,5 +14,15 @@
   "close_reason": "Fixed: Added EventQueue.remove_events_for_node(node_id) method that filters and re-heapifies. Simulation.remove_node() now calls this to purge orphan events. Added 4 tests (3 for EventQueue, 1 for Simulation integration).",
   "labels": [
     "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-4e8",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:59.188331Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

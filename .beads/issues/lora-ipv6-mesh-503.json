@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-05-27T07:03:09Z",
   "created_by": "Mark Atwood",
@@ -13,6 +12,9 @@
   "started_at": "2026-05-27T18:43:46Z",
   "closed_at": "2026-05-27T18:50:53Z",
   "close_reason": "Wave 7 complete. Integration test file created with 10 test scenarios covering full stack: TX/RX, RSSI, range, bidirectional, multi-node.",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "lora-ipv6-mesh-503",
@@ -29,9 +31,14 @@
       "created_at": "2026-05-27T00:04:01Z",
       "created_by": "Mark Frost",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-503",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:47:57.093398Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

@@ -6,22 +6,29 @@
   "status": "open",
   "priority": 3,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:15:25.960134Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-12T05:30:31.197993Z",
   "closed_at": "2026-07-12T05:30:31.197993Z",
   "close_reason": "Converted test_node_server.py to push-based RX, 758 tests pass",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-4t5u",
       "depends_on_id": "project-LICHEN-578k",
       "type": "blocks",
       "created_at": "2026-07-10T22:15:48.033629Z"
+    },
+    {
+      "issue_id": "project-LICHEN-4t5u",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:12.930202Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

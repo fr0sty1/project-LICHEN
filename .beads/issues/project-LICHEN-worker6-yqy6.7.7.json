@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7.7",
+  "title": "native_sim: Time provider",
+  "description": "Validate time provider on native_sim. Can use host time as wall-clock source. Test time submit and snapshot with configurable uptime.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:51.960465Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:51.960465Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7.7",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:52.285519Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

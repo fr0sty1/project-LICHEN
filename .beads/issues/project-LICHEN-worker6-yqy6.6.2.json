@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.6.2",
+  "title": "nRF52840 DK: Serial local transport",
+  "description": "Validate serial local-client transport on nRF52840 DK via J-Link CDC or native USB. Test UART and USB CDC paths.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:24.69855Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:24.69855Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.6.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:24.983522Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

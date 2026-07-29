@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7.1",
+  "title": "native_sim: Loopback LoRa",
+  "description": "Validate loopback LoRa radio on native_sim. LICHEN_RADIO_MODEL_LOOPBACK for self-TX/RX testing. Verify lichen_hal_lora_device_get() returns loopback device.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:42.973176Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:42.973176Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7.1",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:43.256129Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

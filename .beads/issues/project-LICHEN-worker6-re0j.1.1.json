@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.1.1",
+  "title": "Radio medium collision detection and capture effect",
+  "description": "Verify and test multi-channel radio medium with collision detection and 6dB capture effect threshold. Ensure SINR calculations correctly determine packet reception success. File: python/src/lichen/sim/medium.py",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:48.505588Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:48.505588Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.1.1",
+      "depends_on_id": "project-LICHEN-worker6-re0j.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:18:48.789474Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

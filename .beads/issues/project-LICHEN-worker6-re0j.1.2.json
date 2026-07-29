@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.1.2",
+  "title": "Log-distance path loss propagation model",
+  "description": "Validate log-distance path loss model with configurable shadowing variance and small-scale fading. Ensure link budget calculations match real-world LoRa performance. File: python/src/lichen/sim/propagation.py",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:50.568988Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:50.568988Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.1.2",
+      "depends_on_id": "project-LICHEN-worker6-re0j.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:18:50.85263Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

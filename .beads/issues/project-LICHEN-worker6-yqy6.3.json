@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.3",
+  "title": "HAL: RAK4631 Board",
+  "description": "RAK4631 WisBlock (nRF52840 + SX1262) HAL validation. Uses upstream Zephyr board with LICHEN overlays. Primary validated reference for SX126X radio model. Headless/module reference target.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:11:49.871724Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:11:49.871724Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.3",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:11:50.149653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

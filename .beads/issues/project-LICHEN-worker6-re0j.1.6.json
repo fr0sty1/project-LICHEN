@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.1.6",
+  "title": "REALTIME mode wall-clock synchronization",
+  "description": "Validate REALTIME mode properly paces simulation to wall-clock time. Test drift compensation and ensure external node connections remain synchronized.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:57.441571Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:57.441571Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.1.6",
+      "depends_on_id": "project-LICHEN-worker6-re0j.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:18:57.724243Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

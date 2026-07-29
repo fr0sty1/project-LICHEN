@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.8.4",
+  "title": "qemu_x86: Time provider",
+  "description": "Validate time provider on qemu_x86. Uptime-only provider expected. Test time snapshot reflects QEMU tick counter.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:06.607225Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:06.607225Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.8.4",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.8",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:06.920955Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

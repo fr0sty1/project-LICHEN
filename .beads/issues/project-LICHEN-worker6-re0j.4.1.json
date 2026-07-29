@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.4.1",
+  "title": "NodeMetrics collection validation",
+  "description": "Validate NodeMetrics correctly tracks transmissions, receptions, collisions per node. Verify counters reset properly on simulation restart. File: python/src/lichen/sim/metrics.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:45.425365Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:45.425365Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.4.1",
+      "depends_on_id": "project-LICHEN-worker6-re0j.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:45.721509Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

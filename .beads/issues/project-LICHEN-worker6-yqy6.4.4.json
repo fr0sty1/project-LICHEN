@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.4.4",
+  "title": "T1000-E: GNSS (AG3335)",
+  "description": "Validate AG3335 GNSS on T1000-E. GNSS is modeled and enabled by overlays but behavior needs validation. Test NMEA parsing, fix acquisition, and location submit.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:45.400576Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:45.400576Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.4.4",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:45.722653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

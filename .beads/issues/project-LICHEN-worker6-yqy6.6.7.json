@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.6.7",
+  "title": "nRF52840 DK: Device identity",
+  "description": "Validate lichen_hal_identity_get() on nRF52840 DK. UI profile should be HEADLESS. Verify capability flags match (no LORA, has BLE/SERIAL).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:35.928675Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:35.928675Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.6.7",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:36.212765Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

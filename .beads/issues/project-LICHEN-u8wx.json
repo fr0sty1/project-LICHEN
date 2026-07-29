@@ -12,5 +12,15 @@
   "started_at": "2026-07-22T20:25:02.104880622Z",
   "labels": [
     "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u8wx",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:54.835992Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

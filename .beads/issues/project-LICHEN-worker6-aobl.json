@@ -9,5 +9,15 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-27T01:24:20.753811Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-27T01:43:23.318374Z"
+  "updated_at": "2026-07-27T01:43:23.318374Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-aobl",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:10.972559Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.7",
+  "title": "T-Echo: Battery ADC",
+  "description": "Add and validate battery ADC path on T-Echo. Battery path unknown in current DTS. Implement voltage-divider sensor for battery_percent.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:09.347894Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:09.347894Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.7",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:09.628686Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

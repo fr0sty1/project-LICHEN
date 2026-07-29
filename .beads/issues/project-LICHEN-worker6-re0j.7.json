@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.7",
+  "title": "Test Scenarios Library",
+  "description": "Curated library of test scenarios for common network configurations and edge cases. Includes regression tests and performance benchmarks.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:39.540334Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:39.540334Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.7",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:18:39.824396Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

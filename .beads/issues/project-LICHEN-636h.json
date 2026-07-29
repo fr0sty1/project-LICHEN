@@ -14,5 +14,15 @@
   "closed_at": "2026-07-23T04:08:18.300272733Z",
   "close_reason": "Critical fixes implemented, non-blocking integrated preserving loopback, tested, compiles, README updated. No dead code.",
   "lease_expires_at": "2026-07-24T21:45:45.398803333Z",
-  "heartbeat_at": "2026-07-24T21:40:45.398803333Z"
+  "heartbeat_at": "2026-07-24T21:40:45.398803333Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-636h",
+      "depends_on_id": "project-LICHEN-worker6-yqy6",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:48:32.937541Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.4.5",
+  "title": "pcapng capture with RSSI/SNR metadata",
+  "description": "Validate pcapng packet capture includes RSSI, SNR, and node metadata. Verify Wireshark-compatible format and custom option blocks. File: python/src/lichen/sim/pcap.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:51.266458Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:51.266458Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.4.5",
+      "depends_on_id": "project-LICHEN-worker6-re0j.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:51.558759Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

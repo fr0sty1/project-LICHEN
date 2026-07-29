@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.7.8",
+  "title": "native_sim: Location provider",
+  "description": "Validate location provider on native_sim. Test location submit with synthetic coordinates. Verify source priority and freshness tracking.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:53.271974Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:53.271974Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.7.8",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.7",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:53.581319Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

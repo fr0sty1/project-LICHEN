@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.8",
+  "title": "Duty cycle tracking",
+  "description": "Validate lichen_duty_cycle_* APIs for regulatory compliance. Ensure correct permille limits: 1000 (US/CA 100%), 10 (EU 1%), 50 (AU/NZ 5%). Track 32-entry circular buffer of TX timestamps/durations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:25.443615Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:25.443615Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.8",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:25.727722Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.6",
+  "title": "Reset diagnostics API",
+  "description": "Implement lichen_hal_reset_diagnostics_snapshot_get(), lichen_hal_reboot_status(), and lichen_hal_reset_request() for cold/warm reboot and factory reset. Map platform reset causes to lichen_hal_reset_cause flags.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:21.257658Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:21.257658Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.6",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:21.536836Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

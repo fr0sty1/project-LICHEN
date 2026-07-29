@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.4.6",
+  "title": "T1000-E: Board-specific controls",
+  "description": "Document board-specific controls on T1000-E. Not modeled as general HAL buttons. Determine if any user-accessible inputs exist.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:48.721393Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:48.721393Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.4.6",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:49.031727Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

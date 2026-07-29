@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.8",
+  "title": "T-Echo: User button",
+  "description": "Validate user button on T-Echo. One user button and LEDs are documented. Ensure sw0 alias and button_get() work correctly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:10.624662Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:10.624662Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.8",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:10.905406Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

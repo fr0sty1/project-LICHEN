@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.3.5",
+  "title": "RAK4631: Battery (carrier-dependent)",
+  "description": "Document battery capability on RAK4631 as carrier-dependent. If WisBlock battery module or base board provides ADC/fuel gauge, validate battery0 alias.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:27.082139Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:27.082139Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.3.5",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:27.392876Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

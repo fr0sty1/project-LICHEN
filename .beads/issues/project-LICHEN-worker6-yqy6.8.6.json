@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.8.6",
+  "title": "qemu_x86: RAM-based storage",
+  "description": "Validate NonVolatile storage on qemu_x86. May use RAM-based or emulated flash storage. Test InMemoryStorage for Rust HAL.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:09.16997Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:09.16997Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.8.6",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.8",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:09.591422Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.8.5",
+  "title": "qemu_x86: Reset diagnostics",
+  "description": "Validate reset diagnostics on qemu_x86. May have limited reset cause information. Test reboot request API.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:07.60468Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:07.60468Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.8.5",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.8",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:07.90816Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

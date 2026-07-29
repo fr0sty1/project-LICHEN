@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.3",
+  "title": "Random disk topology generator",
+  "description": "Test random_disk() topology generator with configurable radius and node count. Verify uniform distribution and connectivity properties.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:11.84721Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:11.84721Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.3",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:12.134102Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

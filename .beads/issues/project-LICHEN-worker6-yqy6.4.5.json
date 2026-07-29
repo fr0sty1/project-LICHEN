@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.4.5",
+  "title": "T1000-E: Battery/charger",
+  "description": "Model and validate battery/charger on T1000-E. Currently not modeled in DTS. Add battery0/pmic0 aliases if hardware supports telemetry.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:13:47.156198Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:13:47.156198Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.4.5",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:13:47.464961Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

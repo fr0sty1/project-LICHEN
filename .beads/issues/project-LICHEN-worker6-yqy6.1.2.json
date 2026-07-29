@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.1.2",
+  "title": "Radio model abstraction",
+  "description": "Validate radio model selection (SX126X, SX127X, LR1110, STM32WL, SIM, LOOPBACK, RENODE) through Kconfig choice and ensure lichen_hal_lora_device_get() returns correct device for each model.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:12:13.07814Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:12:13.07814Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.1.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:12:13.364958Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

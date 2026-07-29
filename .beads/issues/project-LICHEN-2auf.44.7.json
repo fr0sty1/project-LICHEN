@@ -8,7 +8,6 @@
   "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-17T22:08:32.40085Z",
   "created_by": "Mark Atwood",
@@ -16,17 +15,17 @@
   "started_at": "2026-07-19T23:39:11.491363Z",
   "closed_at": "2026-07-20T07:28:37.940385307Z",
   "close_reason": "Authenticated multi-hop DAO origins are fully integrated, reviewed, and validated across Rust, Python/C vectors, and relevant ARM64 Zephyr crypto tests.",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.7",
-      "depends_on_id": "project-LICHEN-2auf.44",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5",
       "type": "parent-child",
-      "created_at": "2026-07-17T22:08:32.530045Z",
+      "created_at": "2026-07-29T18:03:43.515463Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

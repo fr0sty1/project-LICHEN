@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.5.12",
+  "title": "T-Echo: Device identity",
+  "description": "Validate lichen_hal_identity_get() on T-Echo. UI profile should be TRACKER or HANDHELD with display. Verify all capability flags.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:14:16.062885Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:14:16.062885Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.5.12",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:14:16.363938Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.8.3",
+  "title": "qemu_x86: Synthetic device identity",
+  "description": "Validate synthetic device identity on qemu_x86. lichen_hal_synthetic_device_identity_allowed() should return true for emulated target.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:04.957762Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:04.957762Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.8.3",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.8",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:05.256449Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

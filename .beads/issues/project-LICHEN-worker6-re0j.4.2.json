@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.4.2",
+  "title": "Network-wide delivery rate calculation",
+  "description": "Test delivery rate calculation across entire network. Verify formula: successful_rx / total_tx accounts for broadcast vs unicast correctly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:46.578957Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:46.578957Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.4.2",
+      "depends_on_id": "project-LICHEN-worker6-re0j.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:46.868902Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.1",
+  "title": "Grid topology generator",
+  "description": "Test grid() topology generator with configurable spacing and dimensions. Verify node placement and neighbor relationships. File: python/src/lichen/sim/topology.py",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:09.60998Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:09.60998Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.1",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:09.89113Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

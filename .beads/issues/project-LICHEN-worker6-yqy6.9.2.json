@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.9.2",
+  "title": "SX127X radio model validation",
+  "description": "Validate SX127X radio model on TTGO/Heltec V2 class boards. Basic support exists but needs full validation path. Test against SX126X for interop.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:15:18.243787Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:15:18.243787Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.9.2",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.9",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:15:18.543074Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.4.6",
+  "title": "Metrics export to JSON/CSV",
+  "description": "Export aggregated metrics to JSON and CSV formats. Support time-series export for plotting and analysis.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:52.526462Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:52.526462Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.4.6",
+      "depends_on_id": "project-LICHEN-worker6-re0j.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:52.822019Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

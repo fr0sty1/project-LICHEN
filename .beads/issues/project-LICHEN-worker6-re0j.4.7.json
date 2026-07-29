@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.4.7",
+  "title": "Batch simulation runner CLI",
+  "description": "Create CLI tool for running scenarios with parameter sweeps. Output aggregate metrics to JSON/CSV. Support parallel execution for throughput.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:54.20466Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:54.20466Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.4.7",
+      "depends_on_id": "project-LICHEN-worker6-re0j.4",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:54.503343Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

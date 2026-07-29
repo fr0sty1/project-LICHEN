@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.5",
+  "title": "Visualization",
+  "description": "Web-based visualization dashboard consuming WebSocket events. Display node positions, transmissions, link quality, and real-time metrics. Currently a gap - WebSocket exists but no frontend.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:18:36.251372Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:18:36.251372Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.5",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:18:36.553781Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

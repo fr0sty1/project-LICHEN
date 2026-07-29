@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.7",
+  "title": "Mobility patterns library",
+  "description": "Create reusable mobility patterns: random waypoint, group mobility, reference point group mobility (RPGM), Manhattan grid. Integrate with scenario DSL move events.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:18.082781Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:18.082781Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.7",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:18.368082Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

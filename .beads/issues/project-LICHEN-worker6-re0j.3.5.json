@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.3.5",
+  "title": "Python escape hatch for custom logic",
+  "description": "Test python event type in scenario DSL for executing arbitrary Python code. Ensure sandboxing and access to simulation context.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-29T18:19:33.421438Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-29T18:19:33.421438Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.3.5",
+      "depends_on_id": "project-LICHEN-worker6-re0j.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:19:33.710213Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
