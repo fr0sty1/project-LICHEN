@@ -17,6 +17,14 @@
       "created_at": "2026-07-24T15:55:31.297648016Z",
       "created_by": "AI Agent",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9jzd",
+      "depends_on_id": "project-LICHEN-6mij",
+      "type": "parent-child",
+      "created_at": "2026-07-29T18:53:59.40267Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
     }
   ]
 }
