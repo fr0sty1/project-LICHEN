@@ -171,7 +171,7 @@ impl NeighborTable {
 
     #[cfg(feature = "std")]
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        let policy = TrickleAwareNeighborLiveness::default();
+        let policy = TrickleAwareNeighborLiveness;
         self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
     }
 
@@ -187,7 +187,7 @@ impl NeighborTable {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
-            let is_stale = slot.as_ref().map_or(false, |neighbor| {
+            let is_stale = slot.as_ref().is_some_and(|neighbor| {
                 !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms)
             });
             if is_stale {

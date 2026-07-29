@@ -33,7 +33,6 @@ pub use self::error::{
     DaoAdmissionError, DaoSendError, RplControlError, RplReceiveError, RplRuntimeReceiveError,
     RplRuntimeTrickleError, RplStackOpenError, RplStackProvisionError,
 };
-pub(crate) use self::util::ipv6_eui64;
 
 /// Outcome of Trickle transmit completion.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -79,7 +78,7 @@ enum RplRole {
     Root(DaoRxState),
 }
 
-struct RoutePlan {
+pub(crate) struct RoutePlan {
     next_hop: [u8; 8],
     source_route: Vec<[u8; 16]>,
 }
@@ -106,6 +105,10 @@ pub struct RplStack<R: Radio, S: NonVolatile> {
 impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     pub fn rpl_node(&self) -> &RplNode {
         &self.rpl
+    }
+
+    pub fn rpl_node_mut(&mut self) -> &mut RplNode {
+        &mut self.rpl
     }
 
     /// Current generation of this stack instance. RplRuntime bindings are tied to

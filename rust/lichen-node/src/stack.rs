@@ -258,6 +258,7 @@ impl<R: Radio> Stack<R> {
     /// Send an OSCORE-protected CoAP message to destination.
     ///
     /// Path: CoAP → IPv6/UDP → SCHC compress → L2 sign → Radio TX
+    #[allow(dead_code)]
     pub(crate) async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
         let src = self.local_addr();
         self.send_coap_raw_to(&src, dst, coap, &[], &[]).await

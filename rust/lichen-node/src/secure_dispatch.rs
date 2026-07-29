@@ -9,14 +9,13 @@
 //! permit local administrative access (per spec §17 LCI).
 
 use lichen_coap::codec::CoapPacket;
-use lichen_coap::message::MessageCode;
 use lichen_coap::option::content_format::CBOR;
 use lichen_hal::Radio;
 use lichen_oscore::SenderStateStore;
 
-use crate::dispatch::{self, Dispatcher, Request, Response};
+use crate::dispatch::{self, Dispatcher, Request};
 use crate::secure::{
-    ReceivedSecureDatagram, SecureError, SecureRequest, SecureResponseData, SecureStack,
+    ReceivedSecureDatagram, SecureError, SecureResponseData, SecureStack,
 };
 use crate::stack::TxError;
 

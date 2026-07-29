@@ -5,7 +5,6 @@
 
 use lichen_rpl::trickle::TrickleEvent;
 
-use crate::routing::TrickleSafeLivenessPolicy;
 use crate::routing::RplMaintenanceOutcome;
 use crate::RplNode;
 

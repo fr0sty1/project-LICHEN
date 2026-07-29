@@ -13,7 +13,7 @@ use crate::routing::RplMaintenanceOutcome;
 use super::error::{RplReceiveError, RplRuntimeReceiveError, RplRuntimeTrickleError};
 use super::RplTrickleTransmitOutcome;
 use super::util::RPL_ALL_NODES;
-use super::{RplReceiveOutcome, RplRuntimeReceiveOutcome, RplStack};
+use super::{RplRuntimeReceiveOutcome, RplStack};
 
 impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     /// Run DAO-route and neighbor maintenance from one monotonic observation.

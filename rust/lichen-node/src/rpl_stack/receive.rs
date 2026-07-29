@@ -15,8 +15,8 @@ use lichen_core::l2_payload::{
 };
 use lichen_hal::{NonVolatile, Radio};
 use lichen_ipv6::Ipv6Header;
-use lichen_link::identity::{iid_from_pubkey, PeerIdentity};
-use lichen_link::link_layer::{AuthenticatedFrame, LinkRxError, PeerAuthState};
+use lichen_link::identity::iid_from_pubkey;
+use lichen_link::link_layer::{AuthenticatedFrame, LinkRxError};
 use lichen_schc::codec;
 
 use crate::announce::AnnounceRejectReason;
@@ -24,7 +24,6 @@ use crate::node::{
     claims_rpl_ipv6, is_rpl_ipv6, rpl_code, valid_ipv6_envelope, valid_rpl_ipv6, DaoHandlingOutcome,
     RplEvent,
 };
-use crate::routing::DaoRxState;
 use crate::secure::secure_datagram_from_received;
 use crate::stack::{ReceivedIpv6, RxError, MAX_FRAME_SIZE};
 
@@ -33,7 +32,6 @@ use super::util::{
     advance_rpl_source_route, bootstrap_announce_peer, dao_parts,
     dio_dis_destination_is_allowed, eui64_link_local, ipv6_eui64, link_local_from_iid,
     multicast_dis_jitter, routing_announce, rpl_ipv6_multicast_is_allowed, wire_is_for_local,
-    RPL_ALL_NODES,
 };
 use super::{RplReceiveOutcome, RplRole, RplStack};
 
@@ -345,7 +343,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             self.rpl
                 .handle_frame_rpl(&l2_payload, received.sender_iid, &mut output, now_ms);
         match event {
-            RplEvent::DaoReceived { .. } => {
+            RplEvent::DaoReceived => {
                 let Some((source, dao)) = dao_parts(&received.ipv6) else {
                     return Ok(RplReceiveOutcome::Dao(DaoHandlingOutcome::Malformed));
                 };
