@@ -9,26 +9,11 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-lichen-core = { path = "../lichen-core" }
+# Core OSCORE implementation - re-exported with LICHEN-specific integration
+oscore = { version = "0.1", default-features = false }
 
-# ponytail: using pure-Rust crypto crates until a battle-tested no_std OSCORE
-# crate exists (liboscore requires C FFI which complicates embedded cross-compile).
-# Switch to liboscore or coapcore when they mature for embedded targets.
-aes = { version = "0.8", default-features = false, features = ["zeroize"] }
-ccm = { version = "0.5", default-features = false }
+# Re-export heapless for public API types
 heapless = "0.8"
-hkdf = { version = "0.13", default-features = false }
-hmac = { version = "0.13", default-features = false, features = ["zeroize"] }
-sha2 = { version = "0.11", default-features = false, features = ["zeroize"] }
-subtle = { version = "2.6", default-features = false }
-zeroize = { version = "1.8", default-features = false, features = ["derive"] }
-
-# EDHOC (RFC 9528) Suite 0 - feature-gated since it adds dependencies
-# ponytail: lakers only supports Suite 2 (P-256), not Suite 0 (X25519/Ed25519).
-# Rolling minimal Suite 0 for interop with Python simulator.
-x25519-dalek = { version = "2.0", default-features = false, features = ["static_secrets", "zeroize"], optional = true }
-ed25519-dalek = { version = "2.1", default-features = false, features = ["zeroize"], optional = true }
-rand_core = { version = "0.6", default-features = false, optional = true }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
@@ -42,11 +27,10 @@ serde_json = "1.0"
 
 [features]
 default = []
-std = ["rand_core?/getrandom"]
+std = ["oscore/std"]
 # EDHOC Suite 0 (RFC 9528) for establishing OSCORE contexts
 # Uses X25519/Ed25519 to match link-layer Schnorr48
-# rand_core/getrandom enables OsRng for std/tests; no_std users provide custom RNG impl.
-edhoc = ["dep:x25519-dalek", "dep:ed25519-dalek", "dep:rand_core"]
+edhoc = ["oscore/edhoc"]
 # Logging: enable one or neither, not both
-defmt = ["dep:defmt", "lichen-core/defmt"]
-log = ["dep:log", "lichen-core/log"]
+defmt = ["dep:defmt", "oscore/defmt"]
+log = ["dep:log", "oscore/log"]

@@ -7,14 +7,18 @@ use lichen_oscore::{
     validate_option, Context, ContextId, OscoreError, SenderSequenceState, SenderStateStore,
 };
 
-struct TestStore(SenderSequenceState);
+struct TestStore(Option<SenderSequenceState>);
 
 impl TestStore {
     fn existing(sequence: u64) -> Self {
-        Self(SenderSequenceState {
+        Self(Some(SenderSequenceState {
             next_sequence: sequence,
             exhausted: false,
-        })
+        }))
+    }
+
+    fn fresh() -> Self {
+        Self(None)
     }
 }
 
@@ -25,7 +29,7 @@ impl SenderStateStore for TestStore {
         &mut self,
         _context_id: &ContextId,
     ) -> Result<Option<SenderSequenceState>, Self::Error> {
-        Ok(Some(self.0))
+        Ok(self.0)
     }
 
     fn compare_exchange(
@@ -34,10 +38,10 @@ impl SenderStateStore for TestStore {
         expected: Option<SenderSequenceState>,
         next: SenderSequenceState,
     ) -> Result<bool, Self::Error> {
-        if Some(self.0) != expected {
+        if self.0 != expected {
             return Ok(false);
         }
-        self.0 = next;
+        self.0 = Some(next);
         Ok(true)
     }
 }
@@ -223,17 +227,35 @@ fn test_response_protection_vectors() {
         let payload = hex_to_bytes(&pt.payload);
         let expected = v.expected.as_ref().unwrap();
         let include_piv = v.include_piv.unwrap();
-        let mut store = TestStore::existing(v.sender_seq.unwrap().into());
-        let mut ctx = Context::new(
-            &master_secret,
-            master_salt.as_deref(),
-            None,
-            &sender_id,
-            &recipient_id,
-        )
-        .unwrap()
-        .restore_existing(&mut store)
-        .unwrap();
+        // For responses without a fresh PIV (include_piv=false), we need a fresh context
+        // that hasn't been restored from storage, since restored contexts conservatively
+        // disallow no-PIV responses to prevent nonce reuse. Fresh contexts from EDHOC
+        // can safely do one no-PIV response per received request.
+        let mut ctx = if include_piv {
+            let mut store = TestStore::existing(v.sender_seq.unwrap().into());
+            Context::new(
+                &master_secret,
+                master_salt.as_deref(),
+                None,
+                &sender_id,
+                &recipient_id,
+            )
+            .unwrap()
+            .restore_existing(&mut store)
+            .unwrap()
+        } else {
+            let mut store = TestStore::fresh();
+            Context::new(
+                &master_secret,
+                master_salt.as_deref(),
+                None,
+                &sender_id,
+                &recipient_id,
+            )
+            .unwrap()
+            .register_fresh(&mut store)
+            .unwrap()
+        };
 
         let (ciphertext, oscore_opt) = ctx
             .protect_response(
