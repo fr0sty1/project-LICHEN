@@ -38,3 +38,9 @@ build_*/
 twister-out*/
 build-*/
 
+
+# Build/test logs
+*.log
+build-provenance*.md
+build-logs*/
+twister-out*/

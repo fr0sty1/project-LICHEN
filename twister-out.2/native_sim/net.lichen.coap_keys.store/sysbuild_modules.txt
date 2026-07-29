@@ -1,1 +1,0 @@
-"mcuboot":"/mnt/lichen-zephyr/work/bootloader/mcuboot":"/mnt/lichen-zephyr/work/bootloader/mcuboot/boot/zephyr/sysbuild"
