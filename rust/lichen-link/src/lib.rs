@@ -49,6 +49,7 @@ pub mod keys;
 pub mod replay;
 pub mod seqnum;
 
+#[cfg(feature = "schnorr")]
 pub use keys::{PrivateKey, PublicKey, Seed};
 pub use seqnum::LinkSeqNum;
 

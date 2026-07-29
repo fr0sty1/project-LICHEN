@@ -9,13 +9,13 @@ description = "LICHEN link layer: frame format, LLSec modes, and replay window."
 default = []
 std = []
 alloc = []  # Enables alloc-dependent code; required by schnorr feature
-schnorr = ["alloc", "dep:curve25519-dalek", "dep:sha2"]
+schnorr = ["alloc", "dep:schnorr48", "dep:sha2"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt"]
 log = ["dep:log", "lichen-core/log"]
 
 [dependencies]
-curve25519-dalek = { version = "4.1.3", default-features = false, features = ["alloc"], optional = true }
+schnorr48 = { version = "0.1", default-features = false, optional = true }
 lichen-core = { path = "../lichen-core" }
 sha2 = { version = "0.11.0", default-features = false, optional = true, features = ["zeroize"] }
 subtle = { version = "2.6", default-features = false }

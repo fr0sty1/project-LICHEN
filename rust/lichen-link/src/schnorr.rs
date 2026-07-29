@@ -3,149 +3,20 @@
 //! 48-byte deterministic Schnorr signatures over Ed25519:
 //!   16-byte truncated challenge (e) || 32-byte response (s)
 //!
-//! Curve25519-dalek provides timing-safe scalar multiplication.
-//! Nonce is deterministic (RFC 6979 style) to prevent nonce reuse.
+//! Core signature operations are provided by the `schnorr48` crate.
+//! This module re-exports those and adds frame-specific signing helpers.
 
 extern crate alloc;
 
-use crate::keys::{PrivateKey, PublicKey, Seed};
+use crate::keys::{PrivateKey, PublicKey};
 use crate::seqnum::LinkSeqNum;
 use alloc::vec::Vec;
-use curve25519_dalek::{
-    constants::ED25519_BASEPOINT_POINT, edwards::CompressedEdwardsY, scalar::Scalar,
-    traits::IsIdentity,
-};
-use sha2::{Digest, Sha512};
-use subtle::ConstantTimeEq;
 
-/// Derive an Ed25519 keypair from a seed.
-///
-/// Returns `(privkey, pubkey)`:
-/// - `privkey` — clamped Ed25519 scalar (little-endian)
-/// - `pubkey`  — compressed Ed25519 point
-///
-/// # Panics
-///
-/// This function does not panic. Internal `.unwrap()` calls operate on
-/// fixed-size SHA-512 output slices that are provably the correct length.
-pub fn derive_keypair(seed: &Seed) -> (PrivateKey, PublicKey) {
-    let hash = Sha512::digest(seed.as_bytes());
-    // SAFETY: hash is 64 bytes, so hash[..32] is exactly 32 bytes
-    let privkey_bytes = clamp(hash[..32].try_into().unwrap());
-    let priv_scalar = Scalar::from_bytes_mod_order(privkey_bytes);
-    let pubkey_bytes = (priv_scalar * ED25519_BASEPOINT_POINT)
-        .compress()
-        .to_bytes();
-    (PrivateKey::new(privkey_bytes), PublicKey::new(pubkey_bytes))
-}
-
-/// Sign `msg`. Returns 48-byte signature `e[16] || s[32]`.
-///
-/// `privkey` and `pubkey` must come from [`derive_keypair`]. Nonce uses
-/// H(privkey || msg) per draft-lichen-schnorr-00 (intentional deviation
-/// from RFC 8032 prefix = H(seed)[32:64] to avoid storing 64-byte expanded
-/// key; only 32-byte clamped scalar is used). Matches Python reference and
-/// all test vectors.
-///
-/// # Panics
-///
-/// This function does not panic. Internal `.unwrap()` calls operate on
-/// fixed-size SHA-512 output slices that are provably the correct length.
-pub fn sign(privkey: &PrivateKey, pubkey: &PublicKey, msg: &[u8]) -> [u8; 48] {
-    // 1. Deterministic nonce: r = SHA-512(privkey || msg) mod L per spec
-    let nonce_hash = Sha512::new()
-        .chain_update(privkey.as_bytes())
-        .chain_update(msg)
-        .finalize();
-    let r = Scalar::from_bytes_mod_order_wide(&nonce_hash.into());
-
-    // 2. Commitment: R = r * B
-    let r_bytes = (r * ED25519_BASEPOINT_POINT).compress().to_bytes();
-
-    // 3. Challenge: e = SHA-512(R || pubkey || msg)[..16]
-    let e_hash = Sha512::new()
-        .chain_update(r_bytes)
-        .chain_update(pubkey.as_bytes())
-        .chain_update(msg)
-        .finalize();
-    // SAFETY: e_hash is 64 bytes (SHA-512 output), so [..16] is exactly 16 bytes
-    let e: [u8; 16] = e_hash[..16].try_into().unwrap();
-
-    // 4. Extend 16-byte challenge to 32-byte scalar. Zero-padding the high
-    //    bytes is correct because Scalar uses little-endian representation.
-    let mut e_extended = [0u8; 32];
-    e_extended[..16].copy_from_slice(&e);
-    let e_scalar = Scalar::from_bytes_mod_order(e_extended);
-
-    // 5. s = (r + e_scalar * priv_scalar) mod L
-    let priv_scalar = Scalar::from_bytes_mod_order(*privkey.as_bytes());
-    let s = r + e_scalar * priv_scalar;
-
-    let mut sig = [0u8; 48];
-    sig[..16].copy_from_slice(&e);
-    sig[16..].copy_from_slice(s.as_bytes());
-    sig
-}
-
-/// Verify a 48-byte signature. Returns `true` if valid.
-///
-/// Defense-in-depth checks (beyond what minimal Schnorr requires):
-/// - Rejects non-canonical scalars (s >= L, the curve order)
-/// - Rejects zero scalars (s == 0)
-/// - Rejects identity point as pubkey
-/// - Rejects low-order/torsion points as pubkey (not in prime-order subgroup)
-///
-/// These checks prevent attacks on cofactor-sensitive operations and ensure
-/// the pubkey represents a legitimate Ed25519 public key.
-///
-/// # Panics
-///
-/// This function does not panic. Internal `.unwrap()` calls operate on the
-/// fixed-size 48-byte signature array, which is provably the correct length.
-pub fn verify(pubkey: &PublicKey, msg: &[u8], sig: &[u8; 48]) -> bool {
-    // 1. Parse: e_received (16 bytes) || s (32 bytes)
-    // SAFETY: sig is exactly 48 bytes, so [..16] = 16 bytes and [16..] = 32 bytes
-    let e_received: [u8; 16] = sig[..16].try_into().unwrap();
-    let s_bytes: [u8; 32] = sig[16..].try_into().unwrap();
-
-    // 2. s must be canonical (< L) and non-zero
-    let s: Scalar = match Scalar::from_canonical_bytes(s_bytes).into() {
-        Some(s) => s,
-        None => return false,
-    };
-    if s == Scalar::ZERO {
-        return false;
-    }
-
-    // 3. Decompress public key and reject identity/low-order points
-    let pubkey_point = match CompressedEdwardsY(*pubkey.as_bytes()).decompress() {
-        Some(p) if !p.is_identity() && p.is_torsion_free() => p,
-        _ => return false,
-    };
-
-    // 4. Extend 16-byte challenge to 32-byte scalar. Zero-padding the high
-    //    bytes is correct because Scalar uses little-endian representation.
-    let mut e_extended = [0u8; 32];
-    e_extended[..16].copy_from_slice(&e_received);
-    let e_scalar = Scalar::from_bytes_mod_order(e_extended);
-
-    // 5. R' = s*B - e*pubkey
-    let sb = s * ED25519_BASEPOINT_POINT;
-    let epk = e_scalar * pubkey_point;
-    let r_prime = (sb - epk).compress();
-
-    // 6. Recompute challenge and compare (constant-time)
-    let e_check = Sha512::new()
-        .chain_update(r_prime.as_bytes())
-        .chain_update(pubkey.as_bytes())
-        .chain_update(msg)
-        .finalize();
-
-    e_check[..16].ct_eq(&e_received).into()
-}
+// Re-export core schnorr48 API
+pub use schnorr48::{derive_keypair, sign, verify};
 
 /// Length of a Schnorr48 signature in bytes.
-pub const SIGNATURE_LENGTH: usize = 48;
+pub const SIGNATURE_LENGTH: usize = schnorr48::SIGNATURE_LEN;
 
 /// Sign a link-layer frame. The returned 48 bytes occupy the MIC field.
 ///
@@ -191,7 +62,6 @@ pub fn verify_frame(
 }
 
 fn build_signable(
-
     length: u8,
     llsec: u8,
     epoch: u8,
@@ -215,16 +85,10 @@ fn build_signable(
     buf
 }
 
-pub(crate) fn clamp(mut bytes: [u8; 32]) -> [u8; 32] {
-    bytes[0] &= 248;
-    bytes[31] &= 127;
-    bytes[31] |= 64;
-    bytes
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::keys::Seed;
     use std::vec::Vec;
 
     fn hex(s: &str) -> Vec<u8> {
@@ -480,15 +344,16 @@ mod tests {
         let dst_addr = [0x00u8, 0x01u8];
         let inner_payload = b"hello";
 
-        let signer_iid = [0x66u8; 8];
-        let llsec: u8 = 0x21 | 0x80;
+        // llsec: Short addr (0x01), signature present (0x20)
+        let llsec: u8 = 0x21;
+        let frame_length = 4 + dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
         let sig = sign_frame(
-            59,
+            frame_length as u8,
             llsec,
             epoch,
             seqnum,
             &dst_addr,
-            &signer_iid,
+            &[],  // signer_iid not used in current frame format
             inner_payload,
             &priv_a,
             &pub_a,
@@ -498,7 +363,6 @@ mod tests {
         let frame = LichenFrame {
             epoch,
             seqnum,
-            src_addr: &[],
             dst_addr: &dst_addr,
             payload: inner_payload,
             mic: &sig,
@@ -506,8 +370,6 @@ mod tests {
             mic_length: MicLength::Bits32,
             signature: Signature::Present,
             encryption: Encryption::Plaintext,
-            signer_iid: &signer_iid,
-            signer_iid_present: true,
         };
         let mut wire = [0u8; 128];
         let n = frame.write_to(&mut wire).unwrap();
@@ -515,20 +377,18 @@ mod tests {
         // Node B: parse and verify
         let rx = LichenFrame::from_bytes(&wire[..n]).unwrap();
         assert_eq!(rx.signature, Signature::Present);
-        assert_eq!(rx.signer_iid_present, true);
-        assert_eq!(rx.signer_iid, &signer_iid);
         assert!(
             replay.accept(rx.seqnum),
             "first delivery should pass replay window"
         );
         assert!(
             verify_frame(
-                59,
+                frame_length as u8,
                 llsec,
                 rx.epoch,
                 rx.seqnum,
                 rx.dst_addr,
-                rx.signer_iid,
+                &[],
                 rx.payload,
                 rx.mic,
                 &pub_a
@@ -543,19 +403,19 @@ mod tests {
         let mut tampered = *inner_payload;
         tampered[0] ^= 0xFF;
         assert!(
-            !verify_frame(59, llsec, epoch, seqnum, &dst_addr, &signer_iid, &tampered, &sig, &pub_a),
+            !verify_frame(frame_length as u8, llsec, epoch, seqnum, &dst_addr, &[], &tampered, &sig, &pub_a),
             "tampered payload must not verify"
         );
 
         // Wrong public key: signature check fails
         assert!(
             !verify_frame(
-                59,
+                frame_length as u8,
                 llsec,
                 epoch,
                 seqnum,
                 &dst_addr,
-                &signer_iid,
+                &[],
                 inner_payload,
                 &sig,
                 &pub_b
@@ -566,12 +426,12 @@ mod tests {
         // Signature must be exactly 48 bytes.
         assert!(
             !verify_frame(
-                59,
+                frame_length as u8,
                 llsec,
                 epoch,
                 seqnum,
                 &dst_addr,
-                &signer_iid,
+                &[],
                 inner_payload,
                 &sig[..47],
                 &pub_a
