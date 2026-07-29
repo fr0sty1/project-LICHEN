@@ -20,7 +20,7 @@
 //! verbatim after the byte-aligned residue.
 
 use crate::context::FieldId;
-use crate::rules::Rule;
+use schc::compress::Rule;
 
 // IPv6 constants
 const IPV6_HEADER_LEN: usize = 40;

@@ -8,7 +8,8 @@
 //!
 //! This mirrors the Python `lichen.schc.context` module.
 
-use crate::rules::{Cda, FieldDescriptor, Mo, Rule, UNCOMPRESSED_RULE};
+use crate::rules::UNCOMPRESSED_RULE;
+use schc::compress::{Cda, FieldDescriptor, Mo, Rule};
 
 /// Error returned when no rule matches.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,6 +87,8 @@ pub fn rule_matches(rule: &Rule, fields: &[(FieldId, u128)]) -> bool {
                     Mo::Ignore => {
                         // Always matches, value is ignored
                     }
+                    // Handle future Mo variants from schc crate
+                    _ => return false,
                 }
             }
         }
@@ -160,34 +163,15 @@ impl<'a> SchcContext<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rules::{Cda, FieldDescriptor, Mo, Rule};
+    use schc::compress::{Cda, FieldDescriptor, Mo, Rule};
 
     // Test descriptors for a simple rule
     const TEST_FIELDS: &[FieldDescriptor] = &[
-        FieldDescriptor {
-            field_id: "IPv6.version",
-            length_bits: 4,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 6,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.hop_limit",
-            length_bits: 8,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 64,
-            mo_arg: None,
-            mapping: None,
-        },
+        FieldDescriptor::new("IPv6.version", 4, Mo::Equal, Cda::NotSent, 6, None, None),
+        FieldDescriptor::new("IPv6.hop_limit", 8, Mo::Ignore, Cda::ValueSent, 64, None, None),
     ];
 
-    const TEST_RULE: Rule = Rule {
-        rule_id: 0,
-        fields: TEST_FIELDS,
-    };
+    const TEST_RULE: Rule = Rule::new(0, TEST_FIELDS);
 
     const TEST_RULES: &[Rule] = &[TEST_RULE];
 
@@ -246,19 +230,16 @@ mod tests {
     #[test]
     fn msb_matching() {
         // Test MSB matching operator
-        const MSB_FIELDS: &[FieldDescriptor] = &[FieldDescriptor {
-            field_id: "IPv6.src",
-            length_bits: 128,
-            mo: Mo::Msb,
-            cda: Cda::Lsb,
-            target_value: 0xFE80_0000_0000_0000_0000_0000_0000_0000,
-            mo_arg: Some(64), // Match first 64 bits
-            mapping: None,
-        }];
-        const MSB_RULE: Rule = Rule {
-            rule_id: 1,
-            fields: MSB_FIELDS,
-        };
+        const MSB_FIELDS: &[FieldDescriptor] = &[FieldDescriptor::new(
+            "IPv6.src",
+            128,
+            Mo::Msb,
+            Cda::Lsb,
+            0xFE80_0000_0000_0000_0000_0000_0000_0000,
+            Some(64), // Match first 64 bits
+            None,
+        )];
+        const MSB_RULE: Rule = Rule::new(1, MSB_FIELDS);
 
         // Link-local address should match
         let fields: &[(FieldId, u128)] = &[("IPv6.src", 0xFE80_0000_0000_0000_1234_5678_9ABC_DEF0)];
@@ -271,19 +252,17 @@ mod tests {
 
     #[test]
     fn rule_matches_mapping() {
-        const MAPPING_FIELDS: &[FieldDescriptor] = &[FieldDescriptor {
-            field_id: "test.field",
-            length_bits: 8,
-            mo: Mo::MatchMapping,
-            cda: Cda::MappingSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: Some(&[10u128, 20, 30]),
-        }];
-        const MAPPING_RULE: Rule = Rule {
-            rule_id: 42,
-            fields: MAPPING_FIELDS,
-        };
+        const MAPPING_VALUES: &[u128] = &[10, 20, 30];
+        const MAPPING_FIELDS: &[FieldDescriptor] = &[FieldDescriptor::new(
+            "test.field",
+            8,
+            Mo::MatchMapping,
+            Cda::MappingSent,
+            0,
+            None,
+            Some(MAPPING_VALUES),
+        )];
+        const MAPPING_RULE: Rule = Rule::new(42, MAPPING_FIELDS);
 
         let fields_match: &[(FieldId, u128)] = &[("test.field", 20)];
         assert!(rule_matches(&MAPPING_RULE, fields_match));

@@ -5,7 +5,7 @@
 
 use lichen_schc::fragment::{
     receiver_abort, Ack, Fragment, FragmentReceiver, FragmentSender, ReceiverResponse,
-    SenderOutput, SenderStatus, DEFAULT_RECEIVER_LIMIT, MAX_ACK_REQUESTS, TILE_SIZE,
+    SenderOutput, SenderStatus, MAX_ACK_REQUESTS, MAX_PACKET_SIZE, TILE_SIZE,
 };
 
 #[test]
@@ -13,12 +13,12 @@ fn sender_receiver_literal_recovery() {
     let mut packet = vec![0; 375];
     packet[187..374].fill(0x11);
     packet[374] = 0xa5;
-    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let mut sender = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
     sender.start().unwrap();
     assert_eq!(sender.attempts(), 1);
 
     let fragments: Vec<_> = sender.iter().collect();
-    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut storage = [0u8; MAX_PACKET_SIZE];
     let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
     assert_eq!(receiver.receive(&fragments[0]).response, None);
     let failure = receiver.receive(&fragments[2]);
@@ -75,9 +75,9 @@ fn multi_fragment_single_window() {
 #[test]
 fn duplicate_regular_must_match() {
     let packet = [0xa5; TILE_SIZE + 1];
-    let sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let sender = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
     let regular = sender.get_fragment(0).unwrap();
-    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut storage = [0u8; MAX_PACKET_SIZE];
     let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
     assert!(!receiver.receive(&regular).aborted);
     assert!(!receiver.receive(&regular).aborted);
@@ -92,7 +92,7 @@ fn duplicate_regular_must_match() {
 #[test]
 fn retry_limits_emit_aborts() {
     let packet = [0xa5; TILE_SIZE + 1];
-    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let mut sender = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
     sender.start().unwrap();
     for _ in 1..MAX_ACK_REQUESTS {
         let mut output = sender.timeout().unwrap();
@@ -105,7 +105,7 @@ fn retry_limits_emit_aborts() {
     assert_eq!(&wire[..length], &[0x78, 0xfe]);
     assert_eq!(sender.status(), SenderStatus::Aborted);
 
-    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut storage = [0u8; MAX_PACKET_SIZE];
     let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
     for _ in 0..MAX_ACK_REQUESTS {
         assert!(!receiver.receive_bytes(&[0x78, 0x00]).unwrap().aborted);
@@ -135,7 +135,7 @@ fn malformed_codec_inputs_are_rejected() {
         payload: &tile,
         mic: [0; 4],
     };
-    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut storage = [0u8; MAX_PACKET_SIZE];
     assert!(
         FragmentReceiver::new(&mut storage)
             .unwrap()
@@ -149,7 +149,7 @@ fn sender_output_retries_after_small_buffer() {
     let packet = [0xa5; TILE_SIZE + 1];
     let mut wire = [0u8; TILE_SIZE + 2];
 
-    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let mut sender = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
     sender.start().unwrap();
     let mut output = sender.handle_ack(Ack::new(0x78, 0, 1, false));
     assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
@@ -160,7 +160,7 @@ fn sender_output_retries_after_small_buffer() {
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
     assert_eq!(&wire[..length], &[0x78, 0x00]);
 
-    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let mut sender = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
     sender.start().unwrap();
     let mut output = sender.timeout().unwrap();
     assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
@@ -179,7 +179,7 @@ fn sender_output_retries_after_small_buffer() {
 #[test]
 fn terminal_sender_invalidates_queued_output() {
     let packet = [0xa5; TILE_SIZE + 1];
-    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let mut sender = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
     sender.start().unwrap();
     let mut output = sender.handle_ack(Ack::new(0x78, 0, 1, false));
     let mut abort = [0u8; 3];
@@ -198,8 +198,8 @@ fn terminal_sender_invalidates_queued_output() {
 #[test]
 fn ack_request_after_completion_starts_empty_context() {
     let packet = [0xa5];
-    let sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
-    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let sender = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
+    let mut storage = [0u8; MAX_PACKET_SIZE];
     let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
     assert_eq!(
         receiver
@@ -242,9 +242,9 @@ fn missing_all0_still_requests_final_window_ack() {
 fn released_receiver_accepts_fresh_fragments() {
     let first = [0xa5];
     let second = [0x5a];
-    let first_sender = FragmentSender::new(&first, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
-    let second_sender = FragmentSender::new(&second, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
-    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let first_sender = FragmentSender::new(&first, 0x78, MAX_PACKET_SIZE).unwrap();
+    let second_sender = FragmentSender::new(&second, 0x78, MAX_PACKET_SIZE).unwrap();
+    let mut storage = [0u8; MAX_PACKET_SIZE];
     let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
 
     assert_eq!(
@@ -273,7 +273,7 @@ fn released_receiver_accepts_fresh_fragments() {
     );
 
     let partial = [0u8; TILE_SIZE + 1];
-    let partial_sender = FragmentSender::new(&partial, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let partial_sender = FragmentSender::new(&partial, 0x78, MAX_PACKET_SIZE).unwrap();
     assert_eq!(
         receiver
             .receive(&partial_sender.get_fragment(0).unwrap())

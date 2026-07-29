@@ -1,8 +1,7 @@
 //! SCHC header compression for LICHEN (RFC 8724).
 //!
-//! Provides the rule model (`Rule`, `FieldDescriptor`, `Mo`, `Cda`) and
-//! compress/decompress stubs. Rules 0-6 match the Python reference in
-//! `python/src/lichen/schc/rules.py` (incl. OSCORE 5/6); rule 255 is uncompressed.
+//! This crate is a thin wrapper around the `schc` crate, adding LICHEN-specific
+//! compression rules. The core SCHC types are re-exported from the `schc` crate.
 //!
 //! Rule IDs match `constants.toml` [schc.rule_id]:
 //! - 0  link-local IPv6 + UDP + CoAP
@@ -17,19 +16,29 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+// Re-export core SCHC types from the schc crate
+pub use schc::compress::{Cda, FieldDescriptor, Mo, Rule};
+
+// LICHEN-specific modules
 pub mod codec;
 pub mod context;
 pub mod fragment;
 pub mod headers;
 pub mod rules;
 
+// Re-export LICHEN-specific compression/decompression
 pub use codec::{compress, decompress, SchcError};
 pub use context::{rule_matches, FieldId, NoMatchingRuleError, SchcContext};
 pub use headers::{
     CoapUdpGlobalProfile, CoapUdpLinkLocalProfile, Icmpv6EchoProfile, PacketError, PacketProfile,
     ParsedPacket, RplDaoProfile, RplDioProfile, DEFAULT_PROFILES, MAX_FIELDS,
 };
-pub use rules::{Cda, FieldDescriptor, Mo, Rule};
+
+// Re-export LICHEN-specific rule constants
+pub use rules::{
+    GLOBAL_COAP_RULE, GLOBAL_OSCORE_RULE, ICMPV6_ECHO_RULE, LINK_LOCAL_COAP_RULE,
+    LINK_LOCAL_OSCORE_RULE, MQTT_SN_RULE, RPL_DAO_RULE, RPL_DIO_RULE, UNCOMPRESSED_RULE,
+};
 
 #[cfg(feature = "std")]
 extern crate std;

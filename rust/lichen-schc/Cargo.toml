@@ -16,6 +16,7 @@ log = ["dep:log", "lichen-core/log"]
 
 [dependencies]
 lichen-core = { path = "../lichen-core" }
+schc = { version = "0.1", features = ["ack-on-error"] }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
