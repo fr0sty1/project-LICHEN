@@ -17,7 +17,15 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_LORA_L2
   lora_l2_rx.c
   lora_l2_tx.c
 )
-zephyr_library_sources_ifdef(CONFIG_LICHEN_L2 lichen_l2.c)
+zephyr_library_sources_ifdef(CONFIG_LICHEN_L2
+  lichen_l2_core.c
+  lichen_l2_init.c
+  lichen_l2_key.c
+  lichen_l2_peer.c
+  lichen_l2_rx.c
+  lichen_l2_stats.c
+  lichen_l2_tx.c
+)
 zephyr_library_sources_ifdef(CONFIG_LICHEN_L2_DEV_PROVISIONING lichen_l2_dev.c)
 
 # Dev provisioning installs a static IPv6 neighbor entry via the internal
