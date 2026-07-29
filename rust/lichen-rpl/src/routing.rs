@@ -466,6 +466,7 @@ impl DaoManager {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_signature_verified_inner<S: NonVolatile>(
         &mut self,
         verified: &SignatureVerifiedDao<'_>,
@@ -1547,6 +1548,7 @@ impl DaoManager {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
+    use crate::message::SignedDaoEnvelope;
     use crate::persistence::{encode_tx_state, DAO_TX_PAYLOAD_LEN};
     use crate::verify::dao_origin_digest;
     use lichen_hal::storage::mem::MemStorage;

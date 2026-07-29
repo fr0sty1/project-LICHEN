@@ -247,15 +247,18 @@ impl ReplayProtector {
             }
             Some(state) => {
                 state.last_access = access;
-                let epoch_diff = epoch.wrapping_sub(state.last_epoch) as i8;
-
-                if epoch_diff > 0 {
+                // SECURITY: Epochs are finite for a given public key. Wrapping from
+                // 255 to 0 is a rollback and must be rejected - require key rotation.
+                if epoch > state.last_epoch {
+                    // Strictly newer epoch: reset replay window
                     state.last_epoch = epoch;
                     state.window = ReplayWindow::new();
                     state.window.accept(seqnum)
-                } else if epoch_diff < 0 {
+                } else if epoch < state.last_epoch {
+                    // Older epoch: replay attack
                     false
                 } else {
+                    // Same epoch: check replay window
                     state.window.accept(seqnum)
                 }
             }
@@ -297,7 +300,6 @@ struct TrackedPeer {
 #[derive(Debug, Clone)]
 struct PinnedKey {
     pubkey: PublicKey,
-    last_access: u64,
 }
 
 /// LICHEN link layer: builds signed frames for TX and verifies them on RX.
@@ -584,7 +586,6 @@ impl LinkLayer {
             sender.iid,
             PinnedKey {
                 pubkey: sender.pubkey,
-                last_access: access,
             },
         );
         let new_state = self.peer_auth_state(&sender.iid);
@@ -944,7 +945,6 @@ mod tests {
             alice_iid,
             PinnedKey {
                 pubkey: impostor_pk,
-                last_access: 0,
             },
         );
 

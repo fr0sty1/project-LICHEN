@@ -24,6 +24,8 @@ pub enum RplError {
     BufferTooSmall(BufferTooSmall),
     /// Invalid option value.
     InvalidOption,
+    /// Local RPLInstanceID (0xC0-0xFF) used in global context per RFC 6550 5.1.
+    LocalInstanceId(u8),
 }
 
 impl From<TooShort> for RplError {
@@ -47,6 +49,9 @@ impl core::fmt::Display for RplError {
             Self::BadRoutingType(t) => write!(f, "bad routing type: {}", t),
             Self::BufferTooSmall(e) => write!(f, "RPL {}", e),
             Self::InvalidOption => write!(f, "invalid option value"),
+            Self::LocalInstanceId(id) => {
+                write!(f, "local RPLInstanceID 0x{:02X} in global context", id)
+            }
         }
     }
 }
@@ -108,12 +113,18 @@ impl Dio {
         if data.len() < Self::BASE_LEN {
             return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
         }
+        // Reject local RPLInstanceID 0xC0-0xFF per RFC 6550 5.1; these require
+        // the D bit embedded and are invalid in global instance context.
+        let rpl_instance_id = data[0];
+        if rpl_instance_id >= 0xC0 {
+            return Err(RplError::LocalInstanceId(rpl_instance_id));
+        }
         let gmop = data[4];
         if data[7] != 0 {
             return Err(RplError::InvalidOption);
         }
         Ok(Self {
-            rpl_instance_id: data[0],
+            rpl_instance_id,
             version: data[1],
             rank: u16::from_be_bytes([data[2], data[3]]),
             grounded: (gmop >> 7) & 1 == 1,
@@ -130,6 +141,10 @@ impl Dio {
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
         if out.len() < Self::BASE_LEN {
             return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
+        }
+        // Reject local RPLInstanceID 0xC0-0xFF per RFC 6550 5.1
+        if self.rpl_instance_id >= 0xC0 {
+            return Err(RplError::LocalInstanceId(self.rpl_instance_id));
         }
         let gmop = ((self.grounded as u8) << 7)
             | ((self.mode_of_operation & 0x7) << 3)
@@ -177,6 +192,11 @@ impl Dao {
         if data.len() < 4 {
             return Err(TooShort::new(4, data.len()).into());
         }
+        // Reject local RPLInstanceID 0xC0-0xFF per RFC 6550 5.1
+        let rpl_instance_id = data[0];
+        if rpl_instance_id >= 0xC0 {
+            return Err(RplError::LocalInstanceId(rpl_instance_id));
+        }
         let kd = data[1];
         let d_flag = (kd >> 6) & 1;
         let base_len = if d_flag == 1 { 20 } else { 4 };
@@ -191,7 +211,7 @@ impl Dao {
             Some([0u8; 16])
         };
         Ok(Self {
-            rpl_instance_id: data[0],
+            rpl_instance_id,
             ack_requested: (kd >> 7) & 1 == 1,
             flags: kd & 0x3F,
             dao_sequence: data[3],
@@ -200,6 +220,10 @@ impl Dao {
     }
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
+        // Reject local RPLInstanceID 0xC0-0xFF per RFC 6550 5.1
+        if self.rpl_instance_id >= 0xC0 {
+            return Err(RplError::LocalInstanceId(self.rpl_instance_id));
+        }
         if self.rpl_instance_id & 0x80 != 0 && self.dodag_id.is_none() {
             return Err(RplError::InvalidOption);
         }
@@ -989,5 +1013,87 @@ mod tests {
         let buf = [OPT_PAD1; 100];
         let mut iter = OptionIter::new(&buf);
         assert!(iter.next().is_none());
+    }
+
+    // ── Local RPLInstanceID rejection (RFC 6550 5.1) ──────────────────────────
+
+    #[test]
+    fn dio_rejects_local_instance_id_0xc0() {
+        // First byte of local range
+        let mut buf = [0u8; 24];
+        buf[0] = 0xC0;
+        assert_eq!(Dio::from_bytes(&buf), Err(RplError::LocalInstanceId(0xC0)));
+    }
+
+    #[test]
+    fn dio_rejects_local_instance_id_0xff() {
+        // Last byte of local range
+        let mut buf = [0u8; 24];
+        buf[0] = 0xFF;
+        assert_eq!(Dio::from_bytes(&buf), Err(RplError::LocalInstanceId(0xFF)));
+    }
+
+    #[test]
+    fn dio_accepts_global_instance_id_0xbf() {
+        // Highest valid global instance ID
+        let mut buf = [0u8; 24];
+        buf[0] = 0xBF;
+        let dio = Dio::from_bytes(&buf).unwrap();
+        assert_eq!(dio.rpl_instance_id, 0xBF);
+    }
+
+    #[test]
+    fn dio_write_rejects_local_instance_id() {
+        let dio = Dio {
+            rpl_instance_id: 0xC0,
+            version: 1,
+            rank: 256,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: [0; 16],
+        };
+        let mut buf = [0u8; 24];
+        assert_eq!(dio.write_to(&mut buf), Err(RplError::LocalInstanceId(0xC0)));
+    }
+
+    #[test]
+    fn dao_rejects_local_instance_id_0xc0() {
+        let mut buf = [0u8; 20];
+        buf[0] = 0xC0;
+        buf[1] = 0x40; // D=1
+        assert_eq!(Dao::from_bytes(&buf), Err(RplError::LocalInstanceId(0xC0)));
+    }
+
+    #[test]
+    fn dao_rejects_local_instance_id_0xff() {
+        let mut buf = [0u8; 20];
+        buf[0] = 0xFF;
+        buf[1] = 0x40; // D=1
+        assert_eq!(Dao::from_bytes(&buf), Err(RplError::LocalInstanceId(0xFF)));
+    }
+
+    #[test]
+    fn dao_accepts_global_instance_id_0xbf() {
+        let mut buf = [0u8; 20];
+        buf[0] = 0xBF;
+        buf[1] = 0x40; // D=1
+        let dao = Dao::from_bytes(&buf).unwrap();
+        assert_eq!(dao.rpl_instance_id, 0xBF);
+    }
+
+    #[test]
+    fn dao_write_rejects_local_instance_id() {
+        let dao = Dao {
+            rpl_instance_id: 0xC0,
+            ack_requested: false,
+            flags: 0,
+            dao_sequence: 1,
+            dodag_id: Some([0; 16]),
+        };
+        let mut buf = [0u8; 20];
+        assert_eq!(dao.write_to(&mut buf), Err(RplError::LocalInstanceId(0xC0)));
     }
 }
