@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.11",
+  "title": "Missing #[non_exhaustive] on SchcError enum",
+  "description": "Location: /Volumes/Attic/Desktop/Projects/crates/schc/src/error.rs line 43\n\nThe public error enum `SchcError` lacks `#[non_exhaustive]`:\n```rust\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\npub enum SchcError {\n    BufferTooSmall(BufferTooSmall),\n    TooShort(TooShort),\n    InvalidRule,\n    InvalidField,\n    CompressionFailed,\n    FragmentError,\n}\n```\n\nWhat goes wrong: Adding a new error variant is a semver-breaking change because downstream code can have exhaustive match statements. The sibling enum `FragmentError` in wire.rs correctly uses `#[non_exhaustive]`.\n\nFix: Add `#[non_exhaustive]` to the enum definition.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:06.092593Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:24:08.956824Z",
+  "closed_at": "2026-07-27T18:24:08.956824Z",
+  "labels": [
+    "idiomatic-rust",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.11",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:06.365017Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

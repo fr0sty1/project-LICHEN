@@ -1,0 +1,1 @@
+{"id":"019fae92-7892-7e53-8c8e-8fa7621df958","issue_id":"project-LICHEN-9nrr.24","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Kconfig now has select/depends on LICHEN_CRYPTO_MONOCYPHER","created_at":"2026-07-29T15:51:02.54694Z"}

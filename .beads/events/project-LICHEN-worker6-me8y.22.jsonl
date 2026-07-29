@@ -1,0 +1,4 @@
+{"id":"019fa4d0-8472-7a29-a09c-28e9b5b29d19","issue_id":"project-LICHEN-worker6-me8y.22","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-27T18:22:36.658667Z"}
+{"id":"019fa4d0-8479-72f9-ab5a-f9445590c5c6","issue_id":"project-LICHEN-worker6-me8y.22","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: readability","created_at":"2026-07-27T18:22:36.665196Z"}
+{"id":"019fa4d0-847c-7524-b8d1-77bdbf754350","issue_id":"project-LICHEN-worker6-me8y.22","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-07-27T18:22:36.668338Z"}
+{"id":"019fa4f2-8ad4-7a77-a222-56c8272964b5","issue_id":"project-LICHEN-worker6-me8y.22","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Broke dense validation boolean into named conditions: rule_id_valid, window_in_range, fcn_in_range, all0_placement_ok, payload_valid","created_at":"2026-07-27T18:59:46.516687Z"}

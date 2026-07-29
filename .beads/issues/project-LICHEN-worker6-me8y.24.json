@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.24",
+  "title": "NoAckReceiver uses unnecessary unsafe for lifetime extension",
+  "description": "In no_ack.rs lines 249-254, unsafe is used to return a reference to storage:\n\n```rust\n// SAFETY: We need to return a reference with lifetime 'a.\n// The storage was borrowed with lifetime 'a, so this is safe.\nlet packet = unsafe {\n    core::slice::from_raw_parts(self.storage.as_ptr(), self.received_len)\n};\n```\n\nThis works around the borrow checker but isn't necessary. The actual issue is that `receive(\u0026mut self, ...)` takes \u0026mut self while trying to return a reference that outlives the call.\n\nWhat goes wrong: Unsafe blocks require extra scrutiny. This pattern could mask actual soundness issues in future refactoring.\n\nAlternative 1 - Change API to return length only:\n```rust\npub fn receive(\u0026mut self, fragment: \u0026Fragment\u003cM, N, T\u003e) -\u003e NoAckResult {\n    // ... same logic ...\n    NoAckResult {\n        complete: true,\n        packet_len: Some(self.received_len),  // caller reads self.packet() \n        rcs_ok: Some(rcs_ok),\n    }\n}\n\npub fn packet(\u0026self) -\u003e Option\u003c\u0026[u8]\u003e {\n    // Only valid after complete\n    Some(\u0026self.storage[..self.received_len])\n}\n```\n\nAlternative 2 - Return a separate result type that borrows storage.\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/no_ack.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:49.046133Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:47:38.22017Z",
+  "closed_at": "2026-07-27T18:47:38.22017Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.24",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:49.316854Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

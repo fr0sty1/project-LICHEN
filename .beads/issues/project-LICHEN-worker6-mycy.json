@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-mycy",
+  "title": "Switch LICHEN Rust to published crates",
+  "description": "Replace local implementations with published crates.io crates:\n- lichen-link/schnorr.rs → schnorr48\n- lichen-kiss → kiss-framing  \n- lichen-schc → schc\n- lichen-oscore → oscore\n- lichen-senml → senml-cbor\n- lichen-ipv6 → ipv6-headers",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T20:13:14.74017Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T20:49:25.902295Z",
+  "closed_at": "2026-07-27T20:49:25.902295Z",
+  "close_reason": "done"
+}

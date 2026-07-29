@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.9",
+  "title": "ack_always Sender retransmit_next can underflow when window wrapped",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs lines 190-198\n\n## Problem\nThe retransmission tile calculation:\n\n```rust\nlet window_tiles = Self::WINDOW_SIZE.min(self.total_tiles - self.window as usize * Self::WINDOW_SIZE);\n```\n\nIf `self.window` has wrapped past the valid range (due to the wrapping_add issue), then `self.window as usize * Self::WINDOW_SIZE` exceeds `self.total_tiles`, causing subtraction underflow.\n\n## What Goes Wrong\n- In debug mode: panics with arithmetic underflow\n- In release mode: wraps to a huge value, `window_tiles` becomes enormous, and subsequent calculations produce out-of-bounds array access or corrupt data\n\n## Relationship\nThis is a consequence of issue project-LICHEN-worker6-me8y.2 (window wrapping). Fixing that issue fixes this one.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:01.891459Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:49:09.397741Z",
+  "closed_at": "2026-07-27T18:49:09.397741Z",
+  "close_reason": "Added saturating_sub and bounds checks in retransmit_next to prevent underflow when window wrapped",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.9",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:02.175435Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.23",
+  "title": "ack_always Sender/Receiver use fixed 1280-byte buffer, not configurable",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs lines 15, 55, 302\n\n## Problem\n```rust\nconst MAX_PACKET_SIZE: usize = 1280;\n\npub struct Sender\u003c...\u003e {\n    packet: [u8; MAX_PACKET_SIZE],\n    // ...\n}\n\npub struct Receiver\u003c...\u003e {\n    buffer: [u8; MAX_PACKET_SIZE],\n    // ...\n}\n```\n\nThe buffer size is hardcoded and not exposed as a const generic or configuration option.\n\n## API Risk\n1. Memory waste: A sender fragmenting a 50-byte packet still allocates 1280 bytes\n2. Size limit: Packets larger than 1280 bytes cannot be fragmented\n3. Inconsistency: `AckOnErrorReceiver` takes a user-provided buffer (`\u0026'a mut [u8]`), giving the caller control\n\n## Suggested Fix\nMatch the AckOnError pattern - take storage as a parameter:\n```rust\npub struct Sender\u003c'a, const M: u8, const N: u8, const T: u8, const TILE: usize\u003e {\n    packet: \u0026'a [u8],\n    // ...\n}\n```\n\nOr add MAX_PACKET_SIZE as another const generic.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:41.685641Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:54:58.071126Z",
+  "closed_at": "2026-07-27T18:54:58.071126Z",
+  "close_reason": "Refactored ack_always Receiver to use borrowed storage reference instead of embedded 1280-byte buffer",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.23",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:41.968086Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

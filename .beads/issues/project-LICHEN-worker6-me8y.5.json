@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.5",
+  "title": "ack_always Receiver assumes in-order fragment delivery",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs lines 356-368\n\n## Problem\nThe receiver appends each fragment payload sequentially at self.offset:\n\n```rust\n// Calculate buffer position\nlet tile_offset = self.offset;\nlet end = tile_offset + frag.payload.len();\n// ...\nself.buffer[tile_offset..end].copy_from_slice(frag.payload);\nself.offset = end;\n```\n\nThis assumes fragments arrive in order (FCN descending within window). If fragments arrive out of order (e.g., FCN 5 arrives before FCN 6), the reassembled data will be corrupted.\n\n## What Goes Wrong\nGiven fragments for FCN 6, 5, 4:\n- If they arrive 6, 5, 4: buffer contains [tile6][tile5][tile4] - correct\n- If they arrive 5, 6, 4: buffer contains [tile5][tile6][tile4] - tiles at wrong offsets\n\nCompare to AckOnErrorReceiver which calculates the correct buffer position from window and FCN.\n\n## Suggested Fix\nCalculate buffer position from fragment position:\n```rust\nlet position_in_window = WINDOW_SIZE - 1 - frag.fcn as usize;\nlet global_position = window as usize * WINDOW_SIZE + position_in_window;\nlet tile_offset = global_position * TILE;\n```",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:21:51.860617Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:49:07.183681Z",
+  "closed_at": "2026-07-27T18:49:07.183681Z",
+  "close_reason": "Receiver now calculates correct buffer position based on window/FCN, not assuming in-order delivery",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.5",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:21:52.135539Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

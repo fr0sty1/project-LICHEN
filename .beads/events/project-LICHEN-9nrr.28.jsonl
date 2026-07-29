@@ -1,0 +1,1 @@
+{"id":"019faead-cdbb-76e1-9be9-01c604e81bbe","issue_id":"project-LICHEN-9nrr.28","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: HAL error propagation via atomic last_error + LR1110_RETURN_ON_HAL_ERROR macro","created_at":"2026-07-29T16:20:53.819453Z"}

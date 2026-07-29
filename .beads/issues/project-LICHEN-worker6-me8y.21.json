@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-me8y.21",
+  "title": "Rule and FieldDescriptor require static lifetime, preventing runtime construction",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/compress.rs lines 52-83\n\n## Problem\n```rust\npub struct FieldDescriptor {\n    pub field_id: \u0026'static str,\n    // ...\n    pub mapping: Option\u003c\u0026'static [u128]\u003e,\n}\n\npub struct Rule {\n    // ...\n    pub fields: \u0026'static [FieldDescriptor],\n}\n```\n\nAll references are `'static`, meaning rules must be compile-time constants. Users cannot construct rules dynamically at runtime (e.g., from configuration files, network negotiation, or user input) without using `Box::leak` or similar memory leaks.\n\n## API Risk\nThis forces a specific usage pattern and limits integration with systems that need runtime-defined compression contexts.\n\n## Suggested Fix\nMake the types generic over lifetime:\n```rust\npub struct FieldDescriptor\u003c'a\u003e {\n    pub field_id: \u0026'a str,\n    pub mapping: Option\u003c\u0026'a [u128]\u003e,\n}\npub struct Rule\u003c'a\u003e {\n    pub fields: \u0026'a [FieldDescriptor\u003c'a\u003e],\n}\n```\n\nUsers who want static can use `Rule\u003c'static\u003e`; users who need dynamic can use shorter lifetimes.",
+  "notes": "Deferred: Would require API break to add non-'static Rule/FieldDescriptor. Consider for v0.2.0.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:36.514729Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T19:18:05.324736Z",
+  "closed_at": "2026-07-27T19:18:05.324736Z",
+  "close_reason": "Deferred to v0.2.0: Would require API break to add non-'static Rule/FieldDescriptor",
+  "defer_until": "2026-08-26T12:16:42.908139-07:00",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review",
+    "deferred"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.21",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:36.91034Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

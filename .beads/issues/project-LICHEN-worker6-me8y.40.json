@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.40",
+  "title": "NoAckSender FCN wrapping logic breaks receiver reassembly ordering",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/no_ack.rs lines 102-110\n\n## Problem\nWhen the number of fragments exceeds the FCN range, the sender wraps FCN values:\n\n```rust\nlet fcn = if is_last {\n    fcn_max::\u003cN\u003e() // All-1\n} else {\n    let max_fcn = fcn_max::\u003cN\u003e() - 1;\n    let offset = index as u8;\n    if offset \u003e max_fcn {\n        // Wrap around if more fragments than FCN range\n        max_fcn - (offset % (max_fcn + 1))\n    } else {\n        max_fcn - offset\n    }\n};\n```\n\nFor N=3, FCN range is 0-6 (7 is All-1), so max_fcn=6.\nFor 10 fragments: FCN sequence would be 6,5,4,3,2,1,0,6,5,4 then All-1.\n\nThe receiver has no way to distinguish fragment 0 (FCN=6) from fragment 7 (also FCN=6).\n\n## What Goes Wrong\nA receiver implementing RFC 8724 No-Ack mode expects FCN to count down uniquely. If fragments wrap:\n1. Fragment 7 (FCN=6) could overwrite fragment 0 in a bitmap-based receiver\n2. Fragment ordering becomes ambiguous\n3. Reassembly produces corrupt data\n\nRFC 8724 Section 8.4.1 does not define behavior when packet exceeds FCN capacity.\n\n## Suggested Fix\n1. Validate at construction that payload fits within FCN range: `fragment_count \u003c= fcn_max::\u003cN\u003e()`\n2. Return `Err(FragmentError::BufferTooSmall)` if packet is too large\n3. Document the maximum packet size for each N configuration",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:55.306Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:48:53.622642Z",
+  "closed_at": "2026-07-27T18:48:53.622642Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.40",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:55.578215Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.20",
+  "title": "Const generic M parameter unconstrained; receiver panics if M \u003e 2",
+  "description": "The `AckOnErrorReceiver` has a fixed-size `bitmaps: [u64; 4]` array, which implicitly requires M \u003c= 2 (max 4 windows). But M is a const generic with no compile-time constraint, so `M=3` or higher compiles but panics at runtime.\n\n**Locations:**\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs:660` - `bitmaps: [u64; 4]`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs:894` - `let bitmap = \u0026mut self.bitmaps[fragment.window as usize];`\n\n**What goes wrong:**\n```rust\n// Compiles fine, panics at runtime\nlet mut receiver = AckOnErrorReceiver::\u003c3, 6, 0, 187\u003e::new(\u0026mut storage)?;\n// M=3 means windows 0-7, but bitmaps only has [0..3]\n```\nWhen a fragment with `window=4` arrives, `self.bitmaps[4]` causes index-out-of-bounds panic.\n\n**Fix:** Either:\n1. Use `const_assert!(M \u003c= 2)` or similar compile-time check\n2. Change `bitmaps: [u64; 4]` to `bitmaps: [u64; 1 \u003c\u003c M]` (requires nightly or heapless)\n3. Document the M \u003c= 2 constraint prominently in struct docs and `new()` docs\n\nSame issue exists for `ack_always::Receiver` if it has similar window tracking. Since RFC 8724 profiles typically use M=1 or M=2, option 3 with a debug_assert may be sufficient.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:35.029591Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:56:19.026381Z",
+  "closed_at": "2026-07-27T18:56:19.026381Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "underspecified",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.20",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:35.342197Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

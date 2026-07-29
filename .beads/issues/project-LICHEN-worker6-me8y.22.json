@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.22",
+  "title": "AckOnErrorReceiver::receive() validation is a dense 12-line boolean",
+  "description": "In ack_on_error.rs lines 823-834, fragment validation is a single complex boolean expression:\n\n```rust\nlet valid = fragment.rule_id \u003c 128\n    \u0026\u0026 fragment.window \u003c= window_max::\u003cM\u003e()\n    \u0026\u0026 fragment.fcn \u003c= fcn_max::\u003cN\u003e()\n    \u0026\u0026 (fragment.is_all_1()\n        || fragment.window == 0\n        || fragment.fcn != 0\n        || M \u003e 1) // All-0 only valid in window 0 for M=1\n    \u0026\u0026 (fragment.is_all_1() \u0026\u0026 !fragment.payload.is_empty() \u0026\u0026 fragment.payload.len() \u003c= TILE\n        || !fragment.is_all_1()\n            \u0026\u0026 fragment.payload.len() == TILE\n            \u0026\u0026 fragment.rcs == [0; RCS_LENGTH]);\n```\n\nWhat goes wrong: Hard to understand which condition failed when debugging. The nested OR/AND precedence requires careful reading.\n\nRewrite: Break into named predicates:\n```rust\nlet rule_valid = fragment.rule_id \u003c 128;\nlet window_valid = fragment.window \u003c= window_max::\u003cM\u003e();\nlet fcn_valid = fragment.fcn \u003c= fcn_max::\u003cN\u003e();\n\n// All-0 fragment (FCN=0, not All-1) only valid in window 0 when M=1\nlet all0_placement_valid = fragment.is_all_1()\n    || fragment.window == 0\n    || fragment.fcn != 0\n    || M \u003e 1;\n\nlet payload_valid = if fragment.is_all_1() {\n    !fragment.payload.is_empty() \u0026\u0026 fragment.payload.len() \u003c= TILE\n} else {\n    fragment.payload.len() == TILE \u0026\u0026 fragment.rcs == [0; RCS_LENGTH]\n};\n\nlet valid = rule_valid \u0026\u0026 window_valid \u0026\u0026 fcn_valid \u0026\u0026 all0_placement_valid \u0026\u0026 payload_valid;\n```\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:36.65215Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:59:46.507619Z",
+  "closed_at": "2026-07-27T18:59:46.507619Z",
+  "close_reason": "Broke dense validation boolean into named conditions: rule_id_valid, window_in_range, fcn_in_range, all0_placement_ok, payload_valid",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.22",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:37.010627Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

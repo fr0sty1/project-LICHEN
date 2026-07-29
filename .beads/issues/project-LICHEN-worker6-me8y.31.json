@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-me8y.31",
+  "title": "Const-generic wire format is well-designed",
+  "description": "The use of const generics `\u003cM, N, T, TILE\u003e` for SCHC parameters (wire.rs, all fragmentation modules) is genuinely well done:\n\n```rust\npub struct Fragment\u003c'a, const M: u8, const N: u8, const T: u8\u003e { ... }\npub struct Ack\u003cconst M: u8, const N: u8, const T: u8\u003e { ... }\npub struct AckOnErrorSender\u003c'a, const M: u8, const N: u8, const T: u8, const TILE: usize\u003e { ... }\n```\n\nBenefits:\n1. Compile-time validation of parameter combinations\n2. Constants like `FCN_MAX`, `WINDOW_SIZE` are computed at compile time\n3. The compiler can optimize away bounds checks when TILE is known\n4. No runtime storage of parameters\n5. Type aliases (`lorawan::Fragment`, `lorawan::Sender`) provide ergonomic presets\n\nThis is worth defending if someone suggests \"simplifying\" to runtime parameters - the const-generic approach is the right choice for a protocol library targeting embedded.\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs, ack_on_error.rs, ack_always.rs, no_ack.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:10.760658Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T19:16:40.391902Z",
+  "closed_at": "2026-07-27T19:16:40.391902Z",
+  "close_reason": "Preserved - positive observation, not an issue to fix",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.31",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:11.033832Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

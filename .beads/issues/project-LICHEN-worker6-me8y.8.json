@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.8",
+  "title": "Public structs with exhaustive fields missing #[non_exhaustive]",
+  "description": "Public structs with all-public fields allow callers to construct them using struct literal syntax (`Struct { field: val, .. }`). Adding any field later breaks all such construction sites.\n\n**Locations:**\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/error.rs:7` - `BufferTooSmall`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/error.rs:24` - `TooShort`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/compress.rs:52` - `FieldDescriptor`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/compress.rs:78` - `Rule`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs:237` - `Fragment`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs:465` - `Ack`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs:646` - `Ack128`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/no_ack.rs:165` - `NoAckResult`\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs:601` - `ReceiverResult`\n\n**What goes wrong:** If we need to add a field (e.g., `BufferTooSmall.hint: Option\u003c\u0026'static str\u003e` for better error messages, or `Fragment.integrity_code` for future RFC extensions), every caller constructing these types with struct literals breaks. This is common for test fixtures: `Fragment { rule_id: 0, dtag: 0, window: 0, fcn: 1, payload: \u0026[0], rcs: [0;4] }`.\n\n**Fix:** Add `#[non_exhaustive]` and provide constructor functions (`BufferTooSmall::new(needed, available)`, `Fragment::new(...)`) as the stable API. Existing test code in-crate is fine; external callers must migrate to constructors.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:21:59.774061Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:54:55.067406Z",
+  "closed_at": "2026-07-27T18:54:55.067406Z",
+  "close_reason": "Added #[non_exhaustive] to Fragment, Ack, Ack128, Control in wire.rs",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.8",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:00.048697Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

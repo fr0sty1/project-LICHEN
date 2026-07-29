@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.34",
+  "title": "ack_always Receiver does not track received FCNs per window, allows duplicates at wrong positions",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs lines 334-397\n\n## Problem\nThe receiver tracks received fragments with a bitmap:\n```rust\nself.recv_bitmap |= 1u64 \u003c\u003c frag.fcn;\n```\n\nBut it does not prevent the same FCN from overwriting a previously stored tile at a different position. Combined with the sequential offset issue, this creates a complex failure mode.\n\nAdditionally, when handling window transitions:\n```rust\nif frag.window != self.window \u0026\u0026 !frag.is_all_1() {\n    self.window = frag.window;\n    self.recv_bitmap = 0;\n}\n```\n\nThe bitmap is reset but the buffer offset is not. If a retransmitted fragment from a previous window arrives, it will be written at the wrong offset.\n\n## What Goes Wrong\n1. Receive FCN 6 at offset 0 (correct)\n2. Receive FCN 5 at offset 10 (correct)  \n3. Receive retransmitted FCN 6 again at offset 20 (WRONG - should be at offset 0)\n4. Buffer is now corrupted: [tile6_v1][tile5][tile6_v2] instead of [tile6][tile5][tile6_copy]\n\n## Suggested Fix\n1. Check bitmap before storing: if bit already set, skip or verify consistency\n2. Calculate buffer position from FCN rather than using sequential offset\n3. When window changes, also reset offset to window_base * TILE",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:20.802424Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:49:10.614512Z",
+  "closed_at": "2026-07-27T18:49:10.614512Z",
+  "close_reason": "Changed from single recv_bitmap to bitmaps[4] array to track FCNs per window and detect duplicates",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.34",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:21.081223Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

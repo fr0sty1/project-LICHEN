@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.17",
+  "title": "NoAckReceiver::receive silently ignores mismatched rule_id/dtag",
+  "description": "When `NoAckReceiver::receive` gets a fragment with mismatched rule_id or dtag, it returns a default-like result with no indication that the fragment was ignored.\n\n**Location:** `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/no_ack.rs:214-222`\n\n```rust\nSome(expected) =\u003e {\n    if fragment.rule_id != expected || fragment.dtag != self.expected_dtag.unwrap_or(0)\n    {\n        // Different session, ignore\n        return NoAckResult {\n            complete: false,\n            packet: None,\n            rcs_ok: None,\n        };\n    }\n}\n```\n\n**What goes wrong:** \n1. A production caller cannot distinguish between \"fragment received but more needed\" and \"fragment ignored because wrong session\" - both return the same structure.\n2. Debugging becomes difficult: packets silently fail to reassemble with no diagnostic. \n3. In a multi-session environment, a fragment arriving for the wrong session gives zero feedback that it should be routed elsewhere.\n\n**Fix:** Either:\n1. Add a `ignored: bool` or `status: FragmentStatus` field to `NoAckResult` \n2. Return `Result\u003cNoAckResult, FragmentError\u003e` with a new `SessionMismatch` error\n3. Document the silent-ignore behavior explicitly in the doc comment\n\nOption 2 is cleanest since it fits the existing error pattern.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:21.143969Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:53:21.370039Z",
+  "closed_at": "2026-07-27T18:53:21.370039Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "underspecified",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.17",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:21.41825Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

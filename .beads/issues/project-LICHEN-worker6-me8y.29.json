@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.29",
+  "title": "NoAckReceiver::receive uses unnecessary unsafe for lifetime extension",
+  "description": "The NoAckReceiver::receive method uses unsafe code to return a reference with a longer lifetime than the borrow checker can prove safe.\n\n**Location:** /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/no_ack.rs:249-252\n\n```rust\n// SAFETY: We need to return a reference with lifetime 'a.\n// The storage was borrowed with lifetime 'a, so this is safe.\nlet packet = unsafe {\n    core::slice::from_raw_parts(self.storage.as_ptr(), self.received_len)\n};\n```\n\n**What goes wrong:** \n1. The safety comment is incomplete - it does not address aliasing or mutation concerns\n2. If the caller calls receive() again after getting the packet reference, the storage is mutated while the reference is live - this is UB\n3. The unsafe block prevents the borrow checker from catching use-after-modification bugs\n\n**Fix:** The method signature should borrow self mutably AND return a reference tied to that borrow, or split into:\n- receive() -\u003e NoAckStatus (complete/incomplete, rcs check)  \n- packet(\u0026self) -\u003e Option\u003c\u0026[u8]\u003e\n\nThis way the borrow checker naturally prevents calling receive() while a packet reference is held. The current API with unsafe allows:\n```rust\nlet result1 = receiver.receive(\u0026frag1);\nlet packet_ref = result1.packet.unwrap();  // holds reference\nlet result2 = receiver.receive(\u0026frag2);    // mutates storage - UB if packet_ref still used\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:06.338435Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:47:38.732025Z",
+  "closed_at": "2026-07-27T18:47:38.732025Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "leakage",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.29",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:06.617798Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

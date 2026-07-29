@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.18",
+  "title": "AckOnErrorReceiver::finalize() is 80 lines handling multiple concerns",
+  "description": "The finalize() method in ack_on_error.rs (lines 1006-1086) handles:\n1. Checking all previous windows are complete\n2. Checking final window completeness with complex bitmap math\n3. Calculating packet length from window/tile positions\n4. Copying final tile into place\n5. Verifying RCS\n6. Returning appropriate ACK response\n\nWhat goes wrong: Hard to trace through during debugging or review. The bitmap manipulation for \"required\" mask (lines 1038-1045) is particularly dense:\n```rust\nlet required = if regular_count == 0 {\n    0\n} else {\n    let shift = Self::WINDOW_SIZE - regular_count;\n    ((1u64 \u003c\u003c regular_count) - 1) \u003c\u003c shift\n};\n```\n\nSuggested improvement: Extract helper methods:\n- `fn check_previous_windows_complete(\u0026self) -\u003e Option\u003c(u8, u64)\u003e` returns (window, bitmap) if incomplete\n- `fn required_bitmap_for_count(count: usize) -\u003e u64` with comment explaining the mask\n\nOr at minimum add section comments:\n```rust\n// === Check previous windows ===\n...\n// === Validate final window tiles ===\n...\n// === Copy final tile and verify RCS ===\n```\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:24.501295Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:59:45.384084Z",
+  "closed_at": "2026-07-27T18:59:45.384084Z",
+  "close_reason": "Extracted 3 helper methods from finalize(): check_previous_windows_complete(), compute_final_window_requirements(), complete_reassembly()",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.18",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:24.773094Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

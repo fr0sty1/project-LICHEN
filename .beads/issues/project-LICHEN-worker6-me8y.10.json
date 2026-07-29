@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.10",
+  "title": "Ack and Ack128 are nearly identical - 300 lines of duplication",
+  "description": "wire.rs contains two ACK types that differ only in bitmap size:\n- Ack\u003cM, N, T\u003e with u64 bitmap (lines 465-640)\n- Ack128\u003cM, N, T\u003e with u128 bitmap (lines 645-773)\n\nThese structs duplicate:\n- Field definitions (rule_id, dtag, window, bitmap, complete)\n- `new()` constructor with identical mask logic\n- `bitmap_mask()` method\n- `write_to()` serialization\n- `from_bytes()` parsing\n\nWhat goes wrong: ~300 lines of near-identical code to maintain. Bug fixes must be applied twice. The Ack128 variant is less tested (no tests use it).\n\nRewrite options:\n1. Use u128 always (no runtime cost on 64-bit, minor on 32-bit)\n2. Generic trait `AckBitmap` implemented for u64/u128\n3. Macro to generate both\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:03.384894Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T19:03:48.683055Z",
+  "closed_at": "2026-07-27T19:03:48.683055Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.10",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:03.66097Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

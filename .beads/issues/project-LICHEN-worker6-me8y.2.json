@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.2",
+  "title": "ack_always Sender window can wrap past maximum, causing invalid fragments",
+  "description": "## Location\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs` line 251\n\n## Problem\nAfter receiving an ACK indicating all fragments received for a window, the sender advances the window with wrapping:\n\n```rust\nself.window = self.window.wrapping_add(1);\n```\n\nFor M=1, the valid window values are 0 and 1 (2 windows max). If the packet requires 3+ windows, window becomes 2, 3, etc., which exceeds `window_max::\u003cM\u003e()`.\n\n## What Goes Wrong\n1. Fragment encoding (`check_window`) validates window values - fragments with invalid window will fail to encode\n2. Even if they encode, the receiver will reject them with `InvalidWindow`\n3. The `retransmit_next` calculation `self.total_tiles - self.window as usize * Self::WINDOW_SIZE` will underflow when `window * WINDOW_SIZE \u003e total_tiles`\n\nIn release mode, the subtraction wraps to a huge value, leading to out-of-bounds buffer access.\n\n## Suggested Fix\nEither:\n1. Validate at `start()` that the packet fits within M-constrained window count\n2. Use `window_max::\u003cM\u003e()` mask instead of wrapping: `self.window = (self.window + 1) \u0026 window_max::\u003cM\u003e()`\n3. Return an error when window would exceed maximum\n\n`AckOnErrorSender::new` already does this validation - ack_always should too.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:21:42.670228Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:49:05.949261Z",
+  "closed_at": "2026-07-27T18:49:05.949261Z",
+  "close_reason": "Added window bounds check in receive_ack - validates next_window \u003c= window_max::\u003cM\u003e() before advancing",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.2",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:21:42.953121Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

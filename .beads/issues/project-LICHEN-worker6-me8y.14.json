@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.14",
+  "title": "SenderOutput::Retransmit.position field is always 0 and unused",
+  "description": "In ack_on_error.rs, `SenderOutput::Retransmit` includes a `position: u8` field (line 85):\n\n```rust\nRetransmit {\n    window: u8,\n    missing_bitmap: u64,\n    position: u8,  // Always 0\n}\n```\n\nEvery construction site sets position to 0 (line 404):\n```rust\nSenderOutput::Retransmit {\n    window: ack.window,\n    missing_bitmap: missing,\n    position: 0,  // \u003c-- always literal 0\n}\n```\n\nCallers use `retransmit_iter(window, missing_bitmap)` instead, which tracks position internally.\n\nWhat goes wrong: Dead field adds cognitive load - readers wonder what it's for. Struct is larger than needed.\n\nRewrite: Remove the position field entirely:\n```rust\nRetransmit { window: u8, missing_bitmap: u64 }\n```\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:12.723194Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:59:03.1077Z",
+  "closed_at": "2026-07-27T18:59:03.1077Z",
+  "close_reason": "Removed unused SenderOutput::Retransmit.position field. The field was always initialized to 0 and never read - actual retransmission iteration uses RetransmitIter with its own internal position tracking.",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.14",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:12.994057Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

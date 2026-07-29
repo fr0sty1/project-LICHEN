@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.1",
+  "title": "NoAckReceiver::receive uses unsound unsafe to return aliased reference",
+  "description": "## Location\n- `/Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/no_ack.rs` lines 250-253\n\n## Problem\nThe `receive` method creates a shared reference via unsafe while the struct still holds a mutable reference to the same memory:\n\n```rust\nlet packet = unsafe {\n    core::slice::from_raw_parts(self.storage.as_ptr(), self.received_len)\n};\n```\n\nThe struct `NoAckReceiver\u003c'a, ...\u003e` holds `storage: \u0026'a mut [u8]`. When `receive` returns a `NoAckResult\u003c'a\u003e` containing `Option\u003c\u0026'a [u8]\u003e`, there are now two references to the same memory: the mutable reference held by the struct and the shared reference in the result.\n\n## What Goes Wrong\nIf a caller:\n1. Calls `receive()` and gets a completed packet reference\n2. Calls `receive()` again (or any other `\u0026mut self` method)\n3. The second call mutates the storage while the first reference is still live\n\nThis is undefined behavior - the first reference points to memory being mutated through the mutable reference.\n\n## Suggested Fix\nEither:\n1. Change `receive` to consume `self` when complete (prevents reuse)\n2. Change the API to copy data out rather than returning a reference\n3. Use interior mutability (`RefCell`) and return a `Ref\u003c'_, [u8]\u003e` guard\n4. Make storage `\u0026'a [u8]` (read-only) and use separate mutable state",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:21:31.000029Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:47:37.212421Z",
+  "closed_at": "2026-07-27T18:47:37.212421Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.1",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:21:31.280845Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

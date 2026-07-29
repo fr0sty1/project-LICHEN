@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.39",
+  "title": "NoAckSender FCN wrap-around logic lacks explanatory comment",
+  "description": "In no_ack.rs lines 102-111, FCN assignment handles wrap-around when fragments exceed FCN range:\n\n```rust\nlet fcn = if is_last {\n    fcn_max::\u003cN\u003e() // All-1\n} else {\n    // Count down from max-1\n    let max_fcn = fcn_max::\u003cN\u003e() - 1;\n    let offset = index as u8;\n    if offset \u003e max_fcn {\n        // Wrap around if more fragments than FCN range\n        max_fcn - (offset % (max_fcn + 1))\n    } else {\n        max_fcn - offset\n    }\n};\n```\n\nWhat goes wrong: The modular arithmetic `offset % (max_fcn + 1)` is non-obvious. Why wrap? What does it mean for reassembly? Does the receiver expect this?\n\nThe comment \"Wrap around if more fragments than FCN range\" doesn't explain the implication: No-Ack mode doesn't have windows, so when fragments exceed 2^N-1, FCN values repeat. This is valid per RFC 8724 for No-Ack because reassembly relies on arrival order, not FCN uniqueness.\n\nSuggested comment:\n```rust\n// No-Ack mode has no windows. When fragment count exceeds (2^N - 1),\n// FCN values wrap. This is safe because No-Ack reassembly is order-based;\n// the receiver appends tiles in arrival order, ignoring FCN for placement.\n// FCN only distinguishes All-1 (final fragment with RCS) from regular tiles.\n```\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/no_ack.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:48.34822Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:57:06.701236Z",
+  "closed_at": "2026-07-27T18:57:06.701236Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.39",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:48.621754Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

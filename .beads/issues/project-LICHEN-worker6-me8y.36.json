@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-me8y.36",
+  "title": "Feature-gated fragmentation modes minimize code size",
+  "description": "Fragmentation modes are compile-time selectable via feature flags (lib.rs lines 17-18):\n\n```rust\n#[cfg(any(feature = \"no-ack\", feature = \"ack-on-error\", feature = \"ack-always\"))]\npub mod fragment;\n```\n\nAnd within fragment/mod.rs:\n```rust\n#[cfg(feature = \"no-ack\")]\npub mod no_ack;\n\n#[cfg(feature = \"ack-on-error\")]\npub mod ack_on_error;\n\n#[cfg(feature = \"ack-always\")]\npub mod ack_always;\n```\n\nThis is good practice for an embedded-targeting library:\n- Users only pay for modes they use\n- Code size is minimized when only one mode is needed\n- The wire.rs module with shared types is included only when any mode is enabled\n- Typical embedded usage needs only one mode, saving several KB\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/lib.rs, /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/mod.rs",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:28.829571Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T19:16:42.56852Z",
+  "closed_at": "2026-07-27T19:16:42.56852Z",
+  "close_reason": "Preserved - positive observation, not an issue to fix",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.36",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:29.111367Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

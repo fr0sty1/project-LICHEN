@@ -1,0 +1,4 @@
+{"id":"019fa4cf-b758-7da0-90c9-a6fa16cb2e57","issue_id":"project-LICHEN-worker6-me8y.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-27T18:21:44.152893Z"}
+{"id":"019fa4cf-b75f-7af0-a1fe-731578504b92","issue_id":"project-LICHEN-worker6-me8y.3","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: efficiency","created_at":"2026-07-27T18:21:44.159717Z"}
+{"id":"019fa4cf-b762-7d04-a7c5-9e6952847b13","issue_id":"project-LICHEN-worker6-me8y.3","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-07-27T18:21:44.162853Z"}
+{"id":"019fa4ee-1f92-7720-9d27-b07aedc49374","issue_id":"project-LICHEN-worker6-me8y.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Refactored ack_always Sender to use borrowed payload reference instead of embedded 1280-byte buffer","created_at":"2026-07-27T18:54:56.914467Z"}

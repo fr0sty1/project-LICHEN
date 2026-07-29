@@ -1,0 +1,4 @@
+{"id":"019fa4d1-30ea-790c-8e3e-9e8254027fa3","issue_id":"project-LICHEN-worker6-me8y.34","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-27T18:23:20.810593Z"}
+{"id":"019fa4d1-30f4-7376-a578-05ab66f46269","issue_id":"project-LICHEN-worker6-me8y.34","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-07-27T18:23:20.820227Z"}
+{"id":"019fa4d1-30f9-7232-97c3-6d0d003488e9","issue_id":"project-LICHEN-worker6-me8y.34","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-07-27T18:23:20.825144Z"}
+{"id":"019fa4e8-d6e7-731c-be95-5a1eafa39543","issue_id":"project-LICHEN-worker6-me8y.34","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Changed from single recv_bitmap to bitmaps[4] array to track FCNs per window and detect duplicates","created_at":"2026-07-27T18:49:10.631205Z"}

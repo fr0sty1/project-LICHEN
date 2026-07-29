@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-me8y.30",
+  "title": "compress/decompress use u128 for field values, limiting extensibility",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/compress.rs lines 247, 314\n\n## Problem\n```rust\npub fn compress(rule: \u0026Rule, field_values: \u0026[u128], out: \u0026mut [u8]) -\u003e Result\u003cusize, SchcError\u003e\npub fn decompress(rule: \u0026Rule, data: \u0026[u8], out: \u0026mut [u128]) -\u003e Result\u003c(usize, usize), SchcError\u003e\n```\n\nField values are passed as `u128`. This works for most SCHC use cases (IPv6 addresses are 128 bits), but:\n\n1. Cannot represent variable-length fields exceeding 128 bits\n2. Wastes memory for small fields (most are 8-32 bits)\n3. Cannot represent non-integer field values (e.g., opaque byte sequences)\n\n## API Risk\nIf SCHC is extended to handle fields larger than 128 bits, or if callers need to compress arbitrary byte sequences as fields, the API would need breaking changes.\n\n## Suggested Fix\nConsider a more flexible field value type:\n```rust\npub enum FieldValue\u003c'a\u003e {\n    Small(u128),\n    Large(\u0026'a [u8]),\n}\n```\n\nOr accept `\u0026[u8]` slices with length validation against `FieldDescriptor::length_bits`.\n\nLower priority since 128 bits covers all current RFC 8724 use cases.",
+  "notes": "Deferred: u128 covers all practical SCHC fields. Extension to u256/BigInt would be a v0.2.0 consideration.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:07.711147Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T19:18:06.420884Z",
+  "closed_at": "2026-07-27T19:18:06.420884Z",
+  "close_reason": "Deferred to v0.2.0: u128 covers all practical SCHC fields",
+  "defer_until": "2026-08-26T12:16:44.108102-07:00",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review",
+    "deferred"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.30",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:07.986215Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

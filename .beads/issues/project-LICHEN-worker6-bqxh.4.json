@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-bqxh.4",
+  "title": "SCHC fragment wire format with const generics",
+  "description": "src/fragment/wire.rs:\n- Fragment\u003cconst M: u8, const N: u8, const T: u8\u003e struct\n- Ack\u003cconst M: u8, const N: u8\u003e struct  \n- Control messages: AckRequest, SenderAbort, ReceiverAbort\n- compute_rcs() for CRC-32/ISO-HDLC (RFC 8724 default RCS)\n- All parameter calculations at compile time via const fn\n- FCN_MAX = (1 \u003c\u003c N) - 1, WINDOW_MAX = (1 \u003c\u003c M) - 1, etc.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "estimated_minutes": 60,
+  "created_at": "2026-07-27T17:32:56.566749Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:13:21.570478Z",
+  "closed_at": "2026-07-27T18:13:21.570478Z",
+  "close_reason": "Implemented via ultracode workflow wf_99297693-81c",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-bqxh.4",
+      "depends_on_id": "project-LICHEN-worker6-bqxh",
+      "type": "parent-child",
+      "created_at": "2026-07-27T17:32:56.870836Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.13",
+  "title": "Cda::Compute decompression behavior undocumented",
+  "description": "The `decompress` function returns 0 for fields with `Cda::Compute`, but this critical behavior is only documented in a code comment, not in the public API documentation.\n\n**Location:** `/Volumes/Attic/Desktop/Projects/crates/schc/src/compress.rs:350-353`\n\n```rust\nCda::Compute =\u003e {\n    // Computed fields return 0; caller must compute actual value\n    0\n}\n```\n\nThe function doc at line 299-311 says \"Decompress residue according to a rule\" but never mentions the Compute CDA behavior.\n\n**What goes wrong:** A caller using rules with checksum or length fields (Cda::Compute) will receive 0 and may use it as the actual value instead of computing it. This can cause silent data corruption - the reassembled packet will have wrong checksums or lengths.\n\n**Fix:** Add to the `decompress` function doc:\n```rust\n/// # Notes\n/// - Fields with `Cda::Compute` will return 0; callers must compute the actual\n///   value (e.g., checksums, lengths) from the reconstructed packet.\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:09.748029Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:50:39.38848Z",
+  "closed_at": "2026-07-27T18:50:39.38848Z",
+  "close_reason": "Added doc comment to Cda::Compute explaining decompression returns 0",
+  "labels": [
+    "api-contract",
+    "underspecified",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.13",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:10.025341Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

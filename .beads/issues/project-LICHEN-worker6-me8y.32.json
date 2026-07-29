@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.32",
+  "title": "ack_always::Sender has hardcoded MAX_PACKET_SIZE instead of using caller storage",
+  "description": "The ack_always::Sender embeds a 1280-byte internal buffer, forcing stack allocation and limiting packet size, while NoAckSender and AckOnErrorSender take caller-provided storage.\n\n**Location:** /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs:16-17,54\n\n```rust\nconst MAX_PACKET_SIZE: usize = 1280;\n...\npacket: [u8; MAX_PACKET_SIZE],\n```\n\n**What goes wrong:**\n1. Stack bloat: Each Sender instance consumes 1280 bytes on the stack regardless of actual packet size\n2. Inconsistent API: NoAckSender takes \u0026'a [u8] (borrows caller data); AckOnErrorSender takes \u0026'a [u8]; but ack_always::Sender copies into internal buffer\n3. Fixed limit: Cannot fragment packets larger than 1280 bytes even if caller has more memory\n4. No-std unfriendly: 1280 bytes may exceed embedded stack limits\n\n**Fix:** Change to match the other senders - take `\u0026'a [u8]` payload reference instead of copying:\n```rust\npub struct Sender\u003c'a, const M: u8, const N: u8, const T: u8, const TILE: usize\u003e {\n    payload: \u0026'a [u8],\n    ...\n}\n```\n\nThis is a breaking change but aligns the API across all fragmentation modes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:18.775904Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:54:59.194605Z",
+  "closed_at": "2026-07-27T18:54:59.194605Z",
+  "close_reason": "Updated ack_always API to follow ack_on_error borrowed storage pattern",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.32",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:19.071161Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

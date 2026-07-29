@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.3",
+  "title": "ack_always: Sender/Receiver embed 1280-byte buffer instead of borrowing",
+  "description": "Both Sender and Receiver in ack_always.rs statically allocate MAX_PACKET_SIZE (1280 bytes) arrays:\n- Sender: line 54 `packet: [u8; MAX_PACKET_SIZE]`\n- Receiver: line 302 `buffer: [u8; MAX_PACKET_SIZE]`\n\nThis means every instance is 1.3KB+ regardless of actual packet size. On embedded targets with limited RAM, this is wasteful.\n\nWhat goes wrong: Memory pressure on constrained devices. Every sender/receiver pair consumes 2.5KB+ of RAM even for small packets.\n\nCompare to AckOnErrorSender which takes `payload: \u0026'a [u8]` - a reference that lets the caller control storage.\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:21:44.146911Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:54:56.905118Z",
+  "closed_at": "2026-07-27T18:54:56.905118Z",
+  "close_reason": "Refactored ack_always Sender to use borrowed payload reference instead of embedded 1280-byte buffer",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.3",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:21:44.417998Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

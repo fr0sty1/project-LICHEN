@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.19",
+  "title": "Const generic parameters M, N, T not validated for overflow safety",
+  "description": "## Locations\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs line 22-33\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs line 32-38\n\n## Problem\nFunctions like `fcn_max\u003cN\u003e()`, `window_max\u003cM\u003e()`, and `bitmap_size\u003cN\u003e()` compute values using bit shifts:\n\n```rust\npub const fn fcn_max\u003cconst N: u8\u003e() -\u003e u8 {\n    (1u8 \u003c\u003c N) - 1\n}\npub const fn bitmap_size\u003cconst N: u8\u003e() -\u003e usize {\n    1usize \u003c\u003c N\n}\n```\n\nIf N \u003e= 8, the u8 shift overflows (wraps or panics depending on build mode).\nIf N \u003e= 64, the usize shift can overflow on 64-bit platforms.\nIf M or N is 0, some calculations produce unexpected results (e.g., fcn_max::\u003c0\u003e() = 0).\n\n## API Risk\nUsers specifying const generics at call sites (e.g., `Fragment::\u003c2, 128, 1\u003e`) will get compile-time or runtime errors that are hard to diagnose. The library does not guard against invalid parameter combinations.\n\n## Suggested Fix\nAdd static assertions or const-evaluable checks:\n```rust\nconst _: () = assert!(N \u003c= 7, \"N must be \u003c= 7 for u8 FCN values\");\nconst _: () = assert!(M \u003c= 2, \"M must be \u003c= 2 for practical window counts\");\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:29.0323Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:56:18.513023Z",
+  "closed_at": "2026-07-27T18:56:18.513023Z",
+  "close_reason": "Closed",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.19",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:29.352151Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

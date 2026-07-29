@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.38",
+  "title": "AckOnErrorReceiver.bitmaps array limits M to 2 bits maximum",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs line 660\n\n## Problem\n```rust\n/// Bitmap of received tiles per window.\n/// Index 0 = window 0, etc.\nbitmaps: [u64; 4], // Up to 4 windows (M=2)\n```\n\nThe bitmap array is fixed at 4 elements, supporting M values 0, 1, or 2 (1, 2, or 4 windows respectively).\n\nIf a user specifies M=3 (8 windows) or higher, the receiver will panic with out-of-bounds access when accessing `bitmaps[window]` for window \u003e= 4.\n\n## API Risk\nThe const generic M is accepted but not validated against the internal array size. Users get runtime panics instead of compile-time errors.\n\n## Suggested Fix\n1. Add compile-time assertion: `const _: () = assert!(M \u003c= 2);`\n2. Or make array size derived from M: `bitmaps: [u64; 1 \u003c\u003c M]` (requires const generic feature)\n3. Document the M \u003c= 2 limitation in the type's documentation",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:34.219907Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:56:19.546649Z",
+  "closed_at": "2026-07-27T18:56:19.546649Z",
+  "close_reason": "Closed",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.38",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:34.517329Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

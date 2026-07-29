@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.28",
+  "title": "Mo::Msb silently matches all when mo_arg exceeds length_bits",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/compress.rs lines 192-202\n\n## Problem\n```rust\nMo::Msb =\u003e {\n    let bits_to_match = fd.mo_arg.unwrap_or(0) as usize;\n    if bits_to_match == 0 || bits_to_match \u003e fd.length_bits as usize {\n        return true; // Edge case: match all\n    }\n    // ...\n}\n```\n\nWhen `mo_arg \u003e length_bits` (e.g., trying to match 16 MSBs of an 8-bit field), the function silently returns true (matches all values).\n\n## What Goes Wrong\nA misconfigured rule that specifies `mo_arg` larger than the field width will match any value, potentially selecting the wrong compression rule. This fails silently rather than returning an error.\n\nRFC 8724 does not define behavior for this case, but silent acceptance of misconfiguration is a correctness risk.\n\n## Suggested Fix\nReturn an error or log a warning when `mo_arg \u003e length_bits`:\n```rust\nif bits_to_match \u003e fd.length_bits as usize {\n    return Err(SchcError::InvalidField);\n}\n```\n\nAlternatively, document the behavior explicitly if \"match all\" is intentional.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:01.449021Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:47:05.617109Z",
+  "closed_at": "2026-07-27T18:47:05.617109Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.28",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:01.725313Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

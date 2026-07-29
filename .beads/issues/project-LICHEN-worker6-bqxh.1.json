@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-bqxh.1",
+  "title": "SCHC crate scaffolding: Cargo.toml, licenses, README",
+  "description": "Create /Volumes/Attic/Desktop/Projects/crates/schc/ with:\n- Cargo.toml (name=schc, MIT OR Apache-2.0, no_std default, features: std, alloc, no-ack, ack-on-error, ack-always)\n- LICENSE-MIT, LICENSE-APACHE (Copyright 2026 Mark Atwood)\n- README.md with RFC 8724 reference and usage examples\n- repository = https://github.com/MarkAtwood/rust-schc",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "estimated_minutes": 15,
+  "created_at": "2026-07-27T17:32:53.504662Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:13:18.283521Z",
+  "closed_at": "2026-07-27T18:13:18.283521Z",
+  "close_reason": "Implemented via ultracode workflow wf_99297693-81c",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-bqxh.1",
+      "depends_on_id": "project-LICHEN-worker6-bqxh",
+      "type": "parent-child",
+      "created_at": "2026-07-27T17:32:53.803452Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

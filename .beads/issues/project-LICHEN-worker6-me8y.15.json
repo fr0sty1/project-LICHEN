@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.15",
+  "title": "Fragment.rcs field present but only valid for All-1 fragments",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs lines 237-252\n\n## Problem\nThe Fragment struct always contains an `rcs: [u8; RCS_LENGTH]` field:\n\n```rust\npub struct Fragment\u003ca, const M: u8, const N: u8, const T: u8\u003e {\n    // ...\n    pub rcs: [u8; RCS_LENGTH],\n}\n```\n\nFor non-All-1 fragments, this field MUST be `[0; RCS_LENGTH]` per the protocol. This invariant is enforced in `write_to`:\n\n```rust\nif self.rcs != [0; RCS_LENGTH] {\n    return Err(FragmentError::InvalidRcs);\n}\n```\n\n## API Risk\nCallers constructing Fragment manually can easily set a non-zero RCS for regular fragments, which then fails at serialization time. The error happens late (at write_to), not at construction.\n\n## Suggested Fix\nEither:\n1. Use a newtype/enum that makes RCS presence type-safe: `enum FragmentPayload { Regular(payload), Final { payload, rcs } }`\n2. Add a constructor that validates the invariant\n3. Document prominently that rcs must be zeroed for non-All-1 fragments\n\nOption 1 is cleanest but a breaking change.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:16.219873Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:50:40.643521Z",
+  "closed_at": "2026-07-27T18:50:40.643521Z",
+  "close_reason": "Added doc comment to Fragment.rcs explaining it is only valid when is_all_1() returns true",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.15",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:16.502688Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

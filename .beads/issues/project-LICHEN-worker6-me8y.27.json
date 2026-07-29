@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.27",
+  "title": "ack_always uses different API pattern than ack_on_error",
+  "description": "The two reliable fragmentation modes have inconsistent APIs:\n\nack_on_error:\n- `AckOnErrorSender::new(payload: \u0026'a [u8], rule_id, dtag, receiver_limit)`\n- Takes a reference to external payload\n- Caller owns the buffer\n\nack_always:\n- `Sender::new(rule_id, dtag, max_retries)` + `sender.start(packet: \u0026[u8])`\n- Copies packet into internal 1280-byte buffer\n- Two-phase initialization (new + start)\n\nWhat goes wrong: Users switching between modes must learn different patterns. The ack_always approach wastes memory (see separate issue) and requires an extra method call.\n\nSuggested alignment with ack_on_error pattern:\n```rust\n// ack_always::Sender\npub fn new(\n    payload: \u0026'a [u8],\n    rule_id: u8,\n    dtag: u8,\n    max_retries: u8,\n) -\u003e Result\u003cSelf, FragmentError\u003e\n```\n\nThis also fixes the memory issue by taking a reference.\n\nFiles:\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_always.rs\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs (reference)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:59.545789Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T19:05:52.882812Z",
+  "closed_at": "2026-07-27T19:05:52.882812Z",
+  "close_reason": "Aligned ack_always API with ack_on_error: Sender::new takes receiver_limit, start() returns Result, added get_fragment()/iter()/handle_ack(), Receiver::new takes only storage (infers rule_id/dtag from first fragment), receive() takes Fragment and returns ReceiverResult with response/packet_len/rcs_ok/aborted fields",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.27",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:59.823611Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.35",
+  "title": "SchcError::FragmentError variant loses fragment-specific error details",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/error.rs lines 54-55\n\n## Problem\n```rust\npub enum SchcError {\n    // ...\n    FragmentError,\n}\n```\n\nThe `FragmentError` variant is a unit variant with no payload. Meanwhile, `fragment::wire::FragmentError` has 13 specific variants (InvalidRule, InvalidWindow, InvalidFcn, InvalidDtag, etc.).\n\nThere is no `From\u003cFragmentError\u003e` impl to convert the detailed error to `SchcError`, and if there were, the details would be lost.\n\n## API Risk\nCallers using the top-level `SchcError` type cannot distinguish between different fragment failure modes. They only see \"fragmentation error\" without knowing if it was an invalid rule, invalid window, malformed ACK, etc.\n\n## Suggested Fix\nEither:\n1. Add `SchcError::Fragment(FragmentError)` variant (breaking change)\n2. Keep them separate - document that fragmentation uses its own error type\n3. Add error code field to the unit variant: `FragmentError(u8)` with documented codes\n\nOption 2 is already the current approach if callers use `fragment::FragmentError` directly. Document this pattern.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:27.686345Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:51:19.347936Z",
+  "closed_at": "2026-07-27T18:51:19.347936Z",
+  "close_reason": "Closed",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.35",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:27.970721Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

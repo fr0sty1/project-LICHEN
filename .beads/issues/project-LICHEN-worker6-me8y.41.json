@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.41",
+  "title": "compute_rcs specification unclear - appends zero byte per RFC but not documented",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs lines 131-151\n\n## Problem\n```rust\n/// Compute RCS (Reassembly Check Sequence) per RFC 8724.\n///\n/// Uses CRC-32/ISO-HDLC polynomial 0xEDB88320 (reflected).\n/// The data is followed by a single zero byte for padding.\npub fn compute_rcs(data: \u0026[u8]) -\u003e [u8; RCS_LENGTH] {\n    // Process data bytes plus one trailing zero byte per RFC 8724\n    for byte in data.iter().copied().chain(core::iter::once(0u8)) {\n```\n\nThe function appends a zero byte before computing CRC. The comment says \"per RFC 8724\" but:\n1. The RFC reference is not specific (no section number)\n2. This behavior differs from standard CRC-32/ISO-HDLC implementations\n3. Callers may not expect the zero-padding\n\n## API Risk\nIf a user tries to verify RCS using a standard CRC-32 tool, they will get different results. This could cause debugging confusion or interoperability issues with other SCHC implementations.\n\n## Suggested Fix\n1. Add RFC section reference to documentation\n2. Add a test vector from the RFC or reference implementation\n3. Consider offering both padded and unpadded variants if there is ambiguity",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:24:02.902475Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:50:43.012812Z",
+  "closed_at": "2026-07-27T18:50:43.012812Z",
+  "close_reason": "Enhanced compute_rcs doc to explain it appends zero byte per RFC 8724",
+  "labels": [
+    "risk",
+    "api-contract",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.41",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:24:03.180301Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.12",
+  "title": "Ack128 lacks assigned bitmap validation available in Ack",
+  "description": "## Location\n- /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/wire.rs lines 720-772\n\n## Problem\n`Ack` has two parsing methods:\n- `from_bytes()` - basic parsing\n- `from_bytes_for(data, assigned)` - validates bitmap against assigned positions\n\n`Ack128` only has `from_bytes()` without the validation variant. This means large-N configurations (N \u003e 6) cannot validate that received ACK bitmaps only reference positions that were actually assigned.\n\n## What Goes Wrong\nA malicious or buggy sender could send an ACK with bitmap bits set for positions that were never assigned (never transmitted). Without validation, the receiver will process these as valid, potentially:\n1. Incorrectly calculating missing fragments\n2. Causing inconsistent state between sender and receiver\n3. Allowing an attacker to manipulate reassembly state\n\n## Suggested Fix\nAdd `from_bytes_for(data: \u0026[u8], assigned: Option\u003cu128\u003e)` to Ack128 mirroring the Ack API.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:22:08.429076Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:48:12.385171Z",
+  "closed_at": "2026-07-27T18:48:12.385171Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.12",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:22:08.700788Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

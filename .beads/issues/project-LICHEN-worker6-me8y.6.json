@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-me8y.6",
+  "title": "div_ceil helper duplicated in 5 modules",
+  "description": "The same div_ceil function appears identically in 5 places:\n- compress.rs:91-93\n- wire.rs:15-17\n- no_ack.rs:15-17\n- ack_on_error.rs:27-29\n- ack_always.rs:18-20\n\nWhat goes wrong: Maintenance burden - any fix or optimization must be applied in 5 places. Risk of divergence.\n\nRewrite: Add to lib.rs or a utils module:\n```rust\n/// Integer division rounding up (compatible with MSRV 1.70).\n#[inline]\npub(crate) const fn div_ceil(a: usize, b: usize) -\u003e usize {\n    (a + b - 1) / b\n}\n```\n\nThen `use crate::div_ceil;` in each module.\n\nFiles: /Volumes/Attic/Desktop/Projects/crates/schc/src/lib.rs (target), compress.rs, wire.rs, no_ack.rs, ack_on_error.rs, ack_always.rs (sources)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:21:53.641Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:58:36.139518Z",
+  "closed_at": "2026-07-27T18:58:36.139518Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.6",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:21:53.911086Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

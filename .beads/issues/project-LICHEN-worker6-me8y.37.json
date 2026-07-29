@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-me8y.37",
+  "title": "AckOnErrorSender has pub fields that should be read-only",
+  "description": "AckOnErrorSender exposes rule_id and dtag as public mutable fields, allowing callers to corrupt sender state mid-transmission.\n\n**Location:** /Volumes/Attic/Desktop/Projects/crates/schc/src/fragment/ack_on_error.rs:127-130\n\n```rust\npub struct AckOnErrorSender\u003c'a, const M: u8, const N: u8, const T: u8, const TILE: usize\u003e {\n    payload: \u0026'a [u8],\n    /// Rule ID for this fragmentation session.\n    pub rule_id: u8,\n    /// DTAG for correlating fragments (0 if T=0).\n    pub dtag: u8,\n```\n\n**What goes wrong:**\n```rust\nlet mut sender = AckOnErrorSender::new(\u0026payload, 5, 0, 1000)?;\nsender.start()?;\nfor frag in sender.iter() { send(frag); }\n\n// Bug: caller accidentally overwrites rule_id\nsender.rule_id = 99;  // compiles!\n\n// ACKs for rule_id 5 will now be rejected - session wedged\n```\n\nThe rule_id and dtag are set once at construction and must not change during a session. Making them pub allows accidental or malicious mutation.\n\n**Fix:** Change to private fields with public getters:\n```rust\nrule_id: u8,  // private\ndtag: u8,     // private\n\npub fn rule_id(\u0026self) -\u003e u8 { self.rule_id }\npub fn dtag(\u0026self) -\u003e u8 { self.dtag }\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-27T18:23:30.53241Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-27T18:50:28.088759Z",
+  "closed_at": "2026-07-27T18:50:28.088759Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-me8y.37",
+      "depends_on_id": "project-LICHEN-worker6-me8y",
+      "type": "parent-child",
+      "created_at": "2026-07-27T18:23:30.832211Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
