@@ -1,0 +1,1 @@
+{"id":"019faf46-ad7a-7e05-be98-e642d6ae5076","issue_id":"lora-ipv6-mesh-eja","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"RPL routing implemented in python/src/lichen/rpl/ (dodag, dao, trickle, routing)","created_at":"2026-07-29T19:07:52.570919Z"}

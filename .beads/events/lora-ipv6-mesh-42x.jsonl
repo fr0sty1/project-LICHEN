@@ -1,0 +1,1 @@
+{"id":"019faf45-5835-7412-9d49-0b472a4bce9a","issue_id":"lora-ipv6-mesh-42x","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Rust workspace with no_std crates exists (lichen-core, lichen-link, lichen-schc, etc.)","created_at":"2026-07-29T19:06:25.205268Z"}

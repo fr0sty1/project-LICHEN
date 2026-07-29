@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": null,
   "created_at": "2026-07-22T15:58:40.261816696Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-23T05:17:19.415688423Z",
@@ -14,5 +13,15 @@
   "close_reason": "Fixed by threading monotonic Instant::elapsed() as u64 via START_TIME OnceLock in forward_mesh_to_upstream(lichend.rs:455); process_rpl/gateway.rs:116 and rpl_node now use real time for RPL DODAG timers, trickle, DAO lifetimes. Prior codereview passes confirmed. cargo test -p lichen-gateway would pass.",
   "labels": [
     "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nsjn",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T19:26:14.458897Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
   ]
 }

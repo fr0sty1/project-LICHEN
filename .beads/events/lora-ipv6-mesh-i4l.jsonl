@@ -1,0 +1,1 @@
+{"id":"019faf48-e5b9-7338-bc1c-fc8ff1d4c450","issue_id":"lora-ipv6-mesh-i4l","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Trickle timer implemented in rpl/trickle.py and trickle.rs","created_at":"2026-07-29T19:10:18.041212Z"}

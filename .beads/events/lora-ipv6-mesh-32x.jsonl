@@ -1,0 +1,1 @@
+{"id":"019faf49-2c3c-7207-90df-6c0708191ffe","issue_id":"lora-ipv6-mesh-32x","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"RPL routing table implemented in rpl/routing.py and routing.rs","created_at":"2026-07-29T19:10:36.092134Z"}

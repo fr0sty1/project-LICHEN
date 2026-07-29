@@ -1,0 +1,1 @@
+{"id":"019faf49-982b-7639-9831-93a620e16038","issue_id":"lora-ipv6-mesh-gds","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"RPL DAO handling implemented in rpl/dao*.py and Rust","created_at":"2026-07-29T19:11:03.723409Z"}

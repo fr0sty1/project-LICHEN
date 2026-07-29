@@ -1,0 +1,1 @@
+{"id":"019faf48-c3e5-7854-b7b2-ec108c60f767","issue_id":"lora-ipv6-mesh-8i3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"RPL message types implemented in rpl/messages.py and Rust","created_at":"2026-07-29T19:10:09.381546Z"}

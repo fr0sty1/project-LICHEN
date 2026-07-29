@@ -27,6 +27,14 @@
       "created_at": "2026-07-22T17:05:13.637572079Z",
       "created_by": "ec2-user",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-0p8t",
+      "depends_on_id": "project-LICHEN-worker6-re0j",
+      "type": "parent-child",
+      "created_at": "2026-07-29T19:26:06.428027Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
     }
   ]
 }

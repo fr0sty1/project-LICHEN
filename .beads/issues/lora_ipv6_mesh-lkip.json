@@ -12,5 +12,15 @@
   "updated_at": "2026-07-25T02:26:39.484901404Z",
   "started_at": "2026-07-19T17:54:49Z",
   "lease_expires_at": "2026-07-25T02:31:39.484901404Z",
-  "heartbeat_at": "2026-07-25T02:26:39.484901404Z"
+  "heartbeat_at": "2026-07-25T02:26:39.484901404Z",
+  "dependencies": [
+    {
+      "issue_id": "lora_ipv6_mesh-lkip",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10",
+      "type": "parent-child",
+      "created_at": "2026-07-29T19:15:32.777441Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

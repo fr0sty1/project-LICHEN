@@ -14,5 +14,15 @@
   "closed_at": "2026-06-24T01:49:48Z",
   "close_reason": "Implemented in Rust: codec.rs real compress/decompress (rules 0-4, all 5 vectors pass), fragment.rs FragmentSender+Receiver (CRC32 MIC, window/FCN schedule, 9 tests pass)",
   "lease_expires_at": "2026-07-24T21:47:51.515732145Z",
-  "heartbeat_at": "2026-07-24T21:42:51.515732145Z"
+  "heartbeat_at": "2026-07-24T21:42:51.515732145Z",
+  "dependencies": [
+    {
+      "issue_id": "lora_ipv6_mesh-39z",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3",
+      "type": "parent-child",
+      "created_at": "2026-07-29T19:14:22.911404Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

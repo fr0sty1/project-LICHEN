@@ -12,5 +12,15 @@
   "updated_at": "2026-07-25T02:26:37.403885206Z",
   "started_at": "2026-07-23T04:21:27.767672846Z",
   "lease_expires_at": "2026-07-25T02:31:37.403885206Z",
-  "heartbeat_at": "2026-07-25T02:26:37.403885206Z"
+  "heartbeat_at": "2026-07-25T02:26:37.403885206Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1tey",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5",
+      "type": "parent-child",
+      "created_at": "2026-07-29T19:17:33.226134Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }
