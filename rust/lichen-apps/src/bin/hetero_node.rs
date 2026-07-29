@@ -13,7 +13,6 @@ use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
 
-use hex;
 use sha2::{Digest, Sha256};
 
 /// Metrics collected during node operation.
@@ -140,7 +139,7 @@ fn main() {
         announce.extend_from_slice(&[0u8; 48]);
 
         // Transmit
-        match futures::executor::block_on(lichen_hal::Radio::transmit(&mut radio, &announce)) {
+        match futures::executor::block_on(lichen_hal::Radio::transmit(&mut radio, 0, &announce)) {
             Ok(()) => {
                 metrics.tx_count += 1;
                 metrics.tx_bytes += announce.len() as u64;
@@ -170,7 +169,7 @@ fn main() {
         // Receive window
         for _ in 0..5 {
             match futures::executor::block_on(lichen_hal::Radio::receive(
-                &mut radio, &mut buf, 1000,
+                &mut radio, 0, &mut buf, 1000,
             )) {
                 Ok(Some(pkt)) => {
                     metrics.rx_count += 1;

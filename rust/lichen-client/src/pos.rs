@@ -214,7 +214,7 @@ mod tests {
         assert_eq!(recs[0].base_name, Some("urn:dev:mac:0011223344556677:"));
         assert_eq!(recs[0].base_time, Some(1_716_742_800.0));
 
-        let find = |name: &str| recs[..n].iter().find(|r| r.name == Some(name)).copied();
+        let find = |name: &str| recs[..n].iter().find(|r| r.name == Some(name));
         let lat = find(SENML_LOCATION_LAT).expect("lat record");
         assert_eq!(
             (lat.unit, lat.value),

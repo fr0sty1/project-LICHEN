@@ -20,7 +20,7 @@ twatch = []  # T-Watch: ST7789, touch
 
 [dependencies]
 heapless = { version = "0.8", default-features = false }
-lichen-link = { path = "../lichen-link" }
+lichen-link = { path = "../lichen-link", features = ["schnorr"] }
 rand_core = { version = "0.6", default-features = false, optional = true }
 
 # Logging backends (optional, feature-gated)

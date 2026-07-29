@@ -74,16 +74,12 @@ impl SimRadio {
     pub fn connect_with_config(host: &str, port: u16, cfg: &ConnectConfig) -> Result<Self, SimError> {
         let addr = format!("{}:{}", host, port);
         let stream = if let Some(timeout) = cfg.connect_timeout {
-            let dur = std::time::Instant::now() + timeout;
-            // Use the per-socket timeout for connect via TcpStream::connect_timeout
-            // on nightly or through socket2. For stable, we use set_write_timeout
-            // as a coarse approximation and connect normally.
-            let s = TcpStream::connect_timeout(
+            // Use the per-socket timeout for connect via TcpStream::connect_timeout.
+            TcpStream::connect_timeout(
                 &addr.parse().map_err(|e| RadioError::Bus(std::io::Error::new(std::io::ErrorKind::InvalidInput, e)))?,
                 timeout,
             )
-            .map_err(RadioError::Bus)?;
-            s
+            .map_err(RadioError::Bus)?
         } else {
             TcpStream::connect(&addr).map_err(RadioError::Bus)?
         };
@@ -203,70 +199,6 @@ impl SimRadio {
         self.stream.read_exact(&mut data).map_err(RadioError::Bus)?;
         Ok(data)
     }
-}
-
-impl Radio for SimRadio {
-    type Error = SimError;
-
-    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
-        if payload.len() > u16::MAX as usize {
-            return Err(RadioError::Protocol);
-        }
-        let clear = self.cca(channel, -80).await?;
-        if !clear {
-            return Err(RadioError::ChannelBusy);
-        }
-        let mut msg = Vec::with_capacity(3 + payload.len());
-        msg.push(0x10);
-        msg.extend_from_slice(&(payload.len() as u16).to_le_bytes());
-        msg.extend_from_slice(payload);
-
-        self.send_message(&msg)?;
-
-        let resp = self.recv_message()?;
-        if resp.is_empty() || resp[0] != 0x11 {
-            return Err(RadioError::Protocol);
-        }
-
-        let hash = Sha256::digest(payload);
-        eprintln!(
-            "[TX ch={}] len={} hash={} hex={}",
-            channel,
-            payload.len(),
-            hex::encode(&hash[..8]),
-            hex::encode(payload)
-        );
-
-        Ok(())
-    }
-
-    async fn receive(
-        &mut self,
-        channel: u8,
-        buf: &mut [u8],
-        timeout_ms: u32,
-    ) -> Result<Option<RxPacket>, Self::Error> {
-        let timeout_us = (timeout_ms as u64) * 1000;
-        let timeout_us = timeout_us.min(u32::MAX as u64) as u32;
-
-        let prev_timeout = self.stream.read_timeout().map_err(RadioError::Bus)?;
-        let read_timeout = Duration::from_millis(timeout_ms as u64 + 1000);
-        self.stream
-            .set_read_timeout(Some(read_timeout))
-            .map_err(RadioError::Bus)?;
-
-        let result = self.receive_inner(channel, buf, timeout_us);
-
-        if let Err(_) = &result {
-            let _ = self.stream.set_read_timeout(prev_timeout);
-        } else {
-            self.stream
-                .set_read_timeout(prev_timeout)
-                .map_err(RadioError::Bus)?;
-        }
-
-        result
-    }
 
     fn receive_inner(
         &mut self,
@@ -325,6 +257,70 @@ impl Radio for SimRadio {
             0x28 => Ok(None),
             _ => Err(RadioError::Protocol),
         }
+    }
+}
+
+impl Radio for SimRadio {
+    type Error = SimError;
+
+    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+        if payload.len() > u16::MAX as usize {
+            return Err(RadioError::Protocol);
+        }
+        let clear = self.cca(channel, -80).await?;
+        if !clear {
+            return Err(RadioError::ChannelBusy);
+        }
+        let mut msg = Vec::with_capacity(3 + payload.len());
+        msg.push(0x10);
+        msg.extend_from_slice(&(payload.len() as u16).to_le_bytes());
+        msg.extend_from_slice(payload);
+
+        self.send_message(&msg)?;
+
+        let resp = self.recv_message()?;
+        if resp.is_empty() || resp[0] != 0x11 {
+            return Err(RadioError::Protocol);
+        }
+
+        let hash = Sha256::digest(payload);
+        eprintln!(
+            "[TX ch={}] len={} hash={} hex={}",
+            channel,
+            payload.len(),
+            hex::encode(&hash[..8]),
+            hex::encode(payload)
+        );
+
+        Ok(())
+    }
+
+    async fn receive(
+        &mut self,
+        channel: u8,
+        buf: &mut [u8],
+        timeout_ms: u32,
+    ) -> Result<Option<RxPacket>, Self::Error> {
+        let timeout_us = (timeout_ms as u64) * 1000;
+        let timeout_us = timeout_us.min(u32::MAX as u64) as u32;
+
+        let prev_timeout = self.stream.read_timeout().map_err(RadioError::Bus)?;
+        let read_timeout = Duration::from_millis(timeout_ms as u64 + 1000);
+        self.stream
+            .set_read_timeout(Some(read_timeout))
+            .map_err(RadioError::Bus)?;
+
+        let result = self.receive_inner(channel, buf, timeout_us);
+
+        if result.is_err() {
+            let _ = self.stream.set_read_timeout(prev_timeout);
+        } else {
+            self.stream
+                .set_read_timeout(prev_timeout)
+                .map_err(RadioError::Bus)?;
+        }
+
+        result
     }
 
     fn configure(&mut self, config: &RadioConfig) {
