@@ -22,7 +22,7 @@ use lichen_link::frame::{FrameError, LichenFrame, MAX_FRAME_LEN};
 use lichen_link::frame::{AddrMode, Encryption, MicLength, Signature};
 use lichen_link::seqnum::LinkSeqNum;
 
-use crate::framing::{kiss_decode, kiss_encode, kiss_unescape, KissCommand, KissError, FEND};
+use crate::{kiss_decode, kiss_encode, kiss_unescape, KissCommand, KissError, FEND};
 
 pub const PORT_AX25: u8 = 0;
 pub const PORT_RAW: u8 = 1;

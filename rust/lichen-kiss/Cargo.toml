@@ -19,6 +19,7 @@ log = ["dep:log"]
 
 [dependencies]
 heapless = "0.8"
+kiss-framing = "0.1"
 lichen-link = { path = "../lichen-link", default-features = false, optional = true }
 
 # Logging backends (optional, feature-gated)

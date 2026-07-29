@@ -12,7 +12,7 @@
 //!
 //! Available with feature `kiss-ble`.
 
-use crate::framing::{KissCommand, KissError, KissReader, KissWriter};
+use crate::{KissCommand, KissError, KissReader, KissWriter, Priority};
 
 /// KISS BLE service UUID.
 pub const SERVICE_UUID: &str = "00000001-ba2a-46c9-ae49-01b0961f68bb";
@@ -135,7 +135,7 @@ impl KissBleTnc {
             port,
             KissCommand::Data,
             data,
-            crate::framing::Priority::Bulk,
+            Priority::Bulk,
             now_ms + 60_000,
         )
     }
@@ -154,7 +154,7 @@ impl KissBleTnc {
             port,
             cmd,
             data,
-            crate::framing::Priority::Bulk,
+            Priority::Bulk,
             now_ms + 60_000,
         )
     }
@@ -188,7 +188,7 @@ impl KissBleTnc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framing::FEND;
+    use crate::FEND;
 
     #[test]
     fn roundtrip_frame() {

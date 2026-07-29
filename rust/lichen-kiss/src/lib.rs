@@ -36,9 +36,6 @@
 #[cfg(any(test, feature = "std"))]
 extern crate std;
 
-#[cfg(feature = "kiss")]
-pub mod framing;
-
 #[cfg(feature = "kiss-aprs")]
 pub mod aprs;
 
@@ -48,11 +45,11 @@ pub mod ble;
 #[cfg(feature = "bridge")]
 pub mod bridge;
 
-// Re-export core types when kiss feature is enabled
+// Re-export core types from kiss-framing crate when kiss feature is enabled
 #[cfg(feature = "kiss")]
-pub use framing::{
-    kiss_decode, kiss_encode, kiss_escape, kiss_unescape, KissCommand, KissError, KissFrame,
-    KissReader, KissWriter, Priority, FEND, FESC, TFEND, TFESC,
+pub use kiss_framing::{
+    kiss_decode, kiss_encode, kiss_encode_raw, kiss_escape, kiss_unescape, KissCommand, KissError,
+    KissFrame, KissReader, KissWriter, Priority, FEND, FESC, MAX_FRAME_SIZE, TFEND, TFESC,
 };
 
 // Re-export bridge types when bridge feature is enabled
