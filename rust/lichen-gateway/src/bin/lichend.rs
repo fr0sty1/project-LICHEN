@@ -18,8 +18,9 @@ use lichen_core::{
 use lichen_gateway::{
     config::Config,
     slip::{SlipFramer, SLIP_TX_BUF_SIZE},
-    Gateway, RplEvent,
+    Gateway,
 };
+use lichen_node::RplEvent;
 use lichen_hal::storage::fs::FileStorage;
 use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
 use lichen_hal::{Concentrator, RadioConfig, Sx1302Concentrator};
@@ -121,7 +122,7 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    let seed = match load_seed(&storage) {
+    let seed = match load_seed(&storage).ok().flatten() {
         Some(s) => s,
         None => {
             let mut b = [0u8; 32];
@@ -143,12 +144,8 @@ async fn main() {
         error!("configured root IID does not match persisted identity; fail closed");
         std::process::exit(1);
     }
-    let epoch = load_epoch(&storage).unwrap_or(128);
-    let safe_epoch = if epoch < 128 {
-        128
-    } else {
-        epoch.wrapping_add(1)
-    };
+    let epoch = load_epoch(&storage).ok().flatten().unwrap_or(128);
+    let safe_epoch = if epoch < 128 { 128 } else { epoch.wrapping_add(1) };
     let _ = save_epoch(&mut storage, safe_epoch);
 
     let use_sim = use_sim_mode && !use_hat;
@@ -230,6 +227,9 @@ fn push_tx_queue_sync(tx_queue: &mut TxQueue, priority: TxPriority, data: &[u8],
         Err(TxQueueError::PayloadTooLarge) => {
             warn!(len = data.len(), "TX payload too large");
         }
+        Err(_) => {
+            warn!("TX queue error");
+        }
     }
 }
 
@@ -240,9 +240,9 @@ fn push_tx_queue(tx_queue: &Mutex<TxQueue>, priority: TxPriority, data: &[u8], n
         TxPriority::Routing => now_ms + DEADLINE_ROUTING_MS,
         TxPriority::User | TxPriority::Bulk => now_ms + DEADLINE_USER_MS,
     };
-    match tx_queue.lock().push(priority, deadline, now_ms, data) {
+    match tx_queue.lock().unwrap().push(priority, deadline, now_ms, data) {
         Ok(()) => {
-            let stats = tx_queue.lock().stats();
+            let stats = tx_queue.lock().unwrap().stats();
             debug!(depth = stats.depth, "TX queued");
         }
         Err(TxQueueError::QueueFull) => {
@@ -250,6 +250,9 @@ fn push_tx_queue(tx_queue: &Mutex<TxQueue>, priority: TxPriority, data: &[u8], n
         }
         Err(TxQueueError::PayloadTooLarge) => {
             warn!(len = data.len(), "TX payload too large");
+        }
+        Err(_) => {
+            warn!("TX queue error");
         }
     }
 }
@@ -327,16 +330,25 @@ where
 
     // Sim protocol task: sequential TX-drain → RX(50 ms) loop.
     let sim_tx_queue = tx_queue.clone();
-    let sim_task = tokio::spawn(async move {
+    let mut sim_task = tokio::spawn(async move {
         loop {
             // Drain all pending TX frames before the next RX window.
             let now_ms = {
                 let start = START_TIME.get_or_init(Instant::now);
                 start.elapsed().as_millis() as u64
             };
-            while let Some(item) = sim_tx_queue.lock().pop(now_ms) {
-                match sim.transmit(item.data()).await {
-                    Ok(airtime_us) => info!(airtime_us, len = item.len(), "TX done"),
+            // Collect items under lock, then transmit outside the lock
+            let items_to_tx: Vec<_> = {
+                let mut q = sim_tx_queue.lock().unwrap();
+                let mut items = Vec::new();
+                while let Some(item) = q.pop(now_ms) {
+                    items.push(item.data().to_vec());
+                }
+                items
+            };
+            for data in items_to_tx {
+                match sim.transmit(&data).await {
+                    Ok(airtime_us) => info!(airtime_us, len = data.len(), "TX done"),
                     Err(e) => warn!("TX failed: {e}"),
                 }
             }
@@ -360,8 +372,16 @@ where
             let start = START_TIME.get_or_init(Instant::now);
             start.elapsed().as_millis() as u64
         };
-        while let Some(item) = sim_tx_queue.lock().pop(now_ms) {
-            match sim.transmit(item.data()).await {
+        let items_to_tx: Vec<_> = {
+            let mut q = sim_tx_queue.lock().unwrap();
+            let mut items = Vec::new();
+            while let Some(item) = q.pop(now_ms) {
+                items.push(item.data().to_vec());
+            }
+            items
+        };
+        for data in items_to_tx {
+            match sim.transmit(&data).await {
                 Ok(airtime_us) => info!(airtime_us, "TX done (shutdown drain)"),
                 Err(e) => warn!("shutdown TX failed: {e}"),
             }
@@ -380,8 +400,8 @@ where
                 };
                 gw.maintain(now_ms);
                 // Expire stale entries from TX queue
-                tx_queue.lock().expire_before(now_ms);
-                let stats = tx_queue.lock().stats();
+                tx_queue.lock().unwrap().expire_before(now_ms);
+                let stats = tx_queue.lock().unwrap().stats();
                 debug!(depth = stats.depth, packets_dropped = stats.packets_dropped_full, "TX queue stats");
             }
             frame_opt = rx_recv.recv() => {
@@ -630,9 +650,6 @@ where
     let mut conc = Sx1302Concentrator;
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
-    if let Err(e) = conc.start().await {
-        warn!("concentrator start: {:?}", e);
-    }
     let mut tun_buf = vec![0u8; 1500];
     let mut rx_buf = vec![0u8; 255];
     let mut tx_queue = TxQueue::new();
@@ -650,15 +667,15 @@ where
                 let stats = tx_queue.stats();
                 debug!(depth = stats.depth, "hat TX queue stats");
             }
-            result = conc.receive(&mut rx_buf) => {
+            result = conc.receive(&mut rx_buf, 100) => {
                 let now_ms = {
                     let start = START_TIME.get_or_init(Instant::now);
                     start.elapsed().as_millis() as u64
                 };
                 match result {
-                    Ok(Some(rxpkt)) => {
-                        info!(len = rxpkt.len, rssi = ?rxpkt.rssi, snr = ?rxpkt.snr, "hat RX");
-                        if let Some(reply) = forward_mesh_to_upstream(gw, &rx_buf[..rxpkt.len], &tun).await {
+                    Ok(Some((len, rssi, snr))) => {
+                        info!(len, rssi, snr, "hat RX");
+                        if let Some(reply) = forward_mesh_to_upstream(gw, &rx_buf[..len], &tun).await {
                             push_tx_queue_sync(&mut tx_queue, TxPriority::Control, &reply, now_ms);
                         }
                     }
@@ -695,9 +712,6 @@ where
                 info!(len = item.len(), "hat TX");
             }
         }
-    }
-    if let Err(e) = conc.stop().await {
-        warn!("concentrator stop: {:?}", e);
     }
 }
 

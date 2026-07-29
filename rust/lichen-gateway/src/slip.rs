@@ -10,10 +10,9 @@
 use std::collections::VecDeque;
 use std::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tracing::warn;
 
 // Use shared framing constants from lichen-kiss (KISS and SLIP use the same byte values).
-use lichen_kiss::framing::{FEND, FESC, TFEND, TFESC};
+use lichen_kiss::{FEND, FESC, TFEND, TFESC};
 
 /// Escape a single byte for SLIP transmission.
 ///
@@ -105,12 +104,6 @@ const TX_QUEUE_CAPACITY: usize = 8;
 /// Maximum size of RX buffer before discarding the frame.
 /// SECURITY: Prevents DoS via memory exhaustion from malicious/faulty senders.
 const RX_BUFFER_MAX: usize = 4096;
-
-/// Minimum buffer size for `try_get_tx()` to handle worst-case SLIP encoding.
-///
-/// SLIP worst-case: 2 FEND bytes + each data byte escaped (2x expansion).
-/// This must cover the largest packet that can be queued (TX_BUFFER_SIZE).
-pub const SLIP_TX_BUF_SIZE: usize = 2 + TX_BUFFER_SIZE * 2;
 
 /// Stateful SLIP framer with RX accumulation and TX queue.
 ///

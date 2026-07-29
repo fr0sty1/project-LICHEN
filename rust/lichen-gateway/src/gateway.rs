@@ -4,7 +4,6 @@
 
 use std::fmt;
 
-use lichen_core::addr::Ipv6Addr;
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
 use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
@@ -13,13 +12,12 @@ use lichen_core::l2_payload::{
 use lichen_hal::loopback::LoopbackRadio;
 use lichen_hal::storage::mem::MemStorage;
 use lichen_link::identity::Identity;
-use lichen_link::keys::Seed;
 use lichen_node::{
     announce::AnnounceProcessor, gradient::GradientTable, rpl_stack::RplStack, secure::SecureStack,
-    stack::add_rpl_source_route, DaoHandlingOutcome, RplEvent,
+    stack::add_rpl_source_route, RplEvent,
 };
 use lichen_schc::codec::{compress, decompress, SchcError};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 pub struct Gateway {
     rpl_stack: RplStack<LoopbackRadio, MemStorage>,
@@ -43,7 +41,8 @@ impl Gateway {
         let root_addr = identity_pubkey_link_local(&identity);
         let dodag_id = root_addr;
         let (radio, _peer) = LoopbackRadio::pair();
-        let stack = SecureStack::from_radio(radio, identity, 128);
+        let stack = SecureStack::from_radio(radio, identity, 128, 0)
+            .expect("valid epoch >= 128");
         let announces =
             AnnounceProcessor::new(GradientTable::new(64), dodag_id[..8].try_into().unwrap());
         let storage = MemStorage::new();
@@ -168,19 +167,15 @@ impl Gateway {
         self.maintain(now_ms);
         let sender_iid = extract_sender_iid(frame);
         let mut reply = vec![0u8; 512];
-        let (reply_len, mut event) = self
+        let (reply_len, event) = self
             .rpl_stack
-            .rpl_node()
+            .rpl_node_mut()
             .handle_frame_rpl(frame, sender_iid, &mut reply, now_ms);
-        if matches!(event, RplEvent::DaoReceived { .. }) {
-            if let Some(outcome) =
-                self.rpl_stack
-                    .complete_dao_from_frame(frame, sender_iid, now_ms)
-            {
-                event = RplEvent::DaoReceived {
-                    route_updated: matches!(outcome, DaoHandlingOutcome::Applied),
-                };
-            }
+        if matches!(event, RplEvent::DaoReceived) {
+            // Complete DAO processing (updates routing table as side effect)
+            let _ = self
+                .rpl_stack
+                .complete_dao_from_frame(frame, sender_iid, now_ms);
         }
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
@@ -224,10 +219,7 @@ impl Gateway {
         let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
             ipv6.to_vec()
         } else {
-            let route = match self.rpl_stack.rpl_node().router().lookup_route(&dst) {
-                Some(r) => r,
-                None => return None,
-            };
+            let route = self.rpl_stack.rpl_node().router().lookup_route(&dst)?;
             if route.len() == 1 {
                 ipv6.to_vec()
             } else {
@@ -309,7 +301,7 @@ fn extract_sender_iid(frame: &[u8]) -> [u8; 8] {
         return [0u8; 8];
     }
     let mut buf = [0u8; 256];
-    let n = match decompress(l2_payload_body(frame), &mut buf) {
+    let _n = match decompress(l2_payload_body(frame), &mut buf) {
         Ok(n) if n >= IPV6_HEADER_LEN && buf[0] >> 4 == 6 => n,
         _ => return [0u8; 8],
     };

@@ -106,6 +106,12 @@ fn default_backhaul_kind() -> String {
 fn default_backhaul_interface() -> String {
     "lichen0".to_string()
 }
+fn default_ipv6_prefix() -> String {
+    "0202::/16".to_string()
+}
+fn default_upstream() -> String {
+    "eth0".to_string()
+}
 
 impl Config {
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
