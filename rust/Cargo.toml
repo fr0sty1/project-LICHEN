@@ -51,3 +51,7 @@ edition = "2021"
 version = "0.1.0"
 license = "GPL-3.0-or-later"
 rust-version = "1.81.0"
+
+# Patch crates.io dependencies with local versions for Schnorr48 EDHOC support
+[patch.crates-io]
+oscore = { path = "/Volumes/Attic/Desktop/Projects/crates/oscore" }
