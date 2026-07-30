@@ -229,6 +229,8 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	}
 
 	edhoc_sign(signature_2, ctx->ed_seed, ctx->ed_pubkey, sig_struct_2, sig_struct_2_len);
+	/* SECURITY: wipe signing key immediately after last use */
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 
 	ZCBOR_STATE_E(zse_pt2, 0, plaintext_2, sizeof(plaintext_2), 0);
 	if (!zcbor_bstr_encode_ptr(zse_pt2, ctx->ed_pubkey, 32) ||

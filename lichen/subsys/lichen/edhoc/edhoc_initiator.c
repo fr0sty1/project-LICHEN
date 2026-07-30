@@ -382,6 +382,8 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	}
 
 	edhoc_sign(signature_3, ctx->ed_seed, ctx->ed_pubkey, sig_struct_3, sig_struct_3_len);
+	/* SECURITY: wipe signing key immediately after last use */
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 
 	/* Encode PLAINTEXT_3 */
 	ZCBOR_STATE_E(zse_pt3, 0, plaintext_3, sizeof(plaintext_3), 0);
