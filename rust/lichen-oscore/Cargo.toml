@@ -29,8 +29,8 @@ serde_json = "1.0"
 default = []
 std = ["oscore/std"]
 # EDHOC Suite 0 (RFC 9528) for establishing OSCORE contexts
-# Uses X25519/Ed25519 to match link-layer Schnorr48
-edhoc = ["oscore/edhoc"]
+# Uses Schnorr48 (48B signatures) to match LICHEN link-layer
+edhoc = ["oscore/edhoc-schnorr48"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "oscore/defmt"]
 log = ["dep:log", "oscore/log"]
