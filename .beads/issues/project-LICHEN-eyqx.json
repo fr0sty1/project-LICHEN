@@ -2,12 +2,14 @@
   "id": "project-LICHEN-eyqx",
   "title": "[security] EDHOC signature length and scheme mismatch between Rust (64B Ed25519) and C (48B Schnorr48)",
   "description": "Rust/lichen-oscore/src/edhoc.rs uses SIG_LEN=64 with ed25519_dalek::Signature and verify_strict. C/lichen/subsys/lichen/edhoc/edhoc.c and edhoc.h define EDHOC_SIG_LEN=48 with schnorr48_sign/verify from link layer (per draft-lichen-schnorr-00.md). Recent uk36/ow3c/hnyw fixes to edhoc.rs, edhoc.c, oscore.c did not align implementations. This breaks interop, test vectors (schnorr48.json), OSCORE context export after EDHOC, and authentication. Affects key handling, MIC/signature verification. See commits touching edhoc.rs (402298f95, a3f724ba7, 40f1a5205, ed7ed668b, 11d4a7a32) and edhoc.c (296bd6c4d), oscore.c (7baadd563). Priority 0 as it invalidates security properties.",
-  "notes": "Research 2026-07-29: schnorr48 crate already exists and is used by lichen-link. Changes needed in rust-oscore (project-owned at MarkAtwood/rust-oscore): (1) Replace ed25519-dalek with schnorr48 for EDHOC signatures, (2) Change SIG_LEN from 64 to 48, (3) Update COSE Sig_structure encoding (4-elem vs 5-elem per issue s015), (4) Update test vectors. Medium-high complexity but no new crypto implementation needed.",
-  "status": "in_progress",
+  "notes": "Research 2026-07-29: schnorr48 crate already exists and is used by lichen-link. Changes needed in rust-oscore (project-owned at MarkAtwood/rust-oscore): (1) Replace ed25519-dalek with schnorr48 for EDHOC signatures, (2) Change SIG_LEN from 64 to 48, (3) Update COSE Sig_structure encoding (4-elem vs 5-elem per issue s015), (4) Update test vectors. Medium-high complexity but no new crypto implementation needed.\nImplementation complete 2026-07-29: (1) oscore crate updated - ed25519-dalek→schnorr48, SIG_LEN 64→48, (2) C header EDHOC_SIG_LEN 64→48, (3) Cargo.toml patch.crates-io for local oscore. Remaining: regenerate edhoc.json test vectors with Schnorr48 signatures.",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T14:50:55.294588943Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-30T02:47:53.995539Z"
+  "updated_at": "2026-07-30T03:16:11.473882Z",
+  "closed_at": "2026-07-30T03:16:11.473882Z",
+  "close_reason": "Closed"
 }
