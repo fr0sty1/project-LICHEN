@@ -16,7 +16,7 @@ from lichen.sim.events import RxTimeoutEvent, TxEndEvent, TxStartDelayedEvent
 from lichen.sim.node import NodeState
 
 if TYPE_CHECKING:
-    from lichen.sim.chaos import ChaosEngine
+    from lora_medium import ChaosEngine
 
 
 class RadioMixin:
@@ -171,6 +171,22 @@ class RadioMixin:
             node_id=node_id,
             tx_id=tx.id,
             payload_len=len(payload),
+            time_us=tx.start_time_us,
+        )
+
+        # Notify propagation visualization observer with position and range
+        max_range_m = self._medium.propagation.max_range(tx_power_dbm)
+        duration_us = tx.end_time_us - tx.start_time_us
+        self._observers.notify(
+            "on_tx_propagation",
+            sim_id=self._id,
+            node_id=node_id,
+            tx_id=tx.id,
+            x=position[0],
+            y=position[1],
+            z=position[2],
+            max_range_m=max_range_m,
+            duration_us=duration_us,
             time_us=tx.start_time_us,
         )
 
@@ -382,6 +398,21 @@ class RadioMixin:
                         tx_ids=tx_ids,
                         time_us=self._current_time_us,
                     )
+                    # Notify collision visualization with position data
+                    tx_positions = []
+                    for c in candidates:
+                        tx_pos = self._medium._tx_positions.get(c.transmission.id)
+                        if tx_pos is not None:
+                            tx_positions.append(tx_pos)
+                    if tx_positions:
+                        self._observers.notify(
+                            "on_collision_visual",
+                            sim_id=self._id,
+                            node_id=node_id,
+                            tx_ids=tx_ids,
+                            tx_positions=tx_positions,
+                            time_us=self._current_time_us,
+                        )
             return None
 
         # Record simulation-wide + per-node metrics. Idempotent for polling

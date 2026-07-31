@@ -28,7 +28,7 @@ import pytest
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
 from lichen.radio.sim_client import SimRadio
-from lichen.sim.chaos import DropRule
+from lora_medium import DropRule
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 

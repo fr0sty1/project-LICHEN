@@ -4,7 +4,7 @@
 
 import pytest
 
-from lichen.sim.medium import (
+from lora_medium import (
     ChannelLoad,
     Medium,
     RendezvousInfo,
@@ -13,8 +13,8 @@ from lichen.sim.medium import (
     TDMASlot,
     TDMAVector,
 )
-from lichen.sim.propagation import CAPTURE_THRESHOLD_DB, SENSITIVITY_SF10, PropagationModel
-from lichen.sim.transmission import Transmission, airtime_us
+from lora_medium import CAPTURE_THRESHOLD_DB, SENSITIVITY_SF10, PropagationModel
+from lora_medium import Transmission, airtime_us
 
 
 class TestMediumBasics:
@@ -884,7 +884,7 @@ class TestRendezvous:
         assert result.valid_until_sfn is not None
 
     def test_no_rendezvous_channel_density_high(self) -> None:
-        """Density > 8 causes CH0 fallback (no hash channel)."""
+        """Density > 8 still uses hash-based channel selection."""
         medium = Medium()
         medium.mark_peer_known("0011223344556677")
 
@@ -893,7 +893,9 @@ class TestRendezvous:
             sfn=0,
             density=9,
         )
-        assert result.channel >= 1  # hash_based doesn't check density here; that's caller's concern
+        # Hash-based returns any channel [0, num_channels); density filtering is caller's concern
+        assert result.channel >= 0
+        assert result.mechanism == RendezvousMechanism.HASH_BASED
 
 
 class TestChannelLoad:

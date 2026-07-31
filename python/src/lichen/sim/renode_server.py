@@ -33,7 +33,7 @@ from lichen.sim.protocol import (
     get_message_payload,
     get_message_type,
 )
-from lichen.sim.transmission import airtime_us
+from lora_medium import airtime_us
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
@@ -73,10 +73,37 @@ class RenodeServer:
     Each RenodeServer handles exactly one node. Create multiple servers
     on different ports for multiple Renode instances.
 
-    The server runs a background simulation driver task that periodically
-    calls deliver_pending_packets() and maybe_advance_time(). This allows
-    BARRIER_SYNC mode to work correctly even when multiple RenodeServers
-    are operating concurrently.
+    HIL Timing Synchronization
+    --------------------------
+    The server runs a background simulation driver task (_simulation_driver)
+    that coordinates time between Renode and lichen-sim. This enables
+    deterministic HIL testing where emulated firmware runs faster than
+    real-time but still synchronizes with the RF simulator.
+
+    The driver loop (1ms period):
+      1. deliver_pending_packets() - Push received packets to nodes in RX_WAIT
+      2. maybe_advance_time() - Advance simulation clock to next event
+      3. deliver_pending_packets() - Re-check after time advances
+
+    Time Modes:
+      - BARRIER_SYNC (default): Time advances only when at least one connected
+        node is blocked in RX_WAIT state. This ensures deterministic packet
+        delivery and timeout behavior regardless of host CPU speed.
+      - REALTIME: Time advances with wall-clock. Useful for interactive testing
+        but non-deterministic.
+
+    The key insight is that Renode emulation runs "infinitely fast" relative
+    to RF propagation times (milliseconds). When a Renode node enters RX mode
+    via RX_ENTER, the simulation driver detects the barrier condition and
+    advances time to the next event (TX completion or RX timeout), then
+    delivers any resulting packets.
+
+    Protocol Messages:
+      TX (0x10): Node transmits -> queues TxEndEvent in simulation
+      RX_ENTER (0x24): Node enters RX -> enables time advancement
+      RX_EXIT (0x26): Node exits RX -> no longer blocks barrier
+      RX_PACKET (0x27): Unsolicited push when packet received
+      RX_TIMEOUT_PUSH (0x28): Unsolicited push when RX times out
     """
 
     def __init__(
@@ -171,10 +198,30 @@ class RenodeServer:
         task.add_done_callback(self._connection_tasks.discard)
 
     async def _simulation_driver(self) -> None:
-        """Background task that drives the simulation.
+        """Background task that drives simulation time and packet delivery.
 
-        Periodically calls deliver_pending_packets() and maybe_advance_time()
-        to ensure BARRIER_SYNC mode advances time and delivers packets.
+        This is the core HIL timing synchronization loop. It runs every 1ms
+        and performs:
+
+        1. deliver_pending_packets(): Check all nodes in RX_WAIT for
+           receivable packets and invoke their on_packet callbacks.
+
+        2. maybe_advance_time(): In BARRIER_SYNC mode, advance simulation
+           time to the next event (TxEndEvent or RxTimeoutEvent) when at
+           least one node is in RX_WAIT. In REALTIME mode, advance to
+           current wall-clock time.
+
+        3. deliver_pending_packets() again: A TX may have just completed
+           after time advancement, making a new packet available.
+
+        The 1ms sleep allows Renode to run and make progress between
+        simulation ticks without spinning the CPU. The loop continues
+        until the server is stopped.
+
+        Timing Behavior:
+        - When no node is in RX_WAIT, time does not advance (BARRIER_SYNC)
+        - When a node enters RX_WAIT, time immediately advances to next event
+        - Packet delivery and timeout callbacks happen synchronously
         """
         try:
             while True:

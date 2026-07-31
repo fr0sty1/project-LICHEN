@@ -6,7 +6,7 @@ from uuid import UUID
 
 import pytest
 
-from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
+from lora_medium import Transmission, airtime_us, lr_fhss_airtime_us
 
 
 class TestAirtimeUs:

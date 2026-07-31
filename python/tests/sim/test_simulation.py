@@ -10,7 +10,7 @@ Unit tests for specific functionality are in:
 
 import pytest
 
-from lichen.sim.medium import Medium
+from lora_medium import Medium
 from lichen.sim.node import NodeState
 from lichen.sim.simulation import Simulation, TimeMode
 
@@ -124,7 +124,7 @@ class TestChaosEngineIntegration:
 
     def test_drop_rule_blocks_reception(self) -> None:
         """DropRule prevents node from receiving packets."""
-        from lichen.sim.chaos import ChaosEngine, DropRule
+        from lora_medium import ChaosEngine, DropRule
 
         chaos = ChaosEngine()
         chaos.add_rule(DropRule(node_id="receiver", direction="rx"))
@@ -144,7 +144,7 @@ class TestChaosEngineIntegration:
 
     def test_drop_rule_blocks_transmission(self) -> None:
         """DropRule on sender prevents receiver from getting packet."""
-        from lichen.sim.chaos import ChaosEngine, DropRule
+        from lora_medium import ChaosEngine, DropRule
 
         chaos = ChaosEngine()
         chaos.add_rule(DropRule(node_id="sender", direction="tx"))
@@ -174,7 +174,7 @@ class TestChaosEngineIntegration:
 
     def test_partition_rule_blocks_cross_partition(self) -> None:
         """PartitionRule blocks communication between partitions."""
-        from lichen.sim.chaos import ChaosEngine, PartitionRule
+        from lora_medium import ChaosEngine, PartitionRule
 
         chaos = ChaosEngine()
         chaos.add_rule(PartitionRule(groups=[{"node-a"}, {"node-b"}]))
@@ -191,7 +191,7 @@ class TestChaosEngineIntegration:
 
     def test_degrade_rule_reduces_rssi(self) -> None:
         """DegradeRule reduces received signal strength."""
-        from lichen.sim.chaos import ChaosEngine, DegradeRule
+        from lora_medium import ChaosEngine, DegradeRule
 
         # First get baseline RSSI without degradation
         sim_baseline = Simulation(sim_id="baseline")
@@ -221,7 +221,7 @@ class TestChaosEngineIntegration:
 
     def test_jammer_blocks_nearby_receivers(self) -> None:
         """JammerRule blocks reception for nodes within radius."""
-        from lichen.sim.chaos import ChaosEngine, JammerRule
+        from lora_medium import ChaosEngine, JammerRule
 
         chaos = ChaosEngine()
         # Jammer at (50, 0, 0) with 100m radius - receiver at (100, 0, 0) is 50m away
@@ -239,7 +239,7 @@ class TestChaosEngineIntegration:
 
     def test_chaos_engine_setter(self) -> None:
         """Chaos engine can be set after construction."""
-        from lichen.sim.chaos import ChaosEngine, DropRule
+        from lora_medium import ChaosEngine, DropRule
 
         sim = Simulation(sim_id="test-sim")
         assert sim.chaos_engine is None

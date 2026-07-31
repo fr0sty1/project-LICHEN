@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
-from lichen.sim.metrics import Metrics
+import tempfile
+from pathlib import Path
+
+from lichen.sim.metrics import Metrics, compare_metrics
 from lichen.sim.simulation import Simulation
 
 
@@ -142,6 +145,176 @@ class TestMetricsUnit:
 
         assert len(m._tx_start_times) == threshold + 10
 
+    def test_latency_percentiles(self) -> None:
+        """Test p50, p95, p99 latency percentile calculations."""
+        m = Metrics()
+        # Create 100 latency samples: 1, 2, 3, ..., 100 us.
+        for i in range(100):
+            tx = f"tx{i}"
+            m.record_transmission_start(tx, 0)
+            m.record_reception(f"rx{i}", tx, i + 1)
+
+        # Nearest-rank method: idx = int(p/100 * n) clamped to [0, n-1].
+        # For 100 samples [1..100]: p50 -> idx 50 -> value 51.
+        assert m.latency_p50() == 51  # 50th percentile
+        assert m.latency_p95() == 96  # 95th percentile
+        assert m.latency_p99() == 100  # 99th percentile (clamped to last)
+
+        stats = m.latency_stats()
+        assert stats.p50_us == 51
+        assert stats.p95_us == 96
+        assert stats.p99_us == 100
+
+    def test_latency_percentiles_empty(self) -> None:
+        """Test percentiles return None when no samples."""
+        m = Metrics()
+        assert m.latency_p50() is None
+        assert m.latency_p95() is None
+        assert m.latency_p99() is None
+        stats = m.latency_stats()
+        assert stats.p50_us is None
+
+    def test_latency_percentiles_single_sample(self) -> None:
+        """Test percentiles with single sample."""
+        m = Metrics()
+        m.record_transmission_start("tx1", 0)
+        m.record_reception("rx1", "tx1", 100)
+        assert m.latency_p50() == 100
+        assert m.latency_p99() == 100
+
+    def test_per_channel_collision_tracking(self) -> None:
+        """Test collisions are tracked per-channel."""
+        m = Metrics()
+        m.record_collision("rx1", ["tx1", "tx2"], channel=0)
+        m.record_collision("rx2", ["tx3", "tx4"], channel=0)
+        m.record_collision("rx3", ["tx5", "tx6"], channel=1)
+
+        assert m.collisions == 3
+        by_channel = m.collisions_by_channel
+        assert by_channel[0] == 2
+        assert by_channel[1] == 1
+
+    def test_per_node_collision_tracking(self) -> None:
+        """Test collisions are tracked per-node."""
+        m = Metrics()
+        m.record_collision("nodeA", ["tx1", "tx2"])
+        m.record_collision("nodeA", ["tx3", "tx4"])
+        m.record_collision("nodeB", ["tx5", "tx6"])
+
+        assert m.collisions == 3
+        by_node = m.collisions_by_node
+        assert by_node["nodeA"] == 2
+        assert by_node["nodeB"] == 1
+
+    def test_collision_without_channel(self) -> None:
+        """Test collision recording works without channel parameter."""
+        m = Metrics()
+        m.record_collision("rx", ["tx1", "tx2"])
+        assert m.collisions == 1
+        assert len(m.collisions_by_channel) == 0
+        assert m.collisions_by_node["rx"] == 1
+
+    def test_csv_export_basic(self) -> None:
+        """Test CSV export creates valid file with expected data."""
+        m = Metrics()
+        m.record_transmission_start("tx1", 0)
+        m.record_reception("rx1", "tx1", 100)
+        m.record_collision("rx2", ["tx1", "tx2"], channel=0, time_us=200)
+
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            path = Path(f.name)
+
+        try:
+            m.export_csv(path)
+            content = path.read_text()
+
+            # Check summary statistics are present.
+            assert "transmissions,1" in content
+            assert "receptions,1" in content
+            assert "collisions,1" in content
+            assert "latency_min_us,100" in content
+
+            # Check per-channel section.
+            assert "# Collisions by Channel" in content
+            assert "0,1" in content  # channel 0, 1 collision
+
+            # Check per-node section.
+            assert "# Collisions by Node" in content
+            assert "rx2,1" in content
+
+            # Check time-series section.
+            assert "# Time-Series Events" in content
+            assert "reception" in content
+            assert "collision" in content
+        finally:
+            path.unlink()
+
+    def test_csv_export_empty_metrics(self) -> None:
+        """Test CSV export works with empty metrics."""
+        m = Metrics()
+
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            path = Path(f.name)
+
+        try:
+            m.export_csv(path)
+            content = path.read_text()
+            assert "transmissions,0" in content
+            assert "receptions,0" in content
+        finally:
+            path.unlink()
+
+    def test_snapshot_includes_percentiles(self) -> None:
+        """Test snapshot includes percentile data."""
+        m = Metrics()
+        for i in range(10):
+            m.record_transmission_start(f"tx{i}", 0)
+            m.record_reception(f"rx{i}", f"tx{i}", (i + 1) * 10)
+
+        snap = m.snapshot()
+        assert "p50" in snap["latency_us"]
+        assert "p95" in snap["latency_us"]
+        assert "p99" in snap["latency_us"]
+        assert snap["latency_us"]["p50"] is not None
+
+    def test_snapshot_includes_per_channel_collisions(self) -> None:
+        """Test snapshot includes per-channel collision data."""
+        m = Metrics()
+        m.record_collision("rx", ["tx1", "tx2"], channel=5)
+
+        snap = m.snapshot()
+        assert "collisions_by_channel" in snap
+        assert snap["collisions_by_channel"][5] == 1
+
+    def test_snapshot_includes_per_node_collisions(self) -> None:
+        """Test snapshot includes per-node collision data."""
+        m = Metrics()
+        m.record_collision("nodeX", ["tx1", "tx2"])
+
+        snap = m.snapshot()
+        assert "collisions_by_node" in snap
+        assert snap["collisions_by_node"]["nodeX"] == 1
+
+    def test_reset_clears_new_fields(self) -> None:
+        """Test reset clears percentile samples and collision tracking."""
+        m = Metrics()
+        m.record_transmission_start("tx1", 0)
+        m.record_reception("rx1", "tx1", 100)
+        m.record_collision("rx2", ["tx1", "tx2"], channel=0, time_us=200)
+
+        assert len(m._latency_samples) > 0
+        assert len(m._collisions_by_channel) > 0
+        assert len(m._collisions_by_node) > 0
+        assert len(m._time_series) > 0
+
+        m.reset()
+
+        assert len(m._latency_samples) == 0
+        assert len(m._collisions_by_channel) == 0
+        assert len(m._collisions_by_node) == 0
+        assert len(m._time_series) == 0
+        assert m.latency_p50() is None
+
 
 class TestMetricsIntegration:
     """Metrics wired into the Simulation engine via real TX/RX flows."""
@@ -212,3 +385,463 @@ class TestMetricsIntegration:
         assert result is not None  # strong signal captured
         assert sim.metrics.receptions == 1
         assert sim.metrics.collisions == 0
+
+
+class TestMetricsComparison:
+    """Tests for A/B testing metrics comparison."""
+
+    def test_compare_identical_metrics(self) -> None:
+        """Identical metrics should show no significant changes."""
+        snapshot = {
+            "transmissions": 100,
+            "receptions": 90,
+            "collisions": 5,
+            "delivery_rate": 0.9,
+            "collision_rate": 0.05,
+            "latency_us": {"min": 100, "max": 500, "mean": 250, "p50": 240, "p95": 450, "p99": 490},
+        }
+        diff = compare_metrics(snapshot, snapshot)
+        assert diff.significant_improvements == 0
+        assert diff.significant_degradations == 0
+        assert diff.overall_verdict == "neutral"
+        for change in diff.changes:
+            assert not change.significant
+            assert change.direction == "unchanged"
+
+    def test_compare_improved_delivery_rate(self) -> None:
+        """Higher delivery rate should be flagged as improvement."""
+        baseline = {
+            "transmissions": 100,
+            "receptions": 80,
+            "collisions": 10,
+            "delivery_rate": 0.8,
+            "collision_rate": 0.11,
+            "latency_us": {"min": 100, "max": 500, "mean": 250, "p50": 240, "p95": 450, "p99": 490},
+        }
+        variant = {
+            "transmissions": 100,
+            "receptions": 95,
+            "collisions": 3,
+            "delivery_rate": 0.95,  # improved
+            "collision_rate": 0.03,  # improved (lower)
+            "latency_us": {"min": 100, "max": 500, "mean": 250, "p50": 240, "p95": 450, "p99": 490},
+        }
+        diff = compare_metrics(baseline, variant)
+
+        # Find delivery_rate change.
+        dr_change = next(c for c in diff.changes if c.name == "delivery_rate")
+        assert dr_change.significant
+        assert dr_change.direction == "improved"
+        assert dr_change.delta > 0
+
+        # Find collision_rate change.
+        cr_change = next(c for c in diff.changes if c.name == "collision_rate")
+        assert cr_change.significant
+        assert cr_change.direction == "improved"  # lower is better
+        assert cr_change.delta < 0
+
+        assert diff.significant_improvements >= 2
+        assert diff.overall_verdict == "better"
+
+    def test_compare_degraded_latency(self) -> None:
+        """Higher latency should be flagged as degradation."""
+        baseline = {
+            "transmissions": 100,
+            "receptions": 90,
+            "collisions": 5,
+            "delivery_rate": 0.9,
+            "collision_rate": 0.05,
+            "latency_us": {"min": 100, "max": 500, "mean": 200, "p50": 180, "p95": 400, "p99": 480},
+        }
+        variant = {
+            "transmissions": 100,
+            "receptions": 90,
+            "collisions": 5,
+            "delivery_rate": 0.9,
+            "collision_rate": 0.05,
+            # worse latency
+            "latency_us": {
+                "min": 150, "max": 800, "mean": 400, "p50": 360, "p95": 700, "p99": 780
+            },
+        }
+        diff = compare_metrics(baseline, variant)
+
+        # Latency increases should be degradations.
+        mean_change = next(c for c in diff.changes if c.name == "latency_mean_us")
+        assert mean_change.significant
+        assert mean_change.direction == "degraded"
+        assert mean_change.delta > 0  # variant > baseline
+
+        assert diff.significant_degradations >= 1
+        assert diff.overall_verdict == "worse"
+
+    def test_compare_mixed_changes(self) -> None:
+        """Mixed improvements and degradations should balance out."""
+        baseline = {
+            "transmissions": 100,
+            "receptions": 80,
+            "collisions": 10,
+            "delivery_rate": 0.8,
+            "collision_rate": 0.11,
+            "latency_us": {"min": 100, "max": 500, "mean": 200, "p50": 180, "p95": 400, "p99": 480},
+        }
+        variant = {
+            "transmissions": 100,
+            "receptions": 95,  # better
+            "collisions": 3,  # better
+            "delivery_rate": 0.95,  # better
+            "collision_rate": 0.03,  # better
+            # worse latency
+            "latency_us": {
+                "min": 150, "max": 800, "mean": 400, "p50": 360, "p95": 700, "p99": 780
+            },
+        }
+        diff = compare_metrics(baseline, variant)
+
+        # Should have both improvements and degradations.
+        assert diff.significant_improvements > 0
+        assert diff.significant_degradations > 0
+
+    def test_compare_threshold_adjustment(self) -> None:
+        """Custom threshold should affect significance detection."""
+        baseline = {
+            "transmissions": 100, "receptions": 100, "collisions": 0,
+            "delivery_rate": 1.0, "collision_rate": 0.0,
+        }
+        variant = {
+            "transmissions": 100, "receptions": 103, "collisions": 0,
+            "delivery_rate": 1.03, "collision_rate": 0.0,
+        }
+
+        # 3% change with default 5% threshold -> not significant.
+        diff_default = compare_metrics(baseline, variant)
+        dr_default = next(c for c in diff_default.changes if c.name == "delivery_rate")
+        assert not dr_default.significant
+
+        # 3% change with 2% threshold -> significant.
+        diff_strict = compare_metrics(baseline, variant, threshold=0.02)
+        dr_strict = next(c for c in diff_strict.changes if c.name == "delivery_rate")
+        assert dr_strict.significant
+
+    def test_compare_zero_baseline(self) -> None:
+        """Handle zero baseline gracefully."""
+        baseline = {
+            "transmissions": 0, "receptions": 0, "collisions": 0,
+            "delivery_rate": 0.0, "collision_rate": 0.0,
+        }
+        variant = {
+            "transmissions": 100, "receptions": 90, "collisions": 5,
+            "delivery_rate": 0.9, "collision_rate": 0.05,
+        }
+
+        diff = compare_metrics(baseline, variant)
+
+        # Non-zero from zero should be significant.
+        tx_change = next(c for c in diff.changes if c.name == "transmissions")
+        assert tx_change.significant
+        assert tx_change.pct_change == float("inf")  # undefined but represented as inf
+
+    def test_compare_missing_latency(self) -> None:
+        """Handle missing latency data gracefully."""
+        baseline = {
+            "transmissions": 100, "receptions": 90, "collisions": 5,
+            "delivery_rate": 0.9, "collision_rate": 0.05,
+        }
+        variant = {
+            "transmissions": 100, "receptions": 90, "collisions": 5,
+            "delivery_rate": 0.9, "collision_rate": 0.05,
+        }
+
+        # No latency_us key should not cause errors.
+        diff = compare_metrics(baseline, variant)
+        assert diff.overall_verdict == "neutral"
+
+    def test_diff_to_dict(self) -> None:
+        """MetricsDiff.to_dict returns JSON-serializable output."""
+        baseline = {
+            "transmissions": 100, "receptions": 80, "collisions": 10,
+            "delivery_rate": 0.8, "collision_rate": 0.11,
+        }
+        variant = {
+            "transmissions": 100, "receptions": 95, "collisions": 3,
+            "delivery_rate": 0.95, "collision_rate": 0.03,
+        }
+
+        diff = compare_metrics(baseline, variant)
+        d = diff.to_dict()
+
+        assert "changes" in d
+        assert "significant_improvements" in d
+        assert "significant_degradations" in d
+        assert "overall_verdict" in d
+        assert isinstance(d["changes"], list)
+        assert all(isinstance(c, dict) for c in d["changes"])
+
+    def test_diff_summary(self) -> None:
+        """MetricsDiff.summary returns human-readable output."""
+        baseline = {
+            "transmissions": 100, "receptions": 80, "collisions": 10,
+            "delivery_rate": 0.8, "collision_rate": 0.11,
+        }
+        variant = {
+            "transmissions": 100, "receptions": 95, "collisions": 3,
+            "delivery_rate": 0.95, "collision_rate": 0.03,
+        }
+
+        diff = compare_metrics(baseline, variant)
+        summary = diff.summary()
+
+        assert "A/B Test Result" in summary
+        assert "Improvements" in summary
+        assert "Degradations" in summary
+        assert "Significant changes" in summary
+
+    def test_real_simulation_comparison(self) -> None:
+        """Integration test: compare snapshots from real simulations."""
+        # Create baseline simulation.
+        sim_baseline = Simulation(sim_id="baseline")
+        sim_baseline.add_node("tx", 0.0, 0.0, 0.0)
+        sim_baseline.add_node("rx", 100.0, 0.0, 0.0)
+        for i in range(10):
+            sim_baseline.start_transmission("tx", f"packet{i}".encode())
+            sim_baseline.advance_to((i + 1) * 10000)
+            sim_baseline.get_rx_result("rx")
+        baseline_snap = sim_baseline.metrics.snapshot()
+
+        # Create variant simulation with different conditions.
+        sim_variant = Simulation(sim_id="variant")
+        sim_variant.add_node("tx", 0.0, 0.0, 0.0)
+        sim_variant.add_node("rx", 100.0, 0.0, 0.0)
+        for i in range(10):
+            sim_variant.start_transmission("tx", f"packet{i}".encode())
+            sim_variant.advance_to((i + 1) * 10000)
+            sim_variant.get_rx_result("rx")
+        variant_snap = sim_variant.metrics.snapshot()
+
+        # Compare the two runs.
+        diff = compare_metrics(baseline_snap, variant_snap)
+
+        # Both runs are identical, so no significant changes.
+        assert diff.overall_verdict == "neutral"
+        assert diff.significant_improvements == 0
+        assert diff.significant_degradations == 0
+
+
+class TestMetricsTimeSeries:
+    """Tests for MetricsTimeSeries class for dashboard visualization."""
+
+    def test_time_series_empty(self) -> None:
+        """Empty time series returns no samples."""
+        from lichen.sim.metrics import MetricsTimeSeries
+
+        ts = MetricsTimeSeries()
+        assert len(ts) == 0
+        assert ts.get_latest() is None
+        assert ts.get_samples() == []
+        assert ts.to_dict_list() == []
+
+    def test_time_series_records_samples(self) -> None:
+        """Time series records samples at the specified interval."""
+        from lichen.sim.metrics import MetricsTimeSeries
+
+        ts = MetricsTimeSeries(sample_interval_us=1_000_000)  # 1 second
+
+        # Should sample immediately for first entry
+        assert ts.should_sample(0)
+        sample1 = ts.record_sample(0, 0.9, 0.1, 0.01, 10, 9, 1)
+        assert sample1.time_us == 0
+        assert sample1.delivery_rate == 0.9
+
+        # Should not sample before interval
+        assert not ts.should_sample(500_000)
+
+        # Should sample after interval
+        assert ts.should_sample(1_000_000)
+        sample2 = ts.record_sample(1_000_000, 0.95, 0.05, 0.02, 20, 19, 1)
+
+        assert len(ts) == 2
+        samples = ts.get_samples()
+        assert len(samples) == 2
+        assert samples[0].time_us == 0
+        assert samples[1].time_us == 1_000_000
+
+    def test_time_series_since_filter(self) -> None:
+        """get_samples(since_us) filters out older samples."""
+        from lichen.sim.metrics import MetricsTimeSeries
+
+        ts = MetricsTimeSeries(sample_interval_us=1_000_000)
+        ts.record_sample(0, 0.9, 0.1, 0.01, 10, 9, 1)
+        ts.record_sample(1_000_000, 0.92, 0.08, 0.015, 20, 18, 2)
+        ts.record_sample(2_000_000, 0.95, 0.05, 0.02, 30, 28, 2)
+
+        samples = ts.get_samples(since_us=1_000_000)
+        assert len(samples) == 1  # Only the one at 2_000_000
+        assert samples[0].time_us == 2_000_000
+
+    def test_time_series_max_samples(self) -> None:
+        """Time series respects max_samples limit."""
+        from lichen.sim.metrics import MetricsTimeSeries
+
+        ts = MetricsTimeSeries(max_samples=3, sample_interval_us=1_000_000)
+        for i in range(5):
+            ts.record_sample(i * 1_000_000, 0.9, 0.1, 0.01, i, i, 0)
+
+        assert len(ts) == 3
+        samples = ts.get_samples()
+        # Should retain the most recent 3 samples
+        assert samples[0].time_us == 2_000_000
+        assert samples[1].time_us == 3_000_000
+        assert samples[2].time_us == 4_000_000
+
+    def test_time_series_to_dict_list(self) -> None:
+        """to_dict_list returns JSON-serializable dicts."""
+        from lichen.sim.metrics import MetricsTimeSeries
+
+        ts = MetricsTimeSeries(sample_interval_us=1_000_000)
+        ts.record_sample(0, 0.9, 0.1, 0.01, 10, 9, 1)
+
+        dicts = ts.to_dict_list()
+        assert len(dicts) == 1
+        d = dicts[0]
+        assert d["time_us"] == 0
+        assert d["delivery_rate"] == 0.9
+        assert d["collision_rate"] == 0.1
+        assert d["duty_cycle"] == 0.01
+        assert d["transmissions"] == 10
+        assert d["receptions"] == 9
+        assert d["collisions"] == 1
+
+    def test_time_series_clear(self) -> None:
+        """clear() removes all samples."""
+        from lichen.sim.metrics import MetricsTimeSeries
+
+        ts = MetricsTimeSeries(sample_interval_us=1_000_000)
+        ts.record_sample(0, 0.9, 0.1, 0.01, 10, 9, 1)
+        assert len(ts) == 1
+
+        ts.clear()
+        assert len(ts) == 0
+        assert ts.should_sample(0)  # Can sample again after clear
+
+
+class TestMetricsDashboard:
+    """Tests for dashboard metrics integration."""
+
+    def test_metrics_has_dashboard_time_series(self) -> None:
+        """Metrics class has dashboard_time_series property."""
+        m = Metrics()
+        ts = m.dashboard_time_series
+        assert ts is not None
+        assert len(ts) == 0
+
+    def test_metrics_record_dashboard_sample(self) -> None:
+        """record_dashboard_sample captures current metrics."""
+        m = Metrics()
+        m.record_transmission_start("tx1", 0)
+        m.record_reception("rx1", "tx1", 100)
+
+        sample = m.record_dashboard_sample(1_000_000)
+        assert sample is not None
+        assert sample.time_us == 1_000_000
+        assert sample.transmissions == 1
+        assert sample.receptions == 1
+        assert sample.delivery_rate == 1.0
+
+    def test_metrics_record_dashboard_sample_respects_interval(self) -> None:
+        """record_dashboard_sample returns None before interval."""
+        m = Metrics()
+        m.record_transmission_start("tx1", 0)
+
+        # First sample
+        sample1 = m.record_dashboard_sample(0)
+        assert sample1 is not None
+
+        # Before interval (1 second)
+        sample2 = m.record_dashboard_sample(500_000)
+        assert sample2 is None
+
+        # After interval
+        sample3 = m.record_dashboard_sample(1_000_000)
+        assert sample3 is not None
+
+    def test_metrics_get_dashboard_snapshot(self) -> None:
+        """get_dashboard_snapshot returns current and time-series data."""
+        m = Metrics()
+        m.record_transmission_start("tx1", 0)
+        m.record_reception("rx1", "tx1", 100)
+        m.set_duty_cycle(0.02)
+        m.record_dashboard_sample(0)
+
+        snap = m.get_dashboard_snapshot()
+
+        assert "current" in snap
+        assert snap["current"]["transmissions"] == 1
+        assert snap["current"]["receptions"] == 1
+        assert snap["current"]["duty_cycle"] == 0.02
+
+        assert "time_series" in snap
+        assert len(snap["time_series"]) == 1
+
+        assert "last_sample_time_us" in snap
+        assert snap["last_sample_time_us"] == 0
+
+    def test_metrics_snapshot_includes_duty_cycle(self) -> None:
+        """Metrics snapshot includes duty cycle."""
+        m = Metrics()
+        m.set_duty_cycle(0.05)
+
+        snap = m.snapshot()
+        assert "duty_cycle" in snap
+        assert snap["duty_cycle"] == 0.05
+
+    def test_metrics_reset_clears_dashboard(self) -> None:
+        """reset() clears dashboard time series."""
+        m = Metrics()
+        m.record_dashboard_sample(0)
+        m.set_duty_cycle(0.1)
+        assert len(m.dashboard_time_series) == 1
+        assert m.duty_cycle == 0.1
+
+        m.reset()
+
+        assert len(m.dashboard_time_series) == 0
+        assert m.duty_cycle == 0.0
+
+
+class TestMetricsDashboardIntegration:
+    """Integration tests for dashboard metrics with simulation."""
+
+    def test_simulation_records_dashboard_samples(self) -> None:
+        """Simulation records dashboard samples during advance_to."""
+        sim = Simulation(sim_id="dashboard_test")
+        sim.add_node("tx", 0.0, 0.0, 0.0)
+        sim.add_node("rx", 100.0, 0.0, 0.0)
+
+        # First transmission
+        sim.start_transmission("tx", b"hello")
+        sim.advance_to(1_000_000)  # 1 second - should trigger sample
+        sim.get_rx_result("rx")
+
+        # Check that a sample was recorded
+        ts = sim.metrics.dashboard_time_series
+        assert len(ts) >= 1
+
+        sample = ts.get_latest()
+        assert sample is not None
+        assert sample.transmissions >= 1
+
+    def test_simulation_dashboard_snapshot_api(self) -> None:
+        """get_dashboard_snapshot returns complete data."""
+        sim = Simulation(sim_id="dashboard_api_test")
+        sim.add_node("tx", 0.0, 0.0, 0.0)
+        sim.add_node("rx", 100.0, 0.0, 0.0)
+
+        for i in range(3):
+            sim.start_transmission("tx", f"msg{i}".encode())
+            sim.advance_to((i + 1) * 1_000_000)
+            sim.get_rx_result("rx")
+
+        snap = sim.metrics.get_dashboard_snapshot()
+
+        assert snap["current"]["transmissions"] == 3
+        assert len(snap["time_series"]) >= 1

@@ -16,12 +16,12 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 from lichen.sim.events import EventQueue, ObserverRegistry, SimulationObserver
-from lichen.sim.medium import Medium
+from lora_medium import Medium
 from lichen.sim.metrics import Metrics
 from lichen.sim.node import SimNode
 
 if TYPE_CHECKING:
-    from lichen.sim.chaos import ChaosEngine
+    from lora_medium import ChaosEngine
 
 logger = structlog.get_logger()
 
@@ -51,6 +51,55 @@ class TimeMode(Enum):
 
     BARRIER_SYNC = auto()
     REALTIME = auto()
+
+
+class PlaybackState:
+    """State for simulation playback controls.
+
+    Tracks whether simulation is paused and playback speed multiplier.
+    """
+
+    def __init__(self) -> None:
+        """Initialize playback state to playing at normal speed."""
+        self._paused: bool = False
+        self._speed: float = 1.0
+
+    @property
+    def paused(self) -> bool:
+        """Return whether simulation is paused."""
+        return self._paused
+
+    @paused.setter
+    def paused(self, value: bool) -> None:
+        """Set paused state."""
+        self._paused = value
+
+    @property
+    def speed(self) -> float:
+        """Return playback speed multiplier (1.0 = realtime)."""
+        return self._speed
+
+    @speed.setter
+    def speed(self, value: float) -> None:
+        """Set playback speed multiplier.
+
+        Args:
+            value: Speed multiplier. Must be positive. Values > 1 run faster,
+                values < 1 run slower.
+
+        Raises:
+            ValueError: If value is not positive.
+        """
+        if value <= 0:
+            raise ValueError(f"Speed must be positive, got {value}")
+        self._speed = value
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return playback state as dictionary."""
+        return {
+            "paused": self._paused,
+            "speed": self._speed,
+        }
 
 
 class SimulationBase:
@@ -127,6 +176,12 @@ class SimulationBase:
         self._listen_period_us = listen_period_us
         self._density_scale_factor = density_scale_factor
         self._realtime_epoch_us: int = time.monotonic_ns() // 1000
+        self._playback = PlaybackState()
+
+    @property
+    def playback(self) -> PlaybackState:
+        """Return the playback state for this simulation."""
+        return self._playback
 
     def enable_debug(self) -> None:
         """Enable enhanced debugging for this simulation instance."""

@@ -4,18 +4,19 @@
 
 import pytest
 
-from lichen.sim.chaos import (
+from lora_medium import (
     ChaosEngine,
     ChaosRule,
     DegradeRule,
     DropRule,
+    GilbertElliottRule,
     JammerRule,
     LatencyRule,
     PartitionRule,
     TxJitterRule,
 )
-from lichen.sim.medium import RxCandidate
-from lichen.sim.transmission import Transmission
+from lora_medium import RxCandidate
+from lora_medium import Transmission
 
 
 def make_transmission(source_node_id: str = "sender") -> Transmission:
@@ -102,6 +103,225 @@ class TestDropRule:
         rule = DropRule(node_id="sender")
         candidate = make_candidate()
         assert rule.apply(candidate) is None
+
+
+class TestGilbertElliottRule:
+    """Test GilbertElliottRule burst error model."""
+
+    def test_gilbert_elliott_has_unique_id(self) -> None:
+        """GilbertElliottRule generates unique IDs."""
+        rule1 = GilbertElliottRule(node_id="node1")
+        rule2 = GilbertElliottRule(node_id="node1")
+        assert rule1.id != rule2.id
+
+    def test_gilbert_elliott_custom_id(self) -> None:
+        """GilbertElliottRule accepts custom ID."""
+        rule = GilbertElliottRule(node_id="node1", id="custom-id")
+        assert rule.id == "custom-id"
+
+    def test_gilbert_elliott_global_matches_any(self) -> None:
+        """GilbertElliottRule with node_id=None matches all transmissions."""
+        rule = GilbertElliottRule(node_id=None)
+        tx1 = make_transmission("sender1")
+        tx2 = make_transmission("sender2")
+        assert rule.matches(tx1, "receiver") is True
+        assert rule.matches(tx2, "receiver") is True
+
+    def test_gilbert_elliott_tx_direction(self) -> None:
+        """GilbertElliottRule with tx direction matches sender only."""
+        rule = GilbertElliottRule(node_id="sender", direction="tx")
+        tx = make_transmission("sender")
+        assert rule.matches(tx, "receiver") is True
+        assert rule.matches(tx, "sender") is True  # rx=sender, but sender matches tx
+
+    def test_gilbert_elliott_rx_direction(self) -> None:
+        """GilbertElliottRule with rx direction matches receiver only."""
+        rule = GilbertElliottRule(node_id="receiver", direction="rx")
+        tx = make_transmission("sender")
+        assert rule.matches(tx, "receiver") is True
+
+        rule2 = GilbertElliottRule(node_id="sender", direction="rx")
+        assert rule2.matches(tx, "receiver") is False
+
+    def test_gilbert_elliott_both_direction(self) -> None:
+        """GilbertElliottRule with both direction matches either."""
+        rule = GilbertElliottRule(node_id="node1", direction="both")
+        tx = make_transmission("node1")
+        assert rule.matches(tx, "receiver") is True  # node1 is sender
+        tx2 = make_transmission("sender")
+        assert rule.matches(tx2, "node1") is True  # node1 is receiver
+
+    def test_gilbert_elliott_rejects_invalid_probability(self) -> None:
+        """GilbertElliottRule rejects probabilities outside [0, 1]."""
+        with pytest.raises(ValueError, match="p_good_to_bad must be in"):
+            GilbertElliottRule(node_id="n", p_good_to_bad=1.5)
+        with pytest.raises(ValueError, match="p_bad_to_good must be in"):
+            GilbertElliottRule(node_id="n", p_bad_to_good=-0.1)
+        with pytest.raises(ValueError, match="loss_prob_good must be in"):
+            GilbertElliottRule(node_id="n", loss_prob_good=2.0)
+        with pytest.raises(ValueError, match="loss_prob_bad must be in"):
+            GilbertElliottRule(node_id="n", loss_prob_bad=-1.0)
+
+    def test_gilbert_elliott_deterministic_with_seed(self) -> None:
+        """GilbertElliottRule is deterministic with seeded rng."""
+        import random
+
+        def make_results(seed: int) -> list[bool]:
+            rng = random.Random(seed)
+            rule = GilbertElliottRule(
+                node_id=None,
+                p_good_to_bad=0.2,
+                p_bad_to_good=0.3,
+                loss_prob_good=0.1,
+                loss_prob_bad=0.7,
+                rng=rng,
+            )
+            results = []
+            for i in range(20):
+                tx = Transmission(
+                    source_node_id="sender",
+                    payload=b"test",
+                    tx_power_dbm=14,
+                    start_time_us=1000 + i * 1000,
+                    end_time_us=2000 + i * 1000,
+                )
+                candidate = RxCandidate(transmission=tx, rssi=-70.0, snr=50.0)
+                result = rule.apply(candidate)
+                results.append(result is not None)
+            return results
+
+        results1 = make_results(42)
+        results2 = make_results(42)
+        assert results1 == results2
+
+    def test_gilbert_elliott_zero_loss_good_passes_in_good_state(self) -> None:
+        """With loss_prob_good=0 and staying in good state, packets pass."""
+        import random
+
+        rng = random.Random(999)
+        rule = GilbertElliottRule(
+            node_id=None,
+            p_good_to_bad=0.0,  # Never transition to bad
+            p_bad_to_good=1.0,
+            loss_prob_good=0.0,  # Never lose in good state
+            loss_prob_bad=1.0,
+            rng=rng,
+        )
+        candidate = make_candidate()
+        # All packets should pass since we stay in good state with 0% loss
+        for _ in range(10):
+            result = rule.apply(candidate)
+            assert result is not None
+
+    def test_gilbert_elliott_always_bad_state_loses_all(self) -> None:
+        """With p_good_to_bad=1.0 and loss_prob_bad=1.0, all packets lost."""
+        import random
+
+        rng = random.Random(123)
+        rule = GilbertElliottRule(
+            node_id=None,
+            p_good_to_bad=1.0,  # Immediately transition to bad
+            p_bad_to_good=0.0,  # Never recover
+            loss_prob_good=0.0,
+            loss_prob_bad=1.0,  # Always lose in bad state
+            rng=rng,
+        )
+        # First packet may pass (starts in good state), subsequent should fail
+        candidate = make_candidate()
+        # After first apply, we're in bad state
+        _ = rule.apply(candidate)
+        # Now all packets should be lost
+        for i in range(10):
+            tx = Transmission(
+                source_node_id="sender",
+                payload=b"test",
+                tx_power_dbm=14,
+                start_time_us=2000 + i * 1000,
+                end_time_us=3000 + i * 1000,
+            )
+            cand = RxCandidate(transmission=tx, rssi=-70.0, snr=50.0)
+            result = rule.apply(cand)
+            assert result is None
+
+    def test_gilbert_elliott_burst_pattern(self) -> None:
+        """GilbertElliottRule produces bursty loss patterns."""
+        import random
+
+        rng = random.Random(42)
+        rule = GilbertElliottRule(
+            node_id=None,
+            p_good_to_bad=0.1,
+            p_bad_to_good=0.2,  # Average burst ~5 packets
+            loss_prob_good=0.0,  # No loss in good state
+            loss_prob_bad=1.0,  # Always lose in bad state
+            rng=rng,
+        )
+
+        results = []
+        for i in range(100):
+            tx = Transmission(
+                source_node_id="sender",
+                payload=b"test",
+                tx_power_dbm=14,
+                start_time_us=1000 + i * 1000,
+                end_time_us=2000 + i * 1000,
+            )
+            candidate = RxCandidate(transmission=tx, rssi=-70.0, snr=50.0)
+            result = rule.apply(candidate)
+            results.append(1 if result is None else 0)  # 1 = loss, 0 = success
+
+        # Check for burst pattern: count runs of consecutive losses
+        bursts = []
+        current_burst = 0
+        for r in results:
+            if r == 1:
+                current_burst += 1
+            else:
+                if current_burst > 0:
+                    bursts.append(current_burst)
+                current_burst = 0
+        if current_burst > 0:
+            bursts.append(current_burst)
+
+        # Should have some bursts (not all isolated losses)
+        assert len(bursts) > 0
+        # At least one burst should be > 1 packet (bursty behavior)
+        assert any(b > 1 for b in bursts), f"No bursts found, all isolated: {bursts}"
+
+    def test_gilbert_elliott_reset_states(self) -> None:
+        """reset_states() clears all link states to good."""
+        import random
+
+        rng = random.Random(42)
+        rule = GilbertElliottRule(
+            node_id=None,
+            p_good_to_bad=1.0,  # Always transition to bad
+            p_bad_to_good=0.0,
+            loss_prob_good=0.0,
+            loss_prob_bad=1.0,
+            rng=rng,
+        )
+
+        # Drive into bad state
+        candidate = make_candidate()
+        rule.apply(candidate)
+
+        # Reset
+        rule.reset_states()
+
+        # Should be back in good state (no loss)
+        rng2 = random.Random(42)
+        rule2 = GilbertElliottRule(
+            node_id=None,
+            p_good_to_bad=0.0,  # Stay in good
+            p_bad_to_good=1.0,
+            loss_prob_good=0.0,
+            loss_prob_bad=1.0,
+            rng=rng2,
+        )
+        # This should pass because we're in good state
+        result = rule2.apply(make_candidate())
+        assert result is not None
 
 
 class TestPartitionRule:

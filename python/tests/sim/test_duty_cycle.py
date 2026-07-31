@@ -4,7 +4,7 @@
 
 import pytest
 
-from lichen.sim.duty_cycle import DutyCycleTracker
+from lora_medium import DutyCycleTracker
 
 
 class TestDutyCycleTracker:

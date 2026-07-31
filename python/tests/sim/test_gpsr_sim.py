@@ -353,8 +353,8 @@ class TestGPSRGreedyForwarding:
 
         PARANOID: Verify distance calculations, verify selection logic.
         """
-        # Our node is at origin (0, 0) in GPS coords
-        node_coords = (0.0, 0.0)
+        # Our node is at (1, 1) - not null island which is rejected as invalid GPS
+        node_coords = (1.0, 1.0)
 
         # Destination is at (10.0, 10.0) - northeast
         dst_coords = (10.0, 10.0)
@@ -610,8 +610,8 @@ class TestGPSRSimulationIntegration:
         identity_a = make_identity(50)
         identity_b = make_identity(51)
 
-        # GPS coords (for GPSR routing)
-        coords_a = (0.0, 0.0)
+        # GPS coords (for GPSR routing) - (1,1) not null island which is rejected
+        coords_a = (1.0, 1.0)
         coords_b = (5.0, 5.0)
 
         # Build B's announce with coords

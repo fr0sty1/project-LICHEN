@@ -457,3 +457,153 @@ async def test_renode_rx_timeout_delivered() -> None:
         await writer.wait_closed()
     finally:
         await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_barrier_sync_time_does_not_advance_without_rx_wait() -> None:
+    """Test BARRIER_SYNC: time does not advance until a node enters RX_WAIT.
+
+    This verifies the core HIL timing synchronization behavior:
+    - Simulation time stays frozen when no node is blocked on RX
+    - Time advances only when RX_WAIT creates a barrier condition
+    """
+    from lichen.sim.simulation import TimeMode
+
+    sim = Simulation("test", time_mode=TimeMode.BARRIER_SYNC)
+    server, port = await start_renode_server(sim, "test-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.01)
+
+        # Record initial time
+        initial_time = sim.current_time_us
+
+        # TX without entering RX - node is IDLE after TX completes
+        payload = b"test"
+        tx_msg = bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+        await _send_message(writer, tx_msg)
+        await _read_message(reader)  # TX_DONE
+
+        # Wait and verify time has NOT advanced (no node in RX_WAIT)
+        await asyncio.sleep(0.05)
+        assert sim.current_time_us == initial_time, (
+            f"Time should not advance without RX_WAIT: "
+            f"initial={initial_time}, now={sim.current_time_us}"
+        )
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_barrier_sync_time_advances_on_rx_enter() -> None:
+    """Test BARRIER_SYNC: time advances when node enters RX_WAIT.
+
+    Verifies that entering RX mode triggers time advancement to the next
+    simulation event (in this case, the RX timeout).
+    """
+    from lichen.sim.protocol import MSG_RX_TIMEOUT_PUSH, encode_rx_enter
+    from lichen.sim.simulation import TimeMode
+
+    sim = Simulation("test", time_mode=TimeMode.BARRIER_SYNC)
+    server, port = await start_renode_server(sim, "test-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.01)
+
+        initial_time = sim.current_time_us
+        timeout_us = 10_000  # 10ms timeout
+
+        # Enter RX mode - this should trigger time advancement
+        rx_enter_msg = encode_rx_enter(timeout_us)
+        await _send_message(writer, rx_enter_msg)
+
+        # Wait for timeout to fire (proves time advanced)
+        resp = await asyncio.wait_for(_read_message(reader), timeout=2.0)
+        assert resp[0] == MSG_RX_TIMEOUT_PUSH
+
+        # Verify time actually advanced by ~timeout_us
+        elapsed = sim.current_time_us - initial_time
+        assert elapsed >= timeout_us, (
+            f"Time should have advanced by at least {timeout_us}us, "
+            f"but only advanced by {elapsed}us"
+        )
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_simulation_driver_delivers_after_time_advance() -> None:
+    """Test that simulation driver delivers packets after time advances.
+
+    Verifies the two-phase delivery in _simulation_driver:
+    1. First deliver_pending_packets() call - no packets (TX in progress)
+    2. maybe_advance_time() - advances past TxEndEvent
+    3. Second deliver_pending_packets() - delivers the completed TX
+
+    This tests the critical path where a TX starts, then an RX node enters
+    RX mode, and the packet is delivered after time advances past the TX
+    end time. The successful packet delivery proves time must have advanced,
+    since a packet cannot be delivered before its TX completes (airtime > 0).
+    """
+    from lichen.sim.protocol import MSG_RX_PACKET, decode_rx_packet, encode_rx_enter
+    from lichen.sim.simulation import TimeMode
+
+    sim = Simulation("test", time_mode=TimeMode.BARRIER_SYNC)
+
+    # TX node at origin, RX node 50m away
+    tx_server, tx_port = await start_renode_server(
+        sim, "tx-node", port=0, position=(0.0, 0.0, 0.0)
+    )
+    rx_server, rx_port = await start_renode_server(
+        sim, "rx-node", port=0, position=(50.0, 0.0, 0.0)
+    )
+
+    try:
+        tx_reader, tx_writer = await asyncio.open_connection("127.0.0.1", tx_port)
+        rx_reader, rx_writer = await asyncio.open_connection("127.0.0.1", rx_port)
+        await asyncio.sleep(0.01)
+
+        # TX starts transmission (creates TxEndEvent in the future)
+        payload = b"timing sync test"
+        tx_msg = bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+        await _send_message(tx_writer, tx_msg)
+        tx_resp = await _read_message(tx_reader)
+        assert tx_resp[0] == 0x11  # TX_DONE
+        airtime_us = struct.unpack("<I", tx_resp[1:5])[0]
+        assert airtime_us > 0, "TX must have non-zero airtime"
+
+        # RX enters receive mode - this triggers time advancement
+        # Time must advance past TX end for packet to be deliverable
+        rx_enter_msg = encode_rx_enter(1_000_000)  # 1s timeout
+        await _send_message(rx_writer, rx_enter_msg)
+
+        # Wait for RX_PACKET - successful delivery proves:
+        # 1. Time advanced past TX end (packet can't arrive before TX completes)
+        # 2. Simulation driver's two-phase delivery works correctly
+        # 3. The barrier sync allowed time advancement when RX entered RX_WAIT
+        rx_resp = await asyncio.wait_for(_read_message(rx_reader), timeout=2.0)
+        assert rx_resp[0] == MSG_RX_PACKET, "Should receive RX_PACKET after time advances"
+
+        rx_payload, rssi, snr = decode_rx_packet(rx_resp[1:])
+        assert rx_payload == payload, "Received payload should match transmitted"
+        assert rssi < 0, "RSSI should be negative (dBm)"
+
+        # No additional packet should be pending
+        with pytest.raises(TimeoutError):
+            await asyncio.wait_for(_read_message(rx_reader), timeout=0.05)
+
+        tx_writer.close()
+        rx_writer.close()
+        await tx_writer.wait_closed()
+        await rx_writer.wait_closed()
+    finally:
+        await tx_server.stop()
+        await rx_server.stop()

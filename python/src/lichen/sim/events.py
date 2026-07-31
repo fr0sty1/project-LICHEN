@@ -309,6 +309,76 @@ class SimulationObserver(Protocol):
         """
         ...
 
+    def on_node_state_change(
+        self,
+        sim_id: str,
+        node_id: str,
+        state: str,
+        time_us: int,
+    ) -> None:
+        """Called when a node's radio state changes (IDLE/TX/RX_WAIT).
+
+        Args:
+            sim_id: Simulation identifier.
+            node_id: Node ID.
+            state: New state name (IDLE, TX, or RX_WAIT).
+            time_us: Simulation time in microseconds.
+        """
+        ...
+
+    def on_tx_propagation(
+        self,
+        sim_id: str,
+        node_id: str,
+        tx_id: str,
+        x: float,
+        y: float,
+        z: float,
+        max_range_m: float,
+        duration_us: int,
+        time_us: int,
+    ) -> None:
+        """Called when a transmission starts, with propagation visualization data.
+
+        This event provides position and range information for visualizing
+        transmission propagation as an expanding wavefront.
+
+        Args:
+            sim_id: Simulation identifier.
+            node_id: Transmitting node ID.
+            tx_id: Unique transmission identifier.
+            x: X coordinate of transmitter in meters.
+            y: Y coordinate of transmitter in meters.
+            z: Z coordinate (altitude) of transmitter in meters.
+            max_range_m: Maximum propagation range in meters (at sensitivity threshold).
+            duration_us: Total transmission duration in microseconds.
+            time_us: Simulation time in microseconds.
+        """
+        ...
+
+    def on_collision_visual(
+        self,
+        sim_id: str,
+        node_id: str,
+        tx_ids: list[str],
+        tx_positions: list[tuple[float, float, float]],
+        time_us: int,
+    ) -> None:
+        """Called when a collision is detected, with position data for visualization.
+
+        This event provides detailed position information for visualizing
+        collisions with distinct visual treatment (e.g., highlighting
+        the overlap region of colliding transmissions).
+
+        Args:
+            sim_id: Simulation identifier.
+            node_id: Receiving node ID where collision occurred.
+            tx_ids: List of transmission IDs that collided.
+            tx_positions: List of (x, y, z) positions of colliding transmitters.
+            time_us: Simulation time in microseconds.
+        """
+        ...
+
 
 class ObserverRegistry:
     """Thread-safe registry for simulation observers.

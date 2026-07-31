@@ -352,6 +352,146 @@ class WebSocketObserver:
             node_id=node_id,
         )
 
+    def on_node_state_change(
+        self,
+        sim_id: str,
+        node_id: str,
+        state: str,
+        time_us: int,
+    ) -> None:
+        """Broadcast node state change (IDLE/TX/RX_WAIT)."""
+        self._broadcast(
+            "node_state",
+            node_id=node_id,
+            state=state,
+            time_us=time_us,
+        )
+
+    def on_tdma_slot_assigned(
+        self,
+        sim_id: str,
+        node_id: str,
+        slot: int,
+        num_slots: int,
+        state: str,
+        time_us: int,
+    ) -> None:
+        """Broadcast TDMA slot assignment change."""
+        self._broadcast(
+            "tdma_slot_assigned",
+            node_id=node_id,
+            slot=slot,
+            num_slots=num_slots,
+            state=state,
+            time_us=time_us,
+        )
+
+    def on_tdma_sync(
+        self,
+        sim_id: str,
+        node_id: str,
+        sfn: int,
+        slot: int,
+        state: str,
+        time_us: int,
+    ) -> None:
+        """Broadcast TDMA synchronization event."""
+        self._broadcast(
+            "tdma_sync",
+            node_id=node_id,
+            sfn=sfn,
+            slot=slot,
+            state=state,
+            time_us=time_us,
+        )
+
+    def on_tdma_conflict(
+        self,
+        sim_id: str,
+        slot: int,
+        nodes: list[str],
+        time_us: int,
+    ) -> None:
+        """Broadcast TDMA slot conflict (multiple nodes in same slot)."""
+        self._broadcast(
+            "tdma_conflict",
+            slot=slot,
+            nodes=nodes,
+            time_us=time_us,
+        )
+
+    def on_tx_propagation(
+        self,
+        sim_id: str,
+        node_id: str,
+        tx_id: str,
+        x: float,
+        y: float,
+        z: float,
+        max_range_m: float,
+        duration_us: int,
+        time_us: int,
+    ) -> None:
+        """Broadcast transmission propagation data for visualization.
+
+        Provides position and range for animating the transmission wavefront.
+        """
+        self._broadcast(
+            "tx_propagation",
+            node_id=node_id,
+            tx_id=tx_id,
+            x=x,
+            y=y,
+            z=z,
+            max_range_m=max_range_m,
+            duration_us=duration_us,
+            time_us=time_us,
+        )
+
+    def on_collision_visual(
+        self,
+        sim_id: str,
+        node_id: str,
+        tx_ids: list[str],
+        tx_positions: list[tuple[float, float, float]],
+        time_us: int,
+    ) -> None:
+        """Broadcast collision with position data for distinct visual treatment."""
+        self._broadcast(
+            "collision_visual",
+            node_id=node_id,
+            tx_ids=tx_ids,
+            tx_positions=tx_positions,
+            time_us=time_us,
+        )
+
+    def on_metrics_sample(
+        self,
+        sim_id: str,
+        time_us: int,
+        delivery_rate: float,
+        collision_rate: float,
+        duty_cycle: float,
+        transmissions: int,
+        receptions: int,
+        collisions: int,
+    ) -> None:
+        """Broadcast a metrics sample for real-time dashboard updates.
+
+        Sent at regular intervals (e.g., once per second) to update
+        time-series charts in connected dashboards.
+        """
+        self._broadcast(
+            "metrics_sample",
+            time_us=time_us,
+            delivery_rate=delivery_rate,
+            collision_rate=collision_rate,
+            duty_cycle=duty_cycle,
+            transmissions=transmissions,
+            receptions=receptions,
+            collisions=collisions,
+        )
+
 
 async def handle_websocket(
     websocket: WebSocket,

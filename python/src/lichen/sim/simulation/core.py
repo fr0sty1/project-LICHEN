@@ -8,7 +8,7 @@ class with all behavior mixins.
 
 from __future__ import annotations
 
-from lichen.sim.simulation.base import SimulationBase, TimeMode
+from lichen.sim.simulation.base import PlaybackState, SimulationBase, TimeMode
 from lichen.sim.simulation.event_handlers import EventHandlersMixin
 from lichen.sim.simulation.nodes import NodeManagementMixin
 from lichen.sim.simulation.radio import RadioMixin
@@ -51,4 +51,4 @@ class Simulation(
     pass
 
 
-__all__ = ["Simulation", "TimeMode"]
+__all__ = ["PlaybackState", "Simulation", "TimeMode"]

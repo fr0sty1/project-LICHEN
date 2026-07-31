@@ -13,7 +13,7 @@ from collections.abc import AsyncGenerator
 import pytest
 
 from lichen.radio.sim_client import SimRadio
-from lichen.sim.propagation import PropagationModel
+from lora_medium import PropagationModel
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 
@@ -554,7 +554,7 @@ class TestChaosMonkeyOperations:
             assert result is not None
 
             # Add drop rule for tx node
-            from lichen.sim.chaos import DropRule
+            from lora_medium import DropRule
 
             drop_rule = DropRule(node_id="tx", direction="tx")
             chaos_engine.add_rule(drop_rule)
@@ -597,7 +597,7 @@ class TestChaosMonkeyOperations:
             assert await radio_b1.receive(1000) is not None
 
             # Add partition: group A = {a1, a2}, group B = {b1}
-            from lichen.sim.chaos import PartitionRule
+            from lora_medium import PartitionRule
 
             partition = PartitionRule(groups=[{"a1", "a2"}, {"b1"}])
             chaos_engine.add_rule(partition)
@@ -635,7 +635,7 @@ class TestChaosMonkeyOperations:
             baseline_rssi = result1[1]
 
             # Add 20dB degradation
-            from lichen.sim.chaos import DegradeRule
+            from lora_medium import DegradeRule
 
             degrade = DegradeRule(node_id="tx", rssi_penalty_db=20.0)
             chaos_engine.add_rule(degrade)

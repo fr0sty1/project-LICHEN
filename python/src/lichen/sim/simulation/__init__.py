@@ -11,6 +11,7 @@ backward compatibility.
 """
 
 from lichen.sim.simulation.base import (
+    PlaybackState,
     TimeMode,
     disable_debug,
     enable_debug,
@@ -19,6 +20,7 @@ from lichen.sim.simulation.base import (
 from lichen.sim.simulation.core import Simulation
 
 __all__ = [
+    "PlaybackState",
     "Simulation",
     "TimeMode",
     "disable_debug",

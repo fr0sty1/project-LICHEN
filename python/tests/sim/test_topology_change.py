@@ -29,7 +29,7 @@ from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
 from lichen.gradient import GradientTable
 from lichen.radio.sim_client import SimRadio
-from lichen.sim.chaos import DropRule, PartitionRule
+from lora_medium import DropRule, PartitionRule
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 

@@ -46,6 +46,7 @@ from lichen.schc.fragment import (
 )
 from lichen.schc.headers import compress_packet, decompress_packet
 from lichen.schc.reassembly import FragmentReceiver
+from lichen.sim.tdma import TDMAScheduler
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
@@ -1983,3 +1984,24 @@ def test_gradient_entry_vector_coverage() -> None:
     assert len(vectors["hop_count_comparison"]) >= 3
     assert len(vectors["combined_ranking"]) >= 4
     assert len(vectors["coordinate_encoding"]) >= 4
+
+
+# --- CCP TDMA Vectors ---
+
+
+def _ccp_tdma_cases():
+    doc = _load("ccp_tdma.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp_tdma_cases())
+def test_ccp_tdma_vectors(name: str, vector: dict) -> None:
+    """Validate TDMA slot assignment and guard time boundary vectors.
+
+    Cross-language oracle: tests hash_32-based slot assignment per spec
+    section 02a-coordinated-capacity.md, guard time boundaries, and drift
+    compensation calculations.
+    """
+    scheduler = TDMAScheduler()
+    assert scheduler.validate_vector(vector), f"{name}: validation failed"

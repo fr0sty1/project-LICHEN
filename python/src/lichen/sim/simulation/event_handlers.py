@@ -65,6 +65,9 @@ class EventHandlersMixin:
 
         self._current_time_us = time_us
 
+        # Record dashboard metrics sample if interval has elapsed
+        self._maybe_record_dashboard_sample(time_us)
+
     def process_next_event(self) -> Event | None:
         """Pop and process the next event from the queue.
 
@@ -263,3 +266,32 @@ class EventHandlersMixin:
         )
         self.process_next_event()
         return True
+
+    def _maybe_record_dashboard_sample(self, time_us: int) -> None:
+        """Record a dashboard metrics sample if the sampling interval has elapsed.
+
+        This is called during time advancement to capture periodic snapshots
+        of key metrics for real-time dashboard visualization.
+
+        Args:
+            time_us: Current simulation time in microseconds.
+        """
+        # Access metrics from base class
+        metrics = getattr(self, "_metrics", None)
+        if metrics is None:
+            return
+
+        sample = metrics.record_dashboard_sample(time_us)
+        if sample is not None:
+            # Notify observers to broadcast the sample over WebSocket
+            self._observers.notify(
+                "on_metrics_sample",
+                sim_id=self._id,
+                time_us=sample.time_us,
+                delivery_rate=sample.delivery_rate,
+                collision_rate=sample.collision_rate,
+                duty_cycle=sample.duty_cycle,
+                transmissions=sample.transmissions,
+                receptions=sample.receptions,
+                collisions=sample.collisions,
+            )

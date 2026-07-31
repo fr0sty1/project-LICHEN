@@ -16,7 +16,7 @@ import random
 
 import pytest
 
-from lichen.sim.chaos import ChaosEngine, TxJitterRule
+from lora_medium import ChaosEngine, TxJitterRule
 from lichen.sim.events import TxStartDelayedEvent
 from lichen.sim.simulation import Simulation
 
@@ -315,7 +315,7 @@ class TestChaosRuleOverridesDefault:
 
     def test_tx_jitter_rule_per_node_targeting(self) -> None:
         """TxJitterRule with node_id only matches that specific node."""
-        from lichen.sim.transmission import Transmission
+        from lora_medium import Transmission
 
         rule = TxJitterRule(
             jitter_min_us=1000,
@@ -343,7 +343,7 @@ class TestChaosRuleOverridesDefault:
 
     def test_tx_jitter_rule_global_when_no_node_id(self) -> None:
         """TxJitterRule with node_id=None matches all nodes."""
-        from lichen.sim.transmission import Transmission
+        from lora_medium import Transmission
 
         rule = TxJitterRule(
             jitter_min_us=1000,

@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from lichen.sim.propagation import (
+from lora_medium import (
     CAPTURE_THRESHOLD_DB,
     PATH_LOSS_FREE_SPACE,
     PATH_LOSS_INDOOR,

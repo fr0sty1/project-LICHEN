@@ -80,8 +80,13 @@ class TDMAScheduler:
             start = vector["slot_start_ms"] * 1000
             dur = vector.get("slot_duration_ms", 250) * 1000
             g = vector.get("guard_ms", 50) * 1000
-            in_window = (start - g) <= t <= (start + dur + g)
-            return in_window == (not vector.get("expected_in_guard", False))
+            # Pre-guard: [start - g, start)
+            # Data zone: [start, start + dur]
+            # Post-guard: (start + dur, start + dur + g]
+            in_pre_guard = (start - g) <= t < start
+            in_post_guard = (start + dur) < t <= (start + dur + g)
+            actual_in_guard = in_pre_guard or in_post_guard
+            return actual_in_guard == vector.get("expected_in_guard", False)
         if "local_beacon_rx_ms" in vector and "expected_beacon_ms" in vector:
             local = vector["local_beacon_rx_ms"]
             expected = vector["expected_beacon_ms"]

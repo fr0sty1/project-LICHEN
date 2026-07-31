@@ -174,6 +174,44 @@ class TestSimulationCRUD:
         assert "not found" in response.json()["error"]
 
     @pytest.mark.asyncio
+    async def test_get_dashboard_metrics(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/metrics/dashboard returns dashboard snapshot."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.get("/sim/sim1/metrics/dashboard")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "current" in data
+        assert "time_series" in data
+        assert "last_sample_time_us" in data
+        assert data["current"]["transmissions"] == 0
+        assert data["current"]["delivery_rate"] == 0.0
+        assert data["current"]["collision_rate"] == 0.0
+        assert data["current"]["duty_cycle"] == 0.0
+
+    @pytest.mark.asyncio
+    async def test_get_dashboard_metrics_with_since(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/metrics/dashboard?since_us filters time series."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Advance time to trigger some samples
+        await client.post("/sim/sim1/tick", json={"time_us": 2_000_000})
+        response = await client.get("/sim/sim1/metrics/dashboard?since_us=1000000")
+
+        assert response.status_code == 200
+        data = response.json()
+        # All samples should be after since_us
+        for sample in data["time_series"]:
+            assert sample["time_us"] > 1_000_000
+
+    @pytest.mark.asyncio
+    async def test_get_dashboard_metrics_not_found(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/metrics/dashboard returns 404 for unknown simulation."""
+        response = await client.get("/sim/unknown/metrics/dashboard")
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["error"]
+
+    @pytest.mark.asyncio
     async def test_delete_simulation(self, client: AsyncClient) -> None:
         """DELETE /sim/{id} removes simulation."""
         await client.post("/sim", json={"id": "sim1"})
@@ -857,3 +895,426 @@ class TestMultipleSimulations:
 
         assert len(sim1_rules) == 2
         assert len(sim2_rules) == 0
+
+
+class TestLinkQuality:
+    """Test link quality overlay endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_get_links_empty(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links returns empty list when no nodes."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.get("/sim/sim1/links")
+
+        assert response.status_code == 200
+        assert response.json()["links"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_links_single_node(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links returns empty list with single node."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/links")
+
+        assert response.status_code == 200
+        assert response.json()["links"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_links_two_nodes_close(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links returns link between close nodes."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+        await client.post("/sim/sim1/node", json={"id": "node2", "x": 100, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/links")
+
+        assert response.status_code == 200
+        links = response.json()["links"]
+        assert len(links) == 1
+
+        link = links[0]
+        assert link["from"] == "node1"
+        assert link["to"] == "node2"
+        assert link["distance_m"] == 100.0
+        assert "rssi_forward_dbm" in link
+        assert "rssi_reverse_dbm" in link
+        assert "snr_forward_db" in link
+        assert "snr_reverse_db" in link
+        assert "reachable_forward" in link
+        assert "reachable_reverse" in link
+        assert "asymmetric" in link
+        assert "quality" in link
+
+    @pytest.mark.asyncio
+    async def test_get_links_quality_levels(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links assigns quality levels based on RSSI margin."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Very close nodes should have excellent link quality
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+        await client.post("/sim/sim1/node", json={"id": "node2", "x": 10, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/links")
+        links = response.json()["links"]
+
+        assert len(links) == 1
+        # Very close nodes should have excellent quality
+        assert links[0]["quality"] in ["excellent", "good"]
+        assert links[0]["reachable_forward"] is True
+        assert links[0]["reachable_reverse"] is True
+
+    @pytest.mark.asyncio
+    async def test_get_links_multiple_nodes(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links returns links for all node pairs."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "n1", "x": 0, "y": 0, "z": 0})
+        await client.post("/sim/sim1/node", json={"id": "n2", "x": 100, "y": 0, "z": 0})
+        await client.post("/sim/sim1/node", json={"id": "n3", "x": 200, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/links")
+        links = response.json()["links"]
+
+        # 3 nodes = 3 unique pairs (n1-n2, n1-n3, n2-n3)
+        assert len(links) == 3
+
+        # Check all pairs are present
+        pairs = {(link["from"], link["to"]) for link in links}
+        assert ("n1", "n2") in pairs
+        assert ("n1", "n3") in pairs
+        assert ("n2", "n3") in pairs
+
+    @pytest.mark.asyncio
+    async def test_get_links_threshold_filter(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links filters links below threshold."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Put nodes very far apart (100km) so link is below default threshold
+        # With path loss exponent 2.7 and TX power 22 dBm, RSSI at 100km is about -150 dBm
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+        await client.post("/sim/sim1/node", json={"id": "node2", "x": 100000, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/links")
+        links = response.json()["links"]
+
+        # Very distant nodes should be filtered out (below -137 dBm)
+        assert len(links) == 0
+
+        # But with a lower threshold, they should appear
+        response = await client.get("/sim/sim1/links?threshold_db=-200")
+        links = response.json()["links"]
+        assert len(links) == 1
+
+    @pytest.mark.asyncio
+    async def test_get_links_invalid_threshold(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links rejects invalid threshold parameter."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.get("/sim/sim1/links?threshold_db=invalid")
+
+        assert response.status_code == 400
+        assert "must be a number" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_links_symmetric_same_power(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links shows symmetric links when nodes have same TX power."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+        await client.post("/sim/sim1/node", json={"id": "node2", "x": 100, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/links")
+        link = response.json()["links"][0]
+
+        # With same TX power, forward and reverse RSSI should be equal
+        assert link["rssi_forward_dbm"] == link["rssi_reverse_dbm"]
+        assert link["asymmetric"] is False
+
+    @pytest.mark.asyncio
+    async def test_get_links_asymmetric_different_power(self, api: SimulatorAPI) -> None:
+        """GET /sim/{id}/links detects asymmetric links with different TX power."""
+        from httpx import ASGITransport, AsyncClient
+
+        app = api.create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            await client.post("/sim", json={"id": "sim1"})
+            await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+            await client.post("/sim/sim1/node", json={"id": "node2", "x": 100, "y": 0, "z": 0})
+
+            # Set different TX powers (default is 22 dBm)
+            sim = api._simulations["sim1"]
+            node1 = sim.get_node("node1")
+            node2 = sim.get_node("node2")
+            node1.tx_power_dbm = 22
+            node2.tx_power_dbm = 10  # 12 dB lower
+
+            response = await client.get("/sim/sim1/links")
+            link = response.json()["links"][0]
+
+            # Forward (node1->node2) should be stronger than reverse
+            assert link["rssi_forward_dbm"] > link["rssi_reverse_dbm"]
+            assert link["asymmetric"] is True
+
+    @pytest.mark.asyncio
+    async def test_get_links_simulation_not_found(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links returns 404 for unknown simulation."""
+        response = await client.get("/sim/unknown/links")
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_links_3d_distance(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/links calculates correct 3D distance."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+        # 3-4-5 triangle: sqrt(3^2 + 4^2) = 5, then 5-12-13 with z
+        await client.post("/sim/sim1/node", json={"id": "node2", "x": 30, "y": 40, "z": 120})
+
+        response = await client.get("/sim/sim1/links")
+        link = response.json()["links"][0]
+
+        # Expected distance: sqrt(30^2 + 40^2 + 120^2) = sqrt(900+1600+14400) = sqrt(16900) = 130
+        assert link["distance_m"] == 130.0
+
+
+class TestTDMASlots:
+    """Test TDMA slot assignment visualization endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_get_tdma_slots_empty(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/tdma returns empty slots when no nodes."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.get("/sim/sim1/tdma")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "superframe" in data
+        assert data["superframe"]["num_slots"] == 8
+        assert data["superframe"]["slot_duration_ms"] == 250
+        assert data["superframe"]["guard_ms"] == 50
+        assert data["slots"] == [{"slot": i, "nodes": []} for i in range(8)]
+        assert data["conflicts"] == []
+        assert data["nodes"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_tdma_slots_with_nodes(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/tdma returns slot assignments for nodes."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+        await client.post("/sim/sim1/node", json={"id": "node2", "x": 100, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/tdma")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["nodes"]) == 2
+
+        # Each node should have slot assignment info
+        for node in data["nodes"]:
+            assert "id" in node
+            assert "assigned_slot" in node
+            assert "state" in node
+            assert "drift_us" in node
+
+    @pytest.mark.asyncio
+    async def test_get_tdma_slots_node_details(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/tdma returns correct node details."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/tdma")
+        data = response.json()
+
+        assert len(data["nodes"]) == 1
+        node = data["nodes"][0]
+        assert node["id"] == "node1"
+        assert 0 <= node["assigned_slot"] < 8
+        assert node["state"] == "UNSYNCED"  # Default state
+        assert node["drift_us"] == 0
+
+    @pytest.mark.asyncio
+    async def test_get_tdma_slots_shows_superframe_info(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/tdma returns superframe configuration."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+
+        response = await client.get("/sim/sim1/tdma")
+        data = response.json()
+
+        superframe = data["superframe"]
+        assert "sfn" in superframe
+        assert superframe["num_slots"] == 8
+        assert superframe["slot_duration_ms"] == 250
+        assert superframe["guard_ms"] == 50
+
+    @pytest.mark.asyncio
+    async def test_get_tdma_slots_simulation_not_found(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/tdma returns 404 for unknown simulation."""
+        response = await client.get("/sim/unknown/tdma")
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_tdma_slots_conflict_detection(self, api: SimulatorAPI) -> None:
+        """GET /sim/{id}/tdma detects slot conflicts when multiple synced nodes share a slot."""
+        from httpx import ASGITransport, AsyncClient
+        from lichen.sim.tdma import TDMAState
+
+        app = api.create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            await client.post("/sim", json={"id": "sim1"})
+            await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+            await client.post("/sim/sim1/node", json={"id": "node2", "x": 100, "y": 0, "z": 0})
+
+            # Manually force both nodes to same slot and SYNCED state
+            sim = api._simulations["sim1"]
+            node1 = sim.get_node("node1")
+            node2 = sim.get_node("node2")
+            node1.tdma_scheduler.assigned_slot = 3
+            node1.tdma_scheduler.state = TDMAState.SYNCED
+            node2.tdma_scheduler.assigned_slot = 3
+            node2.tdma_scheduler.state = TDMAState.SYNCED
+
+            response = await client.get("/sim/sim1/tdma")
+            data = response.json()
+
+            # Should detect conflict in slot 3
+            assert len(data["conflicts"]) == 1
+            conflict = data["conflicts"][0]
+            assert conflict["slot"] == 3
+            assert set(conflict["nodes"]) == {"node1", "node2"}
+            assert conflict["reason"] == "multiple_assignment"
+
+
+class TestPlaybackControls:
+    """Test playback control endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_get_playback(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/playback returns initial playback state."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.get("/sim/sim1/playback")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["paused"] is False
+        assert data["speed"] == 1.0
+        assert data["time_us"] == 0
+
+    @pytest.mark.asyncio
+    async def test_get_playback_not_found(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/playback returns 404 for unknown simulation."""
+        response = await client.get("/sim/unknown/playback")
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_playback_pause(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/playback/pause pauses simulation."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.post("/sim/sim1/playback/pause")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["paused"] is True
+
+    @pytest.mark.asyncio
+    async def test_playback_play(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/playback/play resumes simulation."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.post("/sim/sim1/playback/pause")  # First pause
+        response = await client.post("/sim/sim1/playback/play")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["paused"] is False
+
+    @pytest.mark.asyncio
+    async def test_playback_step(self, api: SimulatorAPI) -> None:
+        """POST /sim/{id}/playback/step processes one event."""
+        from httpx import ASGITransport, AsyncClient
+
+        app = api.create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            await client.post("/sim", json={"id": "sim1"})
+            await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+
+            # Queue an event by starting a receive
+            sim = api._simulations["sim1"]
+            sim.start_receive("node1", timeout_ms=100)
+
+            response = await client.post("/sim/sim1/playback/step")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["paused"] is True
+            assert data["event_processed"] is True
+            assert data["time_us"] == 100_000  # Timeout at 100ms
+
+    @pytest.mark.asyncio
+    async def test_playback_step_no_events(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/playback/step with no events returns event_processed=false."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.post("/sim/sim1/playback/step")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["paused"] is True
+        assert data["event_processed"] is False
+
+    @pytest.mark.asyncio
+    async def test_set_playback_speed(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback can set playback speed."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.patch("/sim/sim1/playback", json={"speed": 2.0})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["speed"] == 2.0
+
+    @pytest.mark.asyncio
+    async def test_set_playback_speed_invalid(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects non-positive speed."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.patch("/sim/sim1/playback", json={"speed": 0})
+
+        assert response.status_code == 400
+        assert "positive" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_set_playback_jump_to_time(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback can jump to specific time."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.patch("/sim/sim1/playback", json={"jump_to_us": 1_000_000})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["time_us"] == 1_000_000
+
+    @pytest.mark.asyncio
+    async def test_set_playback_jump_backwards_fails(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects jumping backwards in time."""
+        await client.post("/sim", json={"id": "sim1"})
+        await client.patch("/sim/sim1/playback", json={"jump_to_us": 1_000_000})
+        response = await client.patch("/sim/sim1/playback", json={"jump_to_us": 500_000})
+
+        assert response.status_code == 400
+        assert "backwards" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_playback_not_found(self, client: AsyncClient) -> None:
+        """Playback endpoints return 404 for unknown simulation."""
+        endpoints = [
+            ("POST", "/sim/unknown/playback/play"),
+            ("POST", "/sim/unknown/playback/pause"),
+            ("POST", "/sim/unknown/playback/step"),
+            ("PATCH", "/sim/unknown/playback"),
+        ]
+        for method, url in endpoints:
+            if method == "POST":
+                response = await client.post(url)
+            else:
+                response = await client.patch(url, json={"speed": 1.0})
+            assert response.status_code == 404, f"{method} {url} should return 404"

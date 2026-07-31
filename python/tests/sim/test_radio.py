@@ -7,7 +7,7 @@ import pytest
 from lichen.sim.events import RxTimeoutEvent, TxEndEvent
 from lichen.sim.node import NodeState
 from lichen.sim.simulation import Simulation
-from lichen.sim.transmission import airtime_us
+from lora_medium import airtime_us
 
 
 class TestTransmission:

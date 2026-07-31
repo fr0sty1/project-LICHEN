@@ -2,11 +2,35 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """TCP node server for LICHEN simulator.
 
+.. deprecated::
+    This module is deprecated in favor of :mod:`lichen.sim.renode_server`.
+    Use :func:`~lichen.sim.renode_server.start_renode_server` for new code.
+
 This module provides a TCP server that accepts connections from SimRadio clients
 and translates wire protocol messages into Simulation calls. Each client
 connection represents a single simulated node.
 
-Long-term, this module should be unified with or replaced by RenodeServer.
+Migration to RenodeServer
+-------------------------
+
+:class:`~lichen.sim.renode_server.RenodeServer` uses a simpler per-node
+architecture with push-based RX. Key differences:
+
++-------------------+---------------------------+---------------------------+
+| Feature           | NodeServer (deprecated)   | RenodeServer              |
++===================+===========================+===========================+
+| Nodes per server  | Multiple (REGISTER msg)   | One (fixed at creation)   |
++-------------------+---------------------------+---------------------------+
+| Duty cycle track  | Yes                       | No (add if needed)        |
++-------------------+---------------------------+---------------------------+
+| PCAP capture      | Yes                       | No (add via Simulation)   |
++-------------------+---------------------------+---------------------------+
+| Protocol          | REGISTER + TX/RX/CAD/TIME | TX/RX_ENTER/RX_EXIT only  |
++-------------------+---------------------------+---------------------------+
+
+Migration requires changing clients to open one connection per node instead of
+multiplexing via REGISTER. For Renode HIL testing, use RenodeServer directly.
+For SimRadio clients, update the client to use per-node connections.
 """
 
 from __future__ import annotations
@@ -15,9 +39,10 @@ import asyncio
 import contextlib
 import logging
 import struct
+import warnings
 from typing import TYPE_CHECKING
 
-from lichen.sim.duty_cycle import DutyCycleTracker
+from lora_medium import DutyCycleTracker
 from lichen.sim.protocol import (
     MAX_PAYLOAD_LENGTH,
     MSG_CAD,
@@ -42,7 +67,7 @@ from lichen.sim.protocol import (
     get_message_payload,
     get_message_type,
 )
-from lichen.sim.transmission import airtime_us
+from lora_medium import airtime_us
 
 if TYPE_CHECKING:
     from lichen.sim.pcap import PcapngWriter
@@ -112,11 +137,21 @@ class NodeServer:
     ) -> None:
         """Initialize the node server.
 
+        .. deprecated::
+            Use :class:`~lichen.sim.renode_server.RenodeServer` instead.
+
         Args:
             simulation: The Simulation instance to use for all nodes.
             pcap_writer: Optional PcapngWriter for packet capture.
             duty_cycle_limit: Maximum duty cycle as percentage (e.g., 1.0 for 1%).
         """
+        warnings.warn(
+            "NodeServer is deprecated, use RenodeServer from "
+            "lichen.sim.renode_server instead. See module docstring for "
+            "migration guide.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._simulation = simulation
         self._pcap_writer = pcap_writer
         self._duty_cycle_limit = duty_cycle_limit
@@ -462,6 +497,9 @@ async def start_node_server(
 ) -> asyncio.Server:
     """Start a TCP server for SimRadio client connections.
 
+    .. deprecated::
+        Use :func:`~lichen.sim.renode_server.start_renode_server` instead.
+
     Creates a NodeServer instance and starts an asyncio TCP server
     that routes connections to the NodeServer.
 
@@ -483,6 +521,7 @@ async def start_node_server(
         >>> server.close()
         >>> await server.wait_closed()
     """
+    # Note: NodeServer.__init__ already emits the deprecation warning
     node_server = NodeServer(simulation, pcap_writer=pcap_writer, duty_cycle_limit=duty_cycle_limit)
 
     server = await asyncio.start_server(

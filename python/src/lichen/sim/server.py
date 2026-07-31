@@ -34,7 +34,9 @@ class SimulatorServer:
     TCP server for node connections. The REST API provides endpoints for
     creating/deleting simulations and managing nodes and chaos rules.
 
-    Security note: When binding to non-localhost addresses, enable API
+    Security note: The CLI requires ``--allow-remote`` to bind to non-localhost
+    addresses (e.g., ``0.0.0.0`` or external IPs). This prevents accidental
+    network exposure. When binding to non-localhost addresses, enable API
     authentication by passing an ``api_token``. Without authentication,
     anyone who can reach the API port can control simulations.
 
@@ -182,7 +184,7 @@ class SimulatorServer:
             raise ValueError(f"Simulation '{sim_id}' already exists")
 
         # Create chaos engine and wire it to the simulation
-        from lichen.sim.chaos import ChaosEngine
+        from lora_medium import ChaosEngine
 
         chaos_engine = ChaosEngine()
         sim = Simulation(sim_id=sim_id, time_mode=time_mode, chaos_engine=chaos_engine)
@@ -330,6 +332,14 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help=(
+            "Allow binding to non-localhost addresses. Required for 0.0.0.0 or "
+            "external IPs. This is a safety measure to prevent accidental network exposure."
+        ),
+    )
+    parser.add_argument(
         "--api-token",
         metavar="TOKEN",
         default=None,
@@ -366,8 +376,27 @@ def main() -> None:
             print(f"ERROR: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # SECURITY: Warn when binding to non-localhost without authentication
+    # SECURITY: Refuse to bind to non-localhost unless --allow-remote is passed
     is_localhost = args.bind_address in ("127.0.0.1", "localhost", "::1")
+    if not is_localhost and not args.allow_remote:
+        print(
+            "ERROR: Binding to non-localhost requires --allow-remote flag.",
+            file=sys.stderr,
+        )
+        print(
+            "This is a safety measure to prevent accidental network exposure.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # SECURITY: Warn when binding to non-localhost (with --allow-remote)
+    if args.allow_remote and not is_localhost:
+        print(
+            f"WARNING: Binding to {args.bind_address} - API will be network-accessible",
+            file=sys.stderr,
+        )
+
+    # SECURITY: Warn when binding to non-localhost without authentication
     if not is_localhost and api_token is None:
         print(
             "WARNING: Binding to non-localhost address without authentication. "

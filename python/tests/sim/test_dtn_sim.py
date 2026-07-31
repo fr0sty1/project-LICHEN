@@ -467,6 +467,7 @@ class TestDtnBufferManagement:
         )
 
         now_unix = int(time.time())
+        now_mono = time.monotonic()
         iid = bytes([0xAA] * 8)
 
         # Buffer some expired and some valid messages
@@ -487,6 +488,7 @@ class TestDtnBufferManagement:
                 destination_iid=iid,
                 expiry_unix=expiry,
                 buffered_at_ms=1000,
+                monotonic_deadline=now_mono + delta,
             )
             router.dtn_buffer.append(msg)
 

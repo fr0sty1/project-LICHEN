@@ -36,7 +36,7 @@ from lichen.sim.protocol import (
     get_message_type,
 )
 from lichen.sim.simulation import Simulation
-from lichen.sim.transmission import airtime_us
+from lora_medium import airtime_us
 
 
 async def send_and_receive(

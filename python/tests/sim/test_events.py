@@ -501,7 +501,7 @@ class TestRealtimeMode:
 
     def test_no_advance_when_wall_clock_unchanged(self) -> None:
         sim = self._sim()
-        with patch("lichen.sim.simulation.time") as mock_time:
+        with patch("lichen.sim.simulation.event_handlers.time") as mock_time:
             mock_time.monotonic_ns.return_value = 0  # now == epoch -> elapsed 0
             result = sim.maybe_advance_time()
         assert result is False
@@ -509,7 +509,7 @@ class TestRealtimeMode:
 
     def test_advances_current_time_to_wall_clock(self) -> None:
         sim = self._sim()
-        with patch("lichen.sim.simulation.time") as mock_time:
+        with patch("lichen.sim.simulation.event_handlers.time") as mock_time:
             mock_time.monotonic_ns.return_value = 500_000_000  # 500ms in ns
             sim.maybe_advance_time()
         assert sim.current_time_us == 500_000  # 500ms in us
@@ -519,7 +519,7 @@ class TestRealtimeMode:
         sim.add_node("a", 0.0, 0.0, 0.0)
         sim.start_receive("a", timeout_ms=100)  # RxTimeout at 100_000 us
 
-        with patch("lichen.sim.simulation.time") as mock_time:
+        with patch("lichen.sim.simulation.event_handlers.time") as mock_time:
             mock_time.monotonic_ns.return_value = 200_000_000  # 200ms
             result = sim.maybe_advance_time()
 
@@ -531,7 +531,7 @@ class TestRealtimeMode:
         sim.add_node("a", 0.0, 0.0, 0.0)
         sim.start_receive("a", timeout_ms=500)  # RxTimeout at 500_000 us
 
-        with patch("lichen.sim.simulation.time") as mock_time:
+        with patch("lichen.sim.simulation.event_handlers.time") as mock_time:
             mock_time.monotonic_ns.return_value = 100_000_000  # 100ms -- before timeout
             result = sim.maybe_advance_time()
 

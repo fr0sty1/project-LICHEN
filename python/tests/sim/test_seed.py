@@ -8,10 +8,10 @@ import random
 
 import pytest
 
-from lichen.sim.chaos import LossRule
-from lichen.sim.medium import RxCandidate
+from lora_medium import LossRule
+from lora_medium import RxCandidate
 from lichen.sim.simulation import Simulation
-from lichen.sim.transmission import Transmission
+from lora_medium import Transmission
 
 
 def _candidate(source_node_id: str = "sender") -> RxCandidate:
