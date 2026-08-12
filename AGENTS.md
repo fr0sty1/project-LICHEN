@@ -258,6 +258,19 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 
 **CRITICAL: When asked to fix issues, fix ALL of them. Not just "the important ones."**
 
+### Ultracode Mode
+
+When the user says **"ultracode"**, that means:
+- Use multi-agent workflows (Workflow tool)
+- Parallelize aggressively
+- Full P0-P3 coverage (no priority cutoffs)
+- Loop until convergence (no round limits)
+- 3x codereview on every change
+- File all findings as beads, fix them, review again
+- Don't stop until the codebase is clean
+
+**Ultracode is the default expectation for substantial work.** Don't be conservative about token cost unless explicitly asked.
+
 ### Rules for Issue Resolution
 
 1. **"All issues" means ALL issues** — P0, P1, P2, P3, P4, every single one. Treat all priorities including P4 as real work — implement full fixes, do not close as low priority/opinion. The user asked for all of them.
@@ -269,14 +282,18 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
    - "This would require significant refactoring"
    - "This is a style preference"
    - "I'll leave this for later"
+   - "Capping at N rounds to manage cost"
+   - "P3 is just polish, skipping"
    
    Instead: **FIX IT NOW.**
 
-4. **Run codereview after every fix** — When instructed to run codereview passes, actually run them. 3 passes means 3 independent reviews, not one review with 3 paragraphs.
+4. **Run codereview after every change** — See "Code Review Protocol" below. 3 passes means 3 independent reviews from different perspectives. This creates new issues. Fix those too.
 
-5. **Use subagents aggressively** — When fixing many issues, parallelize. Don't do them one at a time when you can do 20 at once.
+5. **Loop until convergence** — The fix→review→fix cycle continues until 3x codereview produces zero new findings. No arbitrary round limits. If it takes 10 rounds, it takes 10 rounds.
 
-6. **Close issues when done** — Every fix should end with `bd close <id>`. If the issue isn't closed, it isn't done.
+6. **Use subagents aggressively** — When fixing many issues, parallelize. Don't do them one at a time when you can do 20 at once.
+
+7. **Close issues when done** — Every fix should end with `bd close <id>`. If the issue isn't closed, it isn't done.
 
 ### What "Thorough" Means
 
@@ -299,6 +316,59 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 ### The Standard
 
 When the user says "fix all issues," the correct response is to fix **every single issue** until `bd list --status=open` returns zero issues.
+
+---
+
+## Code Review Protocol
+
+**For every source code module created or modified, run `/codereview` 3 times.**
+
+Each pass should use a different perspective:
+1. **Correctness** — Does the logic do what it claims? Edge cases? Off-by-ones?
+2. **Security** — Input validation, auth checks, crypto usage, injection risks?
+3. **Robustness** — Error handling, resource cleanup, concurrency, failure modes?
+
+### Workflow
+
+1. Make the code change
+2. Run `/codereview` (pass 1: correctness)
+3. Run `/codereview` (pass 2: security)
+4. Run `/codereview` (pass 3: robustness/edge-cases)
+5. **File ALL findings (P0-P3) as beads issues** — Do NOT fix inline
+6. **Fix those findings** — They're real issues, treat them like any other work
+7. **Run 3x codereview on the fixes** — This may produce more findings
+8. **Repeat until convergence** — Loop until 3x review produces zero P0-P3 findings
+
+### Convergence Loop
+
+The 3x codereview discipline is not "review once and move on." It's a **loop-until-dry** process:
+
+```
+fix issue → 3x review → file findings → fix those → 3x review → ...
+                                                          ↓
+                                              (no new findings = done)
+```
+
+**No arbitrary round limits.** If round 5 still produces findings, keep going. Convergence happens when the codebase is actually clean, not when you're tired of reviewing.
+
+**No priority cutoffs.** P3 findings are real issues. "Polish" means "should be fixed," not "can be ignored." When the user says "P0 to P3," that means ALL of P0, P1, P2, AND P3.
+
+### Why Not Fix Immediately?
+
+- Keeps all work tracked and prioritized
+- Avoids scope creep during implementation
+- Lets the user decide priority of findings vs. other work
+- Review findings may reveal larger issues worth discussing first
+
+### Anti-Patterns
+
+- ❌ Running 1 review and calling it "3 passes"
+- ❌ Fixing findings inline without filing issues
+- ❌ Skipping codereview because "the change is small"
+- ❌ Filing vague issues ("needs cleanup") instead of specific findings
+- ❌ Capping convergence at N rounds "to save tokens"
+- ❌ Excluding P3 because "it's just polish"
+- ❌ Stopping before the loop is actually dry
 
 ---
 
