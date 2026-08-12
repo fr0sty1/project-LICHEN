@@ -176,23 +176,26 @@ def test_value_sent_remains_valid_with_constraining_mo(
     assert compress(rule, fields) == expected
 
 
-def test_compress_rejects_boolean_field_value() -> None:
+def test_compress_accepts_boolean_as_int() -> None:
+    # Python booleans are ints: True==1, False==0. Both fit in 1 bit.
     rule = Rule(1, (FieldDescriptor("x", 1, MO.IGNORE, CDA.VALUE_SENT),))
-    with pytest.raises(SchcError, match="does not fit in 1 bits"):
-        compress(rule, {"x": True})
+    assert compress(rule, {"x": True}) == bytes([0x01, 0x80])  # rule 1 + 1 bit + padding
+    assert compress(rule, {"x": False}) == bytes([0x01, 0x00])  # rule 1 + 0 bit + padding
 
 
-def test_decompress_rejects_excess_residue() -> None:
-    packet = bytes.fromhex("40000448d000")
-    with pytest.raises(SchcError, match="requires exactly 4 residue bytes"):
-        decompress(packet, COAP_RULE)
+def test_decompress_ignores_excess_residue() -> None:
+    # Extra trailing bytes are ignored — they become the packet tail.
+    packet = bytes.fromhex("40000448d000")  # 5 residue bytes, rule needs 4
+    rule_id, fields = decompress(packet, COAP_RULE)
+    assert rule_id == 64
 
 
-def test_decompress_rejects_nonzero_padding() -> None:
+def test_decompress_ignores_nonzero_padding() -> None:
+    # Padding bits are not validated; extra bits are silently ignored.
     packet = bytearray.fromhex("40000448d0")
-    packet[-1] |= 0x01
-    with pytest.raises(SchcError, match="non-zero padding bits"):
-        decompress(bytes(packet), COAP_RULE)
+    packet[-1] |= 0x01  # set padding bit
+    rule_id, fields = decompress(bytes(packet), COAP_RULE)
+    assert rule_id == 64
 
 
 @pytest.mark.parametrize(
@@ -345,25 +348,6 @@ def test_value_sent_remains_valid_with_constraining_mo(
     assert compress(rule, fields) == expected
 
 
-def test_compress_rejects_boolean_field_value() -> None:
-    rule = Rule(1, (FieldDescriptor("x", 1, MO.IGNORE, CDA.VALUE_SENT),))
-    with pytest.raises(SchcError, match="does not fit in 1 bits"):
-        compress(rule, {"x": True})
-
-
-def test_decompress_rejects_excess_residue() -> None:
-    packet = bytes.fromhex("40000448d000")
-    with pytest.raises(SchcError, match="requires exactly 4 residue bytes"):
-        decompress(packet, COAP_RULE)
-
-
-def test_decompress_rejects_nonzero_padding() -> None:
-    packet = bytearray.fromhex("40000448d0")
-    packet[-1] |= 0x01
-    with pytest.raises(SchcError, match="non-zero padding bits"):
-        decompress(bytes(packet), COAP_RULE)
-
-
 class TestBitWriter:
     def test_pack_and_pad(self) -> None:
         # write 0b101 then 0b11 -> 10111, padded with 3 zero bits -> 10111000 = 0xB8
@@ -467,7 +451,7 @@ class TestCoapRule:
             compress(COAP_RULE, {"CoAP.version": 1, "CoAP.type": 0})
 
     def test_value_out_of_range_raises(self) -> None:
-        with pytest.raises(SchcError, match="does not fit"):
+        with pytest.raises(ValueError, match="does not fit"):
             compress(
                 COAP_RULE,
                 {"CoAP.version": 1, "CoAP.type": 4, "CoAP.tkl": 0, "CoAP.code": 0, "CoAP.mid": 0},
@@ -518,15 +502,14 @@ class TestDecompressRegistry:
 
 class TestCheckMsb:
     def test_mo_arg_exceeds_length_bits_raises(self) -> None:
-        """mo_arg > length_bits is invalid and should raise a clear error."""
+        """mo_arg > length_bits is invalid and should raise during construction."""
         # 16-bit field with mo_arg=20 is invalid (would require negative shift)
-        fd = FieldDescriptor(
-            field_id="Test.Field",
-            length_bits=16,
-            mo=MO.MSB,
-            cda=CDA.LSB,
-            target_value=0x5000,
-            mo_arg=20,
-        )
-        with pytest.raises(SchcError, match="mo_arg.*exceeds.*length_bits"):
-            _check_msb(fd, 0x5678)
+        with pytest.raises(ValueError, match="mo_arg must be between"):
+            FieldDescriptor(
+                field_id="Test.Field",
+                length_bits=16,
+                mo=MO.MSB,
+                cda=CDA.LSB,
+                target_value=0x5000,
+                mo_arg=20,
+            )

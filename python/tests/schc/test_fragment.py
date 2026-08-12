@@ -69,19 +69,20 @@ def test_all1_requires_mic() -> None:
 
 
 def test_window_and_fcn_schedule() -> None:
+    # window_size=4 gives 2*4=8 tile capacity, enough for 7 bytes at tile_size=1
     sender = FragmentSender(
-        payload=bytes(range(7)), rule_id=0x78, tile_size=1, window_size=3
+        payload=bytes(range(7)), rule_id=0x78, tile_size=1, window_size=4
     )
     frags = sender.all_fragments()
     assert sender.fragment_count == 7
     assert [(f.window, f.fcn) for f in frags] == [
+        (0, 3),
         (0, 2),
         (0, 1),
         (0, 0),
+        (1, 3),
         (1, 2),
-        (1, 1),
-        (1, 0),
-        (0, ALL_1),
+        (1, ALL_1),
     ]
     assert all(f.mic == b"" for f in frags[:-1])
     assert frags[-1].mic

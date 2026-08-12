@@ -76,9 +76,9 @@ def test_hop_limit_preserved() -> None:
 
 
 def test_non_linklocal_falls_back_to_uncompressed() -> None:
-    # ULA addresses don't match the link-local rule -> fallback rule 255.
-    ula = IPv6Address("fd00::1")
-    raw = _build_packet(_coap_request(), src=ula, dst=ula)
+    # Addresses outside fe80::/10 and 02xx::/8 don't match any rule -> fallback 255.
+    doc = IPv6Address("2001:db8::1")
+    raw = _build_packet(_coap_request(), src=doc, dst=doc)
     compressed = compress_packet(raw)
     assert compressed[0] == 255
     assert decompress_packet(compressed) == raw
@@ -157,10 +157,10 @@ def test_truncated_icmpv6_falls_back() -> None:
 
 
 def test_decompress_rejects_truncated_packet_residue() -> None:
-    # Rule 0 requires exactly 1 rule-ID byte plus 25 residue bytes.
-    # 25 total bytes = 1 rule + 24 residue — too short for rule 0.
-    with pytest.raises(SchcError, match="requires 25|too short"):
-        decompress_packet(bytes(25))
+    # Rule 0 requires 1 rule-ID byte + 22 residue bytes (174 bits) = 23 minimum.
+    # 22 total bytes is 1 short.
+    with pytest.raises(SchcError, match="need 23|too short"):
+        decompress_packet(bytes(22))
 
 
 def test_decompress_missing_tail_bytes_succeeds() -> None:
