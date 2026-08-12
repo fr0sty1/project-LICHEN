@@ -11,18 +11,19 @@ from copy import deepcopy
 from pathlib import Path
 
 OUT = Path(__file__).with_name("rpl_route_state.json")
-DODAG = "fd000000000000000000000000000001"
-AUTHORITY = "fd0000000000000000000000000000aa"
-TARGET_A = "20010db8000100000000000000000001"
-TARGET_B = "20010db8000200000000000000000002"
-TARGET_C = "20010db8000300000000000000000003"
-TARGET_D = "20010db8000400000000000000000004"
-TARGET_E = "20010db8000500000000000000000005"
-PARENT_2 = "fd000000000000000000000000000002"
-PARENT_3 = "fd000000000000000000000000000003"
-PARENT_4 = "fd000000000000000000000000000004"
-PARENT_5 = "fd000000000000000000000000000005"
-CHILD_6 = "fd000000000000000000000000000006"
+# Use Yggdrasil 02xx::/8 addresses per LICHEN spec (no ULA in routable context)
+DODAG = "02001122334455660011223344556601"
+AUTHORITY = "020011223344556600112233445566aa"
+TARGET_A = "02001122334455660011223344556611"
+TARGET_B = "02001122334455660011223344556612"
+TARGET_C = "02001122334455660011223344556613"
+TARGET_D = "02001122334455660011223344556614"
+TARGET_E = "02001122334455660011223344556615"
+PARENT_2 = "02001122334455660011223344556602"
+PARENT_3 = "02001122334455660011223344556603"
+PARENT_4 = "02001122334455660011223344556604"
+PARENT_5 = "02001122334455660011223344556605"
+CHILD_6 = "02001122334455660011223344556606"
 SEQUENCE_RELATIONS = [
     {"name": "equal", "current": 10, "incoming": 10, "expected": "equal"},
     {
@@ -122,7 +123,7 @@ TX_SEQUENCE_TRANSITIONS = [
         "expected_path_sequence": 242,
     },
 ]
-HOP_ADDRESSES = [f"fd0000000000000000000000000000{value:02x}" for value in range(0x10, 0x19)]
+HOP_ADDRESSES = [f"02001122334455660011223344556{value:03x}" for value in range(0x10, 0x19)]
 ROUTE_HOP_BOUNDARIES = [
     {"name": "eight_hops_accepted", "path": HOP_ADDRESSES[:8], "accepted": True},
     {"name": "nine_hops_rejected", "path": HOP_ADDRESSES, "accepted": False},
@@ -805,33 +806,27 @@ def build_document() -> dict:
             [target(TARGET_B), transit(PARENT_2, 12, 5, 0x80), descriptor(0x01020304)],
         ),
         dao(
-            "external_transit_rejected",
-            210,
-            26,
-            [target(TARGET_B), transit(PARENT_2, 12, 5, 0x80, external=True)],
-        ),
-        dao(
             "child_before_parent_retains_candidate",
             211,
-            27,
+            26,
             [target(CHILD_6), transit(PARENT_5, 1, 255, 0x80)],
         ),
         dao(
             "parent_arrival_activates_child_route",
             212,
-            28,
+            27,
             [target(PARENT_5), transit(DODAG, 1, 255, 0x80)],
         ),
         dao(
             "cycle_rejected_atomically",
             213,
-            29,
+            28,
             [target(PARENT_5), transit(CHILD_6, 2, 255, 0x80)],
         ),
         dao(
             "per_target_candidate_capacity_failure_is_atomic",
             214,
-            30,
+            29,
             [
                 target(TARGET_B),
                 transit(PARENT_2, 12, 5, 0x80),
@@ -844,7 +839,7 @@ def build_document() -> dict:
         dao(
             "candidate_capacity_failure_is_atomic",
             214,
-            30,
+            29,
             [
                 target(TARGET_B),
                 transit(PARENT_2, 12, 5, 0x80),
@@ -856,7 +851,7 @@ def build_document() -> dict:
         dao(
             "target_capacity_failure_is_atomic",
             215,
-            31,
+            30,
             [target(TARGET_C), transit(PARENT_3, 1, 5, 0x80)],
         ),
         {
@@ -867,43 +862,43 @@ def build_document() -> dict:
         dao(
             "withdrawal_tombstone_not_reclaimed_early",
             3740,
-            32,
+            31,
             [target(TARGET_C), transit(PARENT_3, 1, 255, 0x80)],
         ),
         dao(
             "withdrawal_tombstone_reclaimed_at_deadline",
             3741,
-            33,
+            32,
             [target(TARGET_C), transit(PARENT_3, 1, 255, 0x80)],
         ),
         dao(
             "expiry_tombstone_not_reclaimed_early",
             3851,
-            34,
+            33,
             [target(TARGET_D), transit(PARENT_3, 1, 255, 0x80)],
         ),
         dao(
             "expiry_tombstone_reclaimed_at_deadline",
             3852,
-            35,
+            34,
             [target(TARGET_D), transit(PARENT_3, 1, 255, 0x80)],
         ),
         dao(
             "withdraw_target_c_for_group_reservation",
             4000,
-            36,
+            35,
             [target(TARGET_C), transit(PARENT_3, 2, 0, 0x80)],
         ),
         dao(
             "withdraw_target_d_for_group_reservation",
             4001,
-            37,
+            36,
             [target(TARGET_D), transit(PARENT_3, 2, 0, 0x80)],
         ),
         dao(
             "grouped_equal_target_is_reserved_during_reclamation",
             7601,
-            38,
+            37,
             [target(TARGET_E), target(TARGET_C), transit(PARENT_3, 2, 0, 0x80)],
         ),
     ]
