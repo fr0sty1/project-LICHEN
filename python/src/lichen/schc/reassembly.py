@@ -285,6 +285,10 @@ class ReassemblyManager:
             raise ValueError("max_contexts must be positive")
         if max_size <= 0:
             raise ValueError("max_size must be positive")
+        # SCHC profile capacity: 2 windows * 63 tiles * 187 bytes = 23562
+        max_profile_capacity = 2 * WINDOW_SIZE * TILE_SIZE
+        if max_size > max_profile_capacity:
+            raise ValueError(f"max_size exceeds profile capacity ({max_size} > {max_profile_capacity})")
         self.max_contexts = max_contexts
         self.max_size = max_size
         self._contexts: OrderedDict[tuple[Hashable, int], FragmentReceiver] = OrderedDict()
