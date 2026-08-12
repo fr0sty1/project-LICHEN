@@ -300,12 +300,18 @@ class CoapUdpLinkLocalProfile(_CoapUdpProfile):
 
 
 class CoapUdpGlobalProfile(_CoapUdpProfile):
-    """Global IPv6 + UDP + CoAP (SCHC rule 1)."""
+    """Global IPv6 + UDP + CoAP (SCHC rule 1).
+
+    Only matches Yggdrasil 02xx::/8 addresses, which is the only global prefix
+    LICHEN SCHC can compress (MSB(8) match against 0x0200). Other global
+    addresses like 2000::/3 GUA fall back to uncompressed.
+    """
 
     rule = GLOBAL_COAP_RULE
 
     def _addr_ok(self, addr: int) -> bool:
-        return _is_ula(addr) or _is_global(addr)
+        # Only 02xx::/8 Yggdrasil addresses can be compressed by this rule
+        return ((addr >> 120) & 0xFF) == 0x02
 
 
 class _OscoreUdpProfile(_CoapUdpProfile):
@@ -344,10 +350,13 @@ class OscoreUdpLinkLocalProfile(_OscoreUdpProfile):
 
 
 class OscoreUdpGlobalProfile(_OscoreUdpProfile):
+    """Global IPv6 + UDP + OSCORE-protected CoAP (SCHC rule 6)."""
+
     rule = GLOBAL_OSCORE_RULE
 
     def _addr_ok(self, addr: int) -> bool:
-        return _is_ula(addr) or _is_global(addr)
+        # Only 02xx::/8 Yggdrasil addresses can be compressed
+        return ((addr >> 120) & 0xFF) == 0x02
 
 
 class _RplProfile(PacketProfile):
