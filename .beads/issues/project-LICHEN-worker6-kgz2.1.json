@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-kgz2.1",
+  "title": "Remove dead unsupported_transit_e match arm from dao_origin_vectors test",
+  "description": "In rust/lichen-node/tests/dao_origin_vectors.rs line 126, the expected_outcome() function handles 'unsupported_transit_e' =\u003e DaoHandlingOutcome::RouteRejected, but no test vectors use this reason after the reject_external_flag_for_self_128 vector was removed. This match arm is now unreachable dead code.\n\nImpact: Low - cosmetic issue that doesn't affect test correctness.\n\nFix: Remove line 126: | \"unsupported_transit_e\" =\u003e DaoHandlingOutcome::RouteRejected,",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-10T21:31:20.146816Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-10T21:33:17.631354Z",
+  "closed_at": "2026-08-10T21:33:17.631354Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-li3r.1",
+  "labels": [
+    "robustness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kgz2.1",
+      "depends_on_id": "project-LICHEN-worker6-kgz2",
+      "type": "parent-child",
+      "created_at": "2026-08-10T21:31:20.476181Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

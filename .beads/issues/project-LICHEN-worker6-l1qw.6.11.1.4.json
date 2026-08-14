@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.11.1.4",
+  "title": "Validate: Cross-check Key Persistence oracle",
+  "description": "Run oracle against existing vectors if any. Compare with RFC examples. Verify all MUST statements covered.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:41:42.011599Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:41:42.011599Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.11.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.11.1",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:41:42.399153Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.11.1.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.11.1.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:10:36.717834Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

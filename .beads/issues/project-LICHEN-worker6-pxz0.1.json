@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.1",
+  "title": "OSCORE context activation: tests missing register_fresh() call",
+  "description": "## Root Cause\nThe OSCORE context exported from EDHOC is created via `Context::new_fresh()` which explicitly sets `active = false` (line 241 in context.rs). The `reserve_sender()` method checks `if !self.active { return Err(ReservationError::Conflict); }` (line 87-88 in protect.rs). The tests create a TestStore but never call `register_fresh()` to activate the context with the store. Without activation, reserve_sender immediately fails with Conflict.\n\n## Affected Tests\n- test_full_handshake (lines 912-913)\n- test_prk_oscore_interop_vectors (line 1158)\n- test_full_handshake_e2e_roundtrip (around line 1153)\n\n## Location\n/Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/tests.rs\n\n## Suggested Fix\nAfter creating TestStore, call register_fresh() on the exported contexts to activate them. Replace lines 912-913 with:\n\n```rust\nlet mut initiator_store = TestStore::empty_for(\u0026initiator_ctx);\nlet mut responder_store = TestStore::empty_for(\u0026responder_ctx);\nlet mut initiator_ctx = initiator_ctx\n    .register_fresh(\u0026mut initiator_store)\n    .expect(\"initiator register_fresh failed\");\nlet mut responder_ctx = responder_ctx\n    .register_fresh(\u0026mut responder_store)\n    .expect(\"responder register_fresh failed\");\n```\n\nThe same fix is needed for test_full_handshake_e2e_roundtrip and test_prk_oscore_interop_vectors.\n\n## Error Type\nMissing activation step - tests fail with ReservationError::Conflict",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:23:49.132988Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T15:23:49.132988Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.1",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:23:49.415278Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-qdhp",
+  "title": "[review] test_packet_coap.py: JUST_WORKS test only checks one path",
+  "description": "Line 919: Test checks /diag/raw/rx but LESC test checks all three paths (rx, tx, rx/events). Asymmetric coverage could miss regressions on other paths. Fix: Add assertions for all three paths.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:47.226752Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:47.226752Z",
+  "labels": [
+    "review"
+  ]
+}

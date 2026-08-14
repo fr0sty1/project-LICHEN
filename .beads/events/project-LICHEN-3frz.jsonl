@@ -1,0 +1,1 @@
+{"id":"019fb53f-eb2e-741a-8697-3feb7fcbb8b0","issue_id":"project-LICHEN-3frz","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already implemented: sim_client.py packet logging, metrics.py NodeMetrics, pcap.py capture, stats.py JSON export. SHA256[:16] hash format consistent across components.","created_at":"2026-07-30T22:58:12.91027Z"}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-1mh6",
+  "title": "EDHOC error handling audit findings",
+  "description": "Security audit of error paths, credential validation, lifecycle, and zeroization.\n\n## Scope\nAudit of crates/oscore/src/edhoc/ - initiator.rs, responder.rs, sign.rs, credential.rs\n\n## P2 Potential Improvements (not filed as separate issues)\n\n1. **initiator.rs:266 begin_process_message_2** - Parse error via ? operator returns without calling poison() after receiving peer data. While no secrets computed yet, could be more defensive.\n\n2. **initiator.rs:269 begin_process_message_2** - Length validation failure returns without poison(). Design allows retry but could be more defensive.\n\n3. **initiator.rs:351 finish_process_message_2** - Returns InvalidState without poison() while state contains secrets. Allows retry but leaves derived keys in memory.\n\n4. **initiator.rs:354 finish_process_message_2** - Returns SignatureVerification without poison() while state contains secrets. Allows retry but leaves secrets in memory.\n\n5. **responder.rs:452 finish_process_message_3** - Early-return checks don't follow closure pattern used elsewhere. Closure pattern ensures uniform poison-on-error behavior.\n\n6. **credential.rs:526 validate_peer_credential** - For non-CCS credentials, validates public key but doesn't verify credential-key binding. Defense-in-depth opportunity.\n\n7. **credential.rs:527 validate_peer_credential** - Comment says \"as long as they are valid CBOR\" but no CBOR validation performed for non-CCS credentials.\n\n8. **initiator.rs:375 finish_process_message_2** - Redundant validate_pubkey() call - already called inside validate_peer_credential().\n\n9. **responder.rs:467 finish_process_message_3** - Redundant validate_pubkey() call - already called inside validate_peer_credential().\n\n10. **initiator.rs:460 export_oscore** - Checks !self.state.completed instead of lifecycle == Complete. Inconsistent with rest of state machine.\n\n11. **responder.rs:516 export_oscore** - Same inconsistency as initiator export_oscore.\n\n12. **responder.rs:185 new_with_rng** - Ephemeral seed not wrapped in Zeroizing\u003cT\u003e. May remain on stack after function returns.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:35:36.668119Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T18:32:34.348031Z",
+  "closed_at": "2026-07-30T18:32:34.348031Z",
+  "close_reason": "Closed"
+}

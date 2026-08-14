@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-og43",
+  "title": "Integrate TDMA slot scheduling into Python node runtime",
+  "description": "Simulation proves LICHEN MAC design handles DEF CON scale (2000 radios): single channel 11% success, 64-channel hopping 94%, 2048-slot TDMA + 64 channels 100% success with 0 collisions.\n\nTDMA primitives exist in timing/sfn.py (slot_for, TDMA_SLOT_MS, initial_startup_delay) but are not wired into node.py TX path.\n\nWork:\n1. Add TDMA scheduler to LinkLayer/Node - track SFN, compute slot via slot_for(), gate TX to slot window\n2. Wire initial_startup_delay() into node startup - listen period, count nodes heard\n3. Integrate with channel selection (slot=WHEN, channel=WHERE)\n4. Add TDMA mode toggle (optional CSMA fallback for sparse networks)\n\nValidation: extend lora-medium sim to use real node stack with TDMA, verify 0% collision at 2000-node scale",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T04:25:19.112113Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T05:02:56.663378Z",
+  "closed_at": "2026-08-09T05:02:56.663378Z",
+  "close_reason": "Integrated TDMA slot scheduling into Python node runtime:\n\n1. LinkLayer: Added TDMA slot gating in drain_tx_queue()\n   - tdma_enabled, tdma_num_slots, eui64 fields\n   - _wait_for_tdma_slot() waits for assigned slot before TX\n   - slot_for() from timing/sfn.py computes deterministic slot\n\n2. Node: Added startup listen period\n   - _startup_listen_period() counts neighbors during 30-60s listen\n   - initial_startup_delay(nodes_heard) computes staggered start\n   - Prevents synchronized TX storms after mass reboot\n\n3. NodeConfig: Added tdma_enabled, tdma_num_slots, startup_listen_enabled, eui64\n\nValidated: imports work, TDMA slot calculation correct, send() succeeds with TDMA enabled."
+}

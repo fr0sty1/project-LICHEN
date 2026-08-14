@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.3",
+  "title": "Zephyr: B.2.1 Small Bounded Queues",
+  "description": "Implement 4-packet TX queue, 2-per-source forwarding limits with -ENOBUFS error returns.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:09.854065Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:26:09.854065Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:10.148405Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.16",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:36.555182Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

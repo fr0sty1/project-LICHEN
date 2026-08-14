@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.18.1.1",
+  "title": "Parse: Extract requirements from Beacon Conflict",
+  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:40:20.797675Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:40:20.797675Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.18.1.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.18.1",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:40:21.150368Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

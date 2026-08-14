@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-m8xj",
+  "title": "security: No BR provisioning channel encryption",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-12T18:40:16.253171Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-12T18:40:16.253171Z",
+  "labels": [
+    "spec-compliance"
+  ]
+}

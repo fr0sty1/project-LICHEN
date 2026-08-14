@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17",
+  "title": "Spec: B.2 Design Principles",
+  "description": "Appendix B Section 2: Bufferbloat avoidance design principles - small bounded queues, time-based expiry, priority queuing, explicit backpressure, no silent drops.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:54.176696Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:25:54.176696Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:54.513614Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.18.4",
+  "title": "Vectors: Multi-Root Beacon Conflict Resolution test vectors",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:39.223747Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.504855Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.18.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:39.526752Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.18.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.18.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.504853Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

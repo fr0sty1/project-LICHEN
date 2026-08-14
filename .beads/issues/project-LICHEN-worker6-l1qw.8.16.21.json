@@ -1,0 +1,141 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.16.21",
+  "title": "Review: 14.8 TDMA CCP FSM cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:04.371245Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.471492Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:04.722187Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.18",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.466027Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.17",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.466666Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.13",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.466881Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.467100Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.15",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.467342Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.11",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.467592Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.7",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.467826Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.468067Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.16",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.468323Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.12",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.468599Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.8",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.468869Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.23",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.469142Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.22",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.469416Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.5",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.469703Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.471489Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

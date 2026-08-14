@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.2",
+  "title": "Spec: 08 GCP-4 Discovery",
+  "description": "Gateway discovery mechanisms: Backbone Discovery (CoAP multicast to ff02::1) and LoRa Discovery (GATEWAY flag in link frames). See spec/08-gateway-coordination.md sections 4.1-4.2.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:33.318569Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:23:33.318569Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:33.654382Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

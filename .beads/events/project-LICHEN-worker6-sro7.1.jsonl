@@ -1,0 +1,4 @@
+{"id":"019ff28f-5487-7d84-bd76-b85fd5440f5c","issue_id":"project-LICHEN-worker6-sro7.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-11T20:41:47.399887Z"}
+{"id":"019ff28f-5494-7aa2-98ac-8268bd524a61","issue_id":"project-LICHEN-worker6-sro7.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-11T20:41:47.412697Z"}
+{"id":"019ff28f-54a0-7c67-8215-4be1d7ca1f38","issue_id":"project-LICHEN-worker6-sro7.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-11T20:41:47.424815Z"}
+{"id":"019ff291-6dfb-7196-8875-878d69945ce5","issue_id":"project-LICHEN-worker6-sro7.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added TrailingBytes error variant and check that pos == cbor.len() after parsing","created_at":"2026-08-11T20:44:04.987104Z"}

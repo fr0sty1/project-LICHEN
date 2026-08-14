@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-60cy",
+  "title": "[review] provisioning.py: Zeroing pattern doesn't overwrite memory",
+  "description": "Line 505: Zeroing creates new bytes object rather than overwriting memory. Original secret remains until GC. Fix: Document limitation or use bytearray internally for actual zeroing.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:52.585352Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:52.585352Z",
+  "labels": [
+    "review"
+  ]
+}

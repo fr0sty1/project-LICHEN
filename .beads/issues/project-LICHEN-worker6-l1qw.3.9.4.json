@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.9.4",
+  "title": "Vectors: Rule Versioning test vectors",
+  "description": "Test vectors for DIO Rule Version Option, Rule 255 fallback, version mismatch scenarios, decompression failure cases",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:17.898625Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.497150Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.9.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.9",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:18.379187Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.9.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.9.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.497148Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

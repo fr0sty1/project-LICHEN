@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-xpth.1",
+  "title": "Vectors: Physical/Link Layer (9 missing, 2 P0)",
+  "description": "P0:\n- llsec_encrypted_bit_rejection: LLSec bit 6 (encrypted=1) without signature MUST reject\n- llsec_reserved_bit7_rejection: LLSec bit 7 MUST be 0\n\nP1:\n- frame_length_boundaries: length 3/4/254/255 boundary tests\n- ema_update_fixed_point: diff\u003e\u003e2 arithmetic shift, negative diff, Q16.16\n- utilization_normalization: uint8 0..255 boundaries\n- select_tx_sf_tx_allowed_false: utilization\u003e200 returns tx_allowed=false\n- ema_loss_threshold: 0.24/0.25/0.26 boundary\n- dad_hash_algorithm_clarification: crc32_ieee vs fnv1a32 spec conflict\n\nP2:\n- mic_length_selector_semantics: MIC Length bits 2-4 values 0 vs 1",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:41:59.409181Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T19:41:59.409181Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.1",
+      "depends_on_id": "project-LICHEN-worker6-xpth",
+      "type": "parent-child",
+      "created_at": "2026-08-11T19:41:59.710134Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

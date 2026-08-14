@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kgz2",
+  "title": "Review: session-2026-08-10 routing fixes (pass 3: robustness)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-10T21:26:34.33812Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-10T21:33:37.860452Z",
+  "closed_at": "2026-08-10T21:33:37.860452Z",
+  "close_reason": "Pass 3 (robustness) complete: 0 findings",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.16.16",
+  "title": "Zephyr: 14.8 TDMA CCP FSM implementation",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:54.454974Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.457210Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:54.767148Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.18",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.454243Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.17",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.456569Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.13",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.456897Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.457207Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

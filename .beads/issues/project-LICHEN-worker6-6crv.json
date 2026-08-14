@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-6crv",
+  "title": "[review] dao_manager.py: Assert statements stripped in optimized mode",
+  "description": "Lines 662-663: Assertions on origin_result.pubkey and origin_sequence are stripped with -O flag. Could cause store_rx_floor(None, ...) errors. Fix: Replace assert with explicit validation.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:25.823364Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:25.823364Z",
+  "labels": [
+    "review"
+  ]
+}

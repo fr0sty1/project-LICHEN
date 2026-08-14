@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-rjmd",
+  "title": "[review] provisioning.py: No input size limit before CBOR parsing",
+  "description": "Line 131: No size check before cbor2.loads allows resource exhaustion. Attacker could send multi-megabyte payload causing unbounded memory allocation. Fix: Add size check before parsing (expected payload is ~60 bytes).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:38.393249Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:38.393249Z",
+  "labels": [
+    "review"
+  ]
+}

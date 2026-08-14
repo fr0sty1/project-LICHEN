@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.13.4",
+  "title": "Python: DAO Origin Signature Option (8.6)",
+  "description": "(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:28.469266Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:39:33.874619Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.13.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.13",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:28.786988Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

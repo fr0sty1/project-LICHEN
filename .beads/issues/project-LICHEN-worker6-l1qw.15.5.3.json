@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.5.3",
+  "title": "Zephyr: Node Handoff implementation",
+  "description": "Zephyr border router implementation of GCP-7 Node Handoff: DAO processing, handoff protocol, state transfer in lichen/subsys.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:42.445022Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:42.445022Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.5.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.5",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:42.759184Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.5.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.5.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:44.658604Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

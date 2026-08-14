@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ubg8",
+  "title": "[review] dao_persistence.py: OSError not wrapped in DaoPersistenceError",
+  "description": "Line 355: store_tx_state docstring claims DaoPersistenceError on failure but implementation raises OSError directly. Fix: Wrap OSError or update docstring.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:26.914936Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:26.914936Z",
+  "labels": [
+    "review"
+  ]
+}

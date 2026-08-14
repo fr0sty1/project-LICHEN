@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.7",
+  "title": "Python: B.3.3 Queue Latency Measurement oracle",
+  "description": "queue_stats: packets_queued/dropped_deadline/dropped_full, max_latency_ms, avg_latency_ms. Expose via /status/queues CoAP.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:01.288248Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:38:00.687109Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:01.585057Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

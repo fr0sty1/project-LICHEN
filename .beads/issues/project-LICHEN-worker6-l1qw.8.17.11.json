@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.11",
+  "title": "Rust: B.2.4 Explicit Backpressure",
+  "description": "Return QueueFull error for immediate sends, NACK for mesh-forwarded packets when queue full.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:26.614869Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:26:26.614869Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:26.914857Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.16",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:25.041506Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

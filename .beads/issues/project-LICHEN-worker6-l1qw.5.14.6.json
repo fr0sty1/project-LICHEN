@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.14.6",
+  "title": "Zephyr: Announce processing and gradient install (9.3)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:52.90692Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.553326Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.14.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.14",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:53.196079Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.14.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.14.13",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.553324Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

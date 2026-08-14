@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-x11v",
+  "title": "[P0] Implement native Yggdrasil AddrForKey in Rust",
+  "description": "Spec updated in 06-security.md §8.7 to use native Yggdrasil algorithm.\n\n## Algorithm (from yggdrasil-go)\n```\ninverted = NOT(pubkey)\nones = count_leading_ones(inverted)\nskip terminating 0-bit\nremaining = next 112 bits\naddr = [0x02] || [ones] || remaining[0:14]\nIID = addr[8:16]\n```\n\n## Files to update\n- `rust/lichen-core/src/addr.rs`: `iid_from_pubkey_bytes()`, `ygg_addr_from_pubkey()`\n- `rust/lichen-link/src/identity.rs`: Any re-exports or wrappers\n\n## Test vector (upstream)\npubkey: bdbacfd82240de3dcd123924cbb55256fb8dab08aa98e305528ab84f419e6efb\naddr:   0200848a604fbb7e438465db8db66895\nIID:    438465db8db66895\n\n## Key change\n- Remove SHA-512 dependency for address derivation\n- IID is lower 8 bytes of Yggdrasil address (pure bit manipulation)\n- Current code claims 'exact Yggdrasil AddrForKey' but uses simplified hash-based algo",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-08T21:23:03.03285Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T21:23:03.03285Z",
+  "labels": [
+    "rust"
+  ]
+}

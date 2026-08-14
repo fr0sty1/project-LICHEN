@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-n5nr",
+  "title": "[review] site.py: Non-atomic read of congestion state",
+  "description": "Line 101: congestion_level and retry_after_ms read separately. Provider state change between reads can create inconsistent 5.03 response. Fix: Return single tuple/dataclass or accept minor inconsistency.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:22.637196Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:22.637196Z",
+  "labels": [
+    "review"
+  ]
+}

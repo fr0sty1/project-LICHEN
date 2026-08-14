@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-vdce",
+  "title": "rpl: DAO persistence memory-only, no crash safety",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-12T18:40:17.25751Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-12T18:40:17.25751Z",
+  "labels": [
+    "spec-compliance"
+  ]
+}

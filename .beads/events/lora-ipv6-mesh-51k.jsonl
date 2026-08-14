@@ -1,0 +1,1 @@
+{"id":"019fb559-4d39-7470-9429-041d8fc94dcb","issue_id":"lora-ipv6-mesh-51k","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Bug fix implemented - code now correctly uses len() instead of .size","created_at":"2026-07-30T23:25:56.409292Z"}

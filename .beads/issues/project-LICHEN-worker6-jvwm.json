@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-jvwm",
+  "title": "[review] dao_manager.py: _dao_sequence not persisted for crash recovery",
+  "description": "Line 302: Only path_sequence is persisted; _dao_sequence advances independently. After crash recovery, _dao_sequence restarts from persisted path_sequence, potentially reusing pre-crash values. Fix: Persist _dao_sequence separately or document collision behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:45.343792Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:45.343792Z",
+  "labels": [
+    "review"
+  ]
+}

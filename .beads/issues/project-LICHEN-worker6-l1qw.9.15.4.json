@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.15.4",
+  "title": "Vectors: Security test vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:33.580919Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.521716Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.15.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.15",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:33.920448Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.15.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.15.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.521714Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

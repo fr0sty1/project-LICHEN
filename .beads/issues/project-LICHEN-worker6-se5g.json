@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-se5g",
+  "title": "[review] provisioning.py: State enum leaked in error message",
+  "description": "Line 390: State enum value revealed in error message. While not directly exploitable, reveals internal session state. Fix: Use generic 'invalid session state' message.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:54.429771Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:54.429771Z",
+  "labels": [
+    "review"
+  ]
+}

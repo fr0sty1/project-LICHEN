@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.11.4",
+  "title": "Vectors: Human-Readable Node Address Format test vectors",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:04.732975Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.512565Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.11.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.11",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:05.065183Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.11.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.11.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.512563Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

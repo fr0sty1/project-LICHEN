@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.4",
+  "title": "Python: B.3.2 Forwarding Buffer oracle",
+  "description": "Forwarding buffer: MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2, send NACK when per-source limit reached.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:51.420449Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:38:05.32755Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:51.722541Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

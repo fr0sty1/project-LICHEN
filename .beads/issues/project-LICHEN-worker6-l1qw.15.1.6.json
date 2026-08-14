@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.1.6",
+  "title": "Rust: 3.1 Closed Federation (PSK)",
+  "description": "GCP-3.1: PSK-based OSCORE context for gateway coordination. Single shared secret per federation for enterprise/event deployments.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:08.081846Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:25:08.081846Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.1.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.1",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:08.40437Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.1.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.1.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:10.569344Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

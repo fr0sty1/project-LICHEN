@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-jlpz",
+  "title": "Session summary: EDHOC security audit and fixes",
+  "description": "## Completed This Session\n\n### rust-oscore EDHOC fixes (committed \u0026 pushed: 7434512)\n- KDF info structure: Fixed to RFC 9528 Section 4.1.2\n- Test fixes: SUITES_I, context activation, message_2 construction\n- P0 security (5): Drop impls, poison() on id_cred mismatch\n- P1 security (4): poison() on lifecycle, completed flag, Ed25519 zeroize\n\n94 lib + 9 integration tests pass.\n\n### Beads closed\n- worker6-pxz0.* (10) - EDHOC test failures\n- worker6-1mh6.* (9) - Security audit findings\n\n### Docs created\n- docs/gastown-adoption.md - Gastown two-pager for LICHEN\n\n## Next Session\n1. brew install gastown \u0026\u0026 gt init\n2. Create lichen-protocol formula\n3. Run spec-to-test on RFC 9528\n4. Verify Python oracle matches RFC vectors",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T21:49:26.261138Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T21:49:28.031792Z",
+  "closed_at": "2026-07-30T21:49:28.031792Z",
+  "close_reason": "Closed"
+}

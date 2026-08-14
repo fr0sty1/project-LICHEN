@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-03lh",
+  "title": "[review] dao_manager.py: Direct access to routing_table._routes",
+  "description": "Line 700: Accesses private attribute self.routing_table._routes directly. If RoutingTable implementation changes, this breaks silently. Fix: Add public method to RoutingTable for iterating routes.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:18:04.066747Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:18:04.066747Z",
+  "labels": [
+    "review"
+  ]
+}

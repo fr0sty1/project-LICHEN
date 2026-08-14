@@ -1,0 +1,1 @@
+{"id":"019fb559-8a6a-7c02-9dd4-00787cd0de77","issue_id":"lora-ipv6-mesh-ecl","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Bug fixed with proration logic and covered by test_boundary_spanning_tx_prorated","created_at":"2026-07-30T23:26:12.074788Z"}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-asft",
+  "title": "coap: No 5.03 backoff handling",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-12T18:40:19.053268Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-12T18:40:19.053268Z",
+  "labels": [
+    "spec-compliance"
+  ]
+}

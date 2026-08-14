@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-05cs",
+  "title": "[review] test_dao_origin.py: MockPinTable accepts malformed pubkeys",
+  "description": "Line 40: MockPinTable doesn't validate pubkey size. Test could accept malformed pubkeys that wouldn't occur in production. Fix: Add assert len(pubkey) == 32.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:34.98843Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:34.98843Z",
+  "labels": [
+    "review"
+  ]
+}

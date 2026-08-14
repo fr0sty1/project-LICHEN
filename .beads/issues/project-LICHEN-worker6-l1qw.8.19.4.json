@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.19.4",
+  "title": "Test: B.5.4 Multi-hop latency bounds",
+  "description": "Test end-to-end delay remains bounded under congestion load across multi-hop mesh. Simulator test.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:17.755468Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:17.755468Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.19.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:18.100171Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

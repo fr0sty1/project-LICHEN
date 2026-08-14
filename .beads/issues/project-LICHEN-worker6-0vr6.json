@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-0vr6",
+  "title": "[review] test_packet_coap.py: No boundary edge case tests for path matching",
+  "description": "Line 904: No test verifies path prefix edge cases like '/diag/raw' (no slash), '/diag/rawx', '/diag/raw_events' are NOT blocked. Fix: Add tests for near-miss paths.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:18:06.14115Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:18:06.14115Z",
+  "labels": [
+    "review"
+  ]
+}

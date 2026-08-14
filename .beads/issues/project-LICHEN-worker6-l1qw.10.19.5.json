@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.19.5",
+  "title": "Review: Check-In / Roll Call cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:49.05024Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.519443Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:49.34513Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.19.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.518927Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.19.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.519214Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.19.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.519441Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ue0k",
+  "title": "lci: BLE transport missing LESC security check",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-12T18:40:16.797864Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-12T18:40:16.797864Z",
+  "labels": [
+    "spec-compliance"
+  ]
+}

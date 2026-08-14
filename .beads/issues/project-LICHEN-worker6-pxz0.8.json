@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.8",
+  "title": "poison() uses derived key instead of zeroing - security wipe fails",
+  "description": "Root Cause: The poison() method at line 202-208 in responder.rs replaces the private key with a key derived from a zero seed: let (zero_priv, zero_pub) = SigningKey::from_seed(\u0026[0; KEY_LEN_32]); self.privkey = zero_priv;. However, SigningKey::from_seed calls schnorr48::derive_keypair, which performs cryptographic key derivation and does NOT produce zero bytes. The derived key has non-zero bytes [80, 70, 173, ...] rather than [0, 0, 0, ...].\n\nAffected Test: responder_post_dh_failure_wipes_and_poison_state (line 840 expects privkey.as_bytes() == [0; 32])\n\nLocation: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/responder.rs lines 202-208\n\nSuggested Fix: Change the poison() method to call self.privkey.zeroize() instead of replacing with a derived key. The SigningKey struct already derives Zeroize (sign.rs line 23), and the underlying schnorr48::PrivateKey([u8; 32]) also derives Zeroize (schnorr48/src/keys.rs line 59), so this will properly zero the key bytes. Replace lines 203-204 with: self.privkey.zeroize(); and remove the pubkey replacement (public keys do not need wiping for security).\n\nError Type: Logic error - security-sensitive key zeroization is not working correctly",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:24:57.693681Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T16:57:01.002616Z",
+  "closed_at": "2026-07-30T16:57:01.002616Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.8",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:24:57.97733Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

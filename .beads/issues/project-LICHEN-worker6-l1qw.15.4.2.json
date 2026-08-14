@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.4.2",
+  "title": "Rust: Slot Coordination implementation",
+  "description": "Rust mesh-gateway implementation of GCP-6: GPS/time-master sync, interleaved/contiguous slot allocation, conflict resolution, /.well-known/lichen-gw/* CoAP resources.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:30.834481Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:30.834481Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:31.153497Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:28.995751Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-179a.3",
+  "title": "tdma_beacon: missing CH0_RX flag accessor",
+  "description": "In rust/lichen-core/src/tdma_beacon.rs, flags SCHEDULED, CSMA, and GNSS_PPS each have accessor methods (is_scheduled, is_csma, has_gnss_pps at lines 100-112), but CH0_RX (defined at line 46) has no corresponding is_ch0_rx() method. This is either a missing accessor or dead code that should be removed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T20:36:52.525335Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T20:39:36.958465Z",
+  "closed_at": "2026-08-11T20:39:36.958465Z",
+  "close_reason": "Added is_ch0_rx() accessor",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-179a.3",
+      "depends_on_id": "project-LICHEN-worker6-179a",
+      "type": "parent-child",
+      "created_at": "2026-08-11T20:36:52.839204Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.9",
+  "title": "InitiatorState Zeroize impl does not reset completed flag",
+  "description": "File: crates/oscore/src/edhoc/initiator.rs\nLine: 93\nFunction: Zeroize::zeroize for InitiatorState\nCategory: state-integrity\n\n## Description\nZeroize impl does not reset completed flag to false. If poison() is called after completed = true is set (line 441) but before function returns (line 444 can fail), state ends up with completed=true but lifecycle=Failed. export_oscore all-zeros PRK check catches this, but the logic is fragile.\n\n## Fix\nAdd self.completed = false to the Zeroize impl for InitiatorState",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:36:37.955856Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T18:32:13.006562Z",
+  "closed_at": "2026-07-30T18:32:13.006562Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.9",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:36:38.244599Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

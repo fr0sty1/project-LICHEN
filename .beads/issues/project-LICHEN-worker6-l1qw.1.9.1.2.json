@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.9.1.2",
   "title": "Rust: seed -\u003e Ed25519 keypair",
   "description": "Keypair derivation from seed. DONE - schnorr.rs",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:12.153193Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:12.153193Z",
+  "updated_at": "2026-08-11T01:45:17.810792Z",
+  "closed_at": "2026-08-11T01:45:17.810792Z",
+  "close_reason": "Implementation in lichen-link/src/schnorr.rs derive_keypair",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.9.1.2",

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.6",
+  "title": "validate_peer_credential: does not call validate_pubkey for non-CCS credentials",
+  "description": "Root Cause: The test calls validate_peer_credential() with a non-CCS credential ([0x40], an empty CBOR byte string). The function only validates CCS credentials (those starting with 0xa3); for non-CCS credentials, it returns Ok(()) at line 258 without any key validation. Weak key rejection happens in the separate validate_pubkey() function, which is NOT called by validate_peer_credential(). The design splits credential format validation from curve point validation, but the test expects validate_peer_credential to do both.\n\nAffected Test: weak_ed25519_keys_are_rejected_and_responder_is_poisoned\n\nLocation: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/credential.rs:250-258\n\nSuggested Fix: Add validate_pubkey(peer.public_key)? at the start of validate_peer_credential() in credential.rs line 250. This ensures all peer credentials - regardless of format (CCS, X.509, CWT) - have valid curve points. Then remove the now-redundant validate_pubkey calls in initiator.rs:378 and responder.rs:465.\n\nError Type: Missing validation - security-relevant",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:24:42.040904Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T16:56:57.579091Z",
+  "closed_at": "2026-07-30T16:56:57.579091Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.6",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:24:42.322363Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

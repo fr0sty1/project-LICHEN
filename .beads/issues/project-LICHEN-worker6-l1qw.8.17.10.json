@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.10",
+  "title": "Python: B.2.4 Explicit Backpressure",
+  "description": "Return QueueFull error for immediate sends, NACK for mesh-forwarded packets when queue full.\n\n---\nMUST/SHALL Checklist:\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:25.622979Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:37:53.209314Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:25.928437Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

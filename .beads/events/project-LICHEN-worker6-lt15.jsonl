@@ -1,0 +1,2 @@
+{"id":"019fe895-7664-7b79-86e9-b004c8e5a4ec","issue_id":"project-LICHEN-worker6-lt15","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-09T22:12:17.124753Z"}
+{"id":"019fe8ad-b2a5-7449-9f33-a1705e8f5527","issue_id":"project-LICHEN-worker6-lt15","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Created tests/sim/test_rpl_convergence.py (590 lines, 22 tests): validates Trickle IMIN=4s, tests star/mesh/linear topologies, 10-200 node scaling","created_at":"2026-08-09T22:38:45.413281Z"}

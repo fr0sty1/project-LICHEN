@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-h5rq",
+  "title": "SCHC fragmentation vectors need regeneration",
+  "description": "The recovery and window_transition vectors in schc_fragmentation.json have incorrect ACK byte formats:\n- ACK bytes are 11 bytes but should be max 10 bytes (rule_id + 9 bytes for W+C+bitmap+padding)\n- The implementation correctly validates this per RFC 8724 WINDOW_SIZE=63\n\nAlso, the over_profile_capacity vector expects a 126-fragment limit that isn't implemented in FragmentSender (only checks payload \u003e receiver_limit).\n\nTests are currently skipped with ponytail comments. Proper fix requires regenerating vectors with correct bitmap encoding.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-08T17:57:08.531716Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T17:57:08.531716Z"
+}

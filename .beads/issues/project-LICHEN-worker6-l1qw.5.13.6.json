@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.13.6",
+  "title": "Zephyr: DAO Origin Signature Option (8.6)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:30.481601Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.492123Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.13.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.13",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:30.788002Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.13.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.13.7",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.491112Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.13.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.13.8",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.492120Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

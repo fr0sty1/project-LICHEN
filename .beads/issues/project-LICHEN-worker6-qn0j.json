@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-qn0j",
+  "title": "[P0] Fix Rust IID derivation to match spec (SHA-256)",
+  "description": "**Yggdrasil audit found IID hash inconsistency — now fixed in Python.**\n\n## Algorithm (per spec/06-security.md)\n```\nIID = SHA-256(pubkey)[0:8] with U/L bit cleared\nygg_addr = [0x02] + SHA-512(pubkey)[0:7] + IID\n```\n\n## Fixed (this session)\n- Python `crypto/identity.py:_pubkey_to_iid()` — uses SHA-256 ✓\n- Python `ipv6/addr.py:pubkey_to_iid()` — uses SHA-256 ✓\n- `test/vectors/yggdrasil-derivation.json` — regenerated with SHA-256 IID\n- `test/vectors/node_address.json` — regenerated with SHA-256 IID\n- `tests/crypto/test_identity.py` — vectors updated\n- All 346 tests pass\n\n## Still needs fixing (Rust)\n- `rust/lichen-core/src/addr.rs:iid_from_pubkey_bytes` — currently uses SHA-512, should use SHA-256\n- `rust/lichen-link/src/identity.rs:iid_from_pubkey_bytes` — currently uses SHA-256 ✓ (correct)\n\nThe lichen-core implementation is wrong; lichen-link is correct. Rust tests may be passing against incorrect vectors.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-08T19:46:49.304579Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T21:23:26.551165Z",
+  "closed_at": "2026-08-08T21:23:26.551165Z",
+  "close_reason": "Superseded by up50, x11v, 530q — switched to native Yggdrasil algorithm per user direction"
+}

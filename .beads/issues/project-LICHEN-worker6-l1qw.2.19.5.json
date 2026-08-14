@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.19.5",
+  "title": "Review: Regional Channel Plans cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:59.177134Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.504735Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:59.499767Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.19.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.503664Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.19.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.504501Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.19.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.504733Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

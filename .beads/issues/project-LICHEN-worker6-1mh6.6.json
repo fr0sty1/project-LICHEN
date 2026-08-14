@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.6",
+  "title": "SigningKey Ed25519 variant Zeroize impl is no-op",
+  "description": "File: crates/oscore/src/edhoc/sign.rs\nLine: 42\nFunction: SigningKey::zeroize (Ed25519 variant)\nCategory: zeroization\n\n## Description\nThe Zeroize impl for SigningKey in the Ed25519 variant (non-schnorr48) is a no-op - the method body is empty with only a comment. When poison() calls self.privkey.zeroize(), the private key bytes remain in memory. The key is only cleared when the struct is actually dropped, but poison() may be called in error recovery paths where execution continues with key material still accessible.\n\n## Fix\nUse unsafe to access the internal bytes and zeroize them, or wrap inner in a Zeroizing adapter. Example: 'unsafe { core::ptr::write_volatile(\u0026mut self.inner as *mut _ as *mut [u8; 32], [0u8; 32]); }' with appropriate barriers, or switch to wrapping the signing key in Zeroizing\u003ced25519_dalek::SigningKey\u003e.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:36:18.889945Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T18:32:07.967992Z",
+  "closed_at": "2026-07-30T18:32:07.967992Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.6",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:36:19.181482Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

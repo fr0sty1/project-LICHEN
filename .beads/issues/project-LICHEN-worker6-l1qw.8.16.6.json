@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.16.6",
+  "title": "Python: 14.6 Time Synchronization oracle implementation",
+  "description": "(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:38.220052Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:39:04.012254Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:38.535441Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

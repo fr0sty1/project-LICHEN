@@ -1,0 +1,1 @@
+{"id":"019fb559-542d-796a-a279-9683512c3684","issue_id":"lora-ipv6-mesh-6vy","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Feature fully implemented as specified - transmission.py with Transmission dataclass and airtime_us function with unit tests","created_at":"2026-07-30T23:25:58.189618Z"}

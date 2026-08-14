@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.7",
+  "title": "EdhocInitiator: empty ZeroizeOnDrop does not generate Drop",
+  "description": "File: crates/oscore/src/edhoc/initiator.rs\nLine: 139\nCategory: memory-safety\n\n## Description\nEmpty ZeroizeOnDrop impl does not generate Drop - EdhocInitiator state field containing PRKs is not zeroized on drop. While privkey (SigningKey) and eph_secret (StaticSecret) have their own ZeroizeOnDrop, the InitiatorState containing derived keys is not wiped.\n\n## Fix\nAdd impl Drop for EdhocInitiator that calls self.zeroize() in the drop method.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:36:28.684033Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T18:32:09.655765Z",
+  "closed_at": "2026-07-30T18:32:09.655765Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.7",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:36:28.981498Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

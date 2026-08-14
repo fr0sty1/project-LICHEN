@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.2.2",
+  "title": "Rust: Discovery implementation",
+  "description": "Rust mesh-gateway implementation of GCP-4 Discovery: CoAP multicast GET on backbone, CoAP Observe for announcements, GATEWAY flag in LoRa frames.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:01.769688Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:01.769688Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:02.096628Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:57.81712Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

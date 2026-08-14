@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-3ep9.1",
+  "title": "Missing unsupported_transit_e test coverage after vector removal",
+  "description": "The match arm 'unsupported_transit_e =\u003e DaoHandlingOutcome::RouteRejected' at line 126 is now unreachable dead code after the test vector removal. This is a cleanup issue, not a security bug - the E flag acceptance (E=0 or E=0x80) is intentional per LICHEN spec. The agent's claim about '32/49 tests fail' was a false positive - all Rust tests pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-10T21:32:09.626795Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-10T21:33:23.546213Z",
+  "closed_at": "2026-08-10T21:33:23.546213Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-li3r.1 (false positive claims corrected)",
+  "labels": [
+    "security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3ep9.1",
+      "depends_on_id": "project-LICHEN-worker6-3ep9",
+      "type": "parent-child",
+      "created_at": "2026-08-10T21:32:09.960445Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

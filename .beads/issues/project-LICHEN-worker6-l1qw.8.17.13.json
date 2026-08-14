@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.13",
+  "title": "Python: B.2.5 No Silent Drops",
+  "description": "Return errors to senders, NACK to mesh source, log queue-full events for diagnostics.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:32.967857Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:37:52.212674Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.13",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:33.265109Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

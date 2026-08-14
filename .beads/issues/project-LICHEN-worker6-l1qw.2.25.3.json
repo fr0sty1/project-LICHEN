@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.25.3",
+  "title": "Zephyr: Multi-Root Beacon Conflict implementation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:25.707312Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.558187Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.25.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.25",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:26.218191Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.25.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.25.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.558185Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,1 +1,2 @@
 {"id":"019f975e-c75a-7cc1-92ef-f5c9e755affa","issue_id":"project-LICHEN-worker6-l1qw.1.7.1.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:43:18.874837Z"}
+{"id":"019fee7e-dbdc-7530-8d0f-6bb18496ef39","issue_id":"project-LICHEN-worker6-l1qw.1.7.1.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Implementation in lichen-link/src/replay.rs","created_at":"2026-08-11T01:45:19.068341Z"}

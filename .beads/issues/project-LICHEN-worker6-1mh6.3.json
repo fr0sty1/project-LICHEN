@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.3",
+  "title": "EdhocResponder missing ZeroizeOnDrop impl",
+  "description": "File: crates/oscore/src/edhoc/responder.rs\nLine: 137\nCategory: zeroization\n\n## Description\nEdhocResponder implements Zeroize but NOT ZeroizeOnDrop. When the responder is dropped (e.g., goes out of scope normally or during stack unwinding), privkey, eph_secret, and state fields are NOT automatically zeroized. Compare to initiator.rs line 139 which has 'impl ZeroizeOnDrop for EdhocInitiator {}'.\n\n## Fix\nAdd 'impl ZeroizeOnDrop for EdhocResponder {}' after the Zeroize impl block (after line 144).",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:35:57.517863Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T17:45:48.86632Z",
+  "closed_at": "2026-07-30T17:45:48.86632Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.3",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:35:57.806049Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

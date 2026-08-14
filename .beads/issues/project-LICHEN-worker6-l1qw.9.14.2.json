@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.14.2",
+  "title": "Spec: 11 17.5.2 Configuration Resources",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:13.048148Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:13.048148Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:13.386545Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

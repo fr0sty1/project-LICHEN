@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.1.2",
+  "title": "Rust: Trust Models implementation",
+  "description": "Rust implementation of GCP-3 Trust Models in mesh-gateway: PSK federation mode with OSCORE, signature federation with Ed25519+Schnorr, TOFU/PKI trust establishment.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:49.811091Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:23:49.811091Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.1",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:50.120145Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.1.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:11.986997Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

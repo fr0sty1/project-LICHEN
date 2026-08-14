@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.4.9",
+  "title": "Rust: 6.4 CoAP Resources implementation",
+  "description": "GCP-6.4: Implement /.well-known/lichen-gw/* resources: GET /info (SenML/CBOR), GET/POST /slots (CBOR), GET /channels, POST /handoff, GET /nodes. All with OSCORE.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:01.849566Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:25:01.849566Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:02.15553Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:23.33568Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+{"id":"019fe895-2c56-7ba4-bb3d-49133e837b2c","issue_id":"project-LICHEN-worker6-se8t","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-09T22:11:58.166764Z"}
+{"id":"019fe8ad-6d5d-7d32-95ac-86a0768e4dd8","issue_id":"project-LICHEN-worker6-se8t","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Created test/vectors/gateway_coordination.json with 21 vectors: discovery, slot allocation, handoff, PSK/Ed25519 federation, time sync","created_at":"2026-08-09T22:38:27.677866Z"}

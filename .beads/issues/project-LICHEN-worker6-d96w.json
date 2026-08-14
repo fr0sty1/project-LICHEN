@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-d96w",
+  "title": "coap: Congestion check not enforced",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-12T18:40:20.404161Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-12T18:40:20.404161Z",
+  "labels": [
+    "spec-compliance"
+  ]
+}

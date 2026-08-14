@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.10.2.2.1",
+  "title": "Parse: Extract requirements from Epoch Increment",
+  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:41:41.089963Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:41:41.089963Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.10.2.2.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.10.2.2",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:41:41.444073Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

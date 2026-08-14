@@ -1,0 +1,62 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.2.5",
+  "title": "Review: Discovery cross-validation",
+  "description": "Cross-validate Python/Rust/Zephyr implementations of GCP-4 Discovery against shared test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:06.443046Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:06.443046Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:06.776401Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:00.669797Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2.7",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:02.106164Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2.6",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:03.522032Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:04.946949Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.2.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.2.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:06.355983Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

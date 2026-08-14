@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xf8z",
+  "title": "[test] test_packet_coap.py: 12 failures from priority kwarg API mismatch",
+  "description": "PacketDatagramChannel.send_datagram() got an unexpected keyword argument 'priority'. API change not propagated to all call sites. 12 tests failing.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:44:59.096509Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:44:59.096509Z",
+  "labels": [
+    "test"
+  ]
+}

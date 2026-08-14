@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.1",
+  "title": "Python: B.3.1 TX Queue oracle",
+  "description": "TX queue: tx_queue_entry with data/len/deadline_ms/priority. tx_queue_push with deadline check, priority preemption, ENOBUFS on full.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:47.555689Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:37:52.608412Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:47.851923Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

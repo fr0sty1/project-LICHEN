@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.14",
+  "title": "Regenerate EDHOC test vectors after KDF fixes",
+  "description": "## Task\n\nAfter fixing the KDF in all three implementations:\n- Python: DONE (project-LICHEN-worker6-9xfw)\n- Rust: project-LICHEN-worker6-ckfg\n- C: project-LICHEN-worker6-0ffq\n\nRegenerate `test/vectors/edhoc.json` using the RFC-compliant Python implementation.\n\n## Steps\n1. Run Python EDHOC with fixed seeds\n2. Capture all intermediate values (PRK states, TH values, messages, OSCORE keys)\n3. Update test/vectors/edhoc.json\n4. Verify Rust and C pass against new vectors\n\n## Depends on\n- project-LICHEN-worker6-ckfg (Rust KDF fix)\n- project-LICHEN-worker6-0ffq (C KDF fix)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T18:51:07.434087Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T18:51:07.434087Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.14",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6",
+      "type": "parent-child",
+      "created_at": "2026-07-31T18:51:07.722873Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

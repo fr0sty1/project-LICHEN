@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-xpth.5.1",
+  "title": "Implement segments_left \u003c hop_limit validation",
+  "description": "## Background\nRFC 6554 and LICHEN spec/05-routing.md line 418 require:\n\"Segments Left MUST be strictly less than the Hop Limit available after any forwarding decrement.\"\n\n## Current State\nTest vectors created: test/vectors/source_route_hop_limit.json\n\n## Implementation Gap\nNeither Python nor Rust validates this constraint. Current code only checks segments_left \u003c= addresses.len().\n\n## Files to Update\n- python/src/lichen/rpl/routing.py - SourceRoutingHeader validation\n- rust/lichen-rpl/src/srh.rs - source route validation\n- rust/lichen-node/src/rpl_stack/util.rs - forwarding logic\n\n## Test Vectors\n- srh_segments_left_strictly_less_accept: Segments Left \u003c Hop Limit (3 \u003c 4) - MUST accept\n- srh_segments_left_equal_reject: Segments Left = Hop Limit (3 = 3) - MUST reject\n- srh_segments_left_greater_reject: Segments Left \u003e Hop Limit (3 \u003e 2) - MUST reject",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T21:32:44.378841Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T21:41:37.317115Z",
+  "closed_at": "2026-08-11T21:41:37.317115Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.5.1",
+      "depends_on_id": "project-LICHEN-worker6-xpth.5",
+      "type": "parent-child",
+      "created_at": "2026-08-11T21:32:44.689812Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

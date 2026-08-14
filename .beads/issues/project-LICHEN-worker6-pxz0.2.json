@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.2",
+  "title": "SUITES_I parsing: test expectations contradict RFC 9528 Section 3.3.2",
+  "description": "## Root Cause\nMultiple tests have incorrect expectations that contradict RFC 9528 Section 3.3.2, which specifies that the FIRST element of a SUITES_I array is the selected suite. The tests expect the LAST element to be selected.\n\n## Affected Tests\n\n### 1. rfc9528_suites_i_literals (line 662)\n- Test expects `Ok((0, 3))` (suite 0, the LAST element of array [2, 0])\n- Implementation correctly returns `Ok((2, 3))` (suite 2, the FIRST element)\n- Another test at line 997 correctly expects `(2, 3)` for identical input\n\n**Fix:** Change line 662 from `assert_eq!(parse_suites_i(\u0026[0x82, 0x02, 0x00, 0xff]), Ok((0, 3)));` to `assert_eq!(parse_suites_i(\u0026[0x82, 0x02, 0x00, 0xff]), Ok((2, 3)));`\n\n### 2. suites_i_parses_every_signed_integer_width (line 695)\n- CBOR `[0x8b, 0x17, ...]` decodes to 11-element array where FIRST element is 23\n- Test expects `Ok((0, 42))` but parser correctly returns `Ok((23, 42))`\n\n**Fix:** Change line 695 from `assert_eq!(parse_suites_i(\u0026suites), Ok((0, suites.len() - 1)));` to `assert_eq!(parse_suites_i(\u0026suites), Ok((23, suites.len() - 1)));`\n\n### 3. responder_applies_suite_selection_rules (line 711)\n- Test sends SUITES_I = [2, 0] expecting success when responder only supports suite 0\n- Per RFC 9528, first element (2) is selected suite, so responder correctly rejects\n- Another test (test_responder_rejects_unsupported_suite_in_array at line 1040) correctly expects rejection for same input\n\n**Fix:** Delete or rewrite this test - its expectations are backwards per RFC 9528.\n\n## Location\n/Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/tests.rs\n\n## Error Type\nIncorrect test expectations - implementation is correct per RFC 9528",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:23:56.733906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T16:56:52.510189Z",
+  "closed_at": "2026-07-30T16:56:52.510189Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.2",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:23:57.023693Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

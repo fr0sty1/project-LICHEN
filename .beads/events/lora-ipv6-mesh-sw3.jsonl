@@ -1,0 +1,1 @@
+{"id":"019fb559-2d6d-7f3a-938f-0376e19a1ffa","issue_id":"lora-ipv6-mesh-sw3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Go/no-go gate passed: memory budget validated, documented in lichen/README.md. Zephyr fits STM32WL with plenty of headroom.","created_at":"2026-07-30T23:25:48.269999Z"}

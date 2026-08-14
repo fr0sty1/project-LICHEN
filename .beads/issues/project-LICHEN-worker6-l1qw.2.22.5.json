@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.22.5",
+  "title": "Review: Rendezvous cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:57.061481Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.565014Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.22.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.22",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:57.387026Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.22.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.22.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.564555Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.22.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.22.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.564805Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.22.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.22.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.565013Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"id":"019fb559-d592-7874-acd5-5332fe99166e","issue_id":"lora-ipv6-mesh-4e8","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: EventQueue.remove_events_for_node() implemented and called from remove_node()","created_at":"2026-07-30T23:26:31.314554Z"}

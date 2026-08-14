@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-oum4",
+  "title": "[review] model.py:153: Comment incorrectly states int(Decimal) raises ValueError",
+  "description": "Line 153: Comment says int(Decimal) raises ValueError due to digit limit but Python's int(Decimal) bypasses string limit. Fix: Change comment to 'Defense-in-depth'.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:48.522353Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:48.522353Z",
+  "labels": [
+    "review"
+  ]
+}

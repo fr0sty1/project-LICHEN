@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.10",
+  "title": "process_message_1: silently ignores trailing bytes after C_I (EAD not rejected)",
+  "description": "Root Cause: In responder.rs process_message_1() at lines 254-265, the C_I parsing logic extracts the connection identifier value but never checks for trailing bytes afterward. When C_I is encoded as a 1-byte bstr (0x41 + value = 2 bytes), the parser extracts rest[1] as C_I but ignores any remaining bytes in rest[2..]. The test pushes an extra byte to message_1 (simulating unsupported EAD_1), but the parser silently ignores it and returns Ok instead of Err(InvalidMessage).\n\nAffected Test: rejects_unconfigured_ead_trailing_items_and_parses_suite_error\n\nLocation: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/responder.rs:254-265\n\nSuggested Fix: After parsing C_I (around line 265), add a check to reject trailing bytes since EAD is not supported:\n\nlet c_i_len = if rest[0] \u003c= 23 { 1 } else { 2 };\n// Reject trailing items (EAD_1) - not configured/supported\nif rest.len() \u003e c_i_len {\n    return Err(EdhocError::InvalidMessage);\n}\n\nThis ensures any bytes after the C_I encoding are rejected as InvalidMessage, which is the expected behavior when EAD processing is not configured.\n\nError Type: Missing input validation - security-relevant: silently ignoring unexpected message content could mask protocol violations",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:25:19.850401Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T16:57:04.713401Z",
+  "closed_at": "2026-07-30T16:57:04.713401Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.10",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:25:20.132856Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

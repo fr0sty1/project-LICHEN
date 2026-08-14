@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-1jlz",
+  "title": "Network partition healing simulation tests",
+  "description": "ChaosEngine can create partitions via PartitionRule but no tests verify recovery behavior. Simulate network split, then heal and measure route reconvergence time, duplicate suppression correctness, gradient table cleanup.\n\nDeliverable: tests/sim/test_partition_healing.py with scenarios for split/heal measuring convergence time and correctness",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T22:12:12.805007Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T22:38:42.94542Z",
+  "closed_at": "2026-08-09T22:38:42.94542Z",
+  "close_reason": "Created tests/sim/test_partition_healing.py with 7 tests: partition blocks cross-group, same-group works, heal restores 100% delivery, no duplicates"
+}

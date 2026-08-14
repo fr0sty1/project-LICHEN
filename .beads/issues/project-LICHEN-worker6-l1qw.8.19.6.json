@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.19.6",
+  "title": "Vectors: B.5 Testing congestion scenarios",
+  "description": "Congestion test vectors: queue-full, deadline expiry, priority preemption, multi-hop latency, fairness.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:19.952496Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:19.952496Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.19.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:20.271935Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

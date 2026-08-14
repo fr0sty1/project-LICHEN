@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-helh",
+  "title": "[review] provisioning.py:219: SECURITY comment overstates constant-time",
+  "description": "Line 219: Comment claims 'constant-time validation' but the valid-flag pattern doesn't provide true constant-time execution. Fix: Change comment to 'generic error messages'.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:47.280049Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:47.280049Z",
+  "labels": [
+    "review"
+  ]
+}

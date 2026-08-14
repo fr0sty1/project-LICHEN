@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-jt91",
+  "title": "[review] dao_manager.py: _increment_sequence no range validation",
+  "description": "Line 985: Assumes input is 0-255 range. If persistence is corrupted in non-crash-safe mode and returns out-of-range sequence (e.g., 300 or -1), value is incremented without validation. Fix: Validate sequence is in 0-255 range.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:42.796669Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:42.796669Z",
+  "labels": [
+    "review"
+  ]
+}

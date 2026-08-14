@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-sro7",
+  "title": "Review: tdma_beacon.rs security pass",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T20:39:51.990347Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T20:44:06.209003Z",
+  "started_at": "2026-08-11T20:39:56.033513Z",
+  "closed_at": "2026-08-11T20:44:06.209003Z",
+  "close_reason": "Review complete: 1 finding fixed (trailing bytes validation)",
+  "labels": [
+    "review"
+  ]
+}

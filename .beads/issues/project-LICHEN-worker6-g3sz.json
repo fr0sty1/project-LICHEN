@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-g3sz",
+  "title": "Long-duration stability soak tests",
+  "description": "Current sim tests run seconds to minutes. Add tests running simulated hours/days to catch memory leaks in gradient tables, sequence number wraparound at 2^24, Trickle timer drift, stale route accumulation.\n\nDeliverable: tests/sim/test_soak.py with parameterized duration tests checking memory bounds and state consistency",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T22:12:18.172659Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T22:38:46.927431Z",
+  "closed_at": "2026-08-09T22:38:46.927431Z",
+  "close_reason": "Created tests/sim/test_soak.py with 29 tests: gradient memory bounds, sequence wraparound, Trickle drift, route expiry. Parameterized 1h/6h/24h."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-xpth.4",
+  "title": "Vectors: IPv6 Network (8 missing, 3 P0)",
+  "description": "P0:\n- broadcast_rate_limiting: hop-aware budgets HL1=200/hr, HL2=100/hr, etc.\n- br_multicast_filter: BR drops mesh/internet multicasts crossing boundary\n- iid_yggdrasil_binding: lower 64 bits 02xx == IID from same Ed25519 pubkey\n\nP1:\n- multicast_scope_classification: ff01/ff02/ff03/ff05/ff0e scope bits 8-11\n- multicast_group_recognition: ff02::1, ff02::1a, ff02::2, ff03::1, ff03::fc\n- hop_limit_broadcast: HL=1/HL\u003e1/HL=0/HL=255 relay logic\n- ul_bit_edge_cases: U/L bit clearing idempotent\n\nP2:\n- icmpv6_time_exceeded_fragment: code 1 (fragment reassembly)",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:42:16.147619Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T21:44:24.536786Z",
+  "closed_at": "2026-08-11T21:44:24.536786Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.4",
+      "depends_on_id": "project-LICHEN-worker6-xpth",
+      "type": "parent-child",
+      "created_at": "2026-08-11T19:42:16.449947Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

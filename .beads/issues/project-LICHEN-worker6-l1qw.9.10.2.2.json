@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.10.2.2",
+  "title": "Implement: Python oracle for Transport Protocol",
+  "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:41:35.239739Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:41:35.239739Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.10.2.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.10.2",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:41:35.556121Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.10.2.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.10.2.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:10:42.313692Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

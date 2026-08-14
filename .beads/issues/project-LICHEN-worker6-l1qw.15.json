@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15",
+  "title": "Chapter 08: Gateway Coordination Protocol (GCP)",
+  "description": "Spec: spec/08-gateway-coordination.md. Multi-gateway coordination protocol covering trust models (PSK/signatures), discovery, RPL multi-instance, TDMA slot coordination, and node handoff. Builds on RPL multi-instance (RFC 6550 §5), adapted 6TiSCH concepts for LoRa, and OSCORE security.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:22.492054Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:23:22.492054Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15",
+      "depends_on_id": "project-LICHEN-worker6-l1qw",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:22.780918Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

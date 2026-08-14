@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-dnz2",
+  "title": "[review] test_api.py: Missing OverflowError test for playback speed",
+  "description": "Line 1399: test_set_playback_speed_non_numeric uses string but doesn't test huge integer (10**400) OverflowError case. Fix: Add test like test_add_latency_rule_huge_int.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:36.887093Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:36.887093Z",
+  "labels": [
+    "review"
+  ]
+}

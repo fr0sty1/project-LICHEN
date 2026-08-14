@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.19.2",
+  "title": "Test: B.5.2 Deadline expiry",
+  "description": "Test old packets are dropped before transmission when past deadline. Python/Rust/Zephyr.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:15.744695Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:15.744695Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.19.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:16.04271Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

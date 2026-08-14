@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.1",
+  "title": "ResponderState: empty ZeroizeOnDrop does not generate Drop",
+  "description": "File: crates/oscore/src/edhoc/responder.rs\nLine: 122\nCategory: memory-safety\n\n## Description\nEmpty ZeroizeOnDrop impl does not generate Drop - PRK secrets (prk_2e, prk_3e2m, prk_4e3m) and transcript hashes persist in memory after ResponderState is dropped. Same issue as InitiatorState.\n\n## Fix\nReplace `impl ZeroizeOnDrop for ResponderState {}` with `impl Drop for ResponderState { fn drop(\u0026mut self) { self.zeroize(); } }`",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:35:51.254667Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T17:45:45.409586Z",
+  "closed_at": "2026-07-30T17:45:45.409586Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.1",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:35:51.589525Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

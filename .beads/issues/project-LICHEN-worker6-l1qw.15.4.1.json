@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.4.1",
+  "title": "Python: Slot Coordination oracle implementation",
+  "description": "Python oracle for GCP-6 Slot Coordination: superframe synchronization, slot allocation (interleaved/contiguous), conflict resolution (lowest IID wins), CoAP resource simulation.\n\nMUST/SHALL Checklist:\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:25.184201Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:38:32.08556Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:25.480424Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

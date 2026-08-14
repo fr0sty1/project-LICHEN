@@ -1,0 +1,78 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.11",
+  "title": "Review: B.3 Implementation Guidelines cross-validation",
+  "description": "Cross-validate Python/Rust/Zephyr implementations of TX queue, forwarding buffer, queue stats.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:06.191464Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:06.191464Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:06.492035Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:06.405697Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.8",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:07.819096Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.5",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:09.219136Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:10.631001Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.9",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:12.05505Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.6",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:13.622852Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:15.15172Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

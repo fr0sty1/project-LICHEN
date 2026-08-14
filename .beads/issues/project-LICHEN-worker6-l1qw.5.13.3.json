@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.13.3",
+  "title": "Zephyr: RPL DODAG and control messages",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:27.319514Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.494301Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.13.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.13",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:27.707583Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.13.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.13.7",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.493147Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.13.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.13.8",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.494298Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

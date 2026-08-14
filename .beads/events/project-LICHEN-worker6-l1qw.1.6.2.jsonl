@@ -1,1 +1,2 @@
 {"id":"019f975e-328e-7c9a-8965-2e7309a4349d","issue_id":"project-LICHEN-worker6-l1qw.1.6.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:42:40.782827Z"}
+{"id":"019fee7e-9b04-760a-85e5-023acc0ec986","issue_id":"project-LICHEN-worker6-l1qw.1.6.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"AddrMode enum and implementation in lichen-link/src/frame.rs","created_at":"2026-08-11T01:45:02.468397Z"}

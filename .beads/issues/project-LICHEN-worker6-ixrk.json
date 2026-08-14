@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ixrk",
+  "title": "external_transit_rejected test failure: wire format doesn't encode external semantic",
+  "description": "The rpl_route_state_vectors test external_transit_rejected fails because:\n1. Test vector has semantic `external: true` annotation\n2. Wire format does NOT encode external (Python from_option always returns external=False)\n3. Python oracle rejects based on semantic annotation (line 414-420 in generator)\n4. Rust implementation correctly can't detect external from wire format and accepts\n\nThe spec says 'E flag MUST be zero' but RFC 6550 E flag means 'parent address present', not 'external prefix'. LICHEN repurposes E but the wire encoding doesn't actually change.\n\nOptions:\n1. Define a wire encoding for 'external' semantic\n2. Remove external_transit_rejected test if not implementable from wire\n3. Clarify spec on E flag vs external semantic",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T01:50:41.271401Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T05:23:42.293963Z",
+  "closed_at": "2026-08-11T05:23:42.293963Z",
+  "close_reason": "Removed the external_transit_rejected test vector.\n\nRoot cause: The 'external' semantic was never encoded in wire format - it was just a JSON annotation. The test expected rejection based on something that can't be detected from wire bytes.\n\nAlso discovered: LICHEN uses 0200::/7 Yggdrasil addresses, not fd00::/8 ULA. The test fixtures use wrong address space, but that's a separate issue.\n\nChanges:\n- Removed external_transit_rejected from generate_rpl_route_state.py\n- Removed from validate_rpl_route_state.py REQUIRED_CASES\n- Fixed validator to not derive 'external' from E flag (E=0x80 means parent present, not external route)\n- Removed dead unsupported_external rejection code\n- Renumbered subsequent dao_sequence values\n\nNote: There's a pre-existing test failure (withdrawal_tombstone_not_reclaimed_early) that exists on main branch - filed separately."
+}

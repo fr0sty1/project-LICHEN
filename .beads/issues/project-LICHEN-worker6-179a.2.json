@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-179a.2",
+  "title": "tdma_beacon: parse/serialize flag validation asymmetry",
+  "description": "In rust/lichen-core/src/tdma_beacon.rs, parse() rejects reserved flags (bits 4-7) with ParseError::ReservedFlagSet (lines 64-66), but serialize() performs no validation. This allows creating a header with invalid flags, serializing it successfully, then failing to parse it back. Either: (1) trust-the-caller and remove parse validation, or (2) validate-everywhere and add serialize validation. Current state is inconsistent and could cause subtle roundtrip failures.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T20:36:50.904574Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T20:39:35.752377Z",
+  "closed_at": "2026-08-11T20:39:35.752377Z",
+  "close_reason": "Added reserved flag validation to serialize()",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-179a.2",
+      "depends_on_id": "project-LICHEN-worker6-179a",
+      "type": "parent-child",
+      "created_at": "2026-08-11T20:36:51.208524Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

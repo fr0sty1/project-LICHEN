@@ -1,0 +1,1 @@
+{"id":"019fb559-49a1-78a2-826a-825534576087","issue_id":"lora-ipv6-mesh-503","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All requirements implemented and verified: test_integration.py created, pytest-asyncio used, simulator fixture present, two-node TX/RX with correct RSSI verification passing.","created_at":"2026-07-30T23:25:55.489567Z"}

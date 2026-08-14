@@ -1,0 +1,78 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.4.5",
+  "title": "Review: Slot Coordination cross-validation",
+  "description": "Cross-validate Python/Rust/Zephyr implementations of GCP-6 Slot Coordination against shared test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:33.892532Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:33.892532Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:34.216157Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:31.820495Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.9",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:33.300971Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.8",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:34.734943Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.7",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:36.122474Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.6",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:37.531866Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:38.951874Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:40.3777Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.14.6.5",
+  "title": "Review: Mesh Reachability cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:06.205288Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.533683Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.6",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:06.521196Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.6.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.533169Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.6.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.533448Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.6.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.6.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.533681Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.8",
+  "title": "Rust: B.3.3 Queue Latency Measurement implementation",
+  "description": "queue_stats: packets_queued/dropped_deadline/dropped_full, max_latency_ms, avg_latency_ms. Expose via /status/queues CoAP.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:02.507851Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:02.507851Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:02.809706Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:12:57.901377Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

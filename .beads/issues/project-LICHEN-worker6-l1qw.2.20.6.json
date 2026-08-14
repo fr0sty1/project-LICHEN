@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.20.6",
+  "title": "Spec: 02a.3.1 Now() and SelectChannel() pseudocode implementation",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:15.811847Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:22:15.811847Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.20.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.20",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:16.392522Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

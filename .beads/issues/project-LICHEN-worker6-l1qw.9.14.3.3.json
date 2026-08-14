@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.14.3.3",
+  "title": "Zephyr: Status Resources implementation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:45.750037Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.538653Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.3.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.3",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:46.043926Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.3.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.3.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.538651Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

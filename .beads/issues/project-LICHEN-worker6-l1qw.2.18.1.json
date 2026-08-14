@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.18.1",
+  "title": "Python: Multi-Root Beacon Conflict Resolution oracle implementation",
+  "description": "(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:36.046622Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:40:30.41449Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.18.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:36.366568Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

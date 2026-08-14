@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.19.5",
+  "title": "Test: B.5.5 Forwarding fairness",
+  "description": "Test no single source monopolizes forwarding capacity. Per-source limits enforced. Simulator test.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:19.000229Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:19.000229Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.19.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:19.293892Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

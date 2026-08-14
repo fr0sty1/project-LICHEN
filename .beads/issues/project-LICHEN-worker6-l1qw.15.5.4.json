@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.5.4",
+  "title": "Vectors: Node Handoff test vectors",
+  "description": "Test vectors for GCP-7: handoff request/response CoAP messages, state transfer payloads, RPL route update sequences.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:43.580366Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:43.580366Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.5.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.5",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:43.891987Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.5.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.5.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:41.805145Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

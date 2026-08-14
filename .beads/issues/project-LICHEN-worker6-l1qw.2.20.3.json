@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.20.3",
+  "title": "Zephyr: Channel Agility and Adaptive SF implementation",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:07.354731Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.500930Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.20.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.20",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:07.851318Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.20.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.20.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.500928Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

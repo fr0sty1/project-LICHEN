@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.5",
+  "title": "validate_deterministic_item: accepts indefinite-length CBOR",
+  "description": "Root Cause: The validate_deterministic_item function in credential.rs (line 244-246) has an overly permissive else branch that returns Ok(()) for any CBOR type not explicitly handled. The input [0x9f, 0x01, 0xff] is an indefinite-length array (0x9f = indefinite array marker), which should be rejected per RFC 8949 Section 4.2.3 (deterministic CBOR forbids indefinite-length encoding). Since 0x9f falls outside the handled ranges (maps 0xa1-0xb7, arrays 0x80-0x97), it falls through to the else branch and incorrectly returns Ok(()).\n\nAffected Test: malformed_or_unbound_credentials_are_rejected\n\nLocation: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/credential.rs:244-246\n\nSuggested Fix: Change the else branch at lines 244-246 to reject indefinite-length markers. Replace: } else { Ok(()) } with: } else { if (first \u0026 0x1f) == 0x1f \u0026\u0026 first \u003e= 0x40 { return Err(EdhocError::InvalidMessage); } Ok(()) } -- This checks for major types 2-5 with additional info 31 (the indefinite-length markers 0x5f, 0x7f, 0x9f, 0xbf) and the break code 0xff.\n\nError Type: Logic error - overly permissive validation",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:24:28.222206Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T16:56:55.906462Z",
+  "closed_at": "2026-07-30T16:56:55.906462Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.5",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:24:28.501407Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

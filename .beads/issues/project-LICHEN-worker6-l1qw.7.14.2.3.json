@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.7.14.2.3",
+  "title": "Vectors: Generate test vectors for RD Lookup",
+  "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:43:47.361572Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:43:47.361572Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.14.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.14.2",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:43:47.683175Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.14.2.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.14.2.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:09:35.825164Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.16",
+  "title": "Spec: 09 14 Timing and Duty Cycle",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:19.603997Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:23:19.603997Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:19.920361Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

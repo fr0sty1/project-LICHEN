@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.19.1",
+  "title": "Python: Check-In / Roll Call oracle implementation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:45.244309Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:25:45.244309Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.19.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:45.539654Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.1.1",
+  "title": "Python: Trust Models oracle implementation",
+  "description": "Python oracle for GCP-3 Trust Models: PSK-based OSCORE context setup, Ed25519/Schnorr signature verification, TOFU key pinning. Both federation modes.\n\nMUST/SHALL Checklist:\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:47.737313Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:39:22.653988Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.1.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.1",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:48.04201Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

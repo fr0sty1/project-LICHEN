@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.12.1",
+  "title": "Python: Integration with IPv6, RPL, and Test Vectors oracle implementation",
+  "description": "(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:11.397489Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:40:30.126111Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.12.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.12",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:11.757996Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"id":"019fb559-4625-7e29-948e-5002434ccc38","issue_id":"lora-ipv6-mesh-4r8","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Feature fully implemented with Metrics class, NodeMetrics class, integration in Simulation class methods, and API exposure","created_at":"2026-07-30T23:25:54.597929Z"}

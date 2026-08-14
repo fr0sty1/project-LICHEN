@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.4",
+  "title": "parse_id_cred: missing support for compact kid and multi-parameter maps",
+  "description": "Root Cause: The parse_id_cred() function at credential.rs:108-135 only accepts CBOR maps starting with 0xa1 (single-element maps). This prevents parsing:\n1. RFC 9528 \"compact kid\" encoding where ID_CRED can be a bare CBOR integer (e.g., 0x2d = -14) or bare bstr\n2. Multi-element maps (0xa2-0xa8) containing full COSE key info (kty, crv, kid)\n3. x5t (label 34) which is encoded as 0x18 0x22 (2-byte label) and has array value [algorithm, hash]\n\nAffected Tests:\n- id_cred_accepts_compact_kid_and_rfc9529_x5t (line 109 rejects 0x2d != 0xa1)\n- id_cred_accepts_sorted_and_unsorted_literal_maps (line 109 rejects 0xa3)\n- id_cred_preserves_multi_parameter_maps_and_identifies_references (same)\n\nLocation: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/credential.rs:108-135\n\nSuggested Fix: Extend parse_id_cred() to handle three wire formats:\n1. Compact int kid (0x00-0x17, 0x20-0x37, 0x18/0x38 for larger) - wrap in canonical form {4: bstr(cbor_encode(int))}\n2. Compact bstr kid (0x40-0x5b) - wrap in {4: bstr}\n3. Map format (0xa1-0xa8) - iterate all key-value pairs, extract kid/x5t reference, preserve full encoding\n\nError Type: Missing feature implementation - breaks RFC 9528/9529 compliance",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:24:20.086325Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T16:56:54.195166Z",
+  "closed_at": "2026-07-30T16:56:54.195166Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.4",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:24:20.36742Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.15.7",
+  "title": "Vectors: LOADng RREQ/RREP test vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:25.396884Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.549594Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:25.686181Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.549360Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.549592Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

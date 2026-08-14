@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.1",
+  "title": "Python: B.2.1 Small Bounded Queues",
+  "description": "Implement 4-packet TX queue, 2-per-source forwarding, 8-msg BLE GATT limits with QueueFull error returns.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:07.732997Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:38:27.807769Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:08.051616Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

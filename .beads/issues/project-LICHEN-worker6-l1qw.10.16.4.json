@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.16.4",
+  "title": "Vectors: Waypoints test vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:33.586071Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.522536Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.16.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.16",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:33.920786Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.16.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.16.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.522534Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

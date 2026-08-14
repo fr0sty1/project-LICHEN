@@ -1,0 +1,46 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.10",
+  "title": "Vectors: B.3 Implementation Guidelines test vectors",
+  "description": "Test vectors for TX queue push/pop, forwarding buffer limits, queue latency tracking.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:05.050541Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:05.050541Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:05.345561Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.7",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:12:53.652704Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:12:55.071141Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:12:56.470662Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

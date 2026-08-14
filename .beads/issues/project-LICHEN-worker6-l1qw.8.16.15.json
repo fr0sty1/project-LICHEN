@@ -1,0 +1,53 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.16.15",
+  "title": "Rust: 14.8 TDMA CCP FSM implementation",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:53.365507Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:23:53.365507Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.15",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:53.710571Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.15",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.18",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:27.356622Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.15",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.17",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:28.761306Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.15",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.13",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:30.174032Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.15",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:31.578853Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

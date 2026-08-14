@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.19",
+  "title": "Spec: CCP-4 Regional Channel Plans",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:17.650161Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:21:17.650161Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.19",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:17.974153Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

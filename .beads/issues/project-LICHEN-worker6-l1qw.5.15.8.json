@@ -1,0 +1,61 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.15.8",
+  "title": "Review: LOADng cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:26.404924Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.551219Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:26.730074Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15.7",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.550202Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15.5",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.550511Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.550732Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15.6",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.550981Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.15.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.15.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.551217Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-l7i2",
+  "title": "Document DAO Origin Signature option in spec",
+  "description": "The DAO Origin Signature fix (2auf.44.7) is implemented in Rust but not documented in spec.\n\nSpec needs:\n1. Wire format for DAO Origin Signature option (option type, length, fields)\n2. Signature transcript definition (domain separator, what gets signed)\n3. Verification procedure at root\n4. Relay behavior (pass through unchanged)\n5. Security considerations (replay, substitution, reordering attacks)\n\nReference: Rust implementation on integration/rust-rpl-complete branch.\nBlocks: Python/Zephyr implementation of the fix.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T05:09:10.4585Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T05:13:17.999993Z",
+  "closed_at": "2026-08-09T05:13:17.999993Z",
+  "close_reason": "Already documented in spec/05-routing.md Section 8.6. Full wire format, signature transcript, originator/relay/root behavior, replay protection, and crash recovery semantics are present. The workflow confirmed the spec matches the Rust implementation.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l7i2",
+      "depends_on_id": "2auf.44.7",
+      "type": "discovered-from",
+      "created_at": "2026-08-09T05:09:10.925791Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

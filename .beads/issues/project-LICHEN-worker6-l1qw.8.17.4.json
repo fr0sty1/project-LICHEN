@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.4",
+  "title": "Python: B.2.2 Time-Based Expiry",
+  "description": "Implement packet deadline enforcement: routing 5s, ACK/NACK 10s, app data configurable 60s default.\n\nMUST/SHALL Checklist:\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:11.38464Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:38:31.13774Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:11.682645Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

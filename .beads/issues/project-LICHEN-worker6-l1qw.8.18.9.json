@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.9",
+  "title": "Zephyr: B.3.3 Queue Latency Measurement implementation",
+  "description": "queue_stats struct: packets_queued/dropped_deadline/dropped_full, max_latency_ms, avg_latency_ms. Expose via /status/queues CoAP.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:03.478673Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:03.478673Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:03.772037Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:02.163494Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

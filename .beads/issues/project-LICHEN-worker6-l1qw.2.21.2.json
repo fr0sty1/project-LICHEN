@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.21.2",
+  "title": "Rust: Frame Structure implementation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:42.391951Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.565224Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.21.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.21",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:42.723705Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.21.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.21.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.565222Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

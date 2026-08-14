@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-179a.4",
+  "title": "tdma_beacon: wire format doc is valuable",
+  "description": "The module-level doc comment in rust/lichen-core/src/tdma_beacon.rs (lines 1-18) provides a complete byte-offset table documenting the 24-byte header and 48-byte signature layout. This maps exactly to the parse/serialize implementation and makes the binary protocol auditable without reading code. Worth defending if anyone suggests removing as 'redundant' - it serves as the single source of truth for the wire format.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T20:36:54.164032Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T20:39:38.161566Z",
+  "closed_at": "2026-08-11T20:39:38.161566Z",
+  "close_reason": "Acknowledged as positive finding",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-179a.4",
+      "depends_on_id": "project-LICHEN-worker6-179a",
+      "type": "parent-child",
+      "created_at": "2026-08-11T20:36:54.486236Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

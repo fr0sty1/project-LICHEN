@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-1nvp",
+  "title": "[review] provisioning.py: wipe() IDLE state implies reuse but orphans OSCORE",
+  "description": "Line 514: wipe() resets to IDLE implying reuse, but calling create_message_1/process_message_1 after would create orphaned EDHOC state. Fix: Change post-wipe state to FAILED or document permanent termination.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:18:02.138728Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:18:02.138728Z",
+  "labels": [
+    "review"
+  ]
+}

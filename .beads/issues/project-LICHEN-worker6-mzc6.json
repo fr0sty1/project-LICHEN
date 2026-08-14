@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-mzc6",
+  "title": "SCHC compression vector failures: oscore_linklocal and oscore_global",
+  "description": "SCHC compression test vectors oscore_linklocal and oscore_global fail:\n- oscore_linklocal: compress mismatch for rule 5: expected 36 bytes got 36 (same size but different content?)\n- oscore_global: compress mismatch for rule 6: expected 36 bytes got 52 (16 bytes larger)\n\nThese are separate from the fragmentation vectors which were fixed. The compression rules may have changed or the vectors may need updating.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T02:10:11.016436Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T05:03:05.243248Z",
+  "started_at": "2026-08-11T04:50:55.255818Z",
+  "closed_at": "2026-08-11T05:03:05.243248Z",
+  "close_reason": "Fixed SCHC compression rules 5/6 (OSCORE). Two bugs:\n1. Added OSCORE detection via CoAP option 9 parsing\n2. Fixed global address compression to use IIDs for fd00::/64 prefixes\n\nChanges in rust/lichen-schc/src/codec.rs:\n- Added has_oscore_option() to detect CoAP option 9\n- Added is_ula_64() for fd00::/64 prefix matching\n- Updated compress_coap() to use IID compression for both fe80::/64 and fd00::/64\n- Updated compress() to route OSCORE traffic to rules 5/6\n- Updated decompress() and decompress_coap() to handle rules 5/6 with correct prefix reconstruction"
+}

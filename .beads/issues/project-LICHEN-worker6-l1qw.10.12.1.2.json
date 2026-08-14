@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.12.1.2",
+  "title": "Implement: Python oracle for CoAP Resources",
+  "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:40:56.831278Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:40:56.831278Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.12.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.12.1",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:40:57.166676Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.12.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.12.1.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:10:54.985808Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

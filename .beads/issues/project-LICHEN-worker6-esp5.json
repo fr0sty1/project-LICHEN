@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-esp5",
+  "title": "[review] provisioning.py: State machine not thread-safe",
+  "description": "Line 389: Concurrent calls to process_message_*/encrypt_seed/decrypt_ack could race past state checks before state is updated. Fix: Document not thread-safe or add threading.Lock.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:57.626754Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:57.626754Z",
+  "labels": [
+    "review"
+  ]
+}

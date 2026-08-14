@@ -1,0 +1,46 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.3.5",
+  "title": "Review: RPL Multi-Instance Coordination cross-validation",
+  "description": "Cross-validate Python/Rust/Zephyr implementations of GCP-5 RPL Multi-Instance against shared test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:18.677216Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:18.677216Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.3.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.3",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:18.999013Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.3.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.3.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:54.668531Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.3.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.3.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:56.081912Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.3.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.3.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:57.505743Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

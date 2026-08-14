@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-xpth",
+  "title": "Shared Test Vectors: Dual-impl congruence enforcement",
+  "description": "Expand shared test/vectors/ coverage so spec compliance is enforced by vectors, not manual review. Every behavioral edge case gets a vector that both Python and Rust must pass. Goal: if impls diverge, CI catches it before humans do.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:37:10.547822Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T19:37:10.547822Z"
+}

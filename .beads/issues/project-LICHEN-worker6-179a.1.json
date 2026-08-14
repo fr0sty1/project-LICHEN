@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-179a.1",
+  "title": "ParseError missing Error and Display impls",
+  "description": "File: rust/lichen-core/src/tdma_beacon.rs\n\nThe ParseError enum (lines 51-55) is missing std::error::Error and std::fmt::Display implementations.\n\nCustom error types in public APIs should implement the standard error traits for:\n- Composability with ? operator in functions returning Box\u003cdyn Error\u003e or anyhow::Error\n- Integration with error handling crates (thiserror, anyhow)\n- Consistent error reporting via .to_string()\n\nSuggested fix:\n\nimpl std::fmt::Display for ParseError {\n    fn fmt(\u0026self, f: \u0026mut std::fmt::Formatter\u003c'_\u003e) -\u003e std::fmt::Result {\n        match self {\n            Self::TooShort =\u003e write!(f, \"beacon too short\"),\n            Self::ReservedFlagSet =\u003e write!(f, \"reserved flag bit set\"),\n        }\n    }\n}\n\nimpl std::error::Error for ParseError {}\n\nOr use #[derive(thiserror::Error)] if thiserror is available.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T20:36:39.590846Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T20:39:34.564632Z",
+  "closed_at": "2026-08-11T20:39:34.564632Z",
+  "close_reason": "Added Display impl for ParseError",
+  "labels": [
+    "idiomatic-rust",
+    "traits",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-179a.1",
+      "depends_on_id": "project-LICHEN-worker6-179a",
+      "type": "parent-child",
+      "created_at": "2026-08-11T20:36:39.954072Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

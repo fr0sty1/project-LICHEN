@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-xpth.6",
+  "title": "Vectors: Security OSCORE/Schnorr (10 missing, 4 P0)",
+  "description": "## Security P0 Vectors\n\n### Status\nWorkflow created vector files, integration agent running tests.\n\n### Files Created\n- test/vectors/x25519.json - clamping vectors for RFC 7748/8032\n\n### Vectors Generated\n1. x25519_derivation_clamping - vectors with seeds exercising all clamping bits\n2. schnorr48_nonce_determinism - in progress\n3. oscore_piv_boundary - in progress\n4. iid_ul_bit_all_positions - in progress\n\n### Blocking Issues (from workflow)\n- Schnorr vectors schema mismatch between sign and verify tests\n- DAO origin signature schema not closed for additionalProperties\n- SCHC compression rules mismatch for some vectors",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:42:32.776805Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T21:36:15.309036Z",
+  "started_at": "2026-08-11T21:15:00.859085Z",
+  "closed_at": "2026-08-11T21:36:15.309036Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.6",
+      "depends_on_id": "project-LICHEN-worker6-xpth",
+      "type": "parent-child",
+      "created_at": "2026-08-11T19:42:33.082969Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

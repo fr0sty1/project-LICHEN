@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.19.1",
+  "title": "Test: B.5.1 Queue-full handling",
+  "description": "Test sender gets ENOBUFS/QueueFull when TX queue is full. Python/Rust/Zephyr.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:27:14.787147Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:27:14.787147Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.19.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.19",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:27:15.084695Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

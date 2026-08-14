@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-2dbs",
+  "title": "Review: routing.rs correctness 2026-08-10",
+  "description": "## Review Summary\n\n3x code review of rust/lichen-rpl/src/routing.rs with focus on recent changes:\n- `seq_is_newer` lollipop comparison function\n- `skip_path_sequence_check` parameter in `process_dao_inner`\n- Path sequence freshness checks\n\n### Pass 1: Correctness\n- Lollipop 16-step window correctly implemented\n- Edge cases (0, 127, 128, 255) handled correctly\n- Atomic state update pattern prevents corruption\n- **No issues found**\n\n### Pass 2: Security\n- Replay protection via origin_high_water is sound\n- 64-bit sequence space infeasible to exhaust\n- Resource exhaustion bounded by MAX_* constants\n- Authentication chain properly enforced\n- **No issues found**\n\n### Pass 3: Robustness\n- All arithmetic uses checked/wrapping operations\n- Array bounds verified by construction\n- Error propagation consistent\n- State consistency maintained via staged proposal pattern\n- **No issues found**\n\n## Confidence Calibration\n\nReview confidence: 5% chance of missed bug.\nLeast confident areas: Cross-region lollipop transitions (covered by test vectors).\nWould raise confidence if: Property-based tests for sequence comparison.\n\n## Pre-existing Test Failure\n\n`rpl_route_state_vectors::external_transit_rejected` fails on main branch - this is a test infrastructure issue where the test expects rejection based on a semantic \"external\" JSON annotation that is NOT encoded in the wire format. Not related to this change.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-10T22:50:41.151175Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-10T23:09:35.814687Z",
+  "started_at": "2026-08-10T22:50:41.851975Z",
+  "closed_at": "2026-08-10T23:09:35.814687Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ]
+}

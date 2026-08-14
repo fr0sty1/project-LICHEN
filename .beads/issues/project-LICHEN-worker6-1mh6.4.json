@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.4",
+  "title": "finish_process_message_3: missing poison on lifecycle check failure",
+  "description": "File: crates/oscore/src/edhoc/responder.rs\nLine: 455\nFunction: finish_process_message_3\nCategory: missing-poison-on-error\n\n## Description\nReturns Err(EdhocError::InvalidState) without calling poison() when lifecycle or transcript binding check fails. The pending.transcript_binding originated from peer data processing in begin_process_message_3. While primarily an internal state consistency check, the pending struct contains processed peer data, and failing to poison leaves cryptographic state intact.\n\n## Fix\nCall self.poison() before returning at line 455, or restructure to include this check in the closure pattern that follows.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:36:07.240981Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T17:45:50.522745Z",
+  "closed_at": "2026-07-30T17:45:50.522745Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.4",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:36:07.532765Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

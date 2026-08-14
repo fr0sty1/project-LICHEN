@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-pxz0.7",
+  "title": "Test message construction: missing C_R identifier in message_2",
+  "description": "Root Cause: Two tests construct message_2 incorrectly - they put all bytes inside the byte string with nothing left for C_R (connection identifier). The message_2 structure requires G_Y||CIPHERTEXT_2 as a byte string FOLLOWED BY C_R as a separate CBOR element. When begin_process_message_2 calls parse_identifier(\u0026msg2[consumed..]) on the empty remainder, it returns Err(EdhocError::InvalidMessage) because the slice is empty, returning early BEFORE DH computation and BEFORE poison() is called.\n\nAffected Tests:\n1. initiator_post_dh_failure_wipes_and_poison_state (lines 777-780)\n   - msg2 = [0x58,33] + [7;32] + [0] (35 bytes total)\n   - Should be: [0x58,33] + [7;32] + [0] + [0x01] (36 bytes with C_R=1)\n\n2. rejects_all_zero_x25519_shared_secret (lines 806-808)\n   - Same issue - missing C_R after the byte string\n\nLocation: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/tests.rs\n\nSuggested Fix: Add C_R identifier after the byte string in both tests. Change msg2 construction to append [0x01] (C_R=1 as CBOR int) after the bstr. Example: msg2 = [0x58,33] + [7;32] + [0] + [0x01] (36 bytes total).\n\nError Type: Test Vector Construction Error",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T15:24:49.402944Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T16:56:59.241056Z",
+  "closed_at": "2026-07-30T16:56:59.241056Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pxz0.7",
+      "depends_on_id": "project-LICHEN-worker6-pxz0",
+      "type": "parent-child",
+      "created_at": "2026-07-30T15:24:49.684658Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"id":"019fb559-50ad-76e5-8147-af49c2bcef67","issue_id":"lora-ipv6-mesh-6l2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All requested capabilities are implemented: latency tracking, delivery rate, collision statistics, per-node metrics, aggregate metrics, and time-based reporting (via snapshot/API).","created_at":"2026-07-30T23:25:57.293452Z"}

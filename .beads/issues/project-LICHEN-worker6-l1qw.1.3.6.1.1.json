@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.1.3.6.1.1",
+  "title": "Parse: Extract requirements from SF Assignment",
+  "description": "Parse: SF Assignment (spec/02-physical-link.md §3.4)\n\nMUST/SHALL/SHOULD extracted:\n- MUST use assigned SF for all TX after joining when gateway assigns ASSIGNED_SF via DIO (gateway-assigned preferred)\n- MUST use SF10 if no explicit assignment (backwards compat)\n- MUST receive on all SF7-SF12 (gateways and nodes)\n- MUST announce current TX_SF in DIO/Announce (1-byte, absence=SF10) per CCP-16\n- MUST signal ASSIGNED_SF + RF metrics (EMA SNR alpha=1/4, loss) in DIO\n- MUST track per-neighbor EMA, loss, samples\n- MUST use TX-time based occupancy for utilization (not RSSI CAD)\n- MUST apply downgrade thresholds (SNR\u003c0 or loss\u003e0.25 etc) per table\n- SHOULD advertise multi-SF RX capability in DIO\n- SHOULD decrease SF when density\u003c5 AND snr_ema\u003e8 (low density)\n- MAY fallback to SF10 for direct P2P to SF10 peers\n\nStateless fallback formula: assigned_sf = 7 + (hash_32(IID) mod 6) where hash_32 = FNV-1a32 (CCP-15.8.3). DAD uses crc32_ieee not hash_32.\n\nAmbiguities: hash_32 details in CCP-15.8.3, need cross-check with test/vectors/sf-assignment.json",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:39:26.835219Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:27:48.776718Z",
+  "started_at": "2026-08-08T05:27:33.095535Z",
+  "closed_at": "2026-08-08T05:27:48.776718Z",
+  "close_reason": "Parse complete - checklist extracted, spec §3.4",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.3.6.1.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.3.6.1",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:39:27.185947Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

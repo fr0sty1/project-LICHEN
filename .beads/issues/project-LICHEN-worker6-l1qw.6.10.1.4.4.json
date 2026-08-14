@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.10.1.4.4",
+  "title": "Validate: Cross-check Sliding Window oracle",
+  "description": "Run oracle against existing vectors if any. Compare with RFC examples. Verify all MUST statements covered.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:42:14.679353Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:42:14.679353Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.10.1.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.10.1.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:42:15.019735Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.10.1.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.10.1.4.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:10:15.337952Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

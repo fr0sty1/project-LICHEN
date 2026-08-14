@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-li3r.1",
+  "title": "dead code: unsupported_transit_e match arm unreachable",
+  "description": "The test vector 'reject_external_flag_for_self_128' was removed from dao_origin_signature.json, but the expected_outcome() function in dao_origin_vectors.rs still contains a match arm for the 'unsupported_transit_e' reason on line 126. With no vector using this reason, this code is now dead/unreachable. Either restore test coverage for this case or remove the dead match arm.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-10T21:26:02.178326Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-10T21:52:11.659676Z",
+  "closed_at": "2026-08-10T21:52:11.659676Z",
+  "close_reason": "Removed dead match arm",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-li3r.1",
+      "depends_on_id": "project-LICHEN-worker6-li3r",
+      "type": "parent-child",
+      "created_at": "2026-08-10T21:26:02.502093Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

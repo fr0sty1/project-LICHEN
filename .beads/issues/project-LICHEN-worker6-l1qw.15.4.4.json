@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.4.4",
+  "title": "Vectors: Slot Coordination test vectors",
+  "description": "Test vectors for GCP-6: superframe timing, slot allocation maps, conflict resolution scenarios, CoAP message formats for /slots /channels resources.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:32.875981Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:32.875981Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:33.200284Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:21.91415Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

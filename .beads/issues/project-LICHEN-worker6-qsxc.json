@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-qsxc",
+  "title": "Spec: IID uses SHA-512, not SHA-256",
+  "description": "Fixed spec 06-security.md lines 110 and 144: SHA-256 → SHA-512 for IID derivation. Matches test vectors and all implementations.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T00:09:13.877641Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T00:13:52.292148Z",
+  "closed_at": "2026-08-11T00:13:52.292148Z",
+  "close_reason": "Closed",
+  "labels": [
+    "spec"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-udi1",
+  "title": "[review] test_provisioning.py: Missing empty nonce test for decrypt_ack",
+  "description": "Line 552: test_decrypt_ack_rejects_invalid_nonce_length missing empty nonce case (b''), while decrypt_seed test includes it. Fix: Add empty nonce test case.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:33.053175Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:33.053175Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-xpth.9",
+  "title": "Vectors: Local Client Interface (13 missing, 4 P0)",
+  "description": "P0:\n- slip_framing: 0xC0/0xDB escapes, invalid sequences, empty frames\n- raw_diag_ttl_enforcement: max_ttl_s=300 clamping, auto-disable\n- confessions_rate_thresholds: 1/30s, 12/hr exact timing windows\n- keystore_iid_validation: 64-bit IID format, reject malformed\n\nP1:\n- keystore_trust_state: tofu/verified/dane enum, timestamp format\n- config_role_enum: leaf/router/border-router validation\n- radio_config_bounds: sf 7-12, bw_khz valid, tx_power limits\n- status_time_validation: wall_clock_valid=false -\u003e unix_time omit\n- coap_observe_notification: /status, /neighbors observe tokens\n- deaddrop_rate_thresholds: per-context rate limiting\n- raw_tx_regulatory: oversized/invalid params -\u003e 4.00\n\nP2:\n- wellknown_core_format: CoRE Link Format rt/ct/obs\n- msg_ack_field: POST /msg/inbox ack:true/false",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:42:58.379657Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T21:49:36.872351Z",
+  "closed_at": "2026-08-11T21:49:36.872351Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.9",
+      "depends_on_id": "project-LICHEN-worker6-xpth",
+      "type": "parent-child",
+      "created_at": "2026-08-11T19:42:58.673233Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

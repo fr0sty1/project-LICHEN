@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.14.4.4",
+  "title": "Vectors: Diagnostic Resources test vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:51.465575Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.536207Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:51.767027Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.4.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.536205Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

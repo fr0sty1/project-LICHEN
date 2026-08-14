@@ -1,1 +1,2 @@
 {"id":"019f9760-81e9-7dac-8ec8-53f460278250","issue_id":"project-LICHEN-worker6-l1qw.1.9.1.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:45:12.169897Z"}
+{"id":"019fee7e-d70b-7dda-b730-094f481a5198","issue_id":"project-LICHEN-worker6-l1qw.1.9.1.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Implementation in lichen-link/src/schnorr.rs derive_keypair","created_at":"2026-08-11T01:45:17.835908Z"}

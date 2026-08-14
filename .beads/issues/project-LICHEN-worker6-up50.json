@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-up50",
+  "title": "[P0] Implement native Yggdrasil AddrForKey in Python",
+  "description": "Spec updated in 06-security.md §8.7 to use native Yggdrasil algorithm.\n\n## Algorithm (from yggdrasil-go)\n```\ninverted = NOT(pubkey)\nones = count_leading_ones(inverted)\nskip terminating 0-bit\nremaining = next 112 bits\naddr = [0x02] || [ones] || remaining[0:14]\nIID = addr[8:16]\n```\n\n## Files to update\n- `python/src/lichen/crypto/identity.py`: `_pubkey_to_iid()`, `yggdrasil_address()`\n- `python/src/lichen/ipv6/addr.py`: `pubkey_to_iid()`, `yggdrasil_address_from_pubkey()`\n- `python/tests/crypto/test_identity.py`: Update VECTORS with native Yggdrasil IIDs\n\n## Test vector (upstream)\npubkey: bdbacfd82240de3dcd123924cbb55256fb8dab08aa98e305528ab84f419e6efb\naddr:   0200848a604fbb7e438465db8db66895\nIID:    438465db8db66895\n\n## Key change\nIID is NO LONGER SHA-256(pubkey)[0:8]. It's the lower 8 bytes of the Yggdrasil address (pure bit manipulation, no hash).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-08T21:22:51.823798Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T22:14:33.234167Z",
+  "closed_at": "2026-08-08T22:14:33.234167Z",
+  "close_reason": "Native Yggdrasil AddrForKey implemented in crypto/identity.py and ipv6/addr.py. All 345 tests pass.",
+  "labels": [
+    "python"
+  ]
+}

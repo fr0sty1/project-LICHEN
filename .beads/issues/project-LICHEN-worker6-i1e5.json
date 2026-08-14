@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-i1e5",
+  "title": "[review] params.py: Negative retry_after_s not validated",
+  "description": "Line 250: If congestion provider returns negative retry_after_ms, conversion produces negative retry_after_s which is semantically invalid. Fix: Clamp to 0 or treat as None.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:38.361011Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:38.361011Z",
+  "labels": [
+    "review"
+  ]
+}

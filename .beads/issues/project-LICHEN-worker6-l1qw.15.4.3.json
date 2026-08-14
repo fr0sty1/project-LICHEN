@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.15.4.3",
+  "title": "Zephyr: Slot Coordination implementation",
+  "description": "Zephyr border router implementation of GCP-6 Slot Coordination: superframe sync, slot allocation, conflict resolution in lichen/subsys.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:31.851412Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:31.851412Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:32.166462Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.15.4.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.15.4.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:14:30.408633Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-xpth.7",
+  "title": "Vectors: Transport/CoAP (12 missing, 3 P0)",
+  "description": "P0:\n- coap_observe_sequence: 24-bit rollover, out-of-order rejection\n- coap_option_malformed: delta/length overflow, option 0, reserved formats\n- coap_token_validation: TKL\u003e8 reject, empty vs zero-length token\n\nP1:\n- congestion_threshold_boundaries: 50/80/95% exact boundaries (\u003c not \u003c=)\n- coap_retry_timing: ACK_TIMEOUT*ACK_RANDOM_FACTOR jitter\n- mqtt_sn_messages: CONNECT/CONNACK/REGISTER/PUBLISH wire format\n- cayenne_lpp_encoding: type 103/104/115/136 channel/type/value\n- compact_cot_direct_addressing: dest_id 16B vs 8B IID clarify\n- coap_mid_matching: MID reuse window EXCHANGE_LIFETIME=247s\n\nP2:\n- aprs_is_parsing: position report formats\n- nmea_sentence_validation: checksum, GPGGA/GPRMC\n- schc_mandatory_receiver_capacity: 1281 bytes minimum",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:42:44.058674Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T21:45:55.027925Z",
+  "closed_at": "2026-08-11T21:45:55.027925Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.7",
+      "depends_on_id": "project-LICHEN-worker6-xpth",
+      "type": "parent-child",
+      "created_at": "2026-08-11T19:42:44.364635Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

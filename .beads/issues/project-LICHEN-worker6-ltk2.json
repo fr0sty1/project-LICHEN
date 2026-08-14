@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ltk2",
+  "title": "[review] provisioning.py: _oscore_ctx master_secret not wiped",
+  "description": "Lines 511, 693: Both BR and Node wipe() methods dereference _oscore_ctx (set to None) but don't wipe master_secret. Key material may persist in memory. Fix: Call oscore_ctx.wipe() if available, or zero master_secret before dereferencing.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:35.748495Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:35.748495Z",
+  "labels": [
+    "review"
+  ]
+}

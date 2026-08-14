@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.14.6",
+  "title": "Spec: 11 17.5.6 Mesh Reachability",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:17.353697Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:24:17.353697Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.14.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:17.666055Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

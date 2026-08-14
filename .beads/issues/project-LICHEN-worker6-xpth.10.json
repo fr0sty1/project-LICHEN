@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-xpth.10",
+  "title": "Vectors: Applications (17 missing, 4 P0)",
+  "description": "P0:\n- sos_rate_limiting: 10min cooldown, 3/hr max, burst 2, monotonic uptime\n- sos_signature_verification: unsigned/invalid sig silently dropped\n- group_oscore_key_distribution: pairwise wrapped, key_epoch, 1hr grace\n- position_privacy_auth: public/group/private mode auth requirements\n\nP1:\n- store_forward_eviction: expired-\u003efairness-\u003eFIFO order\n- store_forward_backpressure: 5.03/4.13/4.03 with CBOR details\n- message_ttl_wallclock: valid clock enforces, invalid accepts\n- sos_network_behavior: P0 priority, 30s beacon, relay suppression\n- group_multicast_address: RFC 3306 ff35:0040 derivation\n- confessions_rate_limit: 1/30s, 12/hr, 4.29 with Retry-After\n- deaddrop_rate_limit: 6/hr, 4.29/4.13/5.03 responses\n- group_invitation_signature: sig over {gid,name,mcast,inviter,role,expires}\n- rollcall_timeout: responded vs missing list timing\n\nP2:\n- position_beacon_interval, presence_auto_status, range_test_senml, waypoint_expiration",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:43:07.257604Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T21:51:21.981449Z",
+  "closed_at": "2026-08-11T21:51:21.981449Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.10",
+      "depends_on_id": "project-LICHEN-worker6-xpth",
+      "type": "parent-child",
+      "created_at": "2026-08-11T19:43:07.554588Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

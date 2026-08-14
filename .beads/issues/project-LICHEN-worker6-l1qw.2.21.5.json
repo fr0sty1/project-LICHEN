@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.21.5",
+  "title": "Review: Frame Structure cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:45.478828Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.566756Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.21",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:45.795774Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.21.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.565418Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.21.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.566551Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.21.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.566754Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

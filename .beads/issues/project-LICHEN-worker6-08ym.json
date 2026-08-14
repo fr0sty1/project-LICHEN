@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-08ym",
+  "title": "RPL message test vectors expansion",
+  "description": "Current rpl_messages.json has only 2 vectors - insufficient for RFC 6550 compliance. Add DAO-ACK, DIS, DIO with options (DODAG Config, DAG Metric Container), DAO with RPL Target/Transit Info options.\n\nDeliverable: Expand test/vectors/rpl_messages.json to 15+ vectors covering all message types and option combinations",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T22:11:58.582905Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T22:38:29.223352Z",
+  "closed_at": "2026-08-09T22:38:29.223352Z",
+  "close_reason": "Expanded test/vectors/rpl_messages.json from 2 to 25 vectors: DIS(4), DIO(9), DAO(8), DAO-ACK(4) with all RFC 6550 options"
+}

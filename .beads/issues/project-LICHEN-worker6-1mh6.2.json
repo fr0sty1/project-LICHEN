@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.2",
+  "title": "InitiatorState: empty ZeroizeOnDrop does not generate Drop",
+  "description": "File: crates/oscore/src/edhoc/initiator.rs\nLine: 124\nCategory: memory-safety\n\n## Description\nEmpty ZeroizeOnDrop impl does not generate Drop - PRK secrets (prk_2e, prk_3e2m, prk_4e3m) and transcript hashes persist in memory after InitiatorState is dropped. ZeroizeOnDrop is just a marker trait; actual zeroization requires #[derive(ZeroizeOnDrop)] or manual Drop impl calling zeroize().\n\n## Fix\nReplace `impl ZeroizeOnDrop for InitiatorState {}` with `impl Drop for InitiatorState { fn drop(\u0026mut self) { self.zeroize(); } }` or use #[derive(ZeroizeOnDrop)] if deriving Zeroize",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:35:52.308292Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T17:45:47.217449Z",
+  "closed_at": "2026-07-30T17:45:47.217449Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.2",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:35:52.594599Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

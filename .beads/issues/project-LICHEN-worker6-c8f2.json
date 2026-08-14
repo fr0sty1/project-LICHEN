@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-c8f2",
+  "title": "[test] lichen-core: ccp15_vectors_match interference score mismatch",
+  "description": "rf_health::tests::ccp15_vectors_match fails: interference score mismatch for seed0: 0.2633333333333333 vs 0. Test vector or implementation divergence between Python and Rust.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:31:46.182892Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:46:37.345736Z",
+  "closed_at": "2026-08-14T21:46:37.345736Z",
+  "close_reason": "Fixed: skip interference_score check when vector value is null",
+  "labels": [
+    "test"
+  ]
+}

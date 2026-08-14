@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.21.5",
+  "title": "Review: Groups and Channels cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:58.851676Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.517480Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.21",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:59.15854Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.21.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.516944Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.21.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.517243Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.21.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.21.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.517478Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

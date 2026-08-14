@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-fkc5",
+  "title": "rpl_route_state_vectors test fails on main: withdrawal_tombstone timing",
+  "description": "The rpl_route_state_vectors test fails on main branch (before any changes):\n\n- withdrawal_tombstone_not_reclaimed_early expects accepted=false but Rust returns true\n- zero_length_transit test also fails with assertion mismatch\n\nThis appears to be a pre-existing issue with either:\n1. The test vector expectations\n2. The Rust DaoManager tombstone reclamation timing\n3. Test vector format version mismatch\n\nThe test fixtures also use fd00::/8 addresses when LICHEN spec says 0200::/7 (Yggdrasil), which may indicate the vectors need updating.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T05:23:50.178373Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T17:37:11.950952Z",
+  "started_at": "2026-08-11T17:26:27.220564Z",
+  "closed_at": "2026-08-11T17:37:11.950952Z",
+  "close_reason": "Fixed target_active_until() fold initial value: Some(0) → Some(fallback) where fallback=now_seconds. Withdrawn routes now use withdrawal time for tombstone retention, not epoch 0."
+}

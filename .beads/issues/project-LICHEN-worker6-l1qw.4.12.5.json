@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.4.12.5",
+  "title": "Review: Integration with IPv6, RPL, and Test Vectors cross-validation",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:15.885725Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.512449Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.12.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.12",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:16.275995Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.12.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.12.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.511436Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.12.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.12.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.512234Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.4.12.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.12.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.512447Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"id":"019fb53f-e69d-7080-aff2-a728d036989e","issue_id":"project-LICHEN-pidi","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed in 2026-07-25 refactor. radio.py:389 calls record_reception() for callback path. Test test_callback_reception_updates_metrics_and_observer verifies.","created_at":"2026-07-30T22:58:11.741033Z"}

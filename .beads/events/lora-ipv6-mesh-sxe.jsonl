@@ -1,0 +1,1 @@
+{"id":"019fb559-be22-7c48-9414-9d84e2814309","issue_id":"lora-ipv6-mesh-sxe","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Core multi-node simulation integration tests implemented in python/tests/sim/test_multinode.py with explicit bead reference","created_at":"2026-07-30T23:26:25.314805Z"}

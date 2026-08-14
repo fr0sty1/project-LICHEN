@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-530q",
+  "title": "[P0] Regenerate test vectors for native Yggdrasil addressing",
+  "description": "After Python implementation is fixed (up50), regenerate all address-related test vectors.\n\n## Vectors to regenerate\n- `test/vectors/yggdrasil-derivation.json` - primary Yggdrasil vectors\n- `test/vectors/node_address.json` - human-readable addresses (IID changed)\n- `test/vectors/ipv6-addresses.json` - if IID-dependent\n\n## Upstream reference\n`test/vectors/yggdrasil_address.json` has the authoritative upstream vector:\npubkey: bdbacfd82240de3dcd123924cbb55256fb8dab08aa98e305528ab84f419e6efb\naddr:   0200848a604fbb7e438465db8db66895\n\n## Process\n1. Fix Python first (up50)\n2. Run `PYTHONPATH=python/src python3 test/vectors/generate.py`\n3. Verify upstream vector matches\n4. Run full test suite\n\n## Blocked by\n- up50 (Python implementation)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-08T21:23:16.235637Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T22:14:38.4727Z",
+  "closed_at": "2026-08-08T22:14:38.4727Z",
+  "close_reason": "Test vectors regenerated with native Yggdrasil IIDs. node_address.json and yggdrasil-derivation.json updated. Upstream vector verified.",
+  "labels": [
+    "vectors"
+  ]
+}

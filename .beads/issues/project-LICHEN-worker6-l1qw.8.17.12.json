@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.12",
+  "title": "Zephyr: B.2.4 Explicit Backpressure",
+  "description": "Return -ENOBUFS for immediate sends, NACK for mesh-forwarded packets when queue full.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:27.591904Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:26:27.591904Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.12",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:27.887255Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.12",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.16",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:32.295246Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

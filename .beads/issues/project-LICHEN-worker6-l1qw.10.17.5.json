@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.17.5",
+  "title": "Review: Emergency / SOS cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:39.503891Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.521431Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.17.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:39.802865Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.17.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.17.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.520911Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.17.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.17.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.521209Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.17.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.17.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.521429Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

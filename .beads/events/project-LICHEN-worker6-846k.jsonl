@@ -1,0 +1,2 @@
+{"id":"019fe895-594b-7bb8-8ab8-8080bc4fdb57","issue_id":"project-LICHEN-worker6-846k","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-09T22:12:09.675768Z"}
+{"id":"019fe8ad-a0ec-7042-83d8-4b9836f5123e","issue_id":"project-LICHEN-worker6-846k","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Created src/lichen/mqttsn/ module: messages.py (22 dataclasses), codec.py (encode/decode), plus 85 tests. Full OASIS MQTT-SN 1.2 support.","created_at":"2026-08-09T22:38:40.876018Z"}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-6kr8",
+  "title": "[review] provisioning.py: Input length leaked in ValueError",
+  "description": "Line 201: Actual input length revealed in ValueError. Could leak information if error messages exposed. Fix: Use generic 'Seed must be 32 bytes' message.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:55.761807Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:55.761807Z",
+  "labels": [
+    "review"
+  ]
+}

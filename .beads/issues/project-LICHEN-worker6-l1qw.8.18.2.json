@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.2",
+  "title": "Rust: B.3.1 TX Queue implementation",
+  "description": "TX queue: tx_queue_entry with data/len/deadline_ms/priority. tx_queue_push with deadline check, priority preemption, ENOBUFS on full.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:48.523292Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:26:48.523292Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:48.817498Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:00.735856Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

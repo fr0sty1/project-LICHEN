@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1mh6.8",
+  "title": "finish_process_message_3: missing poison on id_cred mismatch",
+  "description": "File: crates/oscore/src/edhoc/responder.rs\nLine: 458\nFunction: finish_process_message_3\nCategory: missing-poison-on-error\n\n## Description\nReturns Err(EdhocError::SignatureVerification) without calling poison() when peer.id_cred does not match pending.id_cred. The pending.id_cred was extracted from peer message 3 in begin_process_message_3. This violates the invariant that all error paths after processing peer data must call poison(). State remains at lifecycle=PendingMessage3 with PRK values and transcript hashes intact in memory.\n\n## Fix\nMove the id_cred check inside the closure at line 461, or call self.poison() before returning at line 458. The closure pattern at lines 461-507 already handles poison() on error; extending it to include this check would be consistent.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-30T17:36:34.584523Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-30T18:32:11.320474Z",
+  "closed_at": "2026-07-30T18:32:11.320474Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1mh6.8",
+      "depends_on_id": "project-LICHEN-worker6-1mh6",
+      "type": "parent-child",
+      "created_at": "2026-07-30T17:36:34.880148Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

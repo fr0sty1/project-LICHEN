@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.2.22.3",
+  "title": "Zephyr: Rendezvous implementation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:21:54.671605Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.564448Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.22.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.22",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:21:55.015348Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.2.22.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.22.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.564446Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

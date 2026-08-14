@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-pnqp",
+  "title": "Timing module test suite",
+  "description": "python/src/lichen/timing/ has 8 modules (airtime, csma, duty_cycle, sfn, time_sync, trickle, dao, data_traffic) with minimal test coverage. Create tests/timing/ directory with comprehensive tests.\n\nDeliverable: tests/timing/ directory with test files for airtime calculations, Trickle algorithm, SFN wraparound, duty cycle limits",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T22:12:02.626474Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T22:38:32.379136Z",
+  "closed_at": "2026-08-09T22:38:32.379136Z",
+  "close_reason": "Created tests/timing/ with 265 tests across 7 files: airtime(34), csma(42), duty_cycle(31), sfn(54), trickle(45), dao(36), data_traffic(23)"
+}

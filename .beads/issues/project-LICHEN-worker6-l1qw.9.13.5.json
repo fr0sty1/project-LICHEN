@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.9.13.5",
+  "title": "Review: Client IPv6 Address cross-validation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:24:06.403653Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.543951Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.13.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.13",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:24:06.747721Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.13.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.13.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.543387Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.13.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.13.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.543703Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.13.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.13.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.543949Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

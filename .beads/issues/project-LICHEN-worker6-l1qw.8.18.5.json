@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.18.5",
+  "title": "Rust: B.3.2 Forwarding Buffer implementation",
+  "description": "Forwarding buffer: MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2, send NACK when per-source limit reached.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:52.402317Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:26:52.402317Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:52.702383Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.18.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.18.10",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:12:59.33799Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

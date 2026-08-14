@@ -1,0 +1,110 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17",
+  "title": "Review: B.2 Design Principles cross-validation",
+  "description": "Cross-validate Python/Rust/Zephyr implementations of queue bounds, deadlines, priorities, backpressure.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:37.761646Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:26:37.761646Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:38.060798Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.16",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:38.010439Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.14",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:39.426179Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.11",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:40.83175Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.8",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:42.279114Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.5",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:43.674043Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.2",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:45.066136Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.15",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:46.467762Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.12",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:47.932296Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.9",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:49.350651Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.6",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:50.763052Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.3",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:13:52.162955Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

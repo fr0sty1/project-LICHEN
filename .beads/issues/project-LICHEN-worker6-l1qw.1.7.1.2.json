@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.7.1.2",
   "title": "Rust: 64-slot replay window",
   "description": "64-slot replay window implementation. DONE - replay.rs",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:18.861381Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:18.861381Z",
+  "updated_at": "2026-08-11T01:45:19.037801Z",
+  "closed_at": "2026-08-11T01:45:19.037801Z",
+  "close_reason": "Implementation in lichen-link/src/replay.rs",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.7.1.2",

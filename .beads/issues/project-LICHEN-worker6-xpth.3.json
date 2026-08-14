@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-xpth.3",
+  "title": "Vectors: SCHC Adaptation (10 missing, 1 P0)",
+  "description": "P0:\n- schc_unknown_rule_id_rejection: Rule ID 0xFE or unused must drop, not crash\n\nP1:\n- schc_rule7_mqttsn: Rule 7 MQTT-SN wire format, 18-byte compressed\n- schc_rule255_uncompressed: 0xFF prefix + full IPv6 round-trip\n- schc_port_boundary_compression: port 5679/5680/5695/5696 boundaries\n- schc_frag_rule79_direction: B-to-A direction rule\n- schc_compressed_size_validation: spec-mandated sizes per rule\n- schc_octet_alignment_padding: bit-level padding to octet\n- schc_frag_single_active_packet: T=0 one active packet reset\n\nP2:\n- schc_rule_version_dio_option: version comparison logic\n- schc_frag_ack_bitmap_format: RFC 8724 compressed bitmap",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T19:42:10.190416Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T19:42:10.190416Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xpth.3",
+      "depends_on_id": "project-LICHEN-worker6-xpth",
+      "type": "parent-child",
+      "created_at": "2026-08-11T19:42:10.484134Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

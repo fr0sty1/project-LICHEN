@@ -1,0 +1,1 @@
+{"id":"019fb559-d086-736b-a1f5-c9e2fa39fa52","issue_id":"lora-ipv6-mesh-xly","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Project structure fully implemented and expanded - sim/, radio/, link/ directories exist with extensive code, pyproject.toml contains all required dependencies","created_at":"2026-07-30T23:26:30.022224Z"}

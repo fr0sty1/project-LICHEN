@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ndka",
+  "title": "[review] provisioning.py: No ciphertext length validation",
+  "description": "Line 161: For AES-CCM-16-64-128 with 32-byte plaintext, ciphertext must be exactly 40 bytes. Undersized ciphertext causes InvalidTag; oversized may cause undefined behavior. Fix: Add ciphertext length check.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:40.307916Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:40.307916Z",
+  "labels": [
+    "review"
+  ]
+}

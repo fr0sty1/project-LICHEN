@@ -1,0 +1,1 @@
+{"id":"019fb559-b481-7f36-a44a-8082d4422ed5","issue_id":"lora-ipv6-mesh-r45","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Bug fix implemented - can_decode now uses \u003e= for sensitivity threshold comparison as expected","created_at":"2026-07-30T23:26:22.849998Z"}

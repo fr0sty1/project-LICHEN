@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.5.12",
+  "title": "Spec: 05.7 Routing Overview",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:22:01.76876Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:22:01.76876Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.12",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:22:02.142763Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

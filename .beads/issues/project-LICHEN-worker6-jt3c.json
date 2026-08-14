@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-jt3c",
+  "title": "schc: No rule set versioning",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-12T18:40:17.683033Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-12T18:40:17.683033Z",
+  "labels": [
+    "spec-compliance"
+  ]
+}

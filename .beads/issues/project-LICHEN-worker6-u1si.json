@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-u1si",
+  "title": "[review] processor.py: TypeError not caught in exception handler",
+  "description": "Line 82: Handler catches ValueError but not TypeError. If pubkey is None, len(announce.pubkey) raises TypeError. Fix: Catch Exception or guard the log statement.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:23.268557Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:23.268557Z",
+  "labels": [
+    "review"
+  ]
+}

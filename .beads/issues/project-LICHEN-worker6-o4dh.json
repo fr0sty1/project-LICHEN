@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-o4dh",
+  "title": "Python: Add test validating DaoManager against rpl_route_state.json vectors",
+  "description": "Python imports run_route_state_vectors() in test_dao.py but never calls it in a test. Rust has canonical_route_state_vectors_match_production_manager that validates the DaoManager against the shared vectors. Python needs an equivalent test for dual-impl parity.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-11T18:19:40.447931Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-11T18:21:41.33264Z",
+  "started_at": "2026-08-11T18:19:46.8687Z",
+  "closed_at": "2026-08-11T18:21:41.33264Z",
+  "close_reason": "Added test_canonical_route_state_vectors_match_dao_manager to tests/rpl/test_dao.py. Validates DaoManager against shared test/vectors/rpl_route_state.json — parity with Rust's canonical_route_state_vectors_match_production_manager."
+}

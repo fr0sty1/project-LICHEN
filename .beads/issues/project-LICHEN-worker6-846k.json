@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-846k",
+  "title": "MQTT-SN Python codec",
+  "description": "spec/07-transport-app.md references MQTT-SN (port 10883) but no implementation exists. Implement publish/subscribe codec, topic registration, QoS handling per OASIS MQTT-SN 1.2 spec.\n\nDeliverable: python/src/lichen/mqttsn/ module with encoder/decoder for CONNECT, PUBLISH, SUBSCRIBE, PINGREQ and corresponding tests",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T22:12:09.669496Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T22:38:40.864884Z",
+  "closed_at": "2026-08-09T22:38:40.864884Z",
+  "close_reason": "Created src/lichen/mqttsn/ module: messages.py (22 dataclasses), codec.py (encode/decode), plus 85 tests. Full OASIS MQTT-SN 1.2 support."
+}

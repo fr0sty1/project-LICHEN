@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-3gex",
+  "title": "[review] provisioning.py: br_pubkey length not validated",
+  "description": "Line 573: process_message_2 doesn't validate br_pubkey length before passing to EDHOC. Fix: Add validation for 32-byte pubkey.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:17:59.578886Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:17:59.578886Z",
+  "labels": [
+    "review"
+  ]
+}

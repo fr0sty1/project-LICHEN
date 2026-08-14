@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.7",
+  "title": "Python: B.2.3 Priority Queuing",
+  "description": "Implement 4-level priority queue: P0 routing control, P1 link ACKs, P2 urgent app, P3 bulk data.\n\nMUST/SHALL Checklist:\n(no MUST/SHALL extracted - manual review needed)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:26:20.983806Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:37:56.428132Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:26:21.280299Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

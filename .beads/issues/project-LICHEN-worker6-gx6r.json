@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-gx6r",
+  "title": "EDHOC test vectors expansion",
+  "description": "Current edhoc.json has only 1 vector - insufficient for RFC 9528 Suite 0 implementation testing. Add error cases, different method types, EDHOC-KeyUpdate, connection ID variations, OSCORE export edge cases.\n\nDeliverable: Expand test/vectors/edhoc.json to 10+ vectors covering happy path variants, error handling, and edge cases",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-09T22:11:59.900184Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-09T22:38:30.769218Z",
+  "closed_at": "2026-08-09T22:38:30.769218Z",
+  "close_reason": "Expanded test/vectors/edhoc.json from 1 to 16 vectors: happy path, connection ID variants, OSCORE export, error cases, ERR messages"
+}

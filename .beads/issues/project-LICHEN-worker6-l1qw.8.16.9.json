@@ -1,0 +1,61 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.16.9",
+  "title": "Vectors: 14.6 Time Synchronization test vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:23:41.540235Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-31T19:23:41.540235Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:23:41.88489Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.14",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:20.209056Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.10",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:21.62659Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.6",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:23.035381Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:24.454422Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.16.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.16.1",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:15:25.910664Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

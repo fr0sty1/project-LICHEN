@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.6.2",
   "title": "Rust: 4 addressing modes",
   "description": "4 addressing modes implementation in Rust. DONE",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:40.776666Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:40.776666Z",
+  "updated_at": "2026-08-11T01:45:02.447566Z",
+  "closed_at": "2026-08-11T01:45:02.447566Z",
+  "close_reason": "AddrMode enum and implementation in lichen-link/src/frame.rs",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.6.2",

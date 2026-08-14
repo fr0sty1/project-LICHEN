@@ -1,0 +1,2 @@
+{"id":"019fe895-658a-7543-9ca5-04a7988adf11","issue_id":"project-LICHEN-worker6-1jlz","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-09T22:12:12.810345Z"}
+{"id":"019fe8ad-a90b-739d-b184-0388767500da","issue_id":"project-LICHEN-worker6-1jlz","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Created tests/sim/test_partition_healing.py with 7 tests: partition blocks cross-group, same-group works, heal restores 100% delivery, no duplicates","created_at":"2026-08-09T22:38:42.955238Z"}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-asrk",
+  "title": "[review] ip_coap.py: Dead code - duplicate return block",
+  "description": "Line 369-374: Unreachable dead code duplicates return block at lines 362-367. Every code path returns before reaching it. Fix: Delete lines 369-374.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T21:21:22.228235Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T21:21:22.228235Z",
+  "labels": [
+    "review"
+  ]
+}

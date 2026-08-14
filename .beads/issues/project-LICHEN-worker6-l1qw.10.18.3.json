@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.10.18.3",
+  "title": "Zephyr: Presence and Status implementation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-31T19:25:42.381181Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-08T05:21:21.519754Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.18.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.18",
+      "type": "parent-child",
+      "created_at": "2026-07-31T19:25:42.67492Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.10.18.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.18.4",
+      "type": "blocks",
+      "created_at": "2026-08-08T05:21:21.519752Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

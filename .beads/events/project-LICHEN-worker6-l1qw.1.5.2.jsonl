@@ -1,1 +1,2 @@
 {"id":"019f975d-936f-7cae-b0bd-c5475c5630c3","issue_id":"project-LICHEN-worker6-l1qw.1.5.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:42:00.047833Z"}
+{"id":"019fee7e-6cb5-78e5-b490-b8a03c5a1c79","issue_id":"project-LICHEN-worker6-l1qw.1.5.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Implementation complete in lichen-link/src/schnorr.rs and frame.rs (LLSec byte handling)","created_at":"2026-08-11T01:44:50.613584Z"}
