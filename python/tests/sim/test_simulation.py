@@ -8,9 +8,9 @@ Unit tests for specific functionality are in:
 - test_radio.py - transmission and reception
 """
 
-import pytest
 
 from lora_medium import Medium
+
 from lichen.sim.node import NodeState
 from lichen.sim.simulation import Simulation, TimeMode
 

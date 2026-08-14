@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
@@ -19,10 +20,36 @@ from lichen.client.lci import ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
 
 CBOR_CONTENT_FORMAT = int(ContentFormat.CBOR)
+DEFAULT_503_BACKOFF_S = 60  # Default backoff when no Max-Age/retry_after provided
 
 
 class CoapTransportError(RuntimeError):
     """IP/CoAP transport setup, timeout, or payload decoding failure."""
+
+
+class ServiceUnavailableError(CoapTransportError):
+    """5.03 Service Unavailable response requiring backoff (spec 07 section 10.2.3).
+
+    Per spec: "Senders receiving 5.03 MUST back off for the indicated duration."
+
+    Attributes:
+        retry_after_s: Backoff duration in seconds from Max-Age or payload.
+        reason: Optional reason from the CBOR payload (e.g., "duty_cycle").
+        level: Optional congestion level from the CBOR payload.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        retry_after_s: int | None = None,
+        reason: str | None = None,
+        level: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.retry_after_s = retry_after_s
+        self.reason = reason
+        self.level = level
 
 
 class RequestHandleLike(Protocol):
@@ -48,13 +75,22 @@ class IpCoapConfig:
 
     base_uri: str = "coap://[fe80::1]"
     timeout_s: float = 10.0
+    enforce_503_backoff: bool = True  # Enforce 5.03 backoff (spec 07 section 10.2.3)
 
 
 ContextFactory = Callable[[], Awaitable[ContextLike]]
 
 
 class AiocoapResourceTransport(ResourceTransport):
-    """ResourceTransport implementation for direct IPv6 + CoAP LCI access."""
+    """ResourceTransport implementation for direct IPv6 + CoAP LCI access.
+
+    Implements 5.03 Service Unavailable backoff per spec 07 section 10.2.3:
+    "Senders receiving 5.03 MUST back off for the indicated duration."
+
+    The transport tracks peer backoff state and refuses new requests to peers
+    that are in backoff. Backoff duration comes from Max-Age option or
+    retry_after field in CBOR payload.
+    """
 
     def __init__(
         self,
@@ -68,6 +104,8 @@ class AiocoapResourceTransport(ResourceTransport):
         self._owns_context = context is None
         self._context_factory = context_factory
         self._lock = asyncio.Lock()
+        # Track peer backoff state: peer -> (expires_at_monotonic, reason)
+        self._peer_backoffs: dict[str, tuple[float, str | None]] = {}
 
     async def connect(self) -> None:
         """Create an aiocoap client context when one was not injected."""
@@ -105,7 +143,37 @@ class AiocoapResourceTransport(ResourceTransport):
         content_format: int | None = None,
         observe: bool = False,
     ) -> CoapResult:
-        """Perform one CoAP resource request."""
+        """Perform one CoAP resource request.
+
+        Per spec 07 section 10.2.3, if a 5.03 Service Unavailable response is
+        received, this method records the backoff duration and raises
+        ServiceUnavailableError. Subsequent requests during backoff also raise.
+
+        Raises:
+            ServiceUnavailableError: If peer is backed off or 5.03 received.
+            CoapTransportError: For transport-level failures.
+        """
+        peer = self.config.base_uri
+        # SECURITY: Block requests to peers in backoff per spec 07 section 10.2.3.
+        # The spec MUST requirement ("Senders receiving 5.03 MUST back off for the
+        # indicated duration") protects peers from traffic they've explicitly asked
+        # to stop receiving. Ignoring backoff would contribute to duty cycle exhaustion
+        # across the mesh and is considered network abuse.
+        if self.config.enforce_503_backoff:
+            backoff_entry = self._peer_backoffs.get(peer)
+            if backoff_entry is not None:
+                expires_at, reason = backoff_entry
+                remaining = expires_at - time.monotonic()
+                if remaining > 0:
+                    raise ServiceUnavailableError(
+                        f"{method} {path} blocked: backed off for {remaining:.1f}s",
+                        retry_after_s=int(remaining) + 1,
+                        reason=reason,
+                    )
+                else:
+                    # Backoff expired, clear it
+                    del self._peer_backoffs[peer]
+
         context = self._require_context()
         try:
             message = _build_message(
@@ -119,10 +187,67 @@ class AiocoapResourceTransport(ResourceTransport):
             response = await asyncio.wait_for(handle.response, timeout=self.config.timeout_s)
         except Exception as exc:
             raise CoapTransportError(f"{method} {path} failed: {exc}") from exc
-        return _coap_result(response)
+
+        result = _coap_result(response)
+
+        # Handle 5.03 Service Unavailable (spec 07 section 10.2.3)
+        if result.is_service_unavailable and self.config.enforce_503_backoff:
+            # retry_after_s is already capped at MAX_BACKOFF_S; use it or default
+            retry_after = (
+                result.retry_after_s
+                if result.retry_after_s is not None
+                else DEFAULT_503_BACKOFF_S
+            )
+            reason = None
+            level = None
+            if isinstance(result.payload, dict):
+                reason = result.payload.get("reason")
+                level = result.payload.get("level")
+                reason = reason if isinstance(reason, str) else None
+                level = level if isinstance(level, str) else None
+            # Record backoff
+            self._peer_backoffs[peer] = (time.monotonic() + retry_after, reason)
+            raise ServiceUnavailableError(
+                f"{method} {path} returned 5.03: back off for {retry_after}s",
+                retry_after_s=retry_after,
+                reason=reason,
+                level=level,
+            )
+
+        return result
+
+    def clear_backoff(self) -> None:
+        """Clear all backoff state (for testing or explicit reset)."""
+        self._peer_backoffs.clear()
 
     async def observe(self, path: str, *, method: str = "GET") -> ResourceSubscription:
-        """Start a CoAP Observe relationship."""
+        """Start a CoAP Observe relationship.
+
+        Per spec 07 section 10.2.3, if the peer is backed off (due to a prior
+        5.03 response), this method raises ServiceUnavailableError without
+        sending a request.
+
+        Raises:
+            ServiceUnavailableError: If peer is backed off.
+            CoapTransportError: For transport-level failures.
+        """
+        peer = self.config.base_uri
+        # SECURITY: Block observe requests to peers in backoff (same rationale as request()).
+        if self.config.enforce_503_backoff:
+            backoff_entry = self._peer_backoffs.get(peer)
+            if backoff_entry is not None:
+                expires_at, reason = backoff_entry
+                remaining = expires_at - time.monotonic()
+                if remaining > 0:
+                    raise ServiceUnavailableError(
+                        f"{method} {path} observe blocked: backed off for {remaining:.1f}s",
+                        retry_after_s=int(remaining) + 1,
+                        reason=reason,
+                    )
+                else:
+                    # Backoff expired, clear it
+                    del self._peer_backoffs[peer]
+
         context = self._require_context()
         try:
             message = _build_message(method, self._uri_for_path(path), observe=True)
@@ -215,7 +340,8 @@ class AiocoapResourceSubscription(ResourceSubscription):
                 if self._should_accept(response):
                     yield _coap_result(response)
         except Exception as exc:
-            with suppress(Exception):
+            # CancelledError is a BaseException since Python 3.8, not caught by Exception
+            with suppress(Exception, asyncio.CancelledError):
                 await self.close()
             raise CoapTransportError(f"{self._method} {self._path} observe failed: {exc}") from exc
 
@@ -233,13 +359,6 @@ class AiocoapResourceSubscription(ResourceSubscription):
             with suppress(asyncio.CancelledError):
                 await next_task
             return None
-        with suppress(asyncio.CancelledError):
-            await close_task
-        try:
-            return next_task.result()
-        except StopAsyncIteration:
-            return None
-
         with suppress(asyncio.CancelledError):
             await close_task
         try:
@@ -286,6 +405,7 @@ def _coap_result(message: Message) -> CoapResult:
         location_path=tuple(message.opt.location_path or ()),
         content_format=_int_or_none(message.opt.content_format),
         raw_payload=message.payload,
+        max_age=_uint_or_none(message.opt.max_age),
     )
 
 
@@ -309,5 +429,21 @@ def _int_or_none(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: Decimal('inf') or Decimal('-inf') cannot convert to int
+        # ValueError: float('nan') or Decimal('nan') cannot convert to int
+        # TypeError: incompatible type
         return None
+
+
+def _uint_or_none(value: Any) -> int | None:
+    """Convert to unsigned int or return None for invalid/negative values.
+
+    CoAP options like Max-Age and Content-Format are defined as unsigned
+    integers (RFC 7252). Negative values are invalid and should be treated
+    as if the option was absent.
+    """
+    result = _int_or_none(value)
+    if result is not None and result < 0:
+        return None
+    return result

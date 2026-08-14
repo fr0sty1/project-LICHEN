@@ -19,6 +19,10 @@ if TYPE_CHECKING:
 # OSCORE option number (RFC 8613 Section 2)
 OSCORE_OPTION_NUMBER = 9
 
+# Maximum generation counter value (u32 for portability)
+# After reaching this value, the context MUST be re-keyed via EDHOC.
+MAX_OSCORE_GENERATION = (1 << 32) - 1
+
 
 def _monotonic_time() -> float:
     """Get monotonic time, usable with or without event loop."""
@@ -102,6 +106,14 @@ class ContextGenerationError(RuntimeError):
 
 class SequenceReservationError(RuntimeError):
     """A sender sequence range could not be reserved."""
+
+
+class GenerationOverflowError(RuntimeError):
+    """The context generation counter has reached its maximum value.
+
+    After 2^32 context updates, the peer MUST re-key via EDHOC.
+    Continuing would overflow the generation counter.
+    """
 
 
 class ForkSafetyError(RuntimeError):

@@ -327,14 +327,43 @@ class ReplayWindow(Protocol):
     Tracks highest counter seen + bitmap of recent accepted sequence numbers.
     Window size is implementation-defined (typically 32-64 slots).
 
+    Two-phase replay checking (spec 06-security.md, 10-implementation.md):
+    - check(): Read-only query, returns True if fresh
+    - commit(): Advances replay floor, MUST only be called after all
+      validation passes
+    - check_and_update(): Atomic convenience combining both phases
+
     Cross-implementation parity:
     - Rust: lichen_link::replay::ReplayWindow
     - C: lichen_replay_window (in link_ctx.c)
     - Python: lichen.link.replay.ReplayWindow
     """
 
+    def check(self, epoch: int, seqnum: int) -> bool:
+        """Check if a frame's sequence is fresh WITHOUT updating state.
+
+        This is the first phase of two-phase replay checking. Call this to
+        validate, then call commit() only AFTER all other validation passes.
+
+        Returns:
+            True if frame is fresh (would be accepted),
+            False if replay or below window floor.
+        """
+        ...
+
+    def commit(self, epoch: int, seqnum: int) -> None:
+        """Commit the replay floor for a validated frame.
+
+        This is the second phase of two-phase replay checking. MUST only be
+        called after check() returned True AND all other validation passed.
+        """
+        ...
+
     def check_and_update(self, epoch: int, seqnum: int) -> bool:
-        """Validate and record a frame's sequence.
+        """Validate and record a frame's sequence (atomic check + commit).
+
+        Convenience method combining check() and commit(). Use the two-phase
+        approach when validation must occur between check and commit.
 
         Returns:
             True if frame is fresh (accepted),
@@ -354,14 +383,20 @@ class ReplayProtector(Protocol):
 
     Maintains independent ReplayWindow for each sender identity.
 
+    Two-phase replay checking (spec 06-security.md, 10-implementation.md):
+    - check(): Read-only query, returns True if fresh
+    - commit(): Advances replay floor, MUST only be called after all
+      validation passes
+    - check_and_update(): Atomic convenience combining both phases
+
     Cross-implementation parity:
     - Rust: lichen_link::link_layer::ReplayProtector
     - C: Embedded in lichen_link_ctx peer table
     - Python: lichen.link.replay.ReplayProtector
     """
 
-    def check_and_update(self, sender: bytes | str | int, epoch: int, seqnum: int) -> bool:
-        """Validate and record a frame from sender.
+    def check(self, sender: bytes | str | int, epoch: int, seqnum: int) -> bool:
+        """Check if a frame from sender is fresh WITHOUT updating state.
 
         Creates a new window for first-seen senders.
 
@@ -371,7 +406,37 @@ class ReplayProtector(Protocol):
             seqnum: 16-bit sequence number from frame.
 
         Returns:
-            True if fresh, False if replay.
+            True if fresh (would be accepted), False if replay.
+        """
+        ...
+
+    def commit(self, sender: bytes | str | int, epoch: int, seqnum: int) -> None:
+        """Commit the replay floor for a validated frame from sender.
+
+        MUST only be called after check() returned True AND all other
+        validation passed.
+
+        Args:
+            sender: Sender identifier (pubkey bytes, IID hex string, or node ID).
+            epoch: 8-bit epoch from frame.
+            seqnum: 16-bit sequence number from frame.
+        """
+        ...
+
+    def check_and_update(self, sender: bytes | str | int, epoch: int, seqnum: int) -> bool:
+        """Validate and record a frame from sender (atomic check + commit).
+
+        Creates a new window for first-seen senders.
+        Convenience method combining check() and commit(). Use the two-phase
+        approach when validation must occur between check and commit.
+
+        Args:
+            sender: Sender identifier (pubkey bytes, IID hex string, or node ID).
+            epoch: 8-bit epoch from frame.
+            seqnum: 16-bit sequence number from frame.
+
+        Returns:
+            True if fresh (accepted), False if replay.
         """
         ...
 

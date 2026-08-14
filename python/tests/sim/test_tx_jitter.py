@@ -15,8 +15,8 @@ from __future__ import annotations
 import random
 
 import pytest
-
 from lora_medium import ChaosEngine, TxJitterRule
+
 from lichen.sim.events import TxStartDelayedEvent
 from lichen.sim.simulation import Simulation
 

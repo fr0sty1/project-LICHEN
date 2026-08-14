@@ -23,20 +23,33 @@ L = 2**252 + 27742317777372353535851937790883648493
 # SECURITY: The 8 low-order points on Ed25519 (points with order dividing 8).
 # These must be rejected in verification to prevent signature forgery attacks.
 # If pubkey is a low-order point, e*pubkey = 0 for some e, enabling forgery.
-LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
-    [
-        bytes.fromhex(
-            "0100000000000000000000000000000000000000000000000000000000000000"
-        ),  # identity
-        bytes.fromhex("ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-        bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000080"),
-        bytes.fromhex("edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"),
-        bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"),
-        bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"),
-        bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"),
-        bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85"),
-    ]
+# Stored as a tuple (not set) to ensure iteration order is deterministic
+# for constant-time checking.
+LOW_ORDER_POINTS: tuple[bytes, ...] = (
+    bytes.fromhex(
+        "0100000000000000000000000000000000000000000000000000000000000000"
+    ),  # identity
+    bytes.fromhex("ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+    bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000080"),
+    bytes.fromhex("edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"),
+    bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"),
+    bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"),
+    bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"),
+    bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85"),
 )
+
+
+def _is_low_order_point(point: bytes) -> bool:
+    """Check if a point is a low-order point using constant-time comparison.
+
+    SECURITY: Uses hmac.compare_digest for each check to prevent timing attacks.
+    Iterates all points regardless of match to maintain constant execution time.
+    """
+    match = 0
+    for low_order in LOW_ORDER_POINTS:
+        # hmac.compare_digest returns bool; convert to int for accumulation
+        match |= int(hmac.compare_digest(point, low_order))
+    return match != 0
 
 
 def _scalar_from_bytes(b: bytes) -> int:
@@ -152,12 +165,22 @@ def verify(pubkey: bytes, msg: bytes, sig: bytes) -> bool:
 
     # SECURITY: Reject low-order points to prevent signature forgery.
     # Low-order points have order dividing 8; e*pubkey = 0 for some e.
-    if pubkey in LOW_ORDER_POINTS:
+    # Uses constant-time comparison per spec §5.3 to prevent timing attacks.
+    if _is_low_order_point(pubkey):
         return False
 
     # 1. Parse signature
     e_received = sig[:16]
     s_bytes = sig[16:48]
+
+    # SECURITY: Reject zero challenge to prevent DoS via cheap-to-construct
+    # invalid signatures. A valid challenge is derived from SHA-512 hash;
+    # all-zeros is astronomically improbable (~2^-128). Early rejection avoids
+    # expensive point multiplication on attacker-controlled inputs.
+    # Uses constant-time comparison per spec section 5.3.
+    if hmac.compare_digest(e_received, bytes(16)):
+        return False
+
     s = _scalar_from_bytes(s_bytes)
     # Reject s == 0 or s >= L (non-canonical)
     if s == 0 or s >= L:

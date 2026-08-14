@@ -19,11 +19,9 @@ Run with:
 
 from __future__ import annotations
 
-import asyncio
 import os
 import time
 from collections.abc import AsyncGenerator
-from typing import Any
 
 import pytest
 
@@ -277,7 +275,6 @@ class TestNodeHandoff:
             assert result, "Mobile node should transmit near GW-1"
 
             try:
-                from lichen.sim.simulation import Simulation as Sim
                 node = sim.get_node("mobile-node")
                 assert node is not None, "Mobile node should exist"
                 sim._gateways["gw-1"]["owned_nodes"].add("mobile-node")

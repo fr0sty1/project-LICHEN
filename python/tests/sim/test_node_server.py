@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from lora_medium import airtime_us
 
 from lichen.sim.node_server import (
     read_message,
@@ -36,7 +37,6 @@ from lichen.sim.protocol import (
     get_message_type,
 )
 from lichen.sim.simulation import Simulation
-from lora_medium import airtime_us
 
 
 async def send_and_receive(

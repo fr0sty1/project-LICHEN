@@ -3,7 +3,6 @@
 """Tests for duty cycle tracking."""
 
 import pytest
-
 from lora_medium import DutyCycleTracker
 
 

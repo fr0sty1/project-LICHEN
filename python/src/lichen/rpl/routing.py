@@ -351,6 +351,8 @@ def advance_source_route(
 
     Returns ``(updated_packet, next_hop)``. ``next_hop`` is ``None`` when this
     node is the final destination (no SRH, or segments_left already 0).
+
+    Raises :class:`RoutingError` if Segments Left >= Hop Limit (RFC 6554 + spec §5.8.4).
     """
     idx = _find_routing_header(packet)
     if idx is None:
@@ -359,6 +361,12 @@ def advance_source_route(
     srh = SourceRoutingHeader.from_extension_header(packet.extension_headers[idx])
     if srh.segments_left == 0:
         return packet, None
+
+    # SECURITY: RFC 6554 + LICHEN spec §5 line 418: Segments Left MUST be
+    # strictly less than Hop Limit. If equal or greater, the packet cannot
+    # complete the source route before TTL expiry.
+    if srh.segments_left >= packet.header.hop_limit:
+        raise RoutingError("segments_left not strictly less than hop_limit")
 
     i = len(srh.addresses) - srh.segments_left
     if not 0 <= i < len(srh.addresses):

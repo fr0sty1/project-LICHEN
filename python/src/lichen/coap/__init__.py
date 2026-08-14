@@ -10,8 +10,16 @@ Security (spec section 8.7):
     Contexts can be pre-provisioned via add_context() or established via EDHOC.
 """
 
+from lichen.coap.params import (
+    CongestionError,
+    CongestionLevel,
+    check_congestion_allows,
+    congestion_service_unavailable,
+)
 from lichen.coap.resources import (
     ConfigResource,
+    CongestionAwareSite,
+    CongestionProvider,
     EdhocResource,
     MessageReceiptsResource,
     NeighborsResource,
@@ -54,6 +62,13 @@ from lichen.coap.transport import (
 from lichen.coap.udp_server import bind_coap_udp
 
 __all__ = [
+    # Congestion control
+    "CongestionAwareSite",
+    "CongestionError",
+    "CongestionLevel",
+    "CongestionProvider",
+    "check_congestion_allows",
+    "congestion_service_unavailable",
     # Transport
     "DatagramChannel",
     "EndpointPolicy",

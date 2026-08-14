@@ -13,14 +13,17 @@ References:
 - SX1262 datasheet: LR-FHSS parameters
 """
 
-from lora_medium import Medium, RxCandidate
 from lora_medium import (
     SENSITIVITY_LR_FHSS,
     SENSITIVITY_SF10,
     SENSITIVITY_SF12,
+    Medium,
     PropagationModel,
+    RxCandidate,
+    Transmission,
+    airtime_us,
+    lr_fhss_airtime_us,
 )
-from lora_medium import Transmission, airtime_us, lr_fhss_airtime_us
 
 
 class TestLRFHSSSensitivity:

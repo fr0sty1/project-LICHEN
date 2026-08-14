@@ -6,7 +6,6 @@
 from lichen.link.op_class import (
     OPERATING_CLASS_TABLE,
     OperatingClass,
-    OperatingClassParams,
     lookup_operating_class,
 )
 

@@ -4,9 +4,17 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from typing import Any
+
+# SECURITY: Cap backoff to 1 hour (duty cycle window per spec 07 section 10.2.3).
+# Without this cap, a malicious node could send a 5.03 with an enormous retry_after
+# value, causing permanent denial of service. The spec's rolling 1-hour duty cycle
+# window means no legitimate congestion recovery can exceed 3600 seconds.
+MAX_BACKOFF_S: int = 3600
 
 JsonMap = dict[str, Any]
 
@@ -67,6 +75,7 @@ class CoapResult:
     location_path: tuple[str, ...] = ()
     content_format: int | None = None
     raw_payload: bytes = b""
+    max_age: int | None = None  # Max-Age option value in seconds
 
     @property
     def is_success(self) -> bool:
@@ -77,6 +86,84 @@ class CoapResult:
     def is_transport_error(self) -> bool:
         """True for synthetic results from _raw_request on transport exceptions."""
         return self.code == "0.00"
+
+    @property
+    def is_service_unavailable(self) -> bool:
+        """Return true for 5.03 Service Unavailable responses (spec 07 section 10.2.3)."""
+        return self.code == "5.03"
+
+    @property
+    def retry_after_s(self) -> int | None:
+        """Return the backoff duration in seconds for 5.03 responses.
+
+        Per spec 07 section 10.2.3, senders receiving 5.03 MUST back off for
+        the indicated duration. The duration comes from:
+        1. Max-Age option (primary)
+        2. retry_after field in CBOR payload (fallback)
+
+        CBOR payloads may encode retry_after as int or float; both are accepted
+        and floats are truncated to int. CBOR tag 4 (decimal fraction) and tag 5
+        (bigfloat) decode to Decimal objects, which are also handled.
+
+        SECURITY: Returns are capped to MAX_BACKOFF_S (3600s) to prevent DoS
+        from malicious retry_after values (issue r1-P2-29).
+        """
+        if not self.is_service_unavailable:
+            return None
+        raw_value: int | None = None
+        # Primary: Max-Age option (must be non-negative per RFC 7252)
+        # SECURITY: Decimal('nan') comparison raises InvalidOperation (r2-P1-16);
+        # wrap in try/except to treat invalid max_age as absent.
+        if self.max_age is not None:
+            try:
+                if self.max_age >= 0:
+                    raw_value = self.max_age
+            except (InvalidOperation, TypeError):
+                # Decimal('nan') comparisons raise InvalidOperation
+                pass
+        # Fallback: retry_after in CBOR payload
+        if raw_value is None and isinstance(self.payload, dict):
+            retry = self.payload.get("retry_after")
+            raw_value = self._parse_retry_after(retry)
+        if raw_value is None:
+            return None
+        # SECURITY: Cap backoff to prevent DoS from untrusted source
+        return min(raw_value, MAX_BACKOFF_S)
+
+    @staticmethod
+    def _parse_retry_after(retry: Any) -> int | None:
+        """Parse retry_after value from CBOR payload.
+
+        Accepts int, float, or Decimal. Rejects bool, inf, nan, and negative values.
+        Returns int or None.
+        """
+        if isinstance(retry, bool):
+            # bool is subclass of int in Python; reject it explicitly
+            return None
+        # CBOR tag 4/5 decode to Decimal; handle before float/int checks (r2-P1-16)
+        if isinstance(retry, Decimal):
+            try:
+                # Decimal inf/nan: is_finite() returns False
+                if not retry.is_finite() or retry < 0:
+                    return None
+                return int(retry)
+            except (InvalidOperation, OverflowError):
+                # Decimal('nan') comparison can raise InvalidOperation
+                # Decimal('inf') int() raises OverflowError
+                return None
+        if isinstance(retry, float):
+            # CBOR can encode inf/nan which cannot be converted to int (r2-P1-12, r2-P1-13)
+            # isfinite() on some numeric types can raise OverflowError (r2-P1-17)
+            try:
+                is_finite = math.isfinite(retry)
+            except OverflowError:
+                return None
+            if is_finite and retry >= 0:
+                return int(retry)
+            return None
+        if isinstance(retry, int) and retry >= 0:
+            return retry
+        return None
 
 
 @dataclass(frozen=True)

@@ -372,6 +372,10 @@ class Router:
         node_coords: This node's coordinates for GPSR.
         neighbor_coords: Link-local neighbor coordinates.
         neighbor_queue_depth: Link-local neighbor queue depths (spec 11.4).
+        is_border_router: If True, applies multicast filter (spec 6.3.4).
+            Border routers drop multicast crossing mesh/internet boundary.
+        multicast_peering_enabled: If True, allows multicast forwarding at BR.
+            Default False; only enable for explicit mesh-to-mesh peering.
     """
 
     node_address: IPv6Address
@@ -394,6 +398,8 @@ class Router:
     dtn_buffer_max_bytes: int = 65536
     _dtn_buffer_bytes: int = field(default=0, repr=False)
     forwarding_buffer: ForwardingBuffer = field(default_factory=ForwardingBuffer, repr=False)
+    is_border_router: bool = False
+    multicast_peering_enabled: bool = False
 
     # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
     # start with fe80:: through febf::, which is fe80::/10.
@@ -458,6 +464,16 @@ class Router:
         # Why check for local first: Don't route packets addressed to us.
         if dst == self.node_address:
             return RouteDecision.DELIVER_LOCAL, None
+
+        # SECURITY: BR multicast filter (spec 6.3.4). Border routers MUST NOT
+        # forward multicast packets across the mesh/internet boundary.
+        # Rationale: mesh broadcasts are not meaningful globally, prevents
+        # flood amplification, and protects mesh from external multicast storms.
+        if self.is_border_router and dst.is_multicast and not self.multicast_peering_enabled:
+            logger.debug(
+                "BR multicast filter: dropping multicast %s (peering disabled)", dst
+            )
+            return RouteDecision.DROP, None
 
         addr_class = self.classify_address(dst)
         logger.debug("routing %s: class=%s", dst, addr_class.name)

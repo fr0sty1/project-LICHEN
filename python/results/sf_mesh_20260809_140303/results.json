@@ -1,0 +1,827 @@
+[
+  {
+    "scenario": {
+      "num_nodes": 500,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 0,
+    "seed": 987976527,
+    "topology": {
+      "num_nodes": 500,
+      "avg_neighbors": 20.416,
+      "min_neighbors": 6,
+      "max_neighbors": 41,
+      "isolated_nodes": 0,
+      "avg_reachable": 499.0,
+      "num_components": 1,
+      "largest_component": 500,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 1212,
+      "messages_delivered": 1212,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.544554455445544,
+      "avg_latency_s": 5.544554455445544,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 2833
+    },
+    "setup_time_s": 0.20801210403442383,
+    "sim_time_s": 0.040426015853881836
+  },
+  {
+    "scenario": {
+      "num_nodes": 500,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 1,
+    "seed": 2331214202,
+    "topology": {
+      "num_nodes": 500,
+      "avg_neighbors": 20.484,
+      "min_neighbors": 3,
+      "max_neighbors": 35,
+      "isolated_nodes": 0,
+      "avg_reachable": 499.0,
+      "num_components": 1,
+      "largest_component": 500,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 1268,
+      "messages_delivered": 1268,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.488170347003154,
+      "avg_latency_s": 5.488170347003154,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 2998
+    },
+    "setup_time_s": 0.2069699764251709,
+    "sim_time_s": 0.04548001289367676
+  },
+  {
+    "scenario": {
+      "num_nodes": 500,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 2,
+    "seed": 2083289244,
+    "topology": {
+      "num_nodes": 500,
+      "avg_neighbors": 20.44,
+      "min_neighbors": 4,
+      "max_neighbors": 36,
+      "isolated_nodes": 0,
+      "avg_reachable": 499.0,
+      "num_components": 1,
+      "largest_component": 500,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 1250,
+      "messages_delivered": 1250,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.544,
+      "avg_latency_s": 5.544,
+      "max_latency_s": 13.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 2859
+    },
+    "setup_time_s": 0.20762205123901367,
+    "sim_time_s": 0.04346895217895508
+  },
+  {
+    "scenario": {
+      "num_nodes": 500,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 3,
+    "seed": 317026465,
+    "topology": {
+      "num_nodes": 500,
+      "avg_neighbors": 21.172,
+      "min_neighbors": 2,
+      "max_neighbors": 43,
+      "isolated_nodes": 0,
+      "avg_reachable": 499.0,
+      "num_components": 1,
+      "largest_component": 500,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 1243,
+      "messages_delivered": 1243,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.415124698310539,
+      "avg_latency_s": 5.415124698310539,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 2830
+    },
+    "setup_time_s": 0.2097609043121338,
+    "sim_time_s": 0.04071688652038574
+  },
+  {
+    "scenario": {
+      "num_nodes": 500,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 4,
+    "seed": 2747599763,
+    "topology": {
+      "num_nodes": 500,
+      "avg_neighbors": 20.16,
+      "min_neighbors": 4,
+      "max_neighbors": 34,
+      "isolated_nodes": 0,
+      "avg_reachable": 499.0,
+      "num_components": 1,
+      "largest_component": 500,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 1284,
+      "messages_delivered": 1284,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.555295950155763,
+      "avg_latency_s": 5.555295950155763,
+      "max_latency_s": 13.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 3012
+    },
+    "setup_time_s": 0.20444917678833008,
+    "sim_time_s": 0.04798293113708496
+  },
+  {
+    "scenario": {
+      "num_nodes": 1000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 0,
+    "seed": 4203603124,
+    "topology": {
+      "num_nodes": 1000,
+      "avg_neighbors": 40.13,
+      "min_neighbors": 17,
+      "max_neighbors": 64,
+      "isolated_nodes": 0,
+      "avg_reachable": 999.0,
+      "num_components": 1,
+      "largest_component": 1000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 2511,
+      "messages_delivered": 2511,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.254480286738351,
+      "avg_latency_s": 5.254480286738351,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 4769
+    },
+    "setup_time_s": 1.2729768753051758,
+    "sim_time_s": 0.09724903106689453
+  },
+  {
+    "scenario": {
+      "num_nodes": 1000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 1,
+    "seed": 2352047077,
+    "topology": {
+      "num_nodes": 1000,
+      "avg_neighbors": 41.368,
+      "min_neighbors": 10,
+      "max_neighbors": 62,
+      "isolated_nodes": 0,
+      "avg_reachable": 999.0,
+      "num_components": 1,
+      "largest_component": 1000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 2544,
+      "messages_delivered": 2544,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.157625786163522,
+      "avg_latency_s": 5.157625786163522,
+      "max_latency_s": 13.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 4754
+    },
+    "setup_time_s": 1.2589128017425537,
+    "sim_time_s": 0.08908796310424805
+  },
+  {
+    "scenario": {
+      "num_nodes": 1000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 2,
+    "seed": 282461428,
+    "topology": {
+      "num_nodes": 1000,
+      "avg_neighbors": 42.874,
+      "min_neighbors": 10,
+      "max_neighbors": 65,
+      "isolated_nodes": 0,
+      "avg_reachable": 999.0,
+      "num_components": 1,
+      "largest_component": 1000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 2536,
+      "messages_delivered": 2536,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.1265772870662465,
+      "avg_latency_s": 5.1265772870662465,
+      "max_latency_s": 11.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 4710
+    },
+    "setup_time_s": 1.2982311248779297,
+    "sim_time_s": 0.08976006507873535
+  },
+  {
+    "scenario": {
+      "num_nodes": 1000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 3,
+    "seed": 1430631737,
+    "topology": {
+      "num_nodes": 1000,
+      "avg_neighbors": 41.146,
+      "min_neighbors": 13,
+      "max_neighbors": 64,
+      "isolated_nodes": 0,
+      "avg_reachable": 999.0,
+      "num_components": 1,
+      "largest_component": 1000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 2445,
+      "messages_delivered": 2445,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.2319018404907975,
+      "avg_latency_s": 5.2319018404907975,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 4687
+    },
+    "setup_time_s": 1.278364896774292,
+    "sim_time_s": 0.09293389320373535
+  },
+  {
+    "scenario": {
+      "num_nodes": 1000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 4,
+    "seed": 3170533121,
+    "topology": {
+      "num_nodes": 1000,
+      "avg_neighbors": 41.904,
+      "min_neighbors": 8,
+      "max_neighbors": 67,
+      "isolated_nodes": 0,
+      "avg_reachable": 999.0,
+      "num_components": 1,
+      "largest_component": 1000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 2420,
+      "messages_delivered": 2420,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.1173553719008265,
+      "avg_latency_s": 5.1173553719008265,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 4622
+    },
+    "setup_time_s": 1.2736461162567139,
+    "sim_time_s": 0.09346985816955566
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 0,
+    "seed": 1306529052,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.64,
+      "min_neighbors": 26,
+      "max_neighbors": 117,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 4972,
+      "messages_delivered": 4972,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.007039420756235,
+      "avg_latency_s": 5.007039420756235,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 6685
+    },
+    "setup_time_s": 8.697041988372803,
+    "sim_time_s": 0.21302199363708496
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 1,
+    "seed": 881021354,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 83.259,
+      "min_neighbors": 22,
+      "max_neighbors": 128,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 4935,
+      "messages_delivered": 4935,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.047011144883485,
+      "avg_latency_s": 5.047011144883485,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 6664
+    },
+    "setup_time_s": 8.742078065872192,
+    "sim_time_s": 0.20691370964050293
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 2,
+    "seed": 4157598761,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.258,
+      "min_neighbors": 25,
+      "max_neighbors": 116,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 4975,
+      "messages_delivered": 4975,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.06070351758794,
+      "avg_latency_s": 5.06070351758794,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 6750
+    },
+    "setup_time_s": 8.872004985809326,
+    "sim_time_s": 0.21491503715515137
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 3,
+    "seed": 2765069443,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.436,
+      "min_neighbors": 27,
+      "max_neighbors": 121,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 5111,
+      "messages_delivered": 5111,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.0988064957933865,
+      "avg_latency_s": 5.0988064957933865,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 6809
+    },
+    "setup_time_s": 8.973181962966919,
+    "sim_time_s": 0.2193620204925537
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    "run": 4,
+    "seed": 3972536695,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 84.15,
+      "min_neighbors": 25,
+      "max_neighbors": 126,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 4987,
+      "messages_delivered": 4987,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.0306797673952275,
+      "avg_latency_s": 5.0306797673952275,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 6656
+    },
+    "setup_time_s": 9.152842044830322,
+    "sim_time_s": 0.20744705200195312
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 1.0
+    },
+    "run": 0,
+    "seed": 1374426388,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.498,
+      "min_neighbors": 28,
+      "max_neighbors": 115,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 9996,
+      "messages_delivered": 9996,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.022108843537415,
+      "avg_latency_s": 5.022108843537415,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 7806
+    },
+    "setup_time_s": 9.095685243606567,
+    "sim_time_s": 0.3324759006500244
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 1.0
+    },
+    "run": 1,
+    "seed": 1793941126,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.911,
+      "min_neighbors": 25,
+      "max_neighbors": 119,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 10074,
+      "messages_delivered": 10074,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.08109986102839,
+      "avg_latency_s": 5.08109986102839,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 7812
+    },
+    "setup_time_s": 8.948645830154419,
+    "sim_time_s": 0.348132848739624
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 1.0
+    },
+    "run": 2,
+    "seed": 1026307587,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.961,
+      "min_neighbors": 23,
+      "max_neighbors": 120,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 9874,
+      "messages_delivered": 9874,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.009925055701843,
+      "avg_latency_s": 5.009925055701843,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 7763
+    },
+    "setup_time_s": 8.960489988327026,
+    "sim_time_s": 0.318652868270874
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 1.0
+    },
+    "run": 3,
+    "seed": 3990850620,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 83.323,
+      "min_neighbors": 28,
+      "max_neighbors": 129,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 10075,
+      "messages_delivered": 10075,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.001488833746898,
+      "avg_latency_s": 5.001488833746898,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 7802
+    },
+    "setup_time_s": 9.023520708084106,
+    "sim_time_s": 0.32343482971191406
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 1.0
+    },
+    "run": 4,
+    "seed": 2660524664,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 83.228,
+      "min_neighbors": 24,
+      "max_neighbors": 120,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 10211,
+      "messages_delivered": 10211,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.042992850847126,
+      "avg_latency_s": 5.042992850847126,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 7803
+    },
+    "setup_time_s": 9.072624921798706,
+    "sim_time_s": 0.3510162830352783
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 2.0
+    },
+    "run": 0,
+    "seed": 1910735815,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.741,
+      "min_neighbors": 20,
+      "max_neighbors": 118,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 19966,
+      "messages_delivered": 19966,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.08344185114695,
+      "avg_latency_s": 5.08344185114695,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 8436
+    },
+    "setup_time_s": 9.068434000015259,
+    "sim_time_s": 0.5613341331481934
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 2.0
+    },
+    "run": 1,
+    "seed": 2967672402,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 83.642,
+      "min_neighbors": 21,
+      "max_neighbors": 116,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 20193,
+      "messages_delivered": 20193,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.0121329173475955,
+      "avg_latency_s": 5.0121329173475955,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 8423
+    },
+    "setup_time_s": 8.876349925994873,
+    "sim_time_s": 0.5679018497467041
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 2.0
+    },
+    "run": 2,
+    "seed": 2183832835,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 84.169,
+      "min_neighbors": 21,
+      "max_neighbors": 119,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 20035,
+      "messages_delivered": 20035,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 4.954679311205391,
+      "avg_latency_s": 4.954679311205391,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 8369
+    },
+    "setup_time_s": 9.02211618423462,
+    "sim_time_s": 0.5625948905944824
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 2.0
+    },
+    "run": 3,
+    "seed": 541448148,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 82.387,
+      "min_neighbors": 25,
+      "max_neighbors": 122,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 20149,
+      "messages_delivered": 20149,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 5.061839297235595,
+      "avg_latency_s": 5.061839297235595,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 8504
+    },
+    "setup_time_s": 8.815310001373291,
+    "sim_time_s": 0.5848851203918457
+  },
+  {
+    "scenario": {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 2.0
+    },
+    "run": 4,
+    "seed": 2272510145,
+    "topology": {
+      "num_nodes": 2000,
+      "avg_neighbors": 83.912,
+      "min_neighbors": 21,
+      "max_neighbors": 117,
+      "isolated_nodes": 0,
+      "avg_reachable": 1999.0,
+      "num_components": 1,
+      "largest_component": 2000,
+      "fully_connected": true
+    },
+    "traffic": {
+      "messages_generated": 19956,
+      "messages_delivered": 19956,
+      "messages_failed": 0,
+      "delivery_rate": 1.0,
+      "avg_hops": 4.986670675486069,
+      "avg_latency_s": 4.986670675486069,
+      "max_latency_s": 12.0,
+      "min_latency_s": 1.0,
+      "unique_channel_locations": 8362
+    },
+    "setup_time_s": 8.934331893920898,
+    "sim_time_s": 0.5933678150177002
+  }
+]

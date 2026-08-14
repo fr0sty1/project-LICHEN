@@ -12,7 +12,6 @@ import pytest
 from lichen.schc.fragment import (
     ALL_1,
     MAX_SCHC_PACKET,
-    TILE_SIZE,
     Ack,
     Fragment,
     FragmentError,

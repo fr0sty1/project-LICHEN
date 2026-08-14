@@ -14,8 +14,9 @@ from dataclasses import dataclass
 from ipaddress import IPv6Address
 from typing import Any, Self, TypeVar
 
+from lichen.client.ble import BlePacketTransport, BleSecurityError, BleSecurityLevel
 from lichen.client.ip_coap import AiocoapResourceTransport, CoapTransportError, IpCoapConfig
-from lichen.client.lci import ResourceSubscription, ResourceTransport
+from lichen.client.lci import LciSecurityError, ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
 from lichen.client.transport import PacketTransport
 from lichen.coap.schc_channel import DEFAULT_COAP_PORT, wrap_coap
@@ -194,6 +195,34 @@ class PacketCoapResourceTransport(ResourceTransport):
             on_send_failure=self.close,
         )
 
+    def check_security_for_path(self, path: str) -> None:
+        """Check if security requirements are met for accessing a path.
+
+        SECURITY: Per spec 17.5.4, BLE transports MUST require LE Secure
+        Connections for /diag/raw/* resources.
+
+        Raises:
+            LciSecurityError: If BLE security requirements are not met.
+        """
+        # Only BLE transports require LESC check
+        if not isinstance(self.packet_transport, BlePacketTransport):
+            return  # Non-BLE transports (USB/serial) are trusted per spec 17.6.1
+
+        # Check if path requires elevated security
+        if not path.startswith("/diag/raw/"):
+            return  # No special security required
+
+        # SECURITY: BLE transports MUST require LESC for raw diagnostics
+        try:
+            self.packet_transport.assert_lesc_for_diagnostics()
+        except BleSecurityError as exc:
+            raise LciSecurityError(
+                str(exc),
+                path=path,
+                required_level=BleSecurityLevel.LESC.name,
+                actual_level=self.packet_transport.security_level.name,
+            ) from exc
+
     def _require_transport(self) -> AiocoapResourceTransport:
         if self._resource_transport is None:
             raise CoapTransportError("packet CoAP transport is not connected")
@@ -281,7 +310,8 @@ class PacketCoapResourceSubscription(ResourceSubscription):
             first_task.cancel()
             with suppress(asyncio.CancelledError):
                 await first_task
-            with suppress(Exception):
+            # CancelledError is a BaseException since Python 3.8, not caught by Exception
+            with suppress(Exception, asyncio.CancelledError):
                 await self._inner.close()
             if self._on_send_failure is not None:
                 await self._on_send_failure()

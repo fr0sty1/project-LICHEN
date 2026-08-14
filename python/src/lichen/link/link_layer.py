@@ -19,6 +19,7 @@ Threading model: Concurrent send() via per-entry TxReservations; TX serialized b
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -517,7 +518,12 @@ class LinkLayer:
         while len(self._pinned_keys) > MAX_ENTRIES:
             self._pinned_keys.popitem(last=False)
 
-        # Step 5: Replay protection
+        # Step 5: Replay protection (two-phase: check then commit)
+        # Why two-phase: Spec section 10 (DAO Origin Persistence) and 06-security.md
+        # require replay floor commitment only AFTER all validation passes. This
+        # prevents a scenario where floor is advanced but later validation fails,
+        # causing valid retransmissions to be rejected.
+        #
         # Why use pubkey as sender ID: It's the unique identifier for a node.
         # IID has a (tiny) collision risk; pubkey is definitive.
         #
@@ -530,7 +536,9 @@ class LinkLayer:
         # Since we are the sender, we trust our own sequence — no external
         # adversary can replay a frame we sent unless they also have our
         # signing key. If they have our key, replay protection is moot.
-        if sender.pubkey != self.identity.pubkey and not self.replay_protector.check_and_update(
+        # SECURITY: Constant-time comparison per draft-lichen-schnorr-00 section 5.3
+        is_loopback = hmac.compare_digest(sender.pubkey, self.identity.pubkey)
+        if not is_loopback and not self.replay_protector.check(
             sender.pubkey, frame.epoch, frame.seqnum
         ):
             logger.warning(
@@ -540,6 +548,11 @@ class LinkLayer:
                 sender.iid.hex(),
             )
             return ReceiveError.REPLAY
+
+        # All validation passed - now commit the replay floor.
+        # SECURITY: Floor commitment must happen only AFTER all validation succeeds.
+        if not is_loopback:
+            self.replay_protector.commit(sender.pubkey, frame.epoch, frame.seqnum)
 
         # Success! Return the validated frame
         logger.debug(

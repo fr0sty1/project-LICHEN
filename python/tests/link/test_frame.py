@@ -218,6 +218,16 @@ class TestParseErrors:
         with pytest.raises(FrameError, match="signer IID present but signature is not"):
             LichenFrame.from_bytes(data)
 
+    def test_signer_iid_frame_too_short_for_iid(self) -> None:
+        """SI=1 and S=1 but frame too short for 8-byte signer IID must be rejected."""
+        # LLSec 0xa0 = SI=1 (bit 7) + S=1 (bit 5), addr_mode=0
+        # Frame needs: header(4) + signer_iid(8) + signature(48) = 60 bytes minimum
+        # We give it less than that.
+        # Length=50 means body is 50 bytes, which is < 60 required
+        data = bytes.fromhex("32 a0 01 1234" + "00" * 46)  # 50 bytes body
+        with pytest.raises(FrameError, match="declared address/MIC"):
+            LichenFrame.from_bytes(data)
+
     def test_reserved_mic_length(self) -> None:
         for selector in range(2, 8):
             llsec = selector << 2
@@ -245,12 +255,6 @@ class TestParseErrors:
         assert frame.signature_present is True
         assert frame.payload == bytes(6)
         assert frame.mic == bytes.fromhex("11" * 48)
-
-    def test_signed_encrypted_is_rejected(self) -> None:
-        data = bytes.fromhex("35 60 03 0004 78" + "00" * 48)
-        with pytest.raises(FrameError, match="signed and encrypted"):
-            LichenFrame.from_bytes(data)
-
 
 # ─── Cross-validation tests from spec/test-vectors/frame.json ─────────────────
 
@@ -286,6 +290,7 @@ class TestSpecVectors:
                 "empty_frame": "frame is empty",
                 "length_mismatch": "length field says 20 but 8 body bytes present",
                 "reserved_mic_length": "reserved MIC-length value: 2",
+                "reserved_bit_set": "reserved bit is set",
                 "frame_too_short": "frame body too short: 2 bytes",
                 "signed_encrypted_unsupported": "signed and encrypted frames are unsupported",
                 "signer_iid_no_signature": "signer IID present but signature is not",

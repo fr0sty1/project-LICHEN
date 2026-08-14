@@ -6,6 +6,7 @@
 - identity: Node identity management
 - edhoc: EDHOC RFC 9528 Suite 0 for OSCORE key establishment
 - oscore: Memory-based OSCORE context for aiocoap integration
+- provisioning: BR provisioning channel encryption (spec 8.7)
 """
 
 from .edhoc import EdhocInitiator, EdhocResponder, OscoreContext
@@ -16,15 +17,33 @@ from .oscore import (
     MemorySecurityContext,
     OscoreContextParameters,
 )
+from .provisioning import (
+    AuthenticationFailedError,
+    BRProvisioningSession,
+    ChannelNotEstablishedError,
+    DecryptionFailedError,
+    NodeProvisioningSession,
+    ProvisioningError,
+    ProvisioningPayload,
+    ProvisioningState,
+)
 
 __all__ = [
+    "AuthenticationFailedError",
+    "BRProvisioningSession",
+    "ChannelNotEstablishedError",
+    "DecryptionFailedError",
     "EdhocInitiator",
     "EdhocResponder",
     "Identity",
     "MAX_OSCORE_SEQUENCE_NUMBER",
     "MemorySecurityContext",
+    "NodeProvisioningSession",
     "OSCORE_SEQUENCE_EXHAUSTED",
     "OscoreContext",
     "OscoreContextParameters",
     "PeerIdentity",
+    "ProvisioningError",
+    "ProvisioningPayload",
+    "ProvisioningState",
 ]

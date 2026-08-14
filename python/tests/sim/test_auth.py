@@ -9,6 +9,7 @@ from lichen.sim.api import SimulatorAPI
 from lichen.sim.auth import (
     MIN_TOKEN_LENGTH,
     WEBSOCKET_AUTH_SUBPROTOCOL,
+    BearerAuthMiddleware,
     WeakTokenError,
     extract_websocket_token,
     generate_token,
@@ -73,6 +74,22 @@ class TestTokenValidation:
 
 class TestBearerAuthMiddleware:
     """Tests for bearer token authentication middleware."""
+
+    def test_rejects_empty_token_at_init(self) -> None:
+        """BearerAuthMiddleware raises WeakTokenError for empty token."""
+        from starlette.applications import Starlette
+
+        app = Starlette()
+        with pytest.raises(WeakTokenError):
+            BearerAuthMiddleware(app, "")
+
+    def test_rejects_short_token_at_init(self) -> None:
+        """BearerAuthMiddleware raises WeakTokenError for short token."""
+        from starlette.applications import Starlette
+
+        app = Starlette()
+        with pytest.raises(WeakTokenError):
+            BearerAuthMiddleware(app, "short")
 
     @pytest.fixture
     def token(self) -> str:
@@ -198,6 +215,62 @@ class TestNoAuth:
 
         assert response.status_code == 200
         assert response.json()["id"] == "sim1"
+
+
+class TestConstantTimeComparison:
+    """Tests verifying constant-time behavior of token validation.
+
+    The middleware must always call secrets.compare_digest() regardless of
+    whether a token was provided, to prevent timing attacks that could reveal
+    whether authentication was attempted.
+    """
+
+    @pytest.fixture
+    def token(self) -> str:
+        """Generate a test token."""
+        return generate_token()
+
+    @pytest.fixture
+    def api_with_auth(self, token: str) -> SimulatorAPI:
+        """Create a SimulatorAPI with authentication enabled."""
+        return SimulatorAPI(api_token=token)
+
+    @pytest.fixture
+    def app_with_auth(self, api_with_auth: SimulatorAPI):
+        """Create a Starlette app with authentication."""
+        return api_with_auth.create_app()
+
+    @pytest.fixture
+    async def client_with_auth(self, app_with_auth) -> AsyncClient:
+        """Create an async test client for authenticated app."""
+        transport = ASGITransport(app=app_with_auth)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+
+    @pytest.mark.asyncio
+    async def test_no_token_and_wrong_token_both_return_401(
+        self, client_with_auth: AsyncClient
+    ) -> None:
+        """Both missing and invalid tokens return 401.
+
+        This documents that both code paths result in the same behavior,
+        supporting constant-time validation where compare_digest is always
+        called (with empty string when no token is provided).
+        """
+        # No token at all
+        response_no_token = await client_with_auth.post("/sim", json={"id": "sim1"})
+        assert response_no_token.status_code == 401
+
+        # Wrong token
+        response_wrong = await client_with_auth.post(
+            "/sim",
+            json={"id": "sim1"},
+            headers={"Authorization": "Bearer wrong-token-value"},
+        )
+        assert response_wrong.status_code == 401
+
+        # Both should have the same error structure
+        assert response_no_token.json() == response_wrong.json()
 
 
 class TestWebSocketTokenExtraction:

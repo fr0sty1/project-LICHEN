@@ -684,7 +684,9 @@ class Node:
         """Update node config from CoAP /config PUT.
 
         Raises:
-            ValueError: If any key in updates is not a valid config key.
+            ValueError: If any key in updates is not a valid config key, or if
+                a numeric value is non-positive (including negative floats
+                between -1 and 0 that truncate to 0).
         """
         unknown = set(updates.keys()) - self._VALID_CONFIG_KEYS
         if unknown:
@@ -692,8 +694,22 @@ class Node:
         receive_timeout_ms = self.config.receive_timeout_ms
         announce_interval_ms = self.config.announce_interval_ms
         if "receive_timeout_ms" in updates:
-            receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
+            raw = updates["receive_timeout_ms"]
+            # Validate BEFORE int conversion to catch negative floats like -0.5
+            if isinstance(raw, float) and raw < 0:
+                raise ValueError(f"receive_timeout_ms must be positive, got {raw}")
+            receive_timeout_ms = int(cast(int | str, raw))
+            if receive_timeout_ms <= 0:
+                raise ValueError(f"receive_timeout_ms must be positive, got {receive_timeout_ms}")
         if "announce_interval_ms" in updates:
-            announce_interval_ms = int(cast(int | str, updates["announce_interval_ms"]))
+            raw = updates["announce_interval_ms"]
+            # Validate BEFORE int conversion to catch negative floats like -0.5
+            if isinstance(raw, float) and raw < 0:
+                raise ValueError(f"announce_interval_ms must be positive, got {raw}")
+            announce_interval_ms = int(cast(int | str, raw))
+            if announce_interval_ms <= 0:
+                raise ValueError(
+                    f"announce_interval_ms must be positive, got {announce_interval_ms}"
+                )
         self.config.receive_timeout_ms = receive_timeout_ms
         self.config.announce_interval_ms = announce_interval_ms

@@ -23,7 +23,10 @@ import pytest
 from lichen.link.tx_queue import (
     DEADLINE_ACK_MS,
     DEADLINE_APP_MS,
+    DEADLINE_BULK_MS,
     DEADLINE_ROUTING_MS,
+    DEADLINE_SOS_MS,
+    DEADLINE_URGENT_MS,
     Priority,
     QueueFullError,
     TxQueue,
@@ -99,6 +102,49 @@ class TestTxQueueBasic:
         assert len(q) == 0
         assert q.pop() is None
 
+    @pytest.mark.asyncio
+    async def test_clear_signals_reservations(self):
+        """clear() signals all pending reservations as failed (No Silent Drops).
+
+        Spec compliance: appendix-bufferbloat.md §5 - callers awaiting send()
+        must not hang indefinitely when their packet is cleared.
+        """
+        q = TxQueue()
+        res1 = q.push(b"one", return_reservation=True)
+        res2 = q.push(b"two", return_reservation=True)
+        res3 = q.push(b"three", return_reservation=True)
+        assert res1 is not None
+        assert res2 is not None
+        assert res3 is not None
+
+        # None should be done yet
+        assert not res1.done()
+        assert not res2.done()
+        assert not res3.done()
+
+        count = q.clear()
+
+        # All reservations should be signaled with False
+        assert count == 3
+        assert res1.done()
+        assert res2.done()
+        assert res3.done()
+        assert res1.result() is False
+        assert res2.result() is False
+        assert res3.result() is False
+
+    @pytest.mark.asyncio
+    async def test_clear_reservation_await_returns_false(self):
+        """Awaiting a cleared packet's reservation returns False."""
+        q = TxQueue()
+        res = q.push(b"will_clear", return_reservation=True)
+        assert res is not None
+
+        q.clear()
+
+        # Awaiting should immediately return False
+        assert await res.wait() is False
+
     def test_peek_without_removing(self):
         """peek() returns packet without removing it."""
         q = TxQueue()
@@ -145,16 +191,16 @@ class TestPriorityOrdering:
         """Packets pop in priority order (lower value = higher priority)."""
         q = TxQueue()
 
-        # Push in reverse priority order
+        # Push in reverse priority order (spec §10.2.3: P0-P4)
         q.push(b"bulk", priority=Priority.BULK)
+        q.push(b"normal", priority=Priority.NORMAL)
         q.push(b"urgent", priority=Priority.URGENT)
-        q.push(b"ack", priority=Priority.ACK)
         q.push(b"routing", priority=Priority.ROUTING)
 
         # Should pop in priority order
         assert q.pop() == b"routing"
-        assert q.pop() == b"ack"
         assert q.pop() == b"urgent"
+        assert q.pop() == b"normal"
         assert q.pop() == b"bulk"
 
     def test_same_priority_fifo(self):
@@ -188,8 +234,22 @@ class TestPriorityOrdering:
 class TestDeadlineExpiry:
     """Tests for time-based packet expiry."""
 
+    def test_default_deadline_sos(self):
+        """SOS packets (P0) get 2s default deadline - transmit ASAP."""
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+
+        q.push(b"sos", priority=Priority.SOS)
+
+        # Advance past deadline
+        clock.advance(DEADLINE_SOS_MS + 1)
+
+        # Should be expired
+        assert q.pop() is None
+        assert q.stats.packets_dropped_deadline == 1
+
     def test_default_deadline_routing(self):
-        """Routing packets get 5s default deadline."""
+        """Routing packets (P1) get 5s default deadline."""
         clock = FakeClock(0)
         q = TxQueue(clock=clock)
 
@@ -203,31 +263,56 @@ class TestDeadlineExpiry:
         assert q.stats.packets_dropped_deadline == 1
 
     def test_default_deadline_ack(self):
-        """ACK packets get 10s default deadline."""
+        """ACK packets (alias for ROUTING) get 5s default deadline."""
         clock = FakeClock(0)
         q = TxQueue(clock=clock)
 
         q.push(b"ack", priority=Priority.ACK)
 
-        # Advance past deadline
+        # Advance past deadline (ACK is alias for ROUTING, so same deadline)
         clock.advance(DEADLINE_ACK_MS + 1)
 
         assert q.pop() is None
         assert q.stats.packets_dropped_deadline == 1
 
-    def test_default_deadline_app(self):
-        """App packets (URGENT, BULK) get 60s default deadline."""
+    def test_default_deadline_urgent(self):
+        """Urgent packets (P2) get 30s default deadline."""
         clock = FakeClock(0)
         q = TxQueue(clock=clock)
 
         q.push(b"urgent", priority=Priority.URGENT)
-        q.push(b"bulk", priority=Priority.BULK)
+
+        # Advance past deadline
+        clock.advance(DEADLINE_URGENT_MS + 1)
+
+        assert q.pop() is None
+        assert q.stats.packets_dropped_deadline == 1
+
+    def test_default_deadline_normal(self):
+        """Normal packets (P3) get 60s default deadline."""
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+
+        q.push(b"normal", priority=Priority.NORMAL)
 
         # Advance past deadline
         clock.advance(DEADLINE_APP_MS + 1)
 
         assert q.pop() is None
-        assert q.stats.packets_dropped_deadline == 2
+        assert q.stats.packets_dropped_deadline == 1
+
+    def test_default_deadline_bulk(self):
+        """Bulk packets (P4) get 120s default deadline - can wait."""
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+
+        q.push(b"bulk", priority=Priority.BULK)
+
+        # Advance past deadline
+        clock.advance(DEADLINE_BULK_MS + 1)
+
+        assert q.pop() is None
+        assert q.stats.packets_dropped_deadline == 1
 
     def test_custom_deadline(self):
         """Custom deadline overrides default."""
@@ -260,6 +345,55 @@ class TestDeadlineExpiry:
         assert expired == 1
         assert len(q) == 1
         assert q.pop() == b"long"
+
+    @pytest.mark.asyncio
+    async def test_expire_stale_signals_reservation(self):
+        """expire_stale() signals reservations on expired packets as failed.
+
+        Spec compliance: callers awaiting send() must not hang indefinitely
+        when their packet expires before transmission. See review-r1-4.
+        """
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+
+        # Push two packets with reservations: one expires, one survives
+        res_short = q.push(b"expires", deadline_ms=100, return_reservation=True)
+        res_long = q.push(b"survives", deadline_ms=1000, return_reservation=True)
+        assert res_short is not None
+        assert res_long is not None
+
+        # Neither reservation should be done yet
+        assert not res_short.done()
+        assert not res_long.done()
+
+        # Advance past the short deadline
+        clock.advance(500)
+
+        expired = q.expire_stale()
+
+        # The short packet should be expired and its reservation signaled False
+        assert expired == 1
+        assert res_short.done()
+        assert res_short.result() is False
+
+        # The long packet is still valid, reservation still pending
+        assert not res_long.done()
+
+    @pytest.mark.asyncio
+    async def test_expire_stale_reservation_await_returns_false(self):
+        """Awaiting an expired packet's reservation returns False."""
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+
+        res = q.push(b"will_expire", deadline_ms=50, return_reservation=True)
+        assert res is not None
+
+        # Expire the packet
+        clock.advance(100)
+        q.expire_stale()
+
+        # Awaiting should immediately return False
+        assert await res.wait() is False
 
     def test_packet_at_deadline_is_expired(self):
         """Packets expire when deadline_ms <= now (deadline_ms > now check)."""
@@ -303,14 +437,61 @@ class TestPreemption:
         q.push(b"urgent", priority=Priority.URGENT)
         q.push(b"bulk", priority=Priority.BULK)
 
-        # Push ACK - should evict BULK (lowest priority)
-        q.push(b"ack", priority=Priority.ACK)
+        # Push SOS - should evict BULK (lowest priority)
+        q.push(b"sos", priority=Priority.SOS)
 
-        # Check contents
+        # Check contents (SOS=0, ROUTING=1, URGENT=2)
+        assert q.pop() == b"sos"
         assert q.pop() == b"routing"
-        assert q.pop() == b"ack"
         assert q.pop() == b"urgent"
         assert q.pop() is None  # Bulk was evicted
+
+    @pytest.mark.asyncio
+    async def test_preempt_signals_evicted_reservation(self):
+        """Preemption signals evicted entry's reservation with False.
+
+        Spec compliance: "No Silent Drops" - callers awaiting transmission
+        must be notified when their packet is preempted, not left hanging.
+        """
+        q = TxQueue(capacity=2)
+
+        # Push two bulk packets with reservations
+        res1 = q.push(b"bulk1", priority=Priority.BULK, return_reservation=True)
+        res2 = q.push(b"bulk2", priority=Priority.BULK, return_reservation=True)
+        assert res1 is not None
+        assert res2 is not None
+
+        # Push higher priority - should evict one bulk and signal its reservation
+        q.push(b"routing", priority=Priority.ROUTING)
+
+        # One reservation should be signaled with False (evicted)
+        evicted_count = sum(1 for r in [res1, res2] if r.done())
+        assert evicted_count == 1
+        assert q.stats.packets_dropped_preempt == 1
+
+        # The evicted reservation should have result=False
+        evicted = res1 if res1.done() else res2
+        assert evicted.result() is False
+
+    @pytest.mark.asyncio
+    async def test_preempt_await_returns_false(self):
+        """Awaiting a preempted packet's reservation returns False.
+
+        Spec compliance: Explicit backpressure - sender can await and learn
+        their packet was dropped, rather than waiting forever.
+        """
+        q = TxQueue(capacity=1)
+
+        # Push bulk with reservation
+        res = q.push(b"bulk", priority=Priority.BULK, return_reservation=True)
+        assert res is not None
+
+        # Preempt with higher priority
+        q.push(b"routing", priority=Priority.ROUTING)
+
+        # Await should return False immediately (not hang)
+        result = await res.wait()
+        assert result is False
 
 
 class TestBackpressure:
@@ -506,18 +687,20 @@ class TestEdgeCases:
         assert q.pop() == b"urgent"
 
     def test_all_priorities_coexist(self):
-        """All four priority levels can coexist."""
-        q = TxQueue(capacity=4)
+        """All five priority levels can coexist (spec §10.2.3: P0-P4)."""
+        q = TxQueue(capacity=5)
 
         q.push(b"bulk", priority=Priority.BULK)
+        q.push(b"normal", priority=Priority.NORMAL)
         q.push(b"urgent", priority=Priority.URGENT)
-        q.push(b"ack", priority=Priority.ACK)
         q.push(b"routing", priority=Priority.ROUTING)
+        q.push(b"sos", priority=Priority.SOS)
 
-        assert len(q) == 4
+        assert len(q) == 5
+        assert q.pop() == b"sos"
         assert q.pop() == b"routing"
-        assert q.pop() == b"ack"
         assert q.pop() == b"urgent"
+        assert q.pop() == b"normal"
         assert q.pop() == b"bulk"
 
     def test_invalid_capacity(self):
@@ -630,7 +813,8 @@ class TestReserveComplete:
         e2 = q.reserve()
         assert e2 is e1
 
-    def test_reservation_future_is_set_on_success(self):
+    @pytest.mark.asyncio
+    async def test_reservation_future_is_set_on_success(self):
         q = TxQueue()
         res = q.push(b"awaitable", return_reservation=True)
         assert res is not None
@@ -638,10 +822,17 @@ class TestReserveComplete:
         entry = q.reserve()
         q.complete(entry, success=True)
 
-        assert res._future.done()
-        assert res._future.result() is True
+        assert res.done()
+        assert res.result() is True
 
-    def test_reservation_future_is_set_on_failure(self):
+    @pytest.mark.asyncio
+    async def test_reservation_not_set_on_requeue(self):
+        """complete(False) requeues entry - reservation NOT signaled yet.
+
+        The reservation should only be signaled when the entry is definitively
+        done (success, expired, or preempted). On requeue, the entry stays
+        in the queue for retry.
+        """
         q = TxQueue()
         res = q.push(b"fail_me", return_reservation=True)
         assert res is not None
@@ -649,8 +840,24 @@ class TestReserveComplete:
         entry = q.reserve()
         q.complete(entry, success=False)
 
-        assert res._future.done()
-        assert res._future.result() is False
+        # Reservation should NOT be done - entry is still queued for retry
+        assert not res.done()
+        assert len(q) == 1
+
+    @pytest.mark.asyncio
+    async def test_reservation_set_false_on_expiry(self):
+        """Reservation is signaled False when entry expires."""
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+        res = q.push(b"will_expire", deadline_ms=100, return_reservation=True)
+        assert res is not None
+
+        # Entry expires
+        clock.advance(200)
+        q.expire_stale()
+
+        assert res.done()
+        assert res.result() is False
 
     @pytest.mark.asyncio
     async def test_reservation_wait_returns_true_on_success(self):
@@ -664,15 +871,23 @@ class TestReserveComplete:
         assert await res.wait() is True
 
     @pytest.mark.asyncio
-    async def test_reservation_wait_returns_false_on_failure(self):
+    async def test_reservation_wait_returns_true_after_retry_success(self):
+        """Retry scenario: first attempt fails (requeue), second succeeds."""
         q = TxQueue()
-        res = q.push(b"async_fail", return_reservation=True)
+        res = q.push(b"retry_me", return_reservation=True)
         assert res is not None
 
+        # First attempt fails - entry is requeued
         entry = q.reserve()
         q.complete(entry, success=False)
+        assert not res.done()
 
-        assert await res.wait() is False
+        # Second attempt succeeds
+        entry2 = q.reserve()
+        assert entry2 is entry  # Same entry object
+        q.complete(entry2, success=True)
+
+        assert await res.wait() is True
 
     @pytest.mark.asyncio
     async def test_concurrent_reserve_complete_round_robin(self):
@@ -755,3 +970,265 @@ class TestReserveComplete:
         q.complete(e2, success=True)
 
         assert "complete(success) but entry not head of queue" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_signal_all_pending_then_complete_first_wins(self, caplog):
+        """Race: signal_all_pending(False) then complete(True) - first wins.
+
+        Simulates a race condition where queue is being cleared/shutdown
+        while a transmission is in progress. The reservation should get
+        the first result (False from signal_all_pending), and the later
+        complete(True) should be ignored with a warning.
+        """
+        q = TxQueue()
+        res = q.push(b"race_me", return_reservation=True)
+        assert res is not None
+
+        # Get entry reference before any operations
+        entry = q.reserve()
+        assert entry is not None
+        assert entry.reservation is res
+
+        # Simulate race: signal_all_pending called mid-transmission
+        q.signal_all_pending(False)
+
+        # Reservation should now be done with False
+        assert res.done()
+        assert res.result() is False
+
+        # complete(True) comes later - should be ignored with warning
+        q.complete(entry, success=True)
+
+        # Result is still False (first wins), warning was logged
+        assert res.result() is False
+        assert "set_result(True) ignored: already set to False" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_complete_true_then_clear_no_conflict(self, caplog):
+        """complete(True) removes entry, so clear() doesn't touch it.
+
+        This is the normal (non-race) case: successful transmission removes
+        the entry before clear() is called, so no conflict occurs.
+        """
+        q = TxQueue()
+        res = q.push(b"normal", return_reservation=True)
+        assert res is not None
+
+        entry = q.reserve()
+        q.complete(entry, success=True)
+
+        # Reservation is done with True
+        assert res.done()
+        assert res.result() is True
+
+        # clear() shouldn't affect it (entry was already removed)
+        q.clear()
+
+        # Still True, no warning
+        assert res.result() is True
+        assert "ignored" not in caplog.text
+
+
+class TestPrioritySpecCompliance:
+    """Tests verifying Priority enum matches spec §10.2.3."""
+
+    def test_priority_values_match_spec(self):
+        """Priority values match spec §10.2.3 P0-P4 levels."""
+        assert int(Priority.SOS) == 0  # P0
+        assert int(Priority.ROUTING) == 1  # P1
+        assert int(Priority.URGENT) == 2  # P2
+        assert int(Priority.NORMAL) == 3  # P3
+        assert int(Priority.BULK) == 4  # P4
+
+    def test_ack_alias_equals_routing(self):
+        """ACK is a backward-compat alias for ROUTING (both P1)."""
+        assert Priority.ACK == Priority.ROUTING
+        assert int(Priority.ACK) == 1
+
+    def test_priority_ordering(self):
+        """Lower value = higher priority (SOS beats BULK)."""
+        assert Priority.SOS < Priority.ROUTING
+        assert Priority.ROUTING < Priority.URGENT
+        assert Priority.URGENT < Priority.NORMAL
+        assert Priority.NORMAL < Priority.BULK
+
+    def test_coap_txpriority_alias_unified(self):
+        """TxPriority in coap.params is now unified with link.Priority."""
+        from lichen.coap.params import TxPriority
+
+        assert TxPriority is Priority
+
+
+class TestTxReservationLazyInit:
+    """Tests for TxReservation lazy Future initialization.
+
+    The Future is created lazily to allow TxReservation instantiation
+    outside of an async context, which is required for push(return_reservation=True)
+    called from synchronous code.
+    """
+
+    def test_creation_outside_async_context(self):
+        """TxReservation can be created without a running event loop."""
+        from lichen.link.tx_queue import TxReservation
+
+        # This would raise RuntimeError if Future was created eagerly
+        res = TxReservation()
+        assert res is not None
+        assert not res.done()
+
+    def test_push_reservation_outside_async_context(self):
+        """push(return_reservation=True) works outside async context."""
+        q = TxQueue()
+        res = q.push(b"test", return_reservation=True)
+        assert res is not None
+        assert not res.done()
+
+    def test_set_result_before_wait(self):
+        """set_result() stores result even before Future is created."""
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+        res.set_result(True)
+        assert res.done()
+        assert res.result() is True
+
+    @pytest.mark.asyncio
+    async def test_wait_after_set_result(self):
+        """wait() returns result set before Future was created."""
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+        res.set_result(False)
+
+        # wait() creates Future and applies stored result
+        result = await res.wait()
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_push_complete_await_full_cycle(self):
+        """Full cycle: push outside async, complete, await inside async."""
+        q = TxQueue()
+
+        # push outside would-be async context (simulated by test setup)
+        res = q.push(b"cycle_test", return_reservation=True)
+        assert res is not None
+
+        # complete the transmission
+        entry = q.reserve()
+        q.complete(entry, success=True)
+
+        # await the result
+        assert await res.wait() is True
+
+    def test_set_result_idempotent_same_value(self):
+        """set_result() is idempotent when called with the same value."""
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+        res.set_result(True)
+        res.set_result(True)  # Same value, should not raise
+        assert res.result() is True
+
+        res2 = TxReservation()
+        res2.set_result(False)
+        res2.set_result(False)  # Same value, should not raise
+        assert res2.result() is False
+
+    def test_set_result_conflicting_value_logs_warning(self, caplog):
+        """set_result() logs warning when called with a different value (first wins)."""
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+        res.set_result(True)
+
+        # Conflicting call should NOT raise, just log a warning
+        res.set_result(False)
+
+        # Original value is preserved (first wins)
+        assert res.result() is True
+        assert "set_result(False) ignored: already set to True" in caplog.text
+
+    def test_set_result_conflicting_value_false_then_true_logs_warning(self, caplog):
+        """set_result() logs warning: False then True (first wins)."""
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+        res.set_result(False)
+
+        # Conflicting call should NOT raise, just log a warning
+        res.set_result(True)
+
+        # Original value is preserved (first wins)
+        assert res.result() is False
+        assert "set_result(True) ignored: already set to False" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_result_and_wait_return_same_value_true(self):
+        """result() and wait() must return the same value (True case)."""
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+        res.set_result(True)
+
+        # Both methods must return identical value
+        wait_result = await res.wait()
+        result_result = res.result()
+        assert wait_result is result_result is True
+
+    @pytest.mark.asyncio
+    async def test_result_and_wait_return_same_value_false(self):
+        """result() and wait() must return the same value (False case)."""
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+        res.set_result(False)
+
+        # Both methods must return identical value
+        wait_result = await res.wait()
+        result_result = res.result()
+        assert wait_result is result_result is False
+
+    @pytest.mark.asyncio
+    async def test_result_and_wait_consistent_after_wait_first(self):
+        """result() and wait() consistent when wait() is called before set_result()."""
+        import asyncio
+
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+
+        async def delayed_set_result():
+            await asyncio.sleep(0.01)
+            res.set_result(True)
+
+        # Start wait before result is set
+        wait_task = asyncio.create_task(res.wait())
+        set_task = asyncio.create_task(delayed_set_result())
+
+        await asyncio.gather(wait_task, set_task)
+
+        # Both must return identical value
+        assert wait_task.result() is res.result() is True
+
+    @pytest.mark.asyncio
+    async def test_result_and_wait_consistent_multiple_waits(self):
+        """Multiple wait() calls and result() all return same value."""
+        import asyncio
+
+        from lichen.link.tx_queue import TxReservation
+
+        res = TxReservation()
+
+        async def delayed_set_result():
+            await asyncio.sleep(0.01)
+            res.set_result(False)
+
+        # Multiple waiters
+        wait1 = asyncio.create_task(res.wait())
+        wait2 = asyncio.create_task(res.wait())
+        set_task = asyncio.create_task(delayed_set_result())
+
+        await asyncio.gather(wait1, wait2, set_task)
+
+        # All must be consistent
+        assert wait1.result() is wait2.result() is res.result() is False

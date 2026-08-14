@@ -4,11 +4,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 import aiocoap
-from aiocoap import resource
+from aiocoap import Message, resource
+from aiocoap.numbers.types import CON
 
+from lichen.coap.params import (
+    CongestionLevel,
+    CongestionState,
+    check_congestion_allows,
+    congestion_service_unavailable,
+)
 from lichen.coap.resources.base import NodeInfo
 from lichen.coap.resources.edhoc import EdhocResource
 from lichen.coap.resources.emergency import RollcallResource, SosResource
@@ -34,6 +41,85 @@ from lichen.coap.resources.senml import (
     SenMLSensorsResource,
 )
 from lichen.coap.transport import EndpointPolicy
+from lichen.link.tx_queue import Priority
+
+
+class CongestionProvider(Protocol):
+    """Protocol for objects that provide congestion information."""
+
+    @property
+    def congestion_level(self) -> CongestionLevel:
+        """Return current duty cycle congestion level."""
+        ...
+
+    @property
+    def retry_after_ms(self) -> int | None:
+        """Return estimated time until duty cycle budget refills (ms)."""
+        ...
+
+    def congestion_state(self) -> CongestionState:
+        """Return atomic snapshot of congestion level and retry delay (r1-P3-43).
+
+        This method provides an atomic read of both congestion_level and
+        retry_after_ms to avoid race conditions when these values are read
+        separately in concurrent environments.
+        """
+        ...
+
+
+class CongestionAwareSite(resource.Site):
+    """A CoAP Site that enforces congestion-based load shedding (spec 07 §10.2.3).
+
+    When duty cycle congestion exceeds thresholds, incoming requests are rejected
+    with 5.03 Service Unavailable before reaching resource handlers. This prevents
+    the node from accepting work it cannot complete (response transmission would
+    be blocked by duty cycle limits).
+
+    Priority mapping per spec:
+    - CON requests: Priority.URGENT (P2)
+    - NON requests: Priority.NORMAL (P3)
+
+    Load shedding rules:
+    - NORMAL: all traffic allowed
+    - ELEVATED: shed NORMAL/BULK priority (P3-P4), allow URGENT+ (P0-P2)
+    - CRITICAL: only SOS/ROUTING (P0-P1)
+    - EXHAUSTED: block all
+
+    SECURITY: This is a denial-of-service mitigation, not an attack vector.
+    The congestion check runs on the *receiving* node's local duty cycle state,
+    preventing commitment to work the node cannot fulfill.
+    """
+
+    def __init__(self, congestion_provider: CongestionProvider | None = None) -> None:
+        """Create a congestion-aware site.
+
+        Args:
+            congestion_provider: Object providing congestion_level and retry_after_ms.
+                If None, no congestion checking is performed (always allows requests).
+        """
+        super().__init__()
+        self._congestion_provider = congestion_provider
+
+    async def render(self, request: Message) -> Message:
+        """Check congestion before dispatching to resources.
+
+        If congestion level blocks the request priority, returns 5.03 immediately
+        without invoking the resource handler.
+        """
+        if self._congestion_provider is not None:
+            # Use atomic read to ensure level and retry_after_ms are consistent (r1-P3-43)
+            state = self._congestion_provider.congestion_state()
+            # Map request type to priority per spec §10.2.3
+            # CON -> URGENT (P2), NON -> NORMAL (P3)
+            priority = Priority.URGENT if request.mtype == CON else Priority.NORMAL
+            if not check_congestion_allows(state.level, priority):
+                retry_after_s = (
+                    (state.retry_after_ms + 999) // 1000
+                    if state.retry_after_ms is not None
+                    else None
+                )
+                return congestion_service_unavailable(state.level, retry_after_s)
+        return await super().render(request)
 
 
 def build_site(
@@ -53,6 +139,7 @@ def build_site(
     edhoc_resource: EdhocResource | None = None,
     endpoint_policy: EndpointPolicy | None = None,
     config_allow_writes: bool = False,
+    congestion_provider: CongestionProvider | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
@@ -62,8 +149,17 @@ def build_site(
     rollcall, position beacons with SenML). Callers hold references and call
     update() methods to push LCI notifications. Pass ``rollcall_resource`` to
     enable conference rollcall demo using LCI and SenML per spec 18.
+
+    Args:
+        congestion_provider: If provided, the site will check congestion level
+            before processing requests and return 5.03 Service Unavailable when
+            duty cycle congestion exceeds thresholds (spec 07 §10.2.3).
     """
-    site = resource.Site()
+    site: resource.Site
+    if congestion_provider is not None:
+        site = CongestionAwareSite(congestion_provider)
+    else:
+        site = resource.Site()
     site.add_resource(
         [".well-known", "core"],
         resource.WKCResource(site.get_resources_as_linkheader),

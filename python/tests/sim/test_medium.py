@@ -3,18 +3,18 @@
 """Tests for the radio medium simulation."""
 
 import pytest
-
 from lora_medium import (
-    ChannelLoad,
+    CAPTURE_THRESHOLD_DB,
+    SENSITIVITY_SF10,
     Medium,
-    RendezvousInfo,
+    PropagationModel,
     RendezvousMechanism,
     RxCandidate,
     TDMASlot,
     TDMAVector,
+    Transmission,
+    airtime_us,
 )
-from lora_medium import CAPTURE_THRESHOLD_DB, SENSITIVITY_SF10, PropagationModel
-from lora_medium import Transmission, airtime_us
 
 
 class TestMediumBasics:

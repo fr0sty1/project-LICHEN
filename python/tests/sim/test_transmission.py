@@ -5,7 +5,6 @@
 from uuid import UUID
 
 import pytest
-
 from lora_medium import Transmission, airtime_us, lr_fhss_airtime_us
 
 

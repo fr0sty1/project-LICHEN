@@ -75,7 +75,11 @@ from lichen.coap.resources.senml import (
     SenMLMetricsResource,
     SenMLSensorsResource,
 )
-from lichen.coap.resources.site import build_site
+from lichen.coap.resources.site import (
+    CongestionAwareSite,
+    CongestionProvider,
+    build_site,
+)
 
 __all__ = [
     # Constants
@@ -127,4 +131,7 @@ __all__ = [
     "EdhocResource",
     # Site builder
     "build_site",
+    # Congestion-aware site
+    "CongestionAwareSite",
+    "CongestionProvider",
 ]

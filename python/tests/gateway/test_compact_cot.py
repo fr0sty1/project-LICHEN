@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 from defusedxml import DefusedXmlException
 
-UTC = timezone.utc
+UTC = UTC
 
 from lichen.gateway.compact_cot import (
     ChatPayload,

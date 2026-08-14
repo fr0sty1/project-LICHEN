@@ -16,6 +16,8 @@ from lichen.client.ble import (
     LICHEN_LCI_VERSION,
     NUS_LCI_PROFILE,
     BlePacketTransport,
+    BleSecurityError,
+    BleSecurityLevel,
     BleTransportError,
     discover_lci_devices,
     read_lci_metadata,
@@ -537,3 +539,98 @@ async def test_discover_lci_devices_wraps_scanner_failures() -> None:
         await discover_lci_devices(scanner=FakeScanner, timeout_s=0.1)
 
     FakeScanner.fail_discover = False
+
+
+# LESC Security Tests (spec 17.5.4)
+
+
+def test_ble_security_level_enum_values() -> None:
+    """BleSecurityLevel enum has expected values for LESC checking."""
+    assert BleSecurityLevel.UNKNOWN < BleSecurityLevel.NONE
+    assert BleSecurityLevel.NONE < BleSecurityLevel.JUST_WORKS
+    assert BleSecurityLevel.JUST_WORKS < BleSecurityLevel.LESC
+
+
+def test_ble_transport_default_security_level_is_unknown() -> None:
+    """Transport defaults to UNKNOWN security level for safety."""
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB"))
+    assert transport.security_level == BleSecurityLevel.UNKNOWN
+
+
+def test_ble_transport_security_level_can_be_set_at_init() -> None:
+    """Transport accepts explicit security level at construction."""
+    transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient("AA:BB"),
+        security_level=BleSecurityLevel.LESC,
+    )
+    assert transport.security_level == BleSecurityLevel.LESC
+
+
+def test_ble_transport_security_level_can_be_updated() -> None:
+    """Security level can be updated after external verification."""
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB"))
+    assert transport.security_level == BleSecurityLevel.UNKNOWN
+
+    transport.security_level = BleSecurityLevel.LESC
+    assert transport.security_level == BleSecurityLevel.LESC
+
+
+def test_ble_transport_is_lesc_secured_true_only_for_lesc() -> None:
+    """is_lesc_secured() returns True only when security level is LESC."""
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB"))
+
+    transport.security_level = BleSecurityLevel.UNKNOWN
+    assert transport.is_lesc_secured() is False
+
+    transport.security_level = BleSecurityLevel.NONE
+    assert transport.is_lesc_secured() is False
+
+    transport.security_level = BleSecurityLevel.JUST_WORKS
+    assert transport.is_lesc_secured() is False
+
+    transport.security_level = BleSecurityLevel.LESC
+    assert transport.is_lesc_secured() is True
+
+
+def test_ble_transport_assert_lesc_raises_for_non_lesc() -> None:
+    """assert_lesc_for_diagnostics() raises when security is not LESC."""
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB"))
+
+    transport.security_level = BleSecurityLevel.UNKNOWN
+    with pytest.raises(BleSecurityError, match="LE Secure Connections"):
+        transport.assert_lesc_for_diagnostics()
+
+    transport.security_level = BleSecurityLevel.JUST_WORKS
+    with pytest.raises(BleSecurityError, match="JUST_WORKS"):
+        transport.assert_lesc_for_diagnostics()
+
+
+def test_ble_transport_assert_lesc_passes_for_lesc() -> None:
+    """assert_lesc_for_diagnostics() does not raise when LESC is active."""
+    transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient("AA:BB"),
+        security_level=BleSecurityLevel.LESC,
+    )
+
+    # Should not raise
+    transport.assert_lesc_for_diagnostics()
+
+
+# _int_or_none edge cases
+
+
+def test_int_or_none_handles_float_infinity() -> None:
+    """_int_or_none returns None for float('inf'), not OverflowError (r2-P2-35).
+
+    Converting float infinity to int raises OverflowError; _int_or_none should
+    catch it and return None gracefully.
+    """
+    from lichen.client.ble import _int_or_none
+
+    assert _int_or_none(float("inf")) is None
+    assert _int_or_none(float("-inf")) is None
+    # Normal floats should still convert
+    assert _int_or_none(42.0) == 42
+    assert _int_or_none(-7.5) == -7

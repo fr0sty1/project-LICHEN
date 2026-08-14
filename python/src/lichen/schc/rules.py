@@ -175,6 +175,73 @@ class Rule:
 # Rule ID reserved for the uncompressed fallback (spec sections 5.5 / 5.7).
 RULE_ID_UNCOMPRESSED = 255
 
+# Rule Set Version (spec section 5.7):
+#   0 - Reserved (uncompressed fallback)
+#   1 - Legacy experimental (not interoperable)
+#   2 - RFC 8724 fragmentation profile
+RULE_SET_VERSION = 2
+
+# DIO Rule Version Option type (spec section 5.7, LICHEN extension).
+# Advertised in DIO messages to indicate the SCHC rule set version.
+SCHC_RULE_VERSION_TYPE: int = 0x13
+
+
+@dataclass(frozen=True)
+class SchcRuleVersionOption:
+    """SCHC Rule Set Version Option for DIO messages (spec section 5.7).
+
+    This option is carried in RPL DIO messages to advertise the sender's
+    SCHC rule set version. Nodes should only join a DODAG if their rule
+    set version matches the advertised version.
+
+    Wire format:
+        +--------+--------+---------+
+        | Type   | Length | Version |
+        +--------+--------+---------+
+           1B       1B       1B
+
+    Attributes:
+        version: 8-bit unsigned rule set version (0 reserved, 1 legacy, 2 current).
+    """
+
+    version: int
+
+    def __post_init__(self) -> None:
+        if type(self.version) is not int or not 0 <= self.version <= 255:
+            raise ValueError(f"version must be 0-255, got {self.version}")
+
+    def to_bytes(self) -> bytes:
+        """Serialize to wire format (Type/Length/Version)."""
+        return bytes([SCHC_RULE_VERSION_TYPE, 1, self.version])
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> SchcRuleVersionOption:
+        """Parse from wire format.
+
+        Args:
+            data: Raw bytes starting with the Type field.
+
+        Returns:
+            Parsed option.
+
+        Raises:
+            ValueError: If the data is malformed or has wrong type.
+        """
+        if len(data) < 3:
+            raise ValueError(f"SCHC Rule Version Option too short: {len(data)} bytes")
+        if data[0] != SCHC_RULE_VERSION_TYPE:
+            raise ValueError(
+                f"wrong option type: expected {SCHC_RULE_VERSION_TYPE:#x}, got {data[0]:#x}"
+            )
+        if data[1] != 1:
+            raise ValueError(f"unexpected length: expected 1, got {data[1]}")
+        return cls(version=data[2])
+
+    @classmethod
+    def current(cls) -> SchcRuleVersionOption:
+        """Create an option with the current rule set version."""
+        return cls(version=RULE_SET_VERSION)
+
 
 # CoAP header compression (spec appendix A.2), fixed part (no variable token).
 # Version is a constant; the rest are carried verbatim in the residue.
@@ -224,15 +291,16 @@ ICMPV6_ECHO_RULE = Rule(
 # ---------------------------------------------------------------------------
 # Whole-packet rules (spec appendix A.1), built from shared field helpers.
 #
-# Constant IPv6/transport fields are elided. Both link-local (fe80::/64) and
-# ULA mesh (fd00::/64) addresses use MSB(64)/LSB(64) matching so only the 64-bit
-# IID travels. Lengths and checksums are recomputed on decompression. Variable
-# trailers (CoAP token/options/payload, RPL options) travel verbatim after the
-# residue, handled by schc/headers.py.
+# Constant IPv6/transport fields are elided. Link-local (fe80::/64) addresses
+# use MSB(64)/LSB(64) matching so only the 64-bit IID travels. Global Yggdrasil
+# (0200::/8) addresses use MSB(8)/LSB(120) since only the first byte is constant.
+# Lengths and checksums are recomputed on decompression. Variable trailers
+# (CoAP token/options/payload, RPL options) travel verbatim after the residue,
+# handled by schc/headers.py.
 # ---------------------------------------------------------------------------
 
 _LINK_LOCAL_PREFIX_TV = 0xFE80 << 112  # fe80::/64 as a 128-bit target value
-_GLOBAL_PREFIX_TV = 0xFD00 << 112  # fd00::/64 ULA mesh prefix as a 128-bit target value
+_GLOBAL_PREFIX_TV = 0x0200 << 112  # 0200::/8 Yggdrasil mesh prefix as a 128-bit target value
 
 
 def _addr_field(field_id: str, *, link_local: bool) -> FieldDescriptor:
@@ -247,7 +315,7 @@ def _addr_field(field_id: str, *, link_local: bool) -> FieldDescriptor:
         )
     return FieldDescriptor(
         field_id, 128, MO.MSB, CDA.LSB,
-        target_value=_GLOBAL_PREFIX_TV, mo_arg=64,
+        target_value=_GLOBAL_PREFIX_TV, mo_arg=8,
     )
 
 

@@ -9,11 +9,18 @@ import pytest
 from lichen.schc import (
     CDA,
     MO,
+    RULE_SET_VERSION,
+    SCHC_RULE_VERSION_TYPE,
     FieldDescriptor,
     NoMatchingRuleError,
     Rule,
     SchcContext,
+    SchcRuleVersionOption,
+    VersionMismatchError,
+    check_version_compatibility,
+    create_rule_version_option,
     rule_matches,
+    versions_compatible,
 )
 
 # A small two-rule context with disjoint EQUAL matches for deterministic tests.
@@ -168,3 +175,158 @@ def test_icmpv6_echo_round_trip() -> None:
     assert out["ICMPv6.checksum"] is None
     assert out["ICMPv6.identifier"] == 0xBEEF
     assert out["ICMPv6.sequence"] == 42
+
+
+# --- Rule Set Versioning (spec section 5.7) ---
+
+
+def test_rule_set_version_constant_is_2() -> None:
+    """Spec section 5.7: version 2 is current RFC 8724 profile."""
+    assert RULE_SET_VERSION == 2
+
+
+def test_default_context_has_current_version() -> None:
+    """Default context uses RULE_SET_VERSION."""
+    ctx = SchcContext()
+    assert ctx.version == RULE_SET_VERSION
+    assert ctx.version == 2
+
+
+def test_context_accepts_custom_version() -> None:
+    """Context can be constructed with a specific version."""
+    ctx = SchcContext(version=3)
+    assert ctx.version == 3
+
+
+def test_context_version_zero_reserved() -> None:
+    """Version 0 is reserved but can still be set (for testing/edge cases)."""
+    ctx = SchcContext(version=0)
+    assert ctx.version == 0
+
+
+def test_context_rejects_invalid_version() -> None:
+    """Context rejects version outside 0-255 (spec section 5.7: 8-bit unsigned)."""
+    with pytest.raises(ValueError, match="version must be 0-255"):
+        SchcContext(version=-1)
+    with pytest.raises(ValueError, match="version must be 0-255"):
+        SchcContext(version=256)
+
+
+def test_context_rejects_non_integer_version() -> None:
+    """Context rejects non-integer version values."""
+    with pytest.raises(ValueError, match="version must be 0-255"):
+        SchcContext(version=2.0)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="version must be 0-255"):
+        SchcContext(version="2")  # type: ignore[arg-type]
+
+
+# --- SchcRuleVersionOption (spec section 5.7 DIO option) ---
+
+
+def test_rule_version_option_type_constant() -> None:
+    """SCHC_RULE_VERSION_TYPE is 0x13 (LICHEN extension)."""
+    assert SCHC_RULE_VERSION_TYPE == 0x13
+
+
+def test_rule_version_option_serialization() -> None:
+    """Option serializes to 3-byte TLV format."""
+    opt = SchcRuleVersionOption(version=2)
+    data = opt.to_bytes()
+    assert data == bytes([0x13, 0x01, 0x02])
+
+
+def test_rule_version_option_deserialization() -> None:
+    """Option deserializes from 3-byte TLV format."""
+    data = bytes([0x13, 0x01, 0x02])
+    opt = SchcRuleVersionOption.from_bytes(data)
+    assert opt.version == 2
+
+
+def test_rule_version_option_round_trip() -> None:
+    """Serialize/deserialize round trip preserves version."""
+    for version in [0, 1, 2, 3, 127, 255]:
+        opt = SchcRuleVersionOption(version=version)
+        parsed = SchcRuleVersionOption.from_bytes(opt.to_bytes())
+        assert parsed.version == version
+
+
+def test_rule_version_option_current() -> None:
+    """current() factory uses RULE_SET_VERSION."""
+    opt = SchcRuleVersionOption.current()
+    assert opt.version == RULE_SET_VERSION
+    assert opt.version == 2
+
+
+def test_rule_version_option_rejects_invalid_version() -> None:
+    """Option rejects version outside 0-255."""
+    with pytest.raises(ValueError, match="version must be 0-255"):
+        SchcRuleVersionOption(version=-1)
+    with pytest.raises(ValueError, match="version must be 0-255"):
+        SchcRuleVersionOption(version=256)
+
+
+def test_rule_version_option_from_bytes_rejects_short() -> None:
+    """from_bytes rejects data shorter than 3 bytes."""
+    with pytest.raises(ValueError, match="too short"):
+        SchcRuleVersionOption.from_bytes(bytes([0x13, 0x01]))
+
+
+def test_rule_version_option_from_bytes_rejects_wrong_type() -> None:
+    """from_bytes rejects wrong option type."""
+    with pytest.raises(ValueError, match="wrong option type"):
+        SchcRuleVersionOption.from_bytes(bytes([0x12, 0x01, 0x02]))
+
+
+def test_rule_version_option_from_bytes_rejects_wrong_length() -> None:
+    """from_bytes rejects unexpected length field."""
+    with pytest.raises(ValueError, match="unexpected length"):
+        SchcRuleVersionOption.from_bytes(bytes([0x13, 0x02, 0x02, 0x00]))
+
+
+# --- Version Compatibility (spec section 5.7) ---
+
+
+def test_versions_compatible_same() -> None:
+    """Same versions are compatible."""
+    assert versions_compatible(2, 2) is True
+    assert versions_compatible(0, 0) is True
+    assert versions_compatible(3, 3) is True
+
+
+def test_versions_compatible_different() -> None:
+    """Different versions are incompatible."""
+    assert versions_compatible(1, 2) is False
+    assert versions_compatible(2, 1) is False
+    assert versions_compatible(2, 3) is False
+
+
+def test_check_version_compatibility_returns_true() -> None:
+    """check_version_compatibility returns True for matching versions."""
+    assert check_version_compatibility(2, 2) is True
+
+
+def test_check_version_compatibility_raises_on_mismatch() -> None:
+    """check_version_compatibility raises VersionMismatchError by default."""
+    with pytest.raises(VersionMismatchError) as exc_info:
+        check_version_compatibility(2, 1)
+    assert exc_info.value.local == 2
+    assert exc_info.value.remote == 1
+    assert "local=2" in str(exc_info.value)
+    assert "remote=1" in str(exc_info.value)
+
+
+def test_check_version_compatibility_no_raise() -> None:
+    """check_version_compatibility returns False when raise_on_mismatch=False."""
+    assert check_version_compatibility(2, 1, raise_on_mismatch=False) is False
+
+
+def test_create_rule_version_option_default() -> None:
+    """create_rule_version_option uses current version by default."""
+    opt = create_rule_version_option()
+    assert opt.version == RULE_SET_VERSION
+
+
+def test_create_rule_version_option_custom() -> None:
+    """create_rule_version_option accepts custom version."""
+    opt = create_rule_version_option(version=3)
+    assert opt.version == 3

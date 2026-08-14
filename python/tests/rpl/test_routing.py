@@ -177,3 +177,51 @@ def test_insert_source_route_validates_expected_destination() -> None:
     # Path does NOT end with expected_destination - should raise
     with pytest.raises(RoutingError, match="does not end with expected destination"):
         insert_source_route(packet, [A, B], expected_destination=DEST)
+
+
+def test_advance_source_route_rejects_segments_left_gte_hop_limit() -> None:
+    """RFC 6554 + LICHEN spec §5 line 418: Segments Left MUST be < Hop Limit."""
+    srh = SourceRoutingHeader(segments_left=3, addresses=[A, B, DEST])
+    ext = srh.to_extension_header()
+
+    # segments_left=3, hop_limit=4: 3 < 4, should succeed
+    # First hop from addresses with segments_left=3 is addresses[3-3]=addresses[0]=A
+    packet_ok = IPv6Packet(
+        header=IPv6Header(ROOT, A, NextHeader.UDP, hop_limit=4),
+        payload=b"x",
+        extension_headers=[ext],
+    )
+    _, nxt = advance_source_route(packet_ok)
+    assert nxt == A
+
+    # segments_left=3, hop_limit=3: 3 >= 3, should reject
+    packet_eq = IPv6Packet(
+        header=IPv6Header(ROOT, A, NextHeader.UDP, hop_limit=3),
+        payload=b"x",
+        extension_headers=[ext],
+    )
+    with pytest.raises(RoutingError, match="not strictly less than hop_limit"):
+        advance_source_route(packet_eq)
+
+    # segments_left=3, hop_limit=2: 3 >= 2, should reject
+    packet_gt = IPv6Packet(
+        header=IPv6Header(ROOT, A, NextHeader.UDP, hop_limit=2),
+        payload=b"x",
+        extension_headers=[ext],
+    )
+    with pytest.raises(RoutingError, match="not strictly less than hop_limit"):
+        advance_source_route(packet_gt)
+
+
+def test_advance_source_route_allows_zero_segments_left_with_any_hop_limit() -> None:
+    """segments_left=0 is always valid (packet at final destination)."""
+    srh = SourceRoutingHeader(segments_left=0, addresses=[DEST])
+    ext = srh.to_extension_header()
+    # Even with hop_limit=0, segments_left=0 is valid (already at destination)
+    packet = IPv6Packet(
+        header=IPv6Header(ROOT, DEST, NextHeader.UDP, hop_limit=0),
+        payload=b"x",
+        extension_headers=[ext],
+    )
+    _, nxt = advance_source_route(packet)
+    assert nxt is None  # Already at destination, no more hops

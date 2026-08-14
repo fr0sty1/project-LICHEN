@@ -95,3 +95,48 @@ def test_fork_in_memory_store_fails_closed() -> None:
     assert parent.recv() == "fork-safe"
     process.join(timeout=10)
     assert process.exitcode == 0
+
+
+@pytest.mark.asyncio
+async def test_put_initializes_sender_ledger_and_signals_reservation() -> None:
+    """Verify put() initializes sender ledger and signals reservation to context."""
+    store = InMemoryOscoreContextStore()
+    context = make_context(starting_sequence=10)
+
+    # Before put, context has ephemeral reservation
+    assert context.has_reserved_sender_sequence
+
+    published = await store.put("peer", context, b"peer-key")
+
+    # After put, ledger is initialized with context's starting sequence
+    sender_identity = context.sender_cryptographic_identity()
+    assert sender_identity in store._sender_ledgers
+    assert store._sender_ledgers[sender_identity] == 10
+
+    # Context reservation is cleared (no usable sequences until reserved)
+    assert not context.has_reserved_sender_sequence
+    assert context.sender_sequence_number == 10
+
+    # reserve_sender_sequences now works without KeyError
+    reservation = await store.reserve_sender_sequences("peer", published.generation, 5)
+    assert reservation.start == 10
+    assert reservation.end == 15
+
+    # Context can use reserved sequences after installing the reservation
+    context.set_sender_sequence_reservation(reservation.start, reservation.end)
+    assert context.has_reserved_sender_sequence
+    assert context.new_sequence_number() == 10
+
+
+@pytest.mark.asyncio
+async def test_put_initializes_replay_ledger() -> None:
+    """Verify put() initializes replay ledger for the context."""
+    store = InMemoryOscoreContextStore()
+    context = make_context()
+
+    await store.put("peer", context, b"peer-key")
+
+    # Replay ledger is initialized
+    recipient_identity = context.recipient_cryptographic_identity()
+    assert bytes(recipient_identity) in store._replay_ledgers
+    assert store._replay_ledgers[bytes(recipient_identity)] == (0, 0)

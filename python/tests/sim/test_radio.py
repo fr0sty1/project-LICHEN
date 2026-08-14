@@ -3,11 +3,11 @@
 """Tests for radio transmission and reception in the Simulation class."""
 
 import pytest
+from lora_medium import airtime_us
 
 from lichen.sim.events import RxTimeoutEvent, TxEndEvent
 from lichen.sim.node import NodeState
 from lichen.sim.simulation import Simulation
-from lora_medium import airtime_us
 
 
 class TestTransmission:

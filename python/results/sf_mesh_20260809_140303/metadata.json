@@ -1,0 +1,40 @@
+{
+  "timestamp": "20260809_140303",
+  "sf_width_km": 12.0,
+  "sf_height_km": 12.0,
+  "lora_tx_power_dbm": 14,
+  "lora_sensitivity_dbm": -137,
+  "path_loss_exponent": 3.5,
+  "estimated_range_km": 1.457854849051046,
+  "msg_size": 60,
+  "airtime_s": 0.698368,
+  "num_channels": 64,
+  "tdma_slots": 64,
+  "scenarios": [
+    {
+      "num_nodes": 500,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    {
+      "num_nodes": 1000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 0.5
+    },
+    {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 1.0
+    },
+    {
+      "num_nodes": 2000,
+      "duration_s": 300,
+      "msg_rate": 2.0
+    }
+  ]
+}

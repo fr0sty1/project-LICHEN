@@ -8,13 +8,11 @@ import asyncio
 from typing import Any, cast
 
 import pytest
-from aiocoap import Message
 from aiocoap.numbers.codes import CONTENT
 from aiocoap.numbers.types import NON
 
 from lichen.coap.secure import PeerContext, SecureDatagramChannel
 from lichen.coap.secure.types import _RequestCorrelation
-from lichen.coap.transport import LichenRemote
 from lichen.crypto.identity import Identity
 
 from .conftest import (

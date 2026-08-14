@@ -218,6 +218,13 @@ class FragmentSender:
             raise FragmentError("tile_size must be positive integer")
         if not isinstance(self.window_size, int) or not 1 <= self.window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
+        # W bit allows only 2 windows; enforce SCHC profile capacity limit
+        max_tiles = 2 * self.window_size
+        max_profile_payload = max_tiles * self.tile_size
+        if len(self.payload) > max_profile_payload:
+            raise FragmentError(
+                f"payload exceeds profile capacity ({len(self.payload)} > {max_profile_payload})"
+            )
         if len(self.payload) > self.receiver_limit:
             raise FragmentError(f"payload too large ({len(self.payload)} > {self.receiver_limit})")
         self._fragments = self._build()

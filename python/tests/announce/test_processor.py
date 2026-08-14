@@ -176,6 +176,44 @@ class TestIIDBinding:
 
         assert result.reject_reason == AnnounceRejectReason.IID_MISMATCH
 
+    def test_rejects_malformed_pubkey_gracefully(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """Malformed pubkey (wrong length) is handled gracefully as MALFORMED.
+
+        If somehow a malformed pubkey bypasses AnnounceMessage validation
+        (corrupted deserialization, etc), the processor should return MALFORMED
+        rather than crash with ValueError.
+        """
+        # Create a valid announce, then bypass dataclass immutability to corrupt pubkey
+        announce = make_signed_announce(identity, seq_num=1)
+
+        # Use object.__setattr__ to bypass frozen dataclass protection
+        object.__setattr__(announce, "pubkey", bytes(16))  # Wrong length
+
+        result = processor.process(announce, neighbor, now_ms=0)
+
+        assert result.accepted is False
+        assert result.reject_reason == AnnounceRejectReason.MALFORMED
+
+    def test_rejects_wrong_type_pubkey_gracefully(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """Pubkey of wrong type (None) is handled gracefully as MALFORMED.
+
+        If corrupted deserialization yields a non-bytes pubkey, the processor
+        should return MALFORMED rather than crash with TypeError from len().
+        """
+        announce = make_signed_announce(identity, seq_num=1)
+
+        # Use object.__setattr__ to bypass frozen dataclass protection
+        object.__setattr__(announce, "pubkey", None)  # Wrong type
+
+        result = processor.process(announce, neighbor, now_ms=0)
+
+        assert result.accepted is False
+        assert result.reject_reason == AnnounceRejectReason.MALFORMED
+
 
 class TestDuplicateDetection:
     """Tests for stale/duplicate announce detection."""

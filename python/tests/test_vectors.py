@@ -24,16 +24,32 @@ from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
 from lichen.ipv6.icmpv6 import Icmpv6Error, Icmpv6Message, handle_icmpv6
-from lichen.ipv6.packet import IPv6Packet, NextHeader, PacketError
+from lichen.ipv6.packet import IPv6Header, IPv6Packet, NextHeader, PacketError
 from lichen.ipv6.udp import UdpDatagram, UdpError
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
-from lichen.rpl.dao import RplTarget, TransitInformation
+from lichen.link.short_addr import (
+    SHORT_ADDR_RESERVED,
+    SHORT_ADDR_RESERVED_BROADCAST,
+    SHORT_ADDR_RESERVED_NULL,
+    SHORT_ADDR_RESERVED_UNSPECIFIED,
+    CoordinatorAddressTable,
+    DaoAck,
+    DaoRequest,
+    ShortAddressCollisionDetector,
+    dad_probe_schedule,
+    dad_retry,
+    dad_retry_incremental,
+    derive_short_addr,
+    derive_short_addr_crc16,
+    derive_short_addr_with_seed,
+    hash_32_fnv1a,
+    is_reserved_addr,
+    transition_to_coordinator_managed,
+)
 from lichen.loadng.messages import RERR, RREP, RREQ
+from lichen.rpl.dao import RplTarget, TransitInformation
 from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
-from lichen.ipv6.packet import IPv6Header, IPv6Packet, PacketError
-from lichen.ipv6.icmpv6 import Icmpv6Error, Icmpv6Message, handle_icmpv6
-from lichen.ipv6.udp import UdpDatagram, UdpError
 from lichen.schc.fragment import (
     MAX_PACKET_SIZE,
     Ack,
@@ -57,7 +73,6 @@ from generate import (  # noqa: E402
     ccp9_vectors,
     edhoc_vectors,
     frame_vectors,
-    hash_32,
     l2_payload_vectors,
     loadng_discovery_vectors,
     meshcore_app_compat_vectors,
@@ -178,10 +193,7 @@ def test_ipv6_malformed_vector(name: str, vector: dict) -> None:
     elif e == "icmpv6_too_short":
         with pytest.raises((PacketError, Icmpv6Error)):
             IPv6Packet.from_bytes(wire)
-    elif e == "invalid_checksum":
-        p = IPv6Packet.from_bytes(wire)
-        assert handle_icmpv6(p) is None
-    elif e == "bad_type":
+    elif e == "invalid_checksum" or e == "bad_type":
         p = IPv6Packet.from_bytes(wire)
         assert handle_icmpv6(p) is None
     elif e == "bad_udp_length":
@@ -1041,7 +1053,7 @@ def _dao_semantics(options: list[tuple[int, bytes]], source: bytes) -> str | Non
         return "non128_target"
     if targets[0][1] != source:
         return "target_mismatch"
-    if any(data[0] != 0 for data in transits):
+    if any(data[0] not in (0x00, 0x80) for data in transits):
         return "unsupported_transit_e"
     if len({(data[2], data[3]) for data in transits}) != 1:
         return "inconsistent_transit"
@@ -1097,7 +1109,7 @@ def test_dao_origin_signature_vector(name: str, vector: dict) -> None:
         assert identity.pubkey == public_key
         assert schnorr_sign(identity.privkey, identity.pubkey, expected_digest) == option[10:]
 
-    iid = bytearray(hashlib.sha256(public_key).digest()[:8])
+    iid = bytearray(hashlib.sha512(public_key).digest()[:8])
     iid[0] &= 0xFD
     iid_matches = source[8:] == bytes(iid)
     base_reason, base_stage = _dao_base_context(signed, vector)
@@ -1164,7 +1176,7 @@ def test_dao_origin_signature_vector(name: str, vector: dict) -> None:
 def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
     vectors = [vector for _, vector in _dao_origin_signature_cases()]
     coverage = {vector["coverage"] for vector in vectors}
-    assert len(vectors) == len(coverage) == 50
+    assert len(vectors) == len(coverage) == 51
     assert {
         "d1", "d0_effective_dodag", "identical_retransmission", "reconcile_after_crash",
         "replay_target_mismatch", "replay_malformed_semantics", "replay_structural",
@@ -1828,7 +1840,7 @@ def _gradient_entry_doc() -> dict:
     return _load("gradient_entry.json")
 
 
-def _make_gradient_entry(fields: dict) -> "GradientEntry":
+def _make_gradient_entry(fields: dict) -> GradientEntry:
     """Create a GradientEntry from vector fields for comparison testing."""
     from ipaddress import IPv6Address
 
@@ -2005,3 +2017,704 @@ def test_ccp_tdma_vectors(name: str, vector: dict) -> None:
     """
     scheduler = TDMAScheduler()
     assert scheduler.validate_vector(vector), f"{name}: validation failed"
+
+
+# --- Short Address DAD Vectors ---
+
+
+def _short_addr_dad_doc():
+    return _load("short_addr_dad.json")
+
+
+def _short_addr_derive_cases():
+    doc = _short_addr_dad_doc()
+    assert doc["format_version"] == 2
+    return [
+        (v["name"], v)
+        for v in doc["vectors"]
+        if v["name"].startswith("derive_") and "seeds" not in v
+    ]
+
+
+def _short_addr_seed_mixing_cases():
+    doc = _short_addr_dad_doc()
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"] if "seeds" in v]
+
+
+def _short_addr_dad_retry_cases():
+    doc = _short_addr_dad_doc()
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"] if v["name"].startswith("dad_retry")]
+
+
+@pytest.mark.parametrize("name,vector", _short_addr_derive_cases())
+def test_short_addr_derive_vector(name: str, vector: dict) -> None:
+    """Validate derive_short_addr against short_addr_dad.json vectors.
+
+    Tests CRC32-IEEE derivation with LICHEN key 0x4c494348454e (truncated
+    to 0x4348454e as init). Cross-language oracle for Rust/C implementations.
+    """
+    eui64 = bytes(vector["eui64_bytes"])
+    expected_addr = vector["derived"]
+
+    # Verify CRC32 init value matches
+    assert vector["crc32_init"] == "0x4348454e"
+
+    # Test derive_short_addr (CRC32-IEEE based, canonical)
+    derived = derive_short_addr(eui64)
+    assert derived == expected_addr, f"{name}: derived {derived:#x} != expected {expected_addr:#x}"
+
+    # Test derive_short_addr_crc16 (CRC16-CCITT alternative oracle)
+    crc16_derived = derive_short_addr_crc16(eui64)
+    expected_crc16 = vector["crc16_candidate"]
+    assert crc16_derived == expected_crc16, (
+        f"{name}: crc16 {crc16_derived:#x} != expected {expected_crc16:#x}"
+    )
+
+    # Also verify FNV-1a low16 for oracle parity
+    fnv1a_hash = hash_32_fnv1a(eui64) & 0xFFFF
+    expected_fnv = vector["fnv1a_low16"]
+    assert fnv1a_hash == expected_fnv, f"{name}: fnv1a {fnv1a_hash:#x} != {expected_fnv:#x}"
+
+
+@pytest.mark.parametrize("name,vector", _short_addr_seed_mixing_cases())
+def test_short_addr_seed_mixing_vector(name: str, vector: dict) -> None:
+    """Validate derive_short_addr_with_seed XOR mixing per spec 4.5.
+
+    Seed is XOR'd into the last 4 bytes of EUI-64 (little-endian) before
+    CRC32 hashing, producing deterministic retry candidates.
+    """
+    eui64 = bytes.fromhex(vector["eui64"])
+
+    for seed_case in vector["seeds"]:
+        seed = seed_case["seed"]
+        expected_addr = seed_case["addr"]
+        derived = derive_short_addr_with_seed(eui64, seed)
+        assert derived == expected_addr, (
+            f"{name} seed={seed}: derived {derived:#x} != expected {expected_addr:#x}"
+        )
+
+
+def test_short_addr_seed_zero_equivalence() -> None:
+    """Verify derive_short_addr_with_seed(eui64, 0) == derive_short_addr(eui64).
+
+    Per spec 02-physical-link.md 4.5, seed mixing XORs the seed into the last
+    4 bytes of EUI-64 before hashing. When seed=0, XOR with zeros leaves data
+    unchanged, so the seeded function with seed=0 must produce identical output
+    to the base derivation function.
+
+    This property is required for correct DAD retry behavior where seed=0 is
+    conceptually equivalent to the first (seedless) derivation attempt.
+    """
+    # Test EUI-64 values from vectors plus edge cases
+    test_eui64s = [
+        bytes.fromhex("0011223344556677"),  # from seed_mixing vector
+        bytes.fromhex("ffeeddccbbaa9988"),  # inverse pattern
+        bytes.fromhex("0000000000000000"),  # all zeros
+        bytes.fromhex("ffffffffffffffff"),  # all ones
+        bytes.fromhex("0123456789abcdef"),  # sequential
+        bytes.fromhex("00000000ffffffff"),  # XOR target region all ones
+        bytes.fromhex("ffffffff00000000"),  # XOR target region all zeros
+    ]
+
+    for eui64 in test_eui64s:
+        base_addr = derive_short_addr(eui64)
+        seeded_addr = derive_short_addr_with_seed(eui64, 0)
+        assert base_addr == seeded_addr, (
+            f"seed=0 equivalence failed for {eui64.hex()}: "
+            f"derive_short_addr={base_addr:#06x} != "
+            f"derive_short_addr_with_seed(0)={seeded_addr:#06x}"
+        )
+
+
+@pytest.mark.parametrize("name,vector", _short_addr_dad_retry_cases())
+def test_short_addr_dad_retry_vector(name: str, vector: dict) -> None:
+    """Validate DAD retry strategy per spec 4.5 pseudocode.
+
+    Tests collision handling with seed mixing (1..255) and fallback to
+    extended 64-bit addressing when 256 candidates exhausted.
+    """
+    if name == "dad_retry_exhausted":
+        # Special case: all 256 candidates taken -> fallback to None
+        eui64 = bytes.fromhex(vector["eui64"])
+        # Generate all 256 possible addresses for this EUI-64
+        existing = {derive_short_addr(eui64)}
+        for seed in range(1, 256):
+            existing.add(derive_short_addr_with_seed(eui64, seed))
+        assert len(existing) == vector["existing_size"]
+        expected_result = vector["result"]  # null in JSON -> None in Python
+        result = dad_retry(eui64, existing)
+        assert result is expected_result, f"{name}: expected {expected_result}, got {result}"
+        return
+
+    eui64 = bytes.fromhex(vector["eui64"])
+    existing = set(vector["existing"])
+    expected_result = vector["result"]
+    expected_seed = vector.get("expected_seed")
+
+    result = dad_retry(eui64, existing)
+    assert result == expected_result, f"{name}: result {result:#x} != expected {expected_result:#x}"
+
+    # Verify the seed that produced this result
+    if expected_seed is not None:
+        if expected_seed == 0:
+            assert derive_short_addr(eui64) == expected_result
+        else:
+            assert derive_short_addr_with_seed(eui64, expected_seed) == expected_result
+
+
+def test_short_addr_incremental_retry_vector() -> None:
+    """Validate +1 mod 0xffef incremental retry (bd 1.8.2.6)."""
+    doc = _short_addr_dad_doc()
+    vector = next(v for v in doc["vectors"] if v["name"] == "incremental_retry")
+
+    start = vector["start"]
+    existing = set(vector["existing"])
+    expected_result = vector["result"]
+
+    result = dad_retry_incremental(start, existing)
+    assert result == expected_result, f"incremental_retry: {result} != {expected_result}"
+
+
+def test_short_addr_incremental_retry_wraparound_vector() -> None:
+    """Validate incremental retry wraparound boundary (start near 0xFFEF wraps).
+
+    When wraparound would land on 0x0000 (reserved null address), the function
+    skips to 0x0001 as specified in the vector.
+    """
+    doc = _short_addr_dad_doc()
+    vector = next(v for v in doc["vectors"] if v["name"] == "incremental_retry_wraparound")
+
+    start = vector["start"]
+    existing = set(vector["existing"])
+    expected_result = vector["result"]
+
+    result = dad_retry_incremental(start, existing)
+    assert result == expected_result, (
+        f"incremental_retry_wraparound: {result} != {expected_result}"
+    )
+
+
+def test_short_addr_incremental_retry_exhausted_vector() -> None:
+    """Validate incremental retry returns None when all 0..0xFFEF addresses taken."""
+    from lichen.link.short_addr import SHORT_ADDR_MAX_INCREMENTAL
+
+    doc = _short_addr_dad_doc()
+    vector = next(v for v in doc["vectors"] if v["name"] == "incremental_retry_exhausted")
+
+    start = vector["start"]
+    # All addresses 0..SHORT_ADDR_MAX_INCREMENTAL are taken
+    existing = set(range(SHORT_ADDR_MAX_INCREMENTAL + 1))
+    assert len(existing) == vector["existing_size"], (
+        f"test setup: expected {vector['existing_size']} addresses, got {len(existing)}"
+    )
+    expected_result = vector["result"]
+
+    result = dad_retry_incremental(start, existing)
+    assert result is expected_result, (
+        f"incremental_retry_exhausted: expected None, got {result}"
+    )
+
+
+def test_short_addr_dad_jitter_vector() -> None:
+    """Validate DAD probe jitter schedule with deterministic RNG seed."""
+    import random
+
+    doc = _short_addr_dad_doc()
+    vector = next(v for v in doc["vectors"] if v["name"] == "dad_jitter_three_probes")
+
+    rng_seed = vector["rng_seed"]
+    count = vector["count"]
+    expected_jitters = vector["jitters_ms"]
+
+    rng = random.Random(rng_seed)
+    jitters = dad_probe_schedule(count, rng)
+
+    assert jitters == expected_jitters, f"dad_jitter: {jitters} != {expected_jitters}"
+
+
+def test_short_addr_coordinator_allocate_vector() -> None:
+    """Validate coordinator address table allocation and DAO-ACK."""
+    doc = _short_addr_dad_doc()
+    vector = next(v for v in doc["vectors"] if v["name"] == "coordinator_allocate")
+
+    coordinator = CoordinatorAddressTable()
+
+    # Process allocations
+    for alloc in vector["allocations"]:
+        eui64 = bytes.fromhex(alloc["eui64"])
+        if "again" in alloc:
+            # Re-allocation should return same address
+            assigned = coordinator.allocate(eui64)
+            assert assigned == alloc["again"]
+            assert alloc["same"] is True
+        else:
+            assigned = coordinator.allocate(eui64)
+            expected = alloc["assigned"]
+            assert assigned == expected, f"allocate {alloc['eui64']}: {assigned} != {expected}"
+
+    # Process DAO request
+    dao_req = vector["dao_requested"]
+    eui64 = bytes.fromhex(dao_req["eui64"])
+    req = DaoRequest(eui64=eui64, requested_short=dao_req["requested"])
+    ack = coordinator.handle_dao(req)
+    assert ack.assigned_short == dao_req["assigned"]
+    assert ack.status == dao_req["status"]
+
+    # Verify table snapshot
+    snapshot = coordinator.table_snapshot()
+    expected_snapshot = {int(k): v for k, v in vector["table_snapshot"].items()}
+    assert snapshot == expected_snapshot
+
+
+def test_short_addr_transition_vector() -> None:
+    """Validate transition from self-assigned to coordinator-managed address."""
+    doc = _short_addr_dad_doc()
+    vector = next(v for v in doc["vectors"] if v["name"] == "transition_self_to_coordinator")
+
+    eui64 = bytes.fromhex(vector["eui64"])
+    self_assigned = vector["self_assigned"]
+
+    # Coordinator already has another node with that address
+    # The other node was given address 1390 (perhaps via explicit request)
+    coordinator = CoordinatorAddressTable()
+    other_eui = bytes.fromhex(vector["coordinator_had_other"])
+    # Manually assign the conflicting address via DAO request
+    req = DaoRequest(eui64=other_eui, requested_short=self_assigned)
+    ack = coordinator.handle_dao(req)
+    assert ack.assigned_short == self_assigned, "setup: other node should have self_assigned"
+
+    # Transition: self_assigned is taken, should get new address
+    ack = transition_to_coordinator_managed(eui64, self_assigned, coordinator)
+    assert ack.assigned_short == vector["transition_assigned"]
+    assert ack.status == vector["status"]
+
+
+def test_short_addr_collision_detector_vector() -> None:
+    """Validate collision detection when same short addr observed with multiple pubkeys."""
+    doc = _short_addr_dad_doc()
+    vector = next(v for v in doc["vectors"] if v["name"] == "collision_detector")
+
+    short_addr = vector["short_addr"]
+    # The vector uses ellipsis notation; use full 32-byte pubkeys
+    pubkey1 = bytes([0x01] * 32)
+    pubkey2 = bytes([0x02] * 32)
+
+    detector = ShortAddressCollisionDetector()
+
+    # First observation: no collision yet
+    is_collision_1 = detector.observe(short_addr, pubkey1)
+    assert is_collision_1 == vector["first_observe_collision"]
+
+    # Second observation with different pubkey: collision detected
+    is_collision_2 = detector.observe(short_addr, pubkey2)
+    assert is_collision_2 == vector["second_observe_collision"]
+
+    # Verify collision state
+    assert detector.is_collision(short_addr) == vector["is_collision"]
+    assert len(detector.pubkeys_for(short_addr)) == vector["pubkeys_count"]
+
+
+def test_short_addr_reserved_range_detection() -> None:
+    """Test is_reserved_addr correctly identifies reserved addresses.
+
+    Reserved addresses per 802.15.4 and LICHEN spec:
+    - 0x0000: null/unspecified
+    - 0xFFFE: 802.15.4 unspecified
+    - 0xFFFF: 802.15.4 broadcast
+    """
+    # Reserved addresses
+    assert is_reserved_addr(0x0000)
+    assert is_reserved_addr(0xFFFE)
+    assert is_reserved_addr(0xFFFF)
+
+    # Non-reserved addresses
+    assert not is_reserved_addr(0x0001)
+    assert not is_reserved_addr(0x1234)
+    assert not is_reserved_addr(0xFFFD)
+    assert not is_reserved_addr(0x8000)
+
+    # Verify constants match
+    assert SHORT_ADDR_RESERVED_NULL == 0x0000
+    assert SHORT_ADDR_RESERVED_UNSPECIFIED == 0xFFFE
+    assert SHORT_ADDR_RESERVED_BROADCAST == 0xFFFF
+    assert frozenset({0x0000, 0xFFFE, 0xFFFF}) == SHORT_ADDR_RESERVED
+
+
+def test_short_addr_derive_reserved_null() -> None:
+    """Test behavior when derive_short_addr produces 0x0000.
+
+    EUI-64 58969e7da3da9901 hashes to 0x0000. This is a reserved
+    address so dad_retry must skip it and return a seeded alternative.
+    """
+    # This EUI-64 derives to 0x0000
+    eui64_null = bytes.fromhex("58969e7da3da9901")
+    derived = derive_short_addr(eui64_null)
+    assert derived == 0x0000, f"expected 0x0000, got {derived:#06x}"
+
+    # dad_retry should skip reserved 0x0000 and return seeded alternative
+    result = dad_retry(eui64_null, set())
+    assert result is not None, "dad_retry should find non-reserved address"
+    assert result != 0x0000, "dad_retry should skip reserved 0x0000"
+    assert not is_reserved_addr(result), f"result {result:#06x} is reserved"
+
+    # Verify it's the seed=1 result
+    expected = derive_short_addr_with_seed(eui64_null, 1)
+    assert result == expected, f"expected seed=1 result {expected:#06x}, got {result:#06x}"
+
+
+def test_short_addr_derive_reserved_broadcast() -> None:
+    """Test behavior when derive_short_addr produces 0xFFFF (broadcast).
+
+    EUI-64 4ee5844028f5d433 hashes to 0xFFFF. This is the broadcast
+    address so dad_retry must skip it.
+    """
+    eui64_broadcast = bytes.fromhex("4ee5844028f5d433")
+    derived = derive_short_addr(eui64_broadcast)
+    assert derived == 0xFFFF, f"expected 0xFFFF, got {derived:#06x}"
+
+    # dad_retry should skip reserved 0xFFFF
+    result = dad_retry(eui64_broadcast, set())
+    assert result is not None
+    assert result != 0xFFFF, "dad_retry should skip reserved 0xFFFF"
+    assert not is_reserved_addr(result)
+
+
+def test_short_addr_derive_reserved_unspecified() -> None:
+    """Test behavior when derive_short_addr produces 0xFFFE (unspecified).
+
+    EUI-64 a2b602900df31bc0 hashes to 0xFFFE. This is the 802.15.4
+    unspecified address so dad_retry must skip it.
+    """
+    eui64_unspec = bytes.fromhex("a2b602900df31bc0")
+    derived = derive_short_addr(eui64_unspec)
+    assert derived == 0xFFFE, f"expected 0xFFFE, got {derived:#06x}"
+
+    # dad_retry should skip reserved 0xFFFE
+    result = dad_retry(eui64_unspec, set())
+    assert result is not None
+    assert result != 0xFFFE, "dad_retry should skip reserved 0xFFFE"
+    assert not is_reserved_addr(result)
+
+
+def test_short_addr_incremental_skips_reserved_null() -> None:
+    """Test dad_retry_incremental skips 0x0000 when wrapping.
+
+    When incrementing wraps to 0x0000, it should skip to 0x0001 instead.
+    """
+    # Start at 0xFFEF-1 = 65518, with 65519 taken
+    # Wraparound: (65518 + 2) % 65520 = 0
+    # But 0x0000 is reserved, so should skip to 0x0001
+    start = 0xFFEE
+    existing = {0xFFEE, 0xFFEF}
+    result = dad_retry_incremental(start, existing)
+    assert result == 0x0001, f"expected 0x0001 (skip 0x0000), got {result:#06x}"
+
+
+def test_handle_dao_rejects_reserved_addresses() -> None:
+    """Test handle_dao rejects explicit requests for reserved addresses (r2-P1-11).
+
+    Per 802.15.4 and LICHEN spec, explicit requests for reserved addresses
+    (0x0000, 0xFFFE, 0xFFFF) MUST be rejected with status=1. The coordinator
+    MUST NOT silently substitute a different address when the client explicitly
+    requested a specific (reserved) address.
+    """
+    # Attempt to request each reserved address
+    for reserved_addr in [0x0000, 0xFFFE, 0xFFFF]:
+        # Create fresh coordinator and EUI for each test to avoid side effects
+        coord = CoordinatorAddressTable()
+        test_eui = bytes([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, reserved_addr & 0xFF])
+
+        req = DaoRequest(eui64=test_eui, requested_short=reserved_addr)
+        ack = coord.handle_dao(req)
+
+        # Explicit requests for reserved addresses MUST be rejected
+        assert ack.status == 1, (
+            f"handle_dao should reject explicit request for reserved {reserved_addr:#06x}"
+        )
+        assert ack.assigned_short is None, (
+            "handle_dao should not assign any address when rejecting reserved request"
+        )
+
+
+def test_handle_dao_allocates_when_no_explicit_request() -> None:
+    """Test handle_dao allocates non-reserved address when no specific request.
+
+    When a node requests assignment without specifying a particular address,
+    the allocation path should still work and avoid reserved addresses.
+    This ensures the rejection of explicit reserved requests (r2-P1-11) does
+    not break normal allocation.
+    """
+    coord = CoordinatorAddressTable()
+    eui64 = bytes.fromhex("0011223344556677")
+
+    req = DaoRequest(eui64=eui64, requested_short=None)
+    ack = coord.handle_dao(req)
+
+    assert ack.status == 0, "handle_dao should succeed for normal allocation"
+    assert ack.assigned_short is not None, "handle_dao should assign an address"
+    assert not is_reserved_addr(ack.assigned_short), (
+        f"handle_dao should not assign reserved address {ack.assigned_short:#06x}"
+    )
+
+
+def test_handle_dao_ack_rejects_reserved_addresses() -> None:
+    """Test handle_dao_ack rejects reserved addresses from coordinator (r2-P2-33).
+
+    Even if a malicious or buggy coordinator sends a DAO-ACK with a reserved
+    address (0x0000, 0xFFFE, 0xFFFF), the node MUST reject it. This prevents
+    reserved addresses from being stored and used on the network.
+    """
+    for reserved_addr in [0x0000, 0xFFFE, 0xFFFF]:
+        # Create fresh coordinator table to act as the node's local state
+        node_table = CoordinatorAddressTable()
+        test_eui = bytes([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, reserved_addr & 0xFF])
+
+        # Simulate receiving a DAO-ACK with a reserved address
+        malicious_ack = DaoAck(
+            eui64=test_eui,
+            assigned_short=reserved_addr,
+            status=0,  # Coordinator claims success
+            dao_sequence=1,
+        )
+        result = node_table.handle_dao_ack(malicious_ack)
+
+        # Node MUST reject reserved addresses
+        assert result is False, (
+            f"handle_dao_ack should reject reserved address {reserved_addr:#06x}"
+        )
+        # Verify the reserved address was not stored
+        assert node_table.lookup_by_eui(test_eui) is None, (
+            f"reserved address {reserved_addr:#06x} should not be stored"
+        )
+        assert node_table.lookup_by_short(reserved_addr) is None, (
+            f"reserved address {reserved_addr:#06x} should not appear in table"
+        )
+
+
+def test_handle_dao_ack_accepts_valid_addresses() -> None:
+    """Test handle_dao_ack accepts non-reserved addresses.
+
+    Ensure the reserved-address rejection (r2-P2-33) does not break normal
+    DAO-ACK processing for valid addresses.
+    """
+    node_table = CoordinatorAddressTable()
+    test_eui = bytes.fromhex("0011223344556677")
+    valid_addr = 0x1234
+
+    ack = DaoAck(
+        eui64=test_eui,
+        assigned_short=valid_addr,
+        status=0,
+        dao_sequence=1,
+    )
+    result = node_table.handle_dao_ack(ack)
+
+    assert result is True, "handle_dao_ack should accept valid address"
+    assert node_table.lookup_by_eui(test_eui) == valid_addr
+    assert node_table.lookup_by_short(valid_addr) == test_eui
+
+
+def test_handle_dao_ack_rejects_mismatched_identity() -> None:
+    """Test handle_dao_ack rejects DAO-ACKs for different identities (r2-P2-31).
+
+    When self_eui64 is provided, the node MUST reject DAO-ACKs where
+    ack.eui64 does not match self_eui64. This prevents address table
+    corruption from spoofed or misdirected DAO-ACKs.
+    """
+    node_table = CoordinatorAddressTable()
+    node_eui = bytes.fromhex("0011223344556677")
+    attacker_eui = bytes.fromhex("aabbccddeeff0011")
+    assigned_addr = 0x1234
+
+    # Simulate receiving a DAO-ACK for a different node
+    spoofed_ack = DaoAck(
+        eui64=attacker_eui,  # Different from our identity
+        assigned_short=assigned_addr,
+        status=0,
+        dao_sequence=1,
+    )
+    result = node_table.handle_dao_ack(spoofed_ack, self_eui64=node_eui)
+
+    # Node MUST reject DAO-ACKs for different identities
+    assert result is False, (
+        "handle_dao_ack should reject DAO-ACK for different identity"
+    )
+    # Verify the spoofed entry was not stored
+    assert node_table.lookup_by_eui(attacker_eui) is None, (
+        "spoofed identity should not be stored"
+    )
+    assert node_table.lookup_by_short(assigned_addr) is None, (
+        "address from spoofed DAO-ACK should not be stored"
+    )
+
+
+def test_handle_dao_ack_accepts_matching_identity() -> None:
+    """Test handle_dao_ack accepts DAO-ACKs for the node's own identity (r2-P2-31).
+
+    When self_eui64 is provided and matches ack.eui64, the DAO-ACK
+    should be accepted normally.
+    """
+    node_table = CoordinatorAddressTable()
+    node_eui = bytes.fromhex("0011223344556677")
+    assigned_addr = 0x1234
+
+    ack = DaoAck(
+        eui64=node_eui,
+        assigned_short=assigned_addr,
+        status=0,
+        dao_sequence=1,
+    )
+    result = node_table.handle_dao_ack(ack, self_eui64=node_eui)
+
+    assert result is True, "handle_dao_ack should accept matching identity"
+    assert node_table.lookup_by_eui(node_eui) == assigned_addr
+    assert node_table.lookup_by_short(assigned_addr) == node_eui
+
+
+def test_handle_dao_ack_without_self_eui64_accepts_any() -> None:
+    """Test handle_dao_ack without self_eui64 for backward compatibility.
+
+    When self_eui64 is not provided (None), the DAO-ACK should be
+    accepted for any identity. This maintains backward compatibility
+    but is NOT recommended for production use.
+    """
+    node_table = CoordinatorAddressTable()
+    any_eui = bytes.fromhex("aabbccddeeff0011")
+    assigned_addr = 0x5678
+
+    ack = DaoAck(
+        eui64=any_eui,
+        assigned_short=assigned_addr,
+        status=0,
+        dao_sequence=1,
+    )
+    # No self_eui64 provided (backward compatible mode)
+    result = node_table.handle_dao_ack(ack)
+
+    assert result is True, "handle_dao_ack should accept any identity when self_eui64 is None"
+    assert node_table.lookup_by_eui(any_eui) == assigned_addr
+
+
+def test_handle_dao_ack_rejects_malformed_eui64() -> None:
+    """Test handle_dao_ack rejects malformed EUI-64 values (r3-P1-6).
+
+    The ack.eui64 field must be validated before any table mutation to prevent
+    crashes or undefined behavior from malformed DAO-ACKs.
+    """
+    node_table = CoordinatorAddressTable()
+
+    # Test wrong length (too short)
+    bad_ack_short = DaoAck(
+        eui64=bytes.fromhex("001122334455"),  # Only 6 bytes
+        assigned_short=0x1234,
+        status=0,
+        dao_sequence=1,
+    )
+    with pytest.raises(ValueError, match="EUI-64 must be 8 bytes"):
+        node_table.handle_dao_ack(bad_ack_short)
+
+    # Test wrong length (too long)
+    bad_ack_long = DaoAck(
+        eui64=bytes.fromhex("00112233445566778899"),  # 10 bytes
+        assigned_short=0x1234,
+        status=0,
+        dao_sequence=1,
+    )
+    with pytest.raises(ValueError, match="EUI-64 must be 8 bytes"):
+        node_table.handle_dao_ack(bad_ack_long)
+
+    # Test empty bytes
+    bad_ack_empty = DaoAck(
+        eui64=b"",
+        assigned_short=0x1234,
+        status=0,
+        dao_sequence=1,
+    )
+    with pytest.raises(ValueError, match="EUI-64 must be 8 bytes"):
+        node_table.handle_dao_ack(bad_ack_empty)
+
+
+def test_handle_dao_ack_rejects_malformed_eui64_with_self_eui64() -> None:
+    """Test handle_dao_ack rejects malformed ack.eui64 when self_eui64 is provided (r3-P2-22).
+
+    When self_eui64 is provided for identity validation, the ack.eui64 field
+    must still be validated for proper format before any comparison or table
+    mutation. This ensures malformed DAO-ACKs are rejected early even when
+    identity validation would otherwise be performed.
+    """
+    node_table = CoordinatorAddressTable()
+    valid_self_eui = bytes.fromhex("0011223344556677")
+
+    # Test wrong length (too short) with self_eui64 provided
+    bad_ack_short = DaoAck(
+        eui64=bytes.fromhex("001122334455"),  # Only 6 bytes
+        assigned_short=0x1234,
+        status=0,
+        dao_sequence=1,
+    )
+    with pytest.raises(ValueError, match="EUI-64 must be 8 bytes"):
+        node_table.handle_dao_ack(bad_ack_short, self_eui64=valid_self_eui)
+
+    # Test wrong length (too long) with self_eui64 provided
+    bad_ack_long = DaoAck(
+        eui64=bytes.fromhex("00112233445566778899"),  # 10 bytes
+        assigned_short=0x1234,
+        status=0,
+        dao_sequence=1,
+    )
+    with pytest.raises(ValueError, match="EUI-64 must be 8 bytes"):
+        node_table.handle_dao_ack(bad_ack_long, self_eui64=valid_self_eui)
+
+    # Test empty bytes with self_eui64 provided
+    bad_ack_empty = DaoAck(
+        eui64=b"",
+        assigned_short=0x1234,
+        status=0,
+        dao_sequence=1,
+    )
+    with pytest.raises(ValueError, match="EUI-64 must be 8 bytes"):
+        node_table.handle_dao_ack(bad_ack_empty, self_eui64=valid_self_eui)
+
+    # Verify no table corruption occurred
+    assert len(node_table) == 0, "malformed DAO-ACKs should not corrupt table"
+
+
+def test_short_addr_dad_vector_coverage() -> None:
+    """Verify short_addr_dad.json has all expected vector categories."""
+    doc = _short_addr_dad_doc()
+    assert doc["format_version"] == 2
+
+    vector_names = {v["name"] for v in doc["vectors"]}
+
+    # Expected vector categories per spec 02-physical-link.md 4.5
+    expected = {
+        # Basic derivation
+        "derive_0011223344556677",
+        "derive_0102030405060708",
+        "derive_aabbccddeeff0011",
+        "derive_0000000000000000",
+        "derive_ffffffffffffffff",
+        "derive_0200000000000001",
+        # Seed mixing
+        "seed_mixing_0011223344556677",
+        # DAD retry
+        "dad_retry_one_collision",
+        "dad_retry_two_collisions",
+        "dad_retry_exhausted",
+        # Incremental retry
+        "incremental_retry",
+        "incremental_retry_wraparound",
+        "incremental_retry_exhausted",
+        # Jitter
+        "dad_jitter_three_probes",
+        # Coordinator
+        "coordinator_allocate",
+        "transition_self_to_coordinator",
+        # Collision detection
+        "collision_detector",
+    }
+
+    missing = expected - vector_names
+    assert not missing, f"Missing vectors: {missing}"

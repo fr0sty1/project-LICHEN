@@ -20,10 +20,7 @@ This is a classic failure mode in wireless mesh networks.
 
 from __future__ import annotations
 
-import pytest
-
-from lora_medium import Medium
-from lora_medium import PropagationModel, SENSITIVITY_SF10
+from lora_medium import SENSITIVITY_SF10, Medium, PropagationModel
 
 
 class TestHiddenTerminalBasic:

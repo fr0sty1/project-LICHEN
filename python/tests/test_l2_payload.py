@@ -2,15 +2,15 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 from lichen.l2_payload import (
     L2PayloadKind,
     classify_l2_payload,
     l2_payload_body,
 )
-
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 

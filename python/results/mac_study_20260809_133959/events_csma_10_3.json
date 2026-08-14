@@ -1,0 +1,1 @@
+[{"time_s": 6.285312000000001, "node_id": 6, "channel": 0, "slot": 0, "success": true, "collision_count": 0, "rssi_dbm": 0.0}, {"time_s": 7.682048000000002, "node_id": 9, "channel": 0, "slot": 0, "success": true, "collision_count": 0, "rssi_dbm": 0.0}, {"time_s": 19.554304, "node_id": 3, "channel": 0, "slot": 0, "success": true, "collision_count": 0, "rssi_dbm": 0.0}]

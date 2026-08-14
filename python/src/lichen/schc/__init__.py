@@ -9,7 +9,15 @@ from lichen.schc.codec import (
     residue_bit_length,
     residue_byte_length,
 )
-from lichen.schc.context import NoMatchingRuleError, SchcContext, rule_matches
+from lichen.schc.context import (
+    NoMatchingRuleError,
+    SchcContext,
+    VersionMismatchError,
+    check_version_compatibility,
+    create_rule_version_option,
+    rule_matches,
+    versions_compatible,
+)
 from lichen.schc.fragment import (
     ALL_1,
     DEFAULT_RECEIVER_LIMIT,
@@ -49,10 +57,13 @@ from lichen.schc.rules import (
     ICMPV6_ECHO_RULE,
     MO,
     RULE_ID_UNCOMPRESSED,
+    RULE_SET_VERSION,
     RULES,
+    SCHC_RULE_VERSION_TYPE,
     UDP_PORT_RULE,
     FieldDescriptor,
     Rule,
+    SchcRuleVersionOption,
 )
 
 __all__ = [
@@ -87,14 +98,20 @@ __all__ = [
     "RplDioProfile",
     "RULES",
     "RULE_ID_UNCOMPRESSED",
+    "RULE_SET_VERSION",
     "Rule",
+    "SCHC_RULE_VERSION_TYPE",
     "SchcContext",
     "SchcError",
+    "SchcRuleVersionOption",
     "UDP_PORT_RULE",
+    "VersionMismatchError",
+    "check_version_compatibility",
     "compress",
     "compress_packet",
     "ack_request",
     "compute_mic",
+    "create_rule_version_option",
     "decompress",
     "decompress_packet",
     "residue_bit_length",
@@ -102,4 +119,5 @@ __all__ = [
     "receiver_abort",
     "rule_matches",
     "sender_abort",
+    "versions_compatible",
 ]

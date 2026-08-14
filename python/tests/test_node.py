@@ -447,3 +447,43 @@ def test_set_config_rejects_unknown_fields_before_mutation(node: Node) -> None:
     with pytest.raises(ValueError, match="unknown config keys"):
         node.set_config({"receive_timeout_ms": 300, "unknown": 1})
     assert node.get_config() == before
+
+
+def test_set_config_rejects_negative_float_between_minus_one_and_zero(node: Node) -> None:
+    """Negative floats between -1 and 0 (e.g., -0.5) must be rejected.
+
+    These values truncate to 0 when converted to int, which could silently
+    set an invalid config value. We validate BEFORE int conversion.
+    """
+    before = node.get_config()
+    with pytest.raises(ValueError, match="must be positive"):
+        node.set_config({"receive_timeout_ms": -0.5})
+    assert node.get_config() == before
+
+    with pytest.raises(ValueError, match="must be positive"):
+        node.set_config({"announce_interval_ms": -0.5})
+    assert node.get_config() == before
+
+
+def test_set_config_rejects_zero(node: Node) -> None:
+    """Zero values must be rejected as timeouts/intervals must be positive."""
+    before = node.get_config()
+    with pytest.raises(ValueError, match="must be positive"):
+        node.set_config({"receive_timeout_ms": 0})
+    assert node.get_config() == before
+
+    with pytest.raises(ValueError, match="must be positive"):
+        node.set_config({"announce_interval_ms": 0})
+    assert node.get_config() == before
+
+
+def test_set_config_rejects_negative_integers(node: Node) -> None:
+    """Negative integers must be rejected."""
+    before = node.get_config()
+    with pytest.raises(ValueError, match="must be positive"):
+        node.set_config({"receive_timeout_ms": -1})
+    assert node.get_config() == before
+
+    with pytest.raises(ValueError, match="must be positive"):
+        node.set_config({"announce_interval_ms": -100})
+    assert node.get_config() == before

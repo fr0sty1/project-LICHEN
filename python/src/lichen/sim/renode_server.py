@@ -19,6 +19,8 @@ import logging
 import struct
 from typing import TYPE_CHECKING
 
+from lora_medium import airtime_us
+
 from lichen.sim.protocol import (
     MAX_PAYLOAD_LENGTH,
     MSG_RX_ENTER,
@@ -33,7 +35,6 @@ from lichen.sim.protocol import (
     get_message_payload,
     get_message_type,
 )
-from lora_medium import airtime_us
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine

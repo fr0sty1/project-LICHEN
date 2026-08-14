@@ -10,10 +10,6 @@ import pytest
 from aiocoap import GET, PUT, Message
 
 from lichen.coap.resources import (
-    _CBOR_MAX_ARRAY_ENTRIES,
-    _CBOR_MAX_DEPTH,
-    _CBOR_MAX_ENCODED_BYTES,
-    _CBOR_MAX_MAP_ENTRIES,
     StaticNodeInfo,
     _decode_single_cbor,
     build_site,
@@ -293,3 +289,15 @@ def test_static_node_info_is_copy_safe() -> None:
     snapshot = info.get_status()
     snapshot["a"] = 999
     assert info.status["a"] == 1  # get_status returns a copy
+
+
+def test_decode_single_cbor_rejects_tags() -> None:
+    """CBOR tags (e.g., bignums) must be rejected by _decode_single_cbor."""
+    # CBOR bignum tag (tag 2) for a huge integer
+    bignum_cbor = bytes([
+        0xc2,  # tag 2 (positive bignum)
+        0x50,  # bstr(16)
+    ]) + b"\xff" * 16  # huge bignum value
+
+    with pytest.raises(ValueError, match="tags are not allowed"):
+        _decode_single_cbor(bignum_cbor)

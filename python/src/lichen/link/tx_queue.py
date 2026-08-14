@@ -31,32 +31,43 @@ logger = logging.getLogger(__name__)
 TX_QUEUE_CAPACITY = 4
 
 # Default deadlines in milliseconds (spec/appendix-bufferbloat.md)
-DEADLINE_ROUTING_MS = 5000  # Routing control (DIO/DAO)
-DEADLINE_ACK_MS = 10000  # Link-layer ACKs
-DEADLINE_APP_MS = 60000  # Application data
+DEADLINE_SOS_MS = 2000  # P0: Emergency - transmit ASAP
+DEADLINE_ROUTING_MS = 5000  # P1: Routing control (DIO/DAO)
+DEADLINE_ACK_MS = 5000  # P1: Link-layer ACKs (alias for ROUTING)
+DEADLINE_URGENT_MS = 30000  # P2: Time-sensitive app traffic
+DEADLINE_APP_MS = 60000  # P3: Normal application data
+DEADLINE_BULK_MS = 120000  # P4: Bulk/firmware - can wait
 
 
 class Priority(IntEnum):
-    """TX packet priority levels.
+    """TX packet priority levels (spec §10.2.3 Priority Queue).
 
     Lower numeric value = higher priority.
-    Routing control is most urgent; bulk data can wait.
+    Maps 1:1 to the spec's P0-P4 levels.
     """
 
-    ROUTING = 0  # RPL DIO/DAO, network control
-    ACK = 1  # Link-layer acknowledgments
-    URGENT = 2  # Time-sensitive app messages
-    BULK = 3  # Regular data, can tolerate delay
+    SOS = 0  # P0: Emergency traffic (SOS beacons)
+    ROUTING = 1  # P1: RPL control (DIO, DAO)
+    URGENT = 2  # P2: CoAP CON, tactical chat
+    NORMAL = 3  # P3: CoAP NON, telemetry, position
+    BULK = 4  # P4: Bulk transfer, firmware
+
+    # Backward compatibility alias: link-layer ACKs use ROUTING priority
+    ACK = 1
 
 
 def _default_deadline_for(priority: Priority) -> int:
-    """Return default deadline in ms for a priority level."""
-    if priority == Priority.ROUTING:
+    """Return default deadline in ms for a priority level (spec §10.2.3)."""
+    if priority == Priority.SOS:
+        return DEADLINE_SOS_MS
+    elif priority == Priority.ROUTING:  # Also covers ACK (alias)
         return DEADLINE_ROUTING_MS
-    elif priority == Priority.ACK:
-        return DEADLINE_ACK_MS
-    else:
+    elif priority == Priority.URGENT:
+        return DEADLINE_URGENT_MS
+    elif priority == Priority.NORMAL:
         return DEADLINE_APP_MS
+    else:  # BULK
+        return DEADLINE_BULK_MS
 
 
 class QueueFullError(Exception):
@@ -76,17 +87,65 @@ class TxReservation:
     Fixes the re-queue deadline bug: the reservation carries the original
     deadline from push(), so re-queues (CAD failure, TX failure) preserve
     the absolute deadline rather than computing a fresh one.
+
+    The Future is created lazily to allow TxReservation instantiation
+    outside of an async context (asyncio.Future() requires a running loop).
     """
 
-    _future: Future[bool] = field(default_factory=lambda: asyncio.Future(), repr=False)
+    _future: Future[bool] | None = field(default=None, repr=False)
+    _result: bool | None = field(default=None, repr=False)
 
     async def wait(self) -> bool:
-        """Await transmission outcome. Returns True if transmitted."""
-        return await self._future
+        """Await transmission outcome. Returns True if transmitted.
+
+        Returns the same value as result() after completion, guaranteeing
+        consistency between the two methods regardless of internal future state.
+        """
+        # Lazy future creation - we're now in an async context
+        if self._future is None:
+            self._future = asyncio.get_running_loop().create_future()
+            # Apply any result that was set before future existed
+            if self._result is not None:
+                self._future.set_result(self._result)
+        await self._future
+        # Return _result (the canonical source of truth) instead of the future's
+        # return value, ensuring wait() and result() always return the same value.
+        assert self._result is not None, "Future completed but _result not set"
+        return self._result
 
     def set_result(self, success: bool) -> None:
-        if not self._future.done():
+        """Set the transmission result.
+
+        Idempotent: calling with the same value multiple times is allowed.
+        Conflicting value: logs a warning and ignores the new value (first wins).
+
+        The first-wins semantic handles race conditions where signal_all_pending()
+        is called while an entry is being actively transmitted. The caller has
+        already been notified via the first result; subsequent conflicting calls
+        are ignored rather than crashing.
+        """
+        if self._result is not None:
+            if self._result != success:
+                logger.warning(
+                    "set_result(%s) ignored: already set to %s",
+                    success,
+                    self._result,
+                )
+            # Same value or conflict - idempotent, first wins
+            return
+        self._result = success
+        if self._future is not None and not self._future.done():
             self._future.set_result(success)
+
+    def done(self) -> bool:
+        """Return True if result has been set."""
+        return self._result is not None
+
+    def result(self) -> bool:
+        """Return the result. Raises ValueError if not done."""
+        if self._result is None:
+            raise ValueError("Result not set")
+        return self._result
 
 
 @dataclass
@@ -192,21 +251,35 @@ class TxQueue:
         Called automatically before push() and pop(). Can also be called
         explicitly for proactive cleanup.
 
+        Signals any reservations on expired entries as failed (False) so
+        callers awaiting send() do not hang indefinitely.
+
         Returns:
             Number of packets expired.
         """
         now = self._clock()
-        before_count = len(self._entries)
+        expired_entries: list[TxQueueEntry] = []
+        kept_entries: list[TxQueueEntry] = []
 
-        # Keep only entries with deadline in the future
-        self._entries = [e for e in self._entries if e.deadline_ms > now]
+        for entry in self._entries:
+            if entry.deadline_ms > now:
+                kept_entries.append(entry)
+            else:
+                expired_entries.append(entry)
 
-        expired = before_count - len(self._entries)
-        if expired > 0:
-            self.stats.packets_dropped_deadline += expired
-            logger.debug("expired %d stale packets from TX queue", expired)
+        # Signal reservations on expired entries before removing them
+        for entry in expired_entries:
+            if entry.reservation is not None:
+                entry.reservation.set_result(False)
 
-        return expired
+        self._entries = kept_entries
+        expired_count = len(expired_entries)
+
+        if expired_count > 0:
+            self.stats.packets_dropped_deadline += expired_count
+            logger.debug("expired %d stale packets from TX queue", expired_count)
+
+        return expired_count
 
     def push(
         self,
@@ -277,6 +350,9 @@ class TxQueue:
         lowest = max(self._entries, key=lambda e: e.priority)
         self._entries.remove(lowest)
         self.stats.packets_dropped_preempt += 1
+        # Signal evicted entry's reservation (spec: "No Silent Drops")
+        if lowest.reservation is not None:
+            lowest.reservation.set_result(False)
         logger.debug(
             "TX queue preempt: evicted priority=%s for priority=%s",
             Priority(lowest.priority).name,
@@ -383,10 +459,16 @@ class TxQueue:
     def clear(self) -> int:
         """Remove all packets from the queue.
 
+        Signals all pending reservations as failed (False) before clearing,
+        per spec "No Silent Drops" (appendix-bufferbloat.md §5). This ensures
+        callers awaiting send() are notified rather than left hanging.
+
         Returns:
             Number of packets cleared.
         """
         count = len(self._entries)
+        # Signal reservations before clearing (spec: No Silent Drops)
+        self.signal_all_pending(False)
         self._entries.clear()
         return count
 
@@ -406,12 +488,13 @@ class TxQueue:
     def complete(self, entry: TxQueueEntry, success: bool) -> None:
         """Signal completion of a reserved entry.
 
-        success=True: removes it, updates stats/latency, signals reservation.
-        success=False: leaves it queued with ORIGINAL deadline (bug fix),
-        signals failure.
+        success=True: removes entry, updates stats/latency, signals reservation True.
+        success=False: leaves entry queued with ORIGINAL deadline for retry.
+            Reservation is NOT signaled here - it will be signaled False when
+            the entry is definitively dropped (expired or preempted).
         """
-        if entry.reservation is not None:
-            entry.reservation.set_result(success)
+        if success and entry.reservation is not None:
+            entry.reservation.set_result(True)
 
         if success:
             if self._entries and self._entries[0] is entry:

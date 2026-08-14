@@ -110,6 +110,23 @@ class TestSenmlRecord:
         r = SenmlRecord.from_cbor_map({2: 42})
         assert r.v == 42
 
+    def test_from_cbor_map_rejects_overflow_integer(self) -> None:
+        """Very large integers that exceed float range raise ValueError, not OverflowError.
+
+        CBOR can encode arbitrarily large integers (via bignum tags). When such
+        integers are decoded, isfinite() would raise OverflowError during implicit
+        float conversion. The codec must catch this and raise ValueError instead.
+        """
+        # 2**1024 exceeds float max (~1.8e308) and causes OverflowError in isfinite()
+        big_int = 2**1024
+        with pytest.raises(ValueError, match="must be finite"):
+            SenmlRecord.from_cbor_map({-3: big_int})  # bt field (label -3)
+        with pytest.raises(ValueError, match="must be finite"):
+            SenmlRecord.from_cbor_map({2: big_int})  # v field (label 2)
+        # Large negative integers too
+        with pytest.raises(ValueError, match="must be finite"):
+            SenmlRecord.from_cbor_map({-3: -(2**1024)})
+
 
 class TestPack:
     def test_empty_pack(self) -> None:
@@ -199,6 +216,14 @@ class TestUnpack:
     def test_bytes_value_round_trip(self) -> None:
         records = [SenmlRecord(n="blob", vd=b"\xde\xad\xbe\xef")]
         assert unpack(pack(records))[0].vd == b"\xde\xad\xbe\xef"
+
+    def test_rejects_overflow_integer_in_cbor(self) -> None:
+        """CBOR payload with bignum integer raises ValueError, not OverflowError."""
+        # bt (label -3 = 0x22) with value 2**1024 (encoded as tagged bignum)
+        big_int = 2**1024
+        cbor_bytes = cbor2.dumps([{-3: big_int, 0: "test", 2: 1.0}])
+        with pytest.raises(ValueError, match="must be finite"):
+            unpack(cbor_bytes)
 
 
 class TestMakeBaseName:

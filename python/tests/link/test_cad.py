@@ -18,12 +18,11 @@ Test categories:
 """
 
 import pytest
+from lora_medium import Medium, PropagationModel
 
 from lichen.constants import CAD_MAX_BACKOFF_EXPONENT, CAD_MAX_CYCLES
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.link.link_layer import LinkLayer
-from lora_medium import Medium
-from lora_medium import PropagationModel
 
 
 class MockRadioWithCADSequence:

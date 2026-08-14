@@ -100,7 +100,7 @@ async def _monitor_capture(
         while True:
             try:
                 chunk = await asyncio.wait_for(reader.read(4096), timeout=timeout)
-            except (TimeoutError, asyncio.TimeoutError):
+            except TimeoutError:
                 break
             if not chunk:
                 break

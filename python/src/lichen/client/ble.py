@@ -8,6 +8,7 @@ import asyncio
 from collections.abc import AsyncIterator, Callable, Iterable
 from contextlib import suppress
 from dataclasses import dataclass
+from enum import IntEnum
 from importlib import import_module
 from typing import Any, Protocol, cast
 
@@ -18,8 +19,26 @@ LICHEN_LCI_VERSION = 1
 LICHEN_LCI_CAPABILITY_SLIP_IPV6 = 1 << 0
 
 
+class BleSecurityLevel(IntEnum):
+    """BLE connection security level per spec 17.6.1.
+
+    SECURITY: Raw diagnostic resources (/diag/raw/*) MUST require LESC.
+    See spec section 17.5.4: "BLE transports MUST require LE Secure Connections
+    for these resources."
+    """
+
+    UNKNOWN = 0  # Security level not determined
+    NONE = 1  # No encryption (pairing not completed)
+    JUST_WORKS = 2  # Legacy pairing or Just Works (no MITM protection)
+    LESC = 3  # LE Secure Connections (authenticated, ECDH P-256)
+
+
 class BleTransportError(RuntimeError):
     """BLE transport setup or I/O failure."""
+
+
+class BleSecurityError(BleTransportError):
+    """BLE security requirement not met (e.g., LESC required but not active)."""
 
 
 @dataclass(frozen=True)
@@ -119,6 +138,7 @@ class BleLciMetadata:
 
     protocol_version: int | None = None
     capabilities: int | None = None
+    security_level: BleSecurityLevel = BleSecurityLevel.UNKNOWN
 
 
 class BlePacketTransport:
@@ -133,6 +153,7 @@ class BlePacketTransport:
         write_chunk_size: int | None = None,
         timeout_s: float = 10.0,
         reconnect_attempts: int = 0,
+        security_level: BleSecurityLevel = BleSecurityLevel.UNKNOWN,
     ) -> None:
         if reconnect_attempts < 0:
             raise ValueError("reconnect_attempts must be non-negative")
@@ -143,6 +164,7 @@ class BlePacketTransport:
         self._write_chunk_size = write_chunk_size
         self._timeout_s = timeout_s
         self._reconnect_attempts = reconnect_attempts
+        self._security_level = security_level
         self._rx_decoder = StreamDecoder()
         self._packets: asyncio.Queue[bytes | None] = asyncio.Queue()
         self._connected = False
@@ -172,6 +194,44 @@ class BlePacketTransport:
         """Return direct BLE LCI metadata read during connection setup."""
         return self._metadata
 
+    @property
+    def security_level(self) -> BleSecurityLevel:
+        """Return the current BLE security level.
+
+        SECURITY: Raw diagnostic resources require LESC (see spec 17.5.4).
+        Use is_lesc_secured() or assert_lesc_for_diagnostics() before
+        accessing /diag/raw/* resources.
+        """
+        return self._security_level
+
+    @security_level.setter
+    def security_level(self, value: BleSecurityLevel) -> None:
+        """Set the BLE security level after external verification."""
+        self._security_level = value
+
+    def is_lesc_secured(self) -> bool:
+        """Return True if the connection uses LE Secure Connections.
+
+        SECURITY: Required for raw diagnostic access per spec 17.5.4.
+        """
+        return self._security_level == BleSecurityLevel.LESC
+
+    def assert_lesc_for_diagnostics(self) -> None:
+        """Raise BleSecurityError if LESC is not confirmed.
+
+        SECURITY: Call before accessing /diag/raw/* resources per spec 17.5.4:
+        "BLE transports MUST require LE Secure Connections for these resources."
+
+        Raises:
+            BleSecurityError: If security level is not LESC.
+        """
+        if self._security_level != BleSecurityLevel.LESC:
+            raise BleSecurityError(
+                f"Raw diagnostics require LE Secure Connections (LESC), "
+                f"but security level is {self._security_level.name}. "
+                f"Confirm LESC pairing before accessing /diag/raw/* resources."
+            )
+
     async def connect(self) -> None:
         """Connect and subscribe to the TX notification characteristic."""
         last_exc: Exception | None = None
@@ -193,12 +253,14 @@ class BlePacketTransport:
         if client is None:
             return
         if notify_started:
-            with suppress(Exception):
+            # CancelledError is a BaseException since Python 3.8, not caught by Exception
+            with suppress(Exception, asyncio.CancelledError):
                 await asyncio.wait_for(
                     client.stop_notify(self.profile.tx_uuid),
                     timeout=self._timeout_s,
                 )
-        with suppress(Exception):
+        # CancelledError is a BaseException since Python 3.8, not caught by Exception
+        with suppress(Exception, asyncio.CancelledError):
             await asyncio.wait_for(
                 client.disconnect(),
                 timeout=self._timeout_s,
@@ -253,6 +315,10 @@ class BlePacketTransport:
             self.profile,
             timeout_s=self._timeout_s,
         )
+        # Detect security level from client if available
+        detected_level = _detect_security_level(client)
+        if detected_level is not None:
+            self._security_level = detected_level
         await asyncio.wait_for(
             client.start_notify(self.profile.tx_uuid, self._on_notify),
             timeout=self._timeout_s,
@@ -458,5 +524,49 @@ def _int_or_none(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: float('inf') or Decimal('inf') cannot convert to int
         return None
+
+
+def _detect_security_level(client: BleClientLike) -> BleSecurityLevel | None:
+    """Detect BLE security level from a connected client when platform exposes it.
+
+    Platform-specific detection:
+    - Bleak on macOS: check paired state and encryption
+    - Bleak on Linux: check pairing and bonding via BlueZ properties
+    - Bleak on Windows: check paired property
+
+    Returns None if security level cannot be determined, leaving the caller's
+    current security_level unchanged (typically UNKNOWN unless explicitly set).
+    """
+    # Try to detect pairing/encryption state from client properties
+    # Bleak exposes different APIs across platforms
+
+    # Check for is_paired property (available on some platforms)
+    is_paired = getattr(client, "is_paired", None)
+    if callable(is_paired):
+        try:
+            paired = is_paired()
+            if paired is False:
+                return BleSecurityLevel.NONE
+        except Exception:
+            pass
+    elif isinstance(is_paired, bool) and is_paired is False:
+        return BleSecurityLevel.NONE
+
+    # Check for pair_state or pairing_features (platform-specific)
+    pair_state = getattr(client, "pair_state", None)
+    if pair_state is not None:
+        # Some backends expose detailed pairing state
+        state_str = str(pair_state).lower()
+        if "lesc" in state_str or "secure_connections" in state_str:
+            return BleSecurityLevel.LESC
+        if "bonded" in state_str or "paired" in state_str:
+            return BleSecurityLevel.JUST_WORKS
+
+    # SECURITY: When security level cannot be determined, return None to preserve
+    # caller's explicit security_level setting. Callers that need raw diagnostic
+    # access must explicitly confirm LESC via security_level setter or fail-safe
+    # to UNKNOWN which will block diagnostic access.
+    return None

@@ -12,10 +12,7 @@ and blocks transmissions when the budget is exhausted.
 
 from __future__ import annotations
 
-import pytest
-
-from lora_medium import Medium
-from lora_medium import airtime_us
+from lora_medium import Medium, airtime_us
 
 
 class TestDutyCycleExhaustion:

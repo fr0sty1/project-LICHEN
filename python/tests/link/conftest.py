@@ -117,10 +117,15 @@ def link_layer(
             return next(iter(peer_db.values()))
         return None
 
+    def peer_lookup_all() -> list[PeerIdentity]:
+        # Return all known peers for exhaustive signature verification
+        return list(peer_db.values())
+
     ll = LinkLayer(
         radio=mock_radio,
         identity=node_identity,
         peer_lookup=peer_lookup,
+        peer_lookup_all=peer_lookup_all,
     )
     ll.set_sequence(0, 0)  # deterministic epoch for tests
     return ll

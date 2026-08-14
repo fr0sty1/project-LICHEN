@@ -212,6 +212,25 @@ class TestSimulationCRUD:
         assert "not found" in response.json()["error"]
 
     @pytest.mark.asyncio
+    async def test_get_dashboard_metrics_invalid_since(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/metrics/dashboard rejects invalid since_us parameter."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.get("/sim/sim1/metrics/dashboard?since_us=invalid")
+
+        assert response.status_code == 400
+        assert "must be an integer" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_dashboard_metrics_huge_since(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/metrics/dashboard rejects integers exceeding 64-bit bounds."""
+        await client.post("/sim", json={"id": "sim1"})
+        huge = 10**400
+        response = await client.get(f"/sim/sim1/metrics/dashboard?since_us={huge}")
+
+        assert response.status_code == 400
+        assert "must be an integer" in response.json()["error"]
+
+    @pytest.mark.asyncio
     async def test_delete_simulation(self, client: AsyncClient) -> None:
         """DELETE /sim/{id} removes simulation."""
         await client.post("/sim", json={"id": "sim1"})
@@ -578,6 +597,39 @@ class TestChaosRules:
         assert "Missing required field: rssi_penalty_db" in response.json()["error"]
 
     @pytest.mark.asyncio
+    async def test_add_degrade_rule_overflow_penalty(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/degrade rejects overflow values for rssi_penalty_db."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Very large integer that overflows on float conversion
+        huge = 10**400
+        response = await client.post(
+            "/sim/sim1/chaos/degrade",
+            json={"node_id": "node1", "rssi_penalty_db": huge},
+        )
+
+        assert response.status_code == 400
+        assert "must be numeric" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_add_degrade_rule_nonfinite(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/degrade rejects non-finite numbers (inf, nan).
+
+        Standard JSON doesn't encode infinity, so we send raw JSON with
+        the non-standard "Infinity" literal that Python's json.loads()
+        can parse with parse_constant.
+        """
+        await client.post("/sim", json={"id": "sim1"})
+        # Send raw JSON with Infinity literal (non-standard but parseable)
+        response = await client.post(
+            "/sim/sim1/chaos/degrade",
+            content=b'{"node_id": "node1", "rssi_penalty_db": Infinity}',
+            headers={"Content-Type": "application/json"},
+        )
+
+        # Server may reject at JSON parse stage or at isfinite check
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
     async def test_add_jammer_rule(self, client: AsyncClient) -> None:
         """POST /sim/{id}/chaos/jam adds a jammer rule."""
         await client.post("/sim", json={"id": "sim1"})
@@ -622,6 +674,39 @@ class TestChaosRules:
         assert "must be positive" in response.json()["error"]
 
     @pytest.mark.asyncio
+    async def test_add_jammer_rule_overflow(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/jam rejects values that cause OverflowError."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Very large integer that overflows when converted to float
+        huge = 10**1000
+        response = await client.post(
+            "/sim/sim1/chaos/jam",
+            json={"x": huge, "y": 0, "z": 0, "radius_m": 100},
+        )
+
+        assert response.status_code == 400
+        assert "must be numeric" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_add_jammer_rule_nonfinite(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/jam rejects non-finite numbers (inf, nan).
+
+        Standard JSON doesn't encode infinity, so we send raw JSON with
+        the non-standard "Infinity" literal that Python's json.loads()
+        can parse with parse_constant.
+        """
+        await client.post("/sim", json={"id": "sim1"})
+        # Send raw JSON with Infinity literal (non-standard but parseable)
+        response = await client.post(
+            "/sim/sim1/chaos/jam",
+            content=b'{"x": Infinity, "y": 0, "z": 0, "radius_m": 100}',
+            headers={"Content-Type": "application/json"},
+        )
+
+        # Server may reject at JSON parse stage or at isfinite check
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
     async def test_add_latency_rule(self, client: AsyncClient) -> None:
         """POST /sim/{id}/chaos/latency adds a latency rule."""
         await client.post("/sim", json={"id": "sim1"})
@@ -650,6 +735,32 @@ class TestChaosRules:
             "/sim/sim1/chaos/latency", json={"node_id": "node1", "added_us": 0}
         )
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_add_latency_rule_overflow(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/latency rejects values that cause OverflowError."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Float infinity cannot be converted to int
+        response = await client.post(
+            "/sim/sim1/chaos/latency",
+            content=b'{"node_id": "node1", "added_us": Infinity}',
+            headers={"Content-Type": "application/json"},
+        )
+        # Server may reject at JSON parse stage or at int conversion
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_add_latency_rule_huge_int(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/latency rejects integers exceeding 64-bit bounds."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Very large integer that exceeds 64-bit signed range
+        huge = 10**400
+        response = await client.post(
+            "/sim/sim1/chaos/latency",
+            json={"node_id": "node1", "added_us": huge},
+        )
+        assert response.status_code == 400
+        assert "must be an integer" in response.json()["error"]
 
     @pytest.mark.asyncio
     async def test_list_chaos_rules(self, client: AsyncClient) -> None:
@@ -1157,6 +1268,7 @@ class TestTDMASlots:
     async def test_get_tdma_slots_conflict_detection(self, api: SimulatorAPI) -> None:
         """GET /sim/{id}/tdma detects slot conflicts when multiple synced nodes share a slot."""
         from httpx import ASGITransport, AsyncClient
+
         from lichen.sim.tdma import TDMAState
 
         app = api.create_app()
@@ -1284,6 +1396,35 @@ class TestPlaybackControls:
         assert "positive" in response.json()["error"]
 
     @pytest.mark.asyncio
+    async def test_set_playback_speed_non_numeric(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects non-numeric speed values."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.patch("/sim/sim1/playback", json={"speed": "fast"})
+
+        assert response.status_code == 400
+        assert "must be a number" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_set_playback_speed_infinity(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects infinite speed values."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Send string "Infinity" which float() converts to inf
+        response = await client.patch("/sim/sim1/playback", json={"speed": "Infinity"})
+
+        assert response.status_code == 400
+        assert "finite" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_set_playback_speed_nan(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects NaN speed values."""
+        await client.post("/sim", json={"id": "sim1"})
+        # Send string "NaN" which float() converts to nan
+        response = await client.patch("/sim/sim1/playback", json={"speed": "NaN"})
+
+        assert response.status_code == 400
+        assert "finite" in response.json()["error"]
+
+    @pytest.mark.asyncio
     async def test_set_playback_jump_to_time(self, client: AsyncClient) -> None:
         """PATCH /sim/{id}/playback can jump to specific time."""
         await client.post("/sim", json={"id": "sim1"})
@@ -1302,6 +1443,43 @@ class TestPlaybackControls:
 
         assert response.status_code == 400
         assert "backwards" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_set_playback_jump_non_numeric(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects non-numeric jump_to_us values."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.patch("/sim/sim1/playback", json={"jump_to_us": "later"})
+
+        assert response.status_code == 400
+        assert "must be a non-negative integer" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_set_playback_jump_negative(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects negative jump_to_us values."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.patch("/sim/sim1/playback", json={"jump_to_us": -1000})
+
+        assert response.status_code == 400
+        assert "must be a non-negative integer" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_set_playback_jump_boolean(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects boolean jump_to_us values."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.patch("/sim/sim1/playback", json={"jump_to_us": True})
+
+        assert response.status_code == 400
+        assert "must be a non-negative integer" in response.json()["error"]
+
+    @pytest.mark.asyncio
+    async def test_set_playback_jump_huge_int(self, client: AsyncClient) -> None:
+        """PATCH /sim/{id}/playback rejects integers exceeding 64-bit bounds."""
+        await client.post("/sim", json={"id": "sim1"})
+        huge = 10**400
+        response = await client.patch("/sim/sim1/playback", json={"jump_to_us": huge})
+
+        assert response.status_code == 400
+        assert "must be a non-negative integer" in response.json()["error"]
 
     @pytest.mark.asyncio
     async def test_playback_not_found(self, client: AsyncClient) -> None:

@@ -463,6 +463,160 @@ class TestRootNode:
         assert next_hop == IPv6Address("fe80::aaaa")
 
 
+class TestBRMulticastFilter:
+    """Tests for border router multicast filter (spec 6.3.4).
+
+    Why these tests: Border routers MUST NOT forward multicast packets across
+    the mesh/internet boundary. This prevents flood amplification and protects
+    the mesh from external multicast storms.
+    """
+
+    def test_non_br_does_not_filter_multicast(self, router: Router):
+        """Non-border routers do not apply multicast filter.
+
+        The multicast may still be dropped by normal routing (e.g., no DODAG
+        for external addresses), but that's not the BR filter.
+        """
+        # Default router is not a border router
+        assert router.is_border_router is False
+
+        # Set up routing so multicast would succeed if not filtered
+        router.dodag = DodagState(
+            rpl_instance_id=1,
+            dodag_id="fd00::1",
+            version=1,
+            role=DodagRole.JOINED,
+            preferred_parent=IPv6Address("fe80::abcd"),
+        )
+
+        # ff0e::1 is global multicast - classified as EXTERNAL
+        packet = make_packet("ff0e::1")
+        decision, next_hop = router.route(packet, now_ms=0)
+
+        # Non-BR forwards to RPL parent (no BR multicast filter applied)
+        assert decision == RouteDecision.FORWARD
+        assert next_hop == IPv6Address("fe80::abcd")
+
+    def test_br_drops_multicast_by_default(self, router: Router):
+        """Border router drops multicast when peering disabled (default)."""
+        router.is_border_router = True
+        assert router.multicast_peering_enabled is False
+
+        packet = make_packet("ff02::1")
+        decision, _ = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.DROP
+
+    def test_br_drops_mesh_local_multicast(self, router: Router):
+        """Border router drops mesh-local multicast (ff03::)."""
+        router.is_border_router = True
+
+        # ff03::1 is mesh-local all-nodes multicast
+        packet = make_packet("ff03::1")
+        decision, _ = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.DROP
+
+    def test_br_drops_global_multicast(self, router: Router):
+        """Border router drops global multicast (ff0e::)."""
+        router.is_border_router = True
+
+        # ff0e::1 is global multicast
+        packet = make_packet("ff0e::1")
+        decision, _ = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.DROP
+
+    def test_br_allows_multicast_with_peering_enabled(self, router: Router):
+        """Border router allows multicast when explicit peering is enabled.
+
+        With peering enabled, the multicast passes the BR filter and continues
+        to normal routing (which may succeed or fail depending on address class).
+        """
+        router.is_border_router = True
+        router.multicast_peering_enabled = True
+
+        # Set up routing so multicast can succeed after passing BR filter
+        router.dodag = DodagState(
+            rpl_instance_id=1,
+            dodag_id="fd00::1",
+            version=1,
+            role=DodagRole.JOINED,
+            preferred_parent=IPv6Address("fe80::abcd"),
+        )
+
+        # ff0e::1 is global multicast - with peering enabled, it passes
+        # the BR filter and gets routed as EXTERNAL via RPL parent
+        packet = make_packet("ff0e::1")
+        decision, next_hop = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.FORWARD
+        assert next_hop == IPv6Address("fe80::abcd")
+
+    def test_br_allows_unicast(self, router: Router):
+        """Border router allows unicast traffic normally."""
+        router.is_border_router = True
+
+        # Set up RPL parent for external routing
+        router.dodag = DodagState(
+            rpl_instance_id=1,
+            dodag_id="fd00::1",
+            version=1,
+            role=DodagRole.JOINED,
+            preferred_parent=IPv6Address("fe80::abcd"),
+        )
+
+        # External unicast should be forwarded via parent
+        packet = make_packet("2001:db8::1")
+        decision, next_hop = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.FORWARD
+        assert next_hop == IPv6Address("fe80::abcd")
+
+    def test_br_filter_does_not_affect_local_delivery(self, router: Router):
+        """BR filter does not affect packets addressed to this node."""
+        router.is_border_router = True
+
+        # Packet to our own address should deliver locally
+        packet = make_packet("fd00::1")  # router.node_address
+        decision, _ = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.DELIVER_LOCAL
+
+    def test_br_drops_link_local_multicast(self, router: Router):
+        """Border router drops link-local multicast (ff02::)."""
+        router.is_border_router = True
+
+        # ff02::1 is link-local all-nodes multicast
+        packet = make_packet("ff02::1")
+        decision, _ = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.DROP
+
+    def test_br_multicast_filter_precedes_address_classification(self, router: Router):
+        """BR multicast filter runs before address classification.
+
+        Even with valid routing infrastructure, multicast should be dropped
+        at BR before attempting to route.
+        """
+        router.is_border_router = True
+
+        # Set up full routing infrastructure
+        router.dodag = DodagState(
+            rpl_instance_id=1,
+            dodag_id="fd00::1",
+            version=1,
+            role=DodagRole.JOINED,
+            preferred_parent=IPv6Address("fe80::abcd"),
+        )
+
+        # Despite valid DODAG, multicast is dropped by BR filter
+        packet = make_packet("ff0e::1")
+        decision, _ = router.route(packet, now_ms=0)
+
+        assert decision == RouteDecision.DROP
+
+
 class TestGPSRFallback:
     """Tests for GPSR geographic routing fallback (spec 9.7)."""
 

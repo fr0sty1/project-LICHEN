@@ -72,7 +72,7 @@ class SosResource(resource.ObservableResource):
             return Message(code=aiocoap.BAD_REQUEST)
         try:
             body = _decode_single_cbor(request.payload)
-        except (ValueError, cbor2.CBORDecodeError):
+        except (ValueError, OverflowError, cbor2.CBORDecodeError):
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(body, dict):
             return Message(code=aiocoap.BAD_REQUEST)

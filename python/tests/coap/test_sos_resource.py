@@ -166,6 +166,31 @@ class TestSosPutDelete:
             await client.shutdown()
             await server.shutdown()
 
+    async def test_put_cbor_with_tag_returns_bad_request(self) -> None:
+        """CBOR containing tags (e.g. bignums) must be rejected."""
+        client, server, sos = await _setup()
+        try:
+            # CBOR bignum tag (tag 2) for a huge integer that would cause OverflowError
+            # This tests that CBOR tags are properly rejected
+            bignum_cbor = bytes([
+                0xa2,  # map(2)
+                0x64, 0x66, 0x72, 0x6f, 0x6d,  # "from"
+                0x70,  # text(16)
+            ]) + _EUI.hex().encode() + bytes([
+                0x61, 0x74,  # "t"
+                0xc2,  # tag 2 (positive bignum)
+                0x50,  # bstr(16)
+            ]) + b"\xff" * 16  # huge bignum value
+
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/sos", payload=bignum_cbor, content_format=60)
+            ).response
+            assert resp.code == aiocoap.BAD_REQUEST
+            assert sos._active is False
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
     async def test_delete_cancels_sos(self) -> None:
         client, server, sos = await _setup()
         try:

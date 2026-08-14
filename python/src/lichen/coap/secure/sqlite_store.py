@@ -22,8 +22,10 @@ from lichen.crypto.oscore import (
 
 from ..transport import EndpointPolicy
 from .types import (
+    MAX_OSCORE_GENERATION,
     ContextGenerationError,
     EndpointPolicyConflictError,
+    GenerationOverflowError,
     PeerContext,
     PeerKeyConflictError,
     ReplayWindowConflictError,
@@ -369,6 +371,11 @@ class SqliteOscoreContextStore:
                         raise ContextGenerationError(f"no context generation exists for {key}")
                     idempotent = False
                     generation = 1
+                if generation > MAX_OSCORE_GENERATION:
+                    raise GenerationOverflowError(
+                        f"context generation for {key} has reached maximum "
+                        f"({MAX_OSCORE_GENERATION}); re-key via EDHOC required"
+                    )
                 nonce_row = connection.execute(
                     "SELECT high_water FROM oscore_sender_ledgers WHERE sender_identity = ?",
                     (sender_identity,),
@@ -691,16 +698,29 @@ class SqliteOscoreContextStore:
                 connection.execute("BEGIN IMMEDIATE")
                 policy = self._policy_locked(connection)
                 key = policy.normalize(host).authority
-                connection.execute(
-                    "UPDATE oscore_hosts SET master_secret = NULL, master_salt = NULL, "
-                    "sender_id = NULL, recipient_id = NULL, algorithm_json = NULL, "
-                    "hashfun = NULL, window_size = NULL, id_context = NULL, "
-                    "sender_identity = NULL, recipient_identity = NULL, "
-                    "generation = generation + 1 "
+                row = connection.execute(
+                    "SELECT generation FROM oscore_hosts "
                     "WHERE host = ? AND master_secret IS NOT NULL",
                     (key,),
-                )
-                self._hooks.transaction_step("remove", "after_write")
+                ).fetchone()
+                if row is not None:
+                    current_generation = int(row[0])
+                    next_generation = current_generation + 1
+                    if next_generation > MAX_OSCORE_GENERATION:
+                        raise GenerationOverflowError(
+                            f"context generation for {key} has reached maximum "
+                            f"({MAX_OSCORE_GENERATION}); re-key via EDHOC required"
+                        )
+                    connection.execute(
+                        "UPDATE oscore_hosts SET master_secret = NULL, master_salt = NULL, "
+                        "sender_id = NULL, recipient_id = NULL, algorithm_json = NULL, "
+                        "hashfun = NULL, window_size = NULL, id_context = NULL, "
+                        "sender_identity = NULL, recipient_identity = NULL, "
+                        "generation = ? "
+                        "WHERE host = ? AND master_secret IS NOT NULL",
+                        (next_generation, key),
+                    )
+                    self._hooks.transaction_step("remove", "after_write")
                 connection.commit()
                 self._endpoint_policy = policy
                 self._cache.pop(key, None)

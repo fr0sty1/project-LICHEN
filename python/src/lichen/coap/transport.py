@@ -38,6 +38,14 @@ from aiocoap.numbers import constants  # type: ignore[import-untyped]
 from aiocoap.numbers.codes import EMPTY  # type: ignore[import-untyped]
 from aiocoap.numbers.types import ACK  # type: ignore[import-untyped]
 
+from lichen.coap.params import (
+    CongestionError,
+    CongestionLevel,
+    CongestionState,
+    check_congestion_allows,
+)
+from lichen.link.tx_queue import Priority
+
 ReceiveCallback = Callable[[bytes, str], None]
 DEFAULT_COAP_PORT = 5683
 _REG_NAME = re.compile(r"[A-Za-z0-9._-]+\Z")
@@ -353,15 +361,110 @@ def parse_channel_endpoint(value: str, *, default_port: int = DEFAULT_COAP_PORT)
 
 
 class DatagramChannel(ABC):
-    """A bidirectional, host-addressed datagram link for CoAP messages."""
+    """A bidirectional, host-addressed datagram link for CoAP messages.
+
+    Subclasses implementing duty-cycle-constrained links should override
+    :meth:`congestion_level` and optionally :meth:`retry_after_ms` to
+    enable congestion-aware transmission.
+    """
 
     @abstractmethod
-    def send_datagram(self, data: bytes, dest: str) -> None:
-        """Send ``data`` to the endpoint identified by ``dest``."""
+    def send_datagram(
+        self,
+        data: bytes,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
+        """Send ``data`` to the endpoint identified by ``dest``.
 
-    def send_message(self, message: Message, dest: str) -> None:
-        """Send a message, preserving lifecycle metadata where supported."""
-        self.send_datagram(message.encode(), dest)
+        Args:
+            data: Datagram payload to send.
+            dest: Destination endpoint identifier.
+            priority: Transmission priority for congestion checking.
+            check_congestion: If True, check congestion before sending.
+
+        Raises:
+            CongestionError: If congestion level blocks this priority.
+        """
+
+    def send_message(
+        self,
+        message: Message,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
+        """Send a message, preserving lifecycle metadata where supported.
+
+        Args:
+            message: CoAP message to send.
+            dest: Destination endpoint identifier.
+            priority: Transmission priority for congestion checking.
+            check_congestion: If True, check congestion before sending.
+
+        Raises:
+            CongestionError: If congestion level blocks this priority.
+        """
+        self.send_datagram(
+            message.encode(), dest, priority=priority, check_congestion=check_congestion
+        )
+
+    @property
+    def congestion_level(self) -> CongestionLevel:
+        """Return current duty cycle congestion level.
+
+        Override in channels with actual duty cycle tracking.
+        Default implementation returns NORMAL (no congestion).
+        """
+        return CongestionLevel.NORMAL
+
+    @property
+    def retry_after_ms(self) -> int | None:
+        """Return estimated time until duty cycle budget refills (ms).
+
+        Override in channels with actual duty cycle tracking.
+        Default implementation returns None (unknown).
+        """
+        return None
+
+    def congestion_state(self) -> CongestionState:
+        """Return atomic snapshot of congestion level and retry delay (r1-P3-43).
+
+        This method provides an atomic read of both congestion_level and
+        retry_after_ms to avoid race conditions when these values are read
+        separately in concurrent environments.
+
+        Override in channels with actual duty cycle tracking. The default
+        implementation reads the properties separately (safe when they share
+        underlying state or are constants).
+
+        Returns:
+            CongestionState with current level and retry_after_ms.
+        """
+        return CongestionState(level=self.congestion_level, retry_after_ms=self.retry_after_ms)
+
+    def check_congestion_for(self, priority: Priority) -> None:
+        """Raise CongestionError if transmission is blocked at current level.
+
+        Implements spec 07 section 10.2.3 congestion rules:
+        - NORMAL: all traffic allowed
+        - ELEVATED: P0-P2 only (delay non-urgent)
+        - CRITICAL: P0-P1 only (SOS/routing)
+        - EXHAUSTED: block all
+
+        Args:
+            priority: Priority of the proposed transmission.
+
+        Raises:
+            CongestionError: If the transmission should be blocked.
+        """
+        # Use atomic read to ensure level and retry_after_ms are consistent (r1-P3-43)
+        state = self.congestion_state()
+        if not check_congestion_allows(state.level, priority):
+            raise CongestionError(state.level, priority, state.retry_after_ms)
 
     @property
     def endpoint_policy(self) -> EndpointPolicy:
@@ -490,9 +593,18 @@ class InMemoryChannel(DatagramChannel):
             self._network._unregister(self._endpoint, self)
             self._receiver = None
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
+    def send_datagram(
+        self,
+        data: bytes,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
         if self._closed:
             raise RuntimeError("channel is closed")
+        if check_congestion:
+            self.check_congestion_for(priority)
         endpoint = parse_channel_endpoint(dest)
         loop = asyncio.get_running_loop()
         loop.call_soon(
@@ -612,7 +724,20 @@ class LichenTransport(interfaces.MessageInterface):  # type: ignore[misc]  # aio
         endpoint = self._channel.normalize_endpoint(message.remote.hostinfo)
         if endpoint != message.remote._peer:
             raise ValueError("remote is not canonical for this transport")
-        self._channel.send_message(message, endpoint.authority)
+        # Determine priority per spec 07 section 10.2.3:
+        # - CON messages: P2 (confirmable needs delivery guarantee)
+        # - NON messages: P3 (non-confirmable telemetry)
+        # - ACK/RST: P2 (part of confirmable exchange)
+        from aiocoap.numbers.types import CON, NON
+
+        if message.mtype == CON:
+            priority = Priority.URGENT
+        elif message.mtype == NON:
+            priority = Priority.NORMAL
+        else:
+            # ACK, RST are part of CON exchanges
+            priority = Priority.URGENT
+        self._channel.send_message(message, endpoint.authority, priority=priority)
 
     async def recognize_remote(self, remote: object) -> bool:
         return isinstance(remote, LichenRemote) and remote._owner is self

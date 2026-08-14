@@ -1,0 +1,26 @@
+{
+  "timestamp": "20260809_133959",
+  "node_counts": [
+    10,
+    50,
+    100,
+    500,
+    1000,
+    2000
+  ],
+  "runs_per_config": 10,
+  "duration_s": 120,
+  "area_m": 50.0,
+  "msg_size": 60,
+  "num_channels": 64,
+  "tdma_slots": 64,
+  "airtime_us": 698368,
+  "airtime_s": 0.698368,
+  "min_tx_interval_s": 69.8368,
+  "protocols": [
+    "aloha",
+    "csma",
+    "tdma",
+    "tdma_fh"
+  ]
+}

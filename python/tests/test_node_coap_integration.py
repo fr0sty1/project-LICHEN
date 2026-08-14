@@ -128,6 +128,7 @@ async def test_deaddrop_payload_format() -> None:
     """Verify deaddrop vectors produce parseable CoAP frames and SenML payloads."""
     import json
     from pathlib import Path
+
     from lichen.senml.codec import unpack as senml_unpack
 
     path = Path(__file__).resolve().parents[2] / "test" / "vectors" / "deaddrop.json"
@@ -153,6 +154,7 @@ async def test_confessions_payload_format() -> None:
     """Verify confessions vectors produce parseable CoAP frames and SenML payloads."""
     import json
     from pathlib import Path
+
     from lichen.senml.codec import unpack as senml_unpack
 
     path = Path(__file__).resolve().parents[2] / "test" / "vectors" / "confessions.json"

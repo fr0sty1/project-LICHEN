@@ -37,10 +37,12 @@ from .memory_store import InMemoryOscoreContextStore, OscoreContextStore
 from .resolvers import EdhocPeerResolver, TofuPeerResolver
 from .sqlite_store import SqliteOscoreContextStore, SqliteStoreHooks
 from .types import (
+    MAX_OSCORE_GENERATION,
     OSCORE_OPTION_NUMBER,
     ContextGenerationError,
     EndpointPolicyConflictError,
     ForkSafetyError,
+    GenerationOverflowError,
     PeerContext,
     PeerKeyConflictError,
     ReplayWindowConflictError,
@@ -64,6 +66,7 @@ __all__ = [
     "EdhocPeerResolver",
     "TofuPeerResolver",
     # Types
+    "MAX_OSCORE_GENERATION",
     "OSCORE_OPTION_NUMBER",
     "PeerContext",
     "SequenceReservation",
@@ -71,6 +74,7 @@ __all__ = [
     "ContextGenerationError",
     "EndpointPolicyConflictError",
     "ForkSafetyError",
+    "GenerationOverflowError",
     "PeerKeyConflictError",
     "ReplayWindowConflictError",
     "SequenceReservationError",

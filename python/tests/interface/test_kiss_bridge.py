@@ -2,7 +2,6 @@
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -70,7 +69,7 @@ class MockLinkLayer:
         self.sent_frames.append((payload, dst_addr))
         return True
 
-    async def receive(self, timeout_ms: int) -> Optional[MockRxFrame]:
+    async def receive(self, timeout_ms: int) -> MockRxFrame | None:
         try:
             return await asyncio.wait_for(self.rx_queue.get(), timeout=timeout_ms / 1000)
         except TimeoutError:

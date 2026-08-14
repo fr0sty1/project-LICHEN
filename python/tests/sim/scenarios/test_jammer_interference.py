@@ -22,8 +22,7 @@ Topology:
 
 from __future__ import annotations
 
-from lora_medium import ChaosEngine, JammerRule
-from lora_medium import Medium
+from lora_medium import ChaosEngine, JammerRule, Medium
 
 
 class TestJammerChannelSpecific:

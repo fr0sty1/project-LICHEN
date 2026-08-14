@@ -13,13 +13,6 @@ import math
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Route, WebSocketRoute
-from starlette.websockets import WebSocket
-
-from lichen.sim.auth import BearerAuthMiddleware
 from lora_medium import (
     ChaosEngine,
     ChaosRule,
@@ -29,12 +22,24 @@ from lora_medium import (
     LatencyRule,
     PartitionRule,
 )
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route, WebSocketRoute
+from starlette.websockets import WebSocket
+
+from lichen.sim.auth import BearerAuthMiddleware
 from lichen.sim.simulation import Simulation, TimeMode
 from lichen.sim.websocket import (
     WebSocketManager,
     WebSocketObserver,
     handle_websocket,
 )
+
+# Maximum value for integer parameters (signed 64-bit).
+# Python ints have arbitrary precision, so we must bounds-check explicitly
+# to avoid accepting values that would overflow in other languages or storage.
+_MAX_INT64 = 2**63 - 1
 
 
 def _error_response(message: str, status_code: int = 400) -> JSONResponse:
@@ -285,7 +290,9 @@ class SimulatorAPI:
         if since_param is not None:
             try:
                 since_us = int(since_param)
-            except ValueError:
+            except (TypeError, ValueError, OverflowError):
+                return _error_response("since_us must be an integer")
+            if abs(since_us) > _MAX_INT64:
                 return _error_response("since_us must be an integer")
 
         return JSONResponse(sim.metrics.get_dashboard_snapshot(since_us))
@@ -363,7 +370,7 @@ class SimulatorAPI:
             x = float(x)
             y = float(y)
             z = float(z)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return _error_response("Position coordinates must be numeric")
         if not all(math.isfinite(v) for v in (x, y, z)):
             return _error_response("Position coordinates must be finite numbers")
@@ -431,7 +438,7 @@ class SimulatorAPI:
             x = float(x)
             y = float(y)
             z = float(z)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return _error_response("Position coordinates must be numeric")
         if not all(math.isfinite(v) for v in (x, y, z)):
             return _error_response("Position coordinates must be finite numbers")
@@ -552,8 +559,10 @@ class SimulatorAPI:
 
         try:
             rssi_penalty_db = float(rssi_penalty_db)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return _error_response("rssi_penalty_db must be numeric")
+        if not math.isfinite(rssi_penalty_db):
+            return _error_response("rssi_penalty_db must be a finite number")
 
         rule = DegradeRule(node_id=node_id, rssi_penalty_db=rssi_penalty_db)
         engine.add_rule(rule)
@@ -597,8 +606,10 @@ class SimulatorAPI:
             y = float(y)
             z = float(z)
             radius_m = float(radius_m)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return _error_response("Position and radius must be numeric")
+        if not all(math.isfinite(v) for v in (x, y, z, radius_m)):
+            return _error_response("Position and radius must be finite numbers")
 
         if radius_m <= 0:
             return _error_response("radius_m must be positive")
@@ -639,7 +650,9 @@ class SimulatorAPI:
 
         try:
             added_us = int(added_us)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
+            return _error_response("added_us must be an integer")
+        if abs(added_us) > _MAX_INT64:
             return _error_response("added_us must be an integer")
 
         if added_us <= 0:
@@ -731,8 +744,10 @@ class SimulatorAPI:
             speed = body["speed"]
             try:
                 speed = float(speed)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 return _error_response("speed must be a number")
+            if not math.isfinite(speed):
+                return _error_response("speed must be a finite number")
             if speed <= 0:
                 return _error_response("speed must be positive")
             sim.playback.speed = speed
@@ -740,7 +755,16 @@ class SimulatorAPI:
         # Handle jump to time
         if "jump_to_us" in body:
             jump_to_us = body["jump_to_us"]
-            if not isinstance(jump_to_us, int) or jump_to_us < 0:
+            # Reject booleans explicitly (bool is a subclass of int in Python)
+            if isinstance(jump_to_us, bool):
+                return _error_response("jump_to_us must be a non-negative integer")
+            try:
+                jump_to_us = int(jump_to_us)
+            except (TypeError, ValueError, OverflowError):
+                return _error_response("jump_to_us must be a non-negative integer")
+            if abs(jump_to_us) > _MAX_INT64:
+                return _error_response("jump_to_us must be a non-negative integer")
+            if jump_to_us < 0:
                 return _error_response("jump_to_us must be a non-negative integer")
             if jump_to_us < sim.current_time_us:
                 return _error_response(
@@ -895,7 +919,7 @@ class SimulatorAPI:
         threshold_str = request.query_params.get("threshold_db", "-137")
         try:
             threshold_db = float(threshold_str)
-        except ValueError:
+        except (TypeError, ValueError, OverflowError):
             return _error_response("threshold_db must be a number")
 
         nodes = sim.get_all_nodes()

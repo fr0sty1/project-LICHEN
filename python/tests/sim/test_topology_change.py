@@ -22,6 +22,7 @@ from collections.abc import AsyncGenerator
 from ipaddress import IPv6Address
 
 import pytest
+from lora_medium import DropRule, PartitionRule
 
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.processor import GRADIENT_TIMEOUT_MS, AnnounceProcessor
@@ -29,7 +30,6 @@ from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
 from lichen.gradient import GradientTable
 from lichen.radio.sim_client import SimRadio
-from lora_medium import DropRule, PartitionRule
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 

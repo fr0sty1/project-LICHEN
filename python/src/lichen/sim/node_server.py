@@ -42,7 +42,8 @@ import struct
 import warnings
 from typing import TYPE_CHECKING
 
-from lora_medium import DutyCycleTracker
+from lora_medium import DutyCycleTracker, airtime_us
+
 from lichen.sim.protocol import (
     MAX_PAYLOAD_LENGTH,
     MSG_CAD,
@@ -67,7 +68,6 @@ from lichen.sim.protocol import (
     get_message_payload,
     get_message_type,
 )
-from lora_medium import airtime_us
 
 if TYPE_CHECKING:
     from lichen.sim.pcap import PcapngWriter
@@ -268,7 +268,8 @@ class NodeServer:
             if node_id is not None:
                 self._cleanup_node(node_id)
             writer.close()
-            with contextlib.suppress(Exception):
+            # CancelledError is a BaseException since Python 3.8, not caught by Exception
+            with contextlib.suppress(Exception, asyncio.CancelledError):
                 await writer.wait_closed()
 
     async def _handle_register(

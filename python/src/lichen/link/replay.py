@@ -33,6 +33,7 @@ full wrap make the edge case unreachable in normal operation.
 
 from __future__ import annotations
 
+import threading
 import warnings
 from collections import OrderedDict
 
@@ -57,6 +58,12 @@ class ReplayWindow:
 
     The window tracks the highest accepted counter and a same-epoch sequence
     bitmap where bit ``i`` means ``highest_seqnum - i`` has been seen.
+
+    Thread safety: The check_and_update() method is fully atomic and thread-safe.
+    The two-phase methods check() and commit() are NOT individually thread-safe;
+    callers using the two-phase pattern must provide external synchronization to
+    prevent TOCTOU races where concurrent threads both pass check() before either
+    commits.
     """
 
     def __init__(self, window_size: int = WINDOW_SIZE) -> None:
@@ -66,18 +73,55 @@ class ReplayWindow:
         self._highest = -1  # no frame accepted yet
         self._bitmap = 0
         self._wraparound_warned = False
+        self._lock = threading.Lock()
 
     @property
     def highest(self) -> int:
         """Highest logical counter accepted so far, or -1 if none."""
         return self._highest
 
-    def check_and_update(self, epoch: int, seqnum: int) -> bool:
-        """Validate a frame's (epoch, seqnum) and record it if fresh.
+    def check(self, epoch: int, seqnum: int) -> bool:
+        """Check if a frame's (epoch, seqnum) is fresh WITHOUT updating state.
+
+        This is the first phase of two-phase replay checking. Call this to
+        validate, then call commit() only AFTER all other validation passes.
 
         Returns:
-            True if the frame is fresh (accepted); False if it is a replay or
-            falls below the window floor. State is only updated on acceptance.
+            True if the frame is fresh (would be accepted); False if it is a
+            replay or falls below the window floor.
+        """
+        # Validate inputs via logical_counter (raises on out-of-range)
+        logical_counter(epoch, seqnum)
+
+        # First frame from this sender.
+        if self._highest < 0:
+            return True
+
+        highest_epoch = self._highest >> 16
+        if epoch < highest_epoch:
+            return False
+
+        if epoch > highest_epoch:
+            return True
+
+        highest_seqnum = self._highest & 0xFFFF
+        if seqnum > highest_seqnum:
+            return True
+
+        # Within or below the same-epoch window.
+        offset = highest_seqnum - seqnum
+        if offset >= self._window_size:
+            return False  # below the window floor: too old
+        mask = 1 << offset
+        # Return False if already seen (replay), True if fresh
+        return not (self._bitmap & mask)
+
+    def commit(self, epoch: int, seqnum: int) -> None:
+        """Commit the replay floor for a validated frame.
+
+        This is the second phase of two-phase replay checking. MUST only be
+        called after check() returned True AND all other validation passed.
+        Calling commit() for a counter that would fail check() is undefined.
         """
         counter = logical_counter(epoch, seqnum)
 
@@ -94,12 +138,9 @@ class ReplayWindow:
                     UserWarning,
                     stacklevel=2,
                 )
-            return True
+            return
 
         highest_epoch = self._highest >> 16
-        if epoch < highest_epoch:
-            return False
-
         if epoch > highest_epoch:
             self._highest = counter
             self._bitmap = 1
@@ -111,7 +152,7 @@ class ReplayWindow:
                     UserWarning,
                     stacklevel=2,
                 )
-            return True
+            return
 
         highest_seqnum = self._highest & 0xFFFF
         if seqnum > highest_seqnum:
@@ -130,6 +171,56 @@ class ReplayWindow:
                     UserWarning,
                     stacklevel=2,
                 )
+            return
+
+        # Within the same-epoch window.
+        offset = highest_seqnum - seqnum
+        mask = 1 << offset
+        self._bitmap |= mask
+
+    def check_and_update(self, epoch: int, seqnum: int) -> bool:
+        """Validate a frame's (epoch, seqnum) and record it if fresh.
+
+        This is a convenience method that combines check() and commit() into
+        one atomic operation. Use check() + commit() separately when validation
+        must complete between the two phases.
+
+        Thread safety: This method is fully atomic - no other thread can
+        observe the state between check and commit. The two-phase pattern
+        (separate check() + commit()) is NOT atomic; callers using that
+        pattern must provide external synchronization.
+
+        Returns:
+            True if the frame is fresh (accepted); False if it is a replay or
+            falls below the window floor. State is only updated on acceptance.
+        """
+        # SECURITY: Hold lock for entire check+commit to prevent TOCTOU race.
+        # Without this, two threads could both pass check() for the same counter
+        # before either commits, causing duplicate acceptance.
+        with self._lock:
+            if not self._check_unlocked(epoch, seqnum):
+                return False
+            self._commit_unlocked(epoch, seqnum)
+            return True
+
+    def _check_unlocked(self, epoch: int, seqnum: int) -> bool:
+        """Internal check without lock - caller must hold _lock."""
+        # Validate inputs (raises on out-of-range)
+        logical_counter(epoch, seqnum)
+
+        # First frame from this sender.
+        if self._highest < 0:
+            return True
+
+        highest_epoch = self._highest >> 16
+        if epoch < highest_epoch:
+            return False
+
+        if epoch > highest_epoch:
+            return True
+
+        highest_seqnum = self._highest & 0xFFFF
+        if seqnum > highest_seqnum:
             return True
 
         # Within or below the same-epoch window.
@@ -137,10 +228,64 @@ class ReplayWindow:
         if offset >= self._window_size:
             return False  # below the window floor: too old
         mask = 1 << offset
-        if self._bitmap & mask:
-            return False  # already seen: replay
+        return not (self._bitmap & mask)
+
+    def _commit_unlocked(self, epoch: int, seqnum: int) -> None:
+        """Internal commit without lock - caller must hold _lock."""
+        counter = logical_counter(epoch, seqnum)
+
+        # First frame from this sender.
+        if self._highest < 0:
+            self._highest = counter
+            self._bitmap = 1
+            # SECURITY: Warn if the first frame is already near exhaustion.
+            if counter >= WRAPAROUND_WARNING_THRESHOLD:
+                self._wraparound_warned = True
+                warnings.warn(
+                    f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
+                    "Re-key this link before counter exhaustion.",
+                    UserWarning,
+                    stacklevel=4,  # Adjusted for internal call depth
+                )
+            return
+
+        highest_epoch = self._highest >> 16
+        if epoch > highest_epoch:
+            self._highest = counter
+            self._bitmap = 1
+            if not self._wraparound_warned and counter >= WRAPAROUND_WARNING_THRESHOLD:
+                self._wraparound_warned = True
+                warnings.warn(
+                    f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
+                    "Re-key this link before counter exhaustion.",
+                    UserWarning,
+                    stacklevel=4,
+                )
+            return
+
+        highest_seqnum = self._highest & 0xFFFF
+        if seqnum > highest_seqnum:
+            shift = seqnum - highest_seqnum
+            if shift >= self._window_size:
+                self._bitmap = 1
+            else:
+                self._bitmap = ((self._bitmap << shift) | 1) & ((1 << self._window_size) - 1)
+            self._highest = counter
+            # SECURITY: Warn once when approaching the terminal counter value.
+            if not self._wraparound_warned and counter >= WRAPAROUND_WARNING_THRESHOLD:
+                self._wraparound_warned = True
+                warnings.warn(
+                    f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
+                    "Re-key this link before counter exhaustion.",
+                    UserWarning,
+                    stacklevel=4,
+                )
+            return
+
+        # Within the same-epoch window.
+        offset = highest_seqnum - seqnum
+        mask = 1 << offset
         self._bitmap |= mask
-        return True
 
 
 class ReplayProtector:
@@ -148,6 +293,12 @@ class ReplayProtector:
 
     Maintains an independent :class:`ReplayWindow` for each sender identity, so
     senders never interfere with one another.
+
+    Thread safety: The check_and_update() method is fully atomic and thread-safe.
+    The two-phase methods check() and commit() protect window table access but
+    are NOT atomic across the check-then-commit sequence; callers using the
+    two-phase pattern must provide external synchronization to prevent TOCTOU
+    races.
     """
 
     def __init__(self, window_size: int = WINDOW_SIZE, max_peers: int = 32) -> None:
@@ -158,24 +309,68 @@ class ReplayProtector:
         self._window_size = window_size
         self._max_peers = max_peers
         self._windows: OrderedDict[bytes | str | int, ReplayWindow] = OrderedDict()
+        self._lock = threading.Lock()
+
+    def _get_or_create_window_unlocked(self, sender: bytes | str | int) -> ReplayWindow:
+        """Get or create the replay window for a sender. Caller must hold _lock."""
+        if sender in self._windows:
+            self._windows.move_to_end(sender)
+            return self._windows[sender]
+        if len(self._windows) >= self._max_peers:
+            self._windows.popitem(last=False)
+        window = ReplayWindow(self._window_size)
+        self._windows[sender] = window
+        self._windows.move_to_end(sender)
+        return window
+
+    def check(self, sender: bytes | str | int, epoch: int, seqnum: int) -> bool:
+        """Check if a frame from sender is fresh WITHOUT updating state.
+
+        This is the first phase of two-phase replay checking. Call this to
+        validate, then call commit() only AFTER all other validation passes.
+
+        Returns:
+            True if fresh (would be accepted), False if a replay / below window.
+        """
+        with self._lock:
+            window = self._get_or_create_window_unlocked(sender)
+            return window.check(epoch, seqnum)
+
+    def commit(self, sender: bytes | str | int, epoch: int, seqnum: int) -> None:
+        """Commit the replay floor for a validated frame from sender.
+
+        This is the second phase of two-phase replay checking. MUST only be
+        called after check() returned True AND all other validation passed.
+        """
+        with self._lock:
+            window = self._get_or_create_window_unlocked(sender)
+            window.commit(epoch, seqnum)
 
     def check_and_update(self, sender: bytes | str | int, epoch: int, seqnum: int) -> bool:
         """Validate and record a frame from ``sender``.
 
+        This is a convenience method that combines check() and commit() into
+        one atomic operation. Use check() + commit() separately when validation
+        must complete between the two phases.
+
+        Thread safety: This method is fully atomic - no other thread can
+        observe the state between check and commit. The two-phase pattern
+        (separate check() + commit()) is NOT atomic at this level; callers
+        using that pattern must provide external synchronization.
+
         Returns:
             True if fresh (accepted), False if a replay / below the window.
         """
-        if sender in self._windows:
-            self._windows.move_to_end(sender)
-            window = self._windows[sender]
-        else:
-            if len(self._windows) >= self._max_peers:
-                self._windows.popitem(last=False)
-            window = ReplayWindow(self._window_size)
-            self._windows[sender] = window
-            self._windows.move_to_end(sender)
-        return window.check_and_update(epoch, seqnum)
+        # SECURITY: Hold lock for entire check+commit to prevent TOCTOU race.
+        # Without this, two threads could both pass check() for the same counter
+        # before either commits, causing duplicate acceptance.
+        with self._lock:
+            window = self._get_or_create_window_unlocked(sender)
+            # Use the window's internal atomic method (which also acquires its lock,
+            # but that's fine - no deadlock since we always acquire in same order)
+            return window.check_and_update(epoch, seqnum)
 
     def reset(self, sender: bytes | str | int) -> None:
         """Forget all state for a sender (e.g. on re-keying)."""
-        self._windows.pop(sender, None)
+        with self._lock:
+            self._windows.pop(sender, None)

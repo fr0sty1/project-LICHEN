@@ -10,7 +10,9 @@ from typing import Any, cast
 import pytest
 
 from lichen.coap.secure import (
+    MAX_OSCORE_GENERATION,
     ContextGenerationError,
+    GenerationOverflowError,
     InMemoryOscoreContextStore,
     OscoreContextStore,
     PeerKeyConflictError,
@@ -477,3 +479,102 @@ def test_tofu_bound_to_different_store_is_incompatible() -> None:
             context_store=InMemoryOscoreContextStore(),
             peer_resolver=resolver,
         )
+
+
+def test_max_oscore_generation_is_u32_max() -> None:
+    """Verify MAX_OSCORE_GENERATION is 2^32-1 for u32 compatibility."""
+    assert MAX_OSCORE_GENERATION == (1 << 32) - 1
+    assert MAX_OSCORE_GENERATION == 0xFFFFFFFF
+
+
+@pytest.mark.asyncio
+async def test_generation_overflow_raises_on_put() -> None:
+    """Verify put raises GenerationOverflowError at max generation."""
+    store = InMemoryOscoreContextStore()
+    await store.pin_peer("peer", b"peer-key")
+    context = make_context()
+    published = await store.put("peer", context, b"peer-key")
+    assert published.generation == 1
+
+    # Manually set generation to max
+    record = store._records["peer"]
+    record.generation = MAX_OSCORE_GENERATION
+
+    # Next put should raise overflow error
+    with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
+        await store.put("peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION)
+
+
+def test_generation_overflow_raises_on_put_sync() -> None:
+    """Verify put_sync raises GenerationOverflowError at max generation."""
+    store = InMemoryOscoreContextStore()
+    published = store.put_sync("peer", make_context(), b"peer-key")
+    assert published.generation == 1
+
+    # Manually set generation to max
+    record = store._records["peer"]
+    record.generation = MAX_OSCORE_GENERATION
+
+    # Next put_sync should raise overflow error
+    with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
+        store.put_sync("peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION)
+
+
+@pytest.mark.asyncio
+async def test_generation_overflow_raises_on_remove() -> None:
+    """Verify remove raises GenerationOverflowError at max generation."""
+    store = InMemoryOscoreContextStore()
+    await store.put("peer", make_context(), b"peer-key")
+
+    # Manually set generation to max
+    record = store._records["peer"]
+    record.generation = MAX_OSCORE_GENERATION
+
+    # Remove should raise overflow error
+    with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
+        await store.remove("peer")
+
+
+@pytest.mark.asyncio
+async def test_sqlite_generation_overflow_raises_on_put(tmp_path: Path) -> None:
+    """Verify SQLite store put raises GenerationOverflowError at max generation."""
+    import sqlite3
+
+    store = SqliteOscoreContextStore(tmp_path / "overflow.sqlite3")
+    await store.pin_peer("peer", b"peer-key")
+    context = make_context()
+    published = await store.put("peer", context, b"peer-key")
+    assert published.generation == 1
+
+    # Manually set generation to max in the database
+    with sqlite3.connect(store._path) as connection:
+        connection.execute(
+            "UPDATE oscore_hosts SET generation = ? WHERE host = ?",
+            (MAX_OSCORE_GENERATION, "peer"),
+        )
+    store._cache.clear()  # Clear cache so store reads from DB
+
+    # Next put should raise overflow error
+    with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
+        await store.put("peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION)
+
+
+@pytest.mark.asyncio
+async def test_sqlite_generation_overflow_raises_on_remove(tmp_path: Path) -> None:
+    """Verify SQLite store remove raises GenerationOverflowError at max generation."""
+    import sqlite3
+
+    store = SqliteOscoreContextStore(tmp_path / "overflow-remove.sqlite3")
+    await store.put("peer", make_context(), b"peer-key")
+
+    # Manually set generation to max in the database
+    with sqlite3.connect(store._path) as connection:
+        connection.execute(
+            "UPDATE oscore_hosts SET generation = ? WHERE host = ?",
+            (MAX_OSCORE_GENERATION, "peer"),
+        )
+    store._cache.clear()  # Clear cache so store reads from DB
+
+    # Remove should raise overflow error
+    with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
+        await store.remove("peer")

@@ -332,7 +332,10 @@ class SimRadio:
     ) -> None:
         try:
             await self.close()
-        except Exception:
+        except BaseException:
+            # SECURITY: Use BaseException to catch CancelledError (BaseException since
+            # Python 3.8). Without this, CancelledError during cleanup could mask the
+            # original exception when exc_type is not None.
             if exc_type is None:
                 raise
 

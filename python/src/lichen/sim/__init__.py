@@ -64,6 +64,47 @@ When used within LICHEN, additional components provide:
 - Renode integration for Zephyr firmware testing (:mod:`lichen.sim.renode_server`)
 """
 
+# Core components from lora-medium package
+from lora_medium import (
+    CAPTURE_THRESHOLD_DB,
+    PATH_LOSS_FREE_SPACE,
+    PATH_LOSS_INDOOR,
+    PATH_LOSS_URBAN,
+    QUIRK_PRESETS,
+    SENSITIVITY_DEFAULT,
+    SENSITIVITY_SF7,
+    SENSITIVITY_SF8,
+    SENSITIVITY_SF9,
+    SENSITIVITY_SF10,
+    SENSITIVITY_SF11,
+    SENSITIVITY_SF12,
+    ChannelLoad,
+    # Chaos engineering
+    ChaosEngine,
+    ChaosRule,
+    DegradeRule,
+    DropRule,
+    # Duty cycle
+    DutyCycleTracker,
+    GilbertElliottRule,
+    JammerRule,
+    LatencyRule,
+    LossRule,
+    Medium,
+    PartitionRule,
+    PropagationModel,
+    QuirkProfile,
+    RendezvousInfo,
+    RendezvousMechanism,
+    RxCandidate,
+    TDMASlot,
+    TDMAVector,
+    Transmission,
+    TxJitterRule,
+    airtime_us,
+    lr_fhss_airtime_us,
+)
+
 from lichen.channel_plan import (
     AS923,
     AU915,
@@ -93,37 +134,12 @@ from lichen.sim.baseline import (
     save_baseline,
     update_baseline,
 )
-# Core components from lora-medium package
-from lora_medium import (
-    # Chaos engineering
-    ChaosEngine,
-    ChaosRule,
-    DegradeRule,
-    DropRule,
-    GilbertElliottRule,
-    JammerRule,
-    LatencyRule,
-    LossRule,
-    PartitionRule,
-    TxJitterRule,
-    # Duty cycle
-    DutyCycleTracker,
-)
 from lichen.sim.hybrid import (
     HybridNode,
     HybridPropagationModel,
     NodeType,
     RFMeasurement,
     create_hybrid_topology,
-)
-from lora_medium import (
-    ChannelLoad,
-    Medium,
-    RendezvousInfo,
-    RendezvousMechanism,
-    RxCandidate,
-    TDMASlot,
-    TDMAVector,
 )
 from lichen.sim.mobility import (
     MobilityManager,
@@ -132,22 +148,6 @@ from lichen.sim.mobility import (
 )
 from lichen.sim.node import NodeState, SimNode
 from lichen.sim.pcap import PcapngWriter
-from lora_medium import (
-    CAPTURE_THRESHOLD_DB,
-    PATH_LOSS_FREE_SPACE,
-    PATH_LOSS_INDOOR,
-    PATH_LOSS_URBAN,
-    SENSITIVITY_DEFAULT,
-    SENSITIVITY_SF7,
-    SENSITIVITY_SF8,
-    SENSITIVITY_SF9,
-    SENSITIVITY_SF10,
-    SENSITIVITY_SF11,
-    SENSITIVITY_SF12,
-    PropagationModel,
-)
-from lora_medium import QUIRK_PRESETS
-from lora_medium import QuirkProfile
 from lichen.sim.renode_server import RenodeServer, start_renode_server
 from lichen.sim.scenario import Scenario, ScenarioEvent, ScenarioRunner, parse_duration
 from lichen.sim.tdma import (
@@ -165,7 +165,6 @@ from lichen.sim.topology import (
     random_disk,
     star,
 )
-from lora_medium import Transmission, airtime_us, lr_fhss_airtime_us
 
 __all__ = [
     # Regional channel plans (generic LoRa)

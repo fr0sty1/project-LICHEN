@@ -22,7 +22,7 @@ from lichen.schc import (
     compress,
     decompress,
 )
-from lichen.schc.codec import BitReader, BitWriter, _check_msb
+from lichen.schc.codec import BitReader, BitWriter
 from lichen.schc.rules import CDA, MO, FieldDescriptor
 
 

@@ -20,8 +20,10 @@ from lichen.schc.rules import (
     LINK_LOCAL_OSCORE_RULE,
     MO,
     RULE_ID_UNCOMPRESSED,
+    RULE_SET_VERSION,
     RULES,
     Rule,
+    SchcRuleVersionOption,
 )
 
 
@@ -48,7 +50,11 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
 
 
 class SchcContext:
-    def __init__(self, rules: dict[int, Rule] | None = None) -> None:
+    def __init__(
+        self,
+        rules: dict[int, Rule] | None = None,
+        version: int | None = None,
+    ) -> None:
         source = RULES if rules is None else rules
         _oscore_ids = {LINK_LOCAL_OSCORE_RULE.rule_id, GLOBAL_OSCORE_RULE.rule_id}
 
@@ -57,6 +63,19 @@ class SchcContext:
             return (0 if rid in _oscore_ids else 1, rid)
 
         self._rules: dict[int, Rule] = dict(sorted(source.items(), key=_rule_sort_key))
+        resolved = version if version is not None else RULE_SET_VERSION
+        if type(resolved) is not int or not 0 <= resolved <= 255:
+            raise ValueError(f"version must be 0-255, got {resolved}")
+        self._version = resolved
+
+    @property
+    def version(self) -> int:
+        """Rule set version (8-bit, per spec section 5.7).
+
+        Version 0 is reserved for uncompressed fallback. Version 1 was legacy
+        experimental. Version 2 is the current RFC 8724 fragmentation profile.
+        """
+        return self._version
 
     def get(self, rule_id: int) -> Rule | None:
         return self._rules.get(rule_id)
@@ -93,3 +112,67 @@ class SchcContext:
 
 class NoMatchingRuleError(SchcError):
     pass
+
+
+class VersionMismatchError(SchcError):
+    """Raised when SCHC rule set versions are incompatible."""
+
+    def __init__(self, local: int, remote: int) -> None:
+        self.local = local
+        self.remote = remote
+        super().__init__(f"rule set version mismatch: local={local}, remote={remote}")
+
+
+def versions_compatible(local: int, remote: int) -> bool:
+    """Check whether two rule set versions are compatible.
+
+    Per spec section 5.7, versions must match exactly for full interoperability.
+    Rule 255 (uncompressed fallback) is always supported regardless of version
+    for unfragmented packets, but this function checks compression compatibility.
+
+    Args:
+        local: The local node's rule set version.
+        remote: The remote node's advertised rule set version.
+
+    Returns:
+        True if the versions are compatible for full SCHC operation.
+    """
+    return local == remote
+
+
+def check_version_compatibility(
+    local: int,
+    remote: int,
+    *,
+    raise_on_mismatch: bool = True,
+) -> bool:
+    """Check and optionally enforce rule set version compatibility.
+
+    Args:
+        local: The local node's rule set version.
+        remote: The remote node's advertised rule set version (e.g., from DIO).
+        raise_on_mismatch: If True, raise VersionMismatchError on mismatch.
+
+    Returns:
+        True if versions are compatible.
+
+    Raises:
+        VersionMismatchError: If versions mismatch and raise_on_mismatch is True.
+    """
+    if versions_compatible(local, remote):
+        return True
+    if raise_on_mismatch:
+        raise VersionMismatchError(local, remote)
+    return False
+
+
+def create_rule_version_option(version: int | None = None) -> SchcRuleVersionOption:
+    """Create a SCHC Rule Version Option for DIO messages.
+
+    Args:
+        version: Rule set version to advertise. Defaults to RULE_SET_VERSION.
+
+    Returns:
+        Option ready to be serialized and included in a DIO message.
+    """
+    return SchcRuleVersionOption(version=version if version is not None else RULE_SET_VERSION)

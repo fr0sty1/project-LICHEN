@@ -82,6 +82,16 @@ def test_top_level_readme_describes_native_lci_not_legacy_cbor() -> None:
     assert "identical framing across BLE/USB/serial/IP" not in readme
 
 
+def test_lci_ble_transport_lesc_requirement_is_documented() -> None:
+    """Spec 17.5.4 requires LESC for BLE transports accessing raw diagnostics."""
+    lci = read_repo_text("spec/11-lci.md")
+
+    # The spec says "BLE transports\nMUST require LE Secure Connections"
+    assert "MUST require LE Secure Connections" in lci
+    assert "BLE transports" in lci
+    assert "local administrative authorization" in lci
+
+
 def test_lci_mesh_access_prefers_direct_ipv6_with_optional_proxy() -> None:
     lci = read_repo_text("spec/11-lci.md")
     lci_words = " ".join(lci.split())

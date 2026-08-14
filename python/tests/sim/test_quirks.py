@@ -3,10 +3,9 @@
 """Tests for hardware quirks model."""
 
 import pytest
-
-from lora_medium import Medium
 from lora_medium import (
     PRESETS,
+    Medium,
     QuirkProfile,
     apply_rssi_noise,
     cad_with_quirks,

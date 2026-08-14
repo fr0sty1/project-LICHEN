@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 from collections.abc import AsyncIterator, Mapping
 from typing import Any, Protocol, Self
@@ -70,6 +71,20 @@ class ResourceTransport(Protocol):
         idempotent and safe to call from exception handlers.
         """
 
+    def check_security_for_path(self, path: str) -> None:
+        """Check if security requirements are met for accessing a path.
+
+        SECURITY: Per spec 17.5.4, BLE transports MUST require LE Secure
+        Connections for /diag/raw/* resources.
+
+        This method is optional. Transports that do not implement it are
+        assumed to meet security requirements (e.g., trusted local USB/serial).
+
+        Raises:
+            LciSecurityError: If security requirements are not met.
+        """
+        ...
+
 
 class ResourceSubscription(Protocol):
     """Handle for a CoAP Observe relationship.
@@ -109,7 +124,8 @@ class MessageSubscription:
 
     async def close(self) -> None:
         """Cancel the inbox Observe relationship."""
-        with contextlib.suppress(Exception):
+        # CancelledError is a BaseException since Python 3.8, not caught by Exception
+        with contextlib.suppress(Exception, asyncio.CancelledError):
             await self._subscription.close()
 
     async def __aenter__(self) -> Self:
@@ -118,7 +134,8 @@ class MessageSubscription:
     async def __aexit__(
         self, exc_type: Any | None, exc_val: Any | None, exc_tb: Any | None
     ) -> None:
-        with contextlib.suppress(Exception):
+        # CancelledError is a BaseException since Python 3.8, not caught by Exception
+        with contextlib.suppress(Exception, asyncio.CancelledError):
             await self.close()
 
     async def _messages(self) -> AsyncIterator[list[MessageRecord]]:
@@ -150,7 +167,8 @@ class RawRxSubscription:
 
     async def close(self) -> None:
         """Cancel the raw RX Observe relationship."""
-        with contextlib.suppress(Exception):
+        # CancelledError is a BaseException since Python 3.8, not caught by Exception
+        with contextlib.suppress(Exception, asyncio.CancelledError):
             await self._subscription.close()
 
     async def __aenter__(self) -> Self:
@@ -159,7 +177,8 @@ class RawRxSubscription:
     async def __aexit__(
         self, exc_type: Any | None, exc_val: Any | None, exc_tb: Any | None
     ) -> None:
-        with contextlib.suppress(Exception):
+        # CancelledError is a BaseException since Python 3.8, not caught by Exception
+        with contextlib.suppress(Exception, asyncio.CancelledError):
             await self.close()
 
     async def _events(self) -> AsyncIterator[RawRxEvent]:
@@ -189,8 +208,34 @@ class LciClientError(RuntimeError):
         self.payload = payload
 
 
+class LciSecurityError(LciClientError):
+    """LCI security requirement not met.
+
+    SECURITY: Raised when accessing protected resources (e.g., /diag/raw/*)
+    over a transport that does not meet security requirements.
+
+    Per spec 17.5.4: "BLE transports MUST require LE Secure Connections
+    for these resources."
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        path: str | None = None,
+        required_level: str | None = None,
+        actual_level: str | None = None,
+    ) -> None:
+        super().__init__(message, path=path)
+        self.required_level = required_level
+        self.actual_level = actual_level
+
+
 class LciClient:
     """App-facing LCI client over discovered CoAP resources."""
+
+    # SECURITY: Paths requiring elevated security (LESC for BLE per spec 17.5.4)
+    RAW_DIAGNOSTIC_PATH_PREFIXES = ("/diag/raw/",)
 
     def __init__(self, transport: ResourceTransport) -> None:
         self._transport = transport
@@ -202,6 +247,24 @@ class LciClient:
     async def disconnect(self) -> None:
         """Close the underlying LCI transport."""
         await self._transport.close()
+
+    def _check_security_for_path(self, path: str) -> None:
+        """Check transport security requirements for a path.
+
+        SECURITY: Per spec 17.5.4, BLE transports MUST require LE Secure
+        Connections for /diag/raw/* resources.
+
+        Raises:
+            LciSecurityError: If security requirements are not met.
+        """
+        # Check if path requires elevated security
+        if not any(path.startswith(prefix) for prefix in self.RAW_DIAGNOSTIC_PATH_PREFIXES):
+            return  # No special security required
+
+        # Check if transport implements security checking
+        check_fn = getattr(self._transport, "check_security_for_path", None)
+        if check_fn is not None and callable(check_fn):
+            check_fn(path)
 
     async def discover(self) -> Capabilities:
         """Discover advertised CoAP resources from `/.well-known/core`."""
@@ -349,7 +412,11 @@ class LciClient:
         return await self._get_payload(path)
 
     async def get_raw_rx_status(self, path: str = "/diag/raw/rx") -> RawRxStatus:
-        """Fetch optional raw RX diagnostics state without falling back to legacy APIs."""
+        """Fetch optional raw RX diagnostics state without falling back to legacy APIs.
+
+        SECURITY: Requires LESC for BLE transports per spec 17.5.4.
+        """
+        self._check_security_for_path(path)
         result = await self._raw_request("GET", path)
         if not result.is_success:
             return _raw_rx_status_from_result(result)
@@ -363,7 +430,11 @@ class LciClient:
         enabled: bool = True,
         path: str = "/diag/raw/rx",
     ) -> RawDiagnosticResult:
-        """Enable raw RX diagnostics for a finite TTL."""
+        """Enable raw RX diagnostics for a finite TTL.
+
+        SECURITY: Requires LESC for BLE transports per spec 17.5.4.
+        """
+        self._check_security_for_path(path)
         if ttl_s <= 0:
             return RawDiagnosticResult(
                 state=RawDiagnosticState.ERROR,
@@ -386,7 +457,11 @@ class LciClient:
         self,
         path: str = "/diag/raw/rx/events",
     ) -> RawRxSubscription:
-        """Start observing optional raw RX diagnostic events."""
+        """Start observing optional raw RX diagnostic events.
+
+        SECURITY: Requires LESC for BLE transports per spec 17.5.4.
+        """
+        self._check_security_for_path(path)
         return RawRxSubscription(await self._transport.observe(path), path)
 
     async def send_raw_tx(
@@ -396,7 +471,11 @@ class LciClient:
         wait: bool = True,
         path: str = "/diag/raw/tx",
     ) -> RawDiagnosticResult:
-        """Transmit one raw diagnostic frame through the optional LCI resource."""
+        """Transmit one raw diagnostic frame through the optional LCI resource.
+
+        SECURITY: Requires LESC for BLE transports per spec 17.5.4.
+        """
+        self._check_security_for_path(path)
         payload = {"frame": bytes(frame), "wait": wait}
         result = await self._raw_request(
             "POST",
@@ -815,7 +894,8 @@ def _int_or_none(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: Decimal('inf') or Decimal('-inf') cannot convert to int
         return None
 
 
@@ -824,7 +904,8 @@ def _float_or_none(value: Any) -> float | None:
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: very large integers (e.g., 10**1000) cannot convert to float
         return None
 
 

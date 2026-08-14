@@ -73,7 +73,27 @@ class AnnounceProcessor:
         from_neighbor: IPv6Address,
         now_ms: int,
     ) -> AnnounceResult:
-        expected_iid = _pubkey_to_iid(announce.pubkey)
+        # Catch ValueError from _pubkey_to_iid if pubkey is malformed (wrong length)
+        # or TypeError if pubkey is completely wrong type (None, int, etc).
+        # AnnounceMessage validates at construction, but handle gracefully
+        # in case of bypassed validation (corrupted deserialization, etc).
+        try:
+            expected_iid = _pubkey_to_iid(announce.pubkey)
+        except (ValueError, TypeError):
+            # Safe repr for logging - pubkey may be wrong type (None, int, etc)
+            try:
+                pubkey_info = f"length {len(announce.pubkey)}"
+            except TypeError:
+                pubkey_info = f"type {type(announce.pubkey).__name__}"
+            logger.warning(
+                "announce pubkey malformed: %s != 32 bytes",
+                pubkey_info,
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.MALFORMED,
+            )
         if announce.originator_iid != expected_iid:
             logger.warning(
                 "announce IID mismatch: claimed %s, pubkey derives %s",

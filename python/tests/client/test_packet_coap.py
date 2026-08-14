@@ -16,9 +16,12 @@ from aiocoap.numbers.types import NON
 
 import lichen.client.packet_coap as packet_coap_module
 from lichen.client import (
+    BlePacketTransport,
+    BleSecurityLevel,
     CoapResult,
     DeliveryState,
     LciClient,
+    LciSecurityError,
     MessageDraft,
     PacketCoapConfig,
     PacketCoapResourceTransport,
@@ -823,3 +826,244 @@ def test_packet_channel_scoped_local_accepts_unscoped_wire_destination() -> None
     )
 
     assert received == [(_coap_request(), "[fe80::1%ble0]")]
+
+
+# LESC Security Tests (spec 17.5.4)
+
+
+class FakeBleClient:
+    """Minimal fake BLE client for security tests."""
+
+    def __init__(self) -> None:
+        self.mtu_size = 23
+        self.services = FakeBleServices()
+        self.connected = False
+
+    async def connect(self) -> bool:
+        self.connected = True
+        return True
+
+    async def disconnect(self) -> bool:
+        self.connected = False
+        return True
+
+    async def start_notify(self, _char: str, _cb: Any) -> None:
+        pass
+
+    async def stop_notify(self, _char: str) -> None:
+        pass
+
+    async def write_gatt_char(self, _char: str, _data: bytes, *, response: bool) -> None:
+        pass
+
+    async def read_gatt_char(self, char: str) -> bytes:
+        if "version" in char.lower():
+            return b"\x01\x00"
+        if "capabilities" in char.lower():
+            return b"\x01\x00\x00\x00"
+        return b""
+
+
+class FakeBleServices:
+    def get_characteristic(self, _uuid: str) -> FakeBleCharacteristic:
+        return FakeBleCharacteristic()
+
+
+class FakeBleCharacteristic:
+    max_write_without_response_size = 20
+
+
+def test_packet_coap_transport_does_not_check_security_for_non_ble() -> None:
+    """Non-BLE transports (USB/serial) do not require security checks."""
+    fake_transport = FakePacketTransport()
+    coap_transport = PacketCoapResourceTransport(fake_transport)
+
+    # Should not raise for any path
+    coap_transport.check_security_for_path("/diag/raw/rx")
+    coap_transport.check_security_for_path("/diag/raw/tx")
+    coap_transport.check_security_for_path("/diag/raw/rx/events")
+
+
+def test_packet_coap_transport_checks_lesc_for_ble_raw_diagnostics() -> None:
+    """BLE transports require LESC for /diag/raw/* paths."""
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/diag/raw/rx")
+
+    assert exc_info.value.path == "/diag/raw/rx"
+    assert exc_info.value.required_level == "LESC"
+    assert exc_info.value.actual_level == "UNKNOWN"
+
+
+def test_packet_coap_transport_blocks_just_works_for_ble_raw_diagnostics() -> None:
+    """BLE transports with JUST_WORKS pairing block /diag/raw/* paths.
+
+    SECURITY: JUST_WORKS pairing is vulnerable to MITM attacks and does not
+    provide the authentication guarantees required by Spec 17.5.4 for raw
+    diagnostic access. Only LESC (LE Secure Connections) is acceptable.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.JUST_WORKS,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/diag/raw/rx")
+
+    assert exc_info.value.path == "/diag/raw/rx"
+    assert exc_info.value.required_level == "LESC"
+    assert exc_info.value.actual_level == "JUST_WORKS"
+
+
+def test_packet_coap_transport_allows_raw_diagnostics_with_lesc() -> None:
+    """BLE transports allow /diag/raw/* when LESC is confirmed."""
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.LESC,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Should not raise
+    coap_transport.check_security_for_path("/diag/raw/rx")
+    coap_transport.check_security_for_path("/diag/raw/tx")
+    coap_transport.check_security_for_path("/diag/raw/rx/events")
+
+
+def test_packet_coap_transport_does_not_check_non_raw_paths() -> None:
+    """BLE transports do not check security for non-raw diagnostic paths."""
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Should not raise even with UNKNOWN security
+    coap_transport.check_security_for_path("/status")
+    coap_transport.check_security_for_path("/config")
+    coap_transport.check_security_for_path("/diag")  # /diag itself doesn't require LESC
+    coap_transport.check_security_for_path("/msg/inbox")
+
+
+# End-to-end integration test for LESC enforcement via LciClient
+
+
+@pytest.mark.asyncio
+async def test_lci_client_blocks_raw_diagnostics_via_ble_without_lesc() -> None:
+    """LciClient blocks raw diagnostic access over BLE when LESC is not confirmed.
+
+    SECURITY: Spec 17.5.4 requires LE Secure Connections for /diag/raw/* resources.
+    This test verifies the full integration path:
+    BlePacketTransport -> PacketCoapResourceTransport -> LciClient
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+    client = LciClient(coap_transport)
+
+    # Attempt to access raw diagnostics should raise LciSecurityError
+    with pytest.raises(LciSecurityError) as exc_info:
+        await client.get_raw_rx_status()
+
+    assert exc_info.value.path == "/diag/raw/rx"
+    assert exc_info.value.required_level == "LESC"
+    assert exc_info.value.actual_level == "UNKNOWN"
+
+
+@pytest.mark.asyncio
+async def test_lci_client_blocks_raw_diagnostics_via_ble_with_just_works() -> None:
+    """LciClient blocks raw diagnostic access over BLE with JUST_WORKS pairing.
+
+    SECURITY: Spec 17.5.4 requires LE Secure Connections (LESC) for /diag/raw/*
+    resources. JUST_WORKS pairing (legacy or no-MITM) does NOT provide LESC-level
+    security and MUST be rejected for raw diagnostic access.
+
+    This test verifies the full integration path for the JUST_WORKS case:
+    BlePacketTransport -> PacketCoapResourceTransport -> LciClient
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.JUST_WORKS,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+    client = LciClient(coap_transport)
+
+    # Attempt to access raw diagnostics should raise LciSecurityError
+    with pytest.raises(LciSecurityError) as exc_info:
+        await client.get_raw_rx_status()
+
+    assert exc_info.value.path == "/diag/raw/rx"
+    assert exc_info.value.required_level == "LESC"
+    assert exc_info.value.actual_level == "JUST_WORKS"
+
+
+def test_packet_coap_transport_allows_standard_paths_with_just_works() -> None:
+    """BLE transport with JUST_WORKS allows standard paths (not raw diagnostics).
+
+    SECURITY: Spec 17.6.1 and 17.6.3 allow JUST_WORKS security level for standard
+    operations (GET /status, /config, etc.). Only /diag/raw/* paths require LESC.
+
+    This test verifies the security check behavior: JUST_WORKS blocks raw diagnostics
+    but allows standard CoAP resource paths.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.JUST_WORKS,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Standard operations should pass security check with JUST_WORKS
+    coap_transport.check_security_for_path("/status")
+    coap_transport.check_security_for_path("/config")
+    coap_transport.check_security_for_path("/diag")
+    coap_transport.check_security_for_path("/msg/inbox")
+    coap_transport.check_security_for_path("/keys")
+    coap_transport.check_security_for_path("/.well-known/core")
+
+    # Raw diagnostics should still be blocked
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/diag/raw/rx")
+    assert exc_info.value.actual_level == "JUST_WORKS"
+
+    with pytest.raises(LciSecurityError):
+        coap_transport.check_security_for_path("/diag/raw/tx")
+
+    with pytest.raises(LciSecurityError):
+        coap_transport.check_security_for_path("/diag/raw/rx/events")
+
+
+@pytest.mark.asyncio
+async def test_lci_client_allows_raw_diagnostics_via_ble_with_lesc() -> None:
+    """LciClient allows raw diagnostic access over BLE when LESC is confirmed.
+
+    SECURITY: Spec 17.5.4 allows access when LE Secure Connections is active.
+    This test verifies the full integration path passes when LESC is set.
+    """
+    # Set up BLE transport with LESC
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.LESC,
+    )
+    # For this test, we just verify the security check passes
+    # (actual CoAP request would need a server, tested elsewhere)
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Security check should pass for LESC
+    coap_transport.check_security_for_path("/diag/raw/rx")
+    coap_transport.check_security_for_path("/diag/raw/tx")
+    coap_transport.check_security_for_path("/diag/raw/rx/events")

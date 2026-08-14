@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from decimal import Decimal
 from typing import Any
 
 import cbor2
@@ -17,12 +18,18 @@ from lichen.client import (
     IpCoapConfig,
     LciClient,
     LciClientError,
+    LciSecurityError,
     MessageDraft,
     MessageReceipt,
     RawDiagnosticState,
     ReceiptStatus,
 )
-from lichen.client.lci import normalize_message, parse_link_format
+from lichen.client.lci import (
+    _float_or_none,
+    _int_or_none,
+    normalize_message,
+    parse_link_format,
+)
 from lichen.coap.resources import MessagesResource, StaticNodeInfo, build_site
 from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 
@@ -631,3 +638,172 @@ def test_legacy_message_text_normalizes_to_body() -> None:
 def test_normalize_message_rejects_non_map(payload: Any) -> None:
     with pytest.raises(LciClientError):
         normalize_message(payload)
+
+
+# LESC Security Tests (spec 17.5.4)
+
+
+class SecurityCheckingTransport:
+    """Transport that tracks security check calls."""
+
+    def __init__(
+        self,
+        responses: dict[tuple[str, str], CoapResult],
+        *,
+        fail_security_for: set[str] | None = None,
+    ) -> None:
+        self.responses = responses
+        self.fail_security_for = fail_security_for or set()
+        self.security_checks: list[str] = []
+
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: bytes = b"",
+        content_format: int | None = None,
+        observe: bool = False,
+    ) -> CoapResult:
+        return self.responses.get((method, path), CoapResult(code="4.04"))
+
+    async def connect(self) -> None:
+        pass
+
+    async def close(self) -> None:
+        pass
+
+    async def observe(self, path: str, *, method: str = "GET") -> FakeSubscription:
+        response = self.responses.get((method, path), CoapResult(code="4.04"))
+        return FakeSubscription([response])
+
+    def check_security_for_path(self, path: str) -> None:
+        self.security_checks.append(path)
+        if path in self.fail_security_for:
+            raise LciSecurityError(
+                f"LESC required for {path}",
+                path=path,
+                required_level="LESC",
+                actual_level="UNKNOWN",
+            )
+
+
+async def test_lci_client_checks_security_for_raw_rx_status() -> None:
+    """get_raw_rx_status checks security before accessing /diag/raw/rx."""
+    transport = SecurityCheckingTransport(
+        {("GET", "/diag/raw/rx"): CoapResult(code="2.05", payload={"enabled": False})}
+    )
+    client = LciClient(transport)
+
+    await client.get_raw_rx_status()
+
+    assert "/diag/raw/rx" in transport.security_checks
+
+
+async def test_lci_client_checks_security_for_arm_raw_rx() -> None:
+    """arm_raw_rx checks security before accessing /diag/raw/rx."""
+    transport = SecurityCheckingTransport(
+        {("PUT", "/diag/raw/rx"): CoapResult(code="2.04")}
+    )
+    client = LciClient(transport)
+
+    await client.arm_raw_rx(ttl_s=60)
+
+    assert "/diag/raw/rx" in transport.security_checks
+
+
+async def test_lci_client_checks_security_for_observe_raw_rx_events() -> None:
+    """observe_raw_rx_events checks security before accessing /diag/raw/rx/events."""
+    transport = SecurityCheckingTransport(
+        {("GET", "/diag/raw/rx/events"): CoapResult(code="2.05", payload={})}
+    )
+    client = LciClient(transport)
+
+    subscription = await client.observe_raw_rx_events()
+    await subscription.close()
+
+    assert "/diag/raw/rx/events" in transport.security_checks
+
+
+async def test_lci_client_checks_security_for_send_raw_tx() -> None:
+    """send_raw_tx checks security before accessing /diag/raw/tx."""
+    transport = SecurityCheckingTransport(
+        {("POST", "/diag/raw/tx"): CoapResult(code="2.04")}
+    )
+    client = LciClient(transport)
+
+    await client.send_raw_tx(b"\xc1\x02")
+
+    assert "/diag/raw/tx" in transport.security_checks
+
+
+async def test_lci_client_raises_lci_security_error_for_raw_diagnostics() -> None:
+    """LciSecurityError is raised when transport fails security check."""
+    transport = SecurityCheckingTransport(
+        {("GET", "/diag/raw/rx"): CoapResult(code="2.05", payload={"enabled": False})},
+        fail_security_for={"/diag/raw/rx"},
+    )
+    client = LciClient(transport)
+
+    with pytest.raises(LciSecurityError) as exc_info:
+        await client.get_raw_rx_status()
+
+    assert exc_info.value.path == "/diag/raw/rx"
+    assert exc_info.value.required_level == "LESC"
+    assert exc_info.value.actual_level == "UNKNOWN"
+
+
+async def test_lci_client_does_not_check_security_for_non_diag_paths() -> None:
+    """Security is not checked for non-diagnostic paths."""
+    transport = SecurityCheckingTransport(
+        {
+            ("GET", "/status"): CoapResult(code="2.05", payload={"uptime_s": 42}),
+            ("GET", "/config"): CoapResult(code="2.05", payload={"name": "node"}),
+            ("GET", "/diag"): CoapResult(code="2.05", payload={"available": True}),
+        }
+    )
+    client = LciClient(transport)
+
+    await client.get_status()
+    await client.get_config()
+    await client.get_diagnostics()
+
+    # /diag alone doesn't require LESC (only /diag/raw/* does)
+    assert transport.security_checks == []
+
+
+async def test_lci_client_skips_security_check_for_transports_without_method() -> None:
+    """Transports without check_security_for_path are assumed secure (USB/serial)."""
+    transport = FakeResourceTransport(
+        {("GET", "/diag/raw/rx"): CoapResult(code="2.05", payload={"enabled": False})}
+    )
+    client = LciClient(transport)
+
+    # Should not raise - FakeResourceTransport doesn't implement check_security_for_path
+    result = await client.get_raw_rx_status()
+
+    assert result.enabled is False
+
+
+# OverflowError handling in helper functions (r2-P1-18)
+
+
+def test_int_or_none_handles_overflow_from_decimal_infinity() -> None:
+    """_int_or_none returns None for Decimal('inf'), not OverflowError (r2-P1-18).
+
+    CBOR tag 4 (decimal fraction) can decode to Decimal('inf'). Calling int()
+    on Decimal('inf') raises OverflowError, not ValueError.
+    """
+    assert _int_or_none(Decimal("inf")) is None
+    assert _int_or_none(Decimal("-inf")) is None
+
+
+def test_float_or_none_handles_overflow_from_large_integer() -> None:
+    """_float_or_none returns None for huge integers, not OverflowError (r2-P1-18).
+
+    CBOR bignum tags (tag 2/3) can decode to arbitrarily large Python ints.
+    Calling float() on integers larger than ~10^308 raises OverflowError.
+    """
+    huge_int = 10**1000
+    assert _float_or_none(huge_int) is None
+    assert _float_or_none(-huge_int) is None

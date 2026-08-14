@@ -24,6 +24,7 @@ from ..transport import (
     EndpointPolicy,
     LichenRemote,
     LichenTransport,
+    Priority,
     ReceiveCallback,
 )
 from .memory_store import OscoreContextStore
@@ -59,8 +60,17 @@ class _EdhocChannel(DatagramChannel):
         self._inner = inner
         self._receiver: ReceiveCallback | None = None
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
-        self._inner.send_datagram(data, dest)
+    def send_datagram(
+        self,
+        data: bytes,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
+        self._inner.send_datagram(
+            data, dest, priority=priority, check_congestion=check_congestion
+        )
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
         if self._receiver is not None:
@@ -591,9 +601,13 @@ class SecureDatagramChannel(DatagramChannel):
             # Advance past option delta/len and option value
             option_len = data[pos] & 0x0F
             if option_len == 13:
+                if pos + 1 + skip >= len(data):
+                    return False
                 slice_len = data[pos + 1 + skip] + 13
                 skip_value = 1
             elif option_len == 14:
+                if pos + 2 + skip >= len(data):
+                    return False
                 slice_len = int.from_bytes(
                     data[pos + 1 + skip:pos + 3 + skip], "big"
                 ) + 269
@@ -1051,20 +1065,19 @@ class SecureDatagramChannel(DatagramChannel):
         """Establish an OSCORE context with a peer via EDHOC.
 
         This implements lazy EDHOC establishment per spec section 8.8.
+
+        SECURITY: Register the pending future BEFORE any await to prevent
+        race conditions where concurrent requests both pass the check and
+        start parallel EDHOC handshakes with expired or conflicting state.
         """
         # Check if handshake already in progress
         if key in self._pending_edhoc:
             await self._pending_edhoc[key]
             return
 
-        await self._peer_resolver.ensure_bound()
-
-        # Get peer's public key
-        peer_pubkey = await self._peer_resolver.get_peer_pubkey(key)
-        if peer_pubkey is None:
-            raise ValueError(f"Unknown peer: {dest}")
-
-        # Create a future for others to wait on
+        # Create a future for others to wait on IMMEDIATELY before any await.
+        # This prevents race conditions where concurrent requests both pass
+        # the check above and start parallel EDHOC handshakes.
         future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
         self._pending_edhoc[key] = future
 
@@ -1072,6 +1085,13 @@ class SecureDatagramChannel(DatagramChannel):
         self._edhoc_active_peers.add(dest)
 
         try:
+            await self._peer_resolver.ensure_bound()
+
+            # Get peer's public key
+            peer_pubkey = await self._peer_resolver.get_peer_pubkey(key)
+            if peer_pubkey is None:
+                raise ValueError(f"Unknown peer: {dest}")
+
             # Run EDHOC as initiator
             initiator = EdhocInitiator.create(self._identity)
 

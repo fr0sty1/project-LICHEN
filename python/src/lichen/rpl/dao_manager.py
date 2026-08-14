@@ -6,6 +6,14 @@ In non-storing mode every node sends a DAO directly to the root advertising
 itself as an RPL Target and its preferred parent as Transit Information. The
 root chains these (target -> parent) edges into a full source route for each
 node and installs it in the routing table.
+
+Per spec section 8.6, DAO state requires crash-safe persistence:
+- TX side: sequence and DAO bytes must be committed before transmission
+- RX side: replay floor (sequence, digest) per origin must be committed
+  before accepting the DAO
+
+When a DaoPersistence backend is configured, the manager enforces crash-safe
+semantics. Missing or corrupt state fails closed per spec.
 """
 from __future__ import annotations
 
@@ -16,7 +24,15 @@ from ipaddress import IPv6Address
 from typing import Any
 
 from lichen.ipv6 import to_ipv6
+from lichen.rpl.dao_origin import (
+    DAO_ORIGIN_SIGNATURE_TYPE,
+    DaoOriginRejectReason,
+    DaoOriginResult,
+    DaoOriginValidator,
+    compute_dao_digest,
+)
 from lichen.rpl.dao_paths import build_routes, contains_cycle, path_control_rank, select_path
+from lichen.rpl.dao_persistence import DaoPersistence
 from lichen.rpl.dao_state import compute_active_parents, compute_deadline, make_freshness_room
 from lichen.rpl.dao_types import (
     DEFAULT_FRESHNESS_RETENTION_SECONDS,
@@ -33,10 +49,36 @@ from lichen.rpl.dao_types import (
 from lichen.rpl.messages import DAO, DAOAck, RplOptionType
 from lichen.rpl.routing import RoutingTable
 
+# Map DaoOriginRejectReason to DaoError reason strings for consistency
+_ORIGIN_REJECT_TO_REASON: dict[DaoOriginRejectReason, str] = {
+    DaoOriginRejectReason.ORIGIN_NOT_PINNED: "origin_not_pinned",
+    DaoOriginRejectReason.IID_MISMATCH: "iid_mismatch",
+    DaoOriginRejectReason.SIGNATURE_MISSING: "signature_missing",
+    DaoOriginRejectReason.SIGNATURE_DUPLICATE: "signature_duplicate",
+    DaoOriginRejectReason.SIGNATURE_NOT_FINAL: "signature_not_final",
+    DaoOriginRejectReason.SIGNATURE_INVALID_LENGTH: "signature_invalid_length",
+    DaoOriginRejectReason.SIGNATURE_INVALID: "signature_invalid",
+    DaoOriginRejectReason.SEQUENCE_REPLAY: "origin_sequence_replay",
+    DaoOriginRejectReason.SEQUENCE_EQUAL_DIFFERENT_BYTES: "origin_sequence_mutation",
+}
+
 
 @dataclass
 class DaoManager:
-    """Build DAOs and atomically maintain complete root-side candidate snapshots."""
+    """Build DAOs and atomically maintain complete root-side candidate snapshots.
+
+    When `persistence` is set, the manager enforces crash-safe semantics per
+    spec section 8.6:
+    - TX: persists sequence + DAO bytes before returning from build_dao()
+    - RX: persists replay floor before accepting DAOs in process_dao()
+
+    Missing or corrupt persistent state fails closed; the manager will not
+    transmit or accept DAOs until valid state is restored.
+
+    When `require_crash_safety` is True, the manager enforces spec section 8.6
+    compliance by raising DaoError if persistence is not configured. This
+    should be True for production deployments and False only for testing.
+    """
 
     node_address: IPv6Address
     is_root: bool = False
@@ -51,11 +93,15 @@ class DaoManager:
     max_candidates_per_target: int | None = None
     freshness_retention_seconds: float = DEFAULT_FRESHNESS_RETENTION_SECONDS
     clock: Callable[[], float] = time.monotonic
+    persistence: DaoPersistence | None = None
+    require_crash_safety: bool = False
+    origin_validator: DaoOriginValidator | None = None
     _dao_sequence: int = 240
     _path_sequence: int = 240
     _last_logical_update: tuple[IPv6Address, int] | None = field(
         default=None, init=False, repr=False
     )
+    _last_dao_bytes: bytes | None = field(default=None, init=False, repr=False)
     _parent_map: dict[IPv6Address, tuple[IPv6Address, ...]] = field(default_factory=dict)
     _candidate_map: dict[IPv6Address, tuple[Candidate, ...]] = field(default_factory=dict)
     _descriptors: dict[IPv6Address, int | None] = field(default_factory=dict)
@@ -65,6 +111,7 @@ class DaoManager:
         default_factory=dict
     )
     _edge_expiry: dict[tuple[IPv6Address, IPv6Address], float | None] = field(default_factory=dict)
+    _rx_floors: dict[bytes, tuple[int, bytes]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.node_address = to_ipv6(self.node_address)
@@ -86,6 +133,93 @@ class DaoManager:
             raise ValueError("DAO capacities must be positive")
         if self.freshness_retention_seconds < 0:
             raise ValueError("freshness retention must not be negative")
+        # SECURITY: Per spec section 8.6, crash-safe persistence is required.
+        # When require_crash_safety is True, verify persistence is configured,
+        # crash-safe, AND fails closed on missing/corrupt state.
+        if self.require_crash_safety:
+            if self.persistence is None:
+                raise DaoError(
+                    "crash-safe persistence required but not configured (spec 8.6)",
+                    reason="persistence_required",
+                )
+            if not self.persistence.is_crash_safe:
+                raise DaoError(
+                    "persistence backend is not crash-safe (spec 8.6)",
+                    reason="persistence_not_crash_safe",
+                )
+            # SECURITY: Per spec section 8.6: "Missing, corrupt, or unavailable
+            # receive state MUST fail closed." A backend that returns None on
+            # corrupt state does not satisfy this requirement.
+            if not self.persistence.fails_closed:
+                raise DaoError(
+                    "persistence backend does not fail closed (spec 8.6)",
+                    reason="persistence_not_fail_closed",
+                )
+        # SECURITY: Validate replay floor store consistency (ALWAYS, not just crash-safe mode).
+        # Per spec section 8.6, the origin validator's replay_store and the
+        # manager's persistence must be the same object to prevent split-brain:
+        # - Validation checks against replay_store
+        # - Commits write to persistence
+        # If these are different objects, replay protection is broken because
+        # the store used for checking is never updated by commits.
+        if self.origin_validator is not None and self.origin_validator.replay_store is not None:
+            if self.persistence is None:
+                raise DaoError(
+                    "origin_validator has replay_store but persistence is not configured; "
+                    "these must be the same object (spec 8.6 replay floor consistency)",
+                    reason="replay_store_mismatch",
+                )
+            if self.origin_validator.replay_store is not self.persistence:
+                raise DaoError(
+                    "origin_validator.replay_store and persistence are different objects; "
+                    "these must be the same object (spec 8.6 replay floor consistency)",
+                    reason="replay_store_mismatch",
+                )
+        # SECURITY: Restore TX state from persistence if available.
+        # Per spec section 8.6, missing/corrupt state is a hard failure;
+        # the node must not transmit until valid state is restored.
+        if self.persistence is not None:
+            self._restore_tx_state()
+
+    def _restore_tx_state(self) -> None:
+        """Restore TX state from persistence after reboot.
+
+        Per spec section 8.6, the TX API must expose the exact retained bytes
+        after reboot for retransmission. Missing or corrupt state is a hard
+        failure when require_crash_safety is True.
+        """
+        if self.persistence is None:
+            return
+        from lichen.rpl.dao_persistence import DaoPersistenceError
+
+        try:
+            tx_state = self.persistence.load_tx_state()
+        except DaoPersistenceError as exc:
+            # SECURITY: Per spec section 8.6, "Missing, corrupt, or unavailable
+            # state is a hard failure: the origin MUST NOT transmit until valid
+            # state is restored or provisioned above every value previously used."
+            if self.require_crash_safety:
+                raise DaoError(
+                    f"TX state corrupt or unavailable (spec 8.6): {exc}",
+                    reason="persistence_corrupt",
+                ) from exc
+            # When crash safety is not required, fall back to defaults.
+            # The next build_dao will start fresh from initial sequence.
+            return
+        if tx_state is not None:
+            # Restore sequence to at least the persisted value.
+            # The next build_dao will increment before use.
+            self._dao_sequence = tx_state.sequence
+            self._path_sequence = tx_state.sequence
+            self._last_dao_bytes = tx_state.dao_bytes
+
+    def get_last_dao_bytes(self) -> bytes | None:
+        """Return the last persisted DAO bytes for retransmission after reboot.
+
+        Per spec section 8.6, the TX API must expose the exact retained bytes
+        after reboot for retransmission.
+        """
+        return self._last_dao_bytes
 
     def build_dao(self, parent_address: IPv6Address | str, *, ack_requested: bool = False) -> DAO:
         """Build a new logical DAO and advance both lollipop counters."""
@@ -118,6 +252,24 @@ class DaoManager:
         advance_path_sequence: bool,
         ack_requested: bool,
     ) -> DAO:
+        # SECURITY: Per spec section 8.6, crash-safe persistence is required for TX.
+        # Defense in depth: check again in case require_crash_safety was set after init.
+        if self.require_crash_safety:
+            if self.persistence is None:
+                raise DaoError(
+                    "cannot build DAO: crash-safe persistence required (spec 8.6)",
+                    reason="persistence_required",
+                )
+            if not self.persistence.is_crash_safe:
+                raise DaoError(
+                    "cannot build DAO: persistence backend is not crash-safe (spec 8.6)",
+                    reason="persistence_not_crash_safe",
+                )
+            if not self.persistence.fails_closed:
+                raise DaoError(
+                    "cannot build DAO: persistence backend does not fail closed (spec 8.6)",
+                    reason="persistence_not_fail_closed",
+                )
         if not 0 <= path_lifetime <= 255:
             raise ValueError("Path Lifetime must fit one octet")
         parent = to_ipv6(parent_address)
@@ -143,6 +295,14 @@ class DaoManager:
                 ).to_option(),
             ],
         )
+        # SECURITY: Per spec section 8.6, crash-safely commit the sequence and
+        # complete DAO bytes BEFORE updating in-memory state or returning.
+        # This ensures that on crash recovery, the node can retransmit or
+        # continue with a sequence above all previously used values.
+        if self.persistence is not None and advance_path_sequence:
+            dao_bytes = dao.to_bytes()
+            self.persistence.store_tx_state(path_sequence, dao_bytes)
+            self._last_dao_bytes = dao_bytes
         self._dao_sequence = dao_sequence
         self._path_sequence = path_sequence
         if advance_path_sequence:
@@ -166,16 +326,110 @@ class DaoManager:
             return self.build_dao_ack(dao)
         return None
 
-    def evaluate_dao_at(self, dao: DAO, now_seconds: float) -> DaoOutcome:
-        """Apply a DAO and return a structured rejection instead of raising."""
+    def validate_and_process_dao(
+        self,
+        dao: DAO,
+        source_address: IPv6Address | str,
+    ) -> DAOAck | None:
+        """Consolidated DAO validation and processing per spec section 8.6.
+
+        This method enforces the spec-required validation order:
+        1. link framing and link signature (done at link layer, not here)
+        2. bounds-safe DAO structure and active instance/DODAG context
+        3. pre-pinned key lookup, source-IID binding, exact transcript, and Schnorr48
+        4. per-key replay classification
+        5. DAO semantic parsing
+        6. exact self /128 Target validation
+        7. replay-floor persistence for a fresh DAO
+        8. atomic in-memory route mutation
+
+        Args:
+            dao: The DAO message to validate and process.
+            source_address: The preserved IPv6 source address (origin's 02xx).
+
+        Returns:
+            DAO-ACK when the DAO requested one (K flag), else None.
+
+        Raises:
+            DaoError: If validation fails at any step.
+        """
+        if not self.is_root:
+            raise DaoError("process_dao is only valid on the root")
+        now = self.clock()
+        return self.validate_and_process_dao_at(dao, source_address, now)
+
+    def validate_and_process_dao_at(
+        self,
+        dao: DAO,
+        source_address: IPv6Address | str,
+        now_seconds: float,
+    ) -> DAOAck | None:
+        """Consolidated DAO validation and processing at a deterministic time.
+
+        See validate_and_process_dao for the full validation order.
+        """
+        source_addr = to_ipv6(source_address)
+        self._apply_dao_at(dao, now_seconds, source_addr)
+        if dao.ack_requested:
+            return self.build_dao_ack(dao)
+        return None
+
+    def evaluate_dao_at(
+        self,
+        dao: DAO,
+        now_seconds: float,
+        source_address: IPv6Address | None = None,
+    ) -> DaoOutcome:
+        """Apply a DAO and return a structured rejection instead of raising.
+
+        When source_address is provided and origin_validator is configured,
+        full spec 8.6 validation is enforced.
+        """
         try:
-            return self._apply_dao_at(dao, now_seconds)
+            return self._apply_dao_at(dao, now_seconds, source_address)
         except DaoError as exc:
             return DaoOutcome(False, False, False, exc.reason)
 
-    def _apply_dao_at(self, dao: DAO, now_seconds: float) -> DaoOutcome:
+    def _apply_dao_at(
+        self,
+        dao: DAO,
+        now_seconds: float,
+        source_address: IPv6Address | None = None,
+    ) -> DaoOutcome:
+        """Apply a DAO with optional consolidated origin validation.
+
+        When source_address is provided, the validation order per spec 8.6 is:
+        1. bounds-safe DAO structure and active instance/DODAG context
+        2. pre-pinned key lookup, source-IID binding, and Schnorr48 (if origin_validator)
+        3. per-key replay classification (handled by origin_validator)
+        4. DAO semantic parsing
+        5. exact self /128 Target validation
+        6. replay-floor persistence for a fresh DAO
+        7. atomic in-memory route mutation
+        """
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
+
+        # SECURITY: Per spec section 8.6, crash-safe persistence is required for RX.
+        # "Missing, corrupt, or unavailable receive state MUST fail closed."
+        if self.require_crash_safety:
+            if self.persistence is None:
+                raise DaoError(
+                    "cannot process DAO: crash-safe persistence required (spec 8.6)",
+                    reason="persistence_required",
+                )
+            if not self.persistence.is_crash_safe:
+                raise DaoError(
+                    "cannot process DAO: persistence backend is not crash-safe (spec 8.6)",
+                    reason="persistence_not_crash_safe",
+                )
+            if not self.persistence.fails_closed:
+                raise DaoError(
+                    "cannot process DAO: persistence backend does not fail closed (spec 8.6)",
+                    reason="persistence_not_fail_closed",
+                )
+
+        # Step 1: Bounds-safe DAO structure and active instance/DODAG context
         # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
         # Accepting DAOs from a different instance could corrupt the routing table.
         if dao.rpl_instance_id != self.rpl_instance_id:
@@ -185,13 +439,54 @@ class DaoManager:
             )
         if dao.flags != 0 or dao.reserved != 0:
             raise DaoError("DAO reserved base fields must be zero", reason="malformed_group")
+        effective_dodag_id = dao.dodag_id if dao.dodag_id is not None else self.dodag_id
         if self.dodag_id is not None and dao.dodag_id is not None and dao.dodag_id != self.dodag_id:
             raise DaoError(
                 f"DAO DODAGID {dao.dodag_id} != {self.dodag_id}",
                 reason="dodag_mismatch",
             )
 
+        # Step 2: Origin validation (pre-pinned key lookup, source-IID binding, Schnorr48)
+        # SECURITY: Per spec 8.6, origin validation MUST happen before semantic parsing.
+        # This prevents route state mutation from unauthenticated DAOs.
+        # SECURITY: When origin_validator is None or source_address is None, origin
+        # validation is bypassed and the DAO proceeds without cryptographic authentication.
+        # Per spec 8.6: "A DAO that does not satisfy that profile MUST NOT create,
+        # refresh, withdraw, or otherwise mutate downward route state." Production
+        # deployments MUST configure origin_validator and callers MUST provide
+        # source_address via validate_and_process_dao() to enforce this requirement.
+        # The legacy process_dao() path without source_address is for testing only.
+        origin_result: DaoOriginResult | None = None
+        if self.origin_validator is not None and source_address is not None:
+            if effective_dodag_id is None:
+                raise DaoError(
+                    "origin validation requires DODAG ID",
+                    reason="dodag_required",
+                )
+            origin_result = self.origin_validator.validate(dao, source_address, effective_dodag_id)
+            if not origin_result.valid:
+                assert origin_result.reject_reason is not None
+                reason = _ORIGIN_REJECT_TO_REASON.get(
+                    origin_result.reject_reason, "origin_validation_failed"
+                )
+                raise DaoError(
+                    f"DAO origin validation failed: {origin_result.reject_reason.name}",
+                    reason=reason,
+                )
+
+        # Step 3: DAO semantic parsing (extract Target/Transit groups)
         updates = self._extract_updates(dao)
+
+        # Step 4: Exact self /128 Target validation
+        # SECURITY: Per spec 8.7, the /128 Target MUST equal the preserved DAO source address.
+        # This prevents a node from advertising routes for addresses it doesn't own.
+        if source_address is not None:
+            for update in updates:
+                if update.target != source_address:
+                    raise DaoError(
+                        f"Target {update.target} != source address {source_address}",
+                        reason="target_source_mismatch",
+                    )
         incoming: dict[IPv6Address, tuple[Candidate, ...]] = {}
         sequences: dict[IPv6Address, int] = {}
         descriptors: dict[IPv6Address, int | None] = {}
@@ -342,6 +637,48 @@ class DaoManager:
             or expiry != self._edge_expiry
             or host_routes != self._existing_host_routes()
         )
+
+        # SECURITY: Per spec section 8.6, durably commit the new replay floor
+        # BEFORE using the route or sending a success DAO-ACK.
+        # CRITICAL: Per spec 8.6: "On a byte-identical retransmission, the receiver
+        # MUST NOT rewrite the replay floor." Only commit for fresh DAOs.
+        #
+        # When origin_validator was used, the floor is keyed by pubkey (per spec).
+        # A fresh DAO (origin_result.is_fresh=True) MUST have its floor committed
+        # regardless of whether there are semantic-level changes, because the
+        # floor tracks origin_sequence, not path_sequence.
+        #
+        # Otherwise, fall back to address-based keying for backward compatibility
+        # with the legacy path (no origin validation).
+        if self.persistence is not None:
+            dao_bytes = dao.to_bytes()
+            dao_digest = compute_dao_digest(dao_bytes)
+
+            if origin_result is not None:
+                # Origin-validated path: commit floor once per fresh DAO
+                # SECURITY: Per spec 8.6, floor is keyed by pubkey and uses
+                # origin_sequence (crypto-layer freshness), not path_sequence.
+                if origin_result.is_fresh:
+                    # SECURITY: Per spec 8.6, a fresh DAO MUST have pubkey and
+                    # origin_sequence set by the validator. This is a structural
+                    # invariant; violation indicates a bug in origin validation.
+                    if origin_result.pubkey is None or origin_result.origin_sequence is None:
+                        raise DaoError(
+                            "fresh DAO origin_result missing pubkey or origin_sequence",
+                            reason="origin_invariant_violation",
+                        )
+                    origin_key = origin_result.pubkey
+                    seq = origin_result.origin_sequence
+                    self.persistence.store_rx_floor(origin_key, seq, dao_digest)
+                    self._rx_floors[origin_key] = (seq, dao_digest)
+            elif changed:
+                # Legacy path (no origin validation): commit floor per-target
+                # using address-based keying and path_sequence.
+                for target in changed:
+                    origin_key = target.packed
+                    seq = sequences[target]
+                    self.persistence.store_rx_floor(origin_key, seq, dao_digest)
+                    self._rx_floors[origin_key] = (seq, dao_digest)
 
         self._parent_map = parents
         self._candidate_map = candidates
@@ -551,7 +888,7 @@ class DaoManager:
             in_transits = False
             descriptor_allowed = False
 
-        for opt in dao.options:
+        for opt_index, opt in enumerate(dao.options):
             if opt.type == RplOptionType.RPL_TARGET:
                 if in_transits:
                     finish_group()
@@ -600,6 +937,20 @@ class DaoManager:
                         reason="inconsistent_group",
                     )
                 transits[transit_parent] = parsed_transit
+            elif opt.type == DAO_ORIGIN_SIGNATURE_TYPE:
+                # SECURITY: Per spec 8.6, the DAO Origin Signature Option MUST be
+                # the final DAO option. A non-final signature option MUST reject
+                # the entire DAO without semantic parsing or state mutation.
+                # This check enforces the spec requirement even when origin_validator
+                # is not configured.
+                if opt_index != len(dao.options) - 1:
+                    raise DaoError(
+                        "DAO Origin Signature Option must be the final option",
+                        reason="signature_not_final",
+                    )
+                # Signature option is final and valid; it's processed separately
+                # by the origin_validator. Stop processing options here.
+                break
             else:
                 raise DaoError("unsupported DAO option", reason="malformed_group")
         if targets or transits:

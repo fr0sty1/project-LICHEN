@@ -23,7 +23,10 @@ from lichen.link.replay import (
 from lichen.link.tx_queue import (
     DEADLINE_ACK_MS,
     DEADLINE_APP_MS,
+    DEADLINE_BULK_MS,
     DEADLINE_ROUTING_MS,
+    DEADLINE_SOS_MS,
+    DEADLINE_URGENT_MS,
     TX_QUEUE_CAPACITY,
     Priority,
     QueueFullError,
@@ -35,7 +38,10 @@ from lichen.link.tx_queue import (
 __all__ = [
     "DEADLINE_ACK_MS",
     "DEADLINE_APP_MS",
+    "DEADLINE_BULK_MS",
     "DEADLINE_ROUTING_MS",
+    "DEADLINE_SOS_MS",
+    "DEADLINE_URGENT_MS",
     "GnssHopConfig",
     "OPERATING_CLASS_TABLE",
     "OperatingClass",

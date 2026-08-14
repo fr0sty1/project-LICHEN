@@ -112,7 +112,11 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
         Args:
             app: The ASGI application to wrap.
             token: The bearer token to validate against.
+
+        Raises:
+            WeakTokenError: If the token is empty or too short.
         """
+        validate_token_strength(token)
         super().__init__(app)
         self._token = token
 
@@ -138,8 +142,11 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
             auth_header = request.headers.get("Authorization", "")
             token = auth_header[7:] if auth_header.startswith("Bearer ") else None
 
-        # SECURITY: Use constant-time comparison to prevent timing attacks
-        if token is None or not secrets.compare_digest(token, self._token):
+        # SECURITY: Constant-time token validation. Always call compare_digest
+        # (using empty string when no token provided) to prevent timing attacks
+        # that could reveal whether authentication was attempted.
+        token_to_compare = token if token is not None else ""
+        if not secrets.compare_digest(token_to_compare, self._token):
             return JSONResponse(
                 {"error": "Unauthorized. Provide 'Authorization: Bearer <token>' header."},
                 status_code=401,

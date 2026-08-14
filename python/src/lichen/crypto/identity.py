@@ -66,6 +66,10 @@ class Identity:
         Returns:
             A new Identity with derived keys.
         """
+        # SECURITY: Seed length validation is critical. Per spec 8.7, all
+        # cryptographic material (Schnorr48, X25519, IID, 02xx address) derives
+        # from this single 32-byte seed. An incorrect length could produce weak
+        # or undefined key material.
         if len(seed) != 32:
             raise ValueError(f"seed must be 32 bytes, got {len(seed)}")
 
@@ -116,6 +120,11 @@ class Identity:
 
 
 def _pubkey_to_iid(pubkey: bytes) -> bytes:
+    """Derive IID from Ed25519 public key.
+
+    MUST use SHA-512, not SHA-256. This matches Yggdrasil's AddrForKey
+    (yggdrasil-go/src/address/address.go) for 0200::/7 address interop.
+    """
     if len(pubkey) != 32:
         raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
 

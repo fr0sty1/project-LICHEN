@@ -20,7 +20,7 @@ import pytest
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
 from lichen.link.frame import LichenFrame
-from lichen.link.link_layer import ReceiveError, RxFrame, SIGNATURE_LENGTH, LinkLayer
+from lichen.link.link_layer import SIGNATURE_LENGTH, LinkLayer, ReceiveError, RxFrame
 
 from .conftest import MockRadio
 
@@ -206,13 +206,19 @@ class TestLinkLayerRoundTrip:
         peer_frame_bytes = peer_ll.radio.tx_history[0]
 
         # Node receives it
+        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
+
         def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return PeerIdentity.from_pubkey(peer_identity.pubkey)
+            return peer_peer
+
+        def peer_lookup_all() -> list[PeerIdentity]:
+            return [peer_peer]
 
         node_ll = LinkLayer(
             radio=mock_radio,
             identity=node_identity,
             peer_lookup=peer_lookup,
+            peer_lookup_all=peer_lookup_all,
         )
 
         mock_radio.queue_rx(peer_frame_bytes)
@@ -231,14 +237,19 @@ class TestLinkLayerRoundTrip:
     ):
         """Overwriting pinned key then receiving from same peer yields KEY_CHANGE."""
         peer_radio = MockRadio()
+        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
 
         def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return PeerIdentity.from_pubkey(peer_identity.pubkey)
+            return peer_peer
+
+        def peer_lookup_all() -> list[PeerIdentity]:
+            return [peer_peer]
 
         node_ll = LinkLayer(
             radio=mock_radio,
             identity=node_identity,
             peer_lookup=peer_lookup,
+            peer_lookup_all=peer_lookup_all,
         )
 
         peer_ll = LinkLayer(

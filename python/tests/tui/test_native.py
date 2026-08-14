@@ -15,36 +15,35 @@ from __future__ import annotations
 def test_native_module_exports_public_api() -> None:
     """Verify the native module re-exports its public API correctly."""
     from lichen.tui.native import (
-        # app
-        NativeClientApp,
-        # client
-        build_connection_factory,
-        build_messaging_client,
-        main,
-        # formatting
-        clip,
-        field_line,
-        message_line,
-        status_line,
-        # models
-        ConfigRow,
-        DiagnosticRow,
-        LinkMode,
-        LogRow,
-        MessagePreview,
-        MessagingState,
-        ShellStatus,
-        UiState,
         # widgets
         ActivePane,
         CommandBar,
+        # models
+        ConfigRow,
         ConfigTable,
+        DiagnosticRow,
         DiagnosticsPanel,
+        LinkMode,
         LogPanel,
+        LogRow,
         MessageList,
+        MessagePreview,
         MessagingPanel,
         ModeNav,
+        # app
+        NativeClientApp,
         NativeStatusBar,
+        ShellStatus,
+        UiState,
+        # client
+        build_connection_factory,
+        build_messaging_client,
+        # formatting
+        clip,
+        field_line,
+        main,
+        message_line,
+        status_line,
     )
 
     # Verify key exports are callable/instantiable

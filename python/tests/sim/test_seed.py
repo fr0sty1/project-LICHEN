@@ -7,11 +7,9 @@ from __future__ import annotations
 import random
 
 import pytest
+from lora_medium import LossRule, RxCandidate, Transmission
 
-from lora_medium import LossRule
-from lora_medium import RxCandidate
 from lichen.sim.simulation import Simulation
-from lora_medium import Transmission
 
 
 def _candidate(source_node_id: str = "sender") -> RxCandidate:

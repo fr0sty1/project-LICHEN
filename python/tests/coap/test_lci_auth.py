@@ -19,7 +19,18 @@ from __future__ import annotations
 
 import cbor2
 import pytest
-from aiocoap import BAD_REQUEST, CHANGED, CONTENT, CREATED, GET, NOT_FOUND, POST, PUT, DELETE, UNAUTHORIZED, Message
+from aiocoap import (
+    BAD_REQUEST,
+    CHANGED,
+    CONTENT,
+    CREATED,
+    GET,
+    NOT_FOUND,
+    POST,
+    PUT,
+    UNAUTHORIZED,
+    Message,
+)
 
 from lichen.coap.resources import (
     MessageReceiptsResource,

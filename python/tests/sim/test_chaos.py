@@ -3,7 +3,6 @@
 """Tests for the chaos rules framework."""
 
 import pytest
-
 from lora_medium import (
     ChaosEngine,
     ChaosRule,
@@ -13,10 +12,10 @@ from lora_medium import (
     JammerRule,
     LatencyRule,
     PartitionRule,
+    RxCandidate,
+    Transmission,
     TxJitterRule,
 )
-from lora_medium import RxCandidate
-from lora_medium import Transmission
 
 
 def make_transmission(source_node_id: str = "sender") -> Transmission:

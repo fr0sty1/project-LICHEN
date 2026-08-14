@@ -156,3 +156,278 @@ class TestReplayProtector:
 
     def test_window_size_constant(self) -> None:
         assert WINDOW_SIZE == 32
+
+
+class TestTwoPhaseReplayWindow:
+    """Tests for two-phase check() + commit() replay protection.
+
+    Per spec 06-security.md and 10-implementation.md, the replay floor must
+    only be committed AFTER all validation passes. This prevents premature
+    floor advancement when later validation fails.
+    """
+
+    def test_check_does_not_modify_state(self) -> None:
+        """check() must be read-only - no state mutation."""
+        w = ReplayWindow()
+        assert w.highest == -1  # no frames yet
+        assert w.check(0, 10) is True  # fresh
+        assert w.highest == -1  # still no frames recorded
+        assert w.check(0, 10) is True  # still fresh (not committed)
+
+    def test_commit_advances_floor(self) -> None:
+        """commit() must update replay state."""
+        w = ReplayWindow()
+        w.commit(0, 10)
+        assert w.highest == logical_counter(0, 10)
+        assert w.check(0, 10) is False  # now seen
+
+    def test_two_phase_sequence(self) -> None:
+        """Standard two-phase: check passes, validation passes, then commit."""
+        w = ReplayWindow()
+        # Phase 1: check (read-only)
+        assert w.check(0, 5) is True
+        # ... other validation would happen here ...
+        # Phase 2: commit (after all validation passes)
+        w.commit(0, 5)
+        # Replay now rejected
+        assert w.check(0, 5) is False
+
+    def test_validation_failure_prevents_floor_commitment(self) -> None:
+        """If validation fails after check(), floor should NOT be committed.
+
+        This is the core bug that two-phase checking prevents. Scenario:
+        1. Frame with counter=100 arrives
+        2. check() returns True (fresh)
+        3. Some later validation fails
+        4. We do NOT call commit()
+        5. A valid frame with counter=100 arrives later
+        6. It should still be accepted because floor was not advanced
+        """
+        w = ReplayWindow()
+        # Frame 1: check passes but "validation fails" - no commit
+        assert w.check(0, 100) is True
+        # Simulate validation failure - we intentionally don't commit
+        # Frame 2: same counter should still be accepted
+        assert w.check(0, 100) is True
+        # This time validation passes, so we commit
+        w.commit(0, 100)
+        # Now it's seen
+        assert w.check(0, 100) is False
+
+    def test_check_and_update_equivalent_to_check_plus_commit(self) -> None:
+        """check_and_update should behave identically to check+commit."""
+        w1 = ReplayWindow()
+        w2 = ReplayWindow()
+
+        # w1: atomic approach
+        result1 = w1.check_and_update(0, 10)
+
+        # w2: two-phase approach
+        result2 = w2.check(0, 10)
+        if result2:
+            w2.commit(0, 10)
+
+        assert result1 == result2
+        assert w1.highest == w2.highest
+
+    def test_out_of_order_with_two_phase(self) -> None:
+        """Out-of-order frames work correctly with two-phase checking."""
+        w = ReplayWindow()
+        # Accept frame 10
+        assert w.check(0, 10) is True
+        w.commit(0, 10)
+        # Check frame 8 (within window)
+        assert w.check(0, 8) is True
+        # But validation fails - don't commit
+        # Frame 8 arrives again, should still be fresh
+        assert w.check(0, 8) is True
+        w.commit(0, 8)
+        # Now it's seen
+        assert w.check(0, 8) is False
+
+
+class TestTwoPhaseReplayProtector:
+    """Tests for two-phase check() + commit() on ReplayProtector."""
+
+    def test_check_does_not_modify_state(self) -> None:
+        """check() must be read-only - no state mutation."""
+        p = ReplayProtector()
+        assert p.check(b"sender1", 0, 10) is True
+        assert p.check(b"sender1", 0, 10) is True  # still fresh
+
+    def test_commit_advances_floor(self) -> None:
+        """commit() must update replay state."""
+        p = ReplayProtector()
+        p.check(b"sender1", 0, 10)  # creates window
+        p.commit(b"sender1", 0, 10)
+        assert p.check(b"sender1", 0, 10) is False  # now seen
+
+    def test_per_sender_isolation_with_two_phase(self) -> None:
+        """Two-phase works correctly across multiple senders."""
+        p = ReplayProtector()
+        # Check both senders
+        assert p.check(b"A", 0, 5) is True
+        assert p.check(b"B", 0, 5) is True
+        # Commit only A
+        p.commit(b"A", 0, 5)
+        # A is now seen, B is still fresh
+        assert p.check(b"A", 0, 5) is False
+        assert p.check(b"B", 0, 5) is True
+
+    def test_validation_failure_prevents_floor_commitment(self) -> None:
+        """If validation fails after check(), floor should NOT be committed."""
+        p = ReplayProtector()
+        # Check passes but "validation fails"
+        assert p.check(b"sender", 0, 100) is True
+        # No commit - simulate validation failure
+        # Same frame arrives again, should still be accepted
+        assert p.check(b"sender", 0, 100) is True
+        # This time validation passes
+        p.commit(b"sender", 0, 100)
+        # Now it's seen
+        assert p.check(b"sender", 0, 100) is False
+
+
+class TestThreadSafetyReplayWindow:
+    """Tests for thread safety of ReplayWindow.check_and_update().
+
+    The TOCTOU race condition: without proper locking, two threads could
+    both pass check() for the same counter before either commits, causing
+    duplicate acceptance. These tests verify the fix.
+    """
+
+    def test_concurrent_check_and_update_only_one_succeeds(self) -> None:
+        """Multiple threads calling check_and_update with same counter.
+
+        Only one thread should succeed; others should get False (replay).
+        This is the core test for the TOCTOU fix.
+        """
+        import threading
+        from collections import Counter
+
+        w = ReplayWindow()
+        results: list[bool] = []
+        lock = threading.Lock()
+
+        def try_update() -> None:
+            result = w.check_and_update(0, 100)
+            with lock:
+                results.append(result)
+
+        # Launch 10 threads all trying to accept the same counter
+        threads = [threading.Thread(target=try_update) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # Exactly one thread should succeed
+        counts = Counter(results)
+        assert counts[True] == 1, f"Expected exactly 1 True, got {counts}"
+        assert counts[False] == 9, f"Expected 9 False, got {counts}"
+
+    def test_concurrent_different_counters_all_succeed(self) -> None:
+        """Multiple threads with different counters should all succeed."""
+        import threading
+
+        w = ReplayWindow()
+        results: dict[int, bool] = {}
+        lock = threading.Lock()
+
+        def try_update(seqnum: int) -> None:
+            result = w.check_and_update(0, seqnum)
+            with lock:
+                results[seqnum] = result
+
+        # Launch threads with different sequence numbers
+        threads = [threading.Thread(target=try_update, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # All should succeed (different counters)
+        assert all(results.values()), f"Expected all True, got {results}"
+
+
+class TestThreadSafetyReplayProtector:
+    """Tests for thread safety of ReplayProtector.check_and_update().
+
+    Tests both per-sender atomicity and cross-sender isolation.
+    """
+
+    def test_concurrent_same_sender_same_counter_only_one_succeeds(self) -> None:
+        """Multiple threads calling check_and_update for same sender/counter.
+
+        Only one thread should succeed; this tests the TOCTOU fix at the
+        ReplayProtector level (which also acquires its own lock for window
+        table access).
+        """
+        import threading
+        from collections import Counter
+
+        p = ReplayProtector()
+        results: list[bool] = []
+        lock = threading.Lock()
+
+        def try_update() -> None:
+            result = p.check_and_update(b"sender", 0, 100)
+            with lock:
+                results.append(result)
+
+        threads = [threading.Thread(target=try_update) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        counts = Counter(results)
+        assert counts[True] == 1, f"Expected exactly 1 True, got {counts}"
+        assert counts[False] == 9, f"Expected 9 False, got {counts}"
+
+    def test_concurrent_different_senders_all_succeed(self) -> None:
+        """Multiple threads with different senders should all succeed."""
+        import threading
+
+        p = ReplayProtector()
+        results: dict[bytes, bool] = {}
+        lock = threading.Lock()
+
+        def try_update(sender: bytes) -> None:
+            result = p.check_and_update(sender, 0, 100)
+            with lock:
+                results[sender] = result
+
+        senders = [f"sender{i}".encode() for i in range(10)]
+        threads = [threading.Thread(target=try_update, args=(s,)) for s in senders]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert all(results.values()), f"Expected all True, got {results}"
+
+    def test_concurrent_window_creation_no_race(self) -> None:
+        """Concurrent first-contact from same sender creates exactly one window."""
+        import threading
+
+        p = ReplayProtector()
+        results: list[bool] = []
+        lock = threading.Lock()
+
+        def first_contact(seqnum: int) -> None:
+            # All threads try to be the "first contact" for same sender
+            result = p.check_and_update(b"new-sender", 0, seqnum)
+            with lock:
+                results.append(result)
+
+        # Launch threads with sequential sequence numbers
+        threads = [threading.Thread(target=first_contact, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # All should succeed since they have different sequence numbers
+        # This verifies no race in window creation
+        assert all(results), f"Expected all True, got {results}"

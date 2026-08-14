@@ -6,13 +6,10 @@ from __future__ import annotations
 
 from ipaddress import IPv6Address
 
-import pytest
-
 from lichen.ipv6.icmpv6 import Icmpv6Message
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
 from lichen.rpl.messages import DAO, DIO, to_icmpv6
-from lichen.schc.codec import SchcError
 from lichen.schc.headers import compress_packet, decompress_packet
 
 LL_SRC = IPv6Address("fe80::1")

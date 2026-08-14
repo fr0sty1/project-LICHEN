@@ -266,6 +266,66 @@ async def test_context_manager(mock_server: MockServer) -> None:
     await mock_server.wait_for_handler()
 
 
+async def test_aexit_suppresses_cancelled_error_during_cleanup() -> None:
+    """Test that __aexit__ suppresses CancelledError during cleanup when existing exception.
+
+    CancelledError became a BaseException (not Exception) in Python 3.8.
+    Without explicit handling, CancelledError during close() could mask
+    the original exception being raised from the context body.
+    """
+
+    class _CancellingStream:
+        """Mock stream that raises CancelledError on close."""
+
+        async def aclose(self) -> None:
+            raise asyncio.CancelledError()
+
+        async def send(self, data: bytes) -> None:
+            pass
+
+        async def receive(self, max_bytes: int) -> bytes:
+            return b""
+
+    radio = SimRadio("h", 1, "sim", "node", (0.0, 0.0, 0.0))
+    radio._stream = _CancellingStream()  # type: ignore[assignment]
+
+    # When there's an existing exception, CancelledError during cleanup should be suppressed
+    original_error = ValueError("original error")
+    with pytest.raises(ValueError, match="original error"):
+        async with radio:
+            raise original_error
+
+    # Verify the original exception propagated, not CancelledError
+
+
+async def test_aexit_propagates_cancelled_error_when_no_exception() -> None:
+    """Test that __aexit__ propagates CancelledError when no existing exception.
+
+    When there's no exception in the context body, cleanup errors (including
+    CancelledError) should propagate so the caller knows cleanup failed.
+    """
+
+    class _CancellingStream:
+        """Mock stream that raises CancelledError on close."""
+
+        async def aclose(self) -> None:
+            raise asyncio.CancelledError()
+
+        async def send(self, data: bytes) -> None:
+            pass
+
+        async def receive(self, max_bytes: int) -> bytes:
+            return b""
+
+    radio = SimRadio("h", 1, "sim", "node", (0.0, 0.0, 0.0))
+    radio._stream = _CancellingStream()  # type: ignore[assignment]
+
+    # When there's no existing exception, CancelledError should propagate
+    with pytest.raises(asyncio.CancelledError):
+        async with radio:
+            pass  # No exception raised in body
+
+
 async def test_not_connected_error() -> None:
     """Test operations fail when not connected."""
     radio = SimRadio("localhost", 5555, "sim1", "node1", (0, 0, 0))

@@ -12,9 +12,11 @@ from lichen.crypto.oscore import MAX_OSCORE_SEQUENCE_NUMBER, MemorySecurityConte
 
 from ..transport import EndpointPolicy
 from .types import (
+    MAX_OSCORE_GENERATION,
     ContextGenerationError,
     EndpointPolicyConflictError,
     ForkSafetyError,
+    GenerationOverflowError,
     PeerContext,
     PeerKeyConflictError,
     ReplayWindowConflictError,
@@ -94,10 +96,46 @@ class InMemoryOscoreContextStore:
                 raise PeerKeyConflictError(f"peer {key} is already bound to a different key")
             if expected_generation is not None and record.generation != expected_generation:
                 raise ContextGenerationError(f"context generation changed for {key}")
+
+            # Check for idempotent operation (same context object being re-published)
+            idempotent = (
+                record.context is not None
+                and record.context.oscore is oscore_ctx
+                and record.generation == expected_generation
+            )
+            if idempotent:
+                return record.context
+
+            # Initialize/update sender and replay ledgers
+            sender_identity = oscore_ctx.sender_cryptographic_identity()
+            recipient_identity = oscore_ctx.recipient_cryptographic_identity()
+            high_water = oscore_ctx.sender_sequence_number
+            committed_high_water = max(
+                high_water, self._sender_ledgers.get(sender_identity, 0)
+            )
+            self._sender_ledgers[sender_identity] = committed_high_water
+            initial_replay = oscore_ctx.export_replay_window()
+            replay_state = self._replay_ledgers.get(bytes(recipient_identity))
+            if replay_state is None:
+                replay_index, replay_bitfield = initial_replay
+                self._replay_ledgers[bytes(recipient_identity)] = (replay_index, replay_bitfield)
+            else:
+                replay_index, replay_bitfield = replay_state
+
+            # Signal reservation state to the context
+            oscore_ctx.clear_sender_sequence_reservation(committed_high_water)
+            oscore_ctx.restore_replay_window(replay_index, replay_bitfield)
+
+            next_generation = record.generation + 1 if record.generation else 1
+            if next_generation > MAX_OSCORE_GENERATION:
+                raise GenerationOverflowError(
+                    f"context generation for {key} has reached maximum ({MAX_OSCORE_GENERATION}); "
+                    "re-key via EDHOC required"
+                )
             context = PeerContext(
                 oscore=oscore_ctx,
                 peer_pubkey=bytes(peer_pubkey),
-                generation=record.generation + 1 if record.generation else 1,
+                generation=next_generation,
             )
             record.context = context
             record.generation = context.generation
@@ -113,6 +151,8 @@ class InMemoryOscoreContextStore:
     ) -> PeerContext:
         """Store OSCORE context (synchronous)."""
         self.check_process()
+        if self._lock is not None:
+            raise RuntimeError("put_sync must be called before async store use")
         key = self._normalize_key(host)
         record = self._records.get(key)
         if record is None:
@@ -122,10 +162,46 @@ class InMemoryOscoreContextStore:
             raise PeerKeyConflictError(f"peer {key} is already bound to a different key")
         if expected_generation is not None and record.generation != expected_generation:
             raise ContextGenerationError(f"context generation changed for {key}")
+
+        # Check for idempotent operation (same context object being re-published)
+        idempotent = (
+            record.context is not None
+            and record.context.oscore is oscore_ctx
+            and record.generation == expected_generation
+        )
+        if idempotent:
+            return record.context
+
+        # Initialize/update sender and replay ledgers
+        sender_identity = oscore_ctx.sender_cryptographic_identity()
+        recipient_identity = oscore_ctx.recipient_cryptographic_identity()
+        high_water = oscore_ctx.sender_sequence_number
+        committed_high_water = max(
+            high_water, self._sender_ledgers.get(sender_identity, 0)
+        )
+        self._sender_ledgers[sender_identity] = committed_high_water
+        initial_replay = oscore_ctx.export_replay_window()
+        replay_state = self._replay_ledgers.get(bytes(recipient_identity))
+        if replay_state is None:
+            replay_index, replay_bitfield = initial_replay
+            self._replay_ledgers[bytes(recipient_identity)] = (replay_index, replay_bitfield)
+        else:
+            replay_index, replay_bitfield = replay_state
+
+        # Signal reservation state to the context
+        oscore_ctx.clear_sender_sequence_reservation(committed_high_water)
+        oscore_ctx.restore_replay_window(replay_index, replay_bitfield)
+
+        next_generation = record.generation + 1 if record.generation else 1
+        if next_generation > MAX_OSCORE_GENERATION:
+            raise GenerationOverflowError(
+                f"context generation for {key} has reached maximum ({MAX_OSCORE_GENERATION}); "
+                "re-key via EDHOC required"
+            )
         context = PeerContext(
             oscore=oscore_ctx,
             peer_pubkey=bytes(peer_pubkey),
-            generation=record.generation + 1 if record.generation else 1,
+            generation=next_generation,
         )
         record.context = context
         record.generation = context.generation
@@ -245,10 +321,17 @@ class InMemoryOscoreContextStore:
     async def remove(self, host: str) -> None:
         """Tombstone a context while preserving peer binding and identity ledgers."""
         async with self._get_lock():
-            record = self._records.get(self._normalize_key(host))
+            key = self._normalize_key(host)
+            record = self._records.get(key)
             if record is not None and record.context is not None:
+                next_generation = record.generation + 1
+                if next_generation > MAX_OSCORE_GENERATION:
+                    raise GenerationOverflowError(
+                        f"context generation for {key} has reached maximum "
+                        f"({MAX_OSCORE_GENERATION}); re-key via EDHOC required"
+                    )
                 record.context = None
-                record.generation += 1
+                record.generation = next_generation
 
     def has_context_sync(self, host: str) -> bool:
         """Check if we have a context (synchronous)."""

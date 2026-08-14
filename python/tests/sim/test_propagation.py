@@ -5,7 +5,6 @@
 import math
 
 import pytest
-
 from lora_medium import (
     CAPTURE_THRESHOLD_DB,
     PATH_LOSS_FREE_SPACE,
@@ -15,7 +14,6 @@ from lora_medium import (
     SENSITIVITY_SF10,
     SENSITIVITY_SF12,
     PropagationModel,
-    link_budget,
 )
 
 

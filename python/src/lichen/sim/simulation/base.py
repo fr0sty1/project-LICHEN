@@ -14,9 +14,9 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any
 
 import structlog
+from lora_medium import Medium
 
 from lichen.sim.events import EventQueue, ObserverRegistry, SimulationObserver
-from lora_medium import Medium
 from lichen.sim.metrics import Metrics
 from lichen.sim.node import SimNode
 

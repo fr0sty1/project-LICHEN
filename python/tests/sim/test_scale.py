@@ -14,6 +14,7 @@ For AWS EC2 scale testing:
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import random
 import time
@@ -21,14 +22,12 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from ipaddress import IPv6Address
 
-import math
-
 import pytest
+from lora_medium import DropRule
 
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
 from lichen.radio.sim_client import SimRadio
-from lora_medium import DropRule
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 
@@ -166,7 +165,6 @@ class TestMeshScale:
         node_port = server.get_node_server_port("scale-test")
         assert node_port is not None
 
-        import math
 
         grid_size = int(math.sqrt(min(SCALE_NODES, SCALE_CAP)))
         n_nodes = grid_size * grid_size

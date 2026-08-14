@@ -138,7 +138,10 @@ def _scan_cbor_item(
                 payload, offset, depth=depth + 1, budget=budget
             )
             key_raw = payload[key_start:offset]
-            key = cbor2.loads(key_raw)
+            try:
+                key = cbor2.loads(key_raw)
+            except OverflowError as exc:
+                raise ValueError("CBOR map key outside representable range") from exc
             if any(_same_cbor_key(key, old, key_raw, old_raw) for old, old_raw in keys):
                 raise ValueError("duplicate CBOR map key")
             keys.append((key, key_raw))
@@ -163,4 +166,7 @@ def _decode_single_cbor(payload: bytes) -> Any:
     end = _scan_cbor_item(payload, 0)
     if end != len(payload):
         raise ValueError("trailing data after CBOR item")
-    return cbor2.loads(payload)
+    try:
+        return cbor2.loads(payload)
+    except OverflowError as exc:
+        raise ValueError("CBOR payload contains integer outside representable range") from exc

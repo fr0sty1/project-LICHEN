@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import time
 
+from lora_medium import PropagationModel
+
 from lichen.sim.hybrid import (
     HybridNode,
     HybridPropagationModel,
@@ -13,7 +15,6 @@ from lichen.sim.hybrid import (
     RFMeasurement,
     create_hybrid_topology,
 )
-from lora_medium import PropagationModel
 from lichen.sim.topology import grid
 
 

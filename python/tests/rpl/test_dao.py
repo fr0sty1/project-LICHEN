@@ -753,3 +753,10 @@ def test_transit_information_e_flag_encoding() -> None:
     opt_no_parent = ti_no_parent.to_option()
     assert opt_no_parent.data[0] & 0x80 == 0x00  # E flag is clear
     assert len(opt_no_parent.data) == 4  # no parent address
+
+
+def test_canonical_route_state_vectors_match_dao_manager() -> None:
+    """Validate DaoManager against canonical rpl_route_state.json vectors."""
+    vectors_path = Path(__file__).resolve().parents[3] / "test" / "vectors" / "rpl_route_state.json"
+    manager = run_route_state_vectors(vectors_path)
+    assert manager is not None

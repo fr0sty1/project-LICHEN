@@ -11,9 +11,9 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 import pytest
+from lora_medium import PropagationModel
 
 from lichen.radio.sim_client import SimRadio
-from lora_medium import PropagationModel
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 

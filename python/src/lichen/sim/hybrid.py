@@ -32,6 +32,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from lora_medium import SENSITIVITY_SF10, PropagationModel
+
 from lichen.sim.topology import NodePosition
 
 if TYPE_CHECKING:

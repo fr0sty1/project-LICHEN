@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
 from textual.widgets import Input
 
 from lichen.client import (

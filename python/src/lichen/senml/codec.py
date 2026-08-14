@@ -85,7 +85,13 @@ def _validate_field_type(name: str, value: object) -> None:
     elif expected == "num":
         if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
             raise ValueError(f"SenML field '{name}' must be a number, got {type(value).__name__}")
-        if not isfinite(value):
+        # isfinite() on large integers raises OverflowError during implicit float conversion;
+        # treat such values as non-finite since they exceed representable range
+        try:
+            is_finite = isfinite(value)
+        except OverflowError:
+            is_finite = False
+        if not is_finite:
             raise ValueError(f"SenML field '{name}' must be finite, got {value}")
     elif expected == "int":
         if isinstance(value, bool) or not isinstance(value, int) or isinstance(value, float):
