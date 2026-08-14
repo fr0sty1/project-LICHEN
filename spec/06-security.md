@@ -107,7 +107,7 @@ All node identity derives from **a single Ed25519 keypair**. This unifies link-l
 **Overview (MUST match §8.7 and test vectors exactly):**
 
 1. 32-byte seed → Ed25519 keypair (deterministic per draft-lichen-schnorr-00).
-2. IID = SHA-256(pubkey)[0:8]; `iid[0] &= 0b1111_1101` (U/L bit **cleared** per RFC 4291; previous `|=0x02` incorrect).
+2. IID = SHA-512(pubkey)[0:8]; `iid[0] &= 0b1111_1101` (U/L bit **cleared** per RFC 4291; previous `|=0x02` incorrect). **MUST be SHA-512, not SHA-256** — inherited from Yggdrasil `AddrForKey` (`yggdrasil-go/src/address/address.go`) for 0200::/7 interop.
 3. 02xx addr = `[0x02] + SHA-512(pubkey)[0:7] + IID` (lower 64 bits bind key to address; prevents substitution).
 4. X25519 priv = clamp(SHA-512(seed)[0:32]) for OSCORE/EDHOC.
 5. TOFU pins pubkey to derived IID/02xx (cryptographically enforced).
@@ -141,7 +141,7 @@ A single 32-byte seed produces all material for signatures (Schnorr48), X25519 (
 **Normative Derivation (MUST match test vectors exactly):**
 
 1. **Keypair**: `privkey, pubkey = derive_keypair(seed)` per draft-lichen-schnorr-00.md:97 (h=SHA-512(seed); privkey=clamp(h[0:32]); pubkey=basepoint_mult). Matches schnorr48.py:107 and Rust exactly.
-2. **IID**: `hash=SHA-256(pubkey); iid=hash[0:8]; iid[0] &= 0b1111_1101` (U/L bit clear per RFC 4291). See 04-network.md:53, identity.rs:22.
+2. **IID**: `hash=SHA-512(pubkey); iid=hash[0:8]; iid[0] &= 0b1111_1101` (U/L bit clear per RFC 4291). **MUST be SHA-512** — Yggdrasil `AddrForKey` compatibility. See 04-network.md:53, identity.rs:22.
 3. **02xx Address**: `addr=[0x02] + SHA-512(pubkey)[0:7] + IID` (MUST: lower 64 bits == IID to bind key to address and prevent substitution attacks; upper 7 bytes from SHA-512(pubkey) for Yggdrasil 0200::/7 dispersion). No ULA. See identity.rs:40 (yggdrasil_addr_from_pubkey), test/vectors/yggdrasil-derivation.json.
  4. **X25519**: `x25519_priv=clamp(SHA-512(seed)[0:32])` per RFC 7748 §5 for EDHOC static DH (see 8.9). Matches Python identity.py:109, standards/crypto.md:79.
 
