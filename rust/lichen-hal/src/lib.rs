@@ -314,32 +314,36 @@ pub trait Rng {
 #[cfg(feature = "rand")]
 use rand_core::{CryptoRng, RngCore};
 
+/// Newtype adapter to bridge `Rng` to `rand_core::RngCore`/`CryptoRng`.
 #[cfg(feature = "rand")]
-impl<T: Rng + ?Sized> RngCore for T {
+pub struct RngAdapter<R>(pub R);
+
+#[cfg(feature = "rand")]
+impl<R: Rng> RngCore for RngAdapter<R> {
     fn next_u32(&mut self) -> u32 {
         let mut buf = [0u8; 4];
-        self.fill_bytes(&mut buf);
+        self.0.fill_bytes(&mut buf);
         u32::from_ne_bytes(buf)
     }
 
     fn next_u64(&mut self) -> u64 {
         let mut buf = [0u8; 8];
-        self.fill_bytes(&mut buf);
+        self.0.fill_bytes(&mut buf);
         u64::from_ne_bytes(buf)
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        <Self as Rng>::fill_bytes(self, dest);
+        self.0.fill_bytes(dest);
     }
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.fill_bytes(dest);
+        self.0.fill_bytes(dest);
         Ok(())
     }
 }
 
 #[cfg(feature = "rand")]
-impl<T: Rng + ?Sized> CryptoRng for T {}
+impl<R: Rng> CryptoRng for RngAdapter<R> {}
 
 /// Non-volatile storage for persistent state.
 ///

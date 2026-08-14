@@ -18,8 +18,7 @@ pub use crate::persistence::{
 pub use crate::srh::{SourceRoutingHeader, MAX_ROUTE_HOPS};
 #[cfg(feature = "std")]
 pub use crate::table::{
-    InvalidRouteEntryTransition, RouteEntry, RouteEntryState, RouteTarget, RoutingTable,
-    MAX_ROUTES,
+    InvalidRouteEntryTransition, RouteEntry, RouteEntryState, RouteTarget, RoutingTable, MAX_ROUTES,
 };
 #[cfg(feature = "std")]
 pub use crate::verify::{
@@ -41,8 +40,8 @@ use crate::message::{
 #[cfg(feature = "std")]
 use crate::persistence::{
     decode_high_water, encode_high_water, map_open_error, map_rx_update_error, HighWaterMap,
-    DAO_RX_KEYS, DAO_RX_MAGIC, HIGH_WATER_HEADER_LEN, HIGH_WATER_PAYLOAD_LEN,
-    HIGH_WATER_SCOPE_LEN, SLOT_OVERHEAD,
+    DAO_RX_KEYS, DAO_RX_MAGIC, HIGH_WATER_HEADER_LEN, HIGH_WATER_PAYLOAD_LEN, HIGH_WATER_SCOPE_LEN,
+    SLOT_OVERHEAD,
 };
 #[cfg(feature = "std")]
 use lichen_hal::{
@@ -60,13 +59,26 @@ fn seq_is_newer(new_seq: u8, old_seq: u8) -> bool {
         new_seq < LOLLIPOP_CIRCULAR_BIT,
         old_seq < LOLLIPOP_CIRCULAR_BIT,
     ) {
-        (true, true) => new_seq > old_seq,
-        (false, false) => {
-            let diff = new_seq.wrapping_sub(old_seq) & 0x7F;
-            diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+        (true, true) => {
+            // Linear region: also has 16-step window per Python reference.
+            let diff = (new_seq.wrapping_sub(old_seq)) & 0x7F;
+            diff >= 1 && diff <= LOLLIPOP_SEQUENCE_WINDOW
         }
-        (true, false) => true,
-        (false, true) => false,
+        (false, false) => {
+            // Circular region: 16-step window.
+            let diff = new_seq.wrapping_sub(old_seq) & 0x7F;
+            diff >= 1 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+        }
+        (true, false) => {
+            // New is linear, old is circular: new is newer if within 16 of wrap.
+            // Python: 256 + new - old <= 16
+            256u16 + u16::from(new_seq) - u16::from(old_seq) <= LOLLIPOP_SEQUENCE_WINDOW.into()
+        }
+        (false, true) => {
+            // New is circular, old is linear: new is newer if >16 steps past wrap.
+            // Python: 256 + old - new > 16
+            256u16 + u16::from(old_seq) - u16::from(new_seq) > LOLLIPOP_SEQUENCE_WINDOW.into()
+        }
     }
 }
 
@@ -209,7 +221,7 @@ pub const MAX_PATH_SEQUENCES: usize = 256;
 /// LICHEN's fixed RPL profile activates all eight Path Control bits (PCS=7).
 #[cfg(feature = "std")]
 pub const PATH_CONTROL_SIZE: u8 = 7;
-#[cfg(all(feature = "std", test))]
+#[cfg(all(feature = "std", any(test, feature = "test-helpers")))]
 const DEFAULT_LIFETIME_UNIT_SECONDS: u64 = 60;
 /// Keep expired freshness state long enough to reject delayed replays. Once this
 /// finite window passes, the oldest inactive record may be reclaimed at capacity;
@@ -248,9 +260,8 @@ struct Freshness {
 #[cfg(feature = "std")]
 impl Freshness {
     fn new(sequence: u8, active_until: Option<u64>, updated_at: u64) -> Self {
-        let retain_until = active_until.map(|deadline| {
-            deadline.saturating_add(FRESHNESS_TOMBSTONE_RETENTION_SECONDS)
-        });
+        let retain_until = active_until
+            .map(|deadline| deadline.saturating_add(FRESHNESS_TOMBSTONE_RETENTION_SECONDS));
         Self {
             sequence,
             active_until,
@@ -260,7 +271,8 @@ impl Freshness {
     }
 
     fn is_reclaimable(&self, now_seconds: u64) -> bool {
-        self.retain_until.is_some_and(|deadline| deadline <= now_seconds)
+        self.retain_until
+            .is_some_and(|deadline| deadline <= now_seconds)
     }
 }
 
@@ -482,16 +494,7 @@ impl DaoManager {
         }
         let sequence = verified.envelope.origin.origin_sequence;
 
-        let dao = verified.envelope.dao.clone();
-        if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
-            return Err(DaoProcessError::RouteRejected);
-        }
-        let Some((updates, update_count)) =
-            self.extract_updates(&dao, verified.envelope.unsigned_bytes)
-        else {
-            return Err(DaoProcessError::RouteRejected);
-        };
-
+        // Replay check precedes route validation per RFC 6550 security considerations.
         let mut duplicate = false;
         if let Some((hash, previous)) = self.origin_high_water.get(&verified.public_key) {
             if sequence < *previous
@@ -505,6 +508,16 @@ impl DaoManager {
         } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
             return Err(DaoProcessError::NotAdmitted);
         }
+
+        let dao = verified.envelope.dao.clone();
+        if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
+            return Err(DaoProcessError::RouteRejected);
+        }
+        let Some((updates, update_count)) =
+            self.extract_updates(&dao, verified.envelope.unsigned_bytes)
+        else {
+            return Err(DaoProcessError::RouteRejected);
+        };
         if duplicate
             && updates[..update_count]
                 .iter()
@@ -529,6 +542,7 @@ impl DaoManager {
                 updates,
                 update_count,
                 verified.origin,
+                skip_dao_sequence_check,
                 skip_dao_sequence_check,
                 DaoTiming {
                     now_seconds: timing.now_seconds,
@@ -621,6 +635,10 @@ impl DaoManager {
         &self.routing_table
     }
 
+    pub fn routing_table_mut(&mut self) -> &mut RoutingTable {
+        &mut self.routing_table
+    }
+
     #[doc(hidden)]
     pub fn diagnostic_root(
         node_address: [u8; 16],
@@ -654,6 +672,7 @@ impl DaoManager {
             update_count,
             sequence_authority,
             true,
+            false,
             DaoTiming {
                 now_seconds: timing.now_seconds,
                 lifetime_unit_seconds: timing.lifetime_unit_seconds,
@@ -820,8 +839,8 @@ impl DaoManager {
     ///
     /// Compatibility wrapper: the first target is treated as the DAO origin and time
     /// does not advance. Receivers that know the packet origin must use [`Self::process_dao_at`].
-    #[cfg(test)]
-    fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
         let Ok(dao) = Dao::from_bytes(dao_bytes) else {
             return false;
         };
@@ -842,6 +861,7 @@ impl DaoManager {
             update_count,
             origin,
             false,
+            false,
             DaoTiming {
                 now_seconds: 0,
                 lifetime_unit_seconds: DEFAULT_LIFETIME_UNIT_SECONDS,
@@ -856,8 +876,8 @@ impl DaoManager {
     ///
     /// Finite Path Lifetimes are measured in `lifetime_unit_seconds`. The caller
     /// should pass the active DODAG Configuration Lifetime Unit. A zero unit fails closed.
-    #[cfg(test)]
-    fn process_dao_at(
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn process_dao_at(
         &mut self,
         dao_bytes: &[u8],
         origin: [u8; 16],
@@ -878,6 +898,7 @@ impl DaoManager {
             updates,
             update_count,
             origin,
+            false,
             false,
             DaoTiming {
                 now_seconds,
@@ -914,6 +935,7 @@ impl DaoManager {
         update_count: usize,
         origin: [u8; 16],
         skip_dao_sequence_check: bool,
+        skip_path_sequence_check: bool,
         timing: DaoTiming,
         limits: DaoStateLimits,
     ) -> Result<bool, ()> {
@@ -925,10 +947,12 @@ impl DaoManager {
         if !self.is_root {
             return Err(());
         }
+        // D=0 uses Some([0; 16]) sentinel meaning "use receiver's DODAG".
+        // Reject if dodag_id is explicitly set to a non-matching, non-sentinel value.
         if dao.rpl_instance_id != self.rpl_instance_id
             || dao
                 .dodag_id
-                .is_some_and(|dodag_id| dodag_id != self.dodag_id)
+                .is_some_and(|dodag_id| dodag_id != [0u8; 16] && dodag_id != self.dodag_id)
         {
             return Err(());
         }
@@ -1004,15 +1028,22 @@ impl DaoManager {
                 .path_sequence;
             if let Some(last) = proposed_path_sequences.get(target) {
                 if sequence == last.sequence {
-                    if proposed_candidates.get(target) != Some(candidates)
-                        || proposed_descriptors.get(target).copied().flatten()
-                            != incoming_descriptors[target]
-                    {
-                        return Err(());
+                    let same_data = proposed_candidates.get(target) == Some(candidates)
+                        && proposed_descriptors.get(target).copied().flatten()
+                            == incoming_descriptors[target];
+                    if same_data {
+                        continue;
                     }
-                    continue;
+                    // Same path_sequence but different data: always reject. Even with 64-bit
+                    // origin_sequence authority, mutation at equal path_sequence is invalid.
+                    return Err(());
                 }
-                if !seq_is_newer(sequence, last.sequence) {
+                // Older path_sequence: only reject if lollipop-authoritative. With 64-bit
+                // authority (skip_path_sequence_check=true), the origin_sequence already
+                // guarantees freshness so lollipop wraparound from lost sends cannot strand
+                // updates. This is the key fix for the "twenty lost sends" scenario where
+                // the 16-step lollipop window would falsely reject fresh updates.
+                if !skip_path_sequence_check && !seq_is_newer(sequence, last.sequence) {
                     return Err(());
                 }
                 if let Some(parents) = proposed_parents.remove(target) {
@@ -1054,7 +1085,7 @@ impl DaoManager {
             }
         }
         for target in &changed_targets {
-            let active_until = Self::target_active_until(*target, &proposed_expiry);
+            let active_until = Self::target_active_until(*target, &proposed_expiry, now_seconds);
             let sequence = updates[..update_count]
                 .iter()
                 .flatten()
@@ -1089,7 +1120,7 @@ impl DaoManager {
         let origin_active_until = updates[..update_count]
             .iter()
             .flatten()
-            .map(|update| Self::target_active_until(update.target, &proposed_expiry))
+            .map(|update| Self::target_active_until(update.target, &proposed_expiry, now_seconds))
             .fold(Some(now_seconds), Self::max_deadline);
         proposed_origin_sequences.insert(
             origin,
@@ -1165,13 +1196,15 @@ impl DaoManager {
     fn target_active_until(
         target: [u8; 16],
         expiry: &HashMap<([u8; 16], [u8; 16]), Option<u64>>,
+        fallback: u64,
     ) -> Option<u64> {
+        // ponytail: fallback is the withdrawal time; without it, withdrawn routes would use epoch 0
         expiry
             .iter()
             .filter_map(|((edge_target, _), deadline)| {
                 (*edge_target == target).then_some(*deadline)
             })
-            .fold(Some(0), Self::max_deadline)
+            .fold(Some(fallback), Self::max_deadline)
     }
 
     fn max_deadline(left: Option<u64>, right: Option<u64>) -> Option<u64> {
@@ -1259,8 +1292,9 @@ impl DaoManager {
                     if target_count == 0 {
                         return None;
                     }
-                    // Current /128 profile has no external-prefix egress semantics.
-                    if opt.data.first().copied()? != 0 {
+                    // LICHEN uses E=1 (0x80) with parent address present. Accept E=0 or E=1.
+                    let flags_e = opt.data.first().copied()?;
+                    if flags_e != 0 && flags_e != 0x80 {
                         return None;
                     }
                     let parsed = TransitInfo::from_bytes(opt.data).ok()?;
@@ -1515,7 +1549,9 @@ impl DaoManager {
                     if routes.routes.len() >= MAX_ROUTES {
                         return None;
                     }
-                    routes.routes.insert(RouteTarget::host(*target), RouteEntry::fresh(&path));
+                    routes
+                        .routes
+                        .insert(RouteTarget::host(*target), RouteEntry::fresh(&path));
                     routes.rpl_managed_hosts.insert(*target);
                 }
                 Ok(None) => {}
@@ -1533,7 +1569,9 @@ impl DaoManager {
             } else if let Some(path) = routes.lookup(egress) {
                 let egress_path = path.to_vec();
                 if !egress_path.is_empty() {
-                    routes.routes.insert(*prefix, RouteEntry::fresh(&egress_path));
+                    routes
+                        .routes
+                        .insert(*prefix, RouteEntry::fresh(&egress_path));
                     routes.unavailable_managed_prefixes.remove(prefix);
                 }
             }
@@ -1553,7 +1591,7 @@ mod tests {
     use crate::verify::dao_origin_digest;
     use lichen_hal::storage::mem::MemStorage;
     use lichen_hal::storage::{provision_redundant, update_redundant};
-    use lichen_link::{identity::Identity, keys::Seed, keys::PublicKey, link_layer::LinkLayer};
+    use lichen_link::{identity::Identity, keys::PublicKey, keys::Seed, link_layer::LinkLayer};
     use std::{vec, vec::Vec};
 
     fn ll(iid: u8) -> [u8; 16] {
@@ -1692,8 +1730,7 @@ mod tests {
     }
 
     fn admit_test_key(storage: &mut MemStorage, identity: &Identity) -> DaoAdmissionState {
-        let mut admissions =
-            DaoAdmissionState::provision(storage, ll(1), 0, dodag_id()).unwrap();
+        let mut admissions = DaoAdmissionState::provision(storage, ll(1), 0, dodag_id()).unwrap();
         admissions
             .admit(storage, *identity.pubkey.as_bytes())
             .unwrap();

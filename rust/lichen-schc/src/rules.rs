@@ -23,38 +23,122 @@ const GLOBAL_PREFIX_TV: u128 = 0xfd00_0000_0000_0000_0000_0000_0000_0000;
 // IPv6 base fields
 const FD_IPV6_VERSION: FieldDescriptor =
     FieldDescriptor::new("IPv6.version", 4, Mo::Equal, Cda::NotSent, 6, None, None);
-const FD_IPV6_TRAFFIC_CLASS: FieldDescriptor =
-    FieldDescriptor::new("IPv6.traffic_class", 8, Mo::Equal, Cda::NotSent, 0, None, None);
-const FD_IPV6_FLOW_LABEL: FieldDescriptor =
-    FieldDescriptor::new("IPv6.flow_label", 20, Mo::Equal, Cda::NotSent, 0, None, None);
-const FD_IPV6_PAYLOAD_LENGTH: FieldDescriptor =
-    FieldDescriptor::new("IPv6.payload_length", 16, Mo::Ignore, Cda::Compute, 0, None, None);
-const FD_IPV6_HOP_LIMIT: FieldDescriptor =
-    FieldDescriptor::new("IPv6.hop_limit", 8, Mo::Ignore, Cda::ValueSent, 0, None, None);
+const FD_IPV6_TRAFFIC_CLASS: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.traffic_class",
+    8,
+    Mo::Equal,
+    Cda::NotSent,
+    0,
+    None,
+    None,
+);
+const FD_IPV6_FLOW_LABEL: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.flow_label",
+    20,
+    Mo::Equal,
+    Cda::NotSent,
+    0,
+    None,
+    None,
+);
+const FD_IPV6_PAYLOAD_LENGTH: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.payload_length",
+    16,
+    Mo::Ignore,
+    Cda::Compute,
+    0,
+    None,
+    None,
+);
+const FD_IPV6_HOP_LIMIT: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.hop_limit",
+    8,
+    Mo::Ignore,
+    Cda::ValueSent,
+    0,
+    None,
+    None,
+);
 
 // Link-local address fields
-const FD_IPV6_SRC_LL: FieldDescriptor =
-    FieldDescriptor::new("IPv6.src", 128, Mo::Msb, Cda::Lsb, LINK_LOCAL_PREFIX_TV, Some(64), None);
-const FD_IPV6_DST_LL: FieldDescriptor =
-    FieldDescriptor::new("IPv6.dst", 128, Mo::Msb, Cda::Lsb, LINK_LOCAL_PREFIX_TV, Some(64), None);
+const FD_IPV6_SRC_LL: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.src",
+    128,
+    Mo::Msb,
+    Cda::Lsb,
+    LINK_LOCAL_PREFIX_TV,
+    Some(64),
+    None,
+);
+const FD_IPV6_DST_LL: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.dst",
+    128,
+    Mo::Msb,
+    Cda::Lsb,
+    LINK_LOCAL_PREFIX_TV,
+    Some(64),
+    None,
+);
 
 // Global address fields
-const FD_IPV6_SRC_GLOBAL: FieldDescriptor =
-    FieldDescriptor::new("IPv6.src", 128, Mo::Msb, Cda::Lsb, GLOBAL_PREFIX_TV, Some(64), None);
-const FD_IPV6_DST_GLOBAL: FieldDescriptor =
-    FieldDescriptor::new("IPv6.dst", 128, Mo::Msb, Cda::Lsb, GLOBAL_PREFIX_TV, Some(64), None);
+const FD_IPV6_SRC_GLOBAL: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.src",
+    128,
+    Mo::Msb,
+    Cda::Lsb,
+    GLOBAL_PREFIX_TV,
+    Some(64),
+    None,
+);
+const FD_IPV6_DST_GLOBAL: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.dst",
+    128,
+    Mo::Msb,
+    Cda::Lsb,
+    GLOBAL_PREFIX_TV,
+    Some(64),
+    None,
+);
 
 // Next header fields
-const FD_NEXT_UDP: FieldDescriptor =
-    FieldDescriptor::new("IPv6.next_header", 8, Mo::Equal, Cda::NotSent, 17, None, None);
-const FD_NEXT_ICMPV6: FieldDescriptor =
-    FieldDescriptor::new("IPv6.next_header", 8, Mo::Equal, Cda::NotSent, 58, None, None);
+const FD_NEXT_UDP: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.next_header",
+    8,
+    Mo::Equal,
+    Cda::NotSent,
+    17,
+    None,
+    None,
+);
+const FD_NEXT_ICMPV6: FieldDescriptor = FieldDescriptor::new(
+    "IPv6.next_header",
+    8,
+    Mo::Equal,
+    Cda::NotSent,
+    58,
+    None,
+    None,
+);
 
 // UDP fields
-const FD_UDP_SRC_PORT: FieldDescriptor =
-    FieldDescriptor::new("UDP.src_port", 16, Mo::Ignore, Cda::ValueSent, 0, None, None);
-const FD_UDP_DST_PORT: FieldDescriptor =
-    FieldDescriptor::new("UDP.dst_port", 16, Mo::Ignore, Cda::ValueSent, 0, None, None);
+const FD_UDP_SRC_PORT: FieldDescriptor = FieldDescriptor::new(
+    "UDP.src_port",
+    16,
+    Mo::Ignore,
+    Cda::ValueSent,
+    0,
+    None,
+    None,
+);
+const FD_UDP_DST_PORT: FieldDescriptor = FieldDescriptor::new(
+    "UDP.dst_port",
+    16,
+    Mo::Ignore,
+    Cda::ValueSent,
+    0,
+    None,
+    None,
+);
 const FD_UDP_LENGTH: FieldDescriptor =
     FieldDescriptor::new("UDP.length", 16, Mo::Ignore, Cda::Compute, 0, None, None);
 const FD_UDP_CHECKSUM: FieldDescriptor =
@@ -77,12 +161,33 @@ const FD_ICMPV6_TYPE: FieldDescriptor =
     FieldDescriptor::new("ICMPv6.type", 8, Mo::Ignore, Cda::ValueSent, 0, None, None);
 const FD_ICMPV6_CODE_ZERO: FieldDescriptor =
     FieldDescriptor::new("ICMPv6.code", 8, Mo::Equal, Cda::NotSent, 0, None, None);
-const FD_ICMPV6_CHECKSUM: FieldDescriptor =
-    FieldDescriptor::new("ICMPv6.checksum", 16, Mo::Ignore, Cda::Compute, 0, None, None);
-const FD_ICMPV6_IDENTIFIER: FieldDescriptor =
-    FieldDescriptor::new("ICMPv6.identifier", 16, Mo::Ignore, Cda::ValueSent, 0, None, None);
-const FD_ICMPV6_SEQUENCE: FieldDescriptor =
-    FieldDescriptor::new("ICMPv6.sequence", 16, Mo::Ignore, Cda::ValueSent, 0, None, None);
+const FD_ICMPV6_CHECKSUM: FieldDescriptor = FieldDescriptor::new(
+    "ICMPv6.checksum",
+    16,
+    Mo::Ignore,
+    Cda::Compute,
+    0,
+    None,
+    None,
+);
+const FD_ICMPV6_IDENTIFIER: FieldDescriptor = FieldDescriptor::new(
+    "ICMPv6.identifier",
+    16,
+    Mo::Ignore,
+    Cda::ValueSent,
+    0,
+    None,
+    None,
+);
+const FD_ICMPV6_SEQUENCE: FieldDescriptor = FieldDescriptor::new(
+    "ICMPv6.sequence",
+    16,
+    Mo::Ignore,
+    Cda::ValueSent,
+    0,
+    None,
+    None,
+);
 
 // ICMPv6 RPL base fields
 const FD_ICMPV6_RPL_TYPE: FieldDescriptor =
@@ -107,8 +212,15 @@ const FD_RPL_FLAGS: FieldDescriptor =
     FieldDescriptor::new("RPL.flags", 8, Mo::Equal, Cda::NotSent, 0, None, None);
 const FD_RPL_RESERVED: FieldDescriptor =
     FieldDescriptor::new("RPL.reserved", 8, Mo::Equal, Cda::NotSent, 0, None, None);
-const FD_RPL_DODAGID: FieldDescriptor =
-    FieldDescriptor::new("RPL.dodagid", 128, Mo::Ignore, Cda::ValueSent, 0, None, None);
+const FD_RPL_DODAGID: FieldDescriptor = FieldDescriptor::new(
+    "RPL.dodagid",
+    128,
+    Mo::Ignore,
+    Cda::ValueSent,
+    0,
+    None,
+    None,
+);
 
 // RPL DAO fields
 const FD_RPL_KD_FLAGS: FieldDescriptor =
@@ -284,7 +396,8 @@ pub const GLOBAL_COAP_RULE: Rule = Rule::new(RULE_GLOBAL_COAP, GLOBAL_COAP_FIELD
 pub const ICMPV6_ECHO_RULE: Rule = Rule::new(RULE_ICMPV6_ECHO, ICMPV6_ECHO_FIELDS);
 pub const RPL_DIO_RULE: Rule = Rule::new(RULE_RPL_DIO, RPL_DIO_FIELDS);
 pub const RPL_DAO_RULE: Rule = Rule::new(RULE_RPL_DAO, RPL_DAO_FIELDS);
-pub const LINK_LOCAL_OSCORE_RULE: Rule = Rule::new(RULE_LINK_LOCAL_OSCORE, LINK_LOCAL_OSCORE_FIELDS);
+pub const LINK_LOCAL_OSCORE_RULE: Rule =
+    Rule::new(RULE_LINK_LOCAL_OSCORE, LINK_LOCAL_OSCORE_FIELDS);
 pub const GLOBAL_OSCORE_RULE: Rule = Rule::new(RULE_GLOBAL_OSCORE, GLOBAL_OSCORE_FIELDS);
 pub const MQTT_SN_RULE: Rule = Rule::new(RULE_MQTT_SN, MQTT_SN_FIELDS);
 pub const UNCOMPRESSED_RULE: Rule = Rule::new(RULE_UNCOMPRESSED, UNCOMPRESSED_FIELDS);

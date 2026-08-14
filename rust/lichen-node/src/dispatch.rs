@@ -475,9 +475,14 @@ mod tests {
 
         let pkt = CoapPacket::from_bytes(&resp_buf[..resp_len.unwrap()]).unwrap();
         assert_eq!(pkt.code(), MessageCode::CONTENT);
-        assert!(pkt.payload().starts_with(b"</sensors>"));
-        assert!(pkt.payload().contains(b"</deaddrop>"));
-        assert!(pkt.payload().contains(b"</confessions>"));
+        let payload = pkt.payload();
+        assert!(payload.starts_with(b"</sensors>"));
+        assert!(payload
+            .windows(b"</deaddrop>".len())
+            .any(|w| w == b"</deaddrop>"));
+        assert!(payload
+            .windows(b"</confessions>".len())
+            .any(|w| w == b"</confessions>"));
     }
 
     #[test]

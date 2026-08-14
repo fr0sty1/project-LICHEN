@@ -17,18 +17,37 @@
 
 // Re-export everything from the oscore crate
 pub use oscore::{
-    // Constants
-    ALG_AEAD, COAP_OPTION_OSCORE, ID_CONTEXT_CAPACITY, ID_MAX_LEN, KEY_LEN, NONCE_LEN,
-    OSCORE_OPTION_MAX_LEN, PIV_MAX_LEN, SALT_MAX_LEN, TAG_LEN, WINDOW_SIZE,
-    // Error types
-    BufferTooSmall, ContextStoreError, OscoreError, ReservationError,
-    // Core types
-    Context, ContextId, OscoreSeqNum, PendingResponse, RequestIdentifiers, ReservedSender,
-    SenderSequenceState, SenderStateStore,
     // Functions
-    request_identifiers, validate_option,
+    request_identifiers,
     // Modules
     seqnum,
+    validate_option,
+    // Error types
+    BufferTooSmall,
+    // Core types
+    Context,
+    ContextId,
+    ContextStoreError,
+    OscoreError,
+    OscoreSeqNum,
+    PendingResponse,
+    RequestIdentifiers,
+    ReservationError,
+    ReservedSender,
+    SenderSequenceState,
+    SenderStateStore,
+    // Constants
+    ALG_AEAD,
+    COAP_OPTION_OSCORE,
+    ID_CONTEXT_CAPACITY,
+    ID_MAX_LEN,
+    KEY_LEN,
+    NONCE_LEN,
+    OSCORE_OPTION_MAX_LEN,
+    PIV_MAX_LEN,
+    SALT_MAX_LEN,
+    TAG_LEN,
+    WINDOW_SIZE,
 };
 
 // Re-export EDHOC types when the feature is enabled

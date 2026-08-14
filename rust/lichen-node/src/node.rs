@@ -597,6 +597,11 @@ impl RplNode {
         &self.router
     }
 
+    /// Mutable access to the router. Only for testing.
+    pub fn router_mut(&mut self) -> &mut Router {
+        &mut self.router
+    }
+
     /// Check if this node is the DODAG root.
     pub fn is_root(&self) -> bool {
         self.router.is_root()
@@ -723,6 +728,8 @@ fn wrap_compressed_reply(ipv6: &[u8], reply: &mut [u8]) -> usize {
 mod tests {
     use super::*;
     use crate::port_dispatch::{AppProtocol, UdpDispatchError};
+    #[allow(unused_imports)]
+    use std::format;
 
     fn node(iid: u8) -> Node {
         Node::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, iid]))
@@ -824,9 +831,11 @@ mod tests {
             (0, RplEvent::DioReceived { inconsistent: true })
         );
         assert_eq!(child.router.rank(), 768);
+        // Default imin is 4096ms (2^12). With rand_offset=0, transmit time is
+        // now + imin/2 = WRAP + 100 + 2048 = WRAP + 2148.
         assert_eq!(
             child.router.poll_trickle(),
-            lichen_rpl::trickle::TrickleEvent::Transmit { at_ms: WRAP + 104 }
+            lichen_rpl::trickle::TrickleEvent::Transmit { at_ms: WRAP + 2148 }
         );
         let neighbor = child.router.neighbors().iter().next().unwrap();
         assert_eq!(neighbor.etx, 2.0);
@@ -922,6 +931,7 @@ mod tests {
         use crate::{announce::AnnounceProcessor, gradient::GradientTable};
         use lichen_hal::storage::mem::MemStorage;
         use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+        use lichen_rpl::routing::DaoAdmissionState;
 
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let parent_identity = Identity::from_seed(Seed::new([2; 32]));
@@ -938,6 +948,15 @@ mod tests {
         let mut root_storage = MemStorage::new();
         let (root_router, mut root_rx) =
             Router::provision_root(&mut root_storage, root_addr).unwrap();
+        let mut dao_admission =
+            DaoAdmissionState::provision(&mut root_storage, root_addr, RPL_INSTANCE_ID, root_addr)
+                .unwrap();
+        dao_admission
+            .admit(&mut root_storage, *parent_identity.pubkey.as_bytes())
+            .unwrap();
+        dao_admission
+            .admit(&mut root_storage, *leaf_identity.pubkey.as_bytes())
+            .unwrap();
         let mut root = RplNode {
             node: Node::new(root_id),
             router: root_router,
@@ -1003,7 +1022,7 @@ mod tests {
         let mut output = [0u8; 260];
         assert_eq!(
             root.handle_frame_rpl(&parent_packet, parent_identity.iid, &mut output, 0),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert_eq!(
             root.handle_dao(
@@ -1014,6 +1033,7 @@ mod tests {
                 &mut root_rx,
                 &mut root_storage,
                 0,
+                &dao_admission,
             ),
             DaoHandlingOutcome::Applied
         );
@@ -1072,7 +1092,7 @@ mod tests {
                 &mut [0u8; 260],
                 0,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route(&leaf_addr).is_none());
 
@@ -1087,6 +1107,7 @@ mod tests {
                 &mut root_rx,
                 &mut root_storage,
                 0,
+                &dao_admission,
             ),
             DaoHandlingOutcome::BadSignature
         );
@@ -1100,6 +1121,7 @@ mod tests {
                 &mut root_rx,
                 &mut root_storage,
                 0,
+                &dao_admission,
             ),
             DaoHandlingOutcome::Applied
         );
@@ -1116,6 +1138,7 @@ mod tests {
                 &mut root_rx,
                 &mut root_storage,
                 0,
+                &dao_admission,
             ),
             DaoHandlingOutcome::Duplicate
         );
@@ -1131,6 +1154,7 @@ mod tests {
         use crate::{announce::AnnounceProcessor, gradient::GradientTable};
         use lichen_hal::storage::mem::MemStorage;
         use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+        use lichen_rpl::routing::DaoAdmissionState;
 
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let root_addr = ula(root_id);
@@ -1139,6 +1163,12 @@ mod tests {
         origin[8..].copy_from_slice(&identity.iid);
         let mut storage = MemStorage::new();
         let (router, mut rx_state) = Router::provision_root(&mut storage, root_addr).unwrap();
+        let mut dao_admission =
+            DaoAdmissionState::provision(&mut storage, root_addr, RPL_INSTANCE_ID, root_addr)
+                .unwrap();
+        dao_admission
+            .admit(&mut storage, *identity.pubkey.as_bytes())
+            .unwrap();
         let mut root = RplNode {
             node: Node::new(root_id),
             router,
@@ -1177,6 +1207,7 @@ mod tests {
                 &mut rx_state,
                 &mut storage,
                 100_000,
+                &dao_admission,
             ),
             DaoHandlingOutcome::Applied
         );
@@ -1195,6 +1226,7 @@ mod tests {
                 &mut rx_state,
                 &mut storage,
                 101_000,
+                &dao_admission,
             ),
             DaoHandlingOutcome::RouteRejected
         );
@@ -1228,7 +1260,7 @@ mod tests {
                 &mut [0u8; 260],
                 1_999,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route_at(&first_addr, 2_999).is_none());
         assert_eq!(
@@ -1238,7 +1270,7 @@ mod tests {
                 &mut [0u8; 260],
                 2_999,
             ),
-            (0, RplEvent::DaoReceived { route_updated: false })
+            (0, RplEvent::DaoReceived)
         );
         assert!(root.router.lookup_route(&first_addr).is_none());
         assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());
@@ -1483,13 +1515,13 @@ mod tests {
         assert_ne!(dao, RplEvent::None);
 
         // Exercises Clone/Copy
-        let copied = dao_up; // Copy
-        assert_eq!(copied, dao_up);
-        let cloned = dao_up.clone();
-        assert_eq!(cloned, dao_up);
+        let copied = dao; // Copy
+        assert_eq!(copied, dao);
+        let cloned = dao.clone();
+        assert_eq!(cloned, dao);
 
         // Exercises Debug
         let _ = format!("{:?}", dio_inc);
-        let _ = format!("{:?}", dao_up);
+        let _ = format!("{:?}", dao);
     }
 }

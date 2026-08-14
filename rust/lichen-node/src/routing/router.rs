@@ -7,21 +7,20 @@ use lichen_core::constants::RPL_INSTANCE_ID;
 use lichen_hal::NonVolatile;
 use lichen_link::{identity::iid_from_pubkey, link_layer::LinkLayer};
 use lichen_rpl::dodag::DioOutcome;
-use lichen_rpl::message::{Dao, DodagConfig, Dio, OptionIter, TransitInfo, DODAG_CONFIG_DATA_LEN};
+use lichen_rpl::message::{Dao, Dio, DodagConfig, OptionIter, TransitInfo, DODAG_CONFIG_DATA_LEN};
 use lichen_rpl::trickle::TrickleTimer;
 
 use super::{
-    DaoAdmissionState, DaoManager, DaoProcessError, DaoProcessOutcome, DaoProcessTiming,
-    DaoTxError, DaoTxState, DaoPersistentOpenError, DaoProvisionError, DaoRxState,
-    SignatureVerifiedDao, dao_origin_digest, DAO_ORIGIN_SIGNATURE_LEN, DaoOriginSignature,
-    OPT_DODAG_CONFIG,
+    dao_origin_digest, DaoAdmissionState, DaoManager, DaoOriginSignature, DaoPersistentOpenError,
+    DaoProcessError, DaoProcessOutcome, DaoProcessTiming, DaoProvisionError, DaoRxState,
+    DaoTxError, DaoTxState, SignatureVerifiedDao, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG,
 };
 pub use lichen_rpl::dodag::DodagState;
 
+use super::gpsr::{haversine, is_valid_coords};
 use super::neighbor::{
     GeoCoords, LinkEtx, NeighborTable, TrickleSafeLivenessPolicy, MAX_NEIGHBORS,
 };
-use super::gpsr::{haversine, is_valid_coords};
 
 const NON_STORING_MOP: u8 = 1;
 const MRHOF_OCP: u16 = 1;
@@ -61,7 +60,7 @@ fn version_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
     }
 }
 
-fn sign_dao(
+pub(crate) fn sign_dao(
     unsigned_dao: &[u8],
     origin: [u8; 16],
     active_dodag_id: [u8; 16],
@@ -139,6 +138,8 @@ pub struct Router {
     pub(crate) test_rx_state: Option<DaoRxState>,
     #[cfg(test)]
     pub(crate) test_origin_sequence: u64,
+    #[cfg(test)]
+    pub(crate) test_dao_admission: Option<DaoAdmissionState>,
 }
 
 impl Router {
@@ -160,6 +161,8 @@ impl Router {
             test_rx_state: None,
             #[cfg(test)]
             test_origin_sequence: 0,
+            #[cfg(test)]
+            test_dao_admission: None,
         }
     }
 
@@ -198,6 +201,8 @@ impl Router {
             test_rx_state: None,
             #[cfg(test)]
             test_origin_sequence: 0,
+            #[cfg(test)]
+            test_dao_admission: None,
         })
     }
 
@@ -237,9 +242,13 @@ impl Router {
         let mut storage = lichen_hal::storage::mem::MemStorage::new();
         let (manager, state) =
             DaoManager::provision_root(&mut storage, node_addr, RPL_INSTANCE_ID, node_addr).ok()?;
+        let dao_admission =
+            DaoAdmissionState::provision(&mut storage, node_addr, RPL_INSTANCE_ID, node_addr)
+                .ok()?;
         let mut router = Self::root_with_manager(node_addr, config, manager)?;
         router.test_storage = storage;
         router.test_rx_state = Some(state);
+        router.test_dao_admission = Some(dao_admission);
         Some(router)
     }
 
@@ -401,6 +410,13 @@ impl Router {
             DioOutcome::Removed | DioOutcome::Rejected => return DioProcessOutcome::Rejected,
         }
 
+        // A DIO that proposes a config change is only trustworthy if the sender
+        // would be a valid parent under that config. If the sender was pruned as
+        // inadmissible, reject the entire DIO including the config update.
+        if config_changed && !staged_dodag.has_parent(&sender_addr) {
+            return DioProcessOutcome::Rejected;
+        }
+
         self.dodag = staged_dodag;
         self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
@@ -482,6 +498,12 @@ impl Router {
                 return false;
             };
             let state = self.test_rx_state.as_mut().expect("test root has RX state");
+            let admission = self
+                .test_dao_admission
+                .as_mut()
+                .expect("test root has admission state");
+            // Auto-admit test identity pubkeys so process_dao_at_times works as expected
+            let _ = admission.admit(&mut self.test_storage, *identity.pubkey.as_bytes());
             self.dao_manager
                 .process_signature_verified_with_lollipop(
                     &verified,
@@ -493,6 +515,7 @@ impl Router {
                         lifetime_unit_seconds: u64::from(self.dodag_config.lifetime_unit),
                         max_deadline_seconds: u64::MAX / 1_000,
                     },
+                    admission,
                 )
                 .is_ok()
         }
@@ -662,6 +685,11 @@ impl Router {
         self.lookup_route(dst)
     }
 
+    /// Inject a route directly into the routing table (for testing).
+    pub fn inject_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) {
+        self.dao_manager.routing_table_mut().add_route(target, path);
+    }
+
     /// Check trickle timer and return pending event.
     pub fn poll_trickle(&self) -> lichen_rpl::trickle::TrickleEvent {
         self.trickle.next_event()
@@ -764,16 +792,11 @@ impl Router {
         let _heard_consistent = self.trickle.counter;
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
-        self.neighbors.prune_with_removed(
-            policy,
-            now_ms,
-            max_age_ms,
-            0,
-            |addr| {
+        self.neighbors
+            .prune_with_removed(policy, now_ms, max_age_ms, 0, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
-            },
-        );
+            });
         if removed_len != 0 {
             self.dodag.remove_parents(&removed[..removed_len]);
         }
@@ -873,11 +896,20 @@ impl Router {
 
         best_neighbor
     }
+
+    /// Get DAO origin high water marks for testing.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn dao_origin_keys(&self) -> Vec<super::DaoOriginHighWater> {
+        self.dao_manager.origin_high_water()
+    }
 }
 
 // Helper functions for DAO processing
-pub(crate) fn dao_parents_for_source(dao_bytes: &[u8], packet_source: &[u8; 16]) -> Option<Vec<[u8; 16]>> {
-    use lichen_rpl::message::{OPT_RPL_TARGET, OPT_TRANSIT_INFO, RplTarget};
+pub(crate) fn dao_parents_for_source(
+    dao_bytes: &[u8],
+    packet_source: &[u8; 16],
+) -> Option<Vec<[u8; 16]>> {
+    use lichen_rpl::message::{RplTarget, OPT_RPL_TARGET, OPT_TRANSIT_INFO};
 
     let _dao = Dao::from_bytes(dao_bytes).ok()?;
     let mut parents = Vec::new();

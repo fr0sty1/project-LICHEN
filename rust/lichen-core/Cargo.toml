@@ -21,5 +21,6 @@ lichen-ipv6 = { path = "../lichen-ipv6", default-features = false }
 sha2 = { version = "0.11.0", default-features = false, features = ["zeroize"] }
 
 [dev-dependencies]
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 lichen-core = { path = ".", features = ["std"] }

@@ -4,17 +4,19 @@
 
 use std::fmt;
 
-use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
-use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
+use lichen_core::constants::{L2_DISPATCH_SCHC, RPL_ICMPV6_TYPE, SCHC_MAX_DECOMPRESSED};
+use lichen_core::icmpv6::hdr_field;
+use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
 use lichen_hal::loopback::LoopbackRadio;
 use lichen_hal::storage::mem::MemStorage;
+use lichen_ipv6::{icmpv6_checksum, Addr, Ipv6Header};
 use lichen_link::identity::Identity;
 use lichen_node::{
-    announce::AnnounceProcessor, gradient::GradientTable, rpl_stack::RplStack, secure::SecureStack,
-    stack::add_rpl_source_route, RplEvent,
+    announce::AnnounceProcessor, gradient::GradientTable, rpl_code, rpl_stack::RplStack,
+    secure::SecureStack, stack::add_rpl_source_route, RplEvent,
 };
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
@@ -41,8 +43,7 @@ impl Gateway {
         let root_addr = identity_pubkey_link_local(&identity);
         let dodag_id = root_addr;
         let (radio, _peer) = LoopbackRadio::pair();
-        let stack = SecureStack::from_radio(radio, identity, 128, 0)
-            .expect("valid epoch >= 128");
+        let stack = SecureStack::from_radio(radio, identity, 128, 0).expect("valid epoch >= 128");
         let announces =
             AnnounceProcessor::new(GradientTable::new(64), dodag_id[..8].try_into().unwrap());
         let storage = MemStorage::new();
@@ -140,7 +141,17 @@ impl Gateway {
             return true;
         }
 
-        // Exclude magic discard prefix
+        // ULA (fd00::/8): always local mesh
+        if dst[0] == 0xfd {
+            return true;
+        }
+
+        // GUA (2000::/3): never local mesh — route to upstream
+        if dst[0] & 0xe0 == 0x20 {
+            return false;
+        }
+
+        // Exclude magic discard prefix (NAT64 well-known)
         if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
             return false;
         }
@@ -177,6 +188,17 @@ impl Gateway {
                 .rpl_stack
                 .complete_dao_from_frame(frame, sender_iid, now_ms);
         }
+
+        // For DIS messages, handle_frame_rpl signals the event but does not build
+        // a reply. The gateway must explicitly build and return a DIO.
+        if matches!(event, RplEvent::DisReceived) {
+            if let Some(dis_source) = extract_source_addr(frame) {
+                if let Some(dio_reply) = self.build_dio_reply(&dis_source) {
+                    return (Some(dio_reply), event);
+                }
+            }
+        }
+
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
             Some(reply)
@@ -184,6 +206,35 @@ impl Gateway {
             None
         };
         (reply_opt, event)
+    }
+
+    /// Build a SCHC-compressed DIO reply packet destined to the given address.
+    fn build_dio_reply(&self, destination: &[u8; 16]) -> Option<Vec<u8>> {
+        // Build DIO body
+        let mut dio_body = [0u8; 64];
+        let dio_len = self.rpl_stack.rpl_node().build_dio(&mut dio_body);
+        if dio_len == 0 {
+            return None;
+        }
+
+        // Build IPv6+ICMPv6 packet
+        let root_addr = self.rpl_stack.rpl_node().node().node_id.link_local_addr().0;
+        let ipv6 =
+            build_rpl_ipv6_packet(&root_addr, destination, rpl_code::DIO, &dio_body[..dio_len])?;
+
+        // SCHC compress
+        let mut out = vec![0u8; ipv6.len() + 3];
+        out[0] = L2_DISPATCH_SCHC;
+        match compress(&ipv6, &mut out[1..]) {
+            Ok(n) => {
+                out.truncate(n + 1);
+                Some(out)
+            }
+            Err(e) => {
+                warn!("SCHC compress DIO reply: {e:?}");
+                None
+            }
+        }
     }
 
     /// Run periodic RPL maintenance (prune_neighbors, DAO expiry) using
@@ -310,6 +361,44 @@ fn extract_sender_iid(frame: &[u8]) -> [u8; 8] {
     iid
 }
 
+/// Extract the full IPv6 source address from an SCHC-compressed frame.
+fn extract_source_addr(frame: &[u8]) -> Option<[u8; 16]> {
+    if classify_l2_payload(frame) != L2PayloadKind::Schc {
+        return None;
+    }
+    let mut buf = [0u8; 256];
+    let n = decompress(l2_payload_body(frame), &mut buf).ok()?;
+    if n < IPV6_HEADER_LEN || buf[0] >> 4 != 6 {
+        return None;
+    }
+    let mut addr = [0u8; 16];
+    addr.copy_from_slice(&buf[field::SRC_OFFSET..field::DST_OFFSET]);
+    Some(addr)
+}
+
+/// Build an IPv6+ICMPv6 RPL control packet.
+fn build_rpl_ipv6_packet(
+    source: &[u8; 16],
+    destination: &[u8; 16],
+    code: u8,
+    body: &[u8],
+) -> Option<Vec<u8>> {
+    let payload_len = hdr_field::BODY_OFFSET.checked_add(body.len())?;
+    let payload_len = u16::try_from(payload_len).ok()?;
+    let mut packet = vec![0u8; IPV6_HEADER_LEN + usize::from(payload_len)];
+    let src = Addr(*source);
+    let dst = Addr(*destination);
+    Ipv6Header::new(next_header::ICMPV6, src, dst)
+        .write_to(payload_len, &mut packet[..IPV6_HEADER_LEN])
+        .ok()?;
+    packet[IPV6_HEADER_LEN] = RPL_ICMPV6_TYPE;
+    packet[IPV6_HEADER_LEN + 1] = code;
+    packet[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].copy_from_slice(body);
+    let checksum = icmpv6_checksum(&src, &dst, &packet[IPV6_HEADER_LEN..]).ok()?;
+    packet[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&checksum.to_be_bytes());
+    Some(packet)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,6 +406,7 @@ mod tests {
         addr::{Ipv6Addr, NodeId},
         icmpv6,
     };
+    use lichen_link::keys::Seed;
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
@@ -421,15 +511,15 @@ mod tests {
 
     #[test]
     fn dao_route_makes_ygg_address_local() {
-        let gw = test_gateway();
+        let mut gw = test_gateway();
         let node_addr = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x42];
 
-        // No route yet — not local
-        assert!(!gw.rpl_stack.rpl_node().router().is_root());
+        // Gateway is a root; no route yet — not local
+        assert!(gw.rpl_stack.rpl_node().router().is_root());
         assert!(!gw.is_local_mesh(&node_addr));
 
         // Inject a DAO route
-        let root_addr = gw.rpl_stack.rpl_node().node().link_local_addr().0;
+        let root_addr = gw.rpl_stack.rpl_node().node().node_id.link_local_addr().0;
         let path = [root_addr, node_addr];
         gw.rpl_stack
             .rpl_node_mut()
@@ -443,7 +533,7 @@ mod tests {
     #[test]
     fn root_originated_downward_srh() {
         let mut gw = test_gateway();
-        let root_addr = gw.rpl_stack.rpl_node().node().link_local_addr().0;
+        let root_addr = gw.rpl_stack.rpl_node().node().node_id.link_local_addr().0;
         let node_addr = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x42];
 
         // Inject DAO route: root → node_addr (single hop)

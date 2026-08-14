@@ -226,7 +226,7 @@ impl ReplayProtector {
         ReplayProtector {
             peers: HashMap::new(),
             access_counter: 0,
-            max_peers: 32,
+            max_peers: 64,
         }
     }
 
@@ -349,7 +349,7 @@ impl LinkLayer {
             replay: ReplayProtector::new(),
             pinned: HashMap::new(),
             access_counter: 0,
-            max_peers: 32,
+            max_peers: 64,
         }
     }
 
@@ -492,7 +492,7 @@ impl LinkLayer {
             epoch,
             seqnum,
             dst_addr,
-            &[],  // signer_iid not yet implemented
+            &[], // signer_iid not yet implemented
             inner_payload,
             &self.identity.privkey,
             &self.identity.pubkey,
@@ -538,7 +538,7 @@ impl LinkLayer {
                     frame.epoch,
                     frame.seqnum,
                     frame.dst_addr,
-                    &[],  // signer_iid not yet extracted from frame
+                    &[], // signer_iid not yet extracted from frame
                     frame.payload,
                     frame.mic,
                     &p.identity.pubkey,

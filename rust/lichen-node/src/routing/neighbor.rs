@@ -90,7 +90,7 @@ impl NeighborTable {
         rssi: i8,
         now_ms: u64,
         coords: Option<GeoCoords>,
-        _protected: Option<[u8; 16]>,
+        protected: Option<[u8; 16]>,
     ) -> (usize, Option<[u8; 16]>) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
@@ -122,14 +122,19 @@ impl NeighborTable {
             });
             return (i, None);
         }
+        // Evict oldest neighbor, but never evict the protected address (e.g., preferred parent)
         let oldest = self
             .entries
             .iter()
             .enumerate()
-            .filter_map(|(i, e)| e.as_ref().map(|n| (i, n.last_seen_ms)))
-            .max_by_key(|(i, t)| (now_ms.wrapping_sub(*t), MAX_NEIGHBORS - *i))
-            .map(|(i, _)| i)
-            .unwrap_or(0);
+            .filter_map(|(i, e)| e.as_ref().map(|n| (i, n)))
+            .filter(|(_, n)| protected.map_or(true, |p| n.addr != p))
+            .max_by_key(|(i, n)| (now_ms.wrapping_sub(n.last_seen_ms), MAX_NEIGHBORS - *i))
+            .map(|(i, _)| i);
+        let Some(oldest) = oldest else {
+            // All slots are protected or empty; cannot evict
+            return (0, None);
+        };
         let evicted = self.entries[oldest].as_ref().map(|neighbor| neighbor.addr);
         self.entries[oldest] = Some(Neighbor {
             addr: *addr,

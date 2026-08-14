@@ -29,6 +29,7 @@ struct NodeAddressVector {
     iid: String,
     human_address: String,
     #[allow(dead_code)]
+    #[serde(default)]
     description: String,
 }
 

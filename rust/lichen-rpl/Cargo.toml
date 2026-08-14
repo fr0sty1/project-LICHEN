@@ -8,6 +8,8 @@ description = "RPL routing protocol engine for LICHEN (RFC 6550, Non-Storing Mod
 [features]
 default = []
 std = ["dep:lichen-hal", "lichen-hal/std", "dep:lichen-link", "lichen-link/std", "lichen-link/schnorr", "dep:sha2"]
+# Expose test-only methods (process_dao, etc.) for integration tests
+test-helpers = []
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt"]
 log = ["dep:log", "lichen-core/log"]
@@ -24,5 +26,5 @@ log = { version = "0.4", default-features = false, optional = true }
 
 [dev-dependencies]
 # Integration tests need std for HashMap-based state machines
-lichen-rpl = { path = ".", features = ["std"] }
+lichen-rpl = { path = ".", features = ["std", "test-helpers"] }
 serde_json = "1.0"

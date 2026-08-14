@@ -12,7 +12,6 @@ use lichen_rpl::routing::{
     DaoTxState,
 };
 
-
 use crate::announce::AnnounceProcessor;
 use crate::node::{Node, RplNode};
 use crate::routing::{DaoRxState, Router};

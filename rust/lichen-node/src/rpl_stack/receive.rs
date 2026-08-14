@@ -21,17 +21,17 @@ use lichen_schc::codec;
 
 use crate::announce::AnnounceRejectReason;
 use crate::node::{
-    claims_rpl_ipv6, is_rpl_ipv6, rpl_code, valid_ipv6_envelope, valid_rpl_ipv6, DaoHandlingOutcome,
-    RplEvent,
+    claims_rpl_ipv6, is_rpl_ipv6, rpl_code, valid_ipv6_envelope, valid_rpl_ipv6,
+    DaoHandlingOutcome, RplEvent,
 };
 use crate::secure::secure_datagram_from_received;
 use crate::stack::{ReceivedIpv6, RxError, MAX_FRAME_SIZE};
 
 use super::error::RplReceiveError;
 use super::util::{
-    advance_rpl_source_route, bootstrap_announce_peer, dao_parts,
-    dio_dis_destination_is_allowed, eui64_link_local, ipv6_eui64, link_local_from_iid,
-    multicast_dis_jitter, routing_announce, rpl_ipv6_multicast_is_allowed, wire_is_for_local,
+    advance_rpl_source_route, bootstrap_announce_peer, dao_parts, dio_dis_destination_is_allowed,
+    eui64_link_local, ipv6_eui64, link_local_from_iid, multicast_dis_jitter, routing_announce,
+    rpl_ipv6_multicast_is_allowed, wire_is_for_local,
 };
 use super::{RplReceiveOutcome, RplRole, RplStack};
 
@@ -152,9 +152,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                         let next_hop = self
                             .route_for(header.dst.0, now_ms, from_parent)
                             .map(|route| route.next_hop)
-                            .ok_or(RplReceiveError::Transmit(
-                                crate::stack::TxError::NoRoute,
-                            ))?;
+                            .ok_or(RplReceiveError::Transmit(crate::stack::TxError::NoRoute))?;
                         if next_hop == ipv6_eui64(link_local_from_iid(frame.sender.iid)) {
                             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
                         }

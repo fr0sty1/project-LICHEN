@@ -13,19 +13,22 @@ use clap::Parser;
 use lichen_core::{
     addr::NodeId,
     ipv6::{field, IPV6_HEADER_LEN},
-    tx_queue::{TxPriority, TxQueue, TxQueueError, DEADLINE_CONTROL_MS, DEADLINE_ROUTING_MS, DEADLINE_USER_MS},
+    tx_queue::{
+        TxPriority, TxQueue, TxQueueError, DEADLINE_CONTROL_MS, DEADLINE_ROUTING_MS,
+        DEADLINE_USER_MS,
+    },
 };
 use lichen_gateway::{
     config::Config,
     slip::{SlipFramer, SLIP_TX_BUF_SIZE},
     Gateway,
 };
-use lichen_node::RplEvent;
 use lichen_hal::storage::fs::FileStorage;
 use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
 use lichen_hal::{Concentrator, RadioConfig, Sx1302Concentrator};
 use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
+use lichen_node::RplEvent;
 use lichen_sim::SimClient;
 
 use std::{
@@ -145,7 +148,11 @@ async fn main() {
         std::process::exit(1);
     }
     let epoch = load_epoch(&storage).ok().flatten().unwrap_or(128);
-    let safe_epoch = if epoch < 128 { 128 } else { epoch.wrapping_add(1) };
+    let safe_epoch = if epoch < 128 {
+        128
+    } else {
+        epoch.wrapping_add(1)
+    };
     let _ = save_epoch(&mut storage, safe_epoch);
 
     let use_sim = use_sim_mode && !use_hat;
@@ -240,7 +247,11 @@ fn push_tx_queue(tx_queue: &Mutex<TxQueue>, priority: TxPriority, data: &[u8], n
         TxPriority::Routing => now_ms + DEADLINE_ROUTING_MS,
         TxPriority::User | TxPriority::Bulk => now_ms + DEADLINE_USER_MS,
     };
-    match tx_queue.lock().unwrap().push(priority, deadline, now_ms, data) {
+    match tx_queue
+        .lock()
+        .unwrap()
+        .push(priority, deadline, now_ms, data)
+    {
         Ok(()) => {
             let stats = tx_queue.lock().unwrap().stats();
             debug!(depth = stats.depth, "TX queued");

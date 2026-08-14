@@ -1,5 +1,5 @@
 fn main() {
-    use lichen_schc::fragment::{Fragment, TILE_SIZE, MIC_LENGTH};
+    use lichen_schc::fragment::{Fragment, MIC_LENGTH, TILE_SIZE};
     let payload = [0x22u8; TILE_SIZE];
     let fragment = Fragment {
         rule_id: 0x78,

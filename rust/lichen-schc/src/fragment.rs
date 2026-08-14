@@ -269,9 +269,7 @@ impl Ack {
                 out[1] |= 1 << (5 - i);
             }
         }
-        for i in first_byte_bits..6 {
-            out[1] |= 1 << (5 - i);
-        }
+        // RFC 8724 section 8.4.2.3: padding bits are 0 (already set by fill(0))
         for i in 0..remaining {
             if self.bitmap & (1u64 << (56 - i)) != 0 {
                 let byte_idx = 2 + i / 8;
@@ -279,13 +277,7 @@ impl Ack {
                 out[byte_idx] |= 1 << bit_idx;
             }
         }
-        let last_byte_pad = remaining % 8;
-        if last_byte_pad != 0 {
-            let last_idx = 2 + remaining / 8;
-            for j in last_byte_pad..8 {
-                out[last_idx] |= 1 << (7 - j);
-            }
-        }
+        // RFC 8724 section 8.4.2.3: padding bits are 0 (already set by fill(0))
         Ok(needed)
     }
 
@@ -962,7 +954,19 @@ impl<'a> FragmentReceiver<'a> {
             self.done = true;
             result
         } else {
-            self.respond_with_mic_failure(Ack::new(rule_id, self.all1_window, bitmap | 1, false))
+            // RFC 8724 section 8.4.2.3: When MIC fails, indicate whether All-1 needs
+            // retransmission. If all expected regular fragments (per trailing_zeros)
+            // are present AND contiguous from bit 62, the All-1 payload/MIC is likely
+            // corrupt; request its retransmission (bit 0 = 0). Otherwise, fragments
+            // might be missing; mark All-1 as received (bit 0 = 1) so the sender only
+            // retransmits the missing regular fragments.
+            let full_window = bitmap == required && bitmap.count_ones() == regular_count as u32;
+            let ack_bitmap = if full_window && regular_count > 1 {
+                bitmap
+            } else {
+                bitmap | 1
+            };
+            self.respond_with_mic_failure(Ack::new(rule_id, self.all1_window, ack_bitmap, false))
         }
     }
 

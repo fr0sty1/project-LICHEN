@@ -1106,6 +1106,12 @@ fn secure_transport(ipv6: &[u8], header: &Ipv6Header) -> Result<(u8, usize, usiz
     if segments_left > address_count {
         return Err(RxError::SchcDecompress);
     }
+    // SECURITY: RFC 6554 + LICHEN spec §5 line 418: Segments Left MUST be
+    // strictly less than Hop Limit. If equal or greater, the packet cannot
+    // complete the source route before TTL expiry.
+    if segments_left > 0 && segments_left >= usize::from(header.hop_limit) {
+        return Err(RxError::SchcDecompress);
+    }
     let final_destination = if segments_left == 0 {
         header.dst
     } else {
@@ -1131,7 +1137,7 @@ mod tests {
     use super::*;
     use core::convert::Infallible;
     use lichen_hal::loopback::LoopbackRadio;
-    use lichen_hal::{RadioConfig, RxPacket};
+    use lichen_hal::{ChannelConfig, RadioConfig, RxPacket};
     use lichen_link::identity::{Identity, PeerIdentity};
     use lichen_link::Seed;
     use lichen_oscore::{Context as OscoreContext, ContextId, SenderSequenceState};
@@ -1227,6 +1233,13 @@ mod tests {
         }
 
         fn configure(&mut self, _config: &RadioConfig) {}
+
+        async fn configure_channels(
+            &mut self,
+            _channels: &[ChannelConfig],
+        ) -> Result<(), Self::Error> {
+            Ok(())
+        }
     }
 
     impl Radio for SwitchableRadio {
@@ -1254,6 +1267,13 @@ mod tests {
         }
 
         fn configure(&mut self, _config: &RadioConfig) {}
+
+        async fn configure_channels(
+            &mut self,
+            _channels: &[ChannelConfig],
+        ) -> Result<(), Self::Error> {
+            Ok(())
+        }
     }
 
     #[test]
@@ -1304,8 +1324,10 @@ mod tests {
             events: Arc::clone(&events),
             fail: false,
         };
-        let context =
-            OscoreContext::load_existing(&[0xab; 16], None, None, &[0], &[1], &mut store).unwrap();
+        let context = OscoreContext::new(&[0xab; 16], None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut store)
+            .unwrap();
         secure
             .restore_context(bob_iid, context, &mut store)
             .unwrap();
@@ -1406,24 +1428,16 @@ mod tests {
             events: Arc::new(Mutex::new(Vec::new())),
             fail: false,
         };
-        let alice_ctx = OscoreContext::load_existing(
-            &master_secret,
-            None,
-            None,
-            &alice_iid[..1],
-            &bob_iid[..1],
-            &mut alice_store,
-        )
-        .unwrap();
-        let bob_ctx = OscoreContext::load_existing(
-            &master_secret,
-            None,
-            None,
-            &bob_iid[..1],
-            &alice_iid[..1],
-            &mut bob_store,
-        )
-        .unwrap();
+        let alice_ctx =
+            OscoreContext::new(&master_secret, None, None, &alice_iid[..1], &bob_iid[..1])
+                .unwrap()
+                .restore_existing(&mut alice_store)
+                .unwrap();
+        let bob_ctx =
+            OscoreContext::new(&master_secret, None, None, &bob_iid[..1], &alice_iid[..1])
+                .unwrap()
+                .restore_existing(&mut bob_store)
+                .unwrap();
 
         alice
             .restore_context(bob_iid, alice_ctx, &mut alice_store)
@@ -1575,7 +1589,7 @@ mod tests {
         ipv6[7] = 64;
         let received = ReceivedIpv6 {
             ipv6,
-            sender_iid: NodeId([0x11; 8]),
+            sender_iid: [0x11; 8],
             rssi: None,
             snr: None,
         };
@@ -1609,7 +1623,7 @@ mod tests {
         ipv6[IPV6_HEADER_LEN + UDP_HEADER_LEN..].copy_from_slice(&coap);
         let received = ReceivedIpv6 {
             ipv6,
-            sender_iid: NodeId([0x11; 8]),
+            sender_iid: [0x11; 8],
             rssi: None,
             snr: None,
         };
@@ -1640,14 +1654,15 @@ mod tests {
             events,
             fail: false,
         };
-        let client = OscoreContext::load_existing(
+        let client = OscoreContext::new(
             &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
             Some(&[0x9e, 0x7c, 0xa9, 0x22, 0x23, 0x78, 0x63, 0x40]),
             None,
             &[],
             &[1],
-            &mut store,
         )
+        .unwrap()
+        .restore_existing(&mut store)
         .unwrap();
         let context_id = client.context_id();
         secure
@@ -1802,12 +1817,14 @@ mod tests {
             fail: false,
         };
         let secret = [0x37; 16];
-        let client =
-            OscoreContext::load_existing(&secret, None, None, &[0], &[1], &mut client_store)
-                .unwrap();
-        let mut server =
-            OscoreContext::load_existing(&secret, None, None, &[1], &[0], &mut server_store)
-                .unwrap();
+        let client = OscoreContext::new(&secret, None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut client_store)
+            .unwrap();
+        let mut server = OscoreContext::new(&secret, None, None, &[1], &[0])
+            .unwrap()
+            .restore_existing(&mut server_store)
+            .unwrap();
         let context_id = client.context_id();
         secure
             .restore_context(peer_iid, client, &mut client_store)
@@ -1918,12 +1935,14 @@ mod tests {
             events,
             fail: false,
         };
-        let mut client =
-            OscoreContext::load_existing(&secret, None, None, &[0], &[1], &mut client_store)
-                .unwrap();
-        let mut server =
-            OscoreContext::load_existing(&secret, None, None, &[1], &[0], &mut server_store)
-                .unwrap();
+        let mut client = OscoreContext::new(&secret, None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut client_store)
+            .unwrap();
+        let mut server = OscoreContext::new(&secret, None, None, &[1], &[0])
+            .unwrap()
+            .restore_existing(&mut server_store)
+            .unwrap();
         let (_, request_option) = client
             .reserve_sender(&mut client_store)
             .unwrap()
@@ -1933,7 +1952,13 @@ mod tests {
         let (ciphertext, response_option) = server
             .reserve_sender(&mut server_store)
             .unwrap()
-            .protect_response_with_piv(MessageCode::CONTENT.0, &[], b"response", &[0], &[request_piv])
+            .protect_response_with_piv(
+                MessageCode::CONTENT.0,
+                &[],
+                b"response",
+                &[0],
+                &[request_piv],
+            )
             .unwrap();
         assert_eq!(response_option.as_slice(), &[1, 0]);
         let context_id = client.context_id();

@@ -1,4 +1,4 @@
-//! SCHC compress/decompress (RFC 8724) — rules 0-4 + uncompressed fallback.
+//! SCHC compress/decompress (RFC 8724) — rules 0-6 + uncompressed fallback.
 //!
 //! `compress(packet, out)` → residue bytes written into `out`.
 //! `decompress(data, out)` → reconstructed IPv6 packet written into `out`.
@@ -18,8 +18,9 @@
 //! The verb choice signals that SCHC requires matching rules on both ends.
 
 use lichen_core::constants::{
-    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
-    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
+    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_GLOBAL_OSCORE, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
+    RULE_LINK_LOCAL_OSCORE, RULE_MQTT_SN, RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED,
+    SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -27,6 +28,9 @@ use lichen_core::error::{BufferTooSmall, TooShort};
 /// To reconstruct a full link-local address, OR this with a 64-bit Interface Identifier (IID).
 /// See RFC 4291 Section 2.5.6: Link-Local addresses have the format fe80::<IID>/10.
 const LINK_LOCAL_PREFIX: u128 = 0xFE80_0000_0000_0000_u128 << 64;
+
+/// ULA prefix fd00::/64 for LICHEN global addresses.
+const ULA_PREFIX: u128 = 0xFD00_0000_0000_0000_u128 << 64;
 
 /// Error returned by compression/decompression.
 #[derive(Debug, PartialEq, Eq)]
@@ -153,6 +157,84 @@ impl<'a> BitReader<'a> {
 
 fn is_link_local(addr: &[u8]) -> bool {
     addr.len() == 16 && addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80
+}
+
+/// Check if address is ULA fd00::/64 (upper 64 bits match fd00::).
+fn is_ula_64(addr: &[u8]) -> bool {
+    addr.len() == 16 && addr[0] == 0xFD && addr[1..8] == [0, 0, 0, 0, 0, 0, 0]
+}
+
+/// Check if CoAP payload contains OSCORE option (option number 9).
+/// CoAP options are encoded as delta+length nibbles after the 4-byte header + token.
+fn has_oscore_option(coap: &[u8]) -> bool {
+    if coap.len() < 4 {
+        return false;
+    }
+    let tkl = (coap[0] & 0x0F) as usize;
+    let mut pos = 4 + tkl;
+    let mut opt_num: u16 = 0;
+
+    while pos < coap.len() {
+        let b = coap[pos];
+        if b == 0xFF {
+            break; // payload marker
+        }
+        let delta_nibble = (b >> 4) & 0x0F;
+        let len_nibble = b & 0x0F;
+        pos += 1;
+
+        let delta = match delta_nibble {
+            0..=12 => delta_nibble as u16,
+            13 => {
+                if pos >= coap.len() {
+                    return false;
+                }
+                let ext = coap[pos] as u16;
+                pos += 1;
+                ext + 13
+            }
+            14 => {
+                if pos + 1 >= coap.len() {
+                    return false;
+                }
+                let ext = u16::from_be_bytes([coap[pos], coap[pos + 1]]);
+                pos += 2;
+                ext + 269
+            }
+            _ => return false, // 15 is reserved
+        };
+
+        let len = match len_nibble {
+            0..=12 => len_nibble as usize,
+            13 => {
+                if pos >= coap.len() {
+                    return false;
+                }
+                let ext = coap[pos] as usize;
+                pos += 1;
+                ext + 13
+            }
+            14 => {
+                if pos + 1 >= coap.len() {
+                    return false;
+                }
+                let ext = u16::from_be_bytes([coap[pos], coap[pos + 1]]) as usize;
+                pos += 2;
+                ext + 269
+            }
+            _ => return false,
+        };
+
+        opt_num += delta;
+        if opt_num == 9 {
+            return true; // OSCORE option found
+        }
+        if opt_num > 9 {
+            return false; // past option 9, won't find it
+        }
+        pos += len;
+    }
+    false
 }
 
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
@@ -286,7 +368,9 @@ fn ensure_ipv6(packet: &[u8]) -> Result<(), SchcError> {
     Ok(())
 }
 
-/// Rule 0 (link-local) and Rule 1 (global): IPv6 + UDP + CoAP.
+/// Rules 0/5 (link-local) and 1/6 (global): IPv6 + UDP + CoAP/OSCORE.
+/// Link-local and ULA (fd00::/64) addresses are compressed to 64-bit IIDs.
+/// Other global addresses are sent in full (128 bits).
 fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
     ensure_ipv6(packet)?;
     if packet.len() < 40 + 8 + 4 {
@@ -315,7 +399,10 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
 
-    if rule_id == RULE_LINK_LOCAL_COAP {
+    // Link-local (fe80::/64) and ULA (fd00::/64) addresses compress to 64-bit IIDs.
+    // Other global addresses are sent in full.
+    let use_iid = (is_link_local(src) && is_link_local(dst)) || (is_ula_64(src) && is_ula_64(dst));
+    if use_iid {
         let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
         let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
         w.write(src_iid as u128, 64)?;
@@ -560,12 +647,18 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let hop_limit = r.read(8)? as u8;
 
-    let (src_int, dst_int) = if rule_id == RULE_LINK_LOCAL_COAP {
-        let src_iid = r.read(64)?;
-        let dst_iid = r.read(64)?;
-        (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
-    } else {
-        (r.read(128)?, r.read(128)?)
+    let (src_int, dst_int) = match rule_id {
+        RULE_LINK_LOCAL_COAP | RULE_LINK_LOCAL_OSCORE => {
+            let src_iid = r.read(64)?;
+            let dst_iid = r.read(64)?;
+            (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
+        }
+        RULE_GLOBAL_OSCORE => {
+            let src_iid = r.read(64)?;
+            let dst_iid = r.read(64)?;
+            (ULA_PREFIX | src_iid, ULA_PREFIX | dst_iid)
+        }
+        _ => (r.read(128)?, r.read(128)?),
     };
 
     let src_port = r.read(16)? as u16;
@@ -865,7 +958,7 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dst = &packet[24..40];
 
     if nh == 17 {
-        // UDP — try MQTT-SN (rule 5) first if port matches, then CoAP (rules 0/1)
+        // UDP — try MQTT-SN (rule 7) first if port matches, then OSCORE/CoAP
         if packet.len() >= 40 + 8 {
             let src_port = u16::from_be_bytes([packet[40], packet[41]]);
             let dst_port = u16::from_be_bytes([packet[42], packet[43]]);
@@ -875,11 +968,27 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
                 }
             }
         }
+        // Check for OSCORE (CoAP option 9) to select rules 5/6 vs 0/1
+        let coap = &packet[48..]; // UDP header is 8 bytes after IPv6
+        let is_oscore = packet.len() >= 52 && has_oscore_option(coap);
+
         if is_link_local(src) && is_link_local(dst) {
-            if let Ok(n) = compress_coap(packet, out, RULE_LINK_LOCAL_COAP) {
+            let rule = if is_oscore {
+                RULE_LINK_LOCAL_OSCORE
+            } else {
+                RULE_LINK_LOCAL_COAP
+            };
+            if let Ok(n) = compress_coap(packet, out, rule) {
                 return Ok(n);
             }
         }
+        // ULA fd00::/64 addresses use OSCORE rule 6 (IID compression)
+        if is_ula_64(src) && is_ula_64(dst) && is_oscore {
+            if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_OSCORE) {
+                return Ok(n);
+            }
+        }
+        // Other global addresses use rule 1 (full addresses)
         if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
             return Ok(n);
         }
@@ -939,6 +1048,8 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         RULE_ICMPV6_ECHO => decompress_icmpv6_echo(data, out),
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
+        RULE_LINK_LOCAL_OSCORE => decompress_coap(data, out, RULE_LINK_LOCAL_OSCORE),
+        RULE_GLOBAL_OSCORE => decompress_coap(data, out, RULE_GLOBAL_OSCORE),
         RULE_MQTT_SN => decompress_mqtt_sn(data, out, RULE_MQTT_SN),
         RULE_UNCOMPRESSED => {
             let payload = &data[1..];

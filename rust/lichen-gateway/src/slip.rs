@@ -512,7 +512,7 @@ mod tests {
         let mut out = [0u8; SLIP_TX_BUF_SIZE];
 
         framer.queue_send(&packet).unwrap();
-        let len = framer.try_get_tx(&mut out).unwrap();
+        let len = framer.try_get_tx(&mut out).unwrap().unwrap();
 
         assert_eq!(len, 8194);
         assert_eq!(out[0], FEND);
@@ -530,9 +530,14 @@ mod tests {
         let mut full = [0u8; SLIP_TX_BUF_SIZE];
 
         framer.queue_send(&packet).unwrap();
-        assert_eq!(framer.try_get_tx(&mut small), None);
+        // Small buffer returns error but retains packet
+        assert!(matches!(
+            framer.try_get_tx(&mut small),
+            Err(SlipError::BufferTooSmall { .. })
+        ));
         assert_eq!(framer.tx_pending(), 1);
-        assert_eq!(framer.try_get_tx(&mut full), Some(8194));
+        // Full buffer succeeds
+        assert_eq!(framer.try_get_tx(&mut full), Ok(Some(8194)));
         assert!(framer.tx_empty());
     }
 

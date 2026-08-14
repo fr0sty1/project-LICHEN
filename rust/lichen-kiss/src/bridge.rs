@@ -17,9 +17,9 @@
 
 use core::fmt;
 
-use lichen_link::frame::{FrameError, LichenFrame, MAX_FRAME_LEN};
 #[cfg(test)]
 use lichen_link::frame::{AddrMode, Encryption, MicLength, Signature};
+use lichen_link::frame::{FrameError, LichenFrame, MAX_FRAME_LEN};
 use lichen_link::seqnum::LinkSeqNum;
 
 use crate::{kiss_decode, kiss_encode, kiss_unescape, KissCommand, KissError, FEND};
@@ -327,7 +327,6 @@ impl KissBridge {
         // Encode as KISS frame
         self.encode_payload(&work_buf[..frame_len], port, out)
     }
-
 }
 
 /// Check if a byte slice starts with a KISS frame delimiter.

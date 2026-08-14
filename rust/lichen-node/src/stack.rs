@@ -206,6 +206,15 @@ impl<R: Radio> Stack<R> {
         }
     }
 
+    /// Create a new stack with default epoch (128) and sequence number (0).
+    ///
+    /// This is a convenience constructor for tests; production code should use
+    /// [`Stack::new`] with a persisted or random epoch per spec section 4.4.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn new_default_epoch(radio: R, identity: lichen_link::identity::Identity) -> Self {
+        Self::new(radio, identity, 128, 0)
+    }
+
     /// Get the local node ID.
     pub fn node_id(&self) -> NodeId {
         self.node.node_id
@@ -276,6 +285,12 @@ impl<R: Radio> Stack<R> {
         let udp_total = UDP_HEADER_LEN + coap.len();
         let mut ipv6 = [0u8; 256];
 
+        // Check buffer capacity before slicing
+        let ipv6_len = IPV6_HEADER_LEN + udp_total;
+        if ipv6_len > ipv6.len() {
+            return Err(TxError::BufferTooSmall);
+        }
+
         // IPv6 header (payload_len = UDP datagram size)
         let ip_hdr = Ipv6Header::new(next_header::UDP, *src, *dst);
         ip_hdr
@@ -285,15 +300,8 @@ impl<R: Radio> Stack<R> {
         // UDP datagram (preferred write_packet_to ensures payload placed before checksum use)
         let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
         udp_hdr
-            .write_packet_to(
-                src,
-                dst,
-                coap,
-                &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + udp_total],
-            )
+            .write_packet_to(src, dst, coap, &mut ipv6[IPV6_HEADER_LEN..ipv6_len])
             .map_err(|_| TxError::BufferTooSmall)?;
-
-        let ipv6_len = IPV6_HEADER_LEN + udp_total;
 
         let mut routed = [0u8; 512];
         let ipv6 = if source_route.len() > 1 {
@@ -389,7 +397,7 @@ impl<R: Radio> Stack<R> {
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(epoch, seqnum, &[], l2_payload, &mut wire)
+            .build_frame(epoch, seqnum, dst_addr, l2_payload, &mut wire)
             .map_err(|e| match e {
                 FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,

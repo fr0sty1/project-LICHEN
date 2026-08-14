@@ -34,7 +34,15 @@ pub fn sign_frame(
     privkey: &PrivateKey,
     pubkey: &PublicKey,
 ) -> [u8; 48] {
-    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, signer_iid, inner_payload);
+    let msg = build_signable(
+        length,
+        llsec,
+        epoch,
+        seqnum,
+        dst_addr,
+        signer_iid,
+        inner_payload,
+    );
     sign(privkey, pubkey, &msg)
 }
 
@@ -353,7 +361,7 @@ mod tests {
             epoch,
             seqnum,
             &dst_addr,
-            &[],  // signer_iid not used in current frame format
+            &[], // signer_iid not used in current frame format
             inner_payload,
             &priv_a,
             &pub_a,
@@ -403,7 +411,17 @@ mod tests {
         let mut tampered = *inner_payload;
         tampered[0] ^= 0xFF;
         assert!(
-            !verify_frame(frame_length as u8, llsec, epoch, seqnum, &dst_addr, &[], &tampered, &sig, &pub_a),
+            !verify_frame(
+                frame_length as u8,
+                llsec,
+                epoch,
+                seqnum,
+                &dst_addr,
+                &[],
+                &tampered,
+                &sig,
+                &pub_a
+            ),
             "tampered payload must not verify"
         );
 

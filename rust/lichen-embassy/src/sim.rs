@@ -71,12 +71,18 @@ impl SimRadio {
     /// Connect to lichen-sim with the given configuration.
     ///
     /// Default address is 127.0.0.1:5555.
-    pub fn connect_with_config(host: &str, port: u16, cfg: &ConnectConfig) -> Result<Self, SimError> {
+    pub fn connect_with_config(
+        host: &str,
+        port: u16,
+        cfg: &ConnectConfig,
+    ) -> Result<Self, SimError> {
         let addr = format!("{}:{}", host, port);
         let stream = if let Some(timeout) = cfg.connect_timeout {
             // Use the per-socket timeout for connect via TcpStream::connect_timeout.
             TcpStream::connect_timeout(
-                &addr.parse().map_err(|e| RadioError::Bus(std::io::Error::new(std::io::ErrorKind::InvalidInput, e)))?,
+                &addr.parse().map_err(|e| {
+                    RadioError::Bus(std::io::Error::new(std::io::ErrorKind::InvalidInput, e))
+                })?,
                 timeout,
             )
             .map_err(RadioError::Bus)?
@@ -112,7 +118,14 @@ impl SimRadio {
         node_id: &str,
         position: (f64, f64, f64),
     ) -> Result<Self, SimError> {
-        Self::connect_registered_with_config(host, port, sim_id, node_id, position, &ConnectConfig::default())
+        Self::connect_registered_with_config(
+            host,
+            port,
+            sim_id,
+            node_id,
+            position,
+            &ConnectConfig::default(),
+        )
     }
 
     /// Connect and register this node with explicit configuration.
@@ -392,14 +405,18 @@ mod tests {
             assert_eq!(message[0], 0x01);
 
             // respond with MSG_ERR: code=4, msg="duplicate node"
-            let err_body = [0xFF, 4, 13, b'd', b'u', b'p', b'l', b'i', b'c', b'a', b't', b'e', b' ', b'n', b'o', b'd', b'e'];
+            let err_body = [
+                0xFF, 4, 13, b'd', b'u', b'p', b'l', b'i', b'c', b'a', b't', b'e', b' ', b'n',
+                b'o', b'd', b'e',
+            ];
             let len = err_body.len() as u32;
             let mut resp = Vec::from(len.to_le_bytes());
             resp.extend_from_slice(&err_body);
             stream.write_all(&resp).unwrap();
         });
 
-        let result = SimRadio::connect_registered("127.0.0.1", port, "mesh", "rust-1", (1.5, -2.0, 3.25));
+        let result =
+            SimRadio::connect_registered("127.0.0.1", port, "mesh", "rust-1", (1.5, -2.0, 3.25));
         assert!(result.is_err());
         server.join().unwrap();
     }

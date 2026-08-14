@@ -9,31 +9,28 @@
 //!
 //! Requires `std` feature for full RPL integration.
 
+#[cfg(feature = "std")]
+mod dtn;
+#[cfg(feature = "std")]
+mod gpsr;
 mod neighbor;
 #[cfg(feature = "std")]
 mod router;
-#[cfg(feature = "std")]
-mod gpsr;
-#[cfg(feature = "std")]
-mod dtn;
 #[cfg(all(test, feature = "std"))]
 mod tests;
 
 // Re-exports from neighbor module
-pub use neighbor::{
-    GeoCoords, LinkEtx, Neighbor, NeighborTable, TrickleSafeLivenessPolicy,
-    MAX_NEIGHBORS,
-};
 #[cfg(feature = "std")]
 pub use neighbor::TrickleAwareNeighborLiveness;
+pub use neighbor::{
+    GeoCoords, LinkEtx, Neighbor, NeighborTable, TrickleSafeLivenessPolicy, MAX_NEIGHBORS,
+};
 
 // Re-exports from router module
 #[cfg(feature = "std")]
-pub use router::{
-    DioProcessOutcome, RplMaintenanceOutcome, Router,
-};
-#[cfg(feature = "std")]
 pub(crate) use router::dao_parents_for_source;
+#[cfg(feature = "std")]
+pub use router::{DioProcessOutcome, Router, RplMaintenanceOutcome};
 
 // Re-exports from dtn module
 #[cfg(feature = "std")]
@@ -49,17 +46,17 @@ pub use lichen_rpl::message::{
 };
 #[cfg(feature = "std")]
 pub use lichen_rpl::routing::{
-    DaoPersistentOpenError, DaoProvisionError, DaoRxState, RouteTarget, RoutingTable,
-    SourceRoutingHeader,
+    DaoOriginHighWater, DaoPersistentOpenError, DaoProvisionError, DaoRxState, RouteTarget,
+    RoutingTable, SourceRoutingHeader,
 };
 #[cfg(feature = "std")]
 pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
 
 // Internal re-exports for router module
 #[cfg(feature = "std")]
+pub(crate) use lichen_rpl::routing::SignatureVerifiedDao;
+#[cfg(feature = "std")]
 pub(crate) use lichen_rpl::routing::{
     dao_origin_digest, DaoAdmissionState, DaoManager, DaoProcessError, DaoProcessOutcome,
     DaoProcessTiming, DaoTxError, DaoTxState, DaoVerifyError,
 };
-#[cfg(feature = "std")]
-pub(crate) use lichen_rpl::routing::SignatureVerifiedDao;

@@ -25,9 +25,9 @@ use lichen_rpl::routing::{DaoAdmissionState, DaoTxState};
 use crate::announce::AnnounceProcessor;
 use crate::node::{DaoHandlingOutcome, RplEvent, RplNode};
 use crate::routing::DaoRxState;
+use crate::routing::RplMaintenanceOutcome;
 use crate::secure::SecureStack;
 use crate::stack::ReceivedIpv6;
-use crate::routing::RplMaintenanceOutcome;
 
 pub use self::error::{
     DaoAdmissionError, DaoSendError, RplControlError, RplReceiveError, RplRuntimeReceiveError,

@@ -91,4 +91,12 @@ impl SourceRoutingHeader {
             addresses,
         })
     }
+
+    /// Validate segments_left < hop_limit per RFC 6554 + LICHEN spec §5 line 418.
+    ///
+    /// Returns `true` if valid (segments_left strictly less than hop_limit),
+    /// `false` if the packet cannot complete the source route before TTL expiry.
+    pub fn validate_hop_limit(&self, hop_limit: u8) -> bool {
+        self.segments_left < hop_limit
+    }
 }

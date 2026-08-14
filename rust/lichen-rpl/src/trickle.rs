@@ -91,7 +91,10 @@ impl TrickleTimer {
     pub fn start(&mut self, now: u64, rand_offset: u32) {
         self.interval = self.imin;
         let r = self.begin_interval(now, rand_offset);
-        debug_assert!(r.is_ok(), "stopped or active Trickle timer can begin an interval");
+        debug_assert!(
+            r.is_ok(),
+            "stopped or active Trickle timer can begin an interval"
+        );
     }
 
     fn begin_interval(
@@ -135,7 +138,10 @@ impl TrickleTimer {
     /// Mark the transmit point reached; returns `true` if a DIO should be sent.
     pub fn fire_transmit(&mut self) -> bool {
         let r = self.try_fire_transmit();
-        debug_assert!(r.is_ok(), "fire_transmit only valid in WaitingTransmit state");
+        debug_assert!(
+            r.is_ok(),
+            "fire_transmit only valid in WaitingTransmit state"
+        );
         r.unwrap()
     }
 
@@ -383,7 +389,10 @@ mod tests {
         assert!(!t.should_transmit(), "k=0: should_transmit false at start");
         assert!(!t.fire_transmit(), "k=0: fire_transmit returns false");
         t.heard_consistent();
-        assert!(!t.should_transmit(), "k=0: still false after heard_consistent");
+        assert!(
+            !t.should_transmit(),
+            "k=0: still false after heard_consistent"
+        );
     }
 
     #[test]
@@ -403,7 +412,10 @@ mod tests {
         t.counter = u32::MAX;
         t.heard_consistent();
         assert_eq!(t.counter, u32::MAX, "counter saturates at u32::MAX");
-        assert!(!t.should_transmit(), "counter == k: should not transmit when c >= k");
+        assert!(
+            !t.should_transmit(),
+            "counter == k: should not transmit when c >= k"
+        );
     }
 
     #[test]

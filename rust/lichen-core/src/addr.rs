@@ -69,8 +69,8 @@ impl NodeId {
 /// Derive the IID (Interface Identifier) from an Ed25519 public key for the
 /// Yggdrasil 02xx::/7 primary address.
 ///
-/// Implements the exact Yggdrasil `AddrForKey` derivation from yggdrasil-go
-/// (`src/address/address.go`):
+/// MUST use SHA-512, not SHA-256 — this matches Yggdrasil's `AddrForKey`
+/// derivation from yggdrasil-go (`src/address/address.go`) for 0200::/7 interop:
 ///   SHA-512(pubkey)[0:8], then clear the U/L bit per RFC 4291 §2.5.1.
 ///
 /// The full Yggdrasil address is:

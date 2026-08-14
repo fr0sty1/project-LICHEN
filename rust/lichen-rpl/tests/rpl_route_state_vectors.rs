@@ -152,7 +152,7 @@ fn dao_sequences_and_lifetime(wire: &[u8]) -> (u8, u8, u8) {
 fn canonical_route_state_vectors_match_production_manager() {
     let document: Value = serde_json::from_str(VECTORS).unwrap();
     assert_eq!(document["vector_type"], "rpl_route_state");
-    assert_eq!(document["format_version"], 1);
+    assert_eq!(document["format_version"], 2);
     let oracle = &document["oracle"];
     assert_eq!(
         oracle["path_control_size"],

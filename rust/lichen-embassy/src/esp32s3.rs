@@ -122,7 +122,11 @@ where
             )
             .map_err(|_| RadioError::Hardware)?;
 
-        let busy = self.lora.cad(&mdltn).await.map_err(|_| RadioError::Hardware)?;
+        let busy = self
+            .lora
+            .cad(&mdltn)
+            .await
+            .map_err(|_| RadioError::Hardware)?;
         if busy {
             return Err(RadioError::ChannelBusy);
         }
@@ -152,7 +156,11 @@ where
                 self.config.frequency,
             )
             .map_err(|_| RadioError::Hardware)?;
-        let busy = self.lora.cad(&mdltn).await.map_err(|_| RadioError::Hardware)?;
+        let busy = self
+            .lora
+            .cad(&mdltn)
+            .await
+            .map_err(|_| RadioError::Hardware)?;
         Ok(!busy)
     }
 

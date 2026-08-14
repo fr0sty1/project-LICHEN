@@ -67,7 +67,11 @@ impl<'a> SignatureVerifiedDao<'a> {
         if dao.rpl_instance_id != rpl_instance_id {
             return Err(DaoVerifyError::WrongInstance);
         }
-        if dao.dodag_id.is_some_and(|dodag| dodag != active_dodag_id) {
+        // D=0 uses Some([0; 16]) sentinel meaning "use receiver's DODAG".
+        if dao
+            .dodag_id
+            .is_some_and(|dodag| dodag != [0u8; 16] && dodag != active_dodag_id)
+        {
             return Err(DaoVerifyError::WrongDodag);
         }
         let envelope = SignedDaoEnvelope::from_bytes(wire).map_err(map_envelope_error)?;
@@ -75,9 +79,15 @@ impl<'a> SignatureVerifiedDao<'a> {
         if origin[8..] != iid_from_pubkey(&pinned_key) {
             return Err(DaoVerifyError::IidMismatch);
         }
+        // D=0 uses Some([0; 16]) sentinel - use active_dodag_id for digest.
+        let effective_dodag_id = envelope
+            .dao
+            .dodag_id
+            .filter(|id| *id != [0u8; 16])
+            .unwrap_or(active_dodag_id);
         let digest = dao_origin_digest(
             origin,
-            envelope.dao.dodag_id.unwrap_or(active_dodag_id),
+            effective_dodag_id,
             envelope.origin.origin_sequence,
             envelope.unsigned_bytes,
         );

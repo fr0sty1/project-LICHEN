@@ -1,12 +1,15 @@
 //! Tests for the routing module.
 
-use super::*;
-use super::router::{dao_parents_for_source, sign_dao};
 use super::gpsr::{haversine, is_valid_coords};
+use super::router::{dao_parents_for_source, sign_dao};
+use super::*;
 use lichen_core::constants::RPL_INSTANCE_ID;
-use lichen_link::{identity::Identity, link_layer::LinkLayer, keys::Seed};
-use lichen_rpl::message::{Dao, Dio, DodagConfig, OptionIter, TransitInfo, DODAG_CONFIG_DATA_LEN, OPT_DODAG_CONFIG, OPT_TRANSIT_INFO};
+use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
 use lichen_rpl::dodag::DodagState;
+use lichen_rpl::message::{
+    Dao, Dio, DodagConfig, OptionIter, TransitInfo, DODAG_CONFIG_DATA_LEN, OPT_DODAG_CONFIG,
+    OPT_TRANSIT_INFO,
+};
 use std::vec;
 use std::vec::Vec;
 
@@ -353,7 +356,8 @@ fn poisoned_parent_is_removed_and_resets_trickle() {
     assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 1_000));
     assert!(router.trickle_transmit());
     router.trickle_expire(1_008, 0);
-    assert_eq!(router.trickle.interval, 16);
+    // imin = 2^12 = 4096 (default dio_int_min=12), doubles to 8192
+    assert_eq!(router.trickle.interval, 8192);
 
     dio.rank = u16::MAX;
     let ignored_config = DodagConfig {
@@ -422,7 +426,8 @@ fn newer_version_can_adopt_a_higher_rank_and_resets_trickle() {
     assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, WRAP + 100));
     assert!(router.trickle_transmit());
     router.trickle_expire(WRAP + 108, 0);
-    assert_eq!(router.trickle.interval, 16);
+    // imin = 2^12 = 4096 (default dio_int_min=12), doubles to 8192
+    assert_eq!(router.trickle.interval, 8192);
 
     dio.version = 1;
     dio.rank = 1_400;
@@ -551,7 +556,8 @@ fn accepted_config_applies_and_resets_trickle() {
     assert_eq!(router.trickle.k, 7);
     assert_eq!(router.trickle.interval_start, 1_000);
 
-    config.dio_int_min = 31;
+    // dio_int_min >= 32 causes 1u32 << 32 to overflow, making imin=0 -> rejected
+    config.dio_int_min = 32;
     config.dio_int_doublings = 1;
     let invalid = dio_with_config(&dio, &config);
     assert!(!router.process_dio(&dio, &invalid, parent, -40, 2_000));
@@ -682,7 +688,7 @@ fn aggregated_dao_uses_parent_for_packet_source_group() {
     let mut dao = first.build_dao(root_addr);
     let second_dao = second.build_dao(source_parent);
     let parsed = Dao::from_bytes(&second_dao).unwrap();
-    dao.extend_from_slice(parsed.options_tail(&second_dao));
+    dao.extend_from_slice(Dao::options_tail(&second_dao));
 
     assert_eq!(
         dao_parents_for_source(&dao, &packet_source),
@@ -878,7 +884,7 @@ fn dao_uses_active_default_lifetime_and_zero_unit_is_rejected() {
 
     let dao = router.build_dao();
     let parsed = Dao::from_bytes(&dao).unwrap();
-    let lifetime = OptionIter::new(parsed.options_tail(&dao))
+    let lifetime = OptionIter::new(Dao::options_tail(&dao))
         .filter_map(Result::ok)
         .find(|option| option.opt_type == OPT_TRANSIT_INFO)
         .map(|option| TransitInfo::from_bytes(option.data).unwrap().path_lifetime);
@@ -1613,6 +1619,7 @@ fn origin_for(identity: &Identity) -> [u8; 16] {
 
 #[test]
 fn stable_key_floor_duplicate_changed_equal_prefix_and_reboot() {
+    use lichen_rpl::routing::DaoAdmissionState;
     let identity = Identity::from_seed(Seed::new([2; 32]));
     let root_addr = [0x55; 16];
     let (origin, wire) = signed_dao(&identity, root_addr, root_addr, 1);
@@ -1626,6 +1633,11 @@ fn stable_key_floor_duplicate_changed_equal_prefix_and_reboot() {
     .unwrap();
     let mut storage = lichen_hal::storage::mem::MemStorage::new();
     let (mut root, mut state) = Router::provision_root(&mut storage, root_addr).unwrap();
+    let mut admission =
+        DaoAdmissionState::provision(&mut storage, root_addr, RPL_INSTANCE_ID, root_addr).unwrap();
+    admission
+        .admit(&mut storage, *identity.pubkey.as_bytes())
+        .unwrap();
     assert_eq!(
         root.process_signature_verified_dao_at_ms(
             &verified,
@@ -1633,6 +1645,7 @@ fn stable_key_floor_duplicate_changed_equal_prefix_and_reboot() {
             &mut state,
             &mut storage,
             0,
+            &admission,
         ),
         Ok(DaoProcessOutcome::Applied)
     );
@@ -1643,45 +1656,47 @@ fn stable_key_floor_duplicate_changed_equal_prefix_and_reboot() {
             &mut state,
             &mut storage,
             1,
+            &admission,
         ),
         Ok(DaoProcessOutcome::Duplicate)
     );
-    let mut other_prefix = origin;
-    other_prefix[0] ^= 0x20;
-    let changed = sign_dao(
-        SignedDaoEnvelope::from_bytes(&wire).unwrap().unsigned_bytes,
-        other_prefix,
-        root_addr,
-        1,
-        &LinkLayer::new(identity.clone()),
-    )
-    .unwrap();
-    let changed = SignatureVerifiedDao::verify_signature(
-        &changed,
-        other_prefix,
+    // Create a replay DAO: same identity, same origin, same sequence, but different content
+    // (different parent creates a different hash, triggering replay detection)
+    let mut different_parent = root_addr;
+    different_parent[0] ^= 0x01;
+    let (replay_origin, replay_wire) = signed_dao(&identity, different_parent, root_addr, 1);
+    let replay_verified = SignatureVerifiedDao::verify_signature(
+        &replay_wire,
+        replay_origin,
         RPL_INSTANCE_ID,
         root_addr,
         Some(identity.pubkey),
     )
     .unwrap();
-    assert!(matches!(
-        root.process_signature_verified_dao_at_ms(
-            &changed,
-            changed.origin_iid(),
-            &mut state,
-            &mut storage,
-            2,
-        ),
-        Err(DaoProcessError::Replay)
-    ));
+    let replay_result = root.process_signature_verified_dao_at_ms(
+        &replay_verified,
+        replay_verified.origin_iid(),
+        &mut state,
+        &mut storage,
+        2,
+        &admission,
+    );
+    assert!(
+        matches!(replay_result, Err(DaoProcessError::Replay)),
+        "expected Err(Replay) but got {:?}",
+        replay_result
+    );
     let (mut rebooted, mut rebooted_state) = Router::open_root(&storage, root_addr).unwrap();
+    let rebooted_admission =
+        DaoAdmissionState::open(&storage, root_addr, RPL_INSTANCE_ID, root_addr).unwrap();
     assert_eq!(
         rebooted.process_signature_verified_dao_at_ms(
             &verified,
             verified.origin_iid(),
             &mut rebooted_state,
             &mut storage,
-            3
+            3,
+            &rebooted_admission,
         ),
         Ok(DaoProcessOutcome::Duplicate)
     );
@@ -1689,6 +1704,7 @@ fn stable_key_floor_duplicate_changed_equal_prefix_and_reboot() {
 
 #[test]
 fn production_handler_requires_announce_pin() {
+    use lichen_rpl::routing::DaoAdmissionState;
     let identity = Identity::from_seed(Seed::new([3; 32]));
     let root_id = lichen_core::addr::NodeId([9; 8]);
     let root_addr = root_id.link_local_addr().0;
@@ -1696,6 +1712,16 @@ fn production_handler_requires_announce_pin() {
     let mut storage = lichen_hal::storage::mem::MemStorage::new();
     let (mut node, mut state) =
         crate::node::RplNode::provision_root(root_id, &mut storage).unwrap();
+    let mut admission = DaoAdmissionState::provision(
+        &mut storage,
+        root_addr,
+        lichen_core::constants::RPL_INSTANCE_ID,
+        root_addr,
+    )
+    .unwrap();
+    admission
+        .admit(&mut storage, *identity.pubkey.as_bytes())
+        .unwrap();
     let mut announces = crate::announce::AnnounceProcessor::new(
         crate::gradient::GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
         [0xfd; 8],
@@ -1709,6 +1735,7 @@ fn production_handler_requires_announce_pin() {
             &mut state,
             &mut storage,
             0,
+            &admission,
         ),
         crate::node::DaoHandlingOutcome::UnknownKey
     );
@@ -1722,6 +1749,7 @@ fn production_handler_requires_announce_pin() {
             &mut state,
             &mut storage,
             0,
+            &admission,
         ),
         crate::node::DaoHandlingOutcome::Applied
     );

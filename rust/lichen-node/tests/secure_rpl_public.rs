@@ -18,17 +18,10 @@ impl SenderStateStore for OscoreStore {
     type Error = ();
 
     fn load(&mut self, context_id: &ContextId) -> Result<Option<SenderSequenceState>, Self::Error> {
-        Ok(Some(
-            self.0
-                .filter(|(stored_context, _)| stored_context == context_id)
-                .map_or(
-                    SenderSequenceState {
-                        next_sequence: 0,
-                        exhausted: false,
-                    },
-                    |(_, state)| state,
-                ),
-        ))
+        Ok(self
+            .0
+            .filter(|(stored_context, _)| stored_context == context_id)
+            .map(|(_, state)| state))
     }
 
     fn compare_exchange(
@@ -49,7 +42,7 @@ impl SenderStateStore for OscoreStore {
 fn downstream_can_construct_secure_rpl_owner() {
     let (radio, _peer_radio) = LoopbackRadio::pair();
     let identity = Identity::from_seed(Seed::new([0x61; 32]));
-    let secure = SecureStack::from_radio(radio, identity, 128).unwrap();
+    let secure = SecureStack::from_radio(radio, identity, 128, 0).unwrap();
     let local_addr = secure.local_addr().0;
     let announces = AnnounceProcessor::new(GradientTable::new(64), [0xfd, 0, 0, 0, 0, 0, 0, 1]);
 
@@ -66,8 +59,8 @@ async fn downstream_secure_rpl_request() {
     let alice_iid = alice_identity.iid;
     let bob_iid = bob_identity.iid;
 
-    let mut alice_secure = SecureStack::from_radio(alice_radio, alice_identity, 128).unwrap();
-    let mut bob_secure = SecureStack::from_radio(bob_radio, bob_identity, 128).unwrap();
+    let mut alice_secure = SecureStack::from_radio(alice_radio, alice_identity, 128, 0).unwrap();
+    let mut bob_secure = SecureStack::from_radio(bob_radio, bob_identity, 128, 0).unwrap();
     alice_secure.add_peer(PeerIdentity::from_pubkey(
         Identity::from_seed(Seed::new([0x72; 32])).pubkey,
     ));
@@ -97,10 +90,14 @@ async fn downstream_secure_rpl_request() {
     let secret = [0x42; 16];
     let mut alice_store = OscoreStore::default();
     let mut bob_store = OscoreStore::default();
-    let alice_context =
-        Context::load_existing(&secret, None, None, &[0x00], &[0x01], &mut alice_store).unwrap();
-    let bob_context =
-        Context::load_existing(&secret, None, None, &[0x01], &[0x00], &mut bob_store).unwrap();
+    let alice_context = Context::new(&secret, None, None, &[0x00], &[0x01])
+        .unwrap()
+        .register_fresh(&mut alice_store)
+        .unwrap();
+    let bob_context = Context::new(&secret, None, None, &[0x01], &[0x00])
+        .unwrap()
+        .register_fresh(&mut bob_store)
+        .unwrap();
     alice
         .restore_context(bob_iid, alice_context, &mut alice_store)
         .unwrap();

@@ -143,34 +143,26 @@ fn downward_routes_assembled_from_daos() {
     let n5 = origin(&id5);
 
     // n2 sends DAO: target=n2, parent=root
-    let mut mgr2 = DaoManager::new(ll(2), 0, dodag_id());
+    let mut mgr2 = DaoManager::new(n2, 0, dodag_id());
     assert!(root.process_dao(&mgr2.build_dao(root_addr)));
-    assert_eq!(
-        root.routing_table().lookup(&ll(2)),
-        Some(&[ll(2)] as &[[u8; 16]])
-    );
     assert_eq!(root.routing_table().lookup(&n2), Some(&[n2] as &[[u8; 16]]));
 
     // n3 sends DAO: target=n3, parent=n2
-    let mut mgr3 = DaoManager::new(ll(3), 0, dodag_id());
-    assert!(root.process_dao(&mgr3.build_dao(ll(2))));
+    let mut mgr3 = DaoManager::new(n3, 0, dodag_id());
+    assert!(root.process_dao(&mgr3.build_dao(n2)));
     assert_eq!(
         root.routing_table().lookup(&n3),
         Some(&[n2, n3] as &[[u8; 16]])
     );
 
     // n5 sends DAO: target=n5, parent=root (single hop)
-    let mut mgr5 = DaoManager::new(ll(5), 0, dodag_id());
+    let mut mgr5 = DaoManager::new(n5, 0, dodag_id());
     assert!(root.process_dao(&mgr5.build_dao(root_addr)));
-    assert_eq!(
-        root.routing_table().lookup(&ll(5)),
-        Some(&[ll(5)] as &[[u8; 16]])
-    );
     assert_eq!(root.routing_table().lookup(&n5), Some(&[n5] as &[[u8; 16]]));
 
     // n4 sends DAO: target=n4, parent=n2 (two hops: root→n2→n4)
-    let mut mgr4 = DaoManager::new(ll(4), 0, dodag_id());
-    assert!(root.process_dao(&mgr4.build_dao(ll(2))));
+    let mut mgr4 = DaoManager::new(n4, 0, dodag_id());
+    assert!(root.process_dao(&mgr4.build_dao(n2)));
     assert_eq!(
         root.routing_table().lookup(&n4),
         Some(&[n2, n4] as &[[u8; 16]])
@@ -223,8 +215,8 @@ fn route_updates_when_node_reparents() {
     let mut mgr4 = DaoManager::new(n4, 0, dodag_id());
 
     root.process_dao(&mgr2.build_dao(root_addr)); // n2 → root
-    root.process_dao(&mgr3.build_dao(ll(2))); // n3 → n2
-    root.process_dao(&mgr4.build_dao(ll(3))); // n4 → n3
+    root.process_dao(&mgr3.build_dao(n2)); // n3 → n2
+    root.process_dao(&mgr4.build_dao(n3)); // n4 → n3
 
     assert_eq!(
         root.routing_table().lookup(&n4),
@@ -232,7 +224,7 @@ fn route_updates_when_node_reparents() {
     );
 
     // n3 fails; n4 reparents to n2 and sends a new DAO
-    root.process_dao(&mgr4.build_dao(ll(2))); // n4 → n2 (shorter path)
+    root.process_dao(&mgr4.build_dao(n2)); // n4 → n2 (shorter path)
 
     assert_eq!(
         root.routing_table().lookup(&n4),

@@ -30,8 +30,7 @@ pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 pub const MAX_PARENT_CANDIDATES: usize = 16;
 
 pub const ALL_RPL_NODES: [u8; 16] = [
-    0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a,
+    0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a,
 ];
 
 pub fn is_rpl_multicast(addr: &[u8; 16]) -> bool {
@@ -53,9 +52,23 @@ fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
             None
         }
     } else if a_linear {
-        Some(core::cmp::Ordering::Greater)
+        // a in linear (0-127), b in circular (128-255)
+        // Wrap distance from b to a: 256 - b + a
+        let wrap_distance = 256 - b as u16 + a as u16;
+        if wrap_distance <= 16 {
+            Some(core::cmp::Ordering::Greater)
+        } else {
+            Some(core::cmp::Ordering::Less)
+        }
     } else {
-        Some(core::cmp::Ordering::Less)
+        // a in circular (128-255), b in linear (0-127)
+        // Wrap distance from a to b: 256 - a + b
+        let wrap_distance = 256 - a as u16 + b as u16;
+        if wrap_distance <= 16 {
+            Some(core::cmp::Ordering::Less)
+        } else {
+            Some(core::cmp::Ordering::Greater)
+        }
     }
 }
 
@@ -311,9 +324,7 @@ impl DodagState {
         if !link_etx.is_finite() || link_etx < 1.0 {
             return DioOutcome::Rejected;
         }
-        if dio.rpl_instance_id != self.rpl_instance_id
-            || (dio.dodag_id != self.dodag_id && !version_is_newer(dio.version, self.version))
-        {
+        if dio.rpl_instance_id != self.rpl_instance_id || dio.dodag_id != self.dodag_id {
             return DioOutcome::Rejected;
         }
 
@@ -373,9 +384,14 @@ impl DodagState {
         };
         if candidate.path_cost(self.min_hop_rank_increase) == INFINITE_RANK {
             self.parents.remove(&neighbor_addr);
-        } else {
+        } else if self.parents.contains_key(&neighbor_addr) {
+            // Update existing parent
+            self.parents.insert(neighbor_addr, candidate);
+        } else if self.parents.len() < MAX_PARENT_CANDIDATES {
+            // Insert new parent only if under limit
             self.parents.insert(neighbor_addr, candidate);
         }
+        // else: at capacity with a new parent -> reject silently
         self.select_parent();
         DioOutcome::Accepted
     }
@@ -455,7 +471,10 @@ impl DodagState {
         self.preferred_parent = Some(chosen_addr);
         self.rank = chosen_cost;
         let r = self.set_role(DodagRole::Joined);
-        debug_assert!(r.is_ok(), "non-root DODAG can join through a selected parent");
+        debug_assert!(
+            r.is_ok(),
+            "non-root DODAG can join through a selected parent"
+        );
         if chosen_cost < self.lowest_rank {
             self.lowest_rank = chosen_cost;
         }
@@ -473,6 +492,11 @@ impl DodagState {
             self.parents.remove(addr);
         }
         self.select_parent();
+    }
+
+    /// Check if an address is a current parent candidate.
+    pub fn has_parent(&self, addr: &[u8; 16]) -> bool {
+        self.parents.contains_key(addr)
     }
 
     /// Number of parent candidates.

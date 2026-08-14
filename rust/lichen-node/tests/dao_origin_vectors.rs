@@ -10,6 +10,7 @@ use lichen_link::schnorr::sign;
 use lichen_node::announce::{AnnounceProcessor, MAX_TRACKED_ORIGINATORS};
 use lichen_node::gradient::GradientTable;
 use lichen_node::node::{DaoHandlingOutcome, RplNode};
+use lichen_rpl::routing::DaoAdmissionState;
 
 const JSON: &str = include_str!("../../../test/vectors/dao_origin_signature.json");
 
@@ -155,6 +156,11 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
         );
         let mut storage = MemStorage::new();
         let (mut node, mut rx_state) = RplNode::provision_root(root_id, &mut storage).unwrap();
+        let mut dao_admission =
+            DaoAdmissionState::provision(&mut storage, active_dodag, 0, active_dodag).unwrap();
+        dao_admission
+            .admit(&mut storage, *identity.pubkey.as_bytes())
+            .unwrap();
 
         let prior = field(vector, "prior");
         if prior.starts_with('{') {
@@ -169,6 +175,7 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
                     &mut rx_state,
                     &mut storage,
                     1,
+                    &dao_admission,
                 ),
                 DaoHandlingOutcome::Applied,
                 "{name}: prior setup"
@@ -201,6 +208,7 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
             &mut rx_state,
             &mut storage,
             2,
+            &dao_admission,
         );
         let expected = expected_outcome(reason);
         if outcome != expected {
@@ -236,6 +244,7 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
                         &mut rx_state,
                         &mut storage,
                         3,
+                        &dao_admission,
                     ),
                     DaoHandlingOutcome::Duplicate,
                     "{name}: replay floor mutation"
@@ -243,7 +252,7 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
             }
         }
     }
-    assert_eq!(count, 50);
+    assert_eq!(count, 51);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
@@ -258,6 +267,11 @@ fn unavailable_replay_storage_leaves_dao_state_unchanged() {
     let announces = pinned_announces(&identity, source[..8].try_into().unwrap(), root_id);
     let mut storage = MemStorage::new();
     let (mut node, mut rx_state) = RplNode::provision_root(root_id, &mut storage).unwrap();
+    let mut dao_admission =
+        DaoAdmissionState::provision(&mut storage, active_dodag, 0, active_dodag).unwrap();
+    dao_admission
+        .admit(&mut storage, *identity.pubkey.as_bytes())
+        .unwrap();
     let storage_before = storage_snapshot(&storage);
 
     storage.fail_next_write();
@@ -270,6 +284,7 @@ fn unavailable_replay_storage_leaves_dao_state_unchanged() {
             &mut rx_state,
             &mut storage,
             1,
+            &dao_admission,
         ),
         DaoHandlingOutcome::Persistence
     );
@@ -285,6 +300,7 @@ fn unavailable_replay_storage_leaves_dao_state_unchanged() {
             &mut rx_state,
             &mut storage,
             2,
+            &dao_admission,
         ),
         DaoHandlingOutcome::Applied
     );

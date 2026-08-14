@@ -560,7 +560,7 @@ mod tests {
 
         assert!(scheduler.is_running());
         assert!(scheduler.transmitter.tx_count() >= 1);
-        assert!(!scheduler.transmitter.last_data().is_empty());
+        assert!(!scheduler.transmitter.last_data.lock().unwrap().is_empty());
 
         // Stop
         scheduler.stop();

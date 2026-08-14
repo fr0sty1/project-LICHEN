@@ -168,7 +168,15 @@ mod tests {
     // Test descriptors for a simple rule
     const TEST_FIELDS: &[FieldDescriptor] = &[
         FieldDescriptor::new("IPv6.version", 4, Mo::Equal, Cda::NotSent, 6, None, None),
-        FieldDescriptor::new("IPv6.hop_limit", 8, Mo::Ignore, Cda::ValueSent, 64, None, None),
+        FieldDescriptor::new(
+            "IPv6.hop_limit",
+            8,
+            Mo::Ignore,
+            Cda::ValueSent,
+            64,
+            None,
+            None,
+        ),
     ];
 
     const TEST_RULE: Rule = Rule::new(0, TEST_FIELDS);

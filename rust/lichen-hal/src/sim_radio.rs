@@ -84,7 +84,9 @@ impl SimRadio {
 
     fn recv_msg(&mut self) -> Result<Vec<u8>, SimError> {
         let mut len_buf = [0u8; 4];
-        self.stream.read_exact(&mut len_buf).map_err(RadioError::Bus)?;
+        self.stream
+            .read_exact(&mut len_buf)
+            .map_err(RadioError::Bus)?;
         let len = u32::from_le_bytes(len_buf) as usize;
         let mut buf = vec![0u8; len];
         self.stream.read_exact(&mut buf).map_err(RadioError::Bus)?;

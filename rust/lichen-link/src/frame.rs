@@ -460,7 +460,7 @@ mod tests {
     }
 
     #[test]
-    fn extended_addr_mic64_roundtrip() {
+    fn extended_addr_compat1_roundtrip() {
         let wire = from_hex("1006ffffff000102030405060764617461");
         let frame = LichenFrame::from_bytes(&wire).unwrap();
         assert_eq!(frame.epoch, 255);

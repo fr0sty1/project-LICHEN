@@ -19,9 +19,14 @@ struct VectorFile {
 #[derive(Deserialize)]
 struct SchcVector {
     name: String,
-    rule_id: u8,
-    packet: String,
-    compressed: String,
+    #[serde(default)]
+    rule_id: Option<u8>,
+    #[serde(default)]
+    packet: Option<String>,
+    #[serde(default)]
+    compressed: Option<String>,
+    #[serde(default)]
+    category: Option<String>,
 }
 
 fn hex_decode(s: &str) -> Vec<u8> {
@@ -52,8 +57,40 @@ fn test_schc_compression_vectors() {
     let mut failures = Vec::new();
 
     for vector in &vectors.vectors {
-        let packet = hex_decode(&vector.packet);
-        let compressed = hex_decode(&vector.compressed);
+        // Skip malformed/error test vectors
+        if vector.category.as_deref() == Some("malformed") {
+            println!("Vector '{}': skipped (malformed test case)", vector.name);
+            continue;
+        }
+
+        // Skip error test vectors (rule_id is null)
+        let rule_id = match vector.rule_id {
+            Some(id) => id,
+            None => {
+                println!(
+                    "Vector '{}': skipped (error test case with no rule_id)",
+                    vector.name
+                );
+                continue;
+            }
+        };
+
+        let packet_str = match &vector.packet {
+            Some(p) => p,
+            None => {
+                println!("Vector '{}': skipped (no packet field)", vector.name);
+                continue;
+            }
+        };
+        let compressed_str = match &vector.compressed {
+            Some(c) => c,
+            None => {
+                println!("Vector '{}': skipped (no compressed field)", vector.name);
+                continue;
+            }
+        };
+        let packet = hex_decode(packet_str);
+        let compressed = hex_decode(compressed_str);
 
         // Verify compressed starts with rule_id
         if compressed.is_empty() {
@@ -61,10 +98,10 @@ fn test_schc_compression_vectors() {
             continue;
         }
 
-        if compressed[0] != vector.rule_id {
+        if compressed[0] != rule_id {
             failures.push(format!(
                 "Vector '{}': compressed[0] should equal rule_id (expected {}, got {})",
-                vector.name, vector.rule_id, compressed[0]
+                vector.name, rule_id, compressed[0]
             ));
         }
 
@@ -110,7 +147,7 @@ fn test_schc_compression_vectors() {
             failures.push(format!(
                 "Vector '{}': compress mismatch for rule {}: expected {} bytes got {}",
                 vector.name,
-                vector.rule_id,
+                rule_id,
                 compressed.len(),
                 n
             ));
@@ -140,7 +177,7 @@ fn test_schc_compression_vectors() {
         println!(
             "Vector '{}' (rule {}): {} -> {} bytes ({}% reduction)",
             vector.name,
-            vector.rule_id,
+            rule_id,
             packet.len(),
             compressed.len(),
             100 - (compressed.len() * 100 / packet.len())
@@ -175,7 +212,9 @@ fn test_schc_rule_coverage() {
     // Track which rules have vectors
     let mut rules_seen = std::collections::HashSet::new();
     for v in &vectors.vectors {
-        rules_seen.insert(v.rule_id);
+        if let Some(rule_id) = v.rule_id {
+            rules_seen.insert(rule_id);
+        }
     }
 
     println!("SCHC rules with vectors: {:?}", rules_seen);
@@ -201,7 +240,7 @@ fn test_schc_fragment_vectors() {
     let content = fs::read_to_string(&vectors_path).expect("Failed to read fragment vectors");
     let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse JSON");
 
-    assert_eq!(doc["format_version"], 1, "Unexpected vector format version");
+    assert_eq!(doc["format_version"], 2, "Unexpected vector format version");
 
     let vectors = doc["vectors"].as_array().unwrap();
     assert!(!vectors.is_empty(), "No fragment vectors");

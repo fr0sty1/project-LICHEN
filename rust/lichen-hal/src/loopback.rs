@@ -87,11 +87,7 @@ impl Radio for LoopbackRadio {
         Ok(())
     }
 
-    async fn cca(
-        &mut self,
-        _channel: u8,
-        _threshold_dbm: i8,
-    ) -> Result<bool, Self::Error> {
+    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
         Ok(true)
     }
 

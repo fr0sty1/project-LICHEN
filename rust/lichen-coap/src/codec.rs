@@ -333,6 +333,19 @@ pub struct OptionIterator<'a> {
     current_number: u16,
 }
 
+impl<'a> OptionIterator<'a> {
+    /// Create an iterator over raw CoAP option bytes.
+    ///
+    /// Used to parse OSCORE Class E options after decryption.
+    pub fn from_bytes(data: &'a [u8]) -> Self {
+        Self {
+            data,
+            offset: 0,
+            current_number: 0,
+        }
+    }
+}
+
 impl<'a> Iterator for OptionIterator<'a> {
     type Item = Result<CoapOption<'a>, CoapError>;
 

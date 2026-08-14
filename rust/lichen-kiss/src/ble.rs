@@ -150,13 +150,8 @@ impl KissBleTnc {
         data: &[u8],
         now_ms: u64,
     ) -> Result<(), KissError> {
-        self.writer.queue_frame(
-            port,
-            cmd,
-            data,
-            Priority::Bulk,
-            now_ms + 60_000,
-        )
+        self.writer
+            .queue_frame(port, cmd, data, Priority::Bulk, now_ms + 60_000)
     }
 
     /// Try to get the next KISS-encoded frame to notify to the app.

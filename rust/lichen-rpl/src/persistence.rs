@@ -399,9 +399,8 @@ impl DaoAdmissionState {
             }
             Err(error) => return Err(DaoProvisionError::Open(error)),
         }
-        let payload =
-            encode_admissions(node_address, rpl_instance_id, dodag_id, &HashSet::new())
-                .expect("empty admission set fits fixed header");
+        let payload = encode_admissions(node_address, rpl_instance_id, dodag_id, &HashSet::new())
+            .expect("empty admission set fits fixed header");
         let mut record = vec![0u8; payload.len() + SLOT_OVERHEAD];
         provision_redundant(
             storage,
@@ -416,7 +415,8 @@ impl DaoAdmissionState {
             }
             RedundantProvisionError::Storage(error) => DaoProvisionError::Storage(error),
         })?;
-        Self::open(storage, node_address, rpl_instance_id, dodag_id).map_err(DaoProvisionError::Open)
+        Self::open(storage, node_address, rpl_instance_id, dodag_id)
+            .map_err(DaoProvisionError::Open)
     }
 
     pub fn open<S: NonVolatile>(
@@ -620,7 +620,9 @@ pub(crate) fn decode_admissions(
             .try_into()
             .map_err(|_| AdmissionDecodeError::Corrupt)?,
     ) as usize;
-    if count > crate::routing::MAX_DAO_ORIGINS || payload.len() != DAO_ADMISSION_HEADER_LEN + count * 32 {
+    if count > crate::routing::MAX_DAO_ORIGINS
+        || payload.len() != DAO_ADMISSION_HEADER_LEN + count * 32
+    {
         return Err(AdmissionDecodeError::Corrupt);
     }
     let mut admitted = HashSet::with_capacity(count);

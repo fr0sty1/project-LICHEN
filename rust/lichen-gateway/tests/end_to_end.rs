@@ -18,6 +18,8 @@ use lichen_core::icmpv6::hdr_field;
 use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
 use lichen_gateway::Gateway;
 use lichen_ipv6::{icmpv6_checksum, Addr};
+use lichen_link::identity::Identity;
+use lichen_link::keys::Seed;
 use lichen_node::rpl_code;
 use lichen_node::RplEvent;
 use lichen_schc::codec;
@@ -41,7 +43,17 @@ fn ula(suffix: u8) -> Ipv6Addr {
 
 /// Create a fresh gateway (RPL root).
 fn test_gateway() -> Gateway {
-    Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
+    let seed = Seed::new([0x02; 32]);
+    Gateway::new(Identity::from_seed(seed))
+}
+
+/// Build a link-local address from an identity's IID.
+fn gw_link_local(identity: &Identity) -> [u8; 16] {
+    let mut addr = [0u8; 16];
+    addr[0] = 0xfe;
+    addr[1] = 0x80;
+    addr[8..].copy_from_slice(&identity.iid);
+    addr
 }
 
 /// SCHC-compress an IPv6 packet. Returns the L2 payload (dispatch + compressed).
@@ -53,7 +65,13 @@ fn schc_compress_ipv6(ipv6: &[u8]) -> Vec<u8> {
     out
 }
 
-fn build_ipv6_icmpv6_header(src: &Ipv6Addr, dst: &Ipv6Addr, icmp_type: u8, icmp_code: u8, body: &[u8]) -> Vec<u8> {
+fn build_ipv6_icmpv6_header(
+    src: &Ipv6Addr,
+    dst: &Ipv6Addr,
+    icmp_type: u8,
+    icmp_code: u8,
+    body: &[u8],
+) -> Vec<u8> {
     let icmpv6_len = 4 + body.len();
     let total = IPV6_HEADER_LEN + icmpv6_len;
     let mut pkt = vec![0u8; total];
@@ -66,7 +84,8 @@ fn build_ipv6_icmpv6_header(src: &Ipv6Addr, dst: &Ipv6Addr, icmp_type: u8, icmp_
     pkt[IPV6_HEADER_LEN] = icmp_type;
     pkt[IPV6_HEADER_LEN + 1] = icmp_code;
     pkt[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].copy_from_slice(body);
-    let checksum = icmpv6_checksum(&Addr(src.0), &Addr(dst.0), &pkt[IPV6_HEADER_LEN..]).expect("checksum compute");
+    let checksum = icmpv6_checksum(&Addr(src.0), &Addr(dst.0), &pkt[IPV6_HEADER_LEN..])
+        .expect("checksum compute");
     pkt[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&checksum.to_be_bytes());
     pkt
 }
@@ -84,14 +103,16 @@ fn mesh_node_pings_internet_host() {
     let src = ll(1);
     let dst = gua(0x88, 0x88); // 2001:4860:4860::8888
 
-    let mut pkt = [0u8; 52];
+    let mut pkt = [0u8; 64];
     let n = icmpv6::echo_request(&src, &dst, 0xaaaa, 1, b"mesh2inet", &mut pkt);
     let ipv6 = &pkt[..n];
 
     let mut gw = test_gateway();
     // internet destination is not link-local, not ULA, not in route table
     // → is_local_mesh returns false → direct SCHC compress path
-    let schc = gw.upstream_to_mesh(ipv6).expect("compress internet-bound packet failed");
+    let schc = gw
+        .upstream_to_mesh(ipv6)
+        .expect("compress internet-bound packet failed");
     assert_eq!(schc[0], L2_DISPATCH_SCHC);
 
     // Round-trip: decompress and verify the IP and ICMPv6 headers
@@ -99,7 +120,11 @@ fn mesh_node_pings_internet_host() {
     assert_eq!(recovered[6], 58, "NH should be ICMPv6");
     assert_eq!(&recovered[8..24], &src.0, "src mismatch");
     assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
-    assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be Echo Request");
+    assert_eq!(
+        recovered[40],
+        icmpv6::ECHO_REQUEST,
+        "type should be Echo Request"
+    );
     assert_eq!(&recovered[48..], b"mesh2inet", "payload mismatch");
 }
 
@@ -117,7 +142,9 @@ fn internet_host_pings_mesh_node() {
 
     let mut gw = test_gateway();
     // destination is link-local → is_local_mesh returns true → mesh_to_mesh path
-    let schc = gw.upstream_to_mesh(ipv6).expect("compress mesh ingress failed");
+    let schc = gw
+        .upstream_to_mesh(ipv6)
+        .expect("compress mesh ingress failed");
     assert_eq!(schc[0], L2_DISPATCH_SCHC);
 
     // Round-trip verification
@@ -150,8 +177,15 @@ fn gateway_handles_rpl_dis_from_mesh_node() {
     let ipv6 = &ipv6[..len];
     assert!(ipv6.len() >= IPV6_HEADER_LEN + 4);
     assert_eq!(ipv6[6], next_header::ICMPV6);
-    assert_eq!(ipv6[IPV6_HEADER_LEN], RPL_ICMPV6_TYPE, "type must be RPL (155)");
-    assert_eq!(ipv6[IPV6_HEADER_LEN + 1], rpl_code::DIO, "code must be DIO (1)");
+    assert_eq!(
+        ipv6[IPV6_HEADER_LEN], RPL_ICMPV6_TYPE,
+        "type must be RPL (155)"
+    );
+    assert_eq!(
+        ipv6[IPV6_HEADER_LEN + 1],
+        rpl_code::DIO,
+        "code must be DIO (1)"
+    );
 
     // DIO body: verify RPL instance ID
     let dio_body = &ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..];
@@ -163,7 +197,11 @@ fn gateway_handles_rpl_dis_from_mesh_node() {
 #[test]
 fn gateway_dio_carries_root_metadata() {
     let mesh_src = ll(5);
-    let gw_dst = ll(1);
+    // Gateway's address is derived from its identity seed, not ll(1)
+    let seed = Seed::new([0x02; 32]);
+    let identity = Identity::from_seed(seed);
+    let gw_addr = gw_link_local(&identity);
+    let gw_dst = Ipv6Addr(gw_addr);
 
     let dis = build_rpl_packet(&mesh_src, &gw_dst, rpl_code::DIS, &[0, 0]);
     let mut gw = test_gateway();
@@ -182,8 +220,7 @@ fn gateway_dio_carries_root_metadata() {
     assert_eq!(dio.mode_of_operation, 1, "mode must be Non-Storing (MOP=1)");
     assert_eq!(dio.rpl_instance_id, RPL_INSTANCE_ID);
     // dodag_id should match the gateway's root address
-    let gw_addr = ll(1);
-    assert_eq!(&dio.dodag_id, &gw_addr.0, "DODAG ID must equal root address");
+    assert_eq!(&dio.dodag_id, &gw_addr, "DODAG ID must equal root address");
 }
 
 /// ── Test 5: Gateway drops non-RPL ICMPv6 gracefully ─────────────────────────
@@ -202,7 +239,10 @@ fn gateway_drops_non_rpl_icmpv6_in_process_rpl() {
     let mut gw = test_gateway();
     let (reply, event) = gw.process_rpl(&l2, 0);
 
-    assert_eq!(reply, None, "gateway must not reply to non-RPL in process_rpl");
+    assert_eq!(
+        reply, None,
+        "gateway must not reply to non-RPL in process_rpl"
+    );
     assert_eq!(event, RplEvent::None, "non-RPL must yield None event");
 }
 
@@ -214,14 +254,16 @@ fn ula_mesh_node_pings_internet_host() {
     let src = ula(10);
     let dst = gua(0x88, 0x88);
 
-    let mut pkt = [0u8; 52];
+    let mut pkt = [0u8; 64];
     let n = icmpv6::echo_request(&src, &dst, 0xcccc, 3, b"ula2inet", &mut pkt);
     let ipv6 = &pkt[..n];
 
     let mut gw = test_gateway();
     // ULA → GUA: is_local_mesh checks for GUA dst; no route → is_local_mesh = false
     // → direct SCHC compress
-    let schc = gw.upstream_to_mesh(ipv6).expect("compress ULA→internet failed");
+    let schc = gw
+        .upstream_to_mesh(ipv6)
+        .expect("compress ULA→internet failed");
     assert_eq!(schc[0], L2_DISPATCH_SCHC);
 
     let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
@@ -265,10 +307,16 @@ fn icmpv6_echo_reply_round_trips_through_gateway() {
     let ipv6 = &pkt[..n];
 
     let mut gw = test_gateway();
-    let schc = gw.upstream_to_mesh(ipv6).expect("compress echo reply failed");
+    let schc = gw
+        .upstream_to_mesh(ipv6)
+        .expect("compress echo reply failed");
     let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
 
-    assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type must be Echo Reply (129)");
+    assert_eq!(
+        recovered[40],
+        icmpv6::ECHO_REPLY,
+        "type must be Echo Reply (129)"
+    );
     assert_eq!(&recovered[8..24], &src.0, "src mismatch");
     assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
 }
@@ -326,7 +374,10 @@ fn mesh_to_mesh_drops_unknown_gua_destination() {
     let gw = test_gateway();
     // mesh_to_mesh for GUA with no route → None
     let result = gw.mesh_to_mesh(ipv6);
-    assert!(result.is_none(), "unknown GUA should be dropped in mesh_to_mesh");
+    assert!(
+        result.is_none(),
+        "unknown GUA should be dropped in mesh_to_mesh"
+    );
 }
 
 /// ── Test 12: Address classification: known address types ────────────────────
@@ -338,13 +389,30 @@ fn address_classification_known_types() {
     let link_local_other = ll(7);
     let ula_addr = ula(20);
     let internet_addr = gua(0x88, 0x88);
-    let nat64 = [0x00u8, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 2, 1];
+    let nat64 = [
+        0x00u8, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 2, 1,
+    ];
 
-    assert!(gw.is_local_mesh(&local.0), "gateway itself should be local mesh");
-    assert!(gw.is_local_mesh(&link_local_other.0), "link-local peers are local mesh");
-    assert!(gw.is_local_mesh(&ula_addr.0), "ULA addresses are local mesh");
-    assert!(!gw.is_local_mesh(&internet_addr.0), "internet addresses are not local mesh");
-    assert!(!gw.is_local_mesh(&nat64), "NAT64 addresses are not local mesh");
+    assert!(
+        gw.is_local_mesh(&local.0),
+        "gateway itself should be local mesh"
+    );
+    assert!(
+        gw.is_local_mesh(&link_local_other.0),
+        "link-local peers are local mesh"
+    );
+    assert!(
+        gw.is_local_mesh(&ula_addr.0),
+        "ULA addresses are local mesh"
+    );
+    assert!(
+        !gw.is_local_mesh(&internet_addr.0),
+        "internet addresses are not local mesh"
+    );
+    assert!(
+        !gw.is_local_mesh(&nat64),
+        "NAT64 addresses are not local mesh"
+    );
 }
 
 /// ── Test 13: Gateway forwards ICMPv6 echo with varying payload sizes ────────
@@ -360,16 +428,24 @@ fn gateway_forwards_varying_echo_payload_sizes() {
         let ipv6 = &pkt[..n];
 
         let mut gw = test_gateway();
-        let schc = gw.upstream_to_mesh(ipv6).expect(&format!("compress with payload_len={}", payload_len));
-        let recovered = gw.mesh_to_upstream(&schc).expect(&format!("decompress with payload_len={}", payload_len));
+        let schc = gw
+            .upstream_to_mesh(ipv6)
+            .expect(&format!("compress with payload_len={}", payload_len));
+        let recovered = gw
+            .mesh_to_upstream(&schc)
+            .expect(&format!("decompress with payload_len={}", payload_len));
 
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST);
-        assert_eq!(&recovered[48..], &payload[..], "payload mismatch at len={}", payload_len);
+        assert_eq!(
+            &recovered[48..],
+            &payload[..],
+            "payload mismatch at len={}",
+            payload_len
+        );
     }
 }
 
 /// ── Test 14: Gateway drops oversize RPL packet ──────────────────────────────
-
 use lichen_core::constants::SCHC_MAX_DECOMPRESSED;
 use lichen_schc::codec::SchcError;
 
@@ -379,7 +455,9 @@ fn gateway_drops_oversize_decompressed_packet() {
 
     // Build a frame with an unknown SCHC rule (cannot decompress)
     // This tests the unknown rule path
-    assert!(gw.mesh_to_upstream(&[L2_DISPATCH_SCHC, 0xAA, 0x00]).is_none());
+    assert!(gw
+        .mesh_to_upstream(&[L2_DISPATCH_SCHC, 0xAA, 0x00])
+        .is_none());
 }
 
 /// ── Test 15: Gateway DIO reply has valid IPv6 checksum ──────────────────────
@@ -401,6 +479,10 @@ fn gateway_dio_reply_has_valid_ipv6() {
     assert!(ipv6.len() >= IPV6_HEADER_LEN + 4);
     assert_eq!(ipv6[0] >> 4, 6, "version must be 6");
     let payload_len = u16::from_be_bytes([ipv6[4], ipv6[5]]) as usize;
-    assert_eq!(payload_len + IPV6_HEADER_LEN, len, "payload length must match");
+    assert_eq!(
+        payload_len + IPV6_HEADER_LEN,
+        len,
+        "payload length must match"
+    );
     assert_eq!(ipv6[6], next_header::ICMPV6);
 }

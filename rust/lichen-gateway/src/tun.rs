@@ -160,7 +160,10 @@ impl TunDevice {
                 if n < 0 {
                     Err(io::Error::last_os_error())
                 } else if n == 0 {
-                    Err(io::Error::new(io::ErrorKind::WriteZero, "TUN write returned 0"))
+                    Err(io::Error::new(
+                        io::ErrorKind::WriteZero,
+                        "TUN write returned 0",
+                    ))
                 } else {
                     written += n as usize;
                     if written == buf.len() {

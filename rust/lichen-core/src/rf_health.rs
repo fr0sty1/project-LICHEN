@@ -623,22 +623,20 @@ mod tests {
             let sf = v.get("sf").and_then(|x| x.as_u64()).unwrap_or(10) as u8;
             let ema = v.get("ema").and_then(|x| x.as_f64()).unwrap_or(0.0);
             let load_factor = v.get("load_factor").and_then(|x| x.as_f64()).unwrap_or(0.0);
-            let exp_score = v
-                .get("interference_score")
-                .and_then(|x| x.as_f64())
-                .unwrap_or(0.0);
             let load_fp = ((load_factor * FP_SCALE as f64) as u32).min(FP_SCALE);
-            let _ema_fp = ((ema * FP_SCALE as f64) as u32).min(FP_SCALE);
-            let sf_norm = sf as f64 / 12.0;
-            let score = 0.5 * ema + 0.3 * load_factor + 0.2 * (1.0 - sf_norm);
-            let diff = (score - exp_score).abs();
-            assert!(
-                diff < 0.001,
-                "interference score mismatch for {}: {} vs {}",
-                v.get("name").and_then(|x| x.as_str()).unwrap_or("?"),
-                score,
-                exp_score
-            );
+            // Skip interference_score check for density vectors (use different schema)
+            if let Some(exp_score) = v.get("interference_score").and_then(|x| x.as_f64()) {
+                let sf_norm = sf as f64 / 12.0;
+                let score = 0.5 * ema + 0.3 * load_factor + 0.2 * (1.0 - sf_norm);
+                let diff = (score - exp_score).abs();
+                assert!(
+                    diff < 0.001,
+                    "interference score mismatch for {}: {} vs {}",
+                    v.get("name").and_then(|x| x.as_str()).unwrap_or("?"),
+                    score,
+                    exp_score
+                );
+            }
             let mut m = RfHealthMetrics::new();
             m.record_rx(5);
             m.record_load_factor(load_fp);

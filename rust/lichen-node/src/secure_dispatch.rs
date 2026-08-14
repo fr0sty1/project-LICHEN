@@ -14,9 +14,7 @@ use lichen_hal::Radio;
 use lichen_oscore::SenderStateStore;
 
 use crate::dispatch::{self, Dispatcher, Request};
-use crate::secure::{
-    ReceivedSecureDatagram, SecureError, SecureResponseData, SecureStack,
-};
+use crate::secure::{ReceivedSecureDatagram, SecureError, SecureResponseData, SecureStack};
 use crate::stack::TxError;
 
 /// Outcome of dispatching a secure (or plaintext) CoAP request.
@@ -65,12 +63,27 @@ async fn dispatch_encrypted<R: Radio, S: SenderStateStore>(
 ) -> Result<SecureDispatchOutcome, SecureError> {
     let request = stack.decrypt_request(received)?;
 
+    // Parse URI-Path options from decrypted Class E options
+    let mut path = [&[][..]; dispatch::MAX_PATH_DEPTH];
+    let mut path_len = 0;
+    let mut content_format = None;
+
+    for opt in lichen_coap::codec::OptionIterator::from_bytes(&request.options) {
+        let opt = opt.map_err(|_| SecureError::DecryptFailed)?;
+        if opt.is_uri_path() && path_len < dispatch::MAX_PATH_DEPTH {
+            path[path_len] = opt.value;
+            path_len += 1;
+        } else if opt.is_content_format() {
+            content_format = opt.as_uint().ok().map(|v| v as u16);
+        }
+    }
+
     let req = Request {
         method: request.code,
-        path: [&[][..]; dispatch::MAX_PATH_DEPTH],
-        path_len: 0,
+        path,
+        path_len,
         payload: &request.payload,
-        content_format: Some(CBOR),
+        content_format: content_format.or(Some(CBOR)),
     };
 
     let resp = dispatcher.dispatch(&req);
@@ -111,18 +124,11 @@ fn dispatch_plaintext(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lichen_coap::codec::CoapBuilder;
-    use lichen_coap::message::{MessageCode, MessageType};
-    use lichen_core::addr::Addr;
-    use lichen_core::constants::PORT_COAP;
+    use lichen_coap::message::MessageCode;
     use lichen_hal::loopback::LoopbackRadio;
-    use lichen_hal::RadioConfig;
     use lichen_link::identity::{Identity, PeerIdentity};
     use lichen_link::Seed;
     use lichen_oscore::{Context as OscoreContext, ContextId, SenderSequenceState};
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::{Arc, Mutex};
-    use std::vec;
 
     use crate::dispatch::default_dispatcher;
     use crate::stack::Stack;
@@ -167,19 +173,6 @@ mod tests {
         }
     }
 
-    fn make_datagram(coap: Vec<u8>, sender_iid: [u8; 8], dest: Addr) -> ReceivedSecureDatagram {
-        ReceivedSecureDatagram {
-            coap,
-            sender_iid,
-            source: Addr::link_local_from_eui64(&sender_iid),
-            destination: dest,
-            source_port: PORT_COAP,
-            destination_port: PORT_COAP,
-            rssi: None,
-            snr: None,
-        }
-    }
-
     #[tokio::test]
     async fn secure_dispatch_deaddrop_get_roundtrip() {
         let alice_id = Identity::from_seed(Seed::new([0x31; 32]));
@@ -212,29 +205,31 @@ mod tests {
             fail: false,
         };
 
-        let alice_ctx = OscoreContext::load_existing(
+        let alice_ctx = OscoreContext::new(
             &master_secret,
             None,
             None,
             &alice_id.iid[..1],
             &bob_id.iid[..1],
-            &mut alice_store,
         )
+        .unwrap()
+        .restore_existing(&mut alice_store)
         .unwrap();
-        let bob_ctx = OscoreContext::load_existing(
+        let bob_ctx = OscoreContext::new(
             &master_secret,
             None,
             None,
             &bob_id.iid[..1],
             &alice_id.iid[..1],
-            &mut bob_store,
         )
+        .unwrap()
+        .restore_existing(&mut bob_store)
         .unwrap();
 
         alice
-            .register_fresh_context(bob_id.iid, alice_ctx, &mut alice_store)
+            .restore_context(bob_id.iid, alice_ctx, &mut alice_store)
             .unwrap();
-        bob.register_fresh_context(alice_id.iid, bob_ctx, &mut bob_store)
+        bob.restore_context(alice_id.iid, bob_ctx, &mut bob_store)
             .unwrap();
 
         // Alice sends an encrypted POST to /deaddrop
@@ -303,29 +298,31 @@ mod tests {
             fail: false,
         };
 
-        let alice_ctx = OscoreContext::load_existing(
+        let alice_ctx = OscoreContext::new(
             &master_secret,
             None,
             None,
             &alice_id.iid[..1],
             &bob_id.iid[..1],
-            &mut alice_store,
         )
+        .unwrap()
+        .restore_existing(&mut alice_store)
         .unwrap();
-        let bob_ctx = OscoreContext::load_existing(
+        let bob_ctx = OscoreContext::new(
             &master_secret,
             None,
             None,
             &bob_id.iid[..1],
             &alice_id.iid[..1],
-            &mut bob_store,
         )
+        .unwrap()
+        .restore_existing(&mut bob_store)
         .unwrap();
 
         alice
-            .register_fresh_context(bob_id.iid, alice_ctx, &mut alice_store)
+            .restore_context(bob_id.iid, alice_ctx, &mut alice_store)
             .unwrap();
-        bob.register_fresh_context(alice_id.iid, bob_ctx, &mut bob_store)
+        bob.restore_context(alice_id.iid, bob_ctx, &mut bob_store)
             .unwrap();
 
         // Alice sends an encrypted GET to /confessions
