@@ -1,0 +1,199 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "CCP beacon format test vectors. Tests TDMA slot assignment divergence between Python (uses SFN) and Rust (ignores SFN, hardcodes 16 slots). Per spec, slot = fnv1a32(EUI64 XOR SFN) % num_slots, but implementations differ. Hash is FNV-1a32 with basis 0x811c9dc5. Also includes EMA fixed-point arithmetic edge cases.",
+  "vectors": [
+    {
+      "name": "tdma_slot_sfn_zero_static",
+      "description": "TDMA slot at SFN=0 - both implementations should match since SFN contribution is zero",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "sfn": 0,
+        "num_slots": 16
+      },
+      "output": {
+        "hash_32": 3236109245,
+        "hash_32_hex": "c0e31bbd",
+        "slot_python": 13,
+        "slot_rust_expected": 13
+      },
+      "notes": "hash_32(eui64) = 0xc0e31bbd = 3236109245. Python: (3236109245 + 0) % 16 = 13. Rust: 3236109245 % 16 = 13. Match."
+    },
+    {
+      "name": "tdma_slot_sfn_one_divergence",
+      "description": "TDMA slot at SFN=1 - exposes divergence: Python adds SFN to hash, Rust ignores SFN",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "sfn": 1,
+        "num_slots": 16
+      },
+      "output": {
+        "hash_32": 3236109245,
+        "slot_python": 14,
+        "slot_rust_expected": 13,
+        "diverges": true
+      },
+      "notes": "Python: (3236109245 + 1) % 16 = 14. Rust: 3236109245 % 16 = 13 (ignores SFN). DIVERGENCE."
+    },
+    {
+      "name": "tdma_slot_sfn_max_wraparound",
+      "description": "TDMA slot at SFN=0xFFFFFFFF (max u32) - tests wraparound behavior",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0011223344556677",
+        "sfn": 4294967295,
+        "num_slots": 16
+      },
+      "output": {
+        "hash_32": 3236109245,
+        "slot_python": 12,
+        "slot_rust_expected": 13,
+        "diverges": true
+      },
+      "notes": "Python: (3236109245 + 4294967295) % 16 = (7531076540 & 0xFFFFFFFF) % 16 = 12. Rust: 3236109245 % 16 = 13. DIVERGENCE."
+    },
+    {
+      "name": "tdma_slot_eui_one_baseline",
+      "description": "Baseline slot for EUI64=0x0000000000000001 at SFN=0",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0000000000000001",
+        "sfn": 0,
+        "num_slots": 16
+      },
+      "output": {
+        "hash_32": 2598465490,
+        "hash_32_hex": "9ae16fd2",
+        "slot_python": 2,
+        "slot_rust_expected": 2
+      },
+      "notes": "hash_32(0x0000000000000001) = 0x9ae16fd2 = 2598465490. Both: 2598465490 % 16 = 2. Match at SFN=0."
+    },
+    {
+      "name": "tdma_slot_num_slots_mismatch",
+      "description": "Rust ignores num_slots parameter and hardcodes 16 slots",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "0000000000000001",
+        "sfn": 0,
+        "num_slots": 8
+      },
+      "output": {
+        "hash_32": 2598465490,
+        "slot_python": 2,
+        "slot_rust_expected": 2,
+        "diverges": false
+      },
+      "notes": "Python: 2598465490 % 8 = 2. Rust: 2598465490 % 16 = 2. Happens to match, but num_slots semantics differ."
+    },
+    {
+      "name": "tdma_slot_num_slots_divergence",
+      "description": "Demonstrates num_slots divergence with different EUI",
+      "type": "slot_selection",
+      "input": {
+        "eui64": "aabbccddeeff0011",
+        "sfn": 0,
+        "num_slots": 8
+      },
+      "output": {
+        "slot_python": 5,
+        "slot_rust_expected": 13,
+        "diverges": true
+      },
+      "notes": "Python respects num_slots=8, Rust hardcodes 16. hash % 8 != hash % 16 in general."
+    },
+    {
+      "name": "hash_32_fnv1a_empty",
+      "description": "FNV-1a32 hash of empty input",
+      "type": "hash_32",
+      "input": {
+        "data_hex": ""
+      },
+      "output": {
+        "hash_32": 2166136261,
+        "hash_32_hex": "811c9dc5"
+      },
+      "notes": "FNV offset basis = 0x811c9dc5 = 2166136261"
+    },
+    {
+      "name": "hash_32_fnv1a_single_byte",
+      "description": "FNV-1a32 hash of single zero byte",
+      "type": "hash_32",
+      "input": {
+        "data_hex": "00"
+      },
+      "output": {
+        "hash_32": 84696351,
+        "hash_32_hex": "050c5d1f"
+      },
+      "notes": "(0x811c9dc5 ^ 0x00) * 0x01000193 = 0x050c5d1f"
+    },
+    {
+      "name": "ema_positive_samples",
+      "description": "EMA calculation with positive SNR samples - Python uses float, Rust uses Q16.16 fixed-point",
+      "type": "ema",
+      "input": {
+        "initial_avg_q16": 0,
+        "samples": [8, 12, 10, 11],
+        "alpha_shift": 2
+      },
+      "output": {
+        "python_float_result": 5.859375,
+        "rust_fixed_result_q16": 384000,
+        "notes": "Python: avg + (sample - avg) * 0.25. Rust: avg + ((sample - avg) >> 2) with saturating ops."
+      }
+    },
+    {
+      "name": "ema_negative_samples",
+      "description": "EMA with negative SNR samples - right-shift of negatives may diverge",
+      "type": "ema",
+      "input": {
+        "initial_avg_q16": 0,
+        "samples": [-3, -7, -2, -5],
+        "alpha_shift": 2
+      },
+      "output": {
+        "notes": "Python float arithmetic vs Rust fixed-point right-shift on negative values. Arithmetic vs logical shift matters."
+      }
+    },
+    {
+      "name": "beacon_header_placeholder",
+      "description": "24-byte CCP beacon header format - NOT YET IMPLEMENTED in either codebase",
+      "type": "beacon_format",
+      "expected_format": {
+        "epoch_offset": 0,
+        "epoch_size": 4,
+        "num_slots_offset": 4,
+        "num_slots_size": 1,
+        "sfn_offset": 5,
+        "sfn_size": 4,
+        "timestamp_offset": 9,
+        "timestamp_size": 4,
+        "flags_offset": 13,
+        "flags_size": 1,
+        "reserved_offset": 14,
+        "reserved_size": 10,
+        "total_size": 24
+      },
+      "notes": "Spec says 24-byte fixed header + CBOR options + 48B Schnorr signature. Neither Python nor Rust implements the full beacon codec yet."
+    },
+    {
+      "name": "beacon_wire_example",
+      "description": "Example beacon wire format for future implementation",
+      "type": "beacon_format",
+      "input": {
+        "epoch": 1,
+        "num_slots": 16,
+        "sfn": 12345,
+        "timestamp_us": 1704067200000000,
+        "flags": 0
+      },
+      "output": {
+        "header_hex": "0000000110000030390000000000000000000000000000",
+        "notes": "epoch:4B LE, num_slots:1B, sfn:4B LE, timestamp:4B truncated, flags:1B, reserved:10B zeros"
+      }
+    }
+  ]
+}

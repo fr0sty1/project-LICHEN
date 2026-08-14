@@ -1,0 +1,84 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "ICMPv6 Echo Request/Reply and error vectors (RFC 4443, spec 6.4) with IPv6 pseudo-header checksum. Includes link-local and 0200::/7 primary addresses.",
+  "vectors": [
+    {
+      "name": "echo_request_basic",
+      "description": "Echo Request id=0x1234 seq=1 data=test, link-local",
+      "src": "fe80::1",
+      "dst": "fe80::2",
+      "icmp_type": 128,
+      "icmp_code": 0,
+      "identifier": 4660,
+      "sequence": 1,
+      "data": "74657374",
+      "wire": "60000000000c3a40fe800000000000000000000000000001fe800000000000000000000000000002800088a51234000174657374"
+    },
+    {
+      "name": "echo_reply_basic",
+      "description": "Echo Reply mirroring request (swapped addrs)",
+      "src": "fe80::2",
+      "dst": "fe80::1",
+      "icmp_type": 129,
+      "icmp_code": 0,
+      "identifier": 4660,
+      "sequence": 1,
+      "data": "74657374",
+      "wire": "60000000000c3a40fe800000000000000000000000000002fe800000000000000000000000000001810087a51234000174657374"
+    },
+    {
+      "name": "echo_request_yggdrasil",
+      "description": "Echo Request over primary 0200::/7 addresses",
+      "src": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
+      "dst": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
+      "src_packed": "0200389e777ace07c7d6ca08166ecd20",
+      "dst_packed": "0200514acffcfa9dea90556802586d37",
+      "icmp_type": 128,
+      "identifier": 43981,
+      "sequence": 42,
+      "data": "68656c6c6f20796767",
+      "wire": "6000000000113a400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d378000ec65abcd002a68656c6c6f20796767"
+    },
+    {
+      "name": "dest_unreachable_no_route",
+      "description": "ICMPv6 error dest_unreachable_no_route",
+      "src": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
+      "dst": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
+      "icmp_type": 1,
+      "icmp_code": 0,
+      "invoking_packet": "60000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72",
+      "wire": "6000000000493a400200514acffcfa9dea90556802586d370200389e777ace07c7d6ca08166ecd200100ca500000000060000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72"
+    },
+    {
+      "name": "dest_unreachable_port",
+      "description": "ICMPv6 error dest_unreachable_port",
+      "src": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
+      "dst": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
+      "icmp_type": 1,
+      "icmp_code": 4,
+      "invoking_packet": "60000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72",
+      "wire": "6000000000493a400200514acffcfa9dea90556802586d370200389e777ace07c7d6ca08166ecd200104ca4c0000000060000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72"
+    },
+    {
+      "name": "packet_too_big_1280",
+      "description": "ICMPv6 error packet_too_big_1280",
+      "src": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
+      "dst": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
+      "icmp_type": 2,
+      "icmp_code": 0,
+      "invoking_packet": "60000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72",
+      "wire": "6000000000493a400200514acffcfa9dea90556802586d370200389e777ace07c7d6ca08166ecd200200c4500000050060000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72"
+    },
+    {
+      "name": "time_exceeded_hop",
+      "description": "ICMPv6 error time_exceeded_hop",
+      "src": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
+      "dst": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
+      "icmp_type": 3,
+      "icmp_code": 0,
+      "invoking_packet": "60000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72",
+      "wire": "6000000000493a400200514acffcfa9dea90556802586d370200389e777ace07c7d6ca08166ecd200300c8500000000060000000001911400200389e777ace07c7d6ca08166ecd200200514acffcfa9dea90556802586d3716331633001930987061796c6f616420666f72206572726f72"
+    }
+  ]
+}

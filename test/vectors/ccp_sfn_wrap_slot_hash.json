@@ -1,0 +1,202 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "LICHEN CCP slot assignment with SFN wraparound test vectors (spec section 14.7). Tests slot_for(eui64, sfn, num_slots) = (hash_32(eui64) + (sfn & 0xFFFFFFFF)) % num_slots and sfn_delta(curr, last) = (curr - last) & 0xFFFFFFFF. Critical for ensuring slot rotation continues correctly across SFN u32 wrap boundary. HIGH divergence risk: Rust TdmaScheduler::slot_for currently ignores SFN parameter.",
+  "vectors": [
+    {
+      "name": "hash_32_reference",
+      "description": "Reference hash_32 value for EUI64 0x0102030405060708, used by subsequent slot tests",
+      "eui64_hex": "0102030405060708",
+      "expected_hash_32": "0x2804678d",
+      "expected_hash_32_decimal": 671377293,
+      "comment": "FNV-1a32 of bytes [0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08]"
+    },
+    {
+      "name": "slot_for_sfn_zero",
+      "description": "Slot assignment at SFN=0, baseline for rotation tests",
+      "eui64_hex": "0102030405060708",
+      "sfn": 0,
+      "num_slots": 16,
+      "expected_slot": 13,
+      "formula": "(0x2804678d + 0) % 16 = 671377293 % 16 = 13"
+    },
+    {
+      "name": "slot_for_sfn_one",
+      "description": "Slot assignment at SFN=1, verifies SFN increments slot by 1",
+      "eui64_hex": "0102030405060708",
+      "sfn": 1,
+      "num_slots": 16,
+      "expected_slot": 14,
+      "formula": "(0x2804678d + 1) % 16 = 671377294 % 16 = 14"
+    },
+    {
+      "name": "slot_for_sfn_max",
+      "description": "Slot assignment at SFN=0xFFFFFFFF (max u32), just before wrap",
+      "eui64_hex": "0102030405060708",
+      "sfn": 4294967295,
+      "sfn_hex": "0xffffffff",
+      "num_slots": 16,
+      "expected_slot": 12,
+      "formula": "(0x2804678d + 0xFFFFFFFF) % 16 = (671377293 + 4294967295) % 16 = 12"
+    },
+    {
+      "name": "slot_for_sfn_after_wrap",
+      "description": "Slot assignment at SFN=2, just after wrap from 0xFFFFFFFF",
+      "eui64_hex": "0102030405060708",
+      "sfn": 2,
+      "num_slots": 16,
+      "expected_slot": 15,
+      "formula": "(0x2804678d + 2) % 16 = 671377295 % 16 = 15"
+    },
+    {
+      "name": "sfn_wrap_continuity",
+      "description": "Slot continuity across SFN wrap: slot at max+3 equals slot at 2 (since delta=3)",
+      "eui64_hex": "0102030405060708",
+      "last_sfn": 4294967295,
+      "last_sfn_hex": "0xffffffff",
+      "current_sfn": 2,
+      "num_slots": 16,
+      "expected_delta": 3,
+      "expected_slot_at_last": 12,
+      "expected_slot_at_current": 15,
+      "verify": "slot_at_current = (slot_at_last + delta) % num_slots = (12 + 3) % 16 = 15"
+    },
+    {
+      "name": "sfn_mask_to_32bit",
+      "description": "SFN values above 2^32 must mask to 32 bits before calculation",
+      "eui64_hex": "0102030405060708",
+      "sfn_large": 4294967296,
+      "sfn_large_hex": "0x100000000",
+      "sfn_masked": 0,
+      "num_slots": 16,
+      "expected_slot": 13,
+      "comment": "0x100000000 & 0xFFFFFFFF = 0, so slot equals slot_for(sfn=0) = 13"
+    },
+    {
+      "name": "sfn_mask_large_value",
+      "description": "Large SFN value masks correctly",
+      "eui64_hex": "0102030405060708",
+      "sfn_large": 4294967297,
+      "sfn_large_hex": "0x100000001",
+      "sfn_masked": 1,
+      "num_slots": 16,
+      "expected_slot": 14,
+      "comment": "0x100000001 & 0xFFFFFFFF = 1, so slot equals slot_for(sfn=1) = 14"
+    },
+    {
+      "name": "sfn_delta_wrap_minimal",
+      "description": "Smallest SFN wrap: 0 - 0xFFFFFFFF = 1 in unsigned 32-bit",
+      "current_sfn": 0,
+      "last_sfn": 4294967295,
+      "last_sfn_hex": "0xffffffff",
+      "expected_delta": 1,
+      "formula": "(0 - 0xFFFFFFFF) & 0xFFFFFFFF = 0x00000001 = 1"
+    },
+    {
+      "name": "sfn_delta_wrap_multi",
+      "description": "SFN wrap from 0xFFFFFFFF to 2: delta=3",
+      "current_sfn": 2,
+      "last_sfn": 4294967295,
+      "last_sfn_hex": "0xffffffff",
+      "expected_delta": 3,
+      "formula": "(2 - 0xFFFFFFFF) & 0xFFFFFFFF = 0x00000003 = 3"
+    },
+    {
+      "name": "sfn_delta_wrap_near",
+      "description": "Near-wrap SFN delta: curr=5, last=0xFFFFFFFE yields delta=7",
+      "current_sfn": 5,
+      "last_sfn": 4294967294,
+      "last_sfn_hex": "0xfffffffe",
+      "expected_delta": 7,
+      "formula": "(5 - 0xFFFFFFFE) & 0xFFFFFFFF = 0x00000007 = 7"
+    },
+    {
+      "name": "sfn_delta_no_wrap",
+      "description": "Normal delta without wrap",
+      "current_sfn": 100,
+      "last_sfn": 50,
+      "expected_delta": 50,
+      "formula": "(100 - 50) & 0xFFFFFFFF = 50"
+    },
+    {
+      "name": "sfn_delta_zero",
+      "description": "Same SFN yields zero delta",
+      "current_sfn": 12345,
+      "last_sfn": 12345,
+      "expected_delta": 0,
+      "formula": "(12345 - 12345) & 0xFFFFFFFF = 0"
+    },
+    {
+      "name": "sfn_delta_large_forward",
+      "description": "Large forward jump within 32-bit range",
+      "current_sfn": 2147483648,
+      "current_sfn_hex": "0x80000000",
+      "last_sfn": 0,
+      "expected_delta": 2147483648,
+      "formula": "(0x80000000 - 0) & 0xFFFFFFFF = 0x80000000 = 2147483648"
+    },
+    {
+      "name": "sfn_delta_apparent_backward",
+      "description": "Apparent backward jump (curr < last) wraps to large positive",
+      "current_sfn": 10,
+      "last_sfn": 100,
+      "expected_delta": 4294967206,
+      "expected_delta_hex": "0xffffffa6",
+      "comment": "Unsigned wrap: (10 - 100) mod 2^32 = 0xFFFFFF9C + 10 = 0xFFFFFFA6"
+    },
+    {
+      "name": "slot_for_different_num_slots_8",
+      "description": "Slot with num_slots=8 (smaller slot space)",
+      "eui64_hex": "0102030405060708",
+      "sfn": 0,
+      "num_slots": 8,
+      "expected_slot": 5,
+      "formula": "(0x2804678d + 0) % 8 = 671377293 % 8 = 5"
+    },
+    {
+      "name": "slot_for_different_num_slots_32",
+      "description": "Slot with num_slots=32 (larger slot space)",
+      "eui64_hex": "0102030405060708",
+      "sfn": 0,
+      "num_slots": 32,
+      "expected_slot": 13,
+      "formula": "(0x2804678d + 0) % 32 = 671377293 % 32 = 13"
+    },
+    {
+      "name": "slot_for_zeros_eui",
+      "description": "All-zeros EUI64 edge case",
+      "eui64_hex": "0000000000000000",
+      "sfn": 0,
+      "num_slots": 16,
+      "expected_hash_32": "0x9be17165",
+      "expected_slot": 5,
+      "formula": "(0x9be17165 + 0) % 16 = 2615243109 % 16 = 5"
+    },
+    {
+      "name": "slot_for_ones_eui",
+      "description": "All-ones (0xFF) EUI64 edge case",
+      "eui64_hex": "ffffffffffffffff",
+      "sfn": 0,
+      "num_slots": 16,
+      "expected_hash_32": "0x6cae0a5d",
+      "expected_slot": 13,
+      "formula": "(0x6cae0a5d + 0) % 16 = 1823345245 % 16 = 13"
+    },
+    {
+      "name": "full_wrap_sequence",
+      "description": "Complete sequence across SFN wrap boundary, verifying continuous slot rotation",
+      "eui64_hex": "0102030405060708",
+      "num_slots": 16,
+      "sequence": [
+        {"sfn": 4294967293, "sfn_hex": "0xfffffffd", "expected_slot": 10},
+        {"sfn": 4294967294, "sfn_hex": "0xfffffffe", "expected_slot": 11},
+        {"sfn": 4294967295, "sfn_hex": "0xffffffff", "expected_slot": 12},
+        {"sfn": 0, "sfn_hex": "0x00000000", "expected_slot": 13},
+        {"sfn": 1, "sfn_hex": "0x00000001", "expected_slot": 14},
+        {"sfn": 2, "sfn_hex": "0x00000002", "expected_slot": 15},
+        {"sfn": 3, "sfn_hex": "0x00000003", "expected_slot": 0}
+      ],
+      "comment": "Slots rotate continuously: each SFN increment adds 1 to slot (mod num_slots)"
+    }
+  ]
+}

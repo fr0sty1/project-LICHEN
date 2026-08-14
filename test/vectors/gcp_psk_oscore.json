@@ -1,0 +1,97 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "gcp_psk_oscore",
+  "description": "Gateway Coordination Protocol PSK-based OSCORE key derivation per RFC 8613. HKDF intermediate values for closed federation.",
+  "spec": "spec/08-gateway-coordination.md Section 3.1, RFC 8613 Appendix A",
+  "vectors": [
+    {
+      "name": "gcp_psk_hkdf_extract",
+      "description": "HKDF-Extract(salt, PSK) -> PRK. Salt is master_salt or empty.",
+      "psk": "6c696368656e2d666564657261746f6e2d707369",
+      "psk_note": "lichen-federation-psk as ASCII",
+      "master_salt": "",
+      "algorithm": "HKDF-SHA-256",
+      "expected": {
+        "prk_length": 32,
+        "step": "HKDF-Extract(salt='', IKM=PSK)"
+      }
+    },
+    {
+      "name": "gcp_psk_sender_key_derivation",
+      "description": "Derive sender key: HKDF-Expand(PRK, info, 16).",
+      "psk": "6c696368656e2d666564657261746f6e2d707369",
+      "sender_id": "01",
+      "info_structure": {
+        "format": "CBOR array",
+        "elements": [
+          "sender_id (bstr)",
+          "id_context (bstr, may be empty)",
+          "algorithm (int)",
+          "type (str 'Key')",
+          "key_length (uint)"
+        ]
+      },
+      "info_cbor_hex": "8441010a634b657910",
+      "expected": {
+        "sender_key_length": 16,
+        "algorithm": "AES-CCM-16-64-128"
+      }
+    },
+    {
+      "name": "gcp_psk_common_iv_derivation",
+      "description": "Derive common IV: HKDF-Expand(PRK, info, 13).",
+      "psk": "6c696368656e2d666564657261746f6e2d707369",
+      "info_structure": {
+        "format": "CBOR array",
+        "elements": [
+          "empty bstr (no sender_id for common IV)",
+          "id_context (bstr)",
+          "algorithm (int)",
+          "type (str 'IV')",
+          "iv_length (uint)"
+        ]
+      },
+      "info_cbor_hex": "8440400a6249560d",
+      "expected": {
+        "common_iv_length": 13
+      }
+    },
+    {
+      "name": "gcp_psk_full_derivation",
+      "description": "Complete PSK -> OSCORE context derivation with all intermediates.",
+      "psk": "0102030405060708090a0b0c0d0e0f10",
+      "psk_hex": true,
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "algorithm": 10,
+      "expected": {
+        "sender_key_info": "8441000a634b657910",
+        "recipient_key_info": "8441010a634b657910",
+        "common_iv_info": "8440489e7ca922237863400a6249560d"
+      },
+      "reference": "RFC 8613 Appendix C.1"
+    },
+    {
+      "name": "gcp_psk_id_context_federation",
+      "description": "Federation-specific id_context to isolate different GCP federations.",
+      "psk": "666564657261746f6e31",
+      "id_context": "6c696368656e",
+      "id_context_note": "'lichen' as ASCII",
+      "expected": {
+        "contexts_isolated": true,
+        "note": "Same PSK with different id_context produces different keys"
+      }
+    },
+    {
+      "name": "gcp_psk_replay_window_init",
+      "description": "Initial replay window state for new OSCORE context.",
+      "expected": {
+        "sender_seq": 0,
+        "replay_window_size": 32,
+        "replay_window_bits": "0x00000000"
+      }
+    }
+  ]
+}

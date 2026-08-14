@@ -1,0 +1,130 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "coap_option_malformed",
+  "description": "CoAP option parsing edge cases per RFC 7252 Section 3.1. Delta/length overflow, reserved values, option 0.",
+  "spec": "RFC 7252 Section 3.1",
+  "vectors": [
+    {
+      "name": "option_delta_13_extended_1byte",
+      "description": "Delta 13 uses extended 1-byte format: actual_delta = 13 + ext_byte.",
+      "option_byte": "d0",
+      "extended_delta": "00",
+      "expected": {
+        "valid": true,
+        "delta": 13,
+        "reason": "delta_13_plus_0"
+      }
+    },
+    {
+      "name": "option_delta_14_extended_2byte",
+      "description": "Delta 14 uses extended 2-byte format: actual_delta = 269 + uint16.",
+      "option_byte": "e0",
+      "extended_delta": "0000",
+      "expected": {
+        "valid": true,
+        "delta": 269,
+        "reason": "delta_269_plus_0"
+      }
+    },
+    {
+      "name": "option_delta_15_reserved_reject",
+      "description": "Delta 15 is reserved for payload marker (0xFF). MUST reject if used as option delta.",
+      "option_byte": "f0",
+      "expected": {
+        "valid": false,
+        "reason": "reserved_delta_15"
+      }
+    },
+    {
+      "name": "option_length_13_extended_1byte",
+      "description": "Length 13 uses extended 1-byte format: actual_length = 13 + ext_byte.",
+      "option_byte": "0d",
+      "extended_length": "00",
+      "expected": {
+        "valid": true,
+        "length": 13,
+        "reason": "length_13_plus_0"
+      }
+    },
+    {
+      "name": "option_length_14_extended_2byte",
+      "description": "Length 14 uses extended 2-byte format: actual_length = 269 + uint16.",
+      "option_byte": "0e",
+      "extended_length": "0000",
+      "expected": {
+        "valid": true,
+        "length": 269,
+        "reason": "length_269_plus_0"
+      }
+    },
+    {
+      "name": "option_length_15_reserved_reject",
+      "description": "Length 15 is reserved. MUST reject if used as option length.",
+      "option_byte": "0f",
+      "expected": {
+        "valid": false,
+        "reason": "reserved_length_15"
+      }
+    },
+    {
+      "name": "option_0_if_match_zero_length",
+      "description": "Option number 0 (If-Match) with zero length is valid per RFC 7252.",
+      "cumulative_number": 0,
+      "length": 0,
+      "expected": {
+        "valid": true,
+        "option_name": "If-Match",
+        "reason": "empty_if_match_wildcard"
+      }
+    },
+    {
+      "name": "option_truncated_extended_delta",
+      "description": "Extended delta (13) but no extension byte follows.",
+      "wire_hex": "d0",
+      "expected": {
+        "valid": false,
+        "reason": "truncated_extended_delta"
+      }
+    },
+    {
+      "name": "option_truncated_extended_length",
+      "description": "Extended length (14) but only 1 byte follows instead of 2.",
+      "wire_hex": "0e00",
+      "expected": {
+        "valid": false,
+        "reason": "truncated_extended_length"
+      }
+    },
+    {
+      "name": "option_value_truncated",
+      "description": "Option claims length 10 but only 5 bytes of value follow.",
+      "wire_hex": "0a0102030405",
+      "expected": {
+        "valid": false,
+        "reason": "truncated_option_value"
+      }
+    },
+    {
+      "name": "option_delta_overflow_reject",
+      "description": "Delta extended value causes option number > 65535 (overflow).",
+      "cumulative_number": 65530,
+      "delta": 269,
+      "extended_delta": "ffff",
+      "expected": {
+        "valid": false,
+        "reason": "option_number_overflow"
+      },
+      "note": "65530 + 269 + 65535 = 131334, exceeds valid range."
+    },
+    {
+      "name": "payload_marker_without_payload",
+      "description": "0xFF payload marker with no bytes following is invalid.",
+      "wire_hex": "4001000aff",
+      "expected": {
+        "valid": false,
+        "reason": "empty_payload_after_marker"
+      }
+    }
+  ]
+}

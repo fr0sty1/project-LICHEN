@@ -1,0 +1,138 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "sos_rate_limiting",
+  "description": "SOS emergency rate limiting per spec Section 18.3. 10min cooldown, 3/hr max, burst 2.",
+  "spec": "spec/12-apps.md Section 18.3",
+  "limits": {
+    "cooldown_minutes": 10,
+    "per_hour": 3,
+    "burst": 2,
+    "time_source": "monotonic_uptime"
+  },
+  "vectors": [
+    {
+      "name": "first_sos_accepted",
+      "description": "First SOS from a node is always accepted immediately.",
+      "sender_iid": "0011223344556677",
+      "history": [],
+      "expected": {
+        "accept": true,
+        "reason": "first_sos"
+      }
+    },
+    {
+      "name": "burst_second_accepted",
+      "description": "Second SOS within burst window (2 allowed) is accepted.",
+      "sender_iid": "0011223344556677",
+      "history_count_in_hour": 1,
+      "last_sos_uptime_ms": 1000,
+      "current_uptime_ms": 2000,
+      "expected": {
+        "accept": true,
+        "reason": "within_burst"
+      }
+    },
+    {
+      "name": "third_before_cooldown_rejected",
+      "description": "Third SOS before 10min cooldown is rejected.",
+      "sender_iid": "0011223344556677",
+      "history_count_in_hour": 2,
+      "last_sos_uptime_ms": 1000,
+      "current_uptime_ms": 300000,
+      "cooldown_remaining_ms": 300000,
+      "expected": {
+        "accept": false,
+        "response_code": "4.29 Too Many Requests",
+        "retry_after_s": 300
+      }
+    },
+    {
+      "name": "third_after_cooldown_accepted",
+      "description": "Third SOS after 10min cooldown is accepted (within hourly limit).",
+      "sender_iid": "0011223344556677",
+      "history_count_in_hour": 2,
+      "last_sos_uptime_ms": 0,
+      "current_uptime_ms": 600000,
+      "expected": {
+        "accept": true,
+        "reason": "cooldown_elapsed"
+      }
+    },
+    {
+      "name": "fourth_in_hour_rejected",
+      "description": "Fourth SOS in same hour is rejected (3/hr max).",
+      "sender_iid": "0011223344556677",
+      "history_count_in_hour": 3,
+      "last_sos_uptime_ms": 1800000,
+      "current_uptime_ms": 2400000,
+      "expected": {
+        "accept": false,
+        "response_code": "4.29 Too Many Requests",
+        "reason": "hourly_limit_exceeded"
+      }
+    },
+    {
+      "name": "hourly_window_slides",
+      "description": "Old SOS outside 1-hour window no longer counts.",
+      "sender_iid": "0011223344556677",
+      "history": [
+        {"uptime_ms": 0},
+        {"uptime_ms": 1000},
+        {"uptime_ms": 2000}
+      ],
+      "current_uptime_ms": 3600001,
+      "expected": {
+        "accept": true,
+        "sos_in_window": 0,
+        "reason": "all_expired_from_window"
+      }
+    },
+    {
+      "name": "monotonic_uptime_enforced",
+      "description": "Rate limiting uses monotonic uptime, not wall clock.",
+      "expected": {
+        "time_source": "monotonic_uptime",
+        "reason": "clock_spoof_prevention"
+      }
+    },
+    {
+      "name": "different_nodes_independent",
+      "description": "Different sender IIDs have independent rate limits.",
+      "scenarios": [
+        {
+          "sender_iid": "0011223344556677",
+          "history_count_in_hour": 3,
+          "accept": false
+        },
+        {
+          "sender_iid": "aabbccddeeff0011",
+          "history_count_in_hour": 0,
+          "accept": true
+        }
+      ]
+    },
+    {
+      "name": "cooldown_resets_on_accept",
+      "description": "Successful SOS resets the 10min cooldown timer.",
+      "sender_iid": "0011223344556677",
+      "scenario": [
+        {"action": "send", "uptime_ms": 0, "accept": true},
+        {"action": "send", "uptime_ms": 1000, "accept": true, "note": "burst 2"},
+        {"action": "send", "uptime_ms": 600000, "accept": true, "note": "after cooldown"},
+        {"action": "send", "uptime_ms": 601000, "accept": false, "note": "need new cooldown"}
+      ]
+    },
+    {
+      "name": "sos_clears_confessions_rate",
+      "description": "SOS does NOT share rate limit with confessions (independent).",
+      "sender_iid": "0011223344556677",
+      "confessions_count_in_hour": 12,
+      "sos_count_in_hour": 0,
+      "expected": {
+        "sos_accept": true,
+        "reason": "independent_rate_limits"
+      }
+    }
+  ]
+}

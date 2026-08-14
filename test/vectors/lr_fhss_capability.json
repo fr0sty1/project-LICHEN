@@ -1,0 +1,91 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "LR-FHSS capability exchange vectors (spec 02-physical-link.md §3.7). Gateway DIO LR_FHSS_SUPPORTED (reserved bit 7), node Announce LR_FHSS_CAPABLE (app_data bit 0). Negotiation per §3.7: SX1262 MAY use LR-FHSS if gateway supports and node prefers; gateway MUST dual-mode RX; downlink matches uplink; peer-to-peer defaults to LORA.",
+  "vectors": [
+    {
+      "name": "gateway_advertises_supported",
+      "dio_flags": 128,
+      "lr_fhss_supported": true,
+      "description": "Gateway sets LR_FHSS_SUPPORTED bit 7 in DIO"
+    },
+    {
+      "name": "gateway_no_support",
+      "dio_flags": 0,
+      "lr_fhss_supported": false,
+      "description": "Gateway without LR_FHSS support"
+    },
+    {
+      "name": "node_capable_announce",
+      "announce_app_data_first_byte": 1,
+      "lr_fhss_capable": true,
+      "description": "SX1262 node sets LR_FHSS_CAPABLE bit 0 in Announce app_data"
+    },
+    {
+      "name": "node_not_capable",
+      "announce_app_data_first_byte": 0,
+      "lr_fhss_capable": false,
+      "description": "SX127x node ignores flags, not capable"
+    },
+    {
+      "name": "negotiate_uplink_lr_fhss_success",
+      "node_capable": true,
+      "gateway_supported": true,
+      "node_prefers_lr_fhss": true,
+      "expected_phy_mode": "lr_fhss",
+      "description": "Both capable and node prefers -> LR-FHSS uplink"
+    },
+    {
+      "name": "negotiate_uplink_fallback_gateway_no_support",
+      "node_capable": true,
+      "gateway_supported": false,
+      "node_prefers_lr_fhss": true,
+      "expected_phy_mode": "lora",
+      "description": "Gateway does not support -> fallback to LORA"
+    },
+    {
+      "name": "negotiate_uplink_fallback_node_not_capable",
+      "node_capable": false,
+      "gateway_supported": true,
+      "node_prefers_lr_fhss": true,
+      "expected_phy_mode": "lora",
+      "description": "SX127x node -> LORA even if gateway supports"
+    },
+    {
+      "name": "downlink_matches_uplink_lr_fhss",
+      "last_uplink_mode": "lr_fhss",
+      "expected_downlink_mode": "lr_fhss",
+      "description": "Downlink always matches mode of node's most recent uplink"
+    },
+    {
+      "name": "downlink_matches_uplink_lora",
+      "last_uplink_mode": "lora",
+      "expected_downlink_mode": "lora",
+      "description": "Downlink matches LORA uplink"
+    },
+    {
+      "name": "peer_to_peer_defaults_lora",
+      "a_capable": true,
+      "b_capable": true,
+      "negotiated": false,
+      "expected_phy_mode": "lora",
+      "description": "Node-to-node defaults to standard LoRa without negotiation"
+    },
+    {
+      "name": "peer_to_peer_negotiated_both_capable",
+      "a_capable": true,
+      "b_capable": true,
+      "negotiated": true,
+      "expected_phy_mode": "lr_fhss",
+      "description": "Peer-to-peer LR-FHSS only if both capable and negotiated"
+    },
+    {
+      "name": "peer_to_peer_one_not_capable_stays_lora",
+      "a_capable": true,
+      "b_capable": false,
+      "negotiated": true,
+      "expected_phy_mode": "lora",
+      "description": "Mixed SX1262/SX127x stays on LORA"
+    }
+  ]
+}

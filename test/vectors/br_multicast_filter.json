@@ -1,0 +1,86 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "br_multicast_filter",
+  "description": "Border Router multicast filtering per spec §6.3.4. BR MUST NOT forward mesh multicasts to internet or vice versa.",
+  "spec": "spec/04-network.md#section-634-border-router-multicast-filtering",
+  "vectors": [
+    {
+      "name": "mesh_to_internet_unicast_forward",
+      "description": "Unicast from mesh to internet: forward normally.",
+      "direction": "mesh_to_internet",
+      "dst_addr": "2001:db8::1",
+      "is_multicast": false,
+      "expected": {
+        "action": "forward",
+        "reason": "unicast_routed"
+      }
+    },
+    {
+      "name": "mesh_to_internet_multicast_drop",
+      "description": "Multicast from mesh to internet: MUST drop.",
+      "direction": "mesh_to_internet",
+      "dst_addr": "ff02::1",
+      "is_multicast": true,
+      "expected": {
+        "action": "drop",
+        "reason": "multicast_boundary_filter"
+      }
+    },
+    {
+      "name": "internet_to_mesh_unicast_forward",
+      "description": "Unicast from internet to mesh: forward normally.",
+      "direction": "internet_to_mesh",
+      "dst_addr": "0200:0011:2233:4455:6677:8899:aabb:ccdd",
+      "is_multicast": false,
+      "expected": {
+        "action": "forward",
+        "reason": "unicast_routed"
+      }
+    },
+    {
+      "name": "internet_to_mesh_multicast_drop",
+      "description": "Multicast from internet to mesh: MUST drop (unless explicit config).",
+      "direction": "internet_to_mesh",
+      "dst_addr": "ff02::fb",
+      "is_multicast": true,
+      "expected": {
+        "action": "drop",
+        "reason": "multicast_boundary_filter"
+      }
+    },
+    {
+      "name": "mesh_internal_multicast_relay",
+      "description": "Multicast within mesh (not crossing BR): relay per normal rules.",
+      "direction": "mesh_internal",
+      "dst_addr": "ff02::1",
+      "is_multicast": true,
+      "expected": {
+        "action": "relay",
+        "reason": "mesh_internal_broadcast"
+      }
+    },
+    {
+      "name": "ff05_site_local_drop_at_br",
+      "description": "Site-local multicast (ff05::) crossing BR: drop.",
+      "direction": "mesh_to_internet",
+      "dst_addr": "ff05::1",
+      "is_multicast": true,
+      "expected": {
+        "action": "drop",
+        "reason": "multicast_boundary_filter"
+      }
+    },
+    {
+      "name": "ff0e_global_multicast_drop",
+      "description": "Global multicast (ff0e::) from mesh: drop at BR.",
+      "direction": "mesh_to_internet",
+      "dst_addr": "ff0e::1",
+      "is_multicast": true,
+      "expected": {
+        "action": "drop",
+        "reason": "multicast_boundary_filter"
+      }
+    }
+  ]
+}

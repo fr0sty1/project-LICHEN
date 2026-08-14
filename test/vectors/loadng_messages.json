@@ -9,13 +9,13 @@
       "name": "rreq_basic_unsigned",
       "type": "rreq",
       "description": "Basic RREQ with default hop_limit=4, seq_num=1, no signature. Wire: 00 04 0001 + originator(16) + destination(16) = 36 bytes.",
-      "encoded": "00040001fd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "000400010200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 0,
         "hop_limit": 4,
         "seq_num": 1,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -23,13 +23,13 @@
       "name": "rreq_nonzero_flags",
       "type": "rreq",
       "description": "RREQ with non-zero flags=0x02, hop_limit=8, seq_num=300 (0x012c). Tests flag encoding and multi-byte seq_num.",
-      "encoded": "0208012cfd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "0208012c0200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 2,
         "hop_limit": 8,
         "seq_num": 300,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -37,13 +37,13 @@
       "name": "rreq_max_hop_limit",
       "type": "rreq",
       "description": "RREQ at MAX_HOP_LIMIT=15 boundary. Tests upper hop_limit validation.",
-      "encoded": "000f0064fd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "000f00640200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 0,
         "hop_limit": 15,
         "seq_num": 100,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -51,13 +51,13 @@
       "name": "rreq_zero_hop_limit",
       "type": "rreq",
       "description": "RREQ with hop_limit=0 (edge case, message should not be forwarded).",
-      "encoded": "000000c8fd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "000000c80200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 0,
         "hop_limit": 0,
         "seq_num": 200,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -65,13 +65,13 @@
       "name": "rreq_max_seq_num",
       "type": "rreq",
       "description": "RREQ with seq_num=65535 (0xFFFF), maximum 16-bit value. Tests wrap boundary.",
-      "encoded": "0004fffffd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "0004ffff0200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 0,
         "hop_limit": 4,
         "seq_num": 65535,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -79,13 +79,13 @@
       "name": "rreq_with_signature",
       "type": "rreq",
       "description": "RREQ with 48-byte Schnorr signature appended. Total length = 36 + 48 = 84 bytes.",
-      "encoded": "00040001fd000000000000000000000000000001fd000000000000000000000000000002000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+      "encoded": "000400010200112233445566001122334455660102001122334455660011223344556602000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
       "fields": {
         "flags": 0,
         "hop_limit": 4,
         "seq_num": 1,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f"
       }
     },
@@ -107,13 +107,13 @@
       "name": "rrep_basic_unsigned",
       "type": "rrep",
       "description": "Basic RREP with hop_count=3, seq_num=1, no signature. Wire format identical to RREQ but hop_count replaces hop_limit semantically.",
-      "encoded": "00030001fd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "000300010200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 0,
         "hop_count": 3,
         "seq_num": 1,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -121,13 +121,13 @@
       "name": "rrep_nonzero_flags",
       "type": "rrep",
       "description": "RREP with flags=0x01, hop_count=5, seq_num=7. Tests flag encoding in replies.",
-      "encoded": "01050007fd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "010500070200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 1,
         "hop_count": 5,
         "seq_num": 7,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -135,13 +135,13 @@
       "name": "rrep_max_hop_count",
       "type": "rrep",
       "description": "RREP at MAX_HOP_LIMIT=15 boundary for hop_count.",
-      "encoded": "000f0032fd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "000f00320200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 0,
         "hop_count": 15,
         "seq_num": 50,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -149,13 +149,13 @@
       "name": "rrep_zero_hop_count",
       "type": "rrep",
       "description": "RREP with hop_count=0 (destination is directly reachable).",
-      "encoded": "00000001fd000000000000000000000000000001fd000000000000000000000000000002",
+      "encoded": "000000010200112233445566001122334455660102001122334455660011223344556602",
       "fields": {
         "flags": 0,
         "hop_count": 0,
         "seq_num": 1,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": null
       }
     },
@@ -163,13 +163,13 @@
       "name": "rrep_with_signature",
       "type": "rrep",
       "description": "RREP with 48-byte Schnorr signature. Total length = 36 + 48 = 84 bytes.",
-      "encoded": "00030001fd000000000000000000000000000001fd000000000000000000000000000002ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100",
+      "encoded": "000300010200112233445566001122334455660102001122334455660011223344556602ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100",
       "fields": {
         "flags": 0,
         "hop_count": 3,
         "seq_num": 1,
-        "originator": "fd00::1",
-        "destination": "fd00::2",
+        "originator": "200:1122:3344:5566:11:2233:4455:6601",
+        "destination": "200:1122:3344:5566:11:2233:4455:6602",
         "signature": "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"
       }
     },
@@ -177,11 +177,11 @@
       "name": "rerr_basic",
       "type": "rerr",
       "description": "Basic RERR with error_code=1 (NO_ROUTE), no signature. Wire: flags(1) + error_code(1) + unreachable(16) = 18 bytes.",
-      "encoded": "0001fd000000000000000000000000000009",
+      "encoded": "000102001122334455660011223344556609",
       "fields": {
         "flags": 0,
         "error_code": 1,
-        "unreachable": "fd00::9",
+        "unreachable": "200:1122:3344:5566:11:2233:4455:6609",
         "signature": null
       }
     },
@@ -189,11 +189,11 @@
       "name": "rerr_zero_error_code",
       "type": "rerr",
       "description": "RERR with error_code=0 (unspecified error).",
-      "encoded": "0000fd000000000000000000000000000009",
+      "encoded": "000002001122334455660011223344556609",
       "fields": {
         "flags": 0,
         "error_code": 0,
-        "unreachable": "fd00::9",
+        "unreachable": "200:1122:3344:5566:11:2233:4455:6609",
         "signature": null
       }
     },
@@ -201,11 +201,11 @@
       "name": "rerr_nonzero_flags",
       "type": "rerr",
       "description": "RERR with flags=0x80, error_code=2. Tests flag encoding in error messages.",
-      "encoded": "8002fd000000000000000000000000000009",
+      "encoded": "800202001122334455660011223344556609",
       "fields": {
         "flags": 128,
         "error_code": 2,
-        "unreachable": "fd00::9",
+        "unreachable": "200:1122:3344:5566:11:2233:4455:6609",
         "signature": null
       }
     },
@@ -213,11 +213,11 @@
       "name": "rerr_max_error_code",
       "type": "rerr",
       "description": "RERR with error_code=255 (maximum value for single-byte error code).",
-      "encoded": "00fffd000000000000000000000000000009",
+      "encoded": "00ff02001122334455660011223344556609",
       "fields": {
         "flags": 0,
         "error_code": 255,
-        "unreachable": "fd00::9",
+        "unreachable": "200:1122:3344:5566:11:2233:4455:6609",
         "signature": null
       }
     },
@@ -225,11 +225,11 @@
       "name": "rerr_with_signature",
       "type": "rerr",
       "description": "RERR with 48-byte Schnorr signature. Total length = 18 + 48 = 66 bytes.",
-      "encoded": "0001fd000000000000000000000000000009deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
+      "encoded": "000102001122334455660011223344556609deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
       "fields": {
         "flags": 0,
         "error_code": 1,
-        "unreachable": "fd00::9",
+        "unreachable": "200:1122:3344:5566:11:2233:4455:6609",
         "signature": "deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe"
       }
     },

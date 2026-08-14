@@ -10,9 +10,9 @@
       "classify": "link_local"
     },
     {
-      "name": "ula_mesh_node",
-      "description": "fd00::/8 ULA address: always local mesh (DODAG prefix).",
-      "dst_addr": "fd000000000000010200000000000001",
+      "name": "yggdrasil_mesh_node",
+      "description": "02xx Yggdrasil address of a known local mesh node: local mesh.",
+      "dst_addr": "02001122334455660011223344556601",
       "is_local_mesh": true,
       "classify": "mesh_local"
     },
@@ -52,9 +52,9 @@
       "classify": "external"
     },
     {
-      "name": "unique_local_different_prefix",
-      "description": "ULA fd01::/8 (different ULA region): treated as external if not in mesh prefix table.",
-      "dst_addr": "fd010000000000000200000000000001",
+      "name": "yggdrasil_unknown_node",
+      "description": "02xx Yggdrasil address of unknown node: forward upstream via Yggdrasil tunnel.",
+      "dst_addr": "02001122334455660011223344550099",
       "is_local_mesh": false,
       "classify": "external"
     },
@@ -66,9 +66,9 @@
       "classify": "link_local"
     },
     {
-      "name": "ula_with_lichen_prefix",
-      "description": "fd00:lichen::/32 ULA with known mesh prefix containing this address.",
-      "dst_addr": "fd006c696368656e0000000000000001",
+      "name": "yggdrasil_mesh_node_2",
+      "description": "02xx Yggdrasil address of another known local mesh node.",
+      "dst_addr": "02001122334455660011223344556602",
       "is_local_mesh": true,
       "classify": "mesh_local"
     }

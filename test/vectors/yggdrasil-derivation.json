@@ -20,5 +20,60 @@
     "pubkey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
     "ygg_addr": "020e02a50225b4ba0c02a50225b4baaa",
     "note": "LICHEN IID = SHA-512(pubkey)[0:8] with U/L bit cleared"
+  },
+  {
+    "description": "U/L bit forced clear: pubkey 0x02 repeated hashes to byte0=0xaa with U/L bit set. Verifies implementation clears the Universal/Local bit (0x02 mask).",
+    "pubkey": "0202020202020202020202020202020202020202020202020202020202020202",
+    "ygg_addr": "02aa3c626bc9c38ca83c626bc9c38c8c",
+    "iid": "a83c626bc9c38c8c",
+    "ul_bit_test": {
+      "raw_hash_byte0": "aa",
+      "expected_iid_byte0": "a8",
+      "bit_mask_applied": "0x02",
+      "note": "SHA-512(pubkey)[0] = 0xaa, after clearing bit 1 = 0xa8. U/L bit (0x02) MUST be clear in final IID."
+    }
+  },
+  {
+    "description": "U/L bit already clear: pubkey 0x01 repeated where hash naturally has U/L bit clear, no transformation needed.",
+    "pubkey": "0101010101010101010101010101010101010101010101010101010101010101",
+    "ygg_addr": "025ce86efb75fa4e5ce86efb75fa4e2c",
+    "iid": "5ce86efb75fa4e2c",
+    "ul_bit_test": {
+      "raw_hash_byte0": "5c",
+      "expected_iid_byte0": "5c",
+      "note": "SHA-512(pubkey)[0] = 0x5c, bit 1 already clear, IID unchanged"
+    }
+  },
+  {
+    "name": "iid_yggdrasil_binding_verification",
+    "description": "Lower 64 bits of 02xx Yggdrasil address MUST equal IID from same Ed25519 pubkey (spec §6 security: prevents substitution attacks).",
+    "spec_ref": "spec/06-security.md line 111, 145",
+    "test_type": "binding_invariant",
+    "pubkey": "deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
+    "assertions": [
+      {
+        "name": "ygg_lower64_equals_iid",
+        "description": "ygg_addr[8:16] == iid",
+        "invariant": "The IID forms the lower 64 bits of the Yggdrasil address, binding the cryptographic identity to the routable address."
+      },
+      {
+        "name": "no_independent_iid",
+        "description": "IID cannot be chosen independently of pubkey",
+        "invariant": "Any node claiming a 02xx address MUST prove ownership of the Ed25519 key that derives that IID."
+      }
+    ],
+    "oracle": "derive(pubkey) -> (ygg_addr, iid); assert ygg_addr[8:16] == iid"
+  },
+  {
+    "name": "iid_binding_mismatch_attack",
+    "description": "Attacker cannot claim victim's IID without victim's privkey. Mismatched pubkey->IID->02xx is detectable.",
+    "test_type": "negative",
+    "attacker_pubkey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "victim_iid": "5046adc1dba83886",
+    "expected": {
+      "iid_from_attacker": "NOT victim_iid",
+      "attack_result": "rejected",
+      "reason": "IID derived from attacker pubkey does not match victim IID; TOFU/announce verification fails"
+    }
   }
 ]

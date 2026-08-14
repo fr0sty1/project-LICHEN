@@ -1,0 +1,58 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "x25519",
+  "description": "X25519/Ed25519 key derivation and clamping test vectors. Verifies RFC 8032 clamping is correctly applied during key generation.",
+  "spec": "https://www.rfc-editor.org/rfc/rfc8032",
+  "vectors": [
+    {
+      "name": "clamping_zero_seed",
+      "type": "key_derivation",
+      "description": "Seed all-zeros: verifies clamping clears bits 0,1,2 of byte[0], sets bit 6, clears bit 7 of byte[31]",
+      "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+      "raw_hash_low32": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f196",
+      "expected": {
+        "clamped_scalar": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29"
+      },
+      "clamping_checks": {
+        "byte0": "0x50",
+        "byte0_bits_0_2_clear": true,
+        "byte31": "0x56",
+        "byte31_bit6_set": true,
+        "byte31_bit7_clear": true
+      }
+    },
+    {
+      "name": "clamping_ones_seed",
+      "type": "key_derivation",
+      "description": "Seed all-ones (0xff): verifies clamping forces correct bit pattern on high-entropy hash output",
+      "seed": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "raw_hash_low32": "27cd6935864716a79d74dd5fabbd8964304051ca41a31c4659158ebb7c3d0b97",
+      "expected": {
+        "clamped_scalar": "20cd6935864716a79d74dd5fabbd8964304051ca41a31c4659158ebb7c3d0b57",
+        "private_key": "20cd6935864716a79d74dd5fabbd8964304051ca41a31c4659158ebb7c3d0b57",
+        "public_key": "76a1592044a6e4f511265bca73a604d90b0529d1df602be30a19a9257660d1f5"
+      },
+      "clamping_checks": {
+        "byte0": "0x20",
+        "byte0_bits_0_2_clear": true,
+        "byte31": "0x57",
+        "byte31_bit6_set": true,
+        "byte31_bit7_clear": true,
+        "note": "Raw hash byte0=0x27 becomes 0x20 (clear bits 0-2), byte31=0x97 becomes 0x57 (set bit6, clear bit7)"
+      }
+    },
+    {
+      "name": "clamping_rfc8032_test_vector",
+      "type": "key_derivation",
+      "description": "RFC 8032 Section 7.1 test vector 1: verifies key derivation matches standard",
+      "seed": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+      "expected": {
+        "public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+      },
+      "note": "SHA-512 of empty message signed with this key is the RFC 8032 test signature"
+    }
+  ]
+}

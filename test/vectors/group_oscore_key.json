@@ -1,0 +1,125 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "group_oscore_key",
+  "description": "Group OSCORE key distribution per spec Section 18.6. Pairwise wrapped, key_epoch, 1hr grace.",
+  "spec": "spec/12-apps.md Section 18.6",
+  "vectors": [
+    {
+      "name": "key_pairwise_wrap",
+      "description": "Group key is wrapped pairwise for each member using their pubkey.",
+      "group_key": "deadbeefcafebabedeadbeefcafebabe",
+      "member_pubkeys": [
+        "pubkey_alice",
+        "pubkey_bob"
+      ],
+      "expected": {
+        "alice_wrapped_key": "unique_for_alice",
+        "bob_wrapped_key": "unique_for_bob",
+        "wrap_algorithm": "ECDH-ES+A128KW or HPKE",
+        "reason": "pairwise_encryption"
+      }
+    },
+    {
+      "name": "key_epoch_increment",
+      "description": "key_epoch increments on each rekey (monotonic u32).",
+      "initial_epoch": 1,
+      "after_rekey_epoch": 2,
+      "expected": {
+        "monotonic": true,
+        "wraps_at": 4294967295,
+        "reason": "epoch_ordering"
+      }
+    },
+    {
+      "name": "key_epoch_oscore_context",
+      "description": "key_epoch is included in OSCORE id_context for context isolation.",
+      "group_id": "1234567890abcdef",
+      "key_epoch": 5,
+      "expected": {
+        "id_context": "group_id || key_epoch",
+        "reason": "context_isolation"
+      }
+    },
+    {
+      "name": "grace_period_1hr",
+      "description": "Old key remains valid for 1hr after rekey (grace period).",
+      "old_epoch": 1,
+      "new_epoch": 2,
+      "rekey_time_ms": 0,
+      "test_time_ms": 1800000,
+      "expected": {
+        "old_key_valid": true,
+        "new_key_valid": true,
+        "reason": "within_grace_period"
+      }
+    },
+    {
+      "name": "grace_period_expired",
+      "description": "Old key rejected after 1hr grace period.",
+      "old_epoch": 1,
+      "new_epoch": 2,
+      "rekey_time_ms": 0,
+      "test_time_ms": 3600001,
+      "expected": {
+        "old_key_valid": false,
+        "new_key_valid": true,
+        "reason": "grace_period_expired"
+      }
+    },
+    {
+      "name": "epoch_rollback_reject",
+      "description": "Message with epoch < current is rejected (prevents replay).",
+      "current_epoch": 5,
+      "message_epoch": 3,
+      "expected": {
+        "accept": false,
+        "reason": "epoch_rollback"
+      }
+    },
+    {
+      "name": "epoch_future_reject",
+      "description": "Message with epoch > current+1 is rejected (unknown key).",
+      "current_epoch": 5,
+      "message_epoch": 7,
+      "expected": {
+        "accept": false,
+        "reason": "future_epoch_unknown"
+      }
+    },
+    {
+      "name": "rekey_distribution_to_all",
+      "description": "On rekey, all current members receive wrapped new key.",
+      "members": ["alice", "bob", "carol"],
+      "rekey_action": true,
+      "expected": {
+        "distribution_count": 3,
+        "reason": "all_members_receive"
+      }
+    },
+    {
+      "name": "member_removal_no_rekey_access",
+      "description": "Removed member does not receive new key material.",
+      "initial_members": ["alice", "bob", "carol"],
+      "remove": "carol",
+      "rekey_after_removal": true,
+      "expected": {
+        "carol_receives_new_key": false,
+        "carol_can_decrypt_old": true,
+        "carol_can_decrypt_new": false,
+        "reason": "forward_secrecy_on_removal"
+      }
+    },
+    {
+      "name": "new_member_no_old_key",
+      "description": "New member only receives current key, not historical.",
+      "existing_members": ["alice", "bob"],
+      "add": "dave",
+      "expected": {
+        "dave_receives_current_key": true,
+        "dave_can_decrypt_historical": false,
+        "reason": "no_backward_access"
+      }
+    }
+  ]
+}

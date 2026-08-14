@@ -1,0 +1,152 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "confessions_rate",
+  "description": "Confessions rate limiting per spec Section 18.10.3. Per-node IID tracking with 1/30s and 12/hr limits.",
+  "spec": "spec/12-apps.md Section 18.10.3",
+  "limits": {
+    "per_30s": 1,
+    "per_hour": 12,
+    "time_source": "monotonic_uptime",
+    "tracking_key": "sender_iid"
+  },
+  "vectors": [
+    {
+      "name": "first_post_accepted",
+      "description": "First POST from a node is always accepted.",
+      "sender_iid": "0011223344556677",
+      "history": [],
+      "expected": {
+        "accept": true,
+        "response_code": "2.01 Created"
+      }
+    },
+    {
+      "name": "second_post_within_30s_rejected",
+      "description": "Second POST within 30 seconds is rejected.",
+      "sender_iid": "0011223344556677",
+      "history": [
+        {"uptime_ms": 0}
+      ],
+      "current_uptime_ms": 15000,
+      "expected": {
+        "accept": false,
+        "response_code": "4.29 Too Many Requests",
+        "retry_after_s": 15
+      }
+    },
+    {
+      "name": "post_after_30s_accepted",
+      "description": "POST exactly at 30 seconds after last POST is accepted.",
+      "sender_iid": "0011223344556677",
+      "history": [
+        {"uptime_ms": 0}
+      ],
+      "current_uptime_ms": 30000,
+      "expected": {
+        "accept": true,
+        "response_code": "2.01 Created"
+      }
+    },
+    {
+      "name": "thirteenth_post_within_hour_rejected",
+      "description": "13th POST within an hour is rejected (hourly limit 12).",
+      "sender_iid": "0011223344556677",
+      "history_count_in_hour": 12,
+      "expected": {
+        "accept": false,
+        "response_code": "4.29 Too Many Requests",
+        "reason": "hourly_limit_exceeded"
+      }
+    },
+    {
+      "name": "twelfth_post_accepted",
+      "description": "12th POST within an hour (at hourly limit) is accepted.",
+      "sender_iid": "0011223344556677",
+      "history_count_in_hour": 11,
+      "expected": {
+        "accept": true,
+        "response_code": "2.01 Created"
+      }
+    },
+    {
+      "name": "post_after_hour_window_slides",
+      "description": "Old posts outside 1-hour window no longer count.",
+      "sender_iid": "0011223344556677",
+      "history": [
+        {"uptime_ms": 0},
+        {"uptime_ms": 300000},
+        {"uptime_ms": 600000}
+      ],
+      "current_uptime_ms": 3601000,
+      "expected": {
+        "accept": true,
+        "posts_in_window": 0,
+        "reason": "all_posts_expired_from_window"
+      }
+    },
+    {
+      "name": "different_nodes_independent",
+      "description": "Different sender IIDs have independent rate limits.",
+      "scenarios": [
+        {
+          "sender_iid": "0011223344556677",
+          "history_count_in_hour": 12,
+          "accept": false
+        },
+        {
+          "sender_iid": "aabbccddeeff0011",
+          "history_count_in_hour": 0,
+          "accept": true
+        }
+      ],
+      "expected": {
+        "reason": "per_iid_tracking"
+      }
+    },
+    {
+      "name": "30s_limit_stricter",
+      "description": "30s limit is checked before hourly limit (stricter).",
+      "sender_iid": "0011223344556677",
+      "history": [
+        {"uptime_ms": 1000}
+      ],
+      "current_uptime_ms": 5000,
+      "expected": {
+        "accept": false,
+        "response_code": "4.29 Too Many Requests",
+        "reason": "30s_limit_first"
+      }
+    },
+    {
+      "name": "uptime_not_wallclock",
+      "description": "Rate limiting uses monotonic uptime, not wall clock (prevents clock spoof).",
+      "expected": {
+        "time_source": "monotonic_uptime",
+        "reason": "clock_spoof_prevention"
+      }
+    },
+    {
+      "name": "retry_after_header",
+      "description": "4.29 response includes Retry-After with seconds until limit resets.",
+      "sender_iid": "0011223344556677",
+      "last_post_uptime_ms": 10000,
+      "current_uptime_ms": 20000,
+      "expected": {
+        "response_code": "4.29 Too Many Requests",
+        "retry_after_s": 20,
+        "reason": "30s - (20s - 10s) = 20s remaining"
+      }
+    },
+    {
+      "name": "max_confession_size",
+      "description": "Confessions > 768 bytes are rejected.",
+      "payload_size": 769,
+      "expected": {
+        "accept": false,
+        "response_code": "4.13 Request Entity Too Large",
+        "max_size": 768
+      }
+    }
+  ]
+}

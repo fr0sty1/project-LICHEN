@@ -1,0 +1,152 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "raw_diag_ttl",
+  "description": "Raw diagnostic TTL enforcement per spec LCI Section 17.5.4. Finite arming lifetime with auto-disable.",
+  "spec": "spec/11-lci.md Section 17.5.4",
+  "vectors": [
+    {
+      "name": "ttl_default_max",
+      "description": "Default max_ttl_s is 300 seconds (5 minutes).",
+      "expected": {
+        "max_ttl_s": 300,
+        "reason": "spec_default"
+      }
+    },
+    {
+      "name": "ttl_request_within_max",
+      "description": "TTL request <= max_ttl_s is accepted as-is.",
+      "request": {
+        "enabled": true,
+        "ttl_s": 60
+      },
+      "max_ttl_s": 300,
+      "expected": {
+        "accepted_ttl_s": 60,
+        "response_code": "2.04 Changed"
+      }
+    },
+    {
+      "name": "ttl_request_exceeds_max_clamped",
+      "description": "TTL request > max_ttl_s is clamped to max_ttl_s.",
+      "request": {
+        "enabled": true,
+        "ttl_s": 600
+      },
+      "max_ttl_s": 300,
+      "expected": {
+        "accepted_ttl_s": 300,
+        "response_code": "2.04 Changed",
+        "reason": "clamped_to_max"
+      }
+    },
+    {
+      "name": "ttl_zero_disables_immediately",
+      "description": "TTL of 0 disables raw diagnostics immediately.",
+      "request": {
+        "enabled": true,
+        "ttl_s": 0
+      },
+      "expected": {
+        "enabled": false,
+        "remaining_s": 0,
+        "reason": "zero_ttl_disables"
+      }
+    },
+    {
+      "name": "ttl_negative_rejected",
+      "description": "Negative TTL values are rejected as malformed.",
+      "request": {
+        "enabled": true,
+        "ttl_s": -1
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "reason": "negative_ttl_invalid"
+      }
+    },
+    {
+      "name": "ttl_countdown_auto_disable",
+      "description": "After ttl_s seconds elapse, raw diag auto-disables.",
+      "request": {
+        "enabled": true,
+        "ttl_s": 60
+      },
+      "elapsed_seconds": 60,
+      "expected": {
+        "enabled": false,
+        "remaining_s": 0,
+        "reason": "ttl_expired"
+      }
+    },
+    {
+      "name": "ttl_remaining_decrements",
+      "description": "remaining_s decrements as time passes.",
+      "request": {
+        "enabled": true,
+        "ttl_s": 60
+      },
+      "elapsed_seconds": 30,
+      "expected": {
+        "enabled": true,
+        "remaining_s": 30
+      }
+    },
+    {
+      "name": "ttl_rearm_resets",
+      "description": "Re-arming with new ttl_s resets the countdown.",
+      "initial": {
+        "enabled": true,
+        "ttl_s": 60
+      },
+      "elapsed_seconds": 50,
+      "rearm": {
+        "enabled": true,
+        "ttl_s": 60
+      },
+      "expected": {
+        "enabled": true,
+        "remaining_s": 60,
+        "reason": "rearm_resets_countdown"
+      }
+    },
+    {
+      "name": "ttl_explicit_disable",
+      "description": "Explicit enabled:false disables regardless of remaining TTL.",
+      "initial": {
+        "enabled": true,
+        "ttl_s": 300
+      },
+      "elapsed_seconds": 10,
+      "request": {
+        "enabled": false
+      },
+      "expected": {
+        "enabled": false,
+        "remaining_s": 0,
+        "reason": "explicit_disable"
+      }
+    },
+    {
+      "name": "ttl_required_for_enable",
+      "description": "Enabling without ttl_s field is rejected.",
+      "request": {
+        "enabled": true
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "reason": "ttl_required"
+      }
+    },
+    {
+      "name": "disabled_by_default",
+      "description": "Raw diagnostics MUST be disabled by default.",
+      "on_boot": true,
+      "expected": {
+        "enabled": false,
+        "remaining_s": 0,
+        "max_ttl_s": 300
+      }
+    }
+  ]
+}

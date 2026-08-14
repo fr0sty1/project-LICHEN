@@ -1,0 +1,196 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "LICHEN replay window test vectors (spec 4.4 Epoch and Sequence Number). Validates 32-slot window, 24-bit logical counter epoch<<16|seqnum, per-peer tracking, and epoch acceptance rules. Spec defines Window as 32-bit bitmap (spec/02-physical-link.md:332). Task label '64-slot' is stale; implementation correctly uses 32 per spec.",
+  "spec_reference": "spec/02-physical-link.md section 4.4",
+  "window_size": 32,
+  "logical_counter_formula": "(epoch << 16) | seqnum",
+  "ordering": "ordinary unsigned integer ordering, not serial-number arithmetic",
+  "vectors": [
+    {
+      "name": "logical_counter_combine",
+      "description": "24-bit logical counter is (epoch << 16) | seqnum with unsigned ordering",
+      "cases": [
+        {"epoch": 0, "seqnum": 0, "counter": 0, "hex": "000000"},
+        {"epoch": 0, "seqnum": 65535, "counter": 65535, "hex": "00ffff"},
+        {"epoch": 1, "seqnum": 0, "counter": 65536, "hex": "010000", "greater_than": {"epoch": 0, "seqnum": 65535}},
+        {"epoch": 2, "seqnum": 5, "counter": 131077, "hex": "020005"},
+        {"epoch": 255, "seqnum": 65535, "counter": 16777215, "hex": "ffffff", "terminal": true}
+      ]
+    },
+    {
+      "name": "first_frame_accepted",
+      "description": "First frame from a sender is always accepted",
+      "sequence": [
+        {"epoch": 0, "seqnum": 0, "accept": true}
+      ]
+    },
+    {
+      "name": "duplicate_rejected",
+      "description": "Exact duplicate (same epoch+seqnum) is rejected",
+      "sequence": [
+        {"epoch": 0, "seqnum": 10, "accept": true},
+        {"epoch": 0, "seqnum": 10, "accept": false, "reason": "duplicate"}
+      ]
+    },
+    {
+      "name": "strictly_increasing_all_accepted",
+      "description": "Monotonic seqnum in same epoch all accepted",
+      "sequence": [
+        {"epoch": 0, "seqnum": 1, "accept": true},
+        {"epoch": 0, "seqnum": 2, "accept": true},
+        {"epoch": 0, "seqnum": 3, "accept": true},
+        {"epoch": 0, "seqnum": 50, "accept": true}
+      ]
+    },
+    {
+      "name": "higher_epoch_accepted_even_with_lower_seqnum",
+      "description": "Higher epoch is always accepted even if seqnum is lower",
+      "sequence": [
+        {"epoch": 0, "seqnum": 5000, "accept": true},
+        {"epoch": 1, "seqnum": 0, "accept": true, "reason": "epoch_greater"}
+      ]
+    },
+    {
+      "name": "lower_epoch_rejected",
+      "description": "Lower epoch is always stale and rejected",
+      "receiver_state": {"last_epoch": 5, "last_seqnum": 0},
+      "received": {"epoch": 2, "seqnum": 0},
+      "expected": {"accept": false, "reason": "epoch_stale"}
+    },
+    {
+      "name": "lower_epoch_rejected_at_adjacent_boundary",
+      "description": "Epoch 4 with max seqnum still rejected when last epoch is 5",
+      "receiver_state": {"last_epoch": 5, "last_seqnum": 0},
+      "received": {"epoch": 4, "seqnum": 65535},
+      "expected": {"accept": false, "reason": "epoch_stale"}
+    },
+    {
+      "name": "ordinary_epoch_increment_accepted",
+      "description": "Normal exhaustion: (4,65535) then (5,0) accepted",
+      "sequence": [
+        {"epoch": 4, "seqnum": 65535, "accept": true},
+        {"epoch": 5, "seqnum": 0, "accept": true}
+      ]
+    },
+    {
+      "name": "higher_epoch_resets_window",
+      "description": "Epoch increment resets bitmap; same seqnum in new epoch is fresh",
+      "sequence": [
+        {"epoch": 4, "seqnum": 100, "accept": true},
+        {"epoch": 5, "seqnum": 100, "accept": true},
+        {"epoch": 5, "seqnum": 99, "accept": true, "reason": "within_window_after_epoch_advance"}
+      ]
+    },
+    {
+      "name": "same_epoch_sequence_wrap_rejected",
+      "description": "Seqnum 0 after 65535 in same epoch is not a wrap; rejected as old",
+      "sequence": [
+        {"epoch": 7, "seqnum": 65535, "accept": true},
+        {"epoch": 7, "seqnum": 0, "accept": false, "reason": "below_window_floor"}
+      ]
+    },
+    {
+      "name": "terminal_counter_wrap_rejected",
+      "description": "After (255,65535) => (0,0) is rejected; key rotation required",
+      "sequence": [
+        {"epoch": 255, "seqnum": 65535, "accept": true, "terminal": true},
+        {"epoch": 0, "seqnum": 0, "accept": false, "reason": "epoch_stale"}
+      ]
+    },
+    {
+      "name": "out_of_order_within_window_accepted_once",
+      "description": "Out-of-order within 32-slot window accepted exactly once",
+      "sequence": [
+        {"epoch": 0, "seqnum": 5, "accept": true},
+        {"epoch": 0, "seqnum": 3, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 3, "accept": false, "reason": "duplicate_in_window"},
+        {"epoch": 0, "seqnum": 4, "accept": true, "reason": "within_window"}
+      ]
+    },
+    {
+      "name": "below_window_floor_rejected",
+      "description": "Seqnum 1 with last=40 is offset 39 >= 32 => too old",
+      "receiver_state": {"last_epoch": 0, "last_seqnum": 40},
+      "received": {"epoch": 0, "seqnum": 1},
+      "expected": {"accept": false, "reason": "below_window_floor", "offset": 39, "window_size": 32}
+    },
+    {
+      "name": "window_floor_edge",
+      "description": "Offset == WINDOW_SIZE is rejected; offset == WINDOW_SIZE-1 accepted",
+      "sequence": [
+        {"epoch": 0, "seqnum": 32, "accept": true},
+        {"epoch": 0, "seqnum": 0, "accept": false, "reason": "below_window_floor", "offset": 32},
+        {"epoch": 0, "seqnum": 1, "accept": true, "reason": "within_window", "offset": 31}
+      ]
+    },
+    {
+      "name": "large_jump_resets_window",
+      "description": "Jump > window_size resets bitmap; old slots become too old",
+      "sequence": [
+        {"epoch": 0, "seqnum": 1, "accept": true},
+        {"epoch": 0, "seqnum": 1000, "accept": true, "reason": "jump_gt_window_resets"},
+        {"epoch": 0, "seqnum": 1, "accept": false, "reason": "below_window_floor"},
+        {"epoch": 0, "seqnum": 1000, "accept": false, "reason": "duplicate"}
+      ]
+    },
+    {
+      "name": "per_peer_isolation",
+      "description": "Per-peer windows: same counter from different peers both accepted; replay per peer isolated",
+      "peers": {
+        "A": [
+          {"epoch": 0, "seqnum": 1, "accept": true},
+          {"epoch": 0, "seqnum": 1, "accept": false, "reason": "duplicate_for_A"}
+        ],
+        "B": [
+          {"epoch": 0, "seqnum": 1, "accept": true},
+          {"epoch": 0, "seqnum": 1, "accept": false, "reason": "duplicate_for_B"}
+        ],
+        "interleaved": [
+          {"sender": "A", "epoch": 0, "seqnum": 1, "accept": true},
+          {"sender": "B", "epoch": 0, "seqnum": 1, "accept": true},
+          {"sender": "A", "epoch": 0, "seqnum": 1, "accept": false},
+          {"sender": "B", "epoch": 0, "seqnum": 2, "accept": true}
+        ]
+      }
+    },
+    {
+      "name": "epoch_persistence_across_restarts",
+      "description": "With persisted epoch, sender resumes above last counter; without persistence, random init in [128,255]",
+      "persisted": {"last_epoch": 5, "last_seqnum": 65535, "resume": {"epoch": 6, "seqnum": 0, "accept": true}},
+      "no_persist": {"random_epoch_range": {"min": 128, "max": 255}, "examples": [
+        {"epoch": 128, "seqnum": 0, "valid_init": true},
+        {"epoch": 255, "seqnum": 0, "valid_init": true},
+        {"epoch": 64, "seqnum": 0, "valid_init": false}
+      ]},
+      "flash_failure": {"action": "random_init_128_255_then_may_require_key_rotation_if_rejected"}
+    },
+    {
+      "name": "epoch_recovery_after_flash_failure",
+      "description": "Flash read failure falls back to random epoch in [128,255]; receiver may reject; sender must rotate key if cannot establish fresh counter",
+      "scenario": "cold boot without flash or flash read failure => epoch = secrets.randbelow(128)+128",
+      "vectors": [
+        {"persists": false, "read_failure": true, "epoch_init": {"min": 128, "max": 255}, "uniform": true},
+        {"receiver_last_epoch": 200, "sender_random_epoch": 130, "accept": false, "reason": "epoch_stale_random_below_last"},
+        {"receiver_last_epoch": 10, "sender_random_epoch": 200, "accept": true, "reason": "epoch_greater_random_above_last"}
+      ]
+    },
+    {
+      "name": "cross_validate_rust_python_zephyr",
+      "description": "All implementations must produce identical accept/reject for these cases",
+      "implementations": ["python/src/lichen/link/replay.py", "rust/lichen-link/src/replay.rs", "lichen/subsys/lichen/link/replay.c"],
+      "window_size": 32,
+      "cases": [
+        {"epoch": 0, "seqnum": 10, "highest": -1, "accept": true},
+        {"epoch": 0, "seqnum": 10, "highest_seq": 10, "bitmap": 1, "accept": false},
+        {"epoch": 1, "seqnum": 0, "last_epoch": 0, "last_seq": 5000, "accept": true},
+        {"epoch": 0, "seqnum": 0, "last_epoch": 7, "last_seq": 65535, "accept": false}
+      ]
+    }
+  ],
+  "epoch_persistence": {
+    "python": "python/src/lichen/link/link_layer.py: _load_persisted_state/_save_persisted_state via JSON file; random epoch 128-255 on cold boot via secrets.randbelow",
+    "rust": "rust/lichen-hal/src/storage.rs: load_epoch/save_epoch (id.epoch); seqnum persisted via LinkLayer state",
+    "zephyr": "lichen/subsys/lichen/link/epoch_persist.c: lichen_link_epoch_advance_for_boot() loads persisted +1 via settings subsystem; flash failure falls back to random 128-255 in link_ctx.c:202"
+  }
+}

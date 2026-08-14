@@ -1,0 +1,195 @@
+{
+  "format_version": 2,
+  "description": "Packets and Timing packet format vectors (spec 09 \u00a713). Python oracle lichen.packets.",
+  "vectors": [
+    {
+      "name": "complete_packet_example_link_frame",
+      "description": "13.1 Link-layer frame totals: Length 76 body, 77 on-wire, LLSec 0x21, Epoch 0x01, SeqNum 0x0042, DstAddr 0x0001, dispatch 0x14, signature 48B.",
+      "category": "packet_walkthrough",
+      "link_frame": {
+        "Length": 76,
+        "LLSec": 33,
+        "Epoch": 1,
+        "SeqNum": 66,
+        "DstAddr": 1,
+        "payload_dispatch": 20,
+        "payload_len": 22,
+        "signature_len": 48,
+        "total_on_wire": 77
+      },
+      "l2_payload_len": 22,
+      "schc_packet_len": 21,
+      "total_on_wire": 77,
+      "body_bytes": 76
+    },
+    {
+      "name": "packet_size_summary",
+      "description": "13.2 Packet Size Summary table; link security 53B, total 82-88 depending on routing overhead 0-6.",
+      "category": "size_budget",
+      "summary": {
+        "app_payload": 17,
+        "security_e2e": 10,
+        "transport_network": 2,
+        "routing_overhead": [
+          0,
+          6
+        ],
+        "link_security": 53,
+        "total": [
+          82,
+          88
+        ]
+      },
+      "link_security_breakdown": {
+        "Length": 1,
+        "LLSec": 1,
+        "Epoch": 1,
+        "SeqNum": 2,
+        "Signature": 48
+      },
+      "link_security_overhead": 53,
+      "min_total": 82,
+      "max_total": 88
+    },
+    {
+      "name": "link_overhead_none_signed",
+      "description": "Link frame overhead for addr_mode=none signed=True: total 53B, body 52B.",
+      "category": "link_overhead",
+      "addr_mode": "none",
+      "signed": true,
+      "total": 53,
+      "body": 52,
+      "dst_addr_len": 0
+    },
+    {
+      "name": "link_overhead_none_unsigned",
+      "description": "Link frame overhead for addr_mode=none signed=False: total 5B, body 4B.",
+      "category": "link_overhead",
+      "addr_mode": "none",
+      "signed": false,
+      "total": 5,
+      "body": 4,
+      "dst_addr_len": 0
+    },
+    {
+      "name": "link_overhead_short_signed",
+      "description": "Link frame overhead for addr_mode=short signed=True: total 55B, body 54B.",
+      "category": "link_overhead",
+      "addr_mode": "short",
+      "signed": true,
+      "total": 55,
+      "body": 54,
+      "dst_addr_len": 2
+    },
+    {
+      "name": "link_overhead_short_unsigned",
+      "description": "Link frame overhead for addr_mode=short signed=False: total 7B, body 6B.",
+      "category": "link_overhead",
+      "addr_mode": "short",
+      "signed": false,
+      "total": 7,
+      "body": 6,
+      "dst_addr_len": 2
+    },
+    {
+      "name": "link_overhead_extended_signed",
+      "description": "Link frame overhead for addr_mode=extended signed=True: total 61B, body 60B.",
+      "category": "link_overhead",
+      "addr_mode": "extended",
+      "signed": true,
+      "total": 61,
+      "body": 60,
+      "dst_addr_len": 8
+    },
+    {
+      "name": "link_overhead_extended_unsigned",
+      "description": "Link frame overhead for addr_mode=extended signed=False: total 13B, body 12B.",
+      "category": "link_overhead",
+      "addr_mode": "extended",
+      "signed": false,
+      "total": 13,
+      "body": 12,
+      "dst_addr_len": 8
+    },
+    {
+      "name": "link_overhead_elided_signed",
+      "description": "Link frame overhead for addr_mode=elided signed=True: total 53B, body 52B.",
+      "category": "link_overhead",
+      "addr_mode": "elided",
+      "signed": true,
+      "total": 53,
+      "body": 52,
+      "dst_addr_len": 0
+    },
+    {
+      "name": "link_overhead_elided_unsigned",
+      "description": "Link frame overhead for addr_mode=elided signed=False: total 5B, body 4B.",
+      "category": "link_overhead",
+      "addr_mode": "elided",
+      "signed": false,
+      "total": 5,
+      "body": 4,
+      "dst_addr_len": 0
+    },
+    {
+      "name": "rpl_dio_skeleton",
+      "description": "13.3 RPL DIO packet fields and deterministic 21-byte skeleton (InstanceID, Version, Rank, Flags, DODAGID).",
+      "category": "dio_format",
+      "fields": {
+        "link_layer": [
+          "Len",
+          "LLSec",
+          "Epoch",
+          "SeqNum",
+          "DstAddr=ff02::1a",
+          "Payload",
+          "Sig"
+        ],
+        "ipv6_compressed": [
+          "SCHC Rule 2",
+          "HopLimit",
+          "Multicast flag"
+        ],
+        "icmpv6": {
+          "Type": 155,
+          "Code": 1,
+          "label": "DIO"
+        },
+        "dio_payload": [
+          "RPLInstanceID",
+          "Version",
+          "Rank",
+          "Flags",
+          "DODAGID"
+        ],
+        "options": [
+          "DODAG Configuration",
+          "Prefix Information"
+        ]
+      },
+      "example_hex": "000701000000000000000000000000000000000000",
+      "example_len": 21
+    },
+    {
+      "name": "dio_rank_0",
+      "description": "DIO encoding with rank=0.",
+      "category": "dio_rank",
+      "rank": 0,
+      "hex": "000000000000000000000000000000000000000000"
+    },
+    {
+      "name": "dio_rank_256",
+      "description": "DIO encoding with rank=256.",
+      "category": "dio_rank",
+      "rank": 256,
+      "hex": "000001000000000000000000000000000000000000"
+    },
+    {
+      "name": "dio_rank_65535",
+      "description": "DIO encoding with rank=65535.",
+      "category": "dio_rank",
+      "rank": 65535,
+      "hex": "0000ffff0000000000000000000000000000000000"
+    }
+  ]
+}

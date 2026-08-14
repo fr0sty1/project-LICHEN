@@ -1001,7 +1001,7 @@
     "ccp_vector": {
       "type": "object",
       "required": ["name", "description"],
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
@@ -1083,7 +1083,25 @@
         "drift_ppm": {"type": "integer"},
         "guard_ppm": {"type": "integer"},
         "superframe_ms": {"type": "integer"},
-        "slot_adjust_ticks": {"type": "integer"}
+        "slot_adjust_ticks": {"type": "integer"},
+        "rx_channel": {"type": "integer", "minimum": 0, "description": "CCP-9 rendezvous: rx_channel from Announce"},
+        "peer_known": {"type": "boolean", "description": "CCP-9 rendezvous: whether peer is known"},
+        "expected_channel": {"type": "integer", "minimum": 0, "description": "CCP-9 rendezvous: expected channel"},
+        "control_fallback": {"type": "boolean", "description": "CCP-9 rendezvous: control channel fallback"},
+        "eui64_hex": {"$ref": "#/definitions/hex", "description": "CCP-9 rendezvous: EUI-64 in hex"},
+        "t": {"type": "integer", "description": "CCP-9 rendezvous: timestamp"},
+        "epoch": {"type": "integer", "description": "CCP-9 rendezvous: epoch"},
+        "n_channels": {"type": "integer", "minimum": 1, "description": "CCP-9 rendezvous: number of channels"},
+        "uses_sync_hop": {"type": "boolean", "description": "CCP-9 rendezvous: uses synchronized hopping"},
+        "channel": {"type": "integer", "minimum": 0, "description": "CCP-9 rendezvous: channel number"},
+        "l2_dispatch": {"type": "integer", "description": "CCP-9 rendezvous: L2 dispatch byte"},
+        "encoded": {"$ref": "#/definitions/hex", "description": "CCP-9 rendezvous: encoded packet hex"},
+        "expected_flags": {"type": "integer", "description": "CCP-9 rendezvous: expected flags"},
+        "peer_eui64": {"$ref": "#/definitions/hex", "description": "CCP-9 rendezvous: peer EUI-64"},
+        "expected_slot": {"type": "integer", "minimum": 0, "description": "CCP-9 rendezvous: expected slot"},
+        "mechanism": {"type": "string", "description": "CCP-9 rendezvous: mechanism type"},
+        "assigned_channel": {"type": "integer", "minimum": 0, "description": "CCP-9 rendezvous: assigned channel"},
+        "assigned_slot": {"type": "integer", "minimum": 0, "description": "CCP-9 rendezvous: assigned slot"}
       },
       "allOf": [
         {

@@ -44,7 +44,6 @@ REQUIRED_CASES = {
     "target_descriptor_short_length_rejected",
     "target_descriptor_long_length_rejected",
     "target_descriptor_after_transit_rejected",
-    "external_transit_rejected",
     "child_before_parent_retains_candidate",
     "parent_arrival_activates_child_route",
     "cycle_rejected_atomically",
@@ -106,10 +105,12 @@ def _decode_dao(vector: dict, oracle: dict) -> list[dict]:
                 decoded.append({"kind": "raw_descriptor", "data": data.hex(), "encoded": encoded})
         elif option_type == 6:
             assert length == 20 and data[0] & 0x7F == 0
+            # E flag (0x80) means parent address present per RFC 6550, NOT "external route".
+            # LICHEN does not support external routes; the semantic is never encoded in wire.
             decoded.append(
                 {
                     "kind": "transit",
-                    "external": bool(data[0] & 0x80),
+                    "external": False,
                     "path_control": data[1],
                     "path_sequence": data[2],
                     "path_lifetime": data[3],
@@ -299,10 +300,7 @@ def _apply_dao(state: dict[str, dict], vector: dict, oracle: dict) -> tuple[dict
     for group_targets, group_transits in groups:
         sequences = {item["path_sequence"] for item in group_transits}
         lifetimes = {item["path_lifetime"] for item in group_transits}
-        external = {item["external"] for item in group_transits}
-        if any(external):
-            return _reject(state, "unsupported_external")
-        if len(sequences) != 1 or len(lifetimes) != 1 or len(external) != 1:
+        if len(sequences) != 1 or len(lifetimes) != 1:
             return _reject(state, "inconsistent_group")
         sequence = next(iter(sequences))
         lifetime = next(iter(lifetimes))

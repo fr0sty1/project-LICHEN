@@ -1,0 +1,114 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "coap_messages",
+  "description": "CoAP message format vectors (RFC 7252 \u00a73, spec \u00a710.2). Wire encodings via Python aiocoap oracle.",
+  "spec": "spec/07-transport-app.md",
+  "vectors": [
+    {
+      "name": "con_get_status",
+      "description": "CON GET /status with token 0x0102, MID 0x1234 (RFC 7252 \u00a73).",
+      "mtype": 0,
+      "mtype_name": "CON",
+      "code": 1,
+      "code_name": "0.01 GET",
+      "mid": 4660,
+      "token": "0102",
+      "uri_path": [
+        "status"
+      ],
+      "options_hex": "b6737461747573",
+      "payload": "",
+      "encoded": "420112340102b6737461747573",
+      "decoded_code": 1,
+      "decoded_mtype": 0,
+      "decoded_mid": 4660,
+      "decoded_token": "0102"
+    },
+    {
+      "name": "non_post_sensors_cbor",
+      "description": "NON POST /sensors with Content-Format 60 and CBOR payload.",
+      "mtype": 1,
+      "mtype_name": "NON",
+      "code": 2,
+      "code_name": "0.02 POST",
+      "mid": 22136,
+      "token": "ab",
+      "uri_path": [
+        "sensors"
+      ],
+      "content_format": 60,
+      "payload_hex": "a16474656d70fb4037800000000000",
+      "payload_cbor": {
+        "temp": 23.5
+      },
+      "encoded": "51025678abb773656e736f7273113cffa16474656d70fb4037800000000000",
+      "decoded_code": 2,
+      "decoded_mtype": 1,
+      "decoded_payload_hex": "a16474656d70fb4037800000000000",
+      "decoded_content_format": 60
+    },
+    {
+      "name": "ack_205_content",
+      "description": "ACK 2.05 Content with payload 'hello' (RFC 7252 \u00a75.5).",
+      "mtype": 2,
+      "mtype_name": "ACK",
+      "code": 69,
+      "code_name": "2.05 Content",
+      "mid": 17721,
+      "token": "",
+      "payload": "68656c6c6f",
+      "payload_text": "hello",
+      "encoded": "60024539ff68656c6c6f",
+      "decoded_code": 2,
+      "decoded_payload_text": "hello"
+    },
+    {
+      "name": "rst_empty",
+      "description": "RST empty message MID 0x1234.",
+      "mtype": 3,
+      "mtype_name": "RST",
+      "code": 0,
+      "code_name": "0.00 Empty",
+      "mid": 4660,
+      "token": "",
+      "encoded": "70001234",
+      "decoded_mtype": 3
+    },
+    {
+      "name": "content_format_table",
+      "description": "Content-Format dispatch values (spec \u00a710.2.1).",
+      "formats": [
+        {
+          "value": 0,
+          "media_type": "text/plain"
+        },
+        {
+          "value": 60,
+          "media_type": "application/cbor"
+        },
+        {
+          "value": 110,
+          "media_type": "application/senml+json"
+        },
+        {
+          "value": 112,
+          "media_type": "application/senml+cbor"
+        },
+        {
+          "value": 11542,
+          "media_type": "application/vnd.ocf+cbor"
+        }
+      ]
+    },
+    {
+      "name": "uri_authority_ipv6",
+      "description": "URI authority parsing for [2001:db8::1]:5683.",
+      "authority": "[2001:db8::1]:5683",
+      "expected_host": "2001:db8::1",
+      "expected_port": 5683,
+      "parsed_host": "2001:db8::1",
+      "parsed_port": 5683
+    }
+  ]
+}

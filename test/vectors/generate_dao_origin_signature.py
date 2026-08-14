@@ -22,7 +22,7 @@ PARENT_2 = bytes.fromhex("fe800000000000000000000000000002")
 OUTPUT = Path(__file__).with_name("dao_origin_signature.json")
 
 PRIVATE_KEY, PUBLIC_KEY = derive_keypair(SEED)
-IID = bytearray(hashlib.sha256(PUBLIC_KEY).digest()[:8])
+IID = bytearray(hashlib.sha512(PUBLIC_KEY).digest()[:8])
 IID[0] &= 0xFD
 ORIGIN = ULA_PREFIX + bytes(IID)
 ALT_PREFIX_ORIGIN = bytes.fromhex("fe80000000000000") + bytes(IID)
@@ -37,7 +37,7 @@ def transit(
     parent: bytes,
     path_sequence: int = 0xF1,
     lifetime: int = 0xFF,
-    flags: int = 0,
+    flags: int = 0x80,  # E=1: parent address present (RFC 6550 6.7.8)
     path_control: int = 0x80,
 ) -> bytes:
     return bytes([6, 20, flags, path_control, path_sequence, lifetime]) + parent
@@ -184,6 +184,13 @@ def generate() -> dict:
             "valid_withdrawal", "withdrawal", dao(target(ORIGIN), transit(PARENT_1, 0xF2, 0)), 44
         ),
         vector("valid_high_byte_sequence", "high_byte_sequence", single, 0x8001020304050607),
+        vector(
+            "valid_max_u64_sequence",
+            "max_u64_sequence",
+            single,
+            0xFFFFFFFFFFFFFFFF,
+            description="Maximum u64 sequence number (2^64-1). MUST NOT wrap to 0.",
+        ),
     ]
 
     mutations = [
@@ -288,6 +295,15 @@ def generate() -> dict:
                 "unknown_option",
                 "structural",
                 envelope_valid=False,
+            ),
+            rejected(
+                "reject_unsupported_transit_e",
+                "unsupported_transit_e",
+                dao(target(ORIGIN), transit(PARENT_1, flags=0x40)),
+                47,
+                "unsupported_transit_e",
+                "semantic",
+                description="Transit with unsupported E-flag value (neither 0x00 nor 0x80) is rejected.",
             ),
             rejected(
                 "reject_unknown_key",
@@ -554,14 +570,6 @@ def generate() -> dict:
                 dao(target(ORIGIN), transit(PARENT_1, 1, 10), transit(PARENT_2, 1, 11)),
                 50,
                 "inconsistent_transit",
-                "semantic",
-            ),
-            rejected(
-                "reject_external_flag_for_self_128",
-                "unsupported_transit_e",
-                dao(target(ORIGIN), transit(PARENT_1, flags=0x80)),
-                50,
-                "unsupported_transit_e",
                 "semantic",
             ),
             rejected(

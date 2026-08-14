@@ -1,0 +1,165 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "position_privacy_auth",
+  "description": "Position sharing privacy modes per spec Section 18.1. Public/group/private mode auth requirements.",
+  "spec": "spec/12-apps.md Section 18.1",
+  "modes": {
+    "public": "No auth required, anyone can read",
+    "group": "Group OSCORE required, group members only",
+    "private": "Pairwise OSCORE required, specific peer only"
+  },
+  "vectors": [
+    {
+      "name": "public_no_auth_accept",
+      "description": "Public position: unauthenticated GET is accepted.",
+      "mode": "public",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": false
+      },
+      "expected": {
+        "accept": true,
+        "response_code": "2.05 Content"
+      }
+    },
+    {
+      "name": "public_auth_also_accepted",
+      "description": "Public position: authenticated request also accepted.",
+      "mode": "public",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": true
+      },
+      "expected": {
+        "accept": true,
+        "response_code": "2.05 Content"
+      }
+    },
+    {
+      "name": "group_no_auth_reject",
+      "description": "Group position: unauthenticated GET is rejected.",
+      "mode": "group",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": false
+      },
+      "expected": {
+        "accept": false,
+        "response_code": "4.01 Unauthorized"
+      }
+    },
+    {
+      "name": "group_member_accept",
+      "description": "Group position: group member with OSCORE is accepted.",
+      "mode": "group",
+      "group_id": "1234567890abcdef",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": true,
+        "oscore_context": "group"
+      },
+      "requester_in_group": true,
+      "expected": {
+        "accept": true,
+        "response_code": "2.05 Content"
+      }
+    },
+    {
+      "name": "group_non_member_reject",
+      "description": "Group position: non-member with valid OSCORE is rejected.",
+      "mode": "group",
+      "group_id": "1234567890abcdef",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": true,
+        "oscore_context": "pairwise_other"
+      },
+      "requester_in_group": false,
+      "expected": {
+        "accept": false,
+        "response_code": "4.03 Forbidden"
+      }
+    },
+    {
+      "name": "private_no_auth_reject",
+      "description": "Private position: unauthenticated GET is rejected.",
+      "mode": "private",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": false
+      },
+      "expected": {
+        "accept": false,
+        "response_code": "4.01 Unauthorized"
+      }
+    },
+    {
+      "name": "private_wrong_peer_reject",
+      "description": "Private position: valid OSCORE from wrong peer is rejected.",
+      "mode": "private",
+      "allowed_peer_iid": "0011223344556677",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": true,
+        "requester_iid": "aabbccddeeff0011"
+      },
+      "expected": {
+        "accept": false,
+        "response_code": "4.03 Forbidden"
+      }
+    },
+    {
+      "name": "private_correct_peer_accept",
+      "description": "Private position: pairwise OSCORE from allowed peer is accepted.",
+      "mode": "private",
+      "allowed_peer_iid": "0011223344556677",
+      "request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": true,
+        "oscore_context": "pairwise",
+        "requester_iid": "0011223344556677"
+      },
+      "expected": {
+        "accept": true,
+        "response_code": "2.05 Content"
+      }
+    },
+    {
+      "name": "mode_switch_immediate",
+      "description": "Mode change takes effect immediately for subsequent requests.",
+      "initial_mode": "public",
+      "action": "PUT /config/position/mode = private",
+      "subsequent_request": {
+        "method": "GET",
+        "path": "/position",
+        "oscore": false
+      },
+      "expected": {
+        "accept": false,
+        "response_code": "4.01 Unauthorized",
+        "reason": "mode_change_immediate"
+      }
+    },
+    {
+      "name": "position_beacon_follows_mode",
+      "description": "Position in beacons follows privacy mode setting.",
+      "modes": [
+        {"mode": "public", "position_in_beacon": true},
+        {"mode": "group", "position_in_beacon": false},
+        {"mode": "private", "position_in_beacon": false}
+      ],
+      "expected": {
+        "reason": "beacons_are_public_broadcast"
+      }
+    }
+  ]
+}

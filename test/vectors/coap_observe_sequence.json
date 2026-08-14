@@ -1,0 +1,112 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "coap_observe_sequence",
+  "description": "CoAP Observe sequence number validation per RFC 7641 Section 4.4. 24-bit rollover and reordering semantics.",
+  "spec": "RFC 7641 Section 4.4, spec/07-transport-app.md Section 10.3",
+  "vectors": [
+    {
+      "name": "observe_seq_increasing_accept",
+      "description": "Notification with higher sequence number is accepted.",
+      "last_seq": 100,
+      "new_seq": 101,
+      "expected": {
+        "accept": true,
+        "reason": "sequence_increasing"
+      }
+    },
+    {
+      "name": "observe_seq_equal_reject",
+      "description": "Notification with same sequence number is rejected (duplicate).",
+      "last_seq": 100,
+      "new_seq": 100,
+      "expected": {
+        "accept": false,
+        "reason": "duplicate_sequence"
+      }
+    },
+    {
+      "name": "observe_seq_lower_reject",
+      "description": "Notification with lower sequence number is rejected (out of order).",
+      "last_seq": 100,
+      "new_seq": 99,
+      "expected": {
+        "accept": false,
+        "reason": "out_of_order"
+      }
+    },
+    {
+      "name": "observe_seq_rollover_24bit",
+      "description": "24-bit sequence rollover: 16777215 -> 0 is valid (RFC 7641 Section 4.4).",
+      "last_seq": 16777215,
+      "new_seq": 0,
+      "expected": {
+        "accept": true,
+        "reason": "24bit_rollover"
+      },
+      "note": "Max 24-bit value 0xFFFFFF (16777215) rolls to 0. Comparisons use modular arithmetic."
+    },
+    {
+      "name": "observe_seq_rollover_small_gap",
+      "description": "Near-rollover: 16777214 -> 1 (gap of 3) is valid.",
+      "last_seq": 16777214,
+      "new_seq": 1,
+      "expected": {
+        "accept": true,
+        "reason": "24bit_rollover_gap"
+      }
+    },
+    {
+      "name": "observe_seq_rollover_backward_reject",
+      "description": "After rollover, old seq 16777200 is rejected (appears newer but is old).",
+      "last_seq": 10,
+      "new_seq": 16777200,
+      "expected": {
+        "accept": false,
+        "reason": "pre_rollover_stale"
+      },
+      "note": "16777200 > 10 numerically, but in 24-bit modular space with last_seq=10, this is behind."
+    },
+    {
+      "name": "observe_max_seq_boundary",
+      "description": "Maximum 24-bit sequence (16777215) is valid.",
+      "last_seq": 16777214,
+      "new_seq": 16777215,
+      "expected": {
+        "accept": true,
+        "reason": "at_max_boundary"
+      }
+    },
+    {
+      "name": "observe_seq_exceeds_24bit_reject",
+      "description": "Sequence number > 16777215 (24-bit max) is invalid option value.",
+      "last_seq": 0,
+      "new_seq": 16777216,
+      "expected": {
+        "accept": false,
+        "reason": "exceeds_24bit_range"
+      }
+    },
+    {
+      "name": "observe_seq_large_jump_accept",
+      "description": "Large forward jump within half-range is valid (RFC 7641 comparison).",
+      "last_seq": 1000,
+      "new_seq": 8389608,
+      "expected": {
+        "accept": true,
+        "reason": "within_half_range"
+      },
+      "note": "Half of 2^24 is 8388608. Jump of ~8.3M is just under half."
+    },
+    {
+      "name": "observe_seq_beyond_half_range_reject",
+      "description": "Jump beyond half 24-bit range is considered backwards.",
+      "last_seq": 1000,
+      "new_seq": 8390000,
+      "expected": {
+        "accept": false,
+        "reason": "beyond_half_range"
+      }
+    }
+  ]
+}

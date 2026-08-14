@@ -1,0 +1,312 @@
+{
+  "format_version": 2,
+  "description": "Short address assignment vectors (spec 02-physical-link.md 4.5, 04-network.md 12.3). Includes crc32_ieee derivation with LICHEN key 0x4c494348454e truncated to 0x4348454e, seed-mixing DAD retry, incremental +1 mod 0xffef fallback, jitter, coordinator DAO-ACK, transition, and collision detection. Independent oracle from Python reference implementation; Rust/Zephyr must match exactly.",
+  "vectors": [
+    {
+      "name": "derive_0011223344556677",
+      "description": "derive_short_addr for sequential EUI-64 0011223344556677",
+      "eui64": "0011223344556677",
+      "eui64_bytes": [
+        0,
+        17,
+        34,
+        51,
+        68,
+        85,
+        102,
+        119
+      ],
+      "crc32_init": "0x4348454e",
+      "derived": 1390,
+      "derived_hex": "0x56e",
+      "crc16_candidate": 23807,
+      "crc16_hex": "0x5cff",
+      "fnv1a_low16": 7101,
+      "fnv1a_low16_hex": "0x1bbd"
+    },
+    {
+      "name": "derive_0102030405060708",
+      "description": "derive_short_addr for incremental bytes 0102030405060708",
+      "eui64": "0102030405060708",
+      "eui64_bytes": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "crc32_init": "0x4348454e",
+      "derived": 43100,
+      "derived_hex": "0xa85c",
+      "crc16_candidate": 18322,
+      "crc16_hex": "0x4792",
+      "fnv1a_low16": 26509,
+      "fnv1a_low16_hex": "0x678d"
+    },
+    {
+      "name": "derive_aabbccddeeff0011",
+      "description": "derive_short_addr for mixed aabbccddeeff0011",
+      "eui64": "aabbccddeeff0011",
+      "eui64_bytes": [
+        170,
+        187,
+        204,
+        221,
+        238,
+        255,
+        0,
+        17
+      ],
+      "crc32_init": "0x4348454e",
+      "derived": 22749,
+      "derived_hex": "0x58dd",
+      "crc16_candidate": 55160,
+      "crc16_hex": "0xd778",
+      "fnv1a_low16": 8125,
+      "fnv1a_low16_hex": "0x1fbd"
+    },
+    {
+      "name": "derive_0000000000000000",
+      "description": "derive_short_addr for all zeros 0000000000000000",
+      "eui64": "0000000000000000",
+      "eui64_bytes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "crc32_init": "0x4348454e",
+      "derived": 65520,
+      "derived_hex": "0xfff0",
+      "crc16_candidate": 12606,
+      "crc16_hex": "0x313e",
+      "fnv1a_low16": 29029,
+      "fnv1a_low16_hex": "0x7165"
+    },
+    {
+      "name": "derive_ffffffffffffffff",
+      "description": "derive_short_addr for all ones ffffffffffffffff",
+      "eui64": "ffffffffffffffff",
+      "eui64_bytes": [
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255
+      ],
+      "crc32_init": "0x4348454e",
+      "derived": 65413,
+      "derived_hex": "0xff85",
+      "crc16_candidate": 38879,
+      "crc16_hex": "0x97df",
+      "fnv1a_low16": 2653,
+      "fnv1a_low16_hex": "0xa5d"
+    },
+    {
+      "name": "derive_0200000000000001",
+      "description": "derive_short_addr for U/L flipped minimal 0200000000000001",
+      "eui64": "0200000000000001",
+      "eui64_bytes": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "crc32_init": "0x4348454e",
+      "derived": 51227,
+      "derived_hex": "0xc81b",
+      "crc16_candidate": 44729,
+      "crc16_hex": "0xaeb9",
+      "fnv1a_low16": 11796,
+      "fnv1a_low16_hex": "0x2e14"
+    },
+    {
+      "name": "seed_mixing_0011223344556677",
+      "description": "derive_short_addr_with_seed XOR last 4 bytes LE; 5 seeds",
+      "eui64": "0011223344556677",
+      "seeds": [
+        {
+          "seed": 1,
+          "addr": 25099,
+          "hex": "0x620b"
+        },
+        {
+          "seed": 2,
+          "addr": 52709,
+          "hex": "0xcde5"
+        },
+        {
+          "seed": 3,
+          "addr": 43648,
+          "hex": "0xaa80"
+        },
+        {
+          "seed": 42,
+          "addr": 18996,
+          "hex": "0x4a34"
+        },
+        {
+          "seed": 255,
+          "addr": 927,
+          "hex": "0x39f"
+        }
+      ]
+    },
+    {
+      "name": "dad_retry_one_collision",
+      "description": "base collides, next seed 1 succeeds",
+      "eui64": "0011223344556677",
+      "base": 1390,
+      "base_hex": "0x56e",
+      "existing": [
+        1390
+      ],
+      "result": 25099,
+      "result_hex": "0x620b",
+      "expected_seed": 1
+    },
+    {
+      "name": "dad_retry_two_collisions",
+      "description": "base and seed1 collide, seed2 succeeds",
+      "eui64": "0102030405060708",
+      "base": 43100,
+      "base_hex": "0xa85c",
+      "seed1": 53049,
+      "seed1_hex": "0xcf39",
+      "existing": [
+        43100,
+        53049
+      ],
+      "result": 24791,
+      "result_hex": "0x60d7",
+      "expected_seed": 2
+    },
+    {
+      "name": "dad_retry_exhausted",
+      "description": "all 256 candidates taken => fallback to extended (None)",
+      "eui64": "aabbccddeeff0011",
+      "existing_size": 256,
+      "result": null,
+      "fallback": "extended_64bit"
+    },
+    {
+      "name": "incremental_retry",
+      "description": "retry with +1 mod 0xffef (bd 1.8.2.6)",
+      "start": 4096,
+      "start_hex": "0x1000",
+      "existing": [
+        4096,
+        4097,
+        4098
+      ],
+      "result": 4099,
+      "result_hex": "0x1003",
+      "mod": "0xfff0"
+    },
+    {
+      "name": "incremental_retry_wraparound",
+      "description": "wraparound boundary: start near 0xFFEF wraps; 0x0000 is reserved so result is 0x0001",
+      "start": 65518,
+      "start_hex": "0xffee",
+      "existing": [
+        65518,
+        65519
+      ],
+      "result": 1,
+      "result_hex": "0x0001",
+      "mod": "0xfff0",
+      "note": "0x0000 is reserved (null/unspecified), so wraparound skips to 0x0001"
+    },
+    {
+      "name": "incremental_retry_exhausted",
+      "description": "all 65520 addresses (0..0xFFEF) taken => None",
+      "start": 1000,
+      "start_hex": "0x3e8",
+      "existing_size": 65520,
+      "existing_description": "all addresses 0..0xFFEF (0..65519)",
+      "result": null,
+      "fallback": "extended_64bit"
+    },
+    {
+      "name": "dad_jitter_three_probes",
+      "description": "3-probe jitter 0..500ms with deterministic RNG seed 12345",
+      "rng_seed": 12345,
+      "count": 3,
+      "jitters_ms": [
+        213,
+        375,
+        5
+      ],
+      "range": "0..500"
+    },
+    {
+      "name": "coordinator_allocate",
+      "description": "coordinator table allocation and DAO-ACK",
+      "allocations": [
+        {
+          "eui64": "0011223344556677",
+          "assigned": 1390,
+          "hex": "0x56e"
+        },
+        {
+          "eui64": "0102030405060708",
+          "assigned": 43100,
+          "hex": "0xa85c"
+        },
+        {
+          "eui64": "0011223344556677",
+          "again": 1390,
+          "same": true
+        }
+      ],
+      "dao_requested": {
+        "eui64": "0203040506070809",
+        "requested": 4660,
+        "assigned": 4660,
+        "status": 0
+      },
+      "table_snapshot": {
+        "1390": "0011223344556677",
+        "43100": "0102030405060708",
+        "4660": "0203040506070809"
+      }
+    },
+    {
+      "name": "transition_self_to_coordinator",
+      "description": "self-assigned collides at coordinator, transition allocates new",
+      "eui64": "0011223344556677",
+      "self_assigned": 1390,
+      "self_hex": "0x56e",
+      "coordinator_had_other": "ffffffffffffffff",
+      "transition_assigned": 25099,
+      "transition_hex": "0x620b",
+      "status": 0
+    },
+    {
+      "name": "collision_detector",
+      "description": "same short observed with two distinct pubkeys => collision",
+      "short_addr": 4660,
+      "short_hex": "0x1234",
+      "pubkey1": "0101010101010101...",
+      "pubkey2": "0202020202020202...",
+      "first_observe_collision": false,
+      "second_observe_collision": true,
+      "is_collision": true,
+      "pubkeys_count": 2
+    }
+  ]
+}

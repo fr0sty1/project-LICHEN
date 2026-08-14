@@ -1,0 +1,355 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "LICHEN link-layer edge/fuzz vectors for hardening (spec 4.x). Covers malformed LLSec, truncated signatures, length mismatches, SI parity, and fuzz malformed frames. Independent oracle from spec byte layout, not from code under test.",
+  "vectors": [
+    {
+      "name": "edge_reserved_mic_5",
+      "description": "Reserved MIC-length 5 edge must be rejected",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "0414000000",
+      "expect": {
+        "error": "reserved_mic_length"
+      }
+    },
+    {
+      "name": "edge_reserved_mic_6",
+      "description": "Reserved MIC-length 6 edge must be rejected",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "0418000000",
+      "expect": {
+        "error": "reserved_mic_length"
+      }
+    },
+    {
+      "name": "edge_reserved_mic_7",
+      "description": "Reserved MIC-length 7 edge must be rejected",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "041c000000",
+      "expect": {
+        "error": "reserved_mic_length"
+      }
+    },
+    {
+      "name": "edge_empty_frame",
+      "description": "Empty frame rejected",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "",
+      "expect": {
+        "error": "empty_frame"
+      }
+    },
+    {
+      "name": "edge_length_mismatch",
+      "description": "Length field 5 but only 4 body bytes",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "0500000000",
+      "expect": {
+        "error": "length_mismatch"
+      }
+    },
+    {
+      "name": "edge_too_short_body",
+      "description": "Body 3 bytes too short for header",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "03000000",
+      "expect": {
+        "error": "frame_too_short"
+      }
+    },
+    {
+      "name": "edge_si_without_s_raw",
+      "description": "SI=1 without S must be rejected even with payload",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 4660,
+        "dst_addr": "",
+        "payload": "deadbeef",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "0011223344556677",
+        "signer_iid_present": true
+      },
+      "encoded": "0880011234deadbeef",
+      "expect": {
+        "error": "si_without_s"
+      }
+    },
+    {
+      "name": "edge_signed_encrypted",
+      "description": "Signed and encrypted rejected",
+      "fields": {
+        "epoch": 3,
+        "seqnum": 4,
+        "dst_addr": "",
+        "payload": "78",
+        "mic": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": true,
+        "signer_iid": "0011223344556677",
+        "signer_iid_present": true
+      },
+      "encoded": "3de0030004001122334455667778000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "error": "signed_encrypted_unsupported"
+      }
+    },
+    {
+      "name": "edge_truncated_32_mic",
+      "description": "32-byte truncated MIC rejected (expects 48)",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 1,
+        "dst_addr": "",
+        "payload": "6869",
+        "mic": "0000000000000000000000000000000000000000000000000000000000000000",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_iid": "7dd5cfc679ab6342",
+        "signer_iid_present": true
+      },
+      "encoded": "2ea00100017dd5cfc679ab634268690000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "error": "truncated_mic"
+      }
+    },
+    {
+      "name": "edge_short_for_declared_addr",
+      "description": "SHORT mode declares 2-byte dst but only header present",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "0401000000",
+      "expect": {
+        "error": "declared_address_mic_short"
+      }
+    },
+    {
+      "name": "edge_frame_256_exceeds",
+      "description": "Frame 256 bytes exceeds 255",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "error": "frame_too_large"
+      }
+    },
+    {
+      "name": "edge_broadcast_max_payload_unsigned",
+      "description": "Max payload unsigned broadcast is valid (250 bytes payload)",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 1,
+        "dst_addr": "",
+        "payload": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "fe00010001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "edge_encrypted_unsigned_parse_ok",
+      "description": "Encrypted without signature parses but link_layer must reject",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 2,
+        "dst_addr": "",
+        "payload": "616263",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": true,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "0740010002616263"
+    },
+    {
+      "name": "edge_signer_iid_truncated",
+      "description": "Signer IID truncated to 4 bytes must be rejected",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 1,
+        "dst_addr": "",
+        "payload": "6869",
+        "mic": "0000000000000000000000000000000000000000000000000000000000000000",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_iid": "00112233",
+        "signer_iid_present": true
+      },
+      "encoded": "2aa00100010011223368690000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "error": "truncated_signer_iid"
+      }
+    },
+    {
+      "name": "edge_length_zero",
+      "description": "Length 0 with no body must be rejected (too short)",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "00",
+      "expect": {
+        "error": "frame_too_short"
+      }
+    },
+    {
+      "name": "edge_signed_short_dst_valid",
+      "description": "Valid signed short DST with SI",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 2,
+        "dst_addr": "abcd",
+        "payload": "68656c6c6f",
+        "mic": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_iid": "7dd5cfc679ab6342",
+        "signer_iid_present": true
+      },
+      "encoded": "43a1010002abcd7dd5cfc679ab634268656c6c6f111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "name": "edge_fuzz_random_ffff",
+      "description": "Random bytes with length 0xFF mismatch",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": "",
+        "signer_iid_present": false
+      },
+      "encoded": "ffff00",
+      "expect": {
+        "error": "length_mismatch"
+      }
+    }
+  ]
+}

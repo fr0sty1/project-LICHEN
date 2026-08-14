@@ -1,0 +1,90 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "SF assignment vectors (spec 02-physical-link.md §3.4). Stateless hash-based fallback assigned_sf = 7 + (hash_32(IID) % 6) where hash_32 = FNV-1a32 basis 0x811c9dc5 per CCP-15.8.3. Gateway-assigned and SF10 fallback included. Independent external oracle (no LICHEN code) matching Rust lichen-core and Python oracle.",
+  "vectors": [
+    {
+      "name": "zero_iid",
+      "iid_hex": "0000000000000000",
+      "hash_32": "0x9be17165",
+      "assigned_sf": 10,
+      "description": "zero IID -> hash 0x9be17165 %6=3 -> SF10",
+      "formula": "7 + (hash_32(IID) % 6)"
+    },
+    {
+      "name": "example_iid_0011223344556677",
+      "iid_hex": "0011223344556677",
+      "hash_32": "0xc0e31bbd",
+      "assigned_sf": 12,
+      "description": "example IID from ccp16 vectors -> SF12",
+      "formula": "7 + (hash_32(IID) % 6)"
+    },
+    {
+      "name": "max_iid",
+      "iid_hex": "ffffffffffffffff",
+      "hash_32": "0x6cae0a5d",
+      "assigned_sf": 8,
+      "description": "max IID -> hash 0x6cae0a5d %6=1 -> SF8",
+      "formula": "7 + (hash_32(IID) % 6)"
+    },
+    {
+      "name": "incremental_iid",
+      "iid_hex": "0102030405060708",
+      "hash_32": "0x2804678d",
+      "assigned_sf": 10,
+      "description": "incremental IID -> SF10",
+      "formula": "7 + (hash_32(IID) % 6)"
+    },
+    {
+      "name": "random_deadbeef",
+      "iid_hex": "deadbeefcafebabe",
+      "hash_32": "0xa4e045d3",
+      "assigned_sf": 12,
+      "description": "random IID -> SF12",
+      "formula": "7 + (hash_32(IID) % 6)"
+    },
+    {
+      "name": "low_byte_02",
+      "iid_hex": "0200000000000000",
+      "hash_32": "0x56a42fa7",
+      "assigned_sf": 12,
+      "description": "single byte IID -> SF12",
+      "formula": "7 + (hash_32(IID) % 6)"
+    },
+    {
+      "name": "gateway_assigned_precedence",
+      "iid_hex": "0011223344556677",
+      "hash_32": "0xc0e31bbd",
+      "hash_sf": 12,
+      "assigned_sf_dio": 9,
+      "effective_sf": 9,
+      "description": "Gateway-assigned ASSIGNED_SF via DIO (9) overrides hash-based (12); MUST use assigned SF for all TX after joining",
+      "formula": "effective = assigned_sf_dio if present else 7+(hash%6)"
+    },
+    {
+      "name": "join_fallback_sf10",
+      "iid_hex": "0011223344556677",
+      "hash_32": "0xc0e31bbd",
+      "joined": false,
+      "effective_sf": 10,
+      "description": "Nodes without explicit assignment MUST use SF10 (join-based initial, backwards compat)",
+      "formula": "SF10 when not joined and no DIO assignment"
+    },
+    {
+      "name": "sf7_min_distribution",
+      "iid_hex": "0300000000000000",
+      "hash_32": "0xf942d086",
+      "assigned_sf": 7,
+      "description": "found IID hashing to SF7 (min)",
+      "formula": "7 + (hash_32(IID) % 6)"
+    },
+    {
+      "name": "sf11_mid_distribution",
+      "iid_hex": "0700000000000000",
+      "hash_32": "0x83bd5402",
+      "assigned_sf": 11,
+      "description": "IID hashing to SF11 (covers 7-12 range distribution)",
+      "formula": "7 + (hash_32(IID) % 6)"
+    }
+  ]
+}

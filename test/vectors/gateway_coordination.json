@@ -1,0 +1,276 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "gateway_coordination",
+  "description": "Gateway Coordination Protocol (GCP) test vectors per spec/08-gateway-coordination.md. Covers discovery, slot allocation, handoff, PSK mode, and Ed25519 federation mode.",
+  "spec": "spec/08-gateway-coordination.md",
+  "vectors": [
+    {
+      "name": "gw_announce_info_basic",
+      "type": "discovery",
+      "description": "GW_ANNOUNCE: Gateway info response with IID, capabilities, slot map, and supported federation modes (CBOR SenML).",
+      "gateway_iid": "fe80::1234:5678:9abc:def0",
+      "capabilities": {
+        "max_slots": 60,
+        "gps_sync": true,
+        "backbone_ipv6": true
+      },
+      "slot_map": {
+        "allocation": "interleaved",
+        "owned_slots": [0, 3, 6, 9, 12, 15, 18, 21, 24, 27],
+        "gateway_count": 3,
+        "ordinal": 0
+      },
+      "superframe_duration_s": 60,
+      "federation_modes": ["psk", "ed25519"],
+      "cbor_encoded": "a5626964781ffe80::1234:5678:9abc:def064636170a3686d61785f736c6f7473183c6867707073796e63f5696261636b626f6e65f5686d61705f736c6f74a4696f776e65645f736c6f748a0003060909000f12151b18696f7264696e616c006867775f636f756e7403696d61705f74797065696e7465726c656176656416183c6d6665645f6d6f64657382637073676765643235353139"
+    },
+    {
+      "name": "gw_query_multicast",
+      "type": "discovery",
+      "description": "GW_QUERY: Multicast CoAP GET to ff02::1 for /.well-known/lichen-gw/info (discovery request).",
+      "method": "GET",
+      "destination": "ff02::1",
+      "uri_path": "/.well-known/lichen-gw/info",
+      "coap_token": "a1b2",
+      "coap_mid": 4660,
+      "coap_encoded": "4001123404a1b2b92e77656c6c2d6b6e6f776e086c696368656e2d6777c0696e666f"
+    },
+    {
+      "name": "gw_announce_lora_fallback",
+      "type": "discovery",
+      "description": "LoRa-side gateway announce frame with GATEWAY flag set (fallback when backbone unavailable).",
+      "frame_type": "announce",
+      "gateway_flag": true,
+      "gateway_iid_short": "1234def0",
+      "superframe_epoch": 1720000000,
+      "channel_id": 7,
+      "frame_hex": "01011234def000668a80070f"
+    },
+    {
+      "name": "slot_request_interleaved",
+      "type": "slot_allocation",
+      "description": "SLOT_REQUEST: POST to claim slots in interleaved mode. Gateway ordinal 1 claims slots 1,4,7,... for 3-gateway federation.",
+      "method": "POST",
+      "uri_path": "/.well-known/lichen-gw/slots",
+      "requester_iid": "fe80::abcd:ef01:2345:6789",
+      "allocation_type": "interleaved",
+      "gateway_ordinal": 1,
+      "gateway_count": 3,
+      "claimed_slots": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28],
+      "superframe_id": 1000,
+      "cbor_payload": "a5686f7264696e616c016867775f636f756e740369736c6f74735f74797065696e7465726c6561766564686672616d655f6964190bb868636c61696d65648a010407100d101316191c",
+      "cbor_payload_hex": "a5686f7264696e616c016867775f636f756e740369736c6f74735f74797065696e7465726c6561766564686672616d655f6964190bb868636c61696d65648a010407100d101316191c"
+    },
+    {
+      "name": "slot_request_contiguous",
+      "type": "slot_allocation",
+      "description": "SLOT_REQUEST: POST to claim contiguous block of slots. Gateway requests slots 20-39 (20 slots).",
+      "method": "POST",
+      "uri_path": "/.well-known/lichen-gw/slots",
+      "requester_iid": "fe80::dead:beef:cafe:babe",
+      "allocation_type": "contiguous",
+      "slot_start": 20,
+      "slot_count": 20,
+      "superframe_id": 1001,
+      "cbor_payload_hex": "a469736c6f74735f7479706569636f6e746967756f7573686672616d655f6964190bb96a736c6f745f7374617274146a736c6f745f636f756e7414"
+    },
+    {
+      "name": "slot_grant_success",
+      "type": "slot_allocation",
+      "description": "SLOT_GRANT: 2.01 Created response confirming slot allocation.",
+      "response_code": "2.01",
+      "response_code_name": "Created",
+      "granted_slots": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28],
+      "superframe_id": 1000,
+      "valid_until_epoch": 1720003600,
+      "cbor_response_hex": "a36867726e74655f736c8a010407100d101316191c686672616d655f6964190bb86b76616c69645f756e74696c1a66893310"
+    },
+    {
+      "name": "slot_conflict_resolution",
+      "type": "slot_allocation",
+      "description": "Slot conflict: two gateways claim slot 5. Lower IID (0x1234...) wins over higher IID (0xabcd...).",
+      "conflict_slot": 5,
+      "claimant_a_iid": "fe80::1234:5678:9abc:def0",
+      "claimant_b_iid": "fe80::abcd:ef01:2345:6789",
+      "winner_iid": "fe80::1234:5678:9abc:def0",
+      "loser_action": "select_next_available",
+      "resolution_rule": "lowest_iid_wins"
+    },
+    {
+      "name": "handoff_request_basic",
+      "type": "handoff",
+      "description": "HANDOFF_REQUEST: POST /handoff from gateway B to gateway A requesting node ownership transfer.",
+      "method": "POST",
+      "uri_path": "/.well-known/lichen-gw/handoff",
+      "requesting_gateway": "fe80::bbbb:cccc:dddd:eeee",
+      "releasing_gateway": "fe80::aaaa:1111:2222:3333",
+      "node_eui64": "0011223344556677",
+      "node_iid": "fe80::0011:2233:4455:6677",
+      "reason": "rssi_improvement",
+      "rssi_delta_db": 12,
+      "cbor_payload_hex": "a5686e6f64655f6575696800112233445566776b6e6f64655f696964781ffe80::0011:2233:4455:667766726561736f6e706273736c5f696d70726f766d6e746a727373695f64656c74610c6773726371756573746f72781ffe80::bbbb:cccc:dddd:eeee"
+    },
+    {
+      "name": "handoff_request_with_state",
+      "type": "handoff",
+      "description": "HANDOFF_REQUEST with security context and sequence numbers for seamless transition.",
+      "method": "POST",
+      "uri_path": "/.well-known/lichen-gw/handoff",
+      "node_eui64": "aabbccddeeff0011",
+      "transferred_state": {
+        "oscore_sender_seq": 12345,
+        "oscore_recipient_seq": 54321,
+        "rpl_instance_id": 1,
+        "dao_sequence": 42,
+        "last_rssi_dbm": -75
+      },
+      "cbor_payload_hex": "a2686e6f64655f65756968aabbccddeeff001165737461746fa56f6f73636f72655f736e645f736571193039716f73636f72655f7263765f73657119d431696e7374616e63655f696401686461715f73657118296a6c6173745f72737369385a"
+    },
+    {
+      "name": "handoff_complete_ack",
+      "type": "handoff",
+      "description": "HANDOFF_COMPLETE: 2.04 Changed response confirming node released by old gateway.",
+      "response_code": "2.04",
+      "response_code_name": "Changed",
+      "node_eui64": "0011223344556677",
+      "handoff_timestamp": 1720001234,
+      "cbor_response_hex": "a2686e6f64655f6575696800112233445566776974696d657374616d701a6689f7d2"
+    },
+    {
+      "name": "psk_federation_oscore_context",
+      "type": "federation_psk",
+      "description": "PSK federation mode: OSCORE context derived from shared federation PSK. All gateways use same master secret.",
+      "federation_psk": "666564657261746696f6e2d70736b2d6578616d706c652d3136",
+      "federation_psk_text": "federation-psk-example-16",
+      "master_secret": "666564657261746696f6e2d70736b2d6578616d706c652d3136",
+      "master_salt": "6c696368656e2d676370",
+      "master_salt_text": "lichen-gcp",
+      "sender_id_a": "00",
+      "sender_id_b": "01",
+      "algorithm": 10,
+      "expected_sender_key_a": "a3b9c2d1e4f5061728394a5b6c7d8e9f",
+      "expected_common_iv": "0102030405060708090a0b0c0d"
+    },
+    {
+      "name": "ed25519_federation_signature",
+      "type": "federation_ed25519",
+      "description": "Ed25519 federation mode: Slot claim signed with gateway Ed25519 key using truncated Schnorr (48B).",
+      "gateway_seed": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "gateway_public_key": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+      "message_type": "slot_claim",
+      "slot_claim_cbor": "a3686f7264696e616c016867775f636f756e740368636c61696d8a010407100d101316191c",
+      "signature_48b": "e15b69ed5bd6fccc6c624431eb1bb08341ba571158da31249ac72a28af7f77ea0534b94cc1f8650dead98ccae16ec803",
+      "valid": true
+    },
+    {
+      "name": "ed25519_federation_invalid_sig",
+      "type": "federation_ed25519",
+      "description": "Ed25519 federation: Invalid signature must cause claim rejection (security: tampered challenge byte).",
+      "gateway_public_key": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+      "message_type": "slot_claim",
+      "slot_claim_cbor": "a3686f7264696e616c016867775f636f756e740368636c61696d8a010407100d101316191c",
+      "signature_48b": "e15b69ed5bd6fccc6c624432eb1bb08341ba571158da31249ac72a28af7f77ea0534b94cc1f8650dead98ccae16ec803",
+      "valid": false,
+      "rejection_reason": "invalid_signature"
+    },
+    {
+      "name": "ed25519_tofu_pin",
+      "type": "federation_ed25519",
+      "description": "TOFU key pinning: First contact pins gateway key; subsequent contact with different key rejected.",
+      "gateway_iid": "fe80::cafe:babe:dead:beef",
+      "pinned_public_key": "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
+      "contact_public_key": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+      "pin_status": "pinned",
+      "contact_accepted": false,
+      "rejection_reason": "key_mismatch_tofu"
+    },
+    {
+      "name": "superframe_sync_gps",
+      "type": "time_sync",
+      "description": "Superframe synchronization: GPS-equipped gateway provides time master reference.",
+      "time_source": "gps",
+      "superframe_duration_s": 60,
+      "superframe_epoch_utc": "2024-07-03T12:00:00Z",
+      "superframe_epoch_unix": 1720008000,
+      "current_slot": 15,
+      "slots_remaining": 45
+    },
+    {
+      "name": "superframe_sync_elect_master",
+      "type": "time_sync",
+      "description": "Non-GPS time sync: Elect time master by lowest IID. Gateway A (lower IID) wins.",
+      "time_source": "backbone_elect",
+      "candidates": [
+        {"iid": "fe80::abcd:ef01:2345:6789", "has_gps": false},
+        {"iid": "fe80::1234:5678:9abc:def0", "has_gps": false},
+        {"iid": "fe80::dead:beef:cafe:babe", "has_gps": false}
+      ],
+      "elected_master": "fe80::1234:5678:9abc:def0",
+      "election_rule": "lowest_iid"
+    },
+    {
+      "name": "channel_ownership_map",
+      "type": "channel_coordination",
+      "description": "Channel ownership query response: GET /channels returns map of channel to owning gateway.",
+      "method": "GET",
+      "uri_path": "/.well-known/lichen-gw/channels",
+      "channel_map": {
+        "0": "fe80::1234:5678:9abc:def0",
+        "1": "fe80::abcd:ef01:2345:6789",
+        "2": "fe80::dead:beef:cafe:babe"
+      },
+      "cbor_response_hex": "a3006fe80::1234...016fe80::abcd...026fe80::dead..."
+    },
+    {
+      "name": "node_registry_query",
+      "type": "node_registry",
+      "description": "Node registry query: GET /nodes returns SenML list of registered nodes.",
+      "method": "GET",
+      "uri_path": "/.well-known/lichen-gw/nodes",
+      "content_format": 112,
+      "content_format_name": "application/senml+cbor",
+      "nodes": [
+        {"n": "/node/0011223344556677", "vs": "active", "t": 1720001000},
+        {"n": "/node/aabbccddeeff0011", "vs": "active", "t": 1720001100},
+        {"n": "/node/1122334455667788", "vs": "handoff_pending", "t": 1720001200}
+      ],
+      "cbor_response_hex": "83a3616e74106e6f6465303031312e2e2e6276736661637469766561741a6689f1e8a3616e74106e6f64656161622e2e2e6276736661637469766561741a6689f24c"
+    },
+    {
+      "name": "dual_mode_gateway",
+      "type": "federation_dual",
+      "description": "Dual-mode gateway: Participates in both PSK and Ed25519 federations simultaneously for migration.",
+      "gateway_iid": "fe80::ffff:eeee:dddd:cccc",
+      "modes_active": ["psk", "ed25519"],
+      "psk_federation_id": "legacy-mesh-001",
+      "ed25519_public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "accepts_psk_peers": true,
+      "accepts_ed25519_peers": true,
+      "info_response_cbor_hex": "a3626964781ffe80::ffff:eeee:dddd:cccc656d6f64657382637073676765643235353139667073665f6964706c65676163792d6d6573682d303031"
+    },
+    {
+      "name": "replay_protection_seq",
+      "type": "security",
+      "description": "Replay protection: Coordination messages include sequence number; replay detected and rejected.",
+      "sender_iid": "fe80::1111:2222:3333:4444",
+      "message_type": "slot_claim",
+      "sequence_number": 100,
+      "prior_highest_seq": 100,
+      "is_replay": true,
+      "action": "reject_silently"
+    },
+    {
+      "name": "rate_limit_dos_protection",
+      "type": "security",
+      "description": "DoS protection: Rate limiting on CoAP endpoints. Excess requests receive 4.29 Too Many Requests.",
+      "endpoint": "/.well-known/lichen-gw/slots",
+      "requests_per_minute_limit": 10,
+      "requests_received": 15,
+      "requests_accepted": 10,
+      "requests_rejected": 5,
+      "rejection_code": "4.29",
+      "rejection_code_name": "Too Many Requests"
+    }
+  ]
+}

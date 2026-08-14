@@ -1,16 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "name": "LOADng discovery state transitions",
-  "description": "Cross-language test vectors for LOADng RREQ/RREP processing (spec sections 10.3-10.5, appendix B2.6). Each vector specifies initial state, input message, and expected action with cache/gradient mutations. Actions: 'suppressed' (duplicate RREQ or echo), 'reply' (destination or intermediate), 'forward' (hop limit > 1), 'dropped' (hop limit exhausted), 'delivered' (RREP at requester), 'forward_rrep' (RREP along reverse route), 'dropped_rrep' (no reverse route). All implementations must agree.",
-  "spec": "spec/05-routing.md sections 10.3-10.5, appendix B2.6",
-  "constants": {
-    "INITIAL_HOP_LIMIT": 4,
-    "MAX_HOP_LIMIT": 15,
-    "SUPPRESS_WINDOW_MS": 10000,
-    "ROUTE_TIMEOUT_MS": 300000,
-    "GRADIENT_TIMEOUT_MS": 600000
-  },
+  "description": "LOADng discovery state transition vectors (spec sections 10.3-10.5, B2.6). Each vector specifies initial state, input message, and expected action with cache/gradient mutations. Independent oracle from spec rules.",
   "vectors": [
     {
       "name": "rreq_echo_own",

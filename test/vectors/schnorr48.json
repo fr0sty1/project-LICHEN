@@ -119,6 +119,16 @@
       "message": "74657374",
       "signature": "c9bec10578943fc8d453252fb262fa030000000000000000000000000000000000000000000000000000000000000000",
       "valid": false
+    },
+    {
+      "description": "Determinism: same seed+message must produce identical signature (run twice)",
+      "seed": "deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
+      "private_key": "50b8c29238a8403e0ac69e23d47b9184c371a92460d518351b099944bbdfa867",
+      "public_key": "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
+      "message": "64657465726d696e69736d5f74657374",
+      "signature": "6458b6517842b14bd17647835ba8764ffc300e1984a960afa4bb1ef34fb148023a1a1e2d1856979eea5a3fdf6a7e8a06",
+      "valid": true,
+      "note": "Test implementations MUST verify repeated sign() calls with same inputs yield this exact signature"
     }
   ]
 }

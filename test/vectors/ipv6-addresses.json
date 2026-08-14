@@ -1,0 +1,96 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "IPv6 addressing vectors: Ed25519 pubkey \u2192 IID (SHA-512 U/L cleared) \u2192 link-local fe80::/10 and primary 0200::/7 (Yggdrasil AddrForKey). Includes legacy EUI-64 and short-address IID. Oracle: python/src/lichen/ipv6/addr.py and crypto/identity.py; key binding 02xx[8:16]==IID.",
+  "vectors": [
+    {
+      "name": "all_zero_pubkey",
+      "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
+      "iid": "0000000000000000",
+      "link_local": "fe80::",
+      "link_local_packed": "fe800000000000000000000000000000",
+      "yggdrasil": "2ff::",
+      "yggdrasil_packed": "02ff0000000000000000000000000000",
+      "iid_in_yggdrasil": true
+    },
+    {
+      "name": "all_01_pubkey_ed25519",
+      "pubkey": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "iid": "c7d6ca08166ecd20",
+      "link_local": "fe80::c7d6:ca08:166e:cd20",
+      "link_local_packed": "fe80000000000000c7d6ca08166ecd20",
+      "yggdrasil": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
+      "yggdrasil_packed": "0200389e777ace07c7d6ca08166ecd20",
+      "iid_in_yggdrasil": true
+    },
+    {
+      "name": "yggdrasil_official",
+      "pubkey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      "iid": "ea90556802586d37",
+      "link_local": "fe80::ea90:5568:258:6d37",
+      "link_local_packed": "fe80000000000000ea90556802586d37",
+      "yggdrasil": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
+      "yggdrasil_packed": "0200514acffcfa9dea90556802586d37",
+      "iid_in_yggdrasil": true
+    },
+    {
+      "name": "all_ab_pubkey",
+      "pubkey": "abababababababababababababababababababababababababababababababab",
+      "iid": "a8a8a8a8a8a8a8a8",
+      "link_local": "fe80::a8a8:a8a8:a8a8:a8a8",
+      "link_local_packed": "fe80000000000000a8a8a8a8a8a8a8a8",
+      "yggdrasil": "200:a8a8:a8a8:a8a8:a8a8:a8a8:a8a8:a8a8",
+      "yggdrasil_packed": "0200a8a8a8a8a8a8a8a8a8a8a8a8a8a8",
+      "iid_in_yggdrasil": true
+    },
+    {
+      "name": "all_ff_pubkey",
+      "pubkey": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "iid": "0000000000000000",
+      "link_local": "fe80::",
+      "link_local_packed": "fe800000000000000000000000000000",
+      "yggdrasil": "200::",
+      "yggdrasil_packed": "02000000000000000000000000000000",
+      "iid_in_yggdrasil": true
+    },
+    {
+      "name": "eui64_spec_example",
+      "eui64": "103456789abcdef0",
+      "iid": "123456789abcdef0",
+      "link_local": "fe80::1234:5678:9abc:def0",
+      "link_local_packed": "fe80000000000000123456789abcdef0"
+    },
+    {
+      "name": "eui64_zero",
+      "eui64": "0000000000000000",
+      "iid": "0200000000000000",
+      "link_local": "fe80::200:0:0:0",
+      "link_local_packed": "fe800000000000000200000000000000"
+    },
+    {
+      "name": "eui64_all_ff",
+      "eui64": "ffffffffffffffff",
+      "iid": "fdffffffffffffff",
+      "link_local": "fe80::fdff:ffff:ffff:ffff",
+      "link_local_packed": "fe80000000000000fdffffffffffffff"
+    },
+    {
+      "name": "short_0x0001",
+      "short_addr": 1,
+      "short_hex": "0001",
+      "iid": "000000fffe000001"
+    },
+    {
+      "name": "short_0xabcd",
+      "short_addr": 43981,
+      "short_hex": "abcd",
+      "iid": "000000fffe00abcd"
+    },
+    {
+      "name": "short_0xffff",
+      "short_addr": 65535,
+      "short_hex": "ffff",
+      "iid": "000000fffe00ffff"
+    }
+  ]
+}

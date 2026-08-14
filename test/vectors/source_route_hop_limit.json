@@ -1,0 +1,98 @@
+{
+  "$schema": "./schema.json",
+  "vector_type": "source_route_hop_limit",
+  "format_version": 2,
+  "description": "RFC 6554 Source Routing Header hop limit validation per LICHEN spec/05-routing.md line 418: Segments Left MUST be strictly less than Hop Limit.",
+  "oracle": {
+    "basis": "RFC 8200 Section 4.4, RFC 6554, LICHEN spec/05-routing.md Section 8.4",
+    "rule": "Segments Left < Hop Limit (strictly less, not less-or-equal)"
+  },
+  "vectors": [
+    {
+      "name": "srh_segments_left_strictly_less_accept",
+      "description": "Segments Left < Hop Limit (3 < 4): strictly less condition satisfied, MUST accept.",
+      "hop_limit": 4,
+      "segments_left": 3,
+      "addresses": [
+        "02001122334455660011223344556610",
+        "02001122334455660011223344556611",
+        "02001122334455660011223344556612"
+      ],
+      "ext_data": "030300000000020011223344556600112233445566100200112233445566001122334455661102001122334455660011223344556612",
+      "expected": {
+        "accepted": true,
+        "reason": "segments_left_strictly_less_than_hop_limit"
+      }
+    },
+    {
+      "name": "srh_segments_left_equal_reject",
+      "description": "Segments Left = Hop Limit (3 = 3): not strictly less, MUST reject.",
+      "hop_limit": 3,
+      "segments_left": 3,
+      "addresses": [
+        "02001122334455660011223344556610",
+        "02001122334455660011223344556611",
+        "02001122334455660011223344556612"
+      ],
+      "ext_data": "030300000000020011223344556600112233445566100200112233445566001122334455661102001122334455660011223344556612",
+      "expected": {
+        "accepted": false,
+        "reason": "segments_left_not_strictly_less_than_hop_limit"
+      }
+    },
+    {
+      "name": "srh_segments_left_greater_reject",
+      "description": "Segments Left > Hop Limit (3 > 2): MUST reject.",
+      "hop_limit": 2,
+      "segments_left": 3,
+      "addresses": [
+        "02001122334455660011223344556610",
+        "02001122334455660011223344556611",
+        "02001122334455660011223344556612"
+      ],
+      "ext_data": "030300000000020011223344556600112233445566100200112233445566001122334455661102001122334455660011223344556612",
+      "expected": {
+        "accepted": false,
+        "reason": "segments_left_exceeds_hop_limit"
+      }
+    },
+    {
+      "name": "srh_segments_left_zero_accept",
+      "description": "Segments Left = 0 (final destination): strictly less than any positive Hop Limit, MUST accept.",
+      "hop_limit": 1,
+      "segments_left": 0,
+      "addresses": [
+        "02001122334455660011223344556610"
+      ],
+      "ext_data": "03000000000002001122334455660011223344556610",
+      "expected": {
+        "accepted": true,
+        "reason": "final_destination"
+      }
+    },
+    {
+      "name": "srh_hop_limit_1_segments_0_accept",
+      "description": "Hop Limit = 1, Segments Left = 0 (0 < 1): strictly less, MUST accept.",
+      "hop_limit": 1,
+      "segments_left": 0,
+      "addresses": [],
+      "ext_data": "030000000000",
+      "expected": {
+        "accepted": true,
+        "reason": "zero_segments_left_strictly_less"
+      }
+    },
+    {
+      "name": "srh_hop_limit_0_reject",
+      "description": "Hop Limit = 0: packet should already be discarded before SRH processing, MUST reject if reached.",
+      "hop_limit": 0,
+      "segments_left": 0,
+      "addresses": [],
+      "ext_data": "030000000000",
+      "expected": {
+        "accepted": false,
+        "reason": "hop_limit_exhausted"
+      }
+    }
+  ]
+}

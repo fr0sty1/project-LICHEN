@@ -1,0 +1,294 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "vector_type": "ccp_ema_update",
+  "description": "EMA (Exponential Moving Average) update test vectors for CCP adaptive SF (spec 02-physical-link.md section 3.5). EMA formula: new_avg = avg + ((sample - avg) >> 2) with alpha=1/4. Uses Q16.16 fixed-point internally with arithmetic right shift. Tests integer SNR inputs where both Python (float * 0.25) and Rust (Q16.16 fixed-point with >>2) produce identical results for the EMA computation itself. Integer conversion (avg() method) uses round-half-up in Rust.",
+  "oracle_provenance": "Independent arithmetic computation verified against spec pseudocode. Q16.16 values computed as: avg_fp = avg * 65536, diff = (sample * 65536) - avg_fp, new_avg_fp = avg_fp + (diff >> 2).",
+  "vectors": [
+    {
+      "name": "basic_positive_diff_divisible_by_4",
+      "description": "Basic case: diff=-8 is exactly divisible by 4, no fractional result",
+      "input": {
+        "avg": 20,
+        "sample": 12
+      },
+      "output": {
+        "diff": -8,
+        "diff_shifted": -2,
+        "new_avg_float": 18.0,
+        "new_avg_fp": 1179648,
+        "new_avg_int_round_half_up": 18,
+        "new_avg_int_truncate": 18
+      }
+    },
+    {
+      "name": "positive_diff_divisible_by_4",
+      "description": "Positive diff=8 is exactly divisible by 4",
+      "input": {
+        "avg": 0,
+        "sample": 8
+      },
+      "output": {
+        "diff": 8,
+        "diff_shifted": 2,
+        "new_avg_float": 2.0,
+        "new_avg_fp": 131072,
+        "new_avg_int_round_half_up": 2,
+        "new_avg_int_truncate": 2
+      }
+    },
+    {
+      "name": "negative_diff_divisible_by_4",
+      "description": "Negative diff=-8 is exactly divisible by 4, starting from 0",
+      "input": {
+        "avg": 0,
+        "sample": -8
+      },
+      "output": {
+        "diff": -8,
+        "diff_shifted": -2,
+        "new_avg_float": -2.0,
+        "new_avg_fp": -131072,
+        "new_avg_int_round_half_up": -2,
+        "new_avg_int_truncate": -2
+      }
+    },
+    {
+      "name": "positive_to_negative_transition",
+      "description": "Transition from positive avg to update with negative sample",
+      "input": {
+        "avg": 10,
+        "sample": 2
+      },
+      "output": {
+        "diff": -8,
+        "diff_shifted": -2,
+        "new_avg_float": 8.0,
+        "new_avg_fp": 524288,
+        "new_avg_int_round_half_up": 8,
+        "new_avg_int_truncate": 8
+      }
+    },
+    {
+      "name": "negative_avg_positive_shift",
+      "description": "Negative avg with positive diff (moving towards zero)",
+      "input": {
+        "avg": -10,
+        "sample": 2
+      },
+      "output": {
+        "diff": 12,
+        "diff_shifted": 3,
+        "new_avg_float": -7.0,
+        "new_avg_fp": -458752,
+        "new_avg_int_round_half_up": -7,
+        "new_avg_int_truncate": -7
+      }
+    },
+    {
+      "name": "small_diff_not_divisible_by_4",
+      "description": "diff=3 not divisible by 4: 3 >> 2 = 0 (rounds towards negative infinity)",
+      "input": {
+        "avg": 5,
+        "sample": 8
+      },
+      "output": {
+        "diff": 3,
+        "diff_shifted": 0,
+        "new_avg_float": 5.75,
+        "new_avg_fp": 376832,
+        "new_avg_int_round_half_up": 6,
+        "new_avg_int_truncate": 5
+      }
+    },
+    {
+      "name": "negative_diff_not_divisible_by_4",
+      "description": "diff=-3 not divisible by 4: -3 >> 2 = -1 (arithmetic shift rounds towards -inf)",
+      "input": {
+        "avg": 0,
+        "sample": -3
+      },
+      "output": {
+        "diff": -3,
+        "diff_shifted": -1,
+        "new_avg_float": -0.75,
+        "new_avg_fp": -49152,
+        "new_avg_int_round_half_up": -1,
+        "new_avg_int_truncate": 0
+      }
+    },
+    {
+      "name": "diff_minus_7_shows_rounding_divergence",
+      "description": "diff=-7: -7 >> 2 = -2 (arithmetic shift). Result -1.75 rounds to -2 (round-half-up) vs -1 (truncate)",
+      "input": {
+        "avg": 0,
+        "sample": -7
+      },
+      "output": {
+        "diff": -7,
+        "diff_shifted": -2,
+        "new_avg_float": -1.75,
+        "new_avg_fp": -114688,
+        "new_avg_int_round_half_up": -2,
+        "new_avg_int_truncate": -1
+      }
+    },
+    {
+      "name": "boundary_sf12_snr_critical",
+      "description": "SNR at SF12 threshold boundary (-5 dB). EMA of single sample -5 from 0",
+      "input": {
+        "avg": 0,
+        "sample": -5
+      },
+      "output": {
+        "diff": -5,
+        "diff_shifted": -2,
+        "new_avg_float": -1.25,
+        "new_avg_fp": -81920,
+        "new_avg_int_round_half_up": -1,
+        "new_avg_int_truncate": -1
+      }
+    },
+    {
+      "name": "boundary_sf11_snr_poor",
+      "description": "SNR at SF11 threshold boundary (0 dB). Sample 0 with avg 0",
+      "input": {
+        "avg": 0,
+        "sample": 0
+      },
+      "output": {
+        "diff": 0,
+        "diff_shifted": 0,
+        "new_avg_float": 0.0,
+        "new_avg_fp": 0,
+        "new_avg_int_round_half_up": 0,
+        "new_avg_int_truncate": 0
+      }
+    },
+    {
+      "name": "boundary_sf9_snr_good",
+      "description": "SNR above SF9 upgrade threshold (>8 dB). Single sample 10 from 0",
+      "input": {
+        "avg": 0,
+        "sample": 10
+      },
+      "output": {
+        "diff": 10,
+        "diff_shifted": 2,
+        "new_avg_float": 2.5,
+        "new_avg_fp": 163840,
+        "new_avg_int_round_half_up": 3,
+        "new_avg_int_truncate": 2
+      }
+    },
+    {
+      "name": "large_positive_diff",
+      "description": "Large positive diff=100",
+      "input": {
+        "avg": 0,
+        "sample": 100
+      },
+      "output": {
+        "diff": 100,
+        "diff_shifted": 25,
+        "new_avg_float": 25.0,
+        "new_avg_fp": 1638400,
+        "new_avg_int_round_half_up": 25,
+        "new_avg_int_truncate": 25
+      }
+    },
+    {
+      "name": "large_negative_diff",
+      "description": "Large negative diff=-100",
+      "input": {
+        "avg": 50,
+        "sample": -50
+      },
+      "output": {
+        "diff": -100,
+        "diff_shifted": -25,
+        "new_avg_float": 25.0,
+        "new_avg_fp": 1638400,
+        "new_avg_int_round_half_up": 25,
+        "new_avg_int_truncate": 25
+      }
+    },
+    {
+      "name": "i8_boundary_max",
+      "description": "Near i8 max boundary (127)",
+      "input": {
+        "avg": 120,
+        "sample": 127
+      },
+      "output": {
+        "diff": 7,
+        "diff_shifted": 1,
+        "new_avg_float": 121.75,
+        "new_avg_fp": 7979008,
+        "new_avg_int_round_half_up": 122,
+        "new_avg_int_truncate": 121
+      }
+    },
+    {
+      "name": "i8_boundary_min",
+      "description": "Near i8 min boundary (-128)",
+      "input": {
+        "avg": -120,
+        "sample": -128
+      },
+      "output": {
+        "diff": -8,
+        "diff_shifted": -2,
+        "new_avg_float": -122.0,
+        "new_avg_fp": -7995392,
+        "new_avg_int_round_half_up": -122,
+        "new_avg_int_truncate": -122
+      }
+    },
+    {
+      "name": "convergence_sequence_positive",
+      "description": "Sequence converging to 10 from 0: [10, 10, 10, 10]",
+      "type": "sequence",
+      "input": {
+        "initial_avg": 0,
+        "samples": [10, 10, 10, 10]
+      },
+      "output": {
+        "final_avg_float": 6.8359375,
+        "final_avg_fp": 448000,
+        "final_avg_int_round_half_up": 7,
+        "intermediate_avg_fp": [163840, 286720, 378880, 448000]
+      }
+    },
+    {
+      "name": "convergence_sequence_negative",
+      "description": "Sequence converging to -10 from 0: [-10, -10, -10, -10]",
+      "type": "sequence",
+      "input": {
+        "initial_avg": 0,
+        "samples": [-10, -10, -10, -10]
+      },
+      "output": {
+        "final_avg_float": -6.8359375,
+        "final_avg_fp": -448000,
+        "final_avg_int_round_half_up": -7,
+        "intermediate_avg_fp": [-163840, -286720, -378880, -448000]
+      }
+    },
+    {
+      "name": "alternating_sequence",
+      "description": "Alternating samples [10, -10, 10, -10] from 0",
+      "type": "sequence",
+      "input": {
+        "initial_avg": 0,
+        "samples": [10, -10, 10, -10]
+      },
+      "output": {
+        "final_avg_float": -0.9765625,
+        "final_avg_fp": -64000,
+        "final_avg_int_round_half_up": -1,
+        "intermediate_avg_fp": [163840, -40960, 133120, -64000]
+      }
+    }
+  ]
+}

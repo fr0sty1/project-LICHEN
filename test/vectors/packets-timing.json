@@ -1,0 +1,313 @@
+{
+  "format_version": 2,
+  "description": "Packets and Timing timing vectors (spec 09 \u00a714 Trickle, DAO, duty cycle, airtime, CSMA, time sync, SFN, TDMA). Python oracle lichen.timing.",
+  "vectors": [
+    {
+      "name": "trickle_constants",
+      "description": "14.1 Trickle Imin=4s, Imax=17min (exact 1_024_000ms = 4000*2^8), k=10.",
+      "category": "trickle_constants",
+      "Imin_ms": 4000,
+      "Imax_exact_ms": 1024000,
+      "k": 10
+    },
+    {
+      "name": "trickle_interval_start",
+      "description": "Trickle first interval: start 0, transmit at half (Imin/2) with rng=0.0, interval_end=4000.",
+      "category": "trickle_state",
+      "interval": 4000,
+      "interval_start": 0,
+      "transmit_time": 2000,
+      "interval_end": 4000
+    },
+    {
+      "name": "trickle_heard_consistent",
+      "description": "After 1 heard consistent, counter=1, should_transmit true (k=10).",
+      "category": "trickle_state",
+      "counter": 1,
+      "should_transmit": true
+    },
+    {
+      "name": "trickle_suppressed_at_k",
+      "description": "After >=k heard consistent, should_transmit false (suppressed).",
+      "category": "trickle_state",
+      "counter": 21,
+      "should_transmit": false
+    },
+    {
+      "name": "trickle_expire_double",
+      "description": "After expire, interval doubles to 8000 (capped at 1_024_000).",
+      "category": "trickle_state",
+      "interval_after_expire": 8000
+    },
+    {
+      "name": "dao_retry_delays",
+      "description": "14.2 DAO retry exponential backoff 4,8,16s.",
+      "category": "dao_timing",
+      "retry_delays_ms": [
+        4000,
+        8000,
+        16000
+      ],
+      "retry_0": 4000,
+      "retry_1": 8000,
+      "retry_2": 16000,
+      "retry_3_none": null,
+      "refresh_s": 900,
+      "lifetime_s": 1800,
+      "refresh_is_half_lifetime": true
+    },
+    {
+      "name": "dao_sequence_validation",
+      "description": "DAO Origin Sequence: starts above zero, monotonically increasing, must not wrap at 0xffffffffffffffff.",
+      "category": "dao_sequence",
+      "seq_0_invalid": false,
+      "seq_1_valid": true,
+      "seq_advance_valid": true,
+      "seq_no_advance_invalid": false,
+      "seq_max_invalid": false
+    },
+    {
+      "name": "data_traffic_intervals",
+      "description": "14.3 Periodic telemetry 5-60min, heartbeat 30min.",
+      "category": "data_traffic",
+      "telemetry_min_s": 300,
+      "telemetry_max_s": 3600,
+      "heartbeat_s": 1800
+    },
+    {
+      "name": "duty_cycle_eu868_10pct",
+      "description": "14.4 EU 868 10% duty cycle, SF9 60B ~200ms => 1800 packets/hour, comfortable 100-300.",
+      "category": "duty_cycle",
+      "duty_cycle_percent": 10.0,
+      "airtime_60b_ms": 200.0,
+      "max_packets_per_hour": 1800,
+      "max_via_formula": 1800
+    },
+    {
+      "name": "duty_cycle_usage_examples",
+      "description": "Duty cycle usage percent for various airtime sums in 1-hour window.",
+      "category": "duty_cycle_usage",
+      "usage_3600s_window_36s_airtime_pct": 1.0,
+      "usage_180s_airtime_pct": 5.0
+    },
+    {
+      "name": "airtime_payload_17",
+      "description": "Airtime for payload 17B at SF10/125kHz (sim default).",
+      "category": "airtime",
+      "payload_len": 17,
+      "airtime_us": 329727,
+      "airtime_ms": 329.727
+    },
+    {
+      "name": "airtime_payload_22",
+      "description": "Airtime for payload 22B at SF10/125kHz (sim default).",
+      "category": "airtime",
+      "payload_len": 22,
+      "airtime_us": 370687,
+      "airtime_ms": 370.687
+    },
+    {
+      "name": "airtime_payload_60",
+      "description": "Airtime for payload 60B at SF10/125kHz (sim default).",
+      "category": "airtime",
+      "payload_len": 60,
+      "airtime_us": 698368,
+      "airtime_ms": 698.368
+    },
+    {
+      "name": "airtime_payload_77",
+      "description": "Airtime for payload 77B at SF10/125kHz (sim default).",
+      "category": "airtime",
+      "payload_len": 77,
+      "airtime_us": 821248,
+      "airtime_ms": 821.248
+    },
+    {
+      "name": "airtime_payload_82",
+      "description": "Airtime for payload 82B at SF10/125kHz (sim default).",
+      "category": "airtime",
+      "payload_len": 82,
+      "airtime_us": 862208,
+      "airtime_ms": 862.208
+    },
+    {
+      "name": "airtime_payload_88",
+      "description": "Airtime for payload 88B at SF10/125kHz (sim default).",
+      "category": "airtime",
+      "payload_len": 88,
+      "airtime_us": 903168,
+      "airtime_ms": 903.168
+    },
+    {
+      "name": "airtime_payload_127",
+      "description": "Airtime for payload 127B at SF10/125kHz (sim default).",
+      "category": "airtime",
+      "payload_len": 127,
+      "airtime_us": 1230848,
+      "airtime_ms": 1230.848
+    },
+    {
+      "name": "airtime_sf9_60b",
+      "description": "Airtime for 60B at SF9/125kHz (spec example ~200ms).",
+      "category": "airtime_sf9",
+      "payload_len": 60,
+      "sf": 9,
+      "bw_hz": 125000,
+      "airtime_us": 369664,
+      "airtime_ms": 369.664
+    },
+    {
+      "name": "csma_parameters",
+      "description": "14.5 CSMA CAD 3 symbols, backoff 10ms, max 5 (CW 31), retry 3.",
+      "category": "csma_params",
+      "cad_timeout_symbols": 3,
+      "backoff_unit_ms": 10,
+      "backoff_max": 5,
+      "retry_limit": 3,
+      "cw_values": [
+        0,
+        1,
+        3,
+        7,
+        15,
+        31
+      ]
+    },
+    {
+      "name": "csma_backoff_slots",
+      "description": "CSMA slots: CW=0 for exp 0, CW=31 for exp 5, deterministic rng mapping.",
+      "category": "csma_backoff",
+      "cw_exp0": 0,
+      "cw_exp5": 31,
+      "slots_exp0_rng0": 0,
+      "slots_exp5_rng0": 0,
+      "slots_exp5_rng_half": 16,
+      "slots_exp5_rng_max": 31
+    },
+    {
+      "name": "csma_retry_exhaustion",
+      "description": "CSMA retry exhaustion after 3 retries => 4th returns retry_exhausted.",
+      "category": "csma_retry",
+      "results": [
+        "cad_busy",
+        "cad_busy",
+        "cad_busy",
+        "retry_exhausted"
+      ]
+    },
+    {
+      "name": "time_sync_epoch_floor",
+      "description": "Effective epoch floor = max(firmware_build_epoch, board_provision_epoch_if_valid).",
+      "category": "time_sync",
+      "floor_firmware_only": 1700000000,
+      "floor_max": 1800000000,
+      "floor_firmware_higher": 1900000000
+    },
+    {
+      "name": "time_sync_stratum",
+      "description": "Time stratum 0..4 table and source class mapping.",
+      "category": "time_stratum",
+      "strata": [
+        {
+          "value": 0,
+          "name": "NO_SYNC",
+          "source": "NO_SYNC"
+        },
+        {
+          "value": 1,
+          "name": "MESH_DERIVED",
+          "source": "MESH_DERIVED"
+        },
+        {
+          "value": 2,
+          "name": "ROUGHTIME",
+          "source": "ROUGHTIME"
+        },
+        {
+          "value": 3,
+          "name": "NTS",
+          "source": "NTS"
+        },
+        {
+          "value": 4,
+          "name": "GNSS_GPSD",
+          "source": "GNSS_GPSD"
+        }
+      ]
+    },
+    {
+      "name": "dio_time_option",
+      "description": "DIO Time Option Type TBD 8 bytes: Type(1)+Len(1)+Stratum(1)+Reserved(1)+Timestamp(4).",
+      "category": "dio_time_option",
+      "encoded_hex": "000603006553f100",
+      "decoded_stratum": 3,
+      "decoded_timestamp": 1700000000
+    },
+    {
+      "name": "time_adoption",
+      "description": "Time adoption: higher stratum MAY adopt, lower MUST NOT, below floor MUST reject.",
+      "category": "time_adoption",
+      "adopt_higher": true,
+      "reject_lower": false,
+      "reject_below_floor": false
+    },
+    {
+      "name": "sfn_delta_wrap",
+      "description": "SFN delta unsigned 32-bit: (0 - 0xFFFFFFFF) mod 2^32 = 1.",
+      "category": "sfn_delta",
+      "delta_wrap": 1,
+      "delta_normal": 10,
+      "delta_zero": 0
+    },
+    {
+      "name": "sfn_slot_assignment",
+      "description": "Slot = (hash_32(eui64)+sfn) mod num_slots per spec 14.7.",
+      "category": "sfn_slot",
+      "eui64_hex": "0011223344556677",
+      "hash": 3236109245,
+      "slot_sfn0_n8": 5,
+      "slot_sfn1_n8": 6,
+      "slot_sfn0_n16": 13
+    },
+    {
+      "name": "density_startup_delay",
+      "description": "Initial delay = min(300, nodes_heard*5); LISTEN 30-60s.",
+      "category": "density_startup",
+      "constants": {
+        "LISTEN_PERIOD_MIN_S": 30,
+        "LISTEN_PERIOD_MAX_S": 60,
+        "DELAY_PER_NODE_S": 5,
+        "MAX_STARTUP_DELAY_S": 300
+      },
+      "delay_0_nodes": 0,
+      "delay_10_nodes": 50,
+      "delay_100_nodes": 300
+    },
+    {
+      "name": "desync_fsm_wrap_invalid",
+      "description": "SYNCED + SFN wrap invalid time => DESYNCED.",
+      "category": "desync_fsm",
+      "state_after_wrap": "DESYNCED"
+    },
+    {
+      "name": "desync_fsm_recovering",
+      "description": "DESYNCED + valid beacon => RECOVERING (needs 3 consecutive).",
+      "category": "desync_fsm",
+      "state_after_valid": "RECOVERING",
+      "consecutive": 1
+    },
+    {
+      "name": "desync_fsm_recovered",
+      "description": "RECOVERING + 3rd consecutive valid => SYNCED.",
+      "category": "desync_fsm",
+      "state_after_3rd": "SYNCED"
+    },
+    {
+      "name": "tdma_slot_constants",
+      "description": "14.8 Superframe guard 50ms (alt 100ms per table), slot 250ms, beacon timeout 3x superframe.",
+      "category": "tdma_constants",
+      "guard_ms": 50,
+      "slot_ms": 250
+    }
+  ]
+}

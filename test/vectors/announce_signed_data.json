@@ -1,0 +1,182 @@
+{
+  "$schema": "./schema.json",
+  "vector_type": "announce_signed_data",
+  "format_version": 2,
+  "description": "Announce message signed_data transcript format per CCP-9 and spec/05-routing.md Section 9.2.",
+  "oracle": {
+    "basis": "LICHEN spec/05-routing.md Section 9.2, rust/lichen-core/src/announce.rs, ccp9.json",
+    "transcript": "signed_data = originator_iid(8) || pubkey(32) || seq_num(2, big-endian) || rx_channel(1) || app_data(variable)",
+    "generator_command": "cd python && uv run python -c 'from lichen.crypto.schnorr48 import derive_keypair, sign; ...'",
+    "cross_check": "rust/lichen-core/src/announce.rs:write_signed_data()"
+  },
+  "vectors": [
+    {
+      "name": "announce_signed_data_transcript",
+      "description": "Announce message signed_data transcript per CCP-9: iid || pubkey || seq_num || rx_channel || app_data",
+      "coverage": "announce_transcript_format",
+      "signing_seed": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "public_key": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+      "originator_iid": "7159bd633b2e9120",
+      "seq_num": 4660,
+      "rx_channel": 3,
+      "hop_count": 0,
+      "app_data": "deadbeef",
+      "signed_data_transcript": "7159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6123403deadbeef",
+      "signed_data_layout": {
+        "iid_offset": 0,
+        "iid_length": 8,
+        "pubkey_offset": 8,
+        "pubkey_length": 32,
+        "seq_num_offset": 40,
+        "seq_num_length": 2,
+        "rx_channel_offset": 42,
+        "rx_channel_length": 1,
+        "app_data_offset": 43,
+        "app_data_length": 4
+      },
+      "signature": "9bf413255d74be7d9793dd6d1a692e8bbd9589d04ea9f11e33b8deb42869ae4f6d4c883e460ade059e0367b35a9ecb0c",
+      "announce_frame": "01030012347159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab69bf413255d74be7d9793dd6d1a692e8bbd9589d04ea9f11e33b8deb42869ae4f6d4c883e460ade059e0367b35a9ecb0cdeadbeef",
+      "announce_frame_layout": {
+        "type_offset": 0,
+        "rx_channel_offset": 1,
+        "hop_count_offset": 2,
+        "seq_num_offset": 3,
+        "iid_offset": 5,
+        "pubkey_offset": 13,
+        "signature_offset": 45,
+        "app_data_offset": 93,
+        "fixed_length": 93,
+        "total_length": 97
+      },
+      "expected": {
+        "signature_valid": true
+      }
+    },
+    {
+      "name": "announce_minimal_no_app_data",
+      "description": "Minimal announce with no app_data (93 bytes fixed length).",
+      "coverage": "announce_minimal",
+      "signing_seed": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "public_key": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+      "originator_iid": "7159bd633b2e9120",
+      "seq_num": 1,
+      "rx_channel": 0,
+      "hop_count": 0,
+      "app_data": "",
+      "signed_data_transcript": "7159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6000100",
+      "signed_data_layout": {
+        "iid_offset": 0,
+        "iid_length": 8,
+        "pubkey_offset": 8,
+        "pubkey_length": 32,
+        "seq_num_offset": 40,
+        "seq_num_length": 2,
+        "rx_channel_offset": 42,
+        "rx_channel_length": 1,
+        "app_data_offset": 43,
+        "app_data_length": 0
+      },
+      "signature": "9d4a8f3c0d1a7e2ba0751393a253693bb7cbf9511b91297adf7800a5cf8cfa014b7ff9c668a3c953a4d6f930057eee0e",
+      "announce_frame": "01000000017159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab69d4a8f3c0d1a7e2ba0751393a253693bb7cbf9511b91297adf7800a5cf8cfa014b7ff9c668a3c953a4d6f930057eee0e",
+      "announce_frame_layout": {
+        "type_offset": 0,
+        "rx_channel_offset": 1,
+        "hop_count_offset": 2,
+        "seq_num_offset": 3,
+        "iid_offset": 5,
+        "pubkey_offset": 13,
+        "signature_offset": 45,
+        "app_data_offset": 93,
+        "fixed_length": 93,
+        "total_length": 93
+      },
+      "expected": {
+        "signature_valid": true
+      }
+    },
+    {
+      "name": "announce_rx_channel_7_max",
+      "description": "Maximum valid rx_channel value (7). Values >= 8 MUST be rejected.",
+      "coverage": "announce_rx_channel_boundary",
+      "signing_seed": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "public_key": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+      "originator_iid": "7159bd633b2e9120",
+      "seq_num": 100,
+      "rx_channel": 7,
+      "hop_count": 0,
+      "app_data": "",
+      "signed_data_transcript": "7159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6006407",
+      "signed_data_layout": {
+        "iid_offset": 0,
+        "iid_length": 8,
+        "pubkey_offset": 8,
+        "pubkey_length": 32,
+        "seq_num_offset": 40,
+        "seq_num_length": 2,
+        "rx_channel_offset": 42,
+        "rx_channel_length": 1,
+        "app_data_offset": 43,
+        "app_data_length": 0
+      },
+      "signature": "23c2eddc30d2b79d6f1b493228453aa0c11a5820c8327fed0fa28324f54cef55358d7ae67173372f5177d07af58c740b",
+      "announce_frame": "01070000647159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab623c2eddc30d2b79d6f1b493228453aa0c11a5820c8327fed0fa28324f54cef55358d7ae67173372f5177d07af58c740b",
+      "announce_frame_layout": {
+        "type_offset": 0,
+        "rx_channel_offset": 1,
+        "hop_count_offset": 2,
+        "seq_num_offset": 3,
+        "iid_offset": 5,
+        "pubkey_offset": 13,
+        "signature_offset": 45,
+        "app_data_offset": 93,
+        "fixed_length": 93,
+        "total_length": 93
+      },
+      "expected": {
+        "signature_valid": true
+      }
+    },
+    {
+      "name": "announce_seq_num_boundary_max",
+      "description": "Maximum 16-bit sequence number (65535).",
+      "coverage": "announce_seq_boundary",
+      "signing_seed": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "public_key": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+      "originator_iid": "7159bd633b2e9120",
+      "seq_num": 65535,
+      "rx_channel": 0,
+      "hop_count": 0,
+      "app_data": "",
+      "signed_data_transcript": "7159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6ffff00",
+      "signed_data_layout": {
+        "iid_offset": 0,
+        "iid_length": 8,
+        "pubkey_offset": 8,
+        "pubkey_length": 32,
+        "seq_num_offset": 40,
+        "seq_num_length": 2,
+        "rx_channel_offset": 42,
+        "rx_channel_length": 1,
+        "app_data_offset": 43,
+        "app_data_length": 0
+      },
+      "signature": "a435ccef1e401d3c6dbe0fcb65308bafa2e8710bcd05a3c673b721643663780947113e66d3f3c9b30f472f3ba77ea105",
+      "announce_frame": "010000ffff7159bd633b2e9120207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6a435ccef1e401d3c6dbe0fcb65308bafa2e8710bcd05a3c673b721643663780947113e66d3f3c9b30f472f3ba77ea105",
+      "announce_frame_layout": {
+        "type_offset": 0,
+        "rx_channel_offset": 1,
+        "hop_count_offset": 2,
+        "seq_num_offset": 3,
+        "iid_offset": 5,
+        "pubkey_offset": 13,
+        "signature_offset": 45,
+        "app_data_offset": 93,
+        "fixed_length": 93,
+        "total_length": 93
+      },
+      "expected": {
+        "signature_valid": true
+      }
+    }
+  ]
+}

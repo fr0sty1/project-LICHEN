@@ -1,0 +1,117 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "sos_signature",
+  "description": "SOS signature verification per spec Section 18.3. Unsigned/invalid silently dropped.",
+  "spec": "spec/12-apps.md Section 18.3",
+  "signature_algorithm": "schnorr48",
+  "vectors": [
+    {
+      "name": "sos_valid_signature_accept",
+      "description": "SOS with valid Schnorr48 signature is accepted.",
+      "sender_iid": "0011223344556677",
+      "pubkey": "valid_pubkey_for_iid",
+      "signature": "valid_48_byte_signature",
+      "expected": {
+        "accept": true,
+        "relay": true
+      }
+    },
+    {
+      "name": "sos_missing_signature_drop",
+      "description": "SOS without signature is silently dropped (no error response).",
+      "sender_iid": "0011223344556677",
+      "signature": null,
+      "expected": {
+        "accept": false,
+        "relay": false,
+        "error_response": false,
+        "reason": "silent_drop_unsigned"
+      }
+    },
+    {
+      "name": "sos_invalid_signature_drop",
+      "description": "SOS with invalid signature is silently dropped.",
+      "sender_iid": "0011223344556677",
+      "pubkey": "valid_pubkey",
+      "signature": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "signature_note": "all-zero invalid signature",
+      "expected": {
+        "accept": false,
+        "relay": false,
+        "error_response": false,
+        "reason": "silent_drop_bad_sig"
+      }
+    },
+    {
+      "name": "sos_truncated_signature_drop",
+      "description": "SOS with truncated signature (< 48 bytes) is dropped.",
+      "sender_iid": "0011223344556677",
+      "signature": "0102030405060708",
+      "signature_length": 8,
+      "expected": {
+        "accept": false,
+        "relay": false,
+        "reason": "truncated_signature"
+      }
+    },
+    {
+      "name": "sos_wrong_key_signature_drop",
+      "description": "SOS signed with wrong key (not matching sender IID) is dropped.",
+      "sender_iid": "0011223344556677",
+      "claimed_pubkey": "wrong_pubkey_not_matching_iid",
+      "signature": "valid_for_wrong_key",
+      "expected": {
+        "accept": false,
+        "relay": false,
+        "reason": "key_iid_mismatch"
+      }
+    },
+    {
+      "name": "sos_signature_covers_payload",
+      "description": "Signature must cover entire SOS payload (type, severity, location, etc.).",
+      "signed_data_includes": [
+        "sos_type",
+        "severity",
+        "location",
+        "timestamp",
+        "message"
+      ],
+      "expected": {
+        "modification_detected": true,
+        "reason": "payload_integrity"
+      }
+    },
+    {
+      "name": "sos_replay_same_signature_reject",
+      "description": "Same SOS (identical payload+sig) replayed is rejected via replay window.",
+      "sender_iid": "0011223344556677",
+      "first_accept": true,
+      "replay_accept": false,
+      "expected": {
+        "reason": "replay_protection"
+      }
+    },
+    {
+      "name": "sos_unknown_pubkey_tofu",
+      "description": "SOS from unknown sender: TOFU pins pubkey on first valid sig.",
+      "sender_iid": "0011223344556677",
+      "pubkey_known": false,
+      "signature_valid": true,
+      "expected": {
+        "accept": true,
+        "tofu_pin": true,
+        "reason": "first_contact_pinned"
+      }
+    },
+    {
+      "name": "sos_silent_drop_rationale",
+      "description": "Silent drop (no error response) prevents attacker enumeration.",
+      "expected": {
+        "error_response_on_invalid": false,
+        "reason": "enumeration_prevention",
+        "note": "Attacker cannot probe which IIDs have valid keys"
+      }
+    }
+  ]
+}

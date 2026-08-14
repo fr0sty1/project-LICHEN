@@ -1,0 +1,137 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "coap_token_validation",
+  "description": "CoAP token validation per RFC 7252 Section 3. TKL field bounds and token semantics.",
+  "spec": "RFC 7252 Section 3",
+  "vectors": [
+    {
+      "name": "tkl_0_empty_token_valid",
+      "description": "TKL=0 means no token bytes follow. Valid for requests where token matching not needed.",
+      "header_byte": "40",
+      "tkl": 0,
+      "expected": {
+        "valid": true,
+        "token": "",
+        "reason": "empty_token"
+      }
+    },
+    {
+      "name": "tkl_1_single_byte_token",
+      "description": "TKL=1 with 1-byte token.",
+      "header_byte": "41",
+      "tkl": 1,
+      "token_hex": "ab",
+      "expected": {
+        "valid": true,
+        "token_length": 1,
+        "reason": "valid_1byte_token"
+      }
+    },
+    {
+      "name": "tkl_8_max_valid_token",
+      "description": "TKL=8 (maximum valid) with 8-byte token.",
+      "header_byte": "48",
+      "tkl": 8,
+      "token_hex": "0102030405060708",
+      "expected": {
+        "valid": true,
+        "token_length": 8,
+        "reason": "max_valid_tkl"
+      }
+    },
+    {
+      "name": "tkl_9_reject",
+      "description": "TKL=9 is reserved and MUST be rejected (RFC 7252 Section 3).",
+      "header_byte": "49",
+      "tkl": 9,
+      "expected": {
+        "valid": false,
+        "reason": "tkl_9_reserved"
+      }
+    },
+    {
+      "name": "tkl_10_reject",
+      "description": "TKL=10 is reserved and MUST be rejected.",
+      "header_byte": "4a",
+      "tkl": 10,
+      "expected": {
+        "valid": false,
+        "reason": "tkl_10_reserved"
+      }
+    },
+    {
+      "name": "tkl_15_reject",
+      "description": "TKL=15 is reserved and MUST be rejected.",
+      "header_byte": "4f",
+      "tkl": 15,
+      "expected": {
+        "valid": false,
+        "reason": "tkl_15_reserved"
+      }
+    },
+    {
+      "name": "tkl_mismatch_truncated",
+      "description": "TKL=4 but only 2 token bytes follow. MUST reject (truncated message).",
+      "header_byte": "44",
+      "tkl": 4,
+      "token_hex": "0102",
+      "expected": {
+        "valid": false,
+        "reason": "token_truncated"
+      }
+    },
+    {
+      "name": "token_zero_bytes_vs_empty",
+      "description": "Token of all-zero bytes (TKL>0) is distinct from empty token (TKL=0).",
+      "cases": [
+        {
+          "tkl": 0,
+          "token_hex": "",
+          "semantic": "no_token"
+        },
+        {
+          "tkl": 2,
+          "token_hex": "0000",
+          "semantic": "token_value_zero"
+        }
+      ],
+      "expected": {
+        "tokens_distinct": true,
+        "reason": "zero_value_token_is_valid"
+      }
+    },
+    {
+      "name": "con_request_should_have_token",
+      "description": "CON request without token (TKL=0) is syntactically valid but clients SHOULD include token for matching.",
+      "mtype": 0,
+      "code": 1,
+      "tkl": 0,
+      "expected": {
+        "valid": true,
+        "warning": "con_request_no_token",
+        "reason": "syntactically_valid_but_not_recommended"
+      }
+    },
+    {
+      "name": "response_token_must_match_request",
+      "description": "Response token MUST match request token for request/response matching.",
+      "request_token": "abcd",
+      "response_token": "abcd",
+      "expected": {
+        "match": true,
+        "reason": "token_correlation"
+      }
+    },
+    {
+      "name": "response_token_mismatch_reject",
+      "description": "Response with different token than request MUST NOT be matched.",
+      "request_token": "abcd",
+      "response_token": "efgh",
+      "expected": {
+        "match": false,
+        "reason": "token_mismatch"
+      }
+    }
+  ]
+}

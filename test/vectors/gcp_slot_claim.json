@@ -1,0 +1,111 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "gcp_slot_claim",
+  "description": "Gateway Coordination Protocol slot claim message signing. Schnorr48 signature covers CBOR-canonicalized claim data.",
+  "spec": "spec/08-gateway-coordination.md Section 6.2-6.3",
+  "signature_format": {
+    "algorithm": "schnorr48",
+    "signed_data": "CBOR deterministic encoding (RFC 8949 Section 4.2) of slot claim object",
+    "canonicalization": "CBOR deterministic encoding: map keys sorted, shortest integer form"
+  },
+  "vectors": [
+    {
+      "name": "slot_claim_basic",
+      "description": "Basic slot claim for slots [0,1,2] by gateway with IID.",
+      "claim": {
+        "gateway_iid": "0011223344556677",
+        "slots": [0, 1, 2],
+        "superframe_id": 1000,
+        "timestamp": 1700000000
+      },
+      "cbor_canonical_hex": "a46367617465776179bf686f306c746f5f696964480011223344556677ff66736c6f7473830001026c73757065726672616d655f69641903e86974696d657374616d701a65528e80",
+      "signing_seed": "deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
+      "expected": {
+        "signature_length": 48,
+        "verify_with_gateway_pubkey": true
+      },
+      "note": "CBOR map keys sorted: gateway_iid, slots, superframe_id, timestamp"
+    },
+    {
+      "name": "slot_claim_single_slot",
+      "description": "Claim single slot (contiguous block mode).",
+      "claim": {
+        "gateway_iid": "aabbccddeeff0011",
+        "slots": [5],
+        "superframe_id": 42
+      },
+      "expected": {
+        "slot_count": 1,
+        "allocation_mode": "contiguous"
+      }
+    },
+    {
+      "name": "slot_claim_interleaved",
+      "description": "Interleaved mode: gateway ordinal 0 of 3 claims slots 0,3,6...",
+      "claim": {
+        "gateway_iid": "0000000000000001",
+        "slots": [0, 3, 6, 9, 12],
+        "superframe_id": 100,
+        "gateway_count": 3,
+        "ordinal": 0
+      },
+      "expected": {
+        "allocation_mode": "interleaved",
+        "valid": true,
+        "pattern": "slots[i] == ordinal + i * gateway_count"
+      }
+    },
+    {
+      "name": "slot_claim_map_key_order",
+      "description": "CBOR deterministic encoding requires sorted keys. 'gateway_iid' < 'slots' < 'superframe_id' < 'timestamp' (lexicographic).",
+      "claim_fields_in_order": ["gateway_iid", "slots", "superframe_id", "timestamp"],
+      "expected": {
+        "key_sort_method": "lexicographic_byte_comparison"
+      }
+    },
+    {
+      "name": "slot_claim_missing_signature_reject",
+      "description": "Slot claim without signature MUST be rejected.",
+      "claim": {
+        "gateway_iid": "0011223344556677",
+        "slots": [0]
+      },
+      "signature": null,
+      "expected": {
+        "valid": false,
+        "reason": "missing_signature"
+      }
+    },
+    {
+      "name": "slot_claim_invalid_signature_reject",
+      "description": "Slot claim with invalid signature MUST be rejected.",
+      "claim": {
+        "gateway_iid": "0011223344556677",
+        "slots": [0]
+      },
+      "signature": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expected": {
+        "valid": false,
+        "reason": "invalid_signature"
+      }
+    },
+    {
+      "name": "slot_claim_conflict_both_valid",
+      "description": "Overlapping claims where both signatures verify: lowest IID wins.",
+      "claim_a": {
+        "gateway_iid": "0011223344556677",
+        "slots": [5, 6]
+      },
+      "claim_b": {
+        "gateway_iid": "0022334455667788",
+        "slots": [5, 6]
+      },
+      "both_signatures_valid": true,
+      "expected": {
+        "winner": "claim_a",
+        "reason": "lowest_iid"
+      }
+    }
+  ]
+}

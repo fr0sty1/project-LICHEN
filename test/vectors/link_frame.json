@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "LICHEN link-layer frame vectors (spec section 4). Complete frames are at most 255 bytes (LENGTH at most 254). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
+  "description": "LICHEN link-layer frame vectors (spec section 4, draft-lichen-link-01). Complete frames are at most 255 bytes (LENGTH at most 254). 'fields' are frame inputs; 'encoded' is from _oracle_encode_frame() - an independent encoder based on the spec wire layout, NOT from LichenFrame.to_bytes().",
   "vectors": [
     {
       "name": "broadcast_min",
@@ -38,8 +38,8 @@
       "encoded": "0801102030abcd6869"
     },
     {
-      "name": "extended_addr_mic64",
-      "description": "64-bit address, 64-bit MIC",
+      "name": "extended_addr_compat1",
+      "description": "64-bit address, compatibility selector 1, unsigned (no MIC)",
       "fields": {
         "epoch": 255,
         "seqnum": 65535,
@@ -55,6 +55,108 @@
       "encoded": "1006ffffff000102030405060764617461"
     },
     {
+      "name": "elided_addr",
+      "description": "Elided destination (addr_mode=3, 0 bytes), derived from IPv6 context",
+      "fields": {
+        "epoch": 5,
+        "seqnum": 4660,
+        "dst_addr": "",
+        "payload": "637478",
+        "mic": "",
+        "addr_mode": 3,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": ""
+      },
+      "encoded": "0703051234637478"
+    },
+    {
+      "name": "epoch_zero_seqnum_zero",
+      "description": "Minimum boundary: epoch=0, seqnum=0 (counter=0x000000)",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "6d696e",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": ""
+      },
+      "encoded": "07000000006d696e"
+    },
+    {
+      "name": "epoch_zero_seqnum_max",
+      "description": "Epoch 0 at max seqnum: epoch=0, seqnum=65535 (counter=0x00FFFF)",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 65535,
+        "dst_addr": "1234",
+        "payload": "626e64",
+        "mic": "",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": ""
+      },
+      "encoded": "090100ffff1234626e64"
+    },
+    {
+      "name": "empty_payload",
+      "description": "Broadcast with empty payload (edge case for control frames)",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 1,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": ""
+      },
+      "encoded": "0400010001"
+    },
+    {
+      "name": "unsigned_max_payload",
+      "description": "Maximum payload for unsigned broadcast: 250 bytes (body=254, spec limit)",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 1,
+        "dst_addr": "",
+        "payload": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": ""
+      },
+      "encoded": "fe00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9"
+    },
+    {
+      "name": "unsigned_max_payload_short_addr",
+      "description": "Maximum payload for unsigned short-addr frame: 248 bytes",
+      "fields": {
+        "epoch": 255,
+        "seqnum": 65535,
+        "dst_addr": "dead",
+        "payload": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7",
+        "mic": "",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": ""
+      },
+      "encoded": "fe01ffffffdead000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7"
+    },
+    {
       "name": "broadcast_signed",
       "description": "Signed broadcast frame with known seed",
       "fields": {
@@ -62,19 +164,19 @@
         "seqnum": 2,
         "dst_addr": "",
         "payload": "616263",
-        "mic": "07562afe2b0dbda9481a46ae62a904d8460961965e9c324132eea8a3eea62ca4729332a13ff648c13c778a80e966ec09",
+        "mic": "98f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": true,
         "encrypted": false
       },
-      "encoded": "372001000261626307562afe2b0dbda9481a46ae62a904d8460961965e9c324132eea8a3eea62ca4729332a13ff648c13c778a80e966ec09",
+      "encoded": "372001000261626398f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
       "crypto": {
         "seed": "0000000000000000000000000000000000000000000000000000000000000000",
         "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
         "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
         "preimage": "3720010002616263",
-        "signature": "07562afe2b0dbda9481a46ae62a904d8460961965e9c324132eea8a3eea62ca4729332a13ff648c13c778a80e966ec09"
+        "signature": "98f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102"
       }
     },
     {
@@ -85,19 +187,19 @@
         "seqnum": 2,
         "dst_addr": "abcd",
         "payload": "68656c6c6f21",
-        "mic": "cc99b8f001f54e45c1c29b884292f0a218d7d35ee0399502384560a230a6b0f13691786d4ea3f545902324422d7cde0a",
+        "mic": "6324ca2dccf490aac8d9fcea6a0b5601edc567d475bbd6e15d653c21bff1517325722832f9727b53bc86544c55f41a0a",
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": true,
         "encrypted": false
       },
-      "encoded": "3c21010002abcd68656c6c6f21cc99b8f001f54e45c1c29b884292f0a218d7d35ee0399502384560a230a6b0f13691786d4ea3f545902324422d7cde0a",
+      "encoded": "3c21010002abcd68656c6c6f216324ca2dccf490aac8d9fcea6a0b5601edc567d475bbd6e15d653c21bff1517325722832f9727b53bc86544c55f41a0a",
       "crypto": {
         "seed": "0000000000000000000000000000000000000000000000000000000000000000",
         "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
         "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
         "preimage": "3c21010002abcd68656c6c6f21",
-        "signature": "cc99b8f001f54e45c1c29b884292f0a218d7d35ee0399502384560a230a6b0f13691786d4ea3f545902324422d7cde0a"
+        "signature": "6324ca2dccf490aac8d9fcea6a0b5601edc567d475bbd6e15d653c21bff1517325722832f9727b53bc86544c55f41a0a"
       }
     },
     {
@@ -115,9 +217,52 @@
         "encrypted": true,
         "signer_iid": "aabbccddaabbccdd"
       },
-      "encoded": "3dE0030004aabbccddaabbccdd7800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "encoded": "3dE0030004aabbccddaabbccdd78000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
         "error": "signed_encrypted_unsupported"
+      }
+    },
+    {
+      "name": "signed_max_payload",
+      "description": "Maximum payload for signed broadcast: 202 bytes (body=254, spec limit)",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 1,
+        "dst_addr": "",
+        "payload": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9",
+        "mic": "f55e4fcee930cf7f270f75b295cfa6c2f0cb8ee4a7e97a14fff05f8857514bb5f2d6ab2e218370cfbb886b7a617a3201",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false
+      },
+      "encoded": "fe20000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9f55e4fcee930cf7f270f75b295cfa6c2f0cb8ee4a7e97a14fff05f8857514bb5f2d6ab2e218370cfbb886b7a617a3201",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "fe20000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9",
+        "signature": "f55e4fcee930cf7f270f75b295cfa6c2f0cb8ee4a7e97a14fff05f8857514bb5f2d6ab2e218370cfbb886b7a617a3201"
+      }
+    },
+    {
+      "name": "unsigned_over_max_payload",
+      "description": "Over-limit payload: 251 bytes would require body=255 (exceeds 254 spec limit)",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 1,
+        "dst_addr": "",
+        "payload": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_iid": ""
+      },
+      "encoded": "ff00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa",
+      "expect": {
+        "error": "frame_body_exceeds_254"
       }
     }
   ]

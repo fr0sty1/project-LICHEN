@@ -1,0 +1,202 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "CCP beacon signature gate vectors: verify L2 signature verification occurs BEFORE DIO processing (spec section 8). Tests that invalid signatures cause frame rejection with no DODAG state change. Also captures known divergence points in path_cost calculation (rounding, MAX_RANK_INCREASE defaults) for cross-implementation alignment.",
+  "vectors": [
+    {
+      "name": "sig_gate_invalid_rejects_before_dio",
+      "description": "Frame with invalid L2 signature MUST be rejected at link layer before DIO processing. No DODAG state change occurs. This is the primary safety invariant.",
+      "category": "signature_gate",
+      "frame_has_valid_signature": false,
+      "dodag_state_before": {
+        "role": "unjoined",
+        "rank": 65535,
+        "preferred_parent": null
+      },
+      "expected": {
+        "frame_accepted": false,
+        "rejection_layer": "link_layer",
+        "dio_processed": false,
+        "dodag_state_changed": false
+      }
+    },
+    {
+      "name": "sig_gate_valid_allows_dio",
+      "description": "Frame with valid L2 signature passes link layer, DIO processing occurs.",
+      "category": "signature_gate",
+      "frame_has_valid_signature": true,
+      "dio": {
+        "rpl_instance_id": 0,
+        "version": 128,
+        "rank": 256,
+        "dodag_id_hex": "02001122334455660011223344556601"
+      },
+      "link_etx": 1.0,
+      "dodag_state_before": {
+        "role": "unjoined",
+        "rank": 65535,
+        "preferred_parent": null
+      },
+      "expected": {
+        "frame_accepted": true,
+        "dio_processed": true,
+        "dodag_state_changed": true,
+        "new_role": "joined",
+        "new_rank": 512
+      }
+    },
+    {
+      "name": "path_cost_exact_integer",
+      "description": "ETX=1.0 produces exact integer path_cost (no rounding divergence). rank + round(1.0 * 256) = 256 + 256 = 512.",
+      "category": "path_cost",
+      "parent_rank": 256,
+      "link_etx": 1.0,
+      "min_hop_rank_increase": 256,
+      "expected_path_cost": 512,
+      "divergence_risk": "none"
+    },
+    {
+      "name": "path_cost_round_down",
+      "description": "ETX=1.25 rounds down in both implementations. 256 + round(1.25 * 256) = 256 + round(320.0) = 256 + 320 = 576.",
+      "category": "path_cost",
+      "parent_rank": 256,
+      "link_etx": 1.25,
+      "min_hop_rank_increase": 256,
+      "expected_path_cost": 576,
+      "divergence_risk": "none"
+    },
+    {
+      "name": "path_cost_round_up",
+      "description": "ETX=1.75 rounds up in both implementations. 256 + round(1.75 * 256) = 256 + round(448.0) = 256 + 448 = 704.",
+      "category": "path_cost",
+      "parent_rank": 256,
+      "link_etx": 1.75,
+      "min_hop_rank_increase": 256,
+      "expected_path_cost": 704,
+      "divergence_risk": "none"
+    },
+    {
+      "name": "path_cost_half_boundary_python_even",
+      "description": "ETX that produces .5 in link_cost. Python banker's rounding rounds 0.5 to nearest even (128 -> 128). Rust rounds away from zero (128.5 -> 129). This is a KNOWN DIVERGENCE point.",
+      "category": "path_cost",
+      "parent_rank": 256,
+      "link_etx": 0.501953125,
+      "min_hop_rank_increase": 256,
+      "link_cost_exact": 128.5,
+      "expected_path_cost_python": 384,
+      "expected_path_cost_rust": 385,
+      "divergence_risk": "rounding_at_half_boundary",
+      "note": "0.501953125 * 256 = 128.5; Python round(128.5) = 128 (banker's), Rust (128.5f32).round() = 129"
+    },
+    {
+      "name": "path_cost_half_boundary_python_odd",
+      "description": "ETX that produces 129.5 in link_cost. Python banker's rounding rounds 129.5 to nearest even (130). Rust rounds away from zero (129.5 -> 130). Both agree here.",
+      "category": "path_cost",
+      "parent_rank": 256,
+      "link_etx": 0.505859375,
+      "min_hop_rank_increase": 256,
+      "link_cost_exact": 129.5,
+      "expected_path_cost": 386,
+      "divergence_risk": "none",
+      "note": "0.505859375 * 256 = 129.5; Python round(129.5) = 130 (banker's to even), Rust (129.5f32).round() = 130"
+    },
+    {
+      "name": "path_cost_overflow_saturation",
+      "description": "Very high ETX causing overflow. Both implementations should return INFINITE_RANK (65535).",
+      "category": "path_cost",
+      "parent_rank": 60000,
+      "link_etx": 100.0,
+      "min_hop_rank_increase": 256,
+      "expected_path_cost": 65535,
+      "divergence_risk": "none",
+      "note": "60000 + round(100.0 * 256) = 60000 + 25600 = 85600 > 65535 -> saturates to INFINITE_RANK"
+    },
+    {
+      "name": "path_cost_nan_handling",
+      "description": "NaN link_etx. Rust explicitly returns u16::MAX. Python raises ValueError when round() receives NaN.",
+      "category": "path_cost",
+      "parent_rank": 256,
+      "link_etx": "NaN",
+      "min_hop_rank_increase": 256,
+      "expected_rust_path_cost": 65535,
+      "expected_python_behavior": "raises_value_error",
+      "divergence_risk": "nan_handling",
+      "note": "Rust dodag.rs:172 explicitly checks is_nan() and returns u16::MAX. Python round(nan) raises ValueError."
+    },
+    {
+      "name": "path_cost_negative_etx_rejected",
+      "description": "Negative ETX is invalid. Python raises ValueError at ParentCandidate creation. Rust returns u16::MAX from path_cost.",
+      "category": "path_cost",
+      "parent_rank": 256,
+      "link_etx": -1.0,
+      "min_hop_rank_increase": 256,
+      "expected_python_behavior": "raises_value_error",
+      "expected_rust_path_cost": 65535,
+      "divergence_risk": "negative_etx",
+      "note": "Python ParentCandidate.__post_init__ raises ValueError for negative ETX"
+    },
+    {
+      "name": "admissibility_within_python_ceiling",
+      "description": "Path cost within Python MAX_RANK_INCREASE=2048 but outside Rust MAX_RANK_INCREASE=1024. Both implementations accept if MAX_RANK_INCREASE configured to 2048.",
+      "category": "admissibility",
+      "lowest_rank": 512,
+      "path_cost": 1792,
+      "max_rank_increase_python": 2048,
+      "max_rank_increase_rust": 1024,
+      "expected_python_admissible": true,
+      "expected_rust_admissible_default": false,
+      "expected_rust_admissible_configured": true,
+      "divergence_risk": "max_rank_increase_default",
+      "note": "ceiling = lowest_rank + MAX_RANK_INCREASE. Python: 512+2048=2560. Rust default: 512+1024=1536. 1792 < 2560 but 1792 > 1536."
+    },
+    {
+      "name": "admissibility_below_both_ceilings",
+      "description": "Path cost below both Python and Rust MAX_RANK_INCREASE ceilings. Both accept.",
+      "category": "admissibility",
+      "lowest_rank": 512,
+      "path_cost": 1024,
+      "max_rank_increase_python": 2048,
+      "max_rank_increase_rust": 1024,
+      "expected_python_admissible": true,
+      "expected_rust_admissible_default": true,
+      "divergence_risk": "none",
+      "note": "1024 <= 512+1024=1536 (both ceilings)"
+    },
+    {
+      "name": "admissibility_above_both_ceilings",
+      "description": "Path cost above both MAX_RANK_INCREASE ceilings. Both reject.",
+      "category": "admissibility",
+      "lowest_rank": 512,
+      "path_cost": 3000,
+      "max_rank_increase_python": 2048,
+      "max_rank_increase_rust": 1024,
+      "expected_python_admissible": false,
+      "expected_rust_admissible_default": false,
+      "divergence_risk": "none",
+      "note": "3000 > 512+2048=2560 (both ceilings exceeded)"
+    },
+    {
+      "name": "dio_from_unknown_sender",
+      "description": "DIO from sender not in peer table. Signature cannot be verified. Frame rejected at L2.",
+      "category": "signature_gate",
+      "sender_in_peer_table": false,
+      "expected": {
+        "frame_accepted": false,
+        "rejection_reason": "unknown_sender",
+        "dio_processed": false
+      }
+    },
+    {
+      "name": "dio_replay_rejected",
+      "description": "DIO with sequence number already seen. Signature verifies but replay protection rejects at L2.",
+      "category": "replay_protection",
+      "signature_valid": true,
+      "sequence_already_seen": true,
+      "expected": {
+        "frame_accepted": false,
+        "rejection_reason": "replay",
+        "dio_processed": false
+      }
+    }
+  ]
+}

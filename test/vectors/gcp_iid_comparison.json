@@ -1,0 +1,88 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "gcp_iid_comparison",
+  "description": "Gateway Coordination Protocol IID comparison algorithm per spec GCP-6.3. Conflict resolution requires deterministic lowest-IID comparison.",
+  "spec": "spec/08-gateway-coordination.md Section 6.3",
+  "comparison_algorithm": {
+    "method": "memcmp",
+    "interpretation": "unsigned big-endian 64-bit",
+    "note": "IIDs compared as 8-byte arrays using memcmp (lexicographic byte comparison). This is equivalent to unsigned big-endian u64 comparison."
+  },
+  "vectors": [
+    {
+      "name": "iid_lower_first_byte",
+      "description": "IID differing in first byte: lower first byte wins.",
+      "iid_a": "0011223344556677",
+      "iid_b": "0111223344556677",
+      "expected": {
+        "winner": "iid_a",
+        "reason": "memcmp byte 0: 0x00 < 0x01"
+      }
+    },
+    {
+      "name": "iid_lower_last_byte",
+      "description": "IID differing only in last byte: lower last byte wins.",
+      "iid_a": "0011223344556676",
+      "iid_b": "0011223344556677",
+      "expected": {
+        "winner": "iid_a",
+        "reason": "memcmp byte 7: 0x76 < 0x77"
+      }
+    },
+    {
+      "name": "iid_equal",
+      "description": "Equal IIDs: tie (should not happen with proper key generation).",
+      "iid_a": "0011223344556677",
+      "iid_b": "0011223344556677",
+      "expected": {
+        "winner": "tie",
+        "reason": "memcmp returns 0"
+      }
+    },
+    {
+      "name": "iid_zero_vs_nonzero",
+      "description": "Zero IID (theoretically possible) wins over any non-zero.",
+      "iid_a": "0000000000000000",
+      "iid_b": "0000000000000001",
+      "expected": {
+        "winner": "iid_a",
+        "reason": "all-zero is lowest"
+      }
+    },
+    {
+      "name": "iid_high_bit_comparison",
+      "description": "IID with high bit set: unsigned comparison, not signed.",
+      "iid_a": "7fffffffffffffff",
+      "iid_b": "8000000000000000",
+      "expected": {
+        "winner": "iid_a",
+        "reason": "0x7f < 0x80 unsigned"
+      },
+      "note": "If signed comparison were used, 0x80... would be negative and thus 'less'. Memcmp treats as unsigned."
+    },
+    {
+      "name": "iid_endian_determinism",
+      "description": "Verify big-endian interpretation: 0x0100 < 0x0001 is FALSE in BE.",
+      "iid_a": "0001000000000000",
+      "iid_b": "0100000000000000",
+      "expected": {
+        "winner": "iid_a",
+        "reason": "BE: 0x0001... < 0x0100..."
+      },
+      "note": "In little-endian interpretation 0x0100... would be 'larger'. This test ensures BE/memcmp behavior."
+    },
+    {
+      "name": "iid_realistic_derivation",
+      "description": "Realistic IIDs derived from pubkeys: deterministic winner.",
+      "iid_a": "5046adc1dba83886",
+      "iid_a_note": "from all-zero pubkey",
+      "iid_b": "9d7725e28403e00e",
+      "iid_b_note": "from deadbeef... pubkey",
+      "expected": {
+        "winner": "iid_a",
+        "reason": "0x50 < 0x9d"
+      }
+    }
+  ]
+}

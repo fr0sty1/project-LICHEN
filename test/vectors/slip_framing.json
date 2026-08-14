@@ -1,0 +1,146 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "slip_framing",
+  "description": "SLIP (RFC 1055) framing for local client interface serial transport. Byte stuffing and frame delimiting.",
+  "spec": "RFC 1055, spec/11-lci.md",
+  "constants": {
+    "END": "0xC0",
+    "ESC": "0xDB",
+    "ESC_END": "0xDC",
+    "ESC_ESC": "0xDD"
+  },
+  "vectors": [
+    {
+      "name": "slip_simple_frame",
+      "description": "Simple data with no special bytes, wrapped with END markers.",
+      "data": "48656c6c6f",
+      "data_note": "'Hello'",
+      "expected": {
+        "framed": "c048656c6c6fc0",
+        "reason": "END + data + END"
+      }
+    },
+    {
+      "name": "slip_escape_end_byte",
+      "description": "Data containing 0xC0 (END) must be escaped as ESC ESC_END.",
+      "data": "01c002",
+      "expected": {
+        "framed": "c001dbdc02c0",
+        "reason": "0xC0 -> 0xDB 0xDC"
+      }
+    },
+    {
+      "name": "slip_escape_esc_byte",
+      "description": "Data containing 0xDB (ESC) must be escaped as ESC ESC_ESC.",
+      "data": "01db02",
+      "expected": {
+        "framed": "c001dbdd02c0",
+        "reason": "0xDB -> 0xDB 0xDD"
+      }
+    },
+    {
+      "name": "slip_escape_both",
+      "description": "Data containing both END and ESC bytes.",
+      "data": "c0db",
+      "expected": {
+        "framed": "c0dbdcdbddc0",
+        "reason": "both escaped"
+      }
+    },
+    {
+      "name": "slip_decode_simple",
+      "description": "Decode simple frame (inverse of encode).",
+      "framed": "c048656c6c6fc0",
+      "expected": {
+        "data": "48656c6c6f",
+        "valid": true
+      }
+    },
+    {
+      "name": "slip_decode_escaped_end",
+      "description": "Decode frame with escaped END byte.",
+      "framed": "c001dbdc02c0",
+      "expected": {
+        "data": "01c002",
+        "valid": true
+      }
+    },
+    {
+      "name": "slip_decode_escaped_esc",
+      "description": "Decode frame with escaped ESC byte.",
+      "framed": "c001dbdd02c0",
+      "expected": {
+        "data": "01db02",
+        "valid": true
+      }
+    },
+    {
+      "name": "slip_invalid_escape_sequence",
+      "description": "ESC followed by invalid byte (not DC or DD) is protocol error.",
+      "framed": "c001db0102c0",
+      "expected": {
+        "valid": false,
+        "reason": "invalid_escape_sequence",
+        "note": "0xDB followed by 0x01 is undefined"
+      }
+    },
+    {
+      "name": "slip_truncated_escape",
+      "description": "ESC at end of frame without following byte is truncated.",
+      "framed": "c001dbc0",
+      "expected": {
+        "valid": false,
+        "reason": "truncated_escape"
+      }
+    },
+    {
+      "name": "slip_empty_frame",
+      "description": "Two consecutive END bytes = empty frame. May be ignored or treated as sync.",
+      "framed": "c0c0",
+      "expected": {
+        "data": "",
+        "valid": true,
+        "note": "Empty frames between ENDs are allowed"
+      }
+    },
+    {
+      "name": "slip_multiple_empty_frames",
+      "description": "Multiple consecutive END bytes (line sync pattern).",
+      "framed": "c0c0c0c0",
+      "expected": {
+        "frame_count": 3,
+        "all_empty": true,
+        "note": "Often sent to synchronize line"
+      }
+    },
+    {
+      "name": "slip_leading_end_strip",
+      "description": "Data before first END is discarded (resync).",
+      "stream": "garbagec048656c6c6fc0",
+      "expected": {
+        "first_valid_frame": "48656c6c6f",
+        "reason": "data_before_first_end_discarded"
+      }
+    },
+    {
+      "name": "slip_max_frame_size",
+      "description": "Maximum SLIP frame depends on underlying transport. LCI uses 2048 bytes.",
+      "max_data_size": 2048,
+      "expected": {
+        "max_framed_size": 4098,
+        "reason": "worst case: all bytes escaped + 2 END markers"
+      }
+    },
+    {
+      "name": "slip_zero_length_after_decode",
+      "description": "Valid SLIP frame that decodes to zero bytes.",
+      "framed": "c0c0",
+      "expected": {
+        "data": "",
+        "valid": true,
+        "note": "Treat as keepalive or ignore"
+      }
+    }
+  ]
+}

@@ -42,13 +42,13 @@
       "expected_is_admin": false
     },
     {
-      "name": "global_ula_is_forbidden",
+      "name": "global_yggdrasil_is_forbidden",
       "type": "is_local_admin",
-      "description": "fd00::1 global ULA is NOT admin. PUT /config returns 4.01 Unauthorized.",
+      "description": "02xx Yggdrasil global address is NOT admin. PUT /config returns 4.01 Unauthorized.",
       "resource": "/config",
       "method": "PUT",
       "source_addr_type": "global",
-      "source_addr": "fd000000000000000000000000000001",
+      "source_addr": "02001122334455660011223344556601",
       "scope_id_iface_name": null,
       "expected_code": 129,
       "expected_is_admin": false

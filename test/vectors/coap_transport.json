@@ -1,0 +1,328 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "coap_transport",
+  "description": "Transport bindings vectors (spec \u00a79-10): UDP port dispatch, LoRa CoAP parameters, duty cycle, priority, fragmentation.",
+  "spec": "spec/07-transport-app.md",
+  "vectors": [
+    {
+      "name": "port_allocation",
+      "description": "UDP port allocation (spec \u00a79.1). Ports 5681-5687 share MSB(12) for SCHC compression.",
+      "ports": [
+        {
+          "port": 5681,
+          "use": "Compact CoT (Raw UDP)"
+        },
+        {
+          "port": 5682,
+          "use": "SenML CBOR (Raw UDP)"
+        },
+        {
+          "port": 5683,
+          "use": "CoAP"
+        },
+        {
+          "port": 5684,
+          "use": "Reserved (CoAPS/DTLS)"
+        },
+        {
+          "port": 5685,
+          "use": "Cayenne LPP (Raw UDP)"
+        },
+        {
+          "port": 5686,
+          "use": "APRS-IS (Raw UDP)"
+        },
+        {
+          "port": 5687,
+          "use": "NMEA (Raw UDP)"
+        },
+        {
+          "port": 10883,
+          "use": "MQTT-SN"
+        }
+      ],
+      "schc_compressed_family": {
+        "range": "5680-5695",
+        "msb_bits": 12,
+        "lsb_bits": 4,
+        "wire_cost_bytes": 1
+      },
+      "mqtt_sn_requires_dedicated_rule": true,
+      "mqtt_sn_rule": {
+        "port": 10883,
+        "encoding": "not-sent (exact match)"
+      }
+    },
+    {
+      "name": "gateway_translation",
+      "description": "Mesh-internal ports MUST be translated at gateways (spec \u00a79.1 Mesh-Internal Semantics).",
+      "translations": [
+        {
+          "mesh_port": 5681,
+          "payload": "Compact CoT",
+          "external": "CoT XML over TCP 8087"
+        },
+        {
+          "mesh_port": 5682,
+          "payload": "SenML",
+          "external": "CoAP Content-Format 112"
+        },
+        {
+          "mesh_port": 5685,
+          "payload": "Cayenne LPP",
+          "external": "LoRaWAN application server"
+        },
+        {
+          "mesh_port": 5686,
+          "payload": "APRS-IS",
+          "external": "APRS-IS TCP or AX.25 RF"
+        },
+        {
+          "mesh_port": 5687,
+          "payload": "NMEA",
+          "external": "Serial NMEA or CoAP/SenML"
+        }
+      ]
+    },
+    {
+      "name": "loRa_params",
+      "description": "CoAP transmission parameters for LoRa (spec \u00a710.2.2).",
+      "rfc7252": {
+        "ack_timeout": 2.0,
+        "ack_random_factor": 1.5,
+        "max_retransmit": 4,
+        "nstart": 1,
+        "default_leisure": 5.0,
+        "probing_rate": 1.0
+      },
+      "lichen": {
+        "ack_timeout": 15.0,
+        "ack_random_factor": 2.0,
+        "max_retransmit": 2,
+        "nstart": 1,
+        "default_leisure": 15.0,
+        "probing_rate": 0.1
+      },
+      "rationale": {
+        "ack_timeout": "Multi-hop RTT can exceed 10s",
+        "ack_random_factor": "More jitter reduces collision",
+        "max_retransmit": "Fewer retries, fail faster",
+        "default_leisure": "Multicast response spread",
+        "probing_rate": "Respect duty cycle"
+      },
+      "retry_schedule": [
+        15.0,
+        30.0
+      ],
+      "give_up_after": 90.0
+    },
+    {
+      "name": "prefer_non",
+      "description": "Prefer NON for telemetry; use CON only for critical delivery (spec \u00a710.2.2).",
+      "non_use": [
+        "telemetry",
+        "notifications",
+        "periodic sensor readings",
+        "position beacons"
+      ],
+      "con_use": [
+        "configuration changes",
+        "firmware blocks",
+        "SOS acknowledgments"
+      ]
+    },
+    {
+      "name": "congestion_normal",
+      "description": "Duty 30% => normal.",
+      "duty_used_ratio": 0.3,
+      "duty_used_percent": 30.0,
+      "expected_level": "normal",
+      "computed_level": "normal",
+      "action": "Transmit normally"
+    },
+    {
+      "name": "congestion_elevated",
+      "description": "Duty 60% => elevated.",
+      "duty_used_ratio": 0.6,
+      "duty_used_percent": 60.0,
+      "expected_level": "elevated",
+      "computed_level": "elevated",
+      "action": "Delay non-urgent traffic, increase backoff"
+    },
+    {
+      "name": "congestion_critical",
+      "description": "Duty 85% => critical.",
+      "duty_used_ratio": 0.85,
+      "duty_used_percent": 85.0,
+      "expected_level": "critical",
+      "computed_level": "critical",
+      "action": "Only SOS/routing, shed application traffic"
+    },
+    {
+      "name": "congestion_exhausted",
+      "description": "Duty 97% => exhausted.",
+      "duty_used_ratio": 0.97,
+      "duty_used_percent": 97.0,
+      "expected_level": "exhausted",
+      "computed_level": "exhausted",
+      "action": "Stop TX until window rolls over"
+    },
+    {
+      "name": "load_shedding_503",
+      "description": "When congested, respond 5.03 Service Unavailable with retry_after (spec \u00a710.2.3 Load Shedding).",
+      "response_code": 163,
+      "response_code_name": "5.03 Service Unavailable",
+      "payload_example": {
+        "reason": "duty_cycle",
+        "retry_after": 120,
+        "level": "critical"
+      },
+      "payload_hex": "a366726561736f6e6a647574795f6379636c656b72657472795f61667465721878656c6576656c68637269746963616c",
+      "max_age": 120,
+      "content_format": 60
+    },
+    {
+      "name": "priority_queue",
+      "description": "TX queue ordered by priority (spec \u00a710.2.3). Low priority dropped first during congestion.",
+      "priorities": [
+        {
+          "priority": 0,
+          "label": "P0 (highest)",
+          "traffic": "SOS, emergency"
+        },
+        {
+          "priority": 1,
+          "label": "P1",
+          "traffic": "RPL control (DIO, DAO)"
+        },
+        {
+          "priority": 2,
+          "label": "P2",
+          "traffic": "CoAP CON, tactical chat"
+        },
+        {
+          "priority": 3,
+          "label": "P3",
+          "traffic": "CoAP NON, telemetry, position"
+        },
+        {
+          "priority": 4,
+          "label": "P4 (lowest)",
+          "traffic": "Bulk transfer, firmware"
+        }
+      ]
+    },
+    {
+      "name": "app_to_priority_mapping",
+      "description": "Application-to-priority mapping (spec \u00a710.2.3).",
+      "mapping": [
+        {
+          "port": 5681,
+          "app": "Compact CoT",
+          "subtype": "Alert (0x20)",
+          "priority": 0
+        },
+        {
+          "port": 5681,
+          "app": "Compact CoT",
+          "subtype": "Chat (0x01)",
+          "priority": 2
+        },
+        {
+          "port": 5681,
+          "app": "Compact CoT",
+          "subtype": "PLI (0x02-0x05)",
+          "priority": 3
+        },
+        {
+          "port": 5681,
+          "app": "Compact CoT",
+          "subtype": "Marker (0x10)",
+          "priority": 3
+        },
+        {
+          "port": 5682,
+          "app": "SenML",
+          "subtype": "All",
+          "priority": 3
+        },
+        {
+          "port": 5683,
+          "app": "CoAP",
+          "subtype": "CON",
+          "priority": 2
+        },
+        {
+          "port": 5683,
+          "app": "CoAP",
+          "subtype": "NON",
+          "priority": 3
+        },
+        {
+          "port": 5685,
+          "app": "Cayenne",
+          "subtype": "All",
+          "priority": 3
+        },
+        {
+          "port": 5686,
+          "app": "APRS-IS",
+          "subtype": "All",
+          "priority": 3
+        },
+        {
+          "port": 5687,
+          "app": "NMEA",
+          "subtype": "All",
+          "priority": 3
+        },
+        {
+          "port": 10883,
+          "app": "MQTT-SN",
+          "subtype": "QoS 1+",
+          "priority": 2
+        },
+        {
+          "port": 10883,
+          "app": "MQTT-SN",
+          "subtype": "QoS 0/-1",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "name": "fragmentation_guidance",
+      "description": "SCHC fragmentation preferred over CoAP block-wise (spec \u00a710.5).",
+      "recommendation": "CoAP Block-wise (RFC 7959) is NOT RECOMMENDED. Use SCHC fragmentation (RFC 8724).",
+      "comparison": {
+        "blockwise": {
+          "designed_for": "Reliable networks",
+          "ack": "Per-block ACK",
+          "recovery": "Application retry"
+        },
+        "schc": {
+          "designed_for": "LPWAN (LoRa)",
+          "ack": "ACK-on-Error (sparse)",
+          "recovery": "L2 retransmission"
+        }
+      },
+      "capacity": {
+        "fcn_bits": 6,
+        "tiles_per_window": 63,
+        "windows": 2,
+        "tile_size": 187,
+        "ceiling": 23562,
+        "mandatory_receiver": 1281
+      },
+      "chunking_protocol": "Application-level chunking with POST /firmware/upload {chunk, total, data}"
+    },
+    {
+      "name": "oscore_reference",
+      "description": "OSCORE end-to-end security (spec \u00a706-security, \u00a710.2). LICHEN uses OSCORE not DTLS.",
+      "note": "OSCORE vectors are in test/vectors/oscore.json (RFC 8613). This vector links transport to security.",
+      "port_5684_reserved": true,
+      "security": "OSCORE (RFC 8613) over CoAP port 5683; CoAPS/DTLS port 5684 reserved but not used"
+    }
+  ]
+}

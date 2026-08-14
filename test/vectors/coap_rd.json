@@ -1,0 +1,202 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "coap_rd",
+  "description": "Resource Directory vectors (RFC 9176, spec \u00a710.6). Registration, lookup, deletion, validation.",
+  "spec": "spec/07-transport-app.md",
+  "vectors": [
+    {
+      "name": "rd_register_sensor42",
+      "description": "POST /rd?ep=sensor-42&lt=3600 with link </temperature>;rt=sensor. Expect 2.01 Created with Location-Path /rd/<id>.",
+      "method": "POST",
+      "uri": "/rd?ep=sensor-42&lt=3600",
+      "query": {
+        "ep": "sensor-42",
+        "lt": 3600
+      },
+      "links": [
+        {
+          "href": "/temperature",
+          "rt": "sensor",
+          "if": "core.s"
+        }
+      ],
+      "payload_hex": "81a364687265666c2f74656d70657261747572656272746673656e736f7262696666636f72652e73",
+      "payload_cbor": [
+        {
+          "href": "/temperature",
+          "rt": "sensor",
+          "if": "core.s"
+        }
+      ],
+      "expected_code": 65,
+      "expected_code_name": "2.01 Created",
+      "location_path_prefix": "rd"
+    },
+    {
+      "name": "rd_register_default_lifetime",
+      "description": "POST /rd?ep=node-01 without lt uses default 86400 (RFC 9176 \u00a77.3.1).",
+      "method": "POST",
+      "uri": "/rd?ep=node-01",
+      "query": {
+        "ep": "node-01"
+      },
+      "expected_lt": 86400,
+      "expected_code": 65
+    },
+    {
+      "name": "rd_register_missing_ep",
+      "description": "POST /rd without ep returns 4.00 Bad Request.",
+      "method": "POST",
+      "uri": "/rd",
+      "query": {},
+      "expected_code": 128,
+      "expected_code_name": "4.00 Bad Request"
+    },
+    {
+      "name": "rd_register_bad_lt_0",
+      "description": "POST /rd?ep=node-01&lt=0 returns 4.00.",
+      "method": "POST",
+      "uri": "/rd?ep=node-01&lt=0",
+      "query": {
+        "ep": "node-01",
+        "lt": "0"
+      },
+      "expected_code": 128
+    },
+    {
+      "name": "rd_register_bad_lt_-1",
+      "description": "POST /rd?ep=node-01&lt=-1 returns 4.00.",
+      "method": "POST",
+      "uri": "/rd?ep=node-01&lt=-1",
+      "query": {
+        "ep": "node-01",
+        "lt": "-1"
+      },
+      "expected_code": 128
+    },
+    {
+      "name": "rd_register_bad_lt_true",
+      "description": "POST /rd?ep=node-01&lt=true returns 4.00.",
+      "method": "POST",
+      "uri": "/rd?ep=node-01&lt=true",
+      "query": {
+        "ep": "node-01",
+        "lt": "true"
+      },
+      "expected_code": 128
+    },
+    {
+      "name": "rd_register_bad_lt_empty",
+      "description": "POST /rd?ep=node-01&lt=(empty) returns 4.00.",
+      "method": "POST",
+      "uri": "/rd?ep=node-01&lt=",
+      "query": {
+        "ep": "node-01",
+        "lt": ""
+      },
+      "expected_code": 128
+    },
+    {
+      "name": "rd_lookup_all",
+      "description": "GET /rd returns CBOR list of all registrations.",
+      "method": "GET",
+      "uri": "/rd",
+      "response_payload_hex": "82a562696461316265706973656e736f722d3432626c74190e106462617365f6656c696e6b7381a364687265666c2f74656d70657261747572656272746673656e736f7262696666636f72652e73a562696461326265706973656e736f722d3433626c741a000151806462617365f6656c696e6b7381a26468726566692f68756d69646974796272746673656e736f72",
+      "response_entries": [
+        {
+          "id": "1",
+          "ep": "sensor-42",
+          "lt": 3600,
+          "base": null,
+          "links": [
+            {
+              "href": "/temperature",
+              "rt": "sensor",
+              "if": "core.s"
+            }
+          ]
+        },
+        {
+          "id": "2",
+          "ep": "sensor-43",
+          "lt": 86400,
+          "base": null,
+          "links": [
+            {
+              "href": "/humidity",
+              "rt": "sensor"
+            }
+          ]
+        }
+      ],
+      "expected_code": 69,
+      "expected_content_format": 60
+    },
+    {
+      "name": "rd_lookup_filter_ep",
+      "description": "GET /rd?ep=sensor-42 filters by endpoint name.",
+      "method": "GET",
+      "uri": "/rd?ep=sensor-42",
+      "query": {
+        "ep": "sensor-42"
+      },
+      "expected_filtered_eps": [
+        "sensor-42"
+      ],
+      "expected_code": 69
+    },
+    {
+      "name": "rd_lookup_res_by_rt",
+      "description": "GET /rd-lookup/res?rt=sensor lookup (RFC 9176 \u00a78.3).",
+      "method": "GET",
+      "uri": "/rd-lookup/res?rt=sensor",
+      "query": {
+        "rt": "sensor"
+      },
+      "expected_code": 69,
+      "note": "Python ResourceDirectoryResource implements /rd; rd-lookup path is alias for GET /rd filtered by rt in future."
+    },
+    {
+      "name": "rd_delete_success",
+      "description": "DELETE /rd/<id> removes registration, returns 2.02 Deleted. Second DELETE returns 4.04 Not Found.",
+      "method": "DELETE",
+      "uri": "/rd/1",
+      "expected_code_success": 66,
+      "expected_code_not_found": 132
+    },
+    {
+      "name": "rd_register_bad_href_temperature",
+      "description": "POST /rd with href='temperature' (missing leading slash) returns 4.00.",
+      "method": "POST",
+      "uri": "/rd?ep=node-01",
+      "bad_link": {
+        "href": "temperature",
+        "rt": "sensor"
+      },
+      "expected_code": 128
+    },
+    {
+      "name": "rd_register_bad_href__a_.._b",
+      "description": "POST /rd with href='/a/../b' (contains ..) returns 4.00.",
+      "method": "POST",
+      "uri": "/rd?ep=node-01",
+      "bad_link": {
+        "href": "/a/../b",
+        "rt": "sensor"
+      },
+      "expected_code": 128
+    },
+    {
+      "name": "rd_register_bad_href__",
+      "description": "POST /rd with href='/' (empty segment) returns 4.00.",
+      "method": "POST",
+      "uri": "/rd?ep=node-01",
+      "bad_link": {
+        "href": "/",
+        "rt": "sensor"
+      },
+      "expected_code": 128
+    }
+  ]
+}

@@ -123,12 +123,12 @@
       }
     },
     {
-      "name": "invalid_reserved_bit",
-      "description": "LLSec reserved bit 7 is set (must be 0)",
+      "name": "signer_iid_no_signature",
+      "description": "Signer IID flag set without signature",
       "input_hex": "0880011234aabbccdd",
       "expected": {
         "error": true,
-        "error_type": "reserved_bit_set"
+        "error_type": "signer_iid_no_signature"
       }
     },
     {

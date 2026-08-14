@@ -367,6 +367,79 @@
       "expected": {
         "nonce": "4622d4dd6d944168eefb549b94"
       }
+    },
+    {
+      "name": "piv_boundary_zero",
+      "type": "piv_encoding",
+      "description": "PIV=0: encodes as single byte 0x00 (not empty). RFC 8613 says PIV is variable-length, minimum 1 byte when present.",
+      "piv_value": 0,
+      "expected": {
+        "piv_bytes": "00",
+        "piv_length": 1
+      }
+    },
+    {
+      "name": "piv_boundary_one_byte_max",
+      "type": "piv_encoding",
+      "description": "PIV=255: maximum value in single byte encoding",
+      "piv_value": 255,
+      "expected": {
+        "piv_bytes": "ff",
+        "piv_length": 1
+      }
+    },
+    {
+      "name": "piv_boundary_two_byte_min",
+      "type": "piv_encoding",
+      "description": "PIV=256: minimum value requiring 2-byte encoding",
+      "piv_value": 256,
+      "expected": {
+        "piv_bytes": "0100",
+        "piv_length": 2
+      }
+    },
+    {
+      "name": "piv_boundary_five_byte_max",
+      "type": "piv_encoding",
+      "description": "PIV=2^40-1: maximum valid PIV (5 bytes, RFC 8613 limit for OSCORE)",
+      "piv_value": 1099511627775,
+      "expected": {
+        "piv_bytes": "ffffffffff",
+        "piv_length": 5
+      }
+    },
+    {
+      "name": "piv_boundary_nonce_xor_zero",
+      "type": "piv_nonce",
+      "description": "PIV=0 nonce construction: common_iv XOR (sender_id || PIV) left-padded to 13 bytes",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "",
+      "piv": 0,
+      "expected": {
+        "common_iv": "4622d4dd6d944168eefb54987c",
+        "nonce": "4622d4dd6d944168eefb54987c"
+      }
+    },
+    {
+      "name": "piv_boundary_nonce_xor_max",
+      "type": "piv_nonce",
+      "description": "PIV=2^40-1 nonce construction: verifies no overflow in XOR with 5-byte max PIV",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "",
+      "piv": 1099511627775,
+      "expected": {
+        "common_iv": "4622d4dd6d944168eefb54987c",
+        "nonce": "4622d4dd6d944168110aab6783"
+      }
+    },
+    {
+      "name": "piv_overflow_rejected",
+      "type": "invalid",
+      "description": "PIV=2^40 (6 bytes) exceeds OSCORE maximum and MUST be rejected",
+      "piv_value": 1099511627776,
+      "expected_error": "piv_overflow"
     }
   ]
 }
