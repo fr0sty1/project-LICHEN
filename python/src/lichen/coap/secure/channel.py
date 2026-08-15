@@ -7,6 +7,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import threading
+from collections import OrderedDict
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeGuard, cast
 
 import aiocoap  # type: ignore[import-untyped]  # no official stubs
@@ -59,6 +62,12 @@ class _EdhocChannel(DatagramChannel):
     def __init__(self, inner: DatagramChannel) -> None:
         self._inner = inner
         self._receiver: ReceiveCallback | None = None
+        # SECURITY: Lock for atomic check-and-set in set_receiver (defense-in-depth).
+        # Uses threading.Lock (not asyncio.Lock) because:
+        # 1. This class is designed for single-threaded async use only
+        # 2. The lock guards synchronous set_receiver/clear_receiver mutations
+        # 3. threading.Lock is simpler and avoids requiring an event loop at init
+        self._receiver_lock = threading.Lock()
 
     def send_datagram(
         self,
@@ -73,13 +82,17 @@ class _EdhocChannel(DatagramChannel):
         )
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
-        if self._receiver is not None:
-            raise RuntimeError("channel already has a receiver")
-        self._receiver = receiver
+        with self._receiver_lock:
+            if self._receiver is not None:
+                raise RuntimeError("channel already has a receiver")
+            self._receiver = receiver
 
-    def clear_receiver(self, receiver: ReceiveCallback) -> None:
-        if self._receiver == receiver:
-            self._receiver = None
+    def clear_receiver(self, receiver: ReceiveCallback) -> bool:
+        with self._receiver_lock:
+            if self._receiver == receiver:
+                self._receiver = None
+                return True
+            return False
 
     @property
     def endpoint_policy(self) -> EndpointPolicy:
@@ -89,9 +102,16 @@ class _EdhocChannel(DatagramChannel):
         """Dispatch received data to the registered receiver.
 
         Called by SecureDatagramChannel when EDHOC-related plaintext arrives.
+
+        Note: Reading self._receiver without _receiver_lock is safe because:
+        1. This class is designed for single-threaded async use only
+        2. The lock guards set_receiver/clear_receiver mutations, not reads
+        3. In Python's async model, reads and writes to the same attribute
+           within a single thread do not race; control yields only at await
         """
-        if self._receiver is not None:
-            self._receiver(data, source)
+        receiver = self._receiver
+        if receiver is not None:
+            receiver(data, source)
 
     def close(self) -> None:
         pass  # Don't close the inner channel
@@ -122,6 +142,20 @@ class SecureDatagramChannel(DatagramChannel):
     """
 
     _MAX_PENDING_OUTBOUND = 4096
+    _MAX_PROTECTED_CONS = 4096
+    _MAX_ACTIVE_PEER_CONTEXTS = 2048
+    _MAX_CONCURRENT_EDHOC = 64
+    # SECURITY: RST rate-limiting to mitigate forged RST attacks
+    _RST_RATE_LIMIT_WINDOW = 10.0  # seconds
+    _RST_RATE_LIMIT_MAX = 20  # max RSTs per peer per window
+    # SECURITY: Limit RST rate tracking entries to prevent memory exhaustion
+    _MAX_RST_PEERS = 4096
+    # SECURITY: Global RST rate limit to mitigate eviction-based rate bypass
+    _GLOBAL_RST_RATE_LIMIT_MAX = 200  # max RSTs across all peers per window
+    # SECURITY: Limit inbound requests per peer to prevent memory exhaustion
+    _MAX_INBOUND_REQUESTS_PER_PEER = 256
+    # Upper bound for exchange_lifetime to prevent unbounded resource retention
+    _MAX_EXCHANGE_LIFETIME = 300.0  # seconds
 
     _STORE_METHODS = (
         "check_process",
@@ -166,10 +200,16 @@ class SecureDatagramChannel(DatagramChannel):
             local_host: Our host identifier for CoAP context (required for EDHOC).
             edhoc_timeout: Timeout in seconds for EDHOC message exchange.
         """
+        if inner is None:
+            raise TypeError("inner channel must not be None")
+        if identity is None:
+            raise TypeError("identity must not be None")
         self._inner = inner
         self._identity = identity
         if sequence_reservation_size <= 0:
             raise ValueError("sequence_reservation_size must be positive")
+        if edhoc_timeout <= 0:
+            raise ValueError("edhoc_timeout must be positive")
         candidate_store = context_store if context_store is not None else OscoreContextStore()
         missing = [
             method
@@ -197,26 +237,111 @@ class SecureDatagramChannel(DatagramChannel):
         self._sequence_reservation_size = sequence_reservation_size
         self._peer_locks: dict[str, asyncio.Lock] = {}
         self._active_peer_contexts: dict[str, PeerContext] = {}
+        # LRU tracking via OrderedDict for O(1) move_to_end/popitem operations
+        self._peer_context_lru: OrderedDict[str, None] = OrderedDict()
         self._pending_outbound: dict[tuple[str, bytes], _RequestCorrelation] = {}
         self._message_admissions: dict[int, tuple[str, _SendOperation]] = {}
         self._protected_cons: dict[tuple[str, int], _ProtectedCon] = {}
+        # SECURITY: RST rate tracking per peer to mitigate forged RST attacks
+        self._rst_rate_tracking: dict[str, list[float]] = {}
+        # SECURITY: Global RST rate tracking to prevent eviction-based bypass
+        self._global_rst_timestamps: list[float] = []
         self._tasks: set[asyncio.Task[Any]] = set()
+        # SECURITY: Lock for lazy EDHOC context initialization
+        self._edhoc_ctx_lock = asyncio.Lock()
         self._closing = False
         self._inner_teardown_started = False
         self._shutdown_task: asyncio.Task[None] | None = None
         self._pid = os.getpid()
+        # SECURITY: Fork generation counter to detect stale lock references
+        self._fork_generation = 0
+
+    # Maximum peer locks before cleanup is forced.
+    # Bound: _MAX_ACTIVE_PEER_CONTEXTS (2048) + _MAX_CONCURRENT_EDHOC (64) = 2112
+    _PEER_LOCKS_MAX = 2112
 
     def _check_process(self) -> None:
         self._context_store.check_process()
         pid = os.getpid()
         if pid != self._pid:
             self._pid = pid
+            # SECURITY: Increment generation to invalidate any locks held by
+            # coroutines that acquired them before the fork. Coroutines check
+            # this generation after acquiring their lock; if it changed, they
+            # know their lock is stale and must bail out.
+            self._fork_generation += 1
             self._peer_locks = {}
+            self._rst_rate_tracking = {}
+            self._global_rst_timestamps = []
+            self._tasks = set()
             self._clear_lifecycle_state()
             self._pending_edhoc = {}
             self._edhoc_active_peers = set()
             self._edhoc_ctx = None
             self._edhoc_channel = None
+            self._edhoc_ctx_lock = asyncio.Lock()
+        elif len(self._peer_locks) > self._PEER_LOCKS_MAX:
+            self._cleanup_stale_peer_locks()
+
+    def _cleanup_stale_peer_locks(self) -> None:
+        """Remove locks for peers without active contexts or pending EDHOC.
+
+        Only removes locks that are not currently held (locked() returns False).
+        This prevents removing a lock while another coroutine is waiting for it.
+        """
+        stale_keys = [
+            key
+            for key, lock in self._peer_locks.items()
+            if (
+                key not in self._active_peer_contexts
+                and key not in self._pending_edhoc
+                and not lock.locked()
+            )
+        ]
+        for key in stale_keys:
+            self._peer_locks.pop(key, None)
+            self._rst_rate_tracking.pop(key, None)
+
+    def _check_rst_rate(self, peer_key: str) -> bool:
+        """Check if RST from peer should be accepted under rate limiting.
+
+        SECURITY: Mitigates forged RST attacks by limiting acceptance rate.
+        Applies both per-peer and global rate limits. Global limit prevents
+        attackers from evicting legitimate peers from tracking and then
+        flooding them with RSTs.
+        Returns True if the RST should be accepted, False if rate-limited.
+        """
+        now = asyncio.get_running_loop().time()
+        window_start = now - self._RST_RATE_LIMIT_WINDOW
+
+        # SECURITY: Check global RST rate limit first (prevents eviction bypass)
+        self._global_rst_timestamps = [
+            ts for ts in self._global_rst_timestamps if ts > window_start
+        ]
+        if len(self._global_rst_timestamps) >= self._GLOBAL_RST_RATE_LIMIT_MAX:
+            logger.warning("Global RST rate limit exceeded, dropping RST from %s", peer_key)
+            return False
+
+        timestamps = self._rst_rate_tracking.get(peer_key, [])
+        # Prune timestamps outside the window
+        timestamps = [ts for ts in timestamps if ts > window_start]
+        if len(timestamps) >= self._RST_RATE_LIMIT_MAX:
+            logger.warning("RST rate limit exceeded for %s, dropping", peer_key)
+            return False
+        # SECURITY: Limit tracking entries to prevent memory exhaustion from
+        # attackers forging RSTs from many source addresses
+        if (
+            peer_key not in self._rst_rate_tracking
+            and len(self._rst_rate_tracking) >= self._MAX_RST_PEERS
+        ):
+            # Evict oldest entry (first key in insertion order)
+            oldest_key = next(iter(self._rst_rate_tracking))
+            self._rst_rate_tracking.pop(oldest_key, None)
+        timestamps.append(now)
+        self._rst_rate_tracking[peer_key] = timestamps
+        # Track global RST count
+        self._global_rst_timestamps.append(now)
+        return True
 
     async def _get_peer_context(self, host: str) -> PeerContext | None:
         self._check_process()
@@ -228,6 +353,8 @@ class SecureDatagramChannel(DatagramChannel):
     def _publish_peer_context(self, key: str, context: PeerContext | None) -> None:
         previous = self._active_peer_contexts.get(key)
         if previous is context:
+            # Update LRU position even for same context (access counts)
+            self._touch_peer_lru(key)
             return
         if (
             previous is not None
@@ -237,11 +364,13 @@ class SecureDatagramChannel(DatagramChannel):
             context.outbound_requests = previous.outbound_requests
             context.inbound_requests = previous.inbound_requests
             self._active_peer_contexts[key] = context
+            self._touch_peer_lru(key)
             return
         if previous is not None:
             self._abandon_peer_admissions(key)
             self._clear_context_lifecycle(previous)
         self._active_peer_contexts.pop(key, None)
+        self._remove_peer_lru(key)
         if previous is not None:
             self._pending_outbound = {
                 pending_key: correlation
@@ -253,7 +382,56 @@ class SecureDatagramChannel(DatagramChannel):
             ]:
                 self._protected_cons.pop(con_key, None)
         if context is not None:
+            # SECURITY: Evict LRU peer context if limit reached
+            self._evict_peer_contexts_if_needed()
             self._active_peer_contexts[key] = context
+            self._touch_peer_lru(key)
+
+    def _touch_peer_lru(self, key: str) -> None:
+        """Move key to end of LRU (most recently used). O(1) via OrderedDict."""
+        if key in self._peer_context_lru:
+            self._peer_context_lru.move_to_end(key)
+        else:
+            self._peer_context_lru[key] = None
+
+    def _remove_peer_lru(self, key: str) -> None:
+        """Remove key from LRU. O(1) via OrderedDict."""
+        self._peer_context_lru.pop(key, None)
+
+    def _evict_peer_contexts_if_needed(self) -> None:
+        """Evict least recently used peer contexts if limit exceeded."""
+        while len(self._active_peer_contexts) >= self._MAX_ACTIVE_PEER_CONTEXTS:
+            if not self._peer_context_lru:
+                break
+            # popitem(last=False) removes and returns the oldest (first) item
+            evict_key, _ = self._peer_context_lru.popitem(last=False)
+            # SECURITY: Defensive check for LRU/active context desynchronization.
+            # If evict_key is not in _active_peer_contexts, log warning and continue
+            # to avoid infinite loop from draining LRU without reducing active count.
+            if evict_key not in self._active_peer_contexts:
+                logger.warning(
+                    "LRU desync: %s in LRU but not in active contexts", evict_key
+                )
+                continue
+            evicted = self._active_peer_contexts.pop(evict_key, None)
+            if evicted is not None:
+                self._abandon_peer_admissions(evict_key)
+                self._clear_context_lifecycle(evicted)
+                # Clean up pending outbound requests for the evicted peer
+                self._pending_outbound = {
+                    key: correlation
+                    for key, correlation in self._pending_outbound.items()
+                    if key[0] != evict_key
+                }
+                # Clean up CON retransmit cache entries for the evicted peer
+                for key in [key for key in self._protected_cons if key[0] == evict_key]:
+                    self._protected_cons.pop(key, None)
+                # Also clean up related state - only remove lock if not held
+                lock = self._peer_locks.get(evict_key)
+                if lock is not None and not lock.locked():
+                    self._peer_locks.pop(evict_key, None)
+                self._rst_rate_tracking.pop(evict_key, None)
+                logger.debug("Evicted LRU peer context: %s", evict_key)
 
     def _clear_context_lifecycle(self, context: PeerContext) -> None:
         for correlation in context.outbound_requests.values():
@@ -264,6 +442,7 @@ class SecureDatagramChannel(DatagramChannel):
     def _clear_peer_lifecycle(self, peer: str, context: PeerContext | None = None) -> None:
         self._abandon_peer_admissions(peer)
         active = self._active_peer_contexts.pop(peer, None)
+        self._remove_peer_lru(peer)
         if context is not None:
             self._clear_context_lifecycle(context)
         if active is not None and active is not context:
@@ -282,6 +461,7 @@ class SecureDatagramChannel(DatagramChannel):
         for context in self._active_peer_contexts.values():
             self._clear_context_lifecycle(context)
         self._active_peer_contexts.clear()
+        self._peer_context_lru.clear()
         self._pending_outbound.clear()
         self._message_admissions.clear()
         self._protected_cons.clear()
@@ -296,7 +476,7 @@ class SecureDatagramChannel(DatagramChannel):
                 self._finish_send_operation(peer, context, operation)
 
     def _track_task(
-        self, coroutine: Any, on_done: ReceiveCallback | None = None
+        self, coroutine: Any, on_done: Callable[[], None] | None = None
     ) -> None:
         task = asyncio.get_running_loop().create_task(coroutine)
         self._tasks.add(task)
@@ -305,8 +485,8 @@ class SecureDatagramChannel(DatagramChannel):
             self._tasks.discard(completed)
             if on_done is not None:
                 on_done()
-            if not completed.cancelled():
-                completed.exception()
+            if not completed.cancelled() and (exc := completed.exception()):
+                logger.debug("background task failed: %s", exc)
 
         task.add_done_callback(done)
 
@@ -337,7 +517,7 @@ class SecureDatagramChannel(DatagramChannel):
             self._cancel_cancellation_timer(correlation)
 
     def _schedule_cancellation_expiry(
-        self, delay: float, callback: ReceiveCallback
+        self, delay: float, callback: Callable[[], None]
     ) -> asyncio.TimerHandle:
         return asyncio.get_running_loop().call_later(delay, callback)
 
@@ -385,6 +565,12 @@ class SecureDatagramChannel(DatagramChannel):
         return None if correlation is None else correlation.lifecycle_id
 
     def message_admitted(self, message: Message, peer: str) -> object | None:
+        """Admit a message for lifecycle tracking.
+
+        Raises:
+            ValueError: If token is empty and there's already a pending request
+                to the same peer with an empty token (collision prevention).
+        """
         if self._closing:
             return None
         key = self._endpoint_key(peer)
@@ -392,7 +578,17 @@ class SecureDatagramChannel(DatagramChannel):
         locally_originated = message.code.is_request()
         if locally_originated:
             if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
-                return None
+                raise RuntimeError(
+                    "outbound request limit reached; apply backpressure"
+                )
+            # SECURITY: Prevent empty token collision between concurrent requests
+            # Check both _pending_outbound and context.outbound_requests
+            context = self._active_peer_contexts.get(key)
+            if message.token == b"" and (
+                (key, b"") in self._pending_outbound
+                or (context is not None and b"" in context.outbound_requests)
+            ):
+                raise ValueError("request rejected")
             correlation = _RequestCorrelation(
                 None, observe=message.opt.observe == 0
             )
@@ -403,11 +599,13 @@ class SecureDatagramChannel(DatagramChannel):
                 correlation = context.inbound_requests.get(message.token)
         if correlation is None:
             return None
-        correlation.pending_sends += 1
+        # SECURITY: Assign to dict BEFORE incrementing pending_sends to avoid
+        # orphaned state if the dict assignment fails (e.g., OOM)
         self._message_admissions[id(message)] = (
             key,
             _SendOperation(correlation, message.token, locally_originated),
         )
+        correlation.pending_sends += 1
         return correlation.lifecycle_id
 
     def message_abandoned(self, message: Message) -> None:
@@ -479,7 +677,7 @@ class SecureDatagramChannel(DatagramChannel):
         correlation.cancelled_observe = True
         if context is None or correlation.cancellation_timer is not None:
             return
-        delay = max(0.0, exchange_lifetime)
+        delay = min(max(0.0, exchange_lifetime), self._MAX_EXCHANGE_LIFETIME)
         correlation.cancellation_deadline = asyncio.get_running_loop().time() + delay
         correlation.cancellation_timer = self._schedule_cancellation_expiry(
             delay,
@@ -537,18 +735,22 @@ class SecureDatagramChannel(DatagramChannel):
         self._inner_receiver_registered = True
         self._receiver = receiver
 
-    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+    def clear_receiver(self, receiver: ReceiveCallback) -> bool:
         if self._receiver == receiver:
             if self._inner_receiver_registered:
                 self._inner.clear_receiver(self._on_datagram)
                 self._inner_receiver_registered = False
             self._receiver = None
+            return True
+        return False
 
     @property
     def endpoint_policy(self) -> EndpointPolicy:
         return self._inner.endpoint_policy
 
     def normalize_endpoint(self, endpoint: str | Endpoint) -> Endpoint:
+        if not endpoint:
+            raise ValueError("endpoint must not be empty")
         try:
             return self.endpoint_policy.normalize(endpoint)
         except ValueError as exc:
@@ -568,10 +770,22 @@ class SecureDatagramChannel(DatagramChannel):
         if the sum exceeds 9 or the payload marker is hit.
 
         Returns False for any datagram shorter than the 4-byte CoAP header.
+
+        SECURITY: This check is not constant-time; processing latency varies
+        based on message structure (option count and delta values). An attacker
+        observing network timing could potentially infer whether messages
+        contain an OSCORE option without decrypting. This is an acceptable
+        trade-off for performance: the OSCORE option presence is visible in
+        the unencrypted CoAP header anyway, and the performance benefit of
+        avoiding full message decode for plaintext traffic outweighs the
+        marginal information leakage.
         """
         if len(data) < 4:
             return False
         token_len = data[0] & 0x0F
+        # SECURITY: RFC 7252 limits token length to 0-8 bytes; values 9-15 are reserved
+        if token_len > 8:
+            return False
         pos = 4 + token_len
         cum_delta = 0
         while pos < len(data):
@@ -650,7 +864,7 @@ class SecureDatagramChannel(DatagramChannel):
                 plaintext = await self._unprotect(msg, source)
                 if plaintext is not None and self._receiver is not None:
                     self._receiver(plaintext, source)
-            elif source in self._edhoc_active_peers:
+            elif self._endpoint_key(source) in self._edhoc_active_peers:
                 # EDHOC in progress with this peer - allow plaintext
                 # (EDHOC responses are not OSCORE-protected).
                 # Dispatch raw bytes to EDHOC channel where LichenTransport
@@ -662,15 +876,27 @@ class SecureDatagramChannel(DatagramChannel):
                 # Non-OSCORE path: decode just enough to classify the message
                 msg = Message.decode(data, remote)
                 if msg.code is EMPTY and msg.mtype in (ACK, RST):
+                    # SECURITY: Empty ACK/RST messages bypass OSCORE per RFC 7252/8613.
+                    # An attacker can forge RST messages to cancel pending observations
+                    # or disrupt request/response correlation. Mitigated with rate-limiting.
+                    #
+                    # ACKs are not rate-limited because:
+                    # 1. ACKs cannot reset observations (less dangerous than RST)
+                    # 2. Upper CoAP layer discards ACKs for unknown MIDs efficiently
+                    # 3. The processing overhead is minimal (no state modification)
+                    peer_key = self._endpoint_key(source)
+                    if msg.mtype is RST and not self._check_rst_rate(peer_key):
+                        return  # Rate-limited, drop the RST
                     if self._receiver is not None:
                         self._receiver(data, source)
                 elif self._require_oscore:
-                    logger.warning("Rejected plaintext message from %s (OSCORE required)", source)
+                    logger.debug("Failed to process datagram from %s", source)
                 elif self._receiver is not None:
                     self._receiver(data, source)
 
-        except Exception as e:
-            logger.debug("Failed to process datagram from %s: %s", source, e)
+        except Exception:
+            # SECURITY: Log generic message to avoid leaking internal state
+            logger.debug("Failed to process datagram from %s", source)
             # Drop malformed datagrams
 
     async def _unprotect(self, msg: Message, source: str) -> bytes | None:
@@ -684,15 +910,29 @@ class SecureDatagramChannel(DatagramChannel):
     async def _unprotect_datagram(
         self, msg: Message, source: str
     ) -> _UnprotectedDatagram | None:
-        """Unprotect and stage correlation state for synchronous dispatch."""
+        """Unprotect and stage correlation state for synchronous dispatch.
+
+        Note: SecureDatagramChannel is designed for single-threaded async use
+        only. The per-peer asyncio.Lock() is not thread-safe if accessed from
+        multiple threads (e.g., via run_in_executor). Do not share instances
+        across threads without external synchronization.
+        """
         key = self._endpoint_key(source)
+        # SECURITY: Capture fork generation before lock acquisition. If a fork
+        # occurs while we hold the lock, the generation will change and our
+        # lock reference becomes stale (points to the old _peer_locks dict).
+        fork_gen = self._fork_generation
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
+            # SECURITY: Check if fork happened during lock acquisition
+            if self._fork_generation != fork_gen:
+                return None  # Lock is stale, bail out
             if self._closing:
                 return None
             peer_ctx = await self._get_peer_context(key)
             if peer_ctx is None:
-                logger.warning("No OSCORE context for %s, dropping message", source)
+                # SECURITY: Use generic message to avoid revealing context state
+                logger.debug("Failed to process datagram from %s", source)
                 return None
 
             try:
@@ -729,6 +969,10 @@ class SecureDatagramChannel(DatagramChannel):
                 if unprotected_msg.mtype is None:
                     unprotected_msg.mtype = msg.mtype
                 if unprotected_msg.mid is None:
+                    if msg.mid is None:
+                        logger.warning(
+                            "OSCORE-protected message has None mid from %s", source
+                        )
                     unprotected_msg.mid = msg.mid
                 if unprotected_msg.remote is None:
                     unprotected_msg.remote = msg.remote
@@ -742,6 +986,11 @@ class SecureDatagramChannel(DatagramChannel):
                 encoded = cast(bytes, unprotected_msg.encode())
                 added_correlation = None
                 if not msg.code.is_response() and new_request_id is not None:
+                    # SECURITY: Limit inbound requests per peer to prevent memory exhaustion
+                    if len(peer_ctx.inbound_requests) >= self._MAX_INBOUND_REQUESTS_PER_PEER:
+                        # SECURITY: Use generic message to avoid revealing rate-limit state
+                        logger.debug("Failed to process datagram from %s", source)
+                        return None
                     added_correlation = _RequestCorrelation(
                         new_request_id, observe=unprotected_msg.opt.observe == 0
                     )
@@ -753,24 +1002,37 @@ class SecureDatagramChannel(DatagramChannel):
                     added_correlation,
                     correlation,
                 )
-            except Exception as e:
-                logger.warning("OSCORE unprotection failed for %s: %r", source, e)
+            except Exception:
+                # SECURITY: Use same generic message as other drop paths to prevent
+                # attackers from distinguishing decryption failure vs missing context
+                logger.debug("Failed to process datagram from %s", source)
                 return None
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
+    def send_datagram(
+        self,
+        data: bytes,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
         """Send a datagram, protecting with OSCORE if context exists.
 
         If no OSCORE context exists for dest, this will trigger EDHOC
         handshake (if peer resolver can provide their public key).
         """
+        if data is None or len(data) < 4:
+            raise ValueError("data must be at least 4 bytes (CoAP header)")
         if self._closing:
             raise RuntimeError("secure datagram channel is closing")
         dest = self.normalize_endpoint(dest).authority
         key = self._endpoint_key(dest)
         operation = self._prepare_send_operation(data, dest, key)
-        self._schedule_send(data, dest, key, operation)
+        self._schedule_send(data, dest, key, operation, priority, check_congestion)
 
-    def send_message(self, message: Message, dest: str) -> None:
+    def send_message(
+        self, message: Message, dest: str, *, priority: Priority = Priority.NORMAL
+    ) -> None:
         """Schedule an aiocoap message using its admission lifecycle identity."""
         if self._closing:
             raise RuntimeError("secure datagram channel is closing")
@@ -793,19 +1055,23 @@ class SecureDatagramChannel(DatagramChannel):
                 )
                 return
         else:
-            operation = None
             if hasattr(message, "_lichen_lifecycle_id"):
                 return
-            if operation is None:
-                operation = self._prepare_send_operation(data, dest, key)
+            operation = self._prepare_send_operation(data, dest, key)
         if operation is not None and message.mtype is CON:
-            self._stage_con(
-                key,
-                message,
-                data,
-                operation.correlation,
-                operation.locally_originated,
-            )
+            try:
+                self._stage_con(
+                    key,
+                    message,
+                    data,
+                    operation.correlation,
+                    operation.locally_originated,
+                )
+            except Exception:
+                self._finish_send_operation(
+                    key, self._active_peer_contexts.get(key), operation
+                )
+                raise
         if (
             operation is not None
             and operation.locally_originated
@@ -815,7 +1081,7 @@ class SecureDatagramChannel(DatagramChannel):
                 key, self._active_peer_contexts.get(key), operation
             )
             return
-        self._schedule_send(data, dest, key, operation)
+        self._schedule_send(data, dest, key, operation, priority)
 
     def _schedule_send(
         self,
@@ -823,9 +1089,11 @@ class SecureDatagramChannel(DatagramChannel):
         dest: str,
         key: str,
         operation: _SendOperation | None,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
     ) -> None:
         self._track_task(
-            self._send_protected(data, dest, key, operation),
+            self._send_protected(data, dest, key, operation, priority, check_congestion),
             lambda: self._finish_send_operation(
                 key, self._active_peer_contexts.get(key), operation
             ),
@@ -853,13 +1121,29 @@ class SecureDatagramChannel(DatagramChannel):
                 correlation = cached.correlation
             else:
                 if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
-                    return None
+                    raise RuntimeError(
+                        "outbound request limit reached; apply backpressure"
+                    )
+                # SECURITY: Prevent empty token collision between concurrent requests
+                # Check both _pending_outbound and context.outbound_requests
+                context = self._active_peer_contexts.get(key)
+                if message.token == b"" and (
+                    (key, b"") in self._pending_outbound
+                    or (context is not None and b"" in context.outbound_requests)
+                ):
+                    raise ValueError(
+                        "empty token collision: concurrent request to same peer with empty token"
+                    )
                 correlation = _RequestCorrelation(
                     None, observe=message.opt.observe == 0
                 )
-                self._pending_outbound[(key, message.token)] = correlation
             if message.mtype is CON:
-                self._stage_con(key, message, data, correlation, True)
+                try:
+                    self._stage_con(key, message, data, correlation, True)
+                except Exception:
+                    # Don't add to pending_outbound if staging failed
+                    raise
+            self._pending_outbound[(key, message.token)] = correlation
             correlation.pending_sends += 1
             return _SendOperation(correlation, message.token, True)
         if message.code.is_response():
@@ -882,6 +1166,9 @@ class SecureDatagramChannel(DatagramChannel):
         correlation: _RequestCorrelation,
         locally_originated: bool,
     ) -> None:
+        # SECURITY: Reject malformed CON messages with None mid
+        if message.mid is None:
+            raise ValueError("CON message requires a valid mid")
         con_key = (key, message.mid)
         cached = self._protected_cons.get(con_key)
         if (
@@ -896,6 +1183,33 @@ class SecureDatagramChannel(DatagramChannel):
             context = self._active_peer_contexts.get(key)
             if context is not None and not cached.locally_originated:
                 self._retire_inbound_if_done(context, cached.token, cached.correlation)
+        # SECURITY: Limit _protected_cons size to prevent memory exhaustion
+        if (
+            con_key not in self._protected_cons
+            and len(self._protected_cons) >= self._MAX_PROTECTED_CONS
+        ):
+            # Evict oldest entry without active correlation state if possible
+            evicted = False
+            for candidate_key in list(self._protected_cons.keys()):
+                candidate = self._protected_cons.get(candidate_key)
+                if candidate is None:
+                    continue
+                # Skip entries with active correlation state
+                if candidate.correlation is not None and (
+                    candidate.correlation.pending_sends > 0
+                    or candidate.correlation.con_mids
+                ):
+                    continue
+                self._protected_cons.pop(candidate_key)
+                # Note: con_mids is empty here (checked above), so no discard needed
+                evicted = True
+                break
+            if not evicted:
+                # All entries have active state; evict oldest anyway
+                oldest_key = next(iter(self._protected_cons))
+                oldest = self._protected_cons.pop(oldest_key)
+                if oldest.correlation is not None:
+                    oldest.correlation.con_mids.discard(oldest_key[1])
         self._protected_cons[con_key] = _ProtectedCon(
             b"", message.token, locally_originated, correlation, data
         )
@@ -932,6 +1246,8 @@ class SecureDatagramChannel(DatagramChannel):
         dest: str,
         key: str | None = None,
         operation: _SendOperation | None = None,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
     ) -> None:
         """Send with OSCORE protection (async implementation)."""
         if self._closing:
@@ -941,10 +1257,17 @@ class SecureDatagramChannel(DatagramChannel):
         key = self._endpoint_key(dest) if key is None else key
         if operation is None:
             operation = self._prepare_send_operation(data, dest, key)
+        # SECURITY: Capture fork generation before lock acquisition. If a fork
+        # occurs while we hold the lock, the generation will change and our
+        # lock reference becomes stale (points to the old _peer_locks dict).
+        fork_gen = self._fork_generation
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
             peer_ctx: PeerContext | None = None
             try:
+                # SECURITY: Check if fork happened during lock acquisition
+                if self._fork_generation != fork_gen:
+                    return  # Lock is stale, bail out
                 if self._closing:
                     return
                 remote = LichenRemote(dest)
@@ -952,7 +1275,9 @@ class SecureDatagramChannel(DatagramChannel):
                 msg.direction = Direction.OUTGOING
 
                 if msg.code is EMPTY and msg.mtype in (ACK, RST):
-                    self._inner.send_datagram(data, dest)
+                    self._inner.send_datagram(
+                        data, dest, priority=priority, check_congestion=check_congestion
+                    )
                     return
 
                 peer_ctx = await self._get_peer_context(key)
@@ -982,7 +1307,9 @@ class SecureDatagramChannel(DatagramChannel):
                 if cached is not None and cached.plaintext == data and cached.data:
                     if operation is None or cached.correlation is not operation.correlation:
                         return
-                    self._inner.send_datagram(cached.data, dest)
+                    self._inner.send_datagram(
+                        cached.data, dest, priority=priority, check_congestion=check_congestion
+                    )
                     if (
                         cached.locally_originated
                         and cached.correlation is not None
@@ -1006,10 +1333,19 @@ class SecureDatagramChannel(DatagramChannel):
                     reservation = await self._context_store.reserve_sender_sequences(
                         key, peer_ctx.generation, self._sequence_reservation_size
                     )
+                    if reservation.start >= reservation.end:
+                        raise RuntimeError("invalid sequence reservation")
                     peer_ctx.oscore.set_sender_sequence_reservation(
                         reservation.start, reservation.end
                     )
+                # Check for fork AFTER acquiring state but re-fetch peer_ctx
+                # if state was cleared to avoid using orphaned references
                 self._check_process()
+                if peer_ctx is not None and key not in self._active_peer_contexts:
+                    # Fork detected and state cleared; re-fetch context
+                    peer_ctx = await self._get_peer_context(key)
+                    if peer_ctx is None:
+                        raise RuntimeError("context lost after fork detection")
                 # Determine request_id for responses
                 request_id = None
                 inbound = peer_ctx.inbound_requests.get(msg.token)
@@ -1045,7 +1381,9 @@ class SecureDatagramChannel(DatagramChannel):
                     if staged is None or staged.correlation is not correlation:
                         raise RuntimeError("CON lifecycle ownership changed during protection")
                     staged.data = protected_data
-                self._inner.send_datagram(protected_data, dest)
+                self._inner.send_datagram(
+                    protected_data, dest, priority=priority, check_congestion=check_congestion
+                )
 
                 if (
                     locally_originated
@@ -1056,8 +1394,9 @@ class SecureDatagramChannel(DatagramChannel):
                     peer_ctx.outbound_requests[msg.token] = correlation
                     self._pending_outbound.pop((key, msg.token), None)
 
-            except Exception as e:
-                logger.error("Failed to protect message for %s: %s", key, e)
+            except Exception:
+                # SECURITY: Log generic message to avoid leaking internal state
+                logger.error("Failed to protect message for %s", key)
             finally:
                 self._finish_send_operation(key, peer_ctx, operation)
 
@@ -1069,11 +1408,20 @@ class SecureDatagramChannel(DatagramChannel):
         SECURITY: Register the pending future BEFORE any await to prevent
         race conditions where concurrent requests both pass the check and
         start parallel EDHOC handshakes with expired or conflicting state.
+
+        Raises:
+            RuntimeError: If concurrent EDHOC handshake limit is exceeded.
         """
         # Check if handshake already in progress
         if key in self._pending_edhoc:
             await self._pending_edhoc[key]
             return
+
+        # SECURITY: Limit concurrent EDHOC handshakes to prevent memory exhaustion
+        if len(self._pending_edhoc) >= self._MAX_CONCURRENT_EDHOC:
+            raise RuntimeError(
+                f"concurrent EDHOC handshake limit ({self._MAX_CONCURRENT_EDHOC}) exceeded"
+            )
 
         # Create a future for others to wait on IMMEDIATELY before any await.
         # This prevents race conditions where concurrent requests both pass
@@ -1082,7 +1430,8 @@ class SecureDatagramChannel(DatagramChannel):
         self._pending_edhoc[key] = future
 
         # Mark peer as having active EDHOC (allow plaintext responses)
-        self._edhoc_active_peers.add(dest)
+        # Use key (normalized) for consistency with the membership check
+        self._edhoc_active_peers.add(key)
 
         try:
             await self._peer_resolver.ensure_bound()
@@ -1127,7 +1476,7 @@ class SecureDatagramChannel(DatagramChannel):
             raise
         finally:
             self._pending_edhoc.pop(key, None)
-            self._edhoc_active_peers.discard(dest)
+            self._edhoc_active_peers.discard(key)
 
     async def _get_edhoc_context(self) -> aiocoap.Context:
         """Get or create a temporary CoAP context for EDHOC exchange.
@@ -1135,25 +1484,34 @@ class SecureDatagramChannel(DatagramChannel):
         EDHOC messages are sent as raw CoAP (not OSCORE-protected) over
         the inner channel. This context is separate from the main CoAP
         context that uses OSCORE.
+
+        SECURITY: Uses lock to prevent race conditions where concurrent
+        EDHOC handshakes could both create contexts before the async
+        configuration completes.
         """
-        if self._edhoc_ctx is None:
-            if self._local_host is None:
-                raise ValueError(
-                    "local_host required for EDHOC exchange; "
-                    "pass local_host to SecureDatagramChannel"
+        async with self._edhoc_ctx_lock:
+            if self._edhoc_ctx is None:
+                if self._local_host is None:
+                    raise ValueError(
+                        "local_host required for EDHOC exchange; "
+                        "pass local_host to SecureDatagramChannel"
+                    )
+                # Create a dedicated channel for EDHOC that bypasses OSCORE
+                # We use a wrapper that just forwards to the inner channel
+                # Use temporary variables to avoid leaving broken state if init fails
+                edhoc_channel = _EdhocChannel(self._inner)
+                edhoc_ctx = aiocoap.Context()
+                await edhoc_ctx._append_tokenmanaged_messagemanaged_transport(
+                    lambda mm: LichenTransport.create(
+                        mm,
+                        edhoc_channel,
+                        self.normalize_endpoint(self._local_host).authority,
+                    )
                 )
-            # Create a dedicated channel for EDHOC that bypasses OSCORE
-            # We use a wrapper that just forwards to the inner channel
-            self._edhoc_channel = _EdhocChannel(self._inner)
-            self._edhoc_ctx = aiocoap.Context()
-            await self._edhoc_ctx._append_tokenmanaged_messagemanaged_transport(
-                lambda mm: LichenTransport.create(
-                    mm,
-                    self._edhoc_channel,
-                    self.normalize_endpoint(self._local_host).authority,
-                )
-            )
-        return self._edhoc_ctx
+                # Only assign to instance attributes after successful initialization
+                self._edhoc_channel = edhoc_channel
+                self._edhoc_ctx = edhoc_ctx
+            return self._edhoc_ctx
 
     async def _edhoc_exchange(self, dest: str, msg: bytes) -> bytes:
         """Send EDHOC message and wait for response.
@@ -1186,12 +1544,15 @@ class SecureDatagramChannel(DatagramChannel):
                 timeout=self._edhoc_timeout,
             )
         except TimeoutError:
-            raise ValueError(f"EDHOC exchange with {dest} timed out") from None
-        except Exception as e:
-            raise ValueError(f"EDHOC exchange with {dest} failed: {e}") from e
+            # SECURITY: Use generic error to avoid leaking timing information
+            raise ValueError("EDHOC handshake failed") from None
+        except Exception:
+            # SECURITY: Use generic error to avoid exposing internal state
+            raise ValueError("EDHOC handshake failed") from None
 
         if not response.code.is_successful():
-            raise ValueError(f"EDHOC exchange with {dest} returned error: {response.code}")
+            # SECURITY: Use generic error to avoid exposing response codes
+            raise ValueError("EDHOC handshake failed")
 
         return response.payload or b""
 
@@ -1216,7 +1577,24 @@ class SecureDatagramChannel(DatagramChannel):
         self._edhoc_ctx = None
         self._edhoc_channel = None
         if edhoc_ctx is not None:
-            asyncio.create_task(edhoc_ctx.shutdown())
+            # Note: close() is fire-and-forget for EDHOC context shutdown.
+            # The task is NOT added to self._tasks to avoid being cancelled by
+            # _begin_teardown(). Call shutdown() for proper async cleanup.
+            try:
+                loop = asyncio.get_running_loop()
+                task = loop.create_task(edhoc_ctx.shutdown())
+
+                def _edhoc_shutdown_done(completed: asyncio.Task[Any]) -> None:
+                    # SECURITY: Retrieve exception to suppress "exception was never
+                    # retrieved" warning and avoid hiding shutdown errors
+                    if not completed.cancelled() and (exc := completed.exception()):
+                        logger.debug("EDHOC context shutdown failed: %s", exc)
+
+                task.add_done_callback(_edhoc_shutdown_done)
+            except RuntimeError:
+                # No running event loop - close() called from sync context.
+                # EDHOC context shutdown is best-effort; skip if no loop.
+                pass
         error: BaseException | None = None
         teardown_was_started = self._inner_teardown_started
         inner: DatagramChannel | None = None
@@ -1320,6 +1698,8 @@ class SecureDatagramChannel(DatagramChannel):
 
         Use this during setup before the event loop starts.
         """
+        if not peer_pubkey:
+            raise ValueError("peer_pubkey must not be empty")
         if isinstance(oscore_ctx, OscoreContext):
             oscore_ctx = MemorySecurityContext.from_edhoc(oscore_ctx)
         self._peer_resolver.ensure_bound_sync()
@@ -1343,12 +1723,21 @@ class SecureDatagramChannel(DatagramChannel):
             oscore_ctx: OSCORE context from EDHOC or pre-shared.
             peer_pubkey: Peer's Ed25519 public key.
         """
+        if not peer_pubkey:
+            raise ValueError("peer_pubkey must not be empty")
         if isinstance(oscore_ctx, OscoreContext):
             oscore_ctx = MemorySecurityContext.from_edhoc(oscore_ctx)
         await self._peer_resolver.ensure_bound()
         key = self._endpoint_key(host)
+        # SECURITY: Capture fork generation before lock acquisition. If a fork
+        # occurs while we hold the lock, the generation will change and our
+        # lock reference becomes stale (points to the old _peer_locks dict).
+        fork_gen = self._fork_generation
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
+            # SECURITY: Check if fork happened during lock acquisition
+            if self._fork_generation != fork_gen:
+                raise RuntimeError("fork detected during lock acquisition")
             if self._closing:
                 raise RuntimeError("secure datagram channel is closing")
             expected_generation = await self._context_store.get_generation(key)
@@ -1363,12 +1752,23 @@ class SecureDatagramChannel(DatagramChannel):
     async def remove_context(self, host: str) -> None:
         """Remove a peer context after draining in-flight packet state."""
         key = self._endpoint_key(host)
+        # SECURITY: Capture fork generation before lock acquisition. If a fork
+        # occurs while we hold the lock, the generation will change and our
+        # lock reference becomes stale (points to the old _peer_locks dict).
+        fork_gen = self._fork_generation
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
+            # SECURITY: Check if fork happened during lock acquisition
+            if self._fork_generation != fork_gen:
+                raise RuntimeError("fork detected during lock acquisition")
             if self._closing:
                 raise RuntimeError("secure datagram channel is closing")
             await self._context_store.remove(key)
             self._publish_peer_context(key, None)
+            # Note: Do not pop the lock here. Other coroutines may be waiting
+            # on it, and popping would cause them to proceed with a new lock
+            # while new callers get a different lock, causing unsynchronized
+            # access. Let _cleanup_stale_peer_locks() handle cleanup.
 
     def has_context_sync(self, host: str) -> bool:
         """Check if we have an OSCORE context (synchronous)."""

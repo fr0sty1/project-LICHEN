@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from ipaddress import IPv6Address
 from typing import Any, cast
@@ -27,6 +28,7 @@ from lichen.client import (
     PacketCoapResourceTransport,
     PacketDatagramChannel,
 )
+from lichen.client.ip_coap import CoapTransportError
 from lichen.client.packet_coap import PacketCoapResourceSubscription
 from lichen.coap.resources import MessagesResource, StaticNodeInfo, build_site
 from lichen.coap.schc_channel import wrap_coap
@@ -89,9 +91,16 @@ class FakeResourceSubscription:
     def __init__(self, channel: PacketDatagramChannel | None = None) -> None:
         self.channel = channel
         self.closed = False
+        self._result_queue: asyncio.Queue[CoapResult | None] = asyncio.Queue()
 
     async def close(self) -> None:
         self.closed = True
+        # Signal iteration to stop
+        await self._result_queue.put(None)
+
+    def push_result(self, result: CoapResult) -> None:
+        """Push a result to be yielded by the async iterator."""
+        self._result_queue.put_nowait(result)
 
     def results(self) -> AsyncIterator[CoapResult]:
         return self._results()
@@ -99,8 +108,11 @@ class FakeResourceSubscription:
     async def _results(self) -> AsyncIterator[CoapResult]:
         if self.channel is not None:
             self.channel.send_datagram(_coap_request(), "fe80::1")
-        await asyncio.Event().wait()
-        yield CoapResult(code="2.05")
+        while True:
+            result = await self._result_queue.get()
+            if result is None:
+                return
+            yield result
 
 
 def _packet_pair() -> tuple[FakePacketTransport, FakePacketTransport]:
@@ -176,6 +188,39 @@ def test_packet_config_formats_peer_and_local_endpoints() -> None:
     )
     assert scoped.base_uri == "coap://[fe80::1%25ble0]"
     assert scoped.local_endpoint == "[fe80::2%ble0]"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("local_host", None, "local_host must not be None"),
+        ("local_host", "", "local_host must not be empty"),
+        ("peer_host", None, "peer_host must not be None"),
+        ("peer_host", "", "peer_host must not be empty"),
+        ("timeout_s", 0, "timeout_s must be a positive finite number"),
+        ("timeout_s", -1.0, "timeout_s must be a positive finite number"),
+        ("timeout_s", float("inf"), "timeout_s must be a positive finite number"),
+        ("timeout_s", float("nan"), "timeout_s must be a positive finite number"),
+        ("src_port", 0, "src_port must be 1-65535"),
+        ("src_port", 65536, "src_port must be 1-65535"),
+        ("dst_port", 0, "dst_port must be 1-65535"),
+        ("dst_port", 65536, "dst_port must be 1-65535"),
+    ],
+)
+def test_packet_config_validation_rejects_invalid_values(
+    field: str, value: object, match: str
+) -> None:
+    """PacketCoapConfig __post_init__ guards reject invalid configuration."""
+    kwargs: dict[str, object] = {"peer_host": "fe80::1"}
+    kwargs[field] = value
+    with pytest.raises(ValueError, match=match):
+        PacketCoapConfig(**kwargs)  # type: ignore[arg-type]
+
+
+def test_packet_coap_transport_rejects_none_packet_transport() -> None:
+    """PacketCoapResourceTransport constructor rejects None packet_transport."""
+    with pytest.raises(ValueError, match="must not be None"):
+        PacketCoapResourceTransport(None)  # type: ignore[arg-type]
 
 
 async def _setup_packet_lci() -> tuple[
@@ -716,6 +761,54 @@ async def test_observe_send_failure_closes_inner_subscription() -> None:
     assert inner.closed is True
 
 
+def test_packet_channel_set_receiver_twice_raises() -> None:
+    """set_receiver() called twice on same channel raises RuntimeError."""
+    channel = PacketDatagramChannel(FakePacketTransport(), "fe80::2")
+
+    def receiver_a(data: bytes, source: str) -> None:
+        pass
+
+    def receiver_b(data: bytes, source: str) -> None:
+        pass
+
+    channel.set_receiver(receiver_a)
+
+    with pytest.raises(RuntimeError, match="already has a receiver"):
+        channel.set_receiver(receiver_b)
+
+
+def test_packet_channel_set_receiver_after_close_raises() -> None:
+    """set_receiver() after channel.close() raises RuntimeError."""
+    channel = PacketDatagramChannel(FakePacketTransport(), "fe80::2")
+    channel.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        channel.set_receiver(lambda data, source: None)
+
+
+def test_packet_channel_clear_receiver_mismatched_does_not_clear() -> None:
+    """clear_receiver() with mismatched receiver does not clear the actual receiver."""
+    channel = PacketDatagramChannel(FakePacketTransport(), "fe80::2")
+    received: list[tuple[bytes, str]] = []
+
+    def receiver_a(data: bytes, source: str) -> None:
+        received.append((data, source))
+
+    def receiver_b(data: bytes, source: str) -> None:
+        pass
+
+    channel.set_receiver(receiver_a)
+    # Attempt to clear with wrong receiver - should NOT clear receiver_a
+    channel.clear_receiver(receiver_b)
+
+    # Verify receiver_a is still active by handling a packet
+    channel._handle_packet(
+        wrap_coap(IPv6Address("fe80::1"), IPv6Address("fe80::2"), _coap_request())
+    )
+
+    assert received == [(_coap_request(), "[fe80::1]")]
+
+
 def test_packet_channel_drops_packets_for_other_ipv6_destinations() -> None:
     channel = PacketDatagramChannel(FakePacketTransport(), "fe80::2")
     received: list[tuple[bytes, str]] = []
@@ -898,7 +991,8 @@ def test_packet_coap_transport_checks_lesc_for_ble_raw_diagnostics() -> None:
 
     assert exc_info.value.path == "/diag/raw/rx"
     assert exc_info.value.required_level == "LESC"
-    assert exc_info.value.actual_level == "UNKNOWN"
+    # SECURITY: actual_level is intentionally not exposed to prevent security state enumeration
+    assert not hasattr(exc_info.value, "actual_level") or exc_info.value.actual_level is None
 
 
 def test_packet_coap_transport_blocks_just_works_for_ble_raw_diagnostics() -> None:
@@ -920,7 +1014,8 @@ def test_packet_coap_transport_blocks_just_works_for_ble_raw_diagnostics() -> No
 
     assert exc_info.value.path == "/diag/raw/rx"
     assert exc_info.value.required_level == "LESC"
-    assert exc_info.value.actual_level == "JUST_WORKS"
+    # SECURITY: actual_level is intentionally not exposed to prevent security state enumeration
+    assert not hasattr(exc_info.value, "actual_level") or exc_info.value.actual_level is None
 
 
 def test_packet_coap_transport_allows_raw_diagnostics_with_lesc() -> None:
@@ -979,7 +1074,7 @@ async def test_lci_client_blocks_raw_diagnostics_via_ble_without_lesc() -> None:
 
     assert exc_info.value.path == "/diag/raw/rx"
     assert exc_info.value.required_level == "LESC"
-    assert exc_info.value.actual_level == "UNKNOWN"
+    # SECURITY: actual_level is intentionally not exposed to prevent security state enumeration
 
 
 @pytest.mark.asyncio
@@ -1007,7 +1102,7 @@ async def test_lci_client_blocks_raw_diagnostics_via_ble_with_just_works() -> No
 
     assert exc_info.value.path == "/diag/raw/rx"
     assert exc_info.value.required_level == "LESC"
-    assert exc_info.value.actual_level == "JUST_WORKS"
+    # SECURITY: actual_level is intentionally not exposed to prevent security state enumeration
 
 
 def test_packet_coap_transport_allows_standard_paths_with_just_works() -> None:
@@ -1037,7 +1132,8 @@ def test_packet_coap_transport_allows_standard_paths_with_just_works() -> None:
     # Raw diagnostics should still be blocked
     with pytest.raises(LciSecurityError) as exc_info:
         coap_transport.check_security_for_path("/diag/raw/rx")
-    assert exc_info.value.actual_level == "JUST_WORKS"
+    # SECURITY: actual_level is intentionally not exposed to prevent security state enumeration
+    assert exc_info.value.required_level == "LESC"
 
     with pytest.raises(LciSecurityError):
         coap_transport.check_security_for_path("/diag/raw/tx")
@@ -1067,3 +1163,450 @@ async def test_lci_client_allows_raw_diagnostics_via_ble_with_lesc() -> None:
     coap_transport.check_security_for_path("/diag/raw/rx")
     coap_transport.check_security_for_path("/diag/raw/tx")
     coap_transport.check_security_for_path("/diag/raw/rx/events")
+
+
+# Additional security and edge case tests
+
+
+def test_check_security_for_path_rejects_empty_path() -> None:
+    """Empty path must be rejected for all transports."""
+    fake_transport = FakePacketTransport()
+    coap_transport = PacketCoapResourceTransport(fake_transport)
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        coap_transport.check_security_for_path("")
+
+
+def test_check_security_for_path_rejects_excessive_url_encoding() -> None:
+    """SECURITY: Excessive URL encoding levels may indicate bypass attempt.
+
+    The implementation iteratively decodes until stable, with a limit of 10
+    iterations. If decoding doesn't converge, it raises ValueError to prevent
+    double-encoding bypass attacks like %252F -> %2F -> /.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.LESC,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Create a path with 11+ levels of URL encoding that won't converge in 10 iterations.
+    # %2525252525252525252525252525 has 13 "25"s after the initial "%", requiring 13
+    # decoding steps to reach "%". After 10 iterations it's still "%252525" (3 "25"s),
+    # which triggers the excessive encoding error.
+    excessive_encoding = "/" + "%" + "25" * 13 + "diag/raw/rx"
+
+    with pytest.raises(ValueError, match="excessive URL encoding"):
+        coap_transport.check_security_for_path(excessive_encoding)
+
+
+def test_check_security_for_path_blocks_double_encoded_raw_path() -> None:
+    """SECURITY: Double-encoded paths that decode to /diag/raw/* are blocked.
+
+    %25 decodes to %, so /%2564iag/%2572aw/%2572x decodes twice:
+    1st pass: /%64iag/%72aw/%72x
+    2nd pass: /diag/raw/rx
+    This must be blocked for BLE without LESC.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Double-encoded: %25 -> %, then %64 -> 'd', %72 -> 'r', %78 -> 'x'
+    # /%2564iag/%2572aw/%2572x -> /%64iag/%72aw/%72x -> /diag/raw/rx
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/%2564iag/%2572aw/%2572x")
+
+    assert exc_info.value.required_level == "LESC"
+
+
+def test_check_security_for_path_rejects_null_bytes() -> None:
+    """SECURITY: Null bytes are rejected to prevent truncation-based bypass.
+
+    C servers may truncate paths at null bytes, so /diag/raw\\x00/safe could
+    be interpreted as /diag/raw by the server. The client rejects null bytes
+    rather than sanitizing to avoid inconsistent paths between client check
+    and server routing.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Path with null byte must be rejected outright
+    with pytest.raises(ValueError, match="path contains null byte"):
+        coap_transport.check_security_for_path("/diag/raw\x00/rx")
+
+
+def test_check_security_for_path_rejects_url_encoded_null_byte() -> None:
+    """SECURITY: URL-encoded null bytes (%00) are decoded and rejected.
+
+    If URL decoding happens after null byte check, a bypass could occur.
+    This test verifies %00 is properly decoded then rejected before security check.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Path with URL-encoded null: /diag/raw%00/rx decodes to /diag/raw\x00/rx
+    # then must be rejected
+    with pytest.raises(ValueError, match="path contains null byte"):
+        coap_transport.check_security_for_path("/diag/raw%00/rx")
+
+
+def test_packet_channel_send_datagram_after_close_raises() -> None:
+    """send_datagram() must raise RuntimeError after channel is closed."""
+    packet_transport = FakePacketTransport()
+    channel = PacketDatagramChannel(packet_transport, "fe80::2")
+    channel.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        channel.send_datagram(_coap_request(), "fe80::1")
+
+
+def test_packet_channel_start_after_close_raises() -> None:
+    """start() must raise RuntimeError after channel is closed."""
+    packet_transport = FakePacketTransport()
+    channel = PacketDatagramChannel(packet_transport, "fe80::2")
+    channel.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        channel.start()
+
+
+@pytest.mark.asyncio
+async def test_packet_resource_connect_while_closing_raises() -> None:
+    """connect() must raise CoapTransportError when transport is closing."""
+
+    class SlowClosePacketTransport(FakePacketTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.close_started = asyncio.Event()
+            self.close_release = asyncio.Event()
+
+        async def close(self) -> None:
+            self.close_started.set()
+            await self.close_release.wait()
+            await super().close()
+
+    packet = SlowClosePacketTransport()
+    transport = PacketCoapResourceTransport(packet)
+    await transport.connect()
+
+    # Start close but don't let it complete
+    close_task = asyncio.create_task(transport.close())
+    await packet.close_started.wait()
+
+    # Attempt connect while close is in progress
+    with pytest.raises(CoapTransportError, match="closing"):
+        await transport.connect()
+
+    # Let close complete
+    packet.close_release.set()
+    await close_task
+
+
+@pytest.mark.asyncio
+async def test_packet_resource_concurrent_connect_succeeds() -> None:
+    """Two concurrent connect() tasks both succeed without double-initialization."""
+
+    class SlowConnectPacketTransport(FakePacketTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.connect_count = 0
+            self.connect_started = asyncio.Event()
+            self.connect_release = asyncio.Event()
+
+        async def connect(self) -> None:
+            self.connect_count += 1
+            if self.connect_count == 1:
+                self.connect_started.set()
+                await self.connect_release.wait()
+            await super().connect()
+
+    packet = SlowConnectPacketTransport()
+    transport = PacketCoapResourceTransport(packet)
+
+    # Launch two concurrent connect() tasks
+    task1 = asyncio.create_task(transport.connect())
+    await packet.connect_started.wait()
+    task2 = asyncio.create_task(transport.connect())
+    await asyncio.sleep(0)  # Let task2 reach the lock
+
+    # Release the first connect
+    packet.connect_release.set()
+
+    # Both should complete successfully
+    results = await asyncio.gather(task1, task2, return_exceptions=True)
+    assert results == [None, None]
+
+    # Implementation uses _lifecycle_lock: only one actual connect occurs
+    assert packet.connect_count == 1
+    assert transport._resource_transport is not None
+    await transport.close()
+
+
+@pytest.mark.asyncio
+async def test_packet_channel_send_tasks_hard_limit() -> None:
+    """SECURITY: CongestionError is raised at 1000 pending tasks.
+
+    This prevents unbounded memory growth from resource exhaustion attacks
+    where a malicious or buggy caller spawns unlimited concurrent sends.
+    """
+    from lichen.coap.params import CongestionError as CongestionErrorType
+
+    class NeverCompleteSendTransport(FakePacketTransport):
+        """Transport where send_packet never completes."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self._pending_sends: list[asyncio.Event] = []
+
+        async def send_packet(self, packet: bytes) -> None:
+            event = asyncio.Event()
+            self._pending_sends.append(event)
+            await event.wait()
+
+        def release_all(self) -> None:
+            for event in self._pending_sends:
+                event.set()
+
+    packet_transport = NeverCompleteSendTransport()
+    channel = PacketDatagramChannel(packet_transport, "fe80::2")
+
+    # Spawn sends up to the hard limit
+    for _ in range(PacketDatagramChannel._SEND_TASKS_HARD_LIMIT):
+        channel.send_datagram(_coap_request(), "fe80::1", check_congestion=False)
+
+    # The next send should raise CongestionError
+    with pytest.raises(CongestionErrorType):
+        channel.send_datagram(_coap_request(), "fe80::1", check_congestion=False)
+
+    # Cleanup: close channel and release pending sends, then await task completion
+    # to avoid "Task was destroyed but it is pending" warnings
+    channel.close()
+    packet_transport.release_all()
+    await asyncio.gather(*channel._send_tasks, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_packet_channel_send_tasks_warning_threshold(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Warning is logged when pending send tasks reach _SEND_TASKS_WARNING_THRESHOLD (100)."""
+
+    class NeverCompleteSendTransport(FakePacketTransport):
+        """Transport where send_packet never completes."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self._pending_sends: list[asyncio.Event] = []
+
+        async def send_packet(self, packet: bytes) -> None:
+            event = asyncio.Event()
+            self._pending_sends.append(event)
+            await event.wait()
+
+        def release_all(self) -> None:
+            for event in self._pending_sends:
+                event.set()
+
+    packet_transport = NeverCompleteSendTransport()
+    channel = PacketDatagramChannel(packet_transport, "fe80::2")
+
+    # Spawn sends up to the warning threshold
+    with caplog.at_level(logging.WARNING, logger="lichen.client.packet_coap"):
+        for _ in range(PacketDatagramChannel._SEND_TASKS_WARNING_THRESHOLD):
+            channel.send_datagram(_coap_request(), "fe80::1", check_congestion=False)
+
+    # Verify warning was logged about pending tasks
+    assert any(
+        "pending tasks" in record.message and "100" in record.message
+        for record in caplog.records
+    ), f"Expected warning about 100 pending tasks, got: {[r.message for r in caplog.records]}"
+
+    # Cleanup
+    channel.close()
+    packet_transport.release_all()
+    await asyncio.gather(*channel._send_tasks, return_exceptions=True)
+
+
+def test_packet_channel_handles_empty_packet_gracefully() -> None:
+    """Empty packets should be silently dropped without error."""
+    channel = PacketDatagramChannel(FakePacketTransport(), "fe80::2")
+    received: list[tuple[bytes, str]] = []
+    channel.set_receiver(lambda data, source: received.append((data, source)))
+
+    # Empty packet should be silently dropped (not a valid IPv6 packet)
+    channel._handle_packet(b"")
+
+    assert received == []
+
+
+def test_packet_channel_handles_truncated_ipv6_packet_gracefully() -> None:
+    """Truncated packets (< 40 bytes IPv6 header) should be silently dropped."""
+    channel = PacketDatagramChannel(FakePacketTransport(), "fe80::2")
+    received: list[tuple[bytes, str]] = []
+    channel.set_receiver(lambda data, source: received.append((data, source)))
+
+    # Packets with partial IPv6 headers exercise different error paths (struct.error)
+    # than empty packets (immediate return). Test a few sizes.
+    for size in [5, 20, 39]:
+        channel._handle_packet(b"\x60" + b"\x00" * (size - 1))
+
+    assert received == []
+
+
+# Additional security edge case tests
+
+
+def test_check_security_for_path_rejects_non_ascii_characters() -> None:
+    """SECURITY: Non-ASCII characters are rejected to prevent Unicode confusable bypass.
+
+    CoAP paths are ASCII-only. Non-ASCII characters like U+FF0F FULLWIDTH SOLIDUS
+    or U+2215 DIVISION SLASH could bypass path matching (e.g., '/diag/raw' vs
+    '/diag／raw'). The implementation rejects any path containing non-ASCII.
+    """
+    # Use BLE transport - non-ASCII checks are part of BLE security validation
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.LESC,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # U+FF0F FULLWIDTH SOLIDUS instead of ASCII /
+    with pytest.raises(ValueError, match="non-ASCII"):
+        coap_transport.check_security_for_path("/diag／raw/rx")
+
+    # U+2215 DIVISION SLASH
+    with pytest.raises(ValueError, match="non-ASCII"):
+        coap_transport.check_security_for_path("/diag∕raw/rx")
+
+    # Mixed ASCII and non-ASCII
+    with pytest.raises(ValueError, match="non-ASCII"):
+        coap_transport.check_security_for_path("/diag/raw/сonfig")  # Cyrillic 'c'
+
+
+def test_check_security_for_path_strips_query_string_before_security_check() -> None:
+    """SECURITY: Query strings are stripped before security check to prevent bypass.
+
+    A path like '/diag/raw?foo=bar' could bypass prefix checks if the query is not
+    stripped, but CoAP libraries may route it to '/diag/raw'. The implementation
+    strips query strings as defense-in-depth.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # Query string on exact path
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/diag/raw?safe=true")
+    assert exc_info.value.required_level == "LESC"
+
+    # Query string on subpath
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/diag/raw/rx?bypass=1")
+    assert exc_info.value.required_level == "LESC"
+
+
+def test_send_datagram_rejects_none_dest() -> None:
+    """send_datagram must raise ValueError if dest is None."""
+    packet_transport = FakePacketTransport()
+    channel = PacketDatagramChannel(packet_transport, "fe80::2")
+
+    with pytest.raises(ValueError, match="dest must not be None"):
+        channel.send_datagram(b"data", None)  # type: ignore[arg-type]
+
+
+def test_send_datagram_rejects_none_data() -> None:
+    """send_datagram must raise ValueError if data is None."""
+    packet_transport = FakePacketTransport()
+    channel = PacketDatagramChannel(packet_transport, "fe80::2")
+
+    with pytest.raises(ValueError, match="data must not be None"):
+        channel.send_datagram(None, "fe80::1")  # type: ignore[arg-type]
+
+
+def test_check_security_for_path_rejects_path_with_only_null_bytes() -> None:
+    """SECURITY: Paths containing only null bytes are rejected.
+
+    A path like '\\x00\\x00' is rejected at the null byte check rather than
+    being sanitized to empty and caught later.
+    """
+    # Use BLE transport - null byte checks are part of BLE security validation
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.LESC,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    with pytest.raises(ValueError, match="path contains null byte"):
+        coap_transport.check_security_for_path("\x00\x00")
+
+
+def test_check_security_for_path_case_insensitive_matching() -> None:
+    """SECURITY: Path matching is case-insensitive to prevent bypass via case variation.
+
+    Paths like '/DIAG/RAW/rx' or '/Diag/Raw/Rx' must be treated the same as
+    '/diag/raw/rx' and blocked for BLE without LESC.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.UNKNOWN,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    # All case variations should be blocked
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/DIAG/RAW/rx")
+    assert exc_info.value.required_level == "LESC"
+
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/Diag/Raw/Rx")
+    assert exc_info.value.required_level == "LESC"
+
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/dIaG/rAw/RX")
+    assert exc_info.value.required_level == "LESC"
+
+
+@pytest.mark.asyncio
+async def test_request_on_never_connected_transport_raises() -> None:
+    """request() on a transport that was never connected raises CoapTransportError.
+
+    This tests the case where connect() was never called, not the case where
+    a send failure closed the transport (tested elsewhere).
+    """
+    fake_transport = FakePacketTransport()
+    coap_transport = PacketCoapResourceTransport(fake_transport)
+
+    # Never call connect()
+    with pytest.raises(CoapTransportError, match="not connected"):
+        await coap_transport.request("GET", "/status")
+
+
+@pytest.mark.asyncio
+async def test_request_with_empty_method_raises() -> None:
+    """request() with empty method parameter raises ValueError."""
+    transport = PacketCoapResourceTransport(FakePacketTransport())
+    await transport.connect()
+    try:
+        with pytest.raises(ValueError, match="method must not be empty"):
+            await transport.request("", "/status")
+    finally:
+        await transport.close()

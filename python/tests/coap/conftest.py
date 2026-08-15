@@ -36,7 +36,9 @@ class RecordingChannel(DatagramChannel):
         self.interest_ended: list[tuple[str, bytes, object | None, bool]] = []
         self.exchanges_ended: list[tuple[str, int, bool]] = []
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
+    def send_datagram(
+        self, data: bytes, dest: str, **kwargs: object  # type: ignore[override]
+    ) -> None:
         if self.fail_sends:
             self.fail_sends -= 1
             raise OSError("injected send failure")

@@ -17,11 +17,13 @@ import logging
 from ipaddress import IPv6Address
 from typing import Any
 
+from lichen.coap.params import CongestionError, CongestionLevel
 from lichen.coap.schc_channel import DEFAULT_COAP_PORT, wrap_coap
 from lichen.coap.transport import (
     DatagramChannel,
     Endpoint,
     EndpointPolicy,
+    Priority,
     ReceiveCallback,
     parse_channel_endpoint,
     unscoped_ipv6,
@@ -46,6 +48,9 @@ class NodeChannel(DatagramChannel):
     router + SCHC) for real multi-hop delivery.
     """
 
+    # Maximum concurrent sends before raising CongestionError.
+    MAX_CONCURRENT_SENDS = 32
+
     def __init__(
         self,
         node: Any,
@@ -55,6 +60,12 @@ class NodeChannel(DatagramChannel):
         dst_port: int = DEFAULT_COAP_PORT,
         metrics: Any | None = None,
     ) -> None:
+        if node is None:
+            raise ValueError("node must not be None")
+        if metrics is not None and not callable(getattr(metrics, "record_error", None)):
+            raise TypeError("metrics must have callable record_error() method")
+        if local_host is None:
+            raise ValueError("local_host must not be None")
         self._node: Any | None = node
         self._metrics: Any | None = metrics
         local = parse_channel_endpoint(local_host, default_port=src_port)
@@ -74,25 +85,57 @@ class NodeChannel(DatagramChannel):
     def set_receiver(self, receiver: ReceiveCallback) -> None:
         if self._closed:
             raise RuntimeError("channel is closed")
+        if receiver is None:
+            raise ValueError("receiver must not be None; use clear_receiver() instead")
         if self._receiver is not None:
             raise RuntimeError("channel already has a receiver")
         self._receiver = receiver
 
-    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+    def clear_receiver(self, receiver: ReceiveCallback) -> bool:
+        """Clear the receiver callback if it matches the current one.
+
+        Returns True if the receiver was cleared, False if it did not match.
+        """
         if self._receiver == receiver:
             self._receiver = None
+            return True
+        return False
 
     @property
     def endpoint_policy(self) -> EndpointPolicy:
         return self._endpoint_policy
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
+    def send_datagram(
+        self,
+        data: bytes,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
+        """Send a CoAP datagram to the specified destination.
+
+        Note: The MAX_CONCURRENT_SENDS limit (task queue exhaustion) is
+        independent of link-layer congestion. A caller checking
+        congestion_level before send may still receive CongestionError
+        if the task queue is full.
+        """
         if self._closed or self._node is None:
             raise RuntimeError("channel is closed")
+        if data is None:
+            raise ValueError("data must not be None")
+        if dest is None:
+            raise ValueError("dest must not be None")
+        # Validate dest early (fail-fast) before checking congestion resources.
         endpoint = self.normalize_endpoint(
             parse_channel_endpoint(dest, default_port=self._dst_port)
         )
         destination = IPv6Address(endpoint.host)
+        if check_congestion:
+            self.check_congestion_for(priority)
+        # Enforce bounded concurrent sends to prevent unbounded task accumulation.
+        if len(self._tasks) >= self.MAX_CONCURRENT_SENDS:
+            raise CongestionError(CongestionLevel.EXHAUSTED, priority)
         dst = unscoped_ipv6(destination)
         ipv6_bytes = wrap_coap(
             self._local, dst, data, src_port=self._src_port, dst_port=endpoint.port
@@ -107,7 +150,7 @@ class NodeChannel(DatagramChannel):
             return
         exc = task.exception()
         if exc is not None:
-            logger.warning("NodeChannel: send failed: %s", exc)
+            logger.warning("NodeChannel: send failed: %s", type(exc).__name__)
 
     def _on_node_receive(self, payload: bytes, sender: object) -> None:
         if self._closed:
@@ -136,14 +179,16 @@ class NodeChannel(DatagramChannel):
                 if self._metrics is not None:
                     self._metrics.record_error("dropped wrong destination")
                 return
-            if udp.dst_port != self._src_port or udp.checksum == 0:
+            if udp.dst_port != self._src_port:
                 logger.info(
-                    "NodeChannel: dropped invalid UDP: bad port or checksum from %s",
+                    "NodeChannel: dropped invalid UDP: bad port from %s",
                     sender,
                 )
                 if self._metrics is not None:
-                    self._metrics.record_error("dropped invalid UDP: bad port or checksum")
+                    self._metrics.record_error("dropped invalid UDP: bad port")
                 return
+            # Note: zero-checksum check removed - UdpDatagram.from_bytes() already
+            # raises UdpError for zero checksums (RFC 8200 8.1), caught by except below.
             if (
                 udp_checksum(
                     packet.header.src_addr,
@@ -156,17 +201,28 @@ class NodeChannel(DatagramChannel):
                 if self._metrics is not None:
                     self._metrics.record_error("dropped invalid UDP: bad checksum")
                 return
+            # SECURITY: Multi-hop authentication model:
+            # - Each hop is authenticated by link-layer Schnorr signatures (the Node
+            #   verifies the immediate sender before invoking this callback).
+            # - The original source (IPv6 src_addr) is authenticated end-to-end by OSCORE
+            #   at the CoAP application layer.
+            # - No IID check here: in multi-hop routing, the link-layer sender (relay)
+            #   differs from the original IPv6 source - that's correct behavior.
             coap = udp.payload
             src = self.normalize_endpoint(
                 Endpoint(str(packet.header.src_addr), udp.src_port)
             ).authority
         except Exception as exc:
-            logger.warning("NodeChannel: failed to unwrap received packet: %s", exc)
+            # Log only exception type to avoid leaking packet content in error messages.
+            logger.warning(
+                "NodeChannel: failed to unwrap received packet: %s", type(exc).__name__
+            )
             if self._metrics is not None:
-                self._metrics.record_error(f"unwrap failed: {type(exc).__name__}")
+                self._metrics.record_error("unwrap failed")
             return
-        if self._receiver is not None:
-            self._receiver(coap, src)
+        receiver = self._receiver
+        if receiver is not None:
+            receiver(coap, src)
 
     def close(self) -> None:
         if self._closed:
@@ -176,7 +232,11 @@ class NodeChannel(DatagramChannel):
         self._node = None
         self._receiver = None
         if node is not None:
-            node.unregister_on_receive(self)
+            try:
+                node.unregister_on_receive(self)
+            except Exception:
+                # Log but continue - task cancellation must run regardless.
+                logger.warning("NodeChannel: unregister_on_receive raised exception", exc_info=True)
         for task in tuple(self._tasks):
             task.cancel()
 

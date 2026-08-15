@@ -22,6 +22,7 @@ import asyncio
 import importlib.metadata
 import inspect
 import json
+import logging
 import re
 import struct
 from abc import ABC, abstractmethod
@@ -49,6 +50,7 @@ from lichen.link.tx_queue import Priority
 ReceiveCallback = Callable[[bytes, str], None]
 DEFAULT_COAP_PORT = 5683
 _REG_NAME = re.compile(r"[A-Za-z0-9._-]+\Z")
+_logger = logging.getLogger(__name__)
 
 
 def _validate_ipv6_scope(scope: object) -> str:
@@ -184,6 +186,8 @@ class EndpointPolicy:
 
     def normalize(self, endpoint: str | Endpoint) -> Endpoint:
         """Normalize an endpoint according to this namespace policy."""
+        if endpoint is None:
+            raise TypeError("endpoint must not be None")
         value = (
             Endpoint(endpoint.host, endpoint.port)
             if isinstance(endpoint, Endpoint)
@@ -338,6 +342,8 @@ def parse_uri_authority(authority: str, *, default_port: int = DEFAULT_COAP_PORT
 
 def parse_channel_endpoint(value: str, *, default_port: int = DEFAULT_COAP_PORT) -> Endpoint:
     """Parse an internal endpoint, additionally accepting a bare IPv6 host."""
+    if not isinstance(value, str):
+        raise TypeError("endpoint must be a string")
     if value.count(":") > 1 and not value.startswith("["):
         if any(
             character.isspace() or ord(character) < 32 or ord(character) == 127
@@ -355,6 +361,21 @@ def parse_channel_endpoint(value: str, *, default_port: int = DEFAULT_COAP_PORT)
             host = value[1:closing]
             address, separator, scope = host.partition("%")
             if separator:
+                # Reject pre-encoded scopes (e.g., %25eth0 from [fe80::1%25eth0])
+                # to avoid double-encoding to %2525. Only raw scopes are accepted.
+                # Use precise pattern: "25" followed by two hex digits indicates
+                # percent-encoding (e.g., "25eth0" would be "%eth0" decoded).
+                # This avoids false positives for interface names like "25gbe0".
+                if (
+                    len(scope) >= 4
+                    and scope[:2] == "25"
+                    and scope[2] in "0123456789ABCDEFabcdef"
+                    and scope[3] in "0123456789ABCDEFabcdef"
+                ):
+                    raise ValueError(
+                        "bracketed IPv6 scope appears pre-encoded; use raw scope "
+                        f"(e.g., %{scope[2:]} not %25{scope[2:]})"
+                    )
                 encoded = f"{address}%25{quote(scope, safe='-._~')}"
                 value = f"[{encoded}]{value[closing + 1 :]}"
     return parse_uri_authority(value, default_port=default_port)
@@ -479,8 +500,12 @@ class DatagramChannel(ABC):
     def set_receiver(self, receiver: ReceiveCallback) -> None:
         """Register ``receiver(data, source)`` for inbound datagrams."""
 
-    def clear_receiver(self, receiver: ReceiveCallback) -> None:  # noqa: B027
-        """Release ``receiver`` if it is still registered by this owner."""
+    def clear_receiver(self, receiver: ReceiveCallback) -> bool:  # noqa: B027
+        """Release ``receiver`` if it is still registered by this owner.
+
+        Returns True if the receiver was cleared, False if it did not match.
+        """
+        return False
 
     def close(self) -> None:  # noqa: B027 - optional hook, default no-op
         """Release the channel (subclasses override as needed)."""
@@ -538,18 +563,51 @@ class DatagramChannel(ABC):
 
 
 class InMemoryNetwork:
-    """An in-process datagram fabric connecting endpoints by host string."""
+    """An in-process datagram fabric connecting endpoints by host string.
 
-    def __init__(self) -> None:
+    Channels created via :meth:`channel` register receivers in an internal
+    dictionary. Callers must call :meth:`InMemoryChannel.close` on each
+    channel when done, or call :meth:`clear` to unregister all receivers
+    (useful for test teardown to prevent memory leaks in long-running
+    test processes).
+
+    Args:
+        max_endpoints: Limit on number of registered endpoints (default 1024).
+            :meth:`_register` raises RuntimeError when exceeded. Set to None
+            for unlimited endpoints (use with caution in untrusted environments
+            as this could enable resource exhaustion).
+    """
+
+    DEFAULT_MAX_ENDPOINTS = 1024
+
+    def __init__(self, max_endpoints: int | None = DEFAULT_MAX_ENDPOINTS) -> None:
         self._receivers: dict[Endpoint, tuple[object, ReceiveCallback]] = {}
+        self._max_endpoints = max_endpoints
 
-    def channel(self, host: str) -> InMemoryChannel:
+    def clear(self) -> None:
+        """Unregister all receivers, releasing channel references for GC.
+
+        Call this in test teardown to prevent memory leaks when channels
+        are created but not explicitly closed.
+        """
+        self._receivers.clear()
+
+    def channel(
+        self, host: str, *, max_datagram_size: int | None = None
+    ) -> InMemoryChannel:
         """Return a channel bound to ``host`` on this fabric."""
-        return InMemoryChannel(self, host)
+        return InMemoryChannel(self, host, max_datagram_size=max_datagram_size)
 
     def _register(self, endpoint: Endpoint, owner: object, receiver: ReceiveCallback) -> None:
         if endpoint in self._receivers:
             raise RuntimeError(f"endpoint {endpoint.authority} already has a receiver")
+        if (
+            self._max_endpoints is not None
+            and len(self._receivers) >= self._max_endpoints
+        ):
+            raise RuntimeError(
+                f"InMemoryNetwork endpoint limit ({self._max_endpoints}) exceeded"
+            )
         self._receivers[endpoint] = (owner, receiver)
 
     def _unregister(self, endpoint: Endpoint, owner: object) -> None:
@@ -558,9 +616,19 @@ class InMemoryNetwork:
             self._receivers.pop(endpoint)
 
     def _deliver(self, source: str, dest: str, data: bytes) -> None:
-        registered = self._receivers.get(parse_channel_endpoint(dest))
+        try:
+            endpoint = parse_channel_endpoint(dest)
+        except ValueError:
+            return  # Invalid endpoint, drop silently
+        registered = self._receivers.get(endpoint)
         if registered is not None:
-            registered[1](data, source)
+            callback = registered[1]  # Copy reference atomically
+            try:
+                callback(data, source)
+            except Exception:
+                _logger.warning(
+                    "receiver callback for %s raised exception", dest, exc_info=True
+                )
 
 
 class InMemoryChannel(DatagramChannel):
@@ -568,13 +636,29 @@ class InMemoryChannel(DatagramChannel):
 
     Delivery is deferred to the next event-loop iteration (``call_soon``) so a
     synchronous send never re-enters the receiver within the sender's stack.
+
+    Args:
+        network: The InMemoryNetwork fabric this channel belongs to.
+        host: The local endpoint host string.
+        max_datagram_size: Optional size limit for outgoing datagrams.
+            If set, datagrams exceeding this size log a warning.
     """
 
-    def __init__(self, network: InMemoryNetwork, host: str) -> None:
+    # Typical LoRa MTU after headers (~255 bytes)
+    DEFAULT_LORA_MTU = 255
+
+    def __init__(
+        self,
+        network: InMemoryNetwork,
+        host: str,
+        *,
+        max_datagram_size: int | None = None,
+    ) -> None:
         self._network = network
         self._endpoint = parse_channel_endpoint(host)
         self._receiver: ReceiveCallback | None = None
         self._closed = False
+        self._max_datagram_size = max_datagram_size
 
     @property
     def host(self) -> str:
@@ -588,10 +672,12 @@ class InMemoryChannel(DatagramChannel):
         self._network._register(self._endpoint, self, receiver)
         self._receiver = receiver
 
-    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+    def clear_receiver(self, receiver: ReceiveCallback) -> bool:
         if self._receiver == receiver:
             self._network._unregister(self._endpoint, self)
             self._receiver = None
+            return True
+        return False
 
     def send_datagram(
         self,
@@ -601,12 +687,32 @@ class InMemoryChannel(DatagramChannel):
         priority: Priority = Priority.NORMAL,
         check_congestion: bool = True,
     ) -> None:
+        """Send a datagram to the destination endpoint.
+
+        This method requires a running asyncio event loop because delivery
+        is deferred via ``call_soon`` to avoid re-entrancy issues.
+
+        Raises:
+            TypeError: If data is not bytes.
+            RuntimeError: If the channel is closed or no event loop is running.
+        """
+        if not isinstance(data, bytes):
+            raise TypeError("data must be bytes")
         if self._closed:
             raise RuntimeError("channel is closed")
+        if self._max_datagram_size is not None and len(data) > self._max_datagram_size:
+            raise ValueError(
+                f"datagram size {len(data)} exceeds max_datagram_size {self._max_datagram_size}"
+            )
         if check_congestion:
             self.check_congestion_for(priority)
         endpoint = parse_channel_endpoint(dest)
-        loop = asyncio.get_running_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "InMemoryChannel.send_datagram requires a running asyncio event loop"
+            ) from exc
         loop.call_soon(
             self._network._deliver,
             self._endpoint.authority,
@@ -713,7 +819,7 @@ class LichenTransport(interfaces.MessageInterface):  # type: ignore[misc]  # aio
 
     def _on_datagram(self, data: bytes, source: str) -> None:
         try:
-            message = Message.decode(data, LichenRemote(source, self._local))
+            message = Message.decode(data, LichenRemote(source, self._local, owner=self))
         except (error.UnparsableMessage, IndexError, struct.error, TypeError, ValueError):
             return
         self._mm.dispatch_message(message)
@@ -767,8 +873,8 @@ class LichenTransport(interfaces.MessageInterface):  # type: ignore[misc]  # aio
             else:
                 return None
             peer = self._channel.normalize_endpoint(peer)
-        except ValueError as exc:
-            raise error.MalformedUrlError(str(exc)) from exc
+        except ValueError:
+            raise error.MalformedUrlError("invalid endpoint") from None
         return LichenRemote(peer, self._local, owner=self)
 
     async def shutdown(self) -> None:
@@ -889,14 +995,18 @@ class _AiocoapLifecycleAdapter:
             pipe.on_interest_end(interest_ended)
 
     def _drop_backlogged(self, message: Message) -> None:
+        # NOTE: Callers must ensure single-threaded access to backlogs.
         backlogs = self._message_manager._backlogs
         if backlogs is None or message.remote not in backlogs:
             return
-        backlogs[message.remote] = [
+        current_list = backlogs[message.remote]
+        filtered = [
             (queued, monitor)
-            for queued, monitor in backlogs[message.remote]
+            for queued, monitor in current_list
             if queued is not message
         ]
+        current_list.clear()
+        current_list.extend(filtered)
 
     def _is_backlogged(self, message: Message) -> bool:
         backlogs = self._message_manager._backlogs
@@ -940,6 +1050,9 @@ class _AiocoapLifecycleAdapter:
         self._channel.message_abandoned(message)
 
     def _process_request(self, request: Message) -> None:
+        if request.remote is None:
+            self._original_process_request(request)
+            return
         lifecycle_id = self._channel.request_started(
             request.remote.hostinfo,
             request.token,
@@ -964,6 +1077,8 @@ class _AiocoapLifecycleAdapter:
             )
 
     def _send_message(self, message: Message, messageerror_monitor: Any) -> Any:
+        if message.remote is None:
+            return self._original_send_message(message, messageerror_monitor)
         lifecycle_id = self._channel.message_admitted(message, message.remote.hostinfo)
         if lifecycle_id is not None:
             message._lichen_lifecycle_id = lifecycle_id
@@ -971,7 +1086,6 @@ class _AiocoapLifecycleAdapter:
             result = self._original_send_message(message, messageerror_monitor)
         except BaseException:
             self._channel.message_abandoned(message)
-            self._complete_terminal_response(message)
             raise
         if not self._is_backlogged(message):
             self._channel.message_abandoned(message)
@@ -981,7 +1095,7 @@ class _AiocoapLifecycleAdapter:
     def _complete_terminal_response(self, message: Message) -> None:
         if message.code.is_response() and message.opt.observe is None:
             request = message.request
-            if request is not None:
+            if request is not None and request.remote is not None:
                 self._channel.response_completed(
                     request.remote.hostinfo,
                     request.token,
@@ -1065,6 +1179,11 @@ async def create_lichen_context(
         transports.append(transport)
         return transport
 
-    await context._append_tokenmanaged_messagemanaged_transport(create_transport)
+    try:
+        await context._append_tokenmanaged_messagemanaged_transport(create_transport)
+    except BaseException:
+        for transport in transports:
+            transport.close()
+        raise
     transports[0]._lifecycle.attach_context(context)
     return context

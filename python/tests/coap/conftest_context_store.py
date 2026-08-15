@@ -143,7 +143,9 @@ class RecordingChannel(DatagramChannel):
     def __init__(self) -> None:
         self.sent: list[tuple[bytes, str]] = []
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
+    def send_datagram(
+        self, data: bytes, dest: str, **kwargs: object  # type: ignore[override]
+    ) -> None:
         self.sent.append((data, dest))
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:

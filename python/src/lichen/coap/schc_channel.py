@@ -19,25 +19,30 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from collections.abc import Callable
 from ipaddress import IPv6Address
 from typing import Any
 
+from lichen.coap.params import CongestionLevel, CongestionState
 from lichen.coap.transport import (
     DatagramChannel,
     Endpoint,
     EndpointPolicy,
+    Priority,
     ReceiveCallback,
     parse_channel_endpoint,
     unscoped_ipv6,
 )
-from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, IPv6Packet, NextHeader
-from lichen.ipv6.udp import UDP_NEXT_HEADER, UdpDatagram, udp_checksum
+from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, IPv6Packet, NextHeader, PacketError
+from lichen.ipv6.udp import UDP_NEXT_HEADER, UdpDatagram, UdpError, udp_checksum
+from lichen.schc.codec import SchcError
 from lichen.schc.headers import compress_packet, decompress_packet
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_COAP_PORT = 5683
+MAX_PACKET_SIZE = 1280  # IPv6 minimum MTU
 HostResolver = Callable[[str], IPv6Address]
 
 
@@ -67,6 +72,10 @@ def unwrap_coap(raw: bytes) -> bytes:
     header = IPv6Header.from_bytes(raw)
     if header.next_header != NextHeader.UDP:
         raise ValueError("not a UDP datagram")
+    if HEADER_LENGTH + header.payload_length > len(raw):
+        raise ValueError(
+            f"payload_length {header.payload_length} exceeds available bytes {len(raw) - HEADER_LENGTH}"
+        )
     udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length])
     return udp.payload
 
@@ -84,6 +93,8 @@ class SchcChannel(DatagramChannel):
         dst_port: int = DEFAULT_COAP_PORT,
         metrics: Any | None = None,
     ) -> None:
+        if inner is None:
+            raise TypeError("inner channel must not be None")
         self._inner: DatagramChannel | None = inner
         self._endpoint_policy = inner.endpoint_policy
         self._resolve = resolve
@@ -97,26 +108,62 @@ class SchcChannel(DatagramChannel):
         self._closed = False
         self._teardown_started = False
         self._teardown_error: BaseException | None = None
+        self._teardown_lock = threading.Lock()
         self._shutdown_task: asyncio.Task[None] | None = None
         inner.set_receiver(self._on_inner)
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
+        if receiver is None:
+            raise TypeError("receiver must be a callable")
         if self._closed:
             raise RuntimeError("channel is closed")
         if self._receiver is not None:
             raise RuntimeError("channel already has a receiver")
         self._receiver = receiver
 
-    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+    def clear_receiver(self, receiver: ReceiveCallback) -> bool:
         if self._receiver == receiver:
             self._receiver = None
+            return True
+        return False
 
     @property
     def endpoint_policy(self) -> EndpointPolicy:
         return self._endpoint_policy
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
-        if self._closed or self._inner is None:
+    @property
+    def congestion_level(self) -> CongestionLevel:
+        """Delegate congestion level to inner channel."""
+        inner = self._inner
+        if self._closed or inner is None:
+            return CongestionLevel.EXHAUSTED
+        return inner.congestion_level
+
+    @property
+    def retry_after_ms(self) -> int | None:
+        """Delegate retry delay to inner channel."""
+        inner = self._inner
+        if self._closed or inner is None:
+            return None
+        return inner.retry_after_ms
+
+    def congestion_state(self) -> CongestionState:
+        """Delegate atomic congestion snapshot to inner channel."""
+        inner = self._inner
+        if self._closed or inner is None:
+            return CongestionState(level=CongestionLevel.EXHAUSTED, retry_after_ms=None)
+        return inner.congestion_state()
+
+    def send_datagram(
+        self,
+        data: bytes,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
+        inner = self._inner
+        if self._closed or inner is None:
             raise RuntimeError("channel is closed")
         endpoint = self.normalize_endpoint(
             parse_channel_endpoint(dest, default_port=self._dst_port)
@@ -129,29 +176,44 @@ class SchcChannel(DatagramChannel):
             src_port=self._src_port,
             dst_port=endpoint.port,
         )
-        self._inner.send_datagram(compress_packet(raw), endpoint.authority)
+        if len(raw) > MAX_PACKET_SIZE:
+            raise ValueError(
+                f"CoAP message too large for SCHC channel: {len(raw)} > {MAX_PACKET_SIZE} bytes"
+            )
+        inner.send_datagram(compress_packet(raw), endpoint.authority, priority=priority, check_congestion=check_congestion)
 
     def _on_inner(self, data: bytes, source: str) -> None:
         if self._closed:
             return
+        # SECURITY: Sequential validation checks below have varying execution time.
+        # Timing side-channels are acceptable here: the values being checked (packet
+        # size, next_header, dst_addr, port, checksum, source match) are not secrets.
+        # An attacker inferring which validation failed gains no cryptographic advantage.
         try:
             raw = decompress_packet(data)
+            if len(raw) > MAX_PACKET_SIZE:
+                logger.debug("SchcChannel: dropped invalid packet from %s", source)
+                if self._metrics is not None:
+                    self._metrics.record_error("invalid_packet")
+                return
             packet = IPv6Packet.from_bytes(raw)
             if packet.header.next_header != NextHeader.UDP:
-                logger.info("SchcChannel: dropped non-UDP IPv6 from %s", source)
+                logger.debug("SchcChannel: dropped invalid packet from %s", source)
                 if self._metrics is not None:
-                    self._metrics.record_error("dropped non-UDP IPv6")
+                    self._metrics.record_error("invalid_packet")
                 return
             udp = UdpDatagram.from_bytes(packet.payload)
+            # SECURITY: Non-constant-time comparison is acceptable here since IP
+            # addresses are not secrets. Constant-time comparison would be overkill.
             if packet.header.dst_addr.packed != self._local.packed:
-                logger.info("SchcChannel: dropped IPv6 for wrong dst from %s", source)
+                logger.debug("SchcChannel: dropped invalid packet from %s", source)
                 if self._metrics is not None:
-                    self._metrics.record_error("dropped wrong destination")
+                    self._metrics.record_error("invalid_packet")
                 return
-            if udp.dst_port != self._src_port or udp.checksum == 0:
-                logger.info("SchcChannel: dropped invalid UDP: bad port/checksum from %s", source)
+            if udp.dst_port != self._src_port:
+                logger.debug("SchcChannel: dropped invalid packet from %s", source)
                 if self._metrics is not None:
-                    self._metrics.record_error("dropped invalid UDP: bad port or checksum")
+                    self._metrics.record_error("invalid_packet")
                 return
             if (
                 udp_checksum(
@@ -161,33 +223,39 @@ class SchcChannel(DatagramChannel):
                 )
                 != 0
             ):
-                logger.warning("SchcChannel: dropped invalid UDP: bad checksum from %s", source)
+                logger.debug("SchcChannel: dropped invalid packet from %s", source)
                 if self._metrics is not None:
-                    self._metrics.record_error("dropped invalid UDP: bad checksum")
+                    self._metrics.record_error("invalid_packet")
                 return
             coap = udp.payload
             source_endpoint = parse_channel_endpoint(source)
             if unscoped_ipv6(self._resolve(source_endpoint.host)) != packet.header.src_addr:
-                logger.warning("SchcChannel: dropped mismatched source address from %s", source)
+                logger.debug("SchcChannel: dropped invalid packet from %s", source)
                 if self._metrics is not None:
-                    self._metrics.record_error("dropped mismatched source")
+                    self._metrics.record_error("invalid_packet")
                 return
             source = Endpoint(source_endpoint.host, udp.src_port).authority
-        except Exception as exc:
-            logger.warning("SchcChannel: failed to decompress/unwrap packet: %s", exc)
+        except (SchcError, PacketError, UdpError, ValueError):
+            logger.debug("SchcChannel: dropped invalid packet from %s", source)
             if self._metrics is not None:
-                self._metrics.record_error(f"decompress unwrap failed: {type(exc).__name__}")
+                self._metrics.record_error("invalid_packet")
             return
-        if self._receiver is not None:
-            self._receiver(coap, source)
+        receiver = self._receiver
+        if receiver is not None:
+            receiver(coap, source)
 
     def close(self) -> None:
+        """Synchronously close the channel.
+
+        Thread safety: Must only be called from the asyncio event loop thread.
+        """
         inner = self._claim_teardown()
         if inner is None:
             return
         error: BaseException | None = None
         try:
-            inner.clear_receiver(self._on_inner)
+            if not inner.clear_receiver(self._on_inner):
+                logger.warning("clear_receiver returned False during close - possible double-close")
         except BaseException as exc:
             error = exc
         try:
@@ -195,13 +263,19 @@ class SchcChannel(DatagramChannel):
         except BaseException as exc:
             if error is None:
                 error = exc
+            else:
+                exc.__context__ = error
+                error = exc
         self._inner = None
         if error is not None:
             self._teardown_error = error
             raise error
 
     async def shutdown(self) -> None:
-        """Release receiver ownership and shut down the inner channel once."""
+        """Release receiver ownership and shut down the inner channel once.
+
+        Thread safety: Must only be called from the asyncio event loop thread.
+        """
         if self._shutdown_task is None:
             inner = self._claim_teardown()
             self._shutdown_task = asyncio.create_task(self._shutdown_inner(inner))
@@ -214,7 +288,10 @@ class SchcChannel(DatagramChannel):
             return
         error: BaseException | None = None
         try:
-            inner.clear_receiver(self._on_inner)
+            if not inner.clear_receiver(self._on_inner):
+                logger.warning(
+                    "clear_receiver returned False during shutdown - possible double-close"
+                )
         except BaseException as exc:
             error = exc
         try:
@@ -222,16 +299,24 @@ class SchcChannel(DatagramChannel):
         except BaseException as exc:
             if error is None:
                 error = exc
+            else:
+                exc.__context__ = error
+                error = exc
         self._inner = None
         if error is not None:
             self._teardown_error = error
             raise error
 
     def _claim_teardown(self) -> DatagramChannel | None:
-        if self._teardown_started:
-            return None
-        self._teardown_started = True
-        self._closed = True
-        inner = self._inner
-        self._receiver = None
-        return inner
+        """Atomically claim the teardown, returning the inner channel or None if already claimed.
+
+        Thread safety: Uses explicit lock for synchronization, safe with threaded event loops.
+        """
+        with self._teardown_lock:
+            if self._teardown_started:
+                return None
+            self._teardown_started = True
+            self._closed = True
+            inner = self._inner
+            self._receiver = None
+            return inner

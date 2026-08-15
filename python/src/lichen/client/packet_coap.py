@@ -7,18 +7,22 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import logging
+import math
+import posixpath
 import struct
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from ipaddress import IPv6Address
 from typing import Any, Self, TypeVar
+from urllib.parse import unquote
 
 from lichen.client.ble import BlePacketTransport, BleSecurityError, BleSecurityLevel
 from lichen.client.ip_coap import AiocoapResourceTransport, CoapTransportError, IpCoapConfig
 from lichen.client.lci import LciSecurityError, ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
 from lichen.client.transport import PacketTransport
+from lichen.coap.params import CongestionError
 from lichen.coap.schc_channel import DEFAULT_COAP_PORT, wrap_coap
 from lichen.coap.transport import (
     DatagramChannel,
@@ -31,6 +35,7 @@ from lichen.coap.transport import (
 )
 from lichen.ipv6.packet import IPv6Packet, NextHeader, PacketError
 from lichen.ipv6.udp import UdpDatagram, UdpError
+from lichen.link.tx_queue import Priority
 
 logger = logging.getLogger(__name__)
 _SEND_SCOPE: contextvars.ContextVar[Any] = contextvars.ContextVar(
@@ -56,6 +61,27 @@ class PacketCoapConfig:
     src_port: int = DEFAULT_COAP_PORT
     dst_port: int = DEFAULT_COAP_PORT
 
+    def __post_init__(self) -> None:
+        """Validate configuration values."""
+        # Validate IPv6 address format early if the value looks like an IPv6 address.
+        # Hostnames (no colon) are allowed and validated at connect time.
+        for field, value in [("local_host", self.local_host), ("peer_host", self.peer_host)]:
+            if value is None:
+                raise ValueError(f"{field} must not be None")
+            if not value:
+                raise ValueError(f"{field} must not be empty")
+            if ":" in value:  # Looks like IPv6, validate format now
+                try:
+                    IPv6Address(value.split("%")[0])  # Strip scope before parsing
+                except ValueError as exc:
+                    raise ValueError(f"{field} is not a valid IPv6 address: {exc}") from exc
+        if not math.isfinite(self.timeout_s) or self.timeout_s <= 0:
+            raise ValueError(f"timeout_s must be a positive finite number, got {self.timeout_s}")
+        if not (1 <= self.src_port <= 65535):
+            raise ValueError(f"src_port must be 1-65535, got {self.src_port}")
+        if not (1 <= self.dst_port <= 65535):
+            raise ValueError(f"dst_port must be 1-65535, got {self.dst_port}")
+
     @property
     def base_uri(self) -> str:
         """Return the peer CoAP URI used by the shared LCI client."""
@@ -74,6 +100,13 @@ class PacketCoapResourceTransport(ResourceTransport):
     SLIP-over-GATT. This adapter frames aiocoap datagrams as IPv6/UDP packets
     and delegates request/observe behavior to the same aiocoap-backed client
     path used for direct IP transports.
+
+    Thread Safety:
+        This class is designed for single-threaded asyncio use. Callers MUST NOT
+        call close() while request() or observe() operations are in flight. The
+        lifecycle lock protects connect/close transitions but not the fast path
+        used by request/observe to avoid lock overhead. Concurrent close during
+        an active request may cause AttributeError or use-after-close.
     """
 
     def __init__(
@@ -82,6 +115,8 @@ class PacketCoapResourceTransport(ResourceTransport):
         *,
         config: PacketCoapConfig | None = None,
     ) -> None:
+        if packet_transport is None:
+            raise ValueError("packet_transport must not be None")
         self.packet_transport = packet_transport
         self.config = config or PacketCoapConfig()
         self._channel: PacketDatagramChannel | None = None
@@ -89,15 +124,16 @@ class PacketCoapResourceTransport(ResourceTransport):
         self._lifecycle_lock = asyncio.Lock()
         self._close_task: asyncio.Task[None] | None = None
         self._packet_closed = False
+        self._active_ops = 0
+        self._active_subscriptions = 0
 
     async def connect(self) -> None:
         """Open the packet link and construct an aiocoap context over it."""
         async with self._lifecycle_lock:
             if self._resource_transport is not None:
                 return
-            if self._close_task is not None and not self._close_task.done():
+            if self._close_task is not None:
                 raise CoapTransportError("packet CoAP transport is closing")
-            self._close_task = None
             self._packet_closed = False
             channel: PacketDatagramChannel | None = None
             resource_transport: AiocoapResourceTransport | None = None
@@ -131,33 +167,68 @@ class PacketCoapResourceTransport(ResourceTransport):
                     with suppress(BaseException):
                         await resource_transport.close()
                 with suppress(BaseException):
-                    await self._close_packet(channel)
+                    if channel is not None:
+                        await channel.aclose()
+                    else:
+                        await self.packet_transport.close()
+                self._packet_closed = True
                 raise primary
             self._channel = channel
             self._resource_transport = resource_transport
 
     async def close(self) -> None:
-        """Close the CoAP context and underlying packet transport."""
+        """Close the CoAP context and underlying packet transport.
+
+        Note: The warning logged when operations are in flight is advisory only.
+        This class documents single-threaded asyncio use; callers MUST NOT call
+        close() while request() or observe() operations are in flight. Concurrent
+        close() during an active operation may cause use-after-close errors.
+        """
+        if self._active_ops > 0 or self._active_subscriptions > 0:
+            logger.warning(
+                "close() called with %d operation(s) in flight and %d active subscription(s); "
+                "caller should await operations and close subscriptions before closing",
+                self._active_ops,
+                self._active_subscriptions,
+            )
+        async with self._lifecycle_lock:
+            if self._close_task is None:
+                self._close_task = asyncio.create_task(self._close_once())
+            close_task = self._close_task
+        await asyncio.shield(close_task)
+
+    async def _close_once(self) -> None:
+        """Internal close implementation, called at most once.
+
+        Closes resource transport and channel/packet, propagating the first
+        error encountered to all concurrent callers.
+        """
         transport = self._resource_transport
         self._resource_transport = None
+        channel = self._channel
+        self._channel = None
+        already_closed = self._packet_closed
+        self._packet_closed = True
+        error: BaseException | None = None
         if transport is not None:
             try:
                 await transport.close()
-            except (CoapTransportError, OSError, asyncio.CancelledError):
-                pass  # Expected during cleanup
-            except Exception:
-                logger.exception("unexpected error during cleanup")
-        channel = self._channel
-        self._channel = None
+            except BaseException as exc:
+                error = exc
         if channel is not None:
-            await channel.aclose()
-        else:
+            try:
+                await channel.aclose()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+        elif not already_closed:
             try:
                 await self.packet_transport.close()
-            except (OSError, asyncio.CancelledError):
-                pass  # Expected during cleanup
-            except Exception:
-                logger.exception("unexpected error during cleanup")
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+        if error is not None:
+            raise error
 
     async def request(
         self,
@@ -169,31 +240,57 @@ class PacketCoapResourceTransport(ResourceTransport):
         observe: bool = False,
     ) -> CoapResult:
         """Perform one CoAP request over the packet link."""
-        return await self._run_with_send_scope(
-            self._require_transport().request(
-                method,
-                path,
-                payload=payload,
-                content_format=content_format,
-                observe=observe,
+        if not method:
+            raise ValueError("method must not be empty")
+        self.check_security_for_path(path)
+        self._active_ops += 1
+        try:
+            return await self._run_with_send_scope(
+                self._require_transport().request(
+                    method,
+                    path,
+                    payload=payload,
+                    content_format=content_format,
+                    observe=observe,
+                )
             )
-        )
+        finally:
+            self._active_ops -= 1
 
     async def observe(self, path: str, *, method: str = "GET") -> ResourceSubscription:
-        """Start an Observe subscription over the packet link."""
-        channel = self._require_channel()
-        scope = PacketSendScope(channel)
-        with scope:
-            observe_task = asyncio.create_task(
-                self._require_transport().observe(path, method=method)
+        """Start an Observe subscription over the packet link.
+
+        Note: _active_ops tracks only the setup phase (until subscription is returned).
+        Active subscriptions are tracked separately via _active_subscriptions, which
+        is incremented when the subscription is returned and decremented when it is
+        closed. Callers must close the returned subscription before calling close()
+        on this transport.
+        """
+        self.check_security_for_path(path)
+        self._active_ops += 1
+        try:
+            channel = self._require_channel()
+            scope = PacketSendScope(channel)
+            with scope:
+                observe_task = asyncio.create_task(
+                    self._require_transport().observe(path, method=method)
+                )
+            subscription = await self._race_send_failure(observe_task, scope)
+            self._active_subscriptions += 1
+            return PacketCoapResourceSubscription(
+                subscription,
+                channel,
+                scope,
+                on_send_failure=self.close,
+                on_close=self._unregister_subscription,
             )
-        subscription = await self._race_send_failure(observe_task, scope)
-        return PacketCoapResourceSubscription(
-            subscription,
-            channel,
-            scope,
-            on_send_failure=self.close,
-        )
+        finally:
+            self._active_ops -= 1
+
+    def _unregister_subscription(self) -> None:
+        """Decrement the active subscription count when a subscription closes."""
+        if self._active_subscriptions > 0:
+            self._active_subscriptions -= 1
 
     def check_security_for_path(self, path: str) -> None:
         """Check if security requirements are met for accessing a path.
@@ -203,27 +300,84 @@ class PacketCoapResourceTransport(ResourceTransport):
 
         Raises:
             LciSecurityError: If BLE security requirements are not met.
+            ValueError: If path is empty.
         """
+        # Validate non-empty path for all transports
+        if not path:
+            raise ValueError("path must not be empty")
+
         # Only BLE transports require LESC check
         if not isinstance(self.packet_transport, BlePacketTransport):
             return  # Non-BLE transports (USB/serial) are trusted per spec 17.6.1
 
-        # Check if path requires elevated security
-        if not path.startswith("/diag/raw/"):
+        # Normalize path for security check: iteratively URL-decode until stable,
+        # resolve dot segments, and collapse leading double-slashes.
+        # This is defense-in-depth; server canonicalizes and enforces per spec 17.5.4.
+        # SECURITY: Iterative decoding prevents double-encoding bypass (%252F -> %2F -> /)
+        normalized = path
+        for _ in range(10):  # Defensive limit; unquote should converge quickly
+            decoded = unquote(normalized)
+            if decoded == normalized:
+                break
+            normalized = decoded
+        else:
+            # SECURITY: Did not converge - excessive encoding levels may indicate bypass attempt
+            raise ValueError("path contains excessive URL encoding")
+        # SECURITY: Reject null bytes to prevent truncation-based bypass in C servers.
+        # We reject rather than strip because the C server may truncate at null,
+        # leading to inconsistent paths between client security check and server routing.
+        if '\x00' in normalized:
+            raise ValueError("path contains null byte")
+        if not normalized:
+            raise ValueError("path must not be empty after sanitization")
+        # SECURITY: Reject non-ASCII to prevent Unicode confusable bypass (e.g., U+FF0F
+        # FULLWIDTH SOLIDUS or U+2215 DIVISION SLASH instead of U+002F SOLIDUS).
+        # CoAP paths are ASCII; non-ASCII indicates potential bypass attempt.
+        if any(ord(c) > 127 for c in normalized):
+            raise ValueError("path contains non-ASCII characters")
+        normalized = posixpath.normpath(normalized)
+        # SECURITY: posixpath.normpath preserves leading // per POSIX; collapse it
+        if normalized.startswith("//"):
+            normalized = normalized[1:]
+        if not normalized.startswith("/"):
+            normalized = "/" + normalized
+        # SECURITY: Strip URI fragments before security check. Per RFC 7252, fragments are
+        # client-side only, so '/diag/raw#foo' would bypass security checks but the CoAP
+        # request is sent to '/diag/raw'. Strip fragment before query to handle '#' in query.
+        if "#" in normalized:
+            normalized = normalized.split("#", 1)[0]
+        # SECURITY: Strip query strings before security check. A path like '/diag/raw?foo'
+        # would bypass the equality/prefix checks below, but downstream CoAP libraries
+        # may interpret '?' as a query separator and route to '/diag/raw'.
+        if "?" in normalized:
+            normalized = normalized.split("?", 1)[0]
+        # SECURITY: Case-insensitive match prevents case variation bypass
+        # Check both the collection path and paths under it
+        normalized_lower = normalized.lower()
+        if normalized_lower != "/diag/raw" and not normalized_lower.startswith("/diag/raw/"):
             return  # No special security required
 
         # SECURITY: BLE transports MUST require LESC for raw diagnostics
         try:
             self.packet_transport.assert_lesc_for_diagnostics()
-        except BleSecurityError as exc:
+        except BleSecurityError:
+            # SECURITY: Do not expose actual_level to prevent security state enumeration.
+            # Exception chain is intentionally broken to avoid leaking the actual level.
             raise LciSecurityError(
-                str(exc),
+                "insufficient security level for this resource",
                 path=path,
                 required_level=BleSecurityLevel.LESC.name,
-                actual_level=self.packet_transport.security_level.name,
-            ) from exc
+            ) from None
 
     def _require_transport(self) -> AiocoapResourceTransport:
+        """Return the underlying transport, raising if not connected.
+
+        API CONTRACT: The returned reference is not protected by a lock. Callers
+        MUST NOT call close() while request/observe operations are in flight.
+        Violating this contract may cause operations to proceed on a stale
+        reference whose underlying channel is closing. The GIL prevents data
+        races but a logical TOCTOU window exists if close() runs concurrently.
+        """
         if self._resource_transport is None:
             raise CoapTransportError("packet CoAP transport is not connected")
         return self._resource_transport
@@ -255,9 +409,10 @@ class PacketCoapResourceTransport(ResourceTransport):
             pending_task.cancel()
         if error_task in done:
             task.cancel()
-            with suppress(asyncio.CancelledError):
+            with suppress(BaseException):
                 await task
-            await self.close()
+            with suppress(BaseException):
+                await self.close()
             raise CoapTransportError(f"packet CoAP send failed: {error_task.result()}")
         error_task.cancel()
         with suppress(asyncio.CancelledError):
@@ -274,17 +429,29 @@ class PacketCoapResourceSubscription(ResourceSubscription):
         channel: PacketDatagramChannel,
         scope: PacketSendScope | None = None,
         on_send_failure: Callable[[], Awaitable[None]] | None = None,
+        on_close: Callable[[], None] | None = None,
     ) -> None:
+        if inner is None:
+            raise ValueError("inner must not be None")
         self._inner = inner
         self._channel = channel
         self._scope = scope or PacketSendScope(channel)
         self._on_send_failure = on_send_failure
+        self._on_close = on_close
+        self._closed = False
 
     def results(self) -> AsyncIterator[CoapResult]:
         return self._results()
 
     async def close(self) -> None:
-        await self._inner.close()
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            await self._inner.close()
+        finally:
+            if self._on_close is not None:
+                self._on_close()
 
     async def __aenter__(self) -> Self:
         return self
@@ -308,18 +475,25 @@ class PacketCoapResourceSubscription(ResourceSubscription):
             pending_task.cancel()
         if error_task in done:
             first_task.cancel()
-            with suppress(asyncio.CancelledError):
+            with suppress(BaseException):
                 await first_task
             # CancelledError is a BaseException since Python 3.8, not caught by Exception
             with suppress(Exception, asyncio.CancelledError):
-                await self._inner.close()
+                await self.close()
             if self._on_send_failure is not None:
-                await self._on_send_failure()
+                with suppress(BaseException):
+                    await self._on_send_failure()
             raise CoapTransportError(f"packet CoAP send failed: {error_task.result()}")
         error_task.cancel()
         with suppress(asyncio.CancelledError):
             await error_task
-        yield first_task.result()
+        # PEP 479/525: StopAsyncIteration raised inside an async generator becomes
+        # RuntimeError, so catch it explicitly. Empty iterator means no results.
+        try:
+            first_result = first_task.result()
+        except StopAsyncIteration:
+            return
+        yield first_result
         async for result in iterator:
             yield result
 
@@ -327,11 +501,19 @@ class PacketCoapResourceSubscription(ResourceSubscription):
 class PacketSendScope:
     """Tracks packet send failures for one request/Observe operation."""
 
+    _ERROR_QUEUE_MAXSIZE = 100
+    _DROP_LOG_INTERVAL = 10  # Log warning every N dropped errors
+
     def __init__(self, channel: PacketDatagramChannel) -> None:
+        if channel is None:
+            raise ValueError("channel must not be None")
         self._channel = channel
         self._token: contextvars.Token[PacketSendScope | None] | None = None
         self._tasks: set[asyncio.Task[None]] = set()
-        self._errors: asyncio.Queue[BaseException] = asyncio.Queue()
+        self._errors: asyncio.Queue[BaseException] = asyncio.Queue(
+            maxsize=self._ERROR_QUEUE_MAXSIZE
+        )
+        self._dropped_error_count = 0
 
     def __enter__(self) -> PacketSendScope:
         self._token = _SEND_SCOPE.set(self)
@@ -358,12 +540,25 @@ class PacketSendScope:
         with suppress(asyncio.CancelledError):
             exc = task.exception()
             if exc is not None:
-                self._errors.put_nowait(exc)
+                try:
+                    self._errors.put_nowait(exc)
+                except asyncio.QueueFull:
+                    self._dropped_error_count += 1
+                    if self._dropped_error_count % self._DROP_LOG_INTERVAL == 1:
+                        logger.warning(
+                            "packet CoAP error queue full, dropped %d errors (latest: %s)",
+                            self._dropped_error_count,
+                            exc,
+                        )
+                    return
                 logger.debug("packet CoAP send failed: %s", exc)
 
 
 class PacketDatagramChannel(DatagramChannel):
     """DatagramChannel that sends CoAP datagrams inside IPv6 packet frames."""
+
+    _SEND_TASKS_WARNING_THRESHOLD = 100
+    _SEND_TASKS_HARD_LIMIT = 1000
 
     def __init__(
         self,
@@ -388,9 +583,15 @@ class PacketDatagramChannel(DatagramChannel):
         self._send_tasks: set[asyncio.Task[None]] = set()
         self._closed = False
         self._close_task: asyncio.Task[None] | None = None
+        self._lifecycle_lock = asyncio.Lock()
 
     def start(self) -> None:
-        """Start forwarding inbound packets to aiocoap."""
+        """Start forwarding inbound packets to aiocoap.
+
+        This method is synchronous and idempotent. The check-then-assign for
+        _reader_task is atomic in single-threaded asyncio (no await between
+        check and assignment). Do not call from multiple OS threads.
+        """
         if self._closed:
             raise RuntimeError("channel is closed")
         if self._reader_task is None:
@@ -403,21 +604,53 @@ class PacketDatagramChannel(DatagramChannel):
             raise RuntimeError("channel already has a receiver")
         self._receiver = receiver
 
-    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+    def clear_receiver(self, receiver: ReceiveCallback) -> bool:
         if self._receiver == receiver:
             self._receiver = None
+            return True
+        if self._receiver is not None:
+            logger.debug(
+                "clear_receiver called with mismatched receiver: expected %r, got %r",
+                self._receiver,
+                receiver,
+            )
+        return False
 
     @property
     def endpoint_policy(self) -> EndpointPolicy:
         return self._endpoint_policy
 
-    def send_datagram(self, data: bytes, dest: str) -> None:
+    def send_datagram(
+        self,
+        data: bytes,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
+    ) -> None:
+        if dest is None:
+            raise ValueError("dest must not be None")
+        if data is None:
+            raise ValueError("data must not be None")
         if self._closed:
             raise RuntimeError("channel is closed")
+        if check_congestion:
+            self.check_congestion_for(priority)
+        # SECURITY: Enforce hard cap to prevent unbounded memory growth
+        pending_count = len(self._send_tasks)
+        if pending_count >= self._SEND_TASKS_HARD_LIMIT:
+            raise CongestionError(
+                self.congestion_level,
+                priority,
+                retry_after_ms=1000,
+            )
         endpoint = self.normalize_endpoint(
             parse_channel_endpoint(dest, default_port=self._dst_port)
         )
-        destination = IPv6Address(endpoint.host)
+        try:
+            destination = IPv6Address(endpoint.host)
+        except ValueError as exc:
+            raise ValueError(f"dest must be a valid IPv6 address, got: {dest}") from exc
         wire_destination = unscoped_ipv6(destination)
         packet = wrap_coap(
             self._local,
@@ -429,6 +662,13 @@ class PacketDatagramChannel(DatagramChannel):
         task = asyncio.create_task(self._packet_transport.send_packet(packet))
         self._send_tasks.add(task)
         task.add_done_callback(self._send_tasks.discard)
+        pending_count = len(self._send_tasks)
+        if pending_count == self._SEND_TASKS_WARNING_THRESHOLD:
+            logger.warning(
+                "packet CoAP send queue reached %d pending tasks; "
+                "consider backpressure or rate limiting",
+                pending_count,
+            )
         # Safe: the task calling us was created inside a with scope block,
         # so its context captured _SEND_SCOPE (see comment above).
         scope = _SEND_SCOPE.get()
@@ -455,9 +695,11 @@ class PacketDatagramChannel(DatagramChannel):
 
     async def aclose(self) -> None:
         """Close the channel and packet transport."""
-        if self._close_task is None:
-            self._close_task = asyncio.create_task(self._aclose_once())
-        await asyncio.shield(self._close_task)
+        async with self._lifecycle_lock:
+            if self._close_task is None:
+                self._close_task = asyncio.create_task(self._aclose_once())
+            close_task = self._close_task
+        await asyncio.shield(close_task)
 
     async def _aclose_once(self) -> None:
         self.close()
@@ -482,13 +724,16 @@ class PacketDatagramChannel(DatagramChannel):
                     ):
                         error = results[0]
                     else:
-                        error = min(
-                            failures,
-                            key=lambda exc: (
+                        def _safe_exc_key(exc: BaseException) -> tuple[str, str]:
+                            try:
+                                exc_str = str(exc)
+                            except Exception:
+                                exc_str = ""
+                            return (
                                 f"{type(exc).__module__}.{type(exc).__qualname__}",
-                                str(exc),
-                            ),
-                        )
+                                exc_str,
+                            )
+                        error = min(failures, key=_safe_exc_key)
         finally:
             try:
                 await self._packet_transport.close()
@@ -507,9 +752,19 @@ class PacketDatagramChannel(DatagramChannel):
                     logger.exception("unhandled error in _handle_packet")
         except Exception:
             logger.exception("packet reader failed")
-            self.close()
+            with suppress(Exception):
+                self.close()
+            raise
 
     def _handle_packet(self, packet: bytes) -> None:
+        """Process an inbound IPv6 packet and forward CoAP payload to receiver.
+
+        SECURITY: This method accepts packets from any IPv6 source address without
+        validation, relying on transport-layer trust. Current transports (BLE/USB/serial)
+        provide physical-layer authentication per spec 17.6.1. If a new transport type
+        is added without physical-layer authentication, source address allowlisting
+        should be implemented at the PacketTransport layer or in this method.
+        """
         receiver = self._receiver
         if receiver is None:
             return
@@ -531,7 +786,7 @@ class PacketDatagramChannel(DatagramChannel):
                 Endpoint(str(parsed.header.src_addr), udp.src_port)
             ).authority
             coap = udp.payload
-        except (PacketError, UdpError, struct.error, ValueError):
+        except (PacketError, UdpError, struct.error, ValueError, IndexError):
             logger.debug("failed to parse packet", exc_info=True)
             return
         receiver(coap, source)
