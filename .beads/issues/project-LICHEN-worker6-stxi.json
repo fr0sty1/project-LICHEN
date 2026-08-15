@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-stxi",
+  "title": "[review] schc_adaptation.json: Residue bit length mismatch for Rule 1",
+  "description": "The listed fields sum to 286 bits (8+120+120+4+4+2+4+8+16), but residue_bit_length claims 320 bits. The 34-bit difference (320-286) is unexplained and does not align with any obvious additional field sizes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:42:58.522206Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:42:58.522206Z",
+  "labels": [
+    "review"
+  ]
+}

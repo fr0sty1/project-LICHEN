@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-xpth.3",
   "title": "Vectors: SCHC Adaptation (10 missing, 1 P0)",
   "description": "P0:\n- schc_unknown_rule_id_rejection: Rule ID 0xFE or unused must drop, not crash\n\nP1:\n- schc_rule7_mqttsn: Rule 7 MQTT-SN wire format, 18-byte compressed\n- schc_rule255_uncompressed: 0xFF prefix + full IPv6 round-trip\n- schc_port_boundary_compression: port 5679/5680/5695/5696 boundaries\n- schc_frag_rule79_direction: B-to-A direction rule\n- schc_compressed_size_validation: spec-mandated sizes per rule\n- schc_octet_alignment_padding: bit-level padding to octet\n- schc_frag_single_active_packet: T=0 one active packet reset\n\nP2:\n- schc_rule_version_dio_option: version comparison logic\n- schc_frag_ack_bitmap_format: RFC 8724 compressed bitmap",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-11T19:42:10.190416Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-11T19:42:10.190416Z",
+  "updated_at": "2026-08-15T18:30:43.465252Z",
+  "closed_at": "2026-08-15T18:30:43.465252Z",
+  "close_reason": "Added 34 SCHC adaptation test vectors covering 10 categories:\n\nP0 (security-critical): 4 vectors\n- unknown_rule_id_0xfe_rejection, unknown_rule_id_0x10_rejection, unknown_rule_id_0x77_rejection, empty_schc_packet_rejection\n- Tests that unknown/unused rule IDs (0x10-0x77, 0xFE) and empty packets are cleanly rejected with NoMatchingRuleError\n\nP1 vectors: 23 vectors covering:\n- Rule 255 uncompressed fallback (3 vectors): minimal IPv6, round-trip, UDP\n- Port boundary compression (6 vectors): 5679-5696 range, 10883 MQTT-SN\n- Compressed size validation (5 vectors): Rules 0-4 per appendix-schc.md\n- Fragmentation Rule 0x79 B-to-A (5 vectors): ACK success, ACK req, aborts\n- Octet alignment padding (3 vectors): 3-bit, 7-bit, none\n- Single active packet T=0 constraint (1 vector)\n\nP2 vectors: 7 vectors covering:\n- SCHC Rule Version Option (4 vectors): v0, v2, v255, mismatch\n- ACK bitmap format (3 vectors): complete, single missing, multiple missing\n\nFiles created:\n- test/vectors/schc_adaptation.json (34 vectors)\n- rust/lichen-schc/tests/adaptation_vectors.rs (Rust tests)\n\nFiles modified:\n- python/tests/test_vectors.py (Python tests)\n- test/vectors/schema.json (schc_adaptation_vector definition)\n\nBoth Python and Rust tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-xpth.3",

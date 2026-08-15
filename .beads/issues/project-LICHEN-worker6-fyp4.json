@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-fyp4",
+  "title": "[review] test_vectors.py: Self-referential fallback causes asserti",
+  "description": "The assertion `assert h == o.get(\"hash_32\", o.get(\"expected_hash\", h))` uses the computed value `h` as the final fallback default. If neither `hash_32` nor `expected_hash` exists in the output dict, the assertion becomes `h == h`, which always passes. This means missing expected values in vector files do not cause test failures.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:43:26.559343Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:43:26.559343Z",
+  "labels": [
+    "review"
+  ]
+}

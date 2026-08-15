@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-h27b",
+  "title": "[review] schc_adaptation.json: ACK bitmap does not match description",
+  "description": "For frag_ack_bitmap_multiple_missing, description says 'FCN 59 received' but bitmap analysis shows position 3 is 0 (missing). Bitmap positions with 1 are [0,1,6,8,10] which does not align with the described FCN received/missing pattern.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:42:58.53304Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:42:58.53304Z",
+  "labels": [
+    "review"
+  ]
+}

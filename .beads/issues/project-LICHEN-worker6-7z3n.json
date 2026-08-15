@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-7z3n",
+  "title": "[review] schc_adaptation.json: ACK bitmap inconsistent with assigned_fc",
+  "description": "For frag_ack_bitmap_single_missing, assigned_fcns lists [62, 61, 63] (2 regular tiles + All-1), but the bitmap 0x28 shows bits at positions 0 and 2 set (FCN 62 and FCN 60 received). If only FCNs 62, 61, 63 were sent, position 2 should not be set. Either assigned_fcns is incomplete or the wire format is incorrect.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:42:59.179903Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:42:59.179903Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-m8ow",
+  "title": "[review] schc_adaptation.json: Residue bit length mismatch for Rule 0",
+  "description": "The listed fields sum to 174 bits (8+64+64+4+4+2+4+8+16), but residue_bit_length claims 200 bits. The provenance acknowledges this discrepancy but the explanation is unclear. Either additional fields are missing from the documentation, or the residue value is incorrect.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:42:58.645929Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:42:58.645929Z",
+  "labels": [
+    "review"
+  ]
+}

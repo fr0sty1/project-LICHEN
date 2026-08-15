@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-7zmh",
+  "title": "[review] adaptation_vectors.rs: Hardcoded P0 count threshold may become stale",
+  "description": "The assertion expects at least 4 P0 vectors, but this magic number could drift as vectors are added or removed. Consider deriving the expected count from the vector file metadata or a manifest, or document why 4 is the correct number.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:43:14.226783Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:43:14.226783Z",
+  "labels": [
+    "review"
+  ]
+}

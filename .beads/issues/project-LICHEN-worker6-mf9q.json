@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-mf9q",
+  "title": "[review] adaptation_vectors.rs: Silent test skip masks missing vectors f",
+  "description": "When the vectors file is missing, the test prints to stderr and returns Ok, passing silently. In CI this hides the fact that critical P0 security vectors were never validated. Consider using #[ignore] if optional, or cfg(feature) gating, or panicking with a clearer message when running in CI (e.g., check CARGO_CFG_TARGET_OS or CI env var).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:43:13.805524Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:43:13.805524Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ppnr",
+  "title": "[review] schc_adaptation.json: Provenance misquotes spec",
+  "description": "Provenance claims 'appendix says ~21B compressed' but appendix-schc.md line 14 actually says '3 bytes' for Rule 2. The vector's 21-byte value may be correct for total compressed size, but the spec reference is inaccurate.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:42:58.271294Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:42:58.271294Z",
+  "labels": [
+    "review"
+  ]
+}
