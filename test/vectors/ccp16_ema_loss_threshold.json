@@ -1,0 +1,172 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "vector_type": "ccp16_ema_loss_threshold",
+  "description": "EMA packet loss threshold boundary test vectors per spec/02-physical-link.md section 3.5. Per spec pseudocode: if nbr.ema_loss > 0.25: sf = min(12, sf + 1). Tests exact boundary behavior at 0.24, 0.25, and 0.26.",
+  "oracle_provenance": "Independent calculation from spec pseudocode. EMA loss uses alpha=1/4 (diff >> 2). Threshold is strictly > 0.25 (not >=).",
+  "spec_reference": "spec/02-physical-link.md section 3.5 pseudocode select_tx_sf() line: if nbr.ema_loss > 0.25: sf = min(12, sf + 1)",
+  "vectors": [
+    {
+      "name": "ema_loss_0.24_below_threshold",
+      "description": "ema_loss=0.24: below threshold (0.25), no SF bump.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.24
+      },
+      "output": {
+        "sf": 10,
+        "sf_bumped": false,
+        "reason": "0.24 is NOT > 0.25, no SF adjustment"
+      }
+    },
+    {
+      "name": "ema_loss_0.25_at_threshold_exactly",
+      "description": "ema_loss=0.25: exactly at threshold. Spec uses > not >=, so no bump.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.25
+      },
+      "output": {
+        "sf": 10,
+        "sf_bumped": false,
+        "reason": "0.25 is NOT > 0.25 (equal is not greater), no SF adjustment"
+      }
+    },
+    {
+      "name": "ema_loss_0.26_above_threshold",
+      "description": "ema_loss=0.26: above threshold, triggers SF += 1.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.26
+      },
+      "output": {
+        "sf": 11,
+        "sf_bumped": true,
+        "reason": "0.26 > 0.25, SF bumped from 10 to 11"
+      }
+    },
+    {
+      "name": "ema_loss_0.251_minimal_above",
+      "description": "ema_loss=0.251: minimally above threshold, triggers SF bump.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.251
+      },
+      "output": {
+        "sf": 11,
+        "sf_bumped": true,
+        "reason": "0.251 > 0.25, SF bumped"
+      }
+    },
+    {
+      "name": "ema_loss_0.50_high_loss",
+      "description": "ema_loss=0.50: significant packet loss, SF bumped.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.50
+      },
+      "output": {
+        "sf": 11,
+        "sf_bumped": true,
+        "reason": "High loss triggers SF+1 (not +2, single bump per call)"
+      }
+    },
+    {
+      "name": "ema_loss_at_sf11_bump_to_12",
+      "description": "ema_loss above threshold with SF11 baseline: bumps to SF12.",
+      "input": {
+        "assigned_sf": 11,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.30
+      },
+      "output": {
+        "sf": 12,
+        "sf_bumped": true,
+        "reason": "SF11 + 1 = SF12"
+      }
+    },
+    {
+      "name": "ema_loss_at_sf12_capped",
+      "description": "ema_loss above threshold with SF12 baseline: capped at 12.",
+      "input": {
+        "assigned_sf": 12,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.30
+      },
+      "output": {
+        "sf": 12,
+        "sf_bumped": true,
+        "reason": "ema_loss > 0.25 triggers bump attempt, but min(12, 12+1) = 12 (already at maximum)"
+      },
+      "note": "sf_bumped=true because the condition was triggered, even though SF was already maxed"
+    },
+    {
+      "name": "ema_loss_0.00_no_loss",
+      "description": "ema_loss=0.00: perfect link, no SF bump.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.00
+      },
+      "output": {
+        "sf": 10,
+        "sf_bumped": false,
+        "reason": "0.00 is NOT > 0.25"
+      }
+    },
+    {
+      "name": "ema_loss_1.00_total_loss",
+      "description": "ema_loss=1.00: complete packet loss (edge case).",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 1.00
+      },
+      "output": {
+        "sf": 11,
+        "sf_bumped": true,
+        "reason": "1.00 > 0.25, SF bumped (single increment per call)"
+      }
+    },
+    {
+      "name": "ema_loss_with_good_snr_upgrade_blocked",
+      "description": "Good SNR decrements SF, then high loss increments it back.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 3,
+        "utilization": 0,
+        "ema_snr": 12.0,
+        "ema_loss": 0.30
+      },
+      "output": {
+        "sf": 10,
+        "sf_bumped": true,
+        "reason": "Per spec pseudocode: SF-1 for good SNR (10->9), then SF+1 for high loss (9->10) = net 0 change but sf_bumped=true because loss condition triggered"
+      },
+      "notes": "This tests the INTERACTION between SNR upgrade and loss downgrade"
+    }
+  ]
+}

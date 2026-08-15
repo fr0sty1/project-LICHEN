@@ -15,9 +15,7 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "0700010002616263"
     },
     {
@@ -32,9 +30,7 @@
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "0801102030abcd6869"
     },
     {
@@ -49,9 +45,7 @@
         "addr_mode": 2,
         "mic_length": 1,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "1006ffffff000102030405060764617461"
     },
     {
@@ -66,9 +60,7 @@
         "addr_mode": 3,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "0703051234637478"
     },
     {
@@ -83,9 +75,7 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "07000000006d696e"
     },
     {
@@ -100,9 +90,7 @@
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "090100ffff1234626e64"
     },
     {
@@ -117,9 +105,7 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "0400010001"
     },
     {
@@ -134,9 +120,7 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "fe00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9"
     },
     {
@@ -151,9 +135,7 @@
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "fe01ffffffdead000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7"
     },
     {
@@ -203,8 +185,46 @@
       }
     },
     {
+      "name": "encrypted_only_reject",
+      "description": "Encrypted frame without signature MUST be rejected (spec 4.2 bit 6)",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": true
+      },
+      "encoded": "0440000000",
+      "expect": {
+        "error": "encrypted_unsupported"
+      }
+    },
+    {
+      "name": "reserved_bit7_reject",
+      "description": "LLSec bit 7 is reserved and MUST be 0 (spec 4.2)",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 4660,
+        "dst_addr": "aabbccdd",
+        "payload": "aabbccdddeadbeef",
+        "mic": "",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false
+      },
+      "encoded": "1080011234aabbccddaabbccdddeadbeef",
+      "expect": {
+        "error": "reserved_bit_set"
+      }
+    },
+    {
       "name": "signed_encrypted",
-      "description": "Unsupported signature + encrypted combination",
+      "description": "Signature + encryption flags: encrypted check fires first",
       "fields": {
         "epoch": 3,
         "seqnum": 4,
@@ -214,12 +234,11 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": true,
-        "encrypted": true,
-        "signer_iid": "aabbccddaabbccdd"
+        "encrypted": true
       },
-      "encoded": "3dE0030004aabbccddaabbccdd78000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "encoded": "35600300047800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
-        "error": "signed_encrypted_unsupported"
+        "error": "encrypted_unsupported"
       }
     },
     {
@@ -257,9 +276,7 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false,
-        "signer_iid": ""
-      },
+        "encrypted": false      },
       "encoded": "ff00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa",
       "expect": {
         "error": "frame_body_exceeds_254"

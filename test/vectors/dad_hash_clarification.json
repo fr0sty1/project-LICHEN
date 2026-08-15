@@ -1,0 +1,106 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "vector_type": "dad_hash_clarification",
+  "description": "DAD (Duplicate Address Detection) hash algorithm clarification vectors. Spec section 4.5 contains two conflicting pseudocode blocks: one uses crc32_ieee(key=0x4c494348454e), the other uses fnv1a32(basis=0x811c9dc5). This file documents the authoritative resolution and provides test vectors for both algorithms to ensure implementations use the correct one.",
+  "oracle_provenance": "Independent implementation of both hash algorithms. CRC32-IEEE uses polynomial 0x04C11DB7 with initial value truncated from 0x4c494348454e to 0x4348454e (32-bit). FNV-1a32 uses basis 0x811c9dc5 and prime 0x01000193.",
+  "spec_reference": "spec/02-physical-link.md section 4.5 - DAD Retry Strategy",
+  "resolution": {
+    "authoritative_algorithm": "crc32_ieee",
+    "initial_value": "0x4348454e",
+    "initial_value_source": "ASCII 'LICHEN' (0x4c494348454e) truncated to 32 bits",
+    "note": "The fnv1a32 pseudocode in section 4.5 appears to be a copy-paste error from the channel selection algorithm in section 02a. Short address derivation uses CRC32-IEEE per the existing short_addr_dad.json vectors which are the authoritative source."
+  },
+  "vectors": [
+    {
+      "name": "eui64_0011223344556677_crc32",
+      "description": "Short address derivation using crc32_ieee (authoritative)",
+      "algorithm": "crc32_ieee",
+      "eui64": "0011223344556677",
+      "eui64_bytes": [0, 17, 34, 51, 68, 85, 102, 119],
+      "crc32_init": "0x4348454e",
+      "full_crc32": "0x0000056e",
+      "derived_addr": 1390,
+      "derived_hex": "0x056e"
+    },
+    {
+      "name": "eui64_0011223344556677_fnv1a",
+      "description": "Short address derivation using fnv1a32 (NOT authoritative, for comparison only)",
+      "algorithm": "fnv1a32",
+      "eui64": "0011223344556677",
+      "eui64_bytes": [0, 17, 34, 51, 68, 85, 102, 119],
+      "fnv_basis": "0x811c9dc5",
+      "fnv_prime": "0x01000193",
+      "full_fnv": "0x373e1bbd",
+      "derived_addr": 7101,
+      "derived_hex": "0x1bbd",
+      "note": "Different result from crc32_ieee - this algorithm is NOT used for DAD"
+    },
+    {
+      "name": "eui64_0102030405060708_crc32",
+      "description": "Second test EUI using crc32_ieee",
+      "algorithm": "crc32_ieee",
+      "eui64": "0102030405060708",
+      "eui64_bytes": [1, 2, 3, 4, 5, 6, 7, 8],
+      "crc32_init": "0x4348454e",
+      "derived_addr": 43100,
+      "derived_hex": "0xa85c"
+    },
+    {
+      "name": "eui64_0102030405060708_fnv1a",
+      "description": "Second test EUI using fnv1a32 (NOT authoritative)",
+      "algorithm": "fnv1a32",
+      "eui64": "0102030405060708",
+      "fnv_basis": "0x811c9dc5",
+      "derived_addr": 26509,
+      "derived_hex": "0x678d",
+      "note": "Different result - confirms algorithms produce different outputs"
+    },
+    {
+      "name": "seed_mixing_crc32_vs_fnv1a",
+      "description": "Seed mixing comparison: both algorithms XOR seed into last 4 bytes",
+      "eui64": "0011223344556677",
+      "seed": 1,
+      "crc32_result": {
+        "mixed_eui64": "0011223345556676",
+        "derived_addr": 25099,
+        "derived_hex": "0x620b"
+      },
+      "fnv1a_result": {
+        "mixed_eui64": "0011223345556676",
+        "derived_addr_would_be": 58742,
+        "note": "NOT the authoritative result"
+      }
+    },
+    {
+      "name": "algorithm_selection_rule",
+      "description": "Rule for choosing which hash algorithm to use in LICHEN",
+      "rules": [
+        {
+          "use_case": "Short address derivation (DAD)",
+          "algorithm": "crc32_ieee",
+          "initial_value": "0x4348454e",
+          "spec_section": "02-physical-link.md 4.5 first pseudocode block"
+        },
+        {
+          "use_case": "Channel selection (CCP-9, CCP-12)",
+          "algorithm": "fnv1a32",
+          "basis": "0x811c9dc5",
+          "spec_section": "02a-coordinated-capacity.md 2a.3"
+        },
+        {
+          "use_case": "TDMA slot assignment",
+          "algorithm": "fnv1a32",
+          "basis": "0x811c9dc5",
+          "spec_section": "02a-coordinated-capacity.md 2a.2"
+        },
+        {
+          "use_case": "SF hash assignment (fallback)",
+          "algorithm": "fnv1a32",
+          "basis": "0x811c9dc5",
+          "spec_section": "02-physical-link.md 3.4"
+        }
+      ]
+    }
+  ]
+}

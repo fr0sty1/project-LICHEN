@@ -42,7 +42,8 @@
               {"$ref": "#/definitions/schnorr48_vector"},
               {"$ref": "#/definitions/hash_32_vector"},
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
-              {"$ref": "#/definitions/ipv6_malformed_vector"}
+              {"$ref": "#/definitions/ipv6_malformed_vector"},
+              {"$ref": "#/definitions/schc_adaptation_vector"}
             ]
           }
         }
@@ -1273,6 +1274,56 @@
           "additionalProperties": false
         }
       ]
+    },
+    "schc_adaptation_vector": {
+      "type": "object",
+      "required": ["name", "category", "provenance"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "category": {"type": "string", "enum": ["rejection", "uncompressed", "port_boundary", "fragmentation_direction", "compressed_size", "padding", "single_active", "rule_version", "ack_bitmap"]},
+        "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+        "description": {"type": "string"},
+        "provenance": {"type": "string", "minLength": 1},
+        "wire": {"$ref": "#/definitions/hex"},
+        "packet": {"$ref": "#/definitions/hex"},
+        "compressed": {"$ref": "#/definitions/hex"},
+        "compressed_size": {"type": "integer", "minimum": 1},
+        "rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expect_error": {"type": "string"},
+        "expect_rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
+        "message_type": {"type": "string"},
+        "window": {"type": "integer", "minimum": 0, "maximum": 1},
+        "c_bit": {"type": "integer", "minimum": 0, "maximum": 1},
+        "direction": {"type": "string"},
+        "src_port": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "dst_port": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "port_residue_bits": {"type": ["integer", "null"]},
+        "src_residue": {"type": "string"},
+        "dst_residue": {"type": "string"},
+        "matches_rule_0_1": {"type": "boolean"},
+        "matches_rule_7": {"type": "boolean"},
+        "residue_bit_length": {"type": "integer", "minimum": 0},
+        "residue_byte_length": {"type": "integer", "minimum": 0},
+        "expected_compressed_size_approx": {"type": "integer", "minimum": 0},
+        "fields": {"type": "object"},
+        "fields_note": {"type": "string"},
+        "residue_bits": {"type": "integer", "minimum": 0},
+        "padding_bits": {"type": "integer", "minimum": 0},
+        "total_bits": {"type": "integer", "minimum": 0},
+        "total_bytes": {"type": "integer", "minimum": 0},
+        "t_value": {"type": "integer", "minimum": 0, "maximum": 3},
+        "scenario": {"type": "string"},
+        "expect_reassembly_reset": {"type": "boolean"},
+        "option_type": {"type": "integer", "minimum": 0, "maximum": 255},
+        "option_length": {"type": "integer", "minimum": 0, "maximum": 255},
+        "version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "local_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "remote_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "bitmap": {"type": ["string", "null"]},
+        "bitmap_description": {"type": "string"},
+        "assigned_fcns": {"type": "array", "items": {"type": "integer"}}
+      }
     }
   }
 }

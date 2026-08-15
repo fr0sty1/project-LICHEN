@@ -72,28 +72,30 @@
       }
     },
     {
-      "name": "encrypted_frame",
-      "description": "Encrypted unsigned frame with extended address",
+      "name": "encrypted_only_reject",
+      "description": "Encrypted frame without signature MUST be rejected (spec 4.2 bit 6)",
+      "input_hex": "0440000000",
+      "expected": {
+        "error": true,
+        "error_type": "encrypted_unsupported"
+      }
+    },
+    {
+      "name": "encrypted_with_payload_reject",
+      "description": "Encrypted unsigned frame with extended address - MUST reject",
       "input_hex": "1846102000aabbccddeeff001144415441123456789abcdef0",
       "expected": {
-        "addr_mode": 2,
-        "mic_length": 1,
-        "signature_present": false,
-        "encrypted": true,
-        "epoch": 16,
-        "seqnum": 8192,
-        "dst_addr_hex": "aabbccddeeff0011",
-        "payload_hex": "44415441123456789abcdef0",
-        "mic_hex": ""
+        "error": true,
+        "error_type": "encrypted_unsupported"
       }
     },
     {
       "name": "signed_encrypted_unsupported",
-      "description": "Signature and encryption flags are rejected together",
+      "description": "Signature + encryption flags: encrypted check fires first",
       "input_hex": "356003000478000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expected": {
         "error": true,
-        "error_type": "signed_encrypted_unsupported"
+        "error_type": "encrypted_unsupported"
       }
     },
     {
@@ -123,12 +125,12 @@
       }
     },
     {
-      "name": "signer_iid_no_signature",
-      "description": "Signer IID flag set without signature",
+      "name": "reserved_bit7_reject",
+      "description": "LLSec bit 7 is reserved and MUST be 0 (spec 4.2)",
       "input_hex": "0880011234aabbccdd",
       "expected": {
         "error": true,
-        "error_type": "signer_iid_no_signature"
+        "error_type": "reserved_bit_set"
       }
     },
     {
@@ -156,6 +158,57 @@
       "expected": {
         "error": true,
         "error_type": "empty_frame"
+      }
+    },
+    {
+      "name": "body_length_3_underflow",
+      "description": "Frame body length 3 is below minimum (spec requires 4-254)",
+      "input_hex": "03000102",
+      "expected": {
+        "error": true,
+        "error_type": "frame_too_short"
+      }
+    },
+    {
+      "name": "body_length_4_minimum_valid",
+      "description": "Frame body length 4 is minimum valid: LLSec(1) + Epoch(1) + SeqNum(2)",
+      "input_hex": "0400011234",
+      "expected": {
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "epoch": 1,
+        "seqnum": 4660,
+        "dst_addr_hex": "",
+        "payload_hex": "",
+        "mic_hex": ""
+      }
+    },
+    {
+      "name": "body_length_255_exceeds_limit",
+      "description": "Frame body length 255 exceeds maximum (spec allows 4-254 only)",
+      "input_hex": "ff00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa",
+      "expected": {
+        "error": true,
+        "error_type": "frame_too_large"
+      }
+    },
+    {
+      "name": "mic_selector_1_unsigned",
+      "description": "MIC selector 1 (compatibility), signature_present=false",
+      "input_hex": "0704010002616263",
+      "expected": {
+        "addr_mode": 0,
+        "mic_length": 1,
+        "signature_present": false,
+        "encrypted": false,
+        "epoch": 1,
+        "seqnum": 2,
+        "dst_addr_hex": "",
+        "payload_hex": "616263",
+        "mic_hex": "",
+        "notes": "Selector 1 behaves identically to selector 0 per spec"
       }
     }
   ]

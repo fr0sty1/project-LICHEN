@@ -1,0 +1,153 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "vector_type": "mic_length_selector",
+  "description": "MIC Length selector (LLSec bits 2-4) semantics test vectors per spec/02-physical-link.md section 4.2. Spec says: '0 or 1=compatibility selector; 2-7=reserved'. This file tests the difference (if any) between selector values 0 and 1.",
+  "oracle_provenance": "Independent analysis of spec text. The spec does not define any behavioral difference between selector 0 and selector 1 - both result in no MIC when signature_present=false, or 48-byte Schnorr signature when signature_present=true.",
+  "spec_reference": "spec/02-physical-link.md section 4.2 - Link-Layer Security (LLSec) Byte",
+  "clarification": {
+    "selector_0_behavior": "No MIC field (0 bytes) when signature_present=false; 48-byte Schnorr when signature_present=true",
+    "selector_1_behavior": "Identical to selector 0 in current spec. Reserved for future compatibility if MIC format changes.",
+    "reserved_2_7": "MUST be rejected by receivers",
+    "rationale": "The 'compatibility selector' mechanism allows future protocol versions to signal a different MIC format. Current implementations MUST treat 0 and 1 identically."
+  },
+  "vectors": [
+    {
+      "name": "mic_length_0_unsigned",
+      "description": "MIC selector 0, signature_present=false: no MIC field",
+      "input_hex": "0700010002616263",
+      "llsec_byte": "0x00",
+      "expected": {
+        "mic_length_selector": 0,
+        "signature_present": false,
+        "mic_bytes": 0,
+        "valid": true
+      }
+    },
+    {
+      "name": "mic_length_1_unsigned",
+      "description": "MIC selector 1, signature_present=false: no MIC field (identical to selector 0)",
+      "input_hex": "0704010002616263",
+      "llsec_byte": "0x04",
+      "expected": {
+        "mic_length_selector": 1,
+        "signature_present": false,
+        "mic_bytes": 0,
+        "valid": true,
+        "note": "Selector 1 behaves identically to selector 0 per spec"
+      }
+    },
+    {
+      "name": "mic_length_0_signed",
+      "description": "MIC selector 0 with signature_present=true: 48-byte Schnorr signature",
+      "input_hex": "372001000261626398f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
+      "llsec_byte": "0x20",
+      "expected": {
+        "mic_length_selector": 0,
+        "signature_present": true,
+        "mic_bytes": 48,
+        "valid": true
+      }
+    },
+    {
+      "name": "mic_length_1_signed",
+      "description": "MIC selector 1 with signature_present=true: 48-byte Schnorr signature (identical to selector 0)",
+      "input_hex": "372401000261626398f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
+      "llsec_byte": "0x24",
+      "expected": {
+        "mic_length_selector": 1,
+        "signature_present": true,
+        "mic_bytes": 48,
+        "valid": true,
+        "note": "Selector 1 behaves identically to selector 0 per spec"
+      }
+    },
+    {
+      "name": "mic_length_2_reserved_reject",
+      "description": "MIC selector 2 is reserved: MUST reject",
+      "input_hex": "0408000000",
+      "llsec_byte": "0x08",
+      "expected": {
+        "mic_length_selector": 2,
+        "error": true,
+        "error_type": "reserved_mic_length"
+      }
+    },
+    {
+      "name": "mic_length_3_reserved_reject",
+      "description": "MIC selector 3 is reserved: MUST reject",
+      "input_hex": "040c000000",
+      "llsec_byte": "0x0c",
+      "expected": {
+        "mic_length_selector": 3,
+        "error": true,
+        "error_type": "reserved_mic_length"
+      }
+    },
+    {
+      "name": "mic_length_7_reserved_reject",
+      "description": "MIC selector 7 (max value) is reserved: MUST reject",
+      "input_hex": "041c000000",
+      "llsec_byte": "0x1c",
+      "expected": {
+        "mic_length_selector": 7,
+        "error": true,
+        "error_type": "reserved_mic_length"
+      }
+    },
+    {
+      "name": "selector_0_with_short_addr",
+      "description": "MIC selector 0 with 16-bit address, unsigned",
+      "input_hex": "080102001234abcd68",
+      "llsec_byte": "0x01",
+      "expected": {
+        "addr_mode": 1,
+        "mic_length_selector": 0,
+        "signature_present": false,
+        "dst_addr_hex": "abcd",
+        "valid": true
+      }
+    },
+    {
+      "name": "selector_1_with_short_addr",
+      "description": "MIC selector 1 with 16-bit address, unsigned (identical behavior to selector 0)",
+      "input_hex": "080502001234abcd68",
+      "llsec_byte": "0x05",
+      "expected": {
+        "addr_mode": 1,
+        "mic_length_selector": 1,
+        "signature_present": false,
+        "dst_addr_hex": "abcd",
+        "valid": true,
+        "note": "Selector 1 parses identically to selector 0"
+      }
+    },
+    {
+      "name": "selector_0_with_extended_addr",
+      "description": "MIC selector 0 with 64-bit address, unsigned",
+      "input_hex": "1002ff00010102030405060708aabbccdd",
+      "llsec_byte": "0x02",
+      "expected": {
+        "addr_mode": 2,
+        "mic_length_selector": 0,
+        "signature_present": false,
+        "dst_addr_hex": "0102030405060708",
+        "valid": true
+      }
+    },
+    {
+      "name": "selector_1_with_extended_addr",
+      "description": "MIC selector 1 with 64-bit address, unsigned (identical behavior)",
+      "input_hex": "1006ff00010102030405060708aabbccdd",
+      "llsec_byte": "0x06",
+      "expected": {
+        "addr_mode": 2,
+        "mic_length_selector": 1,
+        "signature_present": false,
+        "dst_addr_hex": "0102030405060708",
+        "valid": true,
+        "note": "Selector 1 parses identically to selector 0"
+      }
+    }
+  ]
+}

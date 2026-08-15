@@ -1,0 +1,128 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "vector_type": "frame_length_boundaries",
+  "description": "Frame body length boundary test vectors per spec/02-physical-link.md section 4.1. Length byte specifies frame body length excluding itself, valid range 4-254 bytes. Tests minimum, maximum, and invalid boundaries.",
+  "oracle_provenance": "Independent calculation from spec: Length byte = total_frame_bytes - 1. Frame body = LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0/2/8) + Payload(var) + MIC(0/48). Minimum unsigned broadcast = 1+1+2+0+0+0 = 4 bytes.",
+  "vectors": [
+    {
+      "name": "body_length_3_underflow",
+      "description": "Frame body length 3 is below minimum (spec requires 4-254). Missing SeqNum high byte.",
+      "input_hex": "03000102",
+      "length_byte": 3,
+      "expected": {
+        "error": true,
+        "error_type": "frame_too_short",
+        "reason": "Body length 3 below minimum 4 bytes (LLSec+Epoch+SeqNum = 4 bytes minimum)"
+      }
+    },
+    {
+      "name": "body_length_4_minimum_valid",
+      "description": "Frame body length 4 is the minimum valid size: LLSec(1) + Epoch(1) + SeqNum(2) = 4 bytes.",
+      "input_hex": "0400011234",
+      "length_byte": 4,
+      "expected": {
+        "valid": true,
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "epoch": 1,
+        "seqnum": 4660,
+        "dst_addr_hex": "",
+        "payload_hex": "",
+        "mic_hex": ""
+      },
+      "notes": "Broadcast with no payload and no signature - minimal control frame"
+    },
+    {
+      "name": "body_length_254_maximum_valid",
+      "description": "Frame body length 254 is the maximum valid size per spec.",
+      "input_hex": "fe00000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "length_byte": 254,
+      "expected": {
+        "valid": true,
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr_hex": "",
+        "payload_len": 250,
+        "mic_hex": ""
+      },
+      "notes": "250 bytes of 0xAA payload (254 - 4 byte fixed header)"
+    },
+    {
+      "name": "body_length_255_exceeds_limit",
+      "description": "Frame body length 255 exceeds maximum (spec allows 4-254 only).",
+      "input_hex": "ff00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa",
+      "length_byte": 255,
+      "expected": {
+        "error": true,
+        "error_type": "frame_body_exceeds_254",
+        "reason": "Length 255 exceeds maximum 254 per spec section 4.1"
+      }
+    },
+    {
+      "name": "body_length_2_severely_truncated",
+      "description": "Frame body length 2 is severely truncated (missing Epoch and SeqNum).",
+      "input_hex": "0200",
+      "length_byte": 2,
+      "expected": {
+        "error": true,
+        "error_type": "frame_too_short",
+        "reason": "Body length 2 cannot contain minimum header (LLSec+Epoch+SeqNum = 4 bytes)"
+      }
+    },
+    {
+      "name": "body_length_1_minimal_truncation",
+      "description": "Frame body length 1 only has LLSec byte.",
+      "input_hex": "0100",
+      "length_byte": 1,
+      "expected": {
+        "error": true,
+        "error_type": "frame_too_short"
+      }
+    },
+    {
+      "name": "body_length_0_empty_body",
+      "description": "Frame body length 0 has no body at all.",
+      "input_hex": "00",
+      "length_byte": 0,
+      "expected": {
+        "error": true,
+        "error_type": "frame_too_short"
+      }
+    },
+    {
+      "name": "body_length_5_with_payload",
+      "description": "Frame body length 5: minimum header (4) + 1 byte payload.",
+      "input_hex": "050001123455",
+      "length_byte": 5,
+      "expected": {
+        "valid": true,
+        "addr_mode": 0,
+        "epoch": 1,
+        "seqnum": 4660,
+        "payload_hex": "55",
+        "payload_len": 1
+      }
+    },
+    {
+      "name": "body_length_6_with_short_addr",
+      "description": "Frame body length 6: header (4) + short addr (2) + no payload.",
+      "input_hex": "0601011234abcd",
+      "length_byte": 6,
+      "expected": {
+        "valid": true,
+        "addr_mode": 1,
+        "epoch": 1,
+        "seqnum": 4660,
+        "dst_addr_hex": "abcd",
+        "payload_hex": ""
+      }
+    }
+  ]
+}

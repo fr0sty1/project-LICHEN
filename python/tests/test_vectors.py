@@ -2718,3 +2718,420 @@ def test_short_addr_dad_vector_coverage() -> None:
 
     missing = expected - vector_names
     assert not missing, f"Missing vectors: {missing}"
+
+
+# --- SCHC Adaptation Vectors ---
+
+
+def _schc_adaptation_cases():
+    doc = _load("schc_adaptation.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _schc_adaptation_cases())
+def test_schc_adaptation_vector(name: str, vector: dict) -> None:
+    """Validate SCHC adaptation layer vectors per spec/03-adaptation.md.
+
+    Tests unknown rule ID rejection (P0), Rule 255 uncompressed fallback,
+    port boundary compression, and control message formats.
+    """
+    from lichen.schc.context import NoMatchingRuleError, SchcContext
+    from lichen.schc.fragment import Ack, ack_request, receiver_abort, sender_abort
+    from lichen.schc.rules import RULE_SET_VERSION, SchcRuleVersionOption
+
+    category = vector["category"]
+
+    if category == "rejection":
+        # P0 security-critical: unknown rule IDs must reject cleanly
+        wire = bytes.fromhex(vector["wire"]) if vector["wire"] else b""
+        ctx = SchcContext()
+
+        if vector["expect_error"] == "unknown_rule_id":
+            with pytest.raises(NoMatchingRuleError) as exc_info:
+                ctx.decompress(wire)
+            assert str(vector["expect_rule_id"]) in str(exc_info.value)
+        elif vector["expect_error"] == "empty_packet":
+            with pytest.raises(NoMatchingRuleError) as exc_info:
+                ctx.decompress(wire)
+            assert "empty" in str(exc_info.value).lower()
+
+    elif category == "uncompressed":
+        # Rule 255 uncompressed fallback round-trip
+        packet = bytes.fromhex(vector["packet"])
+        compressed = bytes.fromhex(vector["compressed"])
+        assert compressed[0] == 255, f"{name}: expected Rule 255 prefix"
+        assert len(compressed) == vector["compressed_size"], f"{name}: compressed size mismatch"
+        assert compressed == bytes([255]) + packet, f"{name}: Rule 255 format mismatch"
+        assert decompress_packet(compressed) == packet, f"{name}: decompress mismatch"
+
+    elif category == "port_boundary":
+        # Port compression boundary tests
+        from lichen.schc.rules import LINK_LOCAL_COAP_RULE, UDP_PORT_RULE
+
+        src_port = vector["src_port"]
+        dst_port = vector["dst_port"]
+
+        if vector["matches_rule_0_1"]:
+            # MSB(12) match: top 12 bits must equal 0x163 (5683 >> 4)
+            assert (src_port >> 4) == (5683 >> 4), f"{name}: src port MSB mismatch"
+            assert (dst_port >> 4) == (5683 >> 4), f"{name}: dst port MSB mismatch"
+            # LSB(4) residue
+            src_lsb = src_port & 0x0F
+            dst_lsb = dst_port & 0x0F
+            assert format(src_lsb, "x") == vector["src_residue"], f"{name}: src residue"
+            assert format(dst_lsb, "x") == vector["dst_residue"], f"{name}: dst residue"
+        else:
+            # Outside compressible range: MSB(12) does not match
+            assert (src_port >> 4) != (5683 >> 4), f"{name}: should NOT match MSB(12)"
+
+    elif category == "fragmentation_direction":
+        # Rule 0x79 B-to-A direction vectors
+        rule_id = vector["rule_id"]
+        wire = bytes.fromhex(vector["wire"])
+        msg_type = vector["message_type"]
+
+        assert wire[0] == rule_id, f"{name}: rule ID mismatch"
+
+        if msg_type == "ack_success":
+            c_bit = vector["c_bit"]
+            window = vector["window"]
+            assert (wire[1] >> 6) & 1 == c_bit, f"{name}: C bit mismatch"
+            assert (wire[1] >> 7) == window, f"{name}: window mismatch"
+            expected_ack = Ack(rule_id, window, complete=True).to_bytes()
+            assert wire == expected_ack, f"{name}: ACK success mismatch"
+        elif msg_type == "ack_req":
+            window = vector["window"]
+            expected = ack_request(rule_id, window)
+            assert wire == expected, f"{name}: ACK req mismatch"
+        elif msg_type == "sender_abort":
+            expected = sender_abort(rule_id)
+            assert wire == expected, f"{name}: sender abort mismatch"
+        elif msg_type == "receiver_abort":
+            expected = receiver_abort(rule_id)
+            assert wire == expected, f"{name}: receiver abort mismatch"
+
+    elif category == "compressed_size":
+        # Validate compressed size calculations
+        from lichen.schc.codec import residue_bit_length, residue_byte_length
+        from lichen.schc.rules import RULES
+
+        rule_id = vector["rule_id"]
+        if rule_id in RULES:
+            rule = RULES[rule_id]
+            if "residue_bit_length" in vector:
+                assert residue_bit_length(rule) == vector["residue_bit_length"], (
+                    f"{name}: bit length mismatch"
+                )
+            if "residue_byte_length" in vector:
+                assert residue_byte_length(rule) == vector["residue_byte_length"], (
+                    f"{name}: byte length mismatch"
+                )
+
+    elif category == "padding":
+        # Octet alignment padding tests
+        residue_bits = vector["residue_bits"]
+        padding_bits = vector["padding_bits"]
+        total_bits = vector["total_bits"]
+        total_bytes = vector["total_bytes"]
+        # Verify padding calculation
+        computed_padding = (-residue_bits) % 8
+        assert computed_padding == padding_bits, f"{name}: padding mismatch"
+        assert residue_bits + padding_bits == total_bits, f"{name}: total bits mismatch"
+        assert total_bits // 8 == total_bytes, f"{name}: total bytes mismatch"
+
+    elif category == "rule_version":
+        # SCHC Rule Version Option tests
+        if "wire" in vector:
+            wire = bytes.fromhex(vector["wire"])
+            version = vector["version"]
+            opt = SchcRuleVersionOption(version=version)
+            assert opt.to_bytes() == wire, f"{name}: serialization mismatch"
+            parsed = SchcRuleVersionOption.from_bytes(wire)
+            assert parsed.version == version, f"{name}: parse mismatch"
+        if vector.get("expect_error") == "version_mismatch":
+            from lichen.schc.context import VersionMismatchError, check_version_compatibility
+
+            with pytest.raises(VersionMismatchError):
+                check_version_compatibility(vector["local_version"], vector["remote_version"])
+
+    elif category == "single_active":
+        # T=0 single active packet constraint tests
+        rule_id = vector["rule_id"]
+        t_value = vector["t_value"]
+        assert t_value == 0, f"{name}: T must be 0 for single-active constraint"
+        assert vector["expect_reassembly_reset"] is True, f"{name}: expect reset"
+        # This is a behavioral constraint - validated by fragmentation implementation
+
+    elif category == "ack_bitmap":
+        # ACK bitmap format tests
+        rule_id = vector["rule_id"]
+        window = vector["window"]
+        c_bit = vector["c_bit"]
+        wire = bytes.fromhex(vector["wire"])
+
+        assert wire[0] == rule_id, f"{name}: rule ID mismatch"
+        parsed_c = (wire[1] >> 6) & 1
+        assert parsed_c == c_bit, f"{name}: C bit mismatch"
+
+        if c_bit == 1:
+            # Complete: no bitmap
+            assert vector["bitmap"] is None
+            expected = Ack(rule_id, window, complete=True).to_bytes()
+            assert wire == expected, f"{name}: ACK complete mismatch"
+
+
+def test_schc_adaptation_vector_coverage() -> None:
+    """Verify schc_adaptation.json covers all required categories."""
+    cases = _schc_adaptation_cases()
+    categories = {vector["category"] for _, vector in cases}
+    expected = {
+        "rejection",
+        "uncompressed",
+        "port_boundary",
+        "fragmentation_direction",
+        "compressed_size",
+        "padding",
+        "single_active",
+        "rule_version",
+        "ack_bitmap",
+    }
+    missing = expected - categories
+    assert not missing, f"Missing categories: {missing}"
+
+    # Verify P0 vectors are present
+    p0_vectors = [v for _, v in cases if v.get("priority") == "P0"]
+    assert len(p0_vectors) >= 4, "Must have at least 4 P0 (security-critical) vectors"
+
+
+# --- Frame Length Boundary Vectors ---
+
+
+def _frame_length_boundary_cases():
+    doc = _load("frame_length_boundaries.json")
+    assert doc["format_version"] == 2
+    assert doc["vector_type"] == "frame_length_boundaries"
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _frame_length_boundary_cases())
+def test_frame_length_boundary_vector(name: str, vector: dict) -> None:
+    """Validate frame body length boundary handling per spec section 4.1.
+
+    Tests minimum (4), maximum (254), and invalid (3, 255) frame lengths.
+    """
+    wire = bytes.fromhex(vector["input_hex"])
+    expected = vector["expected"]
+
+    if expected.get("error"):
+        with pytest.raises(FrameError):
+            LichenFrame.from_bytes(wire)
+    else:
+        frame = LichenFrame.from_bytes(wire)
+        assert frame.epoch == expected["epoch"], f"{name}: epoch mismatch"
+        assert frame.seqnum == expected["seqnum"], f"{name}: seqnum mismatch"
+        if "addr_mode" in expected:
+            assert int(frame.addr_mode) == expected["addr_mode"], f"{name}: addr_mode mismatch"
+        if "payload_hex" in expected:
+            assert frame.payload.hex() == expected["payload_hex"], f"{name}: payload mismatch"
+        if "dst_addr_hex" in expected:
+            assert frame.dst_addr.hex() == expected["dst_addr_hex"], f"{name}: dst_addr mismatch"
+
+
+def test_frame_length_boundary_coverage() -> None:
+    """Verify frame_length_boundaries.json covers critical boundaries."""
+    doc = _load("frame_length_boundaries.json")
+    names = {v["name"] for v in doc["vectors"]}
+
+    # Critical boundary tests
+    assert "body_length_3_underflow" in names, "Must test length 3 (underflow)"
+    assert "body_length_4_minimum_valid" in names, "Must test length 4 (minimum)"
+    assert "body_length_254_maximum_valid" in names, "Must test length 254 (maximum)"
+    assert "body_length_255_exceeds_limit" in names, "Must test length 255 (exceeds)"
+
+
+# --- CCP16 Utilization Vectors ---
+
+
+def _ccp16_utilization_cases():
+    doc = _load("ccp16_utilization.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_utilization_cases())
+def test_ccp16_utilization_vector(name: str, vector: dict) -> None:
+    """Validate channel utilization handling per spec section 3.5.
+
+    Tests utilization thresholds: 0 (idle), 150 (first threshold),
+    200 (second threshold), 255 (saturated), and tx_allowed=false paths.
+    """
+    inp = vector["input"]
+    out = vector["output"]
+
+    # Simulate select_tx_sf logic from spec pseudocode
+    sf = inp.get("assigned_sf", 10)
+    density = inp.get("density", 5)
+    utilization = inp.get("utilization", 0)
+    ema_loss = inp.get("ema_loss", 0.0)
+    tx_allowed = True
+
+    # Step 3: density/utilization >150 check
+    if density > 10 or utilization > 150:
+        sf = min(12, sf + 2)
+
+    # Step 4: SNR upgrade check (not tested here, but would apply)
+    # Step 5: loss check (separate from utilization)
+    if ema_loss > 0.25:
+        sf = min(12, sf + 1)
+
+    # Step 6: utilization > 200 check - returns SF=12, false directly per spec
+    if utilization > 200:
+        sf = 12  # Spec: "return 12, false" overrides computed SF
+        tx_allowed = False
+
+    assert sf == out["sf"], f"{name}: SF mismatch (got {sf}, expected {out['sf']})"
+    assert tx_allowed == out["tx_allowed"], f"{name}: tx_allowed mismatch"
+
+
+def test_ccp16_utilization_coverage() -> None:
+    """Verify ccp16_utilization.json covers required thresholds."""
+    doc = _load("ccp16_utilization.json")
+    names = {v["name"] for v in doc["vectors"]}
+
+    # Required threshold vectors
+    assert "utilization_0_idle_channel" in names
+    assert "utilization_150_threshold_1_boundary" in names
+    assert "utilization_200_threshold_2_boundary" in names
+    assert "utilization_201_tx_blocked" in names
+    assert "utilization_255_saturated" in names
+
+
+# --- CCP16 EMA Loss Threshold Vectors ---
+
+
+def _ccp16_ema_loss_cases():
+    doc = _load("ccp16_ema_loss_threshold.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_ema_loss_cases())
+def test_ccp16_ema_loss_threshold_vector(name: str, vector: dict) -> None:
+    """Validate EMA packet loss threshold boundary per spec section 3.5.
+
+    Tests exact boundary at 0.25: loss <= 0.25 does NOT bump SF,
+    loss > 0.25 bumps SF by 1 (capped at 12).
+    """
+    inp = vector["input"]
+    out = vector["output"]
+
+    sf = inp.get("assigned_sf", 10)
+    ema_loss = inp.get("ema_loss", 0.0)
+    ema_snr = inp.get("ema_snr", 5.0)
+    density = inp.get("density", 5)
+
+    # Per spec pseudocode order:
+    # 1. if (ema_snr > 8) and (density < 5): sf = max(7, sf - 1)
+    if ema_snr > 8 and density < 5:
+        sf = max(7, sf - 1)
+
+    # 2. if ema_loss > 0.25: sf = min(12, sf + 1)
+    expected_bump = ema_loss > 0.25
+    if expected_bump:
+        sf = min(12, sf + 1)
+
+    assert out["sf"] == sf, f"{name}: SF mismatch"
+    assert out["sf_bumped"] == expected_bump, f"{name}: sf_bumped mismatch"
+
+
+def test_ccp16_ema_loss_coverage() -> None:
+    """Verify ccp16_ema_loss_threshold.json covers boundary conditions."""
+    doc = _load("ccp16_ema_loss_threshold.json")
+    names = {v["name"] for v in doc["vectors"]}
+
+    # Boundary condition vectors
+    assert "ema_loss_0.24_below_threshold" in names
+    assert "ema_loss_0.25_at_threshold_exactly" in names
+    assert "ema_loss_0.26_above_threshold" in names
+
+
+# --- DAD Hash Algorithm Clarification Vectors ---
+
+
+def _dad_hash_clarification_cases():
+    doc = _load("dad_hash_clarification.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"] if "algorithm" in v]
+
+
+@pytest.mark.parametrize("name,vector", _dad_hash_clarification_cases())
+def test_dad_hash_clarification_vector(name: str, vector: dict) -> None:
+    """Validate DAD hash algorithm selection per spec section 4.5.
+
+    CRC32-IEEE with init 0x4348454e is authoritative for short address derivation.
+    FNV-1a32 is used for channel/slot selection only.
+    """
+    if vector["algorithm"] == "crc32_ieee":
+        eui64 = bytes.fromhex(vector["eui64"])
+        expected = vector["derived_addr"]
+        derived = derive_short_addr(eui64)
+        assert derived == expected, f"{name}: CRC32 derivation mismatch"
+
+    elif vector["algorithm"] == "fnv1a32":
+        # FNV-1a is NOT used for DAD - verify it produces different result
+        eui64 = bytes.fromhex(vector["eui64"])
+        fnv_result = hash_32_fnv1a(eui64) & 0xFFFF
+        expected_fnv = vector["derived_addr"]
+        assert fnv_result == expected_fnv, f"{name}: FNV result verification"
+
+
+def test_dad_hash_algorithm_resolution() -> None:
+    """Verify DAD uses CRC32-IEEE, not FNV-1a32."""
+    doc = _load("dad_hash_clarification.json")
+    resolution = doc["resolution"]
+
+    assert resolution["authoritative_algorithm"] == "crc32_ieee"
+    assert resolution["initial_value"] == "0x4348454e"
+
+
+# --- MIC Length Selector Vectors ---
+
+
+def _mic_length_selector_cases():
+    doc = _load("mic_length_selector.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _mic_length_selector_cases())
+def test_mic_length_selector_vector(name: str, vector: dict) -> None:
+    """Validate MIC length selector (LLSec bits 2-4) per spec section 4.2.
+
+    Selector 0 and 1 are compatibility selectors (identical behavior).
+    Selectors 2-7 are reserved and MUST be rejected.
+    """
+    wire = bytes.fromhex(vector["input_hex"])
+    expected = vector["expected"]
+
+    if expected.get("error"):
+        with pytest.raises(FrameError):
+            LichenFrame.from_bytes(wire)
+    else:
+        frame = LichenFrame.from_bytes(wire)
+        assert int(frame.mic_length) == expected["mic_length_selector"], f"{name}: selector mismatch"
+        assert frame.signature_present == expected["signature_present"], f"{name}: sig mismatch"
+        if "addr_mode" in expected:
+            assert int(frame.addr_mode) == expected["addr_mode"], f"{name}: addr_mode mismatch"
+
+
+def test_mic_length_selector_coverage() -> None:
+    """Verify mic_length_selector.json covers selector 0, 1, and reserved values."""
+    doc = _load("mic_length_selector.json")
+    names = {v["name"] for v in doc["vectors"]}
+
+    # Must test both compatibility selectors
+    assert any("selector_0" in n or "mic_length_0" in n for n in names)
+    assert any("selector_1" in n or "mic_length_1" in n for n in names)
+    # Must test reserved rejection
+    assert any("reserved" in n for n in names)

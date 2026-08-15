@@ -1,0 +1,177 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "vector_type": "ccp16_utilization",
+  "description": "Channel utilization and tx_allowed test vectors per spec/02-physical-link.md section 3.5 and spec/02a-coordinated-capacity.md section 2a.7. Utilization is uint8 0..255 representing fractional airtime: util_norm = utilization / 255. select_tx_sf() returns (sf, tx_allowed) where tx_allowed=false when utilization > 200.",
+  "oracle_provenance": "Independent calculation from spec pseudocode. AdaptiveSFSelect: if utilization > 150: SF += 2; if utilization > 200: return (SF, false).",
+  "spec_reference": "spec/02-physical-link.md section 3.5 pseudocode select_tx_sf()",
+  "vectors": [
+    {
+      "name": "utilization_0_idle_channel",
+      "description": "utilization=0: completely idle channel, no SF adjustment, tx allowed.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 0,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "util_norm": 0.0,
+        "sf": 10,
+        "tx_allowed": true,
+        "sf_adjustment_reason": "none"
+      }
+    },
+    {
+      "name": "utilization_150_threshold_1_boundary",
+      "description": "utilization=150: exactly at first threshold. SF += 2 per spec.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 150,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "util_norm": 0.588235,
+        "sf": 10,
+        "tx_allowed": true,
+        "sf_adjustment_reason": "none",
+        "note": "utilization=150 does NOT trigger SF+2 because condition is utilization > 150, not >="
+      }
+    },
+    {
+      "name": "utilization_151_above_threshold_1",
+      "description": "utilization=151: just above first threshold, triggers SF += 2.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 151,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "util_norm": 0.592157,
+        "sf": 12,
+        "tx_allowed": true,
+        "sf_adjustment_reason": "utilization > 150 triggers SF += 2"
+      }
+    },
+    {
+      "name": "utilization_200_threshold_2_boundary",
+      "description": "utilization=200: exactly at second threshold. tx still allowed per spec (> not >=).",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 200,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "util_norm": 0.784314,
+        "sf": 12,
+        "tx_allowed": true,
+        "sf_adjustment_reason": "utilization > 150 triggers SF += 2, but utilization=200 exactly does not block tx"
+      }
+    },
+    {
+      "name": "utilization_201_tx_blocked",
+      "description": "utilization=201: above second threshold. tx NOT allowed.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 201,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "util_norm": 0.788235,
+        "sf": 12,
+        "tx_allowed": false,
+        "sf_adjustment_reason": "utilization > 200 triggers tx_allowed=false and SF=12"
+      }
+    },
+    {
+      "name": "utilization_255_saturated",
+      "description": "utilization=255: fully saturated channel, tx blocked.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 255,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "util_norm": 1.0,
+        "sf": 12,
+        "tx_allowed": false,
+        "sf_adjustment_reason": "utilization > 200 triggers tx_allowed=false"
+      }
+    },
+    {
+      "name": "utilization_high_with_sf7_baseline",
+      "description": "High utilization with SF7 baseline: SF capped at 12.",
+      "input": {
+        "assigned_sf": 7,
+        "density": 5,
+        "utilization": 201,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": false,
+        "sf_adjustment_reason": "SF7 + 2 (utilization>150) capped to 12; utilization>200 blocks tx"
+      }
+    },
+    {
+      "name": "utilization_moderate_density_high",
+      "description": "utilization=100 but density=11: density triggers SF+2 before utilization check.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 11,
+        "utilization": 100,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": true,
+        "sf_adjustment_reason": "density > 10 triggers SF += 2"
+      }
+    },
+    {
+      "name": "utilization_with_high_loss",
+      "description": "utilization=100 with ema_loss=0.30: loss triggers additional SF+1.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 100,
+        "ema_snr": 5.0,
+        "ema_loss": 0.30
+      },
+      "output": {
+        "sf": 11,
+        "tx_allowed": true,
+        "sf_adjustment_reason": "ema_loss > 0.25 triggers SF += 1"
+      }
+    },
+    {
+      "name": "utilization_combined_factors",
+      "description": "utilization=151 and ema_loss=0.30: both factors apply.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "utilization": 151,
+        "ema_snr": 5.0,
+        "ema_loss": 0.30
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": true,
+        "sf_adjustment_reason": "utilization > 150 sets SF=12, then ema_loss check would add +1 but already at max"
+      }
+    }
+  ]
+}

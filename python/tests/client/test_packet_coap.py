@@ -1018,6 +1018,29 @@ def test_packet_coap_transport_blocks_just_works_for_ble_raw_diagnostics() -> No
     assert not hasattr(exc_info.value, "actual_level") or exc_info.value.actual_level is None
 
 
+def test_packet_coap_transport_blocks_none_for_ble_raw_diagnostics() -> None:
+    """BLE transports with NONE security (pairing not completed) block /diag/raw/* paths.
+
+    SECURITY: NONE means no encryption and pairing not completed. Spec 17.5.4
+    requires LE Secure Connections for raw diagnostic resources. Unencrypted
+    connections MUST be blocked.
+    """
+    ble_transport = BlePacketTransport(
+        "AA:BB",
+        client_factory=lambda _a, _c: FakeBleClient(),
+        security_level=BleSecurityLevel.NONE,
+    )
+    coap_transport = PacketCoapResourceTransport(ble_transport)
+
+    with pytest.raises(LciSecurityError) as exc_info:
+        coap_transport.check_security_for_path("/diag/raw/rx")
+
+    assert exc_info.value.path == "/diag/raw/rx"
+    assert exc_info.value.required_level == "LESC"
+    # SECURITY: actual_level is intentionally not exposed to prevent security state enumeration
+    assert not hasattr(exc_info.value, "actual_level") or exc_info.value.actual_level is None
+
+
 def test_packet_coap_transport_allows_raw_diagnostics_with_lesc() -> None:
     """BLE transports allow /diag/raw/* when LESC is confirmed."""
     ble_transport = BlePacketTransport(
