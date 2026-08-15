@@ -17,6 +17,7 @@ semantics. Missing or corrupt state fails closed per spec.
 """
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -112,6 +113,7 @@ class DaoManager:
     )
     _edge_expiry: dict[tuple[IPv6Address, IPv6Address], float | None] = field(default_factory=dict)
     _rx_floors: dict[bytes, tuple[int, bytes]] = field(default_factory=dict)
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.node_address = to_ipv6(self.node_address)
@@ -246,6 +248,18 @@ class DaoManager:
         return self._build_dao(parent_address, path_lifetime, False, ack_requested)
 
     def _build_dao(
+        self,
+        parent_address: IPv6Address | str,
+        path_lifetime: int,
+        advance_path_sequence: bool,
+        ack_requested: bool,
+    ) -> DAO:
+        with self._lock:
+            return self._build_dao_unlocked(
+                parent_address, path_lifetime, advance_path_sequence, ack_requested
+            )
+
+    def _build_dao_unlocked(
         self,
         parent_address: IPv6Address | str,
         path_lifetime: int,
@@ -406,7 +420,19 @@ class DaoManager:
         5. exact self /128 Target validation
         6. replay-floor persistence for a fresh DAO
         7. atomic in-memory route mutation
+
+        Thread-safe: acquires _lock before mutating state.
         """
+        with self._lock:
+            return self._apply_dao_at_unlocked(dao, now_seconds, source_address)
+
+    def _apply_dao_at_unlocked(
+        self,
+        dao: DAO,
+        now_seconds: float,
+        source_address: IPv6Address | None = None,
+    ) -> DaoOutcome:
+        """Internal implementation of _apply_dao_at. Caller must hold _lock."""
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
 
@@ -672,13 +698,21 @@ class DaoManager:
                     self.persistence.store_rx_floor(origin_key, seq, dao_digest)
                     self._rx_floors[origin_key] = (seq, dao_digest)
             elif changed:
-                # Legacy path (no origin validation): commit floor per-target
+                # Legacy path (no origin validation): commit floors per-target
                 # using address-based keying and path_sequence.
+                # SECURITY: Use batch method to commit atomically. Per spec 8.6,
+                # partial commits violate atomicity requirements for crash-safe
+                # semantics. If the second store_rx_floor fails after the first
+                # succeeds, replay floor state would be inconsistent across targets.
+                floors_to_commit: list[tuple[bytes, int, bytes]] = []
                 for target in changed:
                     origin_key = target.packed
                     seq = sequences[target]
-                    self.persistence.store_rx_floor(origin_key, seq, dao_digest)
-                    self._rx_floors[origin_key] = (seq, dao_digest)
+                    floors_to_commit.append((origin_key, seq, dao_digest))
+                self.persistence.store_rx_floors_batch(floors_to_commit)
+                # Update in-memory state only after successful persistence
+                for origin_key, seq, digest in floors_to_commit:
+                    self._rx_floors[origin_key] = (seq, digest)
 
         self._parent_map = parents
         self._candidate_map = candidates
@@ -703,7 +737,15 @@ class DaoManager:
         return merged
 
     def expire_routes(self, now_seconds: float | None = None) -> bool:
-        """Remove expired active edges and routes while retaining snapshot tombstones."""
+        """Remove expired active edges and routes while retaining snapshot tombstones.
+
+        Thread-safe: acquires _lock before mutating state.
+        """
+        with self._lock:
+            return self._expire_routes_unlocked(now_seconds)
+
+    def _expire_routes_unlocked(self, now_seconds: float | None = None) -> bool:
+        """Internal implementation of expire_routes. Caller must hold _lock."""
         now = self.clock() if now_seconds is None else now_seconds
         parents = compute_active_parents(self._edge_expiry, now)
         expiry = {
@@ -724,7 +766,15 @@ class DaoManager:
         return changed
 
     def remove_edge(self, target: IPv6Address | str) -> bool:
-        """Remove a target's active candidates while retaining freshness state."""
+        """Remove a target's active candidates while retaining freshness state.
+
+        Thread-safe: acquires _lock before mutating state.
+        """
+        with self._lock:
+            return self._remove_edge_unlocked(target)
+
+    def _remove_edge_unlocked(self, target: IPv6Address | str) -> bool:
+        """Internal implementation of remove_edge. Caller must hold _lock."""
         target = to_ipv6(target)
         if target not in self._parent_map:
             return False

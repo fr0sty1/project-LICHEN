@@ -136,6 +136,28 @@ class DaoPersistence(ABC):
             The stored floor, or None if no valid state exists.
         """
 
+    def store_rx_floors_batch(
+        self, floors: list[tuple[bytes, int, bytes]]
+    ) -> None:
+        """Atomically commit multiple RX replay floors.
+
+        Per spec section 8.6, partial commits violate atomicity requirements
+        for crash-safe semantics. This method commits all floors atomically
+        (all succeed or none succeed) to prevent inconsistent state across
+        origins when a DAO targets multiple addresses.
+
+        Args:
+            floors: List of (pubkey, sequence, dao_digest) tuples.
+
+        Raises:
+            DaoPersistenceError: If the commit fails.
+
+        The default implementation calls store_rx_floor sequentially, which
+        is NOT atomic. Subclasses that require atomicity MUST override this.
+        """
+        for pubkey, sequence, dao_digest in floors:
+            self.store_rx_floor(pubkey, sequence, dao_digest)
+
 
 class MemoryPersistence(DaoPersistence):
     """In-memory persistence for testing. NOT crash-safe.
@@ -170,6 +192,13 @@ class MemoryPersistence(DaoPersistence):
         if len(dao_digest) != 64:
             raise ValueError("dao_digest must be 64 bytes (SHA-512)")
         self._rx_floors[pubkey] = RxFloor(sequence, dao_digest)
+
+    def store_rx_floors_batch(
+        self, floors: list[tuple[bytes, int, bytes]]
+    ) -> None:
+        """In-memory batch is effectively atomic (no I/O failure points)."""
+        for pubkey, sequence, dao_digest in floors:
+            self.store_rx_floor(pubkey, sequence, dao_digest)
 
     def load_rx_floor(self, pubkey: bytes) -> RxFloor | None:
         return self._rx_floors.get(pubkey)
@@ -412,6 +441,43 @@ class TwoSlotFilePersistence(DaoPersistence):
         path0 = self._rx_slot_path(pubkey, 0)
         path1 = self._rx_slot_path(pubkey, 1)
         self._write_to_older_slot(path0, path1, sequence, dao_digest)
+
+    def store_rx_floors_batch(
+        self, floors: list[tuple[bytes, int, bytes]]
+    ) -> None:
+        """Atomically commit multiple RX replay floors.
+
+        All floors are written while holding the write lock to ensure no
+        interleaving with concurrent operations. If any write fails, an
+        exception is raised immediately (fail-fast), leaving the successfully
+        written floors committed. This is the best atomicity guarantee possible
+        with independent per-pubkey two-slot files.
+
+        For true all-or-nothing semantics, a transactional backend (e.g., SQLite)
+        would be required.
+        """
+        if not floors:
+            return
+        # Validate all inputs before writing any
+        for pubkey, _sequence, dao_digest in floors:
+            if len(pubkey) not in (16, 32):
+                raise ValueError("pubkey must be 16 or 32 bytes")
+            if len(dao_digest) != 64:
+                raise ValueError("dao_digest must be 64 bytes (SHA-512)")
+        # Write all floors under a single lock acquisition to prevent interleaving
+        with self._write_lock:
+            for pubkey, sequence, dao_digest in floors:
+                path0 = self._rx_slot_path(pubkey, 0)
+                path1 = self._rx_slot_path(pubkey, 1)
+                slot0 = self._read_slot(path0)
+                slot1 = self._read_slot(path1)
+                gen0 = slot0[0] if slot0 else 0
+                gen1 = slot1[0] if slot1 else 0
+                new_gen = max(gen0, gen1) + 1
+                if gen0 <= gen1:
+                    self._write_slot(path0, new_gen, sequence, dao_digest)
+                else:
+                    self._write_slot(path1, new_gen, sequence, dao_digest)
 
     def load_rx_floor(self, pubkey: bytes) -> RxFloor | None:
         if len(pubkey) not in (16, 32):

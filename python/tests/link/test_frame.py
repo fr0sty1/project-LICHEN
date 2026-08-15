@@ -59,7 +59,7 @@ class TestSerialize:
             encrypted=True,
         )
         assert frame.llsec_byte() == 0x66
-        with pytest.raises(FrameError, match="signed and encrypted"):
+        with pytest.raises(FrameError, match="encrypted frames are unsupported"):
             frame.to_bytes()
 
 
@@ -212,20 +212,18 @@ class TestParseErrors:
         with pytest.raises(FrameError, match="frame is 256 bytes, exceeds 255"):
             LichenFrame.from_bytes(data)
 
-    def test_signer_iid_without_signature_rejected(self) -> None:
-        """SI=1 without S=1 must be rejected."""
+    def test_reserved_bit7_rejected(self) -> None:
+        """Bit 7 is reserved and must be rejected per spec 4.2."""
+        # LLSec=0x80 sets bit 7
         data = bytes.fromhex("10 80 01 1234 aabbccdd aabbccdd deadbeef".replace(" ", ""))
-        with pytest.raises(FrameError, match="signer IID present but signature is not"):
+        with pytest.raises(FrameError, match="reserved bit is set"):
             LichenFrame.from_bytes(data)
 
-    def test_signer_iid_frame_too_short_for_iid(self) -> None:
-        """SI=1 and S=1 but frame too short for 8-byte signer IID must be rejected."""
-        # LLSec 0xa0 = SI=1 (bit 7) + S=1 (bit 5), addr_mode=0
-        # Frame needs: header(4) + signer_iid(8) + signature(48) = 60 bytes minimum
-        # We give it less than that.
-        # Length=50 means body is 50 bytes, which is < 60 required
-        data = bytes.fromhex("32 a0 01 1234" + "00" * 46)  # 50 bytes body
-        with pytest.raises(FrameError, match="declared address/MIC"):
+    def test_encrypted_only_rejected(self) -> None:
+        """Encrypted frames without signature MUST be rejected per spec 4.2."""
+        # LLSec=0x40 sets only encrypted bit (bit 6)
+        data = bytes.fromhex("0440000000")
+        with pytest.raises(FrameError, match="encrypted frames are unsupported"):
             LichenFrame.from_bytes(data)
 
     def test_reserved_mic_length(self) -> None:
@@ -292,8 +290,7 @@ class TestSpecVectors:
                 "reserved_mic_length": "reserved MIC-length value: 2",
                 "reserved_bit_set": "reserved bit is set",
                 "frame_too_short": "frame body too short: 2 bytes",
-                "signed_encrypted_unsupported": "signed and encrypted frames are unsupported",
-                "signer_iid_no_signature": "signer IID present but signature is not",
+                "encrypted_unsupported": "encrypted frames are unsupported",
                 "frame_too_large": "frame is 256 bytes, exceeds 255",
             }[expected["error_type"]]
             with pytest.raises(FrameError) as exc_info:

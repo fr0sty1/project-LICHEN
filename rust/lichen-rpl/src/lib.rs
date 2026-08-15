@@ -15,6 +15,7 @@
 #![forbid(unsafe_code)]
 
 pub mod announce;
+pub mod dao_origin;
 pub mod dodag;
 pub mod message;
 pub mod persistence;

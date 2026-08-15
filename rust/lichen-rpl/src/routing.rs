@@ -24,6 +24,12 @@ pub use crate::table::{
 pub use crate::verify::{
     dao_origin_digest, DaoMalformed, DaoVerifyError, SignatureVerifiedDao, DAO_ORIGIN_DOMAIN,
 };
+#[cfg(feature = "std")]
+pub use crate::dao_origin::{
+    compute_dao_digest, DaoOriginRejectReason, DaoOriginResult, DaoOriginValidator,
+    DaoOriginValidatorNoReplay, OriginReplayStore, PinTable, DAO_ORIGIN_SIGNATURE_LENGTH,
+    DAO_ORIGIN_SIGNATURE_TYPE,
+};
 
 #[cfg(feature = "std")]
 use std::{

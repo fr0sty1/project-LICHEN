@@ -176,7 +176,7 @@ pub enum FrameError {
     AddrLenMismatch,
     MicLenMismatch,
     SignatureMicMismatch,
-    SignedEncryptedUnsupported,
+    EncryptedUnsupported,
     TrailingBytes,
     FrameTooLarge,
 }
@@ -192,8 +192,8 @@ impl core::fmt::Display for FrameError {
             Self::AddrLenMismatch => write!(f, "address length mismatch"),
             Self::MicLenMismatch => write!(f, "MIC length mismatch"),
             Self::SignatureMicMismatch => write!(f, "signature MIC must be 48 bytes"),
-            Self::SignedEncryptedUnsupported => {
-                write!(f, "signed and encrypted frames are unsupported")
+            Self::EncryptedUnsupported => {
+                write!(f, "encrypted frames are unsupported")
             }
             Self::TrailingBytes => write!(f, "trailing bytes after frame"),
             Self::FrameTooLarge => write!(f, "frame too large"),
@@ -267,8 +267,8 @@ impl<'a> LichenFrame<'a> {
     }
 
     pub fn write_to(&self, buf: &mut [u8]) -> Result<usize, FrameError> {
-        if self.signature.is_present() && self.encryption.is_encrypted() {
-            return Err(FrameError::SignedEncryptedUnsupported);
+        if self.encryption.is_encrypted() {
+            return Err(FrameError::EncryptedUnsupported);
         }
         if self.addr_mode.addr_len() != self.dst_addr.len() {
             return Err(FrameError::AddrLenMismatch);
@@ -354,6 +354,12 @@ impl<'a> LichenFrame<'a> {
                 .expect("length-read frame can fail LLSec reserved bit check");
             return Err(FrameError::ReservedBitSet);
         }
+        // SECURITY: Encrypted frames are unsupported; receivers MUST reject (spec 4.2).
+        if llsec & ENCRYPTED_BIT != 0 {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail encrypted check");
+            return Err(FrameError::EncryptedUnsupported);
+        }
         // ADDR_MODE_MASK is 0b11, so value is always 0-3; from_u8 covers all cases
         let addr_mode = AddrMode::from_u8(llsec & ADDR_MODE_MASK).unwrap();
         let mic_field = (llsec >> MIC_LEN_SHIFT) & MIC_LEN_MASK;
@@ -368,11 +374,6 @@ impl<'a> LichenFrame<'a> {
             .expect("valid fixed header can advance to header-read");
         let addr_len = addr_mode.addr_len();
         let signature = llsec & SIGNATURE_BIT != 0;
-        if signature && llsec & ENCRYPTED_BIT != 0 {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("header-read frame can reject signed encrypted combination");
-            return Err(FrameError::SignedEncryptedUnsupported);
-        }
         let mic_len = if signature { 48 } else { 0 };
         let min_body = 4 + addr_len + mic_len;
         if body.len() < min_body {
@@ -476,12 +477,24 @@ mod tests {
     }
 
     #[test]
-    fn signed_encrypted_is_rejected() {
-        let mut wire = vec![0x35, 0x60, 0x03, 0x00, 0x04, 0x78];
-        wire.extend([0u8; 48]);
+    fn encrypted_is_rejected() {
+        // Encrypted frame without signature: LLSec=0x40 (bit 6 set)
+        let wire = vec![0x04, 0x40, 0x00, 0x00, 0x00];
         assert_eq!(
             LichenFrame::from_bytes(&wire),
-            Err(FrameError::SignedEncryptedUnsupported)
+            Err(FrameError::EncryptedUnsupported)
+        );
+    }
+
+    #[test]
+    fn signed_encrypted_is_rejected() {
+        // Signed + encrypted: signature bit (0x20) + encrypted bit (0x40) = 0x60
+        let mut wire = vec![0x35, 0x60, 0x03, 0x00, 0x04, 0x78];
+        wire.extend([0u8; 48]);
+        // Encrypted check fires first, before the signature check
+        assert_eq!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::EncryptedUnsupported)
         );
     }
 
@@ -704,9 +717,7 @@ mod tests {
                         }
                         "reserved_bit_set" => error == FrameError::ReservedBitSet,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
-                        "signed_encrypted_unsupported" => {
-                            error == FrameError::SignedEncryptedUnsupported
-                        }
+                        "encrypted_unsupported" => error == FrameError::EncryptedUnsupported,
                         "frame_too_large" => error == FrameError::FrameTooLarge,
                         _ => false,
                     };

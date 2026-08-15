@@ -17,8 +17,8 @@ The LLSec byte (spec 4.2) packs, from the least-significant bit::
     bits 0-1 : Addr Mode  (0=none/broadcast, 1=16-bit, 2=64-bit, 3=elided)
     bits 2-4 : MIC selector (0 or 1; ignored for wire MIC length)
     bit  5   : Signature present (Schnorr-48, 48 bytes)
-    bit  6   : Encrypted (unsupported)
-    bit  7   : Signer IID present (SI); requires S=1
+    bit  6   : Encrypted (unsupported; receivers MUST reject)
+    bit  7   : Reserved (must be 0; receivers MUST reject)
 """
 
 from __future__ import annotations
@@ -73,12 +73,11 @@ _MIC_LEN_SHIFT = 2
 _MIC_LEN_MASK = 0b0000_0111
 _SIGNATURE_BIT = 1 << 5
 _ENCRYPTED_BIT = 1 << 6
-_SIGNER_IID_BIT = 1 << 7  # Signer IID present; requires signature
+_RESERVED_BIT = 1 << 7  # Reserved; must be 0
 
 _MAX_FRAME_BODY = 254  # spec 4.1: Length field value is 4-254 bytes
 MAX_FRAME_BODY = _MAX_FRAME_BODY
 _SIGNATURE_LENGTH = 48  # Schnorr-48 signature
-_SIGNER_IID_LENGTH = 8  # Signer IID is always 8 bytes when present
 
 
 class FrameError(Exception):
@@ -116,8 +115,8 @@ class LichenFrame:
     encrypted: bool = False
 
     def _validate(self) -> None:
-        if self.signature_present and self.encrypted:
-            raise FrameError("signed and encrypted frames are unsupported")
+        if self.encrypted:
+            raise FrameError("encrypted frames are unsupported")
         if not 0 <= self.epoch <= 0xFF:
             raise FrameError(f"epoch out of range: {self.epoch}")
         if not 0 <= self.seqnum <= 0xFFFF:
@@ -187,12 +186,12 @@ class LichenFrame:
             raise FrameError(f"frame body too short: {length} bytes")
 
         llsec = body[0]
-        # SECURITY: Signer IID (SI) bit requires signature (S) bit to be set.
-        # A frame with SI=1 but S=0 would have no way to authenticate the claimed
-        # signer IID, enabling sender impersonation.
-        signer_iid_present = bool(llsec & _SIGNER_IID_BIT)
-        if signer_iid_present and not (llsec & _SIGNATURE_BIT):
-            raise FrameError("signer IID present but signature is not")
+        # SECURITY: Spec mandates bit 7 is reserved and must be 0.
+        if llsec & _RESERVED_BIT:
+            raise FrameError("reserved bit is set")
+        # SECURITY: Encrypted frames are unsupported; receivers MUST reject (spec 4.2).
+        if llsec & _ENCRYPTED_BIT:
+            raise FrameError("encrypted frames are unsupported")
         addr_mode = AddrMode(llsec & _ADDR_MODE_MASK)
         mic_field = (llsec >> _MIC_LEN_SHIFT) & _MIC_LEN_MASK
         try:
@@ -210,16 +209,12 @@ class LichenFrame:
         offset = 4
         addr_len = addr_mode.addr_len
         signature_present = bool(llsec & _SIGNATURE_BIT)
-        if signature_present and llsec & _ENCRYPTED_BIT:
-            raise FrameError("signed and encrypted frames are unsupported")
         # SECURITY: Reject frames where signature_present is set but the frame
         # body is too short for the 48-byte Schnorr signature. An attacker could
         # set the signature bit without appending a signature, hoping the parser
         # reads past the buffer (over-read) or misinterprets payload bytes as MIC.
-        # When signer_iid_present (SI=1), also account for the 8-byte signer IID.
         mic_len = _SIGNATURE_LENGTH if signature_present else 0
-        signer_iid_len = _SIGNER_IID_LENGTH if signer_iid_present else 0
-        if length < offset + addr_len + signer_iid_len + mic_len:
+        if length < offset + addr_len + mic_len:
             raise FrameError("frame too short for declared address/MIC sizes")
 
         dst_addr = body[offset : offset + addr_len]
