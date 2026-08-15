@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-7vsu",
   "title": "NodeChannel IID validation breaks multi-hop mesh routing",
   "description": "IID validation at node_channel.py:202 compares link-layer sender's IID against IPv6 source IID. In multi-hop scenarios (which NodeChannel explicitly supports per docstring), the link-layer sender is the forwarding node, not the original source. This causes ALL multi-hop packets to be dropped.\n\nThe SCHC payload preserves the original IPv6 source, but rx.sender (from node.py:449) is the immediate link-layer neighbor. The integration test test_coap_get_via_relay fails due to unrelated API changes, leaving this code path untested.\n\n**Options:**\n1. Remove IID check and require OSCORE for all traffic\n2. Accept packets where sender != source when OSCORE-protected\n3. Document NodeChannel as single-hop only and create a separate channel for relayed traffic\n\n**Cannot simply remove the check** - that would enable source spoofing from direct neighbors.\n\nThis requires architectural decision on how E2E authentication (OSCORE) should interact with link-layer authentication.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-14T23:38:42.79962Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-14T23:38:42.79962Z",
+  "updated_at": "2026-08-15T16:00:40.019212Z",
+  "closed_at": "2026-08-15T16:00:40.019212Z",
+  "close_reason": "Already fixed: Python node_channel.py has correct multi-hop model (no IID check, relies on OSCORE for E2E auth). Comment at lines 204-210 documents security model.",
   "labels": [
     "review"
   ]
