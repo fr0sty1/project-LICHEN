@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-zhxj",
   "title": "coap: TxPriority vs Priority enum mismatch",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-12T18:40:19.495269Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-12T18:40:19.495269Z",
+  "updated_at": "2026-08-15T17:00:07.371764Z",
+  "closed_at": "2026-08-15T17:00:07.371764Z",
+  "close_reason": "Fixed by rust-parity work: TxPriority now has 5 levels (Sos/Routing/Urgent/Normal/Bulk) matching Python Priority enum exactly.",
   "labels": [
     "spec-compliance"
   ]

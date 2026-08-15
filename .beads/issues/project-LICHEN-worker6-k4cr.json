@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-k4cr",
+  "title": "[review] client.rs: Unreachable unwrap_or fallback",
+  "description": "The expression `response.retry_after_s().unwrap_or(DEFAULT_503_BACKOFF_S)` has dead code: `retry_after_s()` always returns `Some(...)` for 5.03 responses (see lines 74-80), so the `unwrap_or` branch is unreachable. The fallback is already handled inside `retry_after_s()` at line 78.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T17:14:59.999872Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T17:14:59.999872Z",
+  "labels": [
+    "review"
+  ]
+}

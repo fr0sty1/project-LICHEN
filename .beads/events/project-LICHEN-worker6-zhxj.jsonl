@@ -1,2 +1,3 @@
 {"id":"019ff746-7c2e-7a6b-a18e-40d2bade59d7","issue_id":"project-LICHEN-worker6-zhxj","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-12T18:40:19.502684Z"}
 {"id":"019ff746-7c38-7088-b5bb-86533d1949c9","issue_id":"project-LICHEN-worker6-zhxj","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: spec-compliance","created_at":"2026-08-12T18:40:19.512037Z"}
+{"id":"01a0065d-d357-7db3-bb89-fcc03a54ff34","issue_id":"project-LICHEN-worker6-zhxj","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed by rust-parity work: TxPriority now has 5 levels (Sos/Routing/Urgent/Normal/Bulk) matching Python Priority enum exactly.","created_at":"2026-08-15T17:00:07.383898Z"}

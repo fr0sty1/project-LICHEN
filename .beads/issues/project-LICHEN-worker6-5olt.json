@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-5olt",
   "title": "security: DAO origin validation not consolidated",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-12T18:40:18.141804Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-12T18:40:18.141804Z",
+  "updated_at": "2026-08-15T17:09:19.844225Z",
+  "closed_at": "2026-08-15T17:09:19.844225Z",
+  "close_reason": "Fixed: Consolidated DAO origin validation in Rust to match Python reference. Created rust/lichen-rpl/src/dao_origin.rs with: DaoOriginRejectReason enum (all 9 spec-defined rejection reasons), DaoOriginResult struct (valid/is_fresh/reject_reason/pubkey/origin_sequence/dao_digest), PinTable and OriginReplayStore traits, DaoOriginValidator with single validate() method combining signature verification and replay checks. Re-exported from routing.rs for backward compatibility. Python implementation was already consolidated - no changes needed.",
   "labels": [
     "spec-compliance"
   ]

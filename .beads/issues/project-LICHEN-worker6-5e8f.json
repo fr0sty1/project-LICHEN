@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-5e8f",
+  "title": "[review] client.rs: Unbounded HashMap growth in CoapClient",
+  "description": "The backoffs HashMap has no capacity limit and no background cleanup. Expired entries are only removed when that specific peer is queried again (line 236). A long-running client talking to many unique peers that return 5.03 will accumulate entries indefinitely, causing unbounded memory growth.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T17:14:59.999872Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T17:14:59.999872Z",
+  "labels": [
+    "review"
+  ]
+}
