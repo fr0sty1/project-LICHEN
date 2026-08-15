@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-kti6",
   "title": "[review] test_packet_coap.py: Missing test for BleSecurityLevel.NONE",
   "description": "Line 904: The BleSecurityLevel enum defines NONE=1 but no test verifies NONE is blocked from /diag/raw/* paths. NONE means 'no encryption - pairing not completed' which should block raw diagnostics per spec 17.5.4. Fix: Add test with security_level=BleSecurityLevel.NONE verifying LciSecurityError.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-14T21:17:30.323268Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-14T21:17:30.323268Z",
+  "updated_at": "2026-08-15T15:23:12.677131Z",
+  "closed_at": "2026-08-15T15:23:12.677131Z",
+  "close_reason": "Fixed: Added test_packet_coap_transport_blocks_none_for_ble_raw_diagnostics to verify BleSecurityLevel.NONE blocks /diag/raw/* paths per spec 17.5.4",
   "labels": [
     "review"
   ]

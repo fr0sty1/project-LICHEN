@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-gezn",
+  "title": "[review] lib.rs: Test uses wrong upper bound",
+  "description": "Assertion uses 'ch_with_time \u003c 8' but channel formula 1+(h%n) returns [1,n], so with n_channels=8, channel 8 is valid. Should be '\u003c= 8'. Test passes by luck when hash never produces max channel.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:06.414828Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:17:06.414828Z",
+  "labels": [
+    "review"
+  ]
+}

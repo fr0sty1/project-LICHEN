@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ws1x",
+  "title": "[review] stack.rs: TX error silently discarded in receive loop",
+  "description": "In the `run()` method, `let _ = self.handle_and_reply(\u0026frame).await` silently discards any TxError from the auto-reply path. Failed ICMPv6 replies (e.g., due to sequence exhaustion or radio failure) are not reported to the caller, making diagnostics difficult.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:35.580559Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:35.580559Z",
+  "labels": [
+    "review"
+  ]
+}

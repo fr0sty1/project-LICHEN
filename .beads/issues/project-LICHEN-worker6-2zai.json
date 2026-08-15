@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-2zai",
+  "title": "Rust parity: Rust Priority enum missing SOS and NORMAL levels",
+  "description": "Python has 5 Priority levels (SOS=0, ROUTING=1, URGENT=2, NORMAL=3, BULK=4). Rust TxPriority only has 4 (Control=0, Routing=1, User=2, Bulk=3). Missing SOS emergency level and NORMAL/BULK distinction. Fix: align TxPriority with spec and Python.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T14:55:02.427726Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:00:52.074273Z",
+  "closed_at": "2026-08-15T15:00:52.074273Z",
+  "close_reason": "Fixed: Added SOS and NORMAL priority levels to Rust TxPriority enum for Python parity. Updated enum from 4 to 5 levels (Sos/Routing/Urgent/Normal/Bulk mapping to P0-P4), updated deadline constants, and fixed all dependent code in lichen-core, lichen-tui, and lichen-gateway.",
+  "labels": [
+    "rust-parity"
+  ]
+}

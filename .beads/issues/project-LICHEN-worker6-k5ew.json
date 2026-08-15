@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-k5ew",
+  "title": "[review] duty_cycle.rs: debug_assert only validates duty_permille in debug",
+  "description": "with_duty_permille uses debug_assert! to validate duty_permille is in range (1..=1000). In release builds, these assertions are stripped. Passing duty_permille=0 causes max_tx_ms() to return 0, silently blocking all transmissions. Consider using assert! or returning Result\u003cSelf, Error\u003e for constructor validation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:54.516271Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:54.516271Z",
+  "labels": [
+    "review"
+  ]
+}

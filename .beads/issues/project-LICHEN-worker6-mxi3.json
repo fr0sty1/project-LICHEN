@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-mxi3",
+  "title": "[review] lib.rs: Test assertion off-by-one after spec com",
+  "description": "After commit 398dee5eba changed the formula from `n_channels.max(3) - 1` to `n_channels.max(3)`, valid channels now include n_channels itself (range [1, n_channels]). The assertion `ch \u003c 16` should be `ch \u003c= 16`. Same issue at lines 279, 287, 288, 344, 373, 374, 390, 391. These tests would incorrectly fail if the hash produces the maximum channel value.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:28:41.915121Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:28:41.915121Z",
+  "labels": [
+    "review"
+  ]
+}

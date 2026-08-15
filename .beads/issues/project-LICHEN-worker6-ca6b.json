@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ca6b",
+  "title": "[review] lichend.rs: Concentrator reset/configure errors ignored",
+  "description": "Both `conc.reset().await` and `conc.configure(...)` results are discarded. If hardware initialization fails, the concentrator enters an undefined state. Subsequent receive/transmit calls may silently fail or produce corrupted data, with no indication to the operator.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:13.722198Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:22:44.691396Z",
+  "closed_at": "2026-08-15T15:22:44.691396Z",
+  "close_reason": "Fixed: Concentrator reset/configure errors now handled with early return on failure. If hardware initialization fails, HAT mode aborts with error log instead of entering undefined state.",
+  "labels": [
+    "review"
+  ]
+}

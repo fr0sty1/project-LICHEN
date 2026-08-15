@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-y9cp",
+  "title": "[review] transport.rs: Duplicate check_congestion_allows function",
+  "description": "This function is identical to duty_cycle::check_congestion_allows (lines 207-220 in duty_cycle.rs). Having two copies with the same logic creates a maintenance burden - if the congestion rules change per spec updates, both must be updated. The transport module should import and re-export from duty_cycle rather than duplicating the implementation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:11.702435Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:17:11.702435Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-lx4x",
+  "title": "[review] stack.rs: IPv6 payload length field trusted without validati",
+  "description": "add_rpl_source_route reads payload_len from ipv6[4..6] and uses it to compute routed_payload_len without verifying it matches ipv6.len() - IPV6_HEADER_LEN. Since the function is pub, callers could pass malformed packets where the header claims a larger payload than actually present, producing output with an incorrect IPv6 length field.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:43.114969Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:43.114969Z",
+  "labels": [
+    "review"
+  ]
+}

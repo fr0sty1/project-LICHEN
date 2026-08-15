@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-k1rm",
+  "title": "[review] lichend.rs: Double mutex acquisition is inefficient and non-at",
+  "description": "The mutex is locked at line 251 for push(), then again at line 255 for stats(). The queue state could change between these locks. Consider keeping a single lock guard: `let mut q = tx_queue.lock().unwrap(); q.push(...); let stats = q.stats();`",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:21.921864Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:21.921864Z",
+  "labels": [
+    "review"
+  ]
+}

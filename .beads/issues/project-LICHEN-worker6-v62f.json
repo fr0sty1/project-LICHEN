@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-v62f",
+  "title": "[review] stack.rs: Integer overflow when casting routing header lengt",
+  "description": "The expression `(routing_len / 8 - 1) as u8` overflows for routes with more than 127 intermediate hops. With remaining=128, the result is 256 which truncates to 0, corrupting the Hdr Ext Len field. While 127+ hops is rare, the code should either reject such routes or use checked arithmetic. The check at line 660-661 validates `remaining \u003c= 255`, but should validate `remaining \u003c= 127` to prevent this overflow.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:37.701532Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:37.701532Z",
+  "labels": [
+    "review"
+  ]
+}

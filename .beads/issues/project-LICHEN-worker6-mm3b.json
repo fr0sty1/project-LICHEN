@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-mm3b",
+  "title": "[review] stack.rs: Integer truncation in RPL source routing header le",
+  "description": "The Hdr Ext Len field is computed as `(routing_len / 8 - 1) as u8`. For routes with remaining \u003e 127 hops, this truncates incorrectly. With remaining=128, Hdr Ext Len should be 256 but is truncated to 0. Line 660 checks `remaining \u003e 255` but should check `remaining \u003e 127` to prevent silent corruption of source routing headers.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:35.705517Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:20:38.367927Z",
+  "closed_at": "2026-08-15T15:20:38.367927Z",
+  "close_reason": "Fixed: Changed remaining check from \u003e255 to \u003e127 to prevent Hdr Ext Len (2*remaining) truncation when cast to u8",
+  "labels": [
+    "review"
+  ]
+}

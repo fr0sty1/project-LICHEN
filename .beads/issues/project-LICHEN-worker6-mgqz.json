@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-mgqz",
+  "title": "[review] lichend.rs: HAT mode silently ignores TUN recv error",
+  "description": "TUN errors are swallowed with `if let Ok(n) = result` while serial mode (line 581) and sim mode (line 480) log the error and break the loop. This inconsistency could mask TUN device failures in HAT mode, leaving the daemon running but unable to forward packets from the Linux stack.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:28:42.272021Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:28:42.272021Z",
+  "labels": [
+    "review"
+  ]
+}

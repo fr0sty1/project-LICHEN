@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-h5br",
+  "title": "Rust parity: Rust missing DatagramChannel abstraction",
+  "description": "Python has DatagramChannel ABC with send_datagram(priority, check_congestion). Rust sends direct without abstraction layer. Fix: add DatagramChannel trait for uniform priority propagation.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T14:55:02.427735Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:05:28.045377Z",
+  "closed_at": "2026-08-15T15:05:28.045377Z",
+  "close_reason": "Added DatagramChannel trait in rust/lichen-core/src/transport.rs with send_datagram, congestion_level, retry_after_ms, congestion_state, and check_congestion_for methods. Includes CongestionError struct and check_congestion_allows function. All tests pass.",
+  "labels": [
+    "rust-parity"
+  ]
+}

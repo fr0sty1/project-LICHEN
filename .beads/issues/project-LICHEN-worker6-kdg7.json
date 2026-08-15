@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-kdg7",
   "title": "[review] dao_manager.py: Partial persistence commit non-atomic in legacy path",
   "description": "Line 677: Loop calls store_rx_floor per target. If second call fails after first succeeds, replay floor state is inconsistent across targets, violating atomicity requirements for crash-safe semantics. Fix: Collect all floors to commit, then call a batch store method, or wrap in a transaction.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-14T21:17:28.670948Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-14T21:17:28.670948Z",
+  "updated_at": "2026-08-15T15:31:10.939792Z",
+  "closed_at": "2026-08-15T15:31:10.939792Z",
+  "close_reason": "Fixed: Added store_rx_floors_batch() method to DaoPersistence interface for atomic multi-target floor commits. The legacy path in dao_manager.py now collects all floors to commit and calls the batch method, preventing partial persistence state on failure. TwoSlotFilePersistence implementation holds the write lock for the entire batch to ensure no interleaving with concurrent operations.",
   "labels": [
     "review"
   ]

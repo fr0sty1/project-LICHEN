@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ve1v",
+  "title": "[review] secure.rs: Silent pending request eviction under load",
+  "description": "When pending_requests reaches MAX_PENDING_REQUESTS (16), the oldest entry is silently removed. An authenticated peer under heavy load could cause legitimate requests to be evicted, leading to CorrelationMismatch errors when the server tries to respond. While exploitability is limited (requires valid OSCORE context), the silent eviction complicates debugging. Consider adding a log entry or per-sender limits.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:46.279043Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:46.279043Z",
+  "labels": [
+    "review"
+  ]
+}

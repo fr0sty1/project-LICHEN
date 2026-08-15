@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-qere",
+  "title": "[review] lib.rs: Test uses wrong upper bound",
+  "description": "Assertion uses 'ch1 \u003c 16' but should be '\u003c= 16'. With n_channels=16, channel 16 is a valid output that this assertion would incorrectly reject.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:06.606643Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:17:06.606643Z",
+  "labels": [
+    "review"
+  ]
+}

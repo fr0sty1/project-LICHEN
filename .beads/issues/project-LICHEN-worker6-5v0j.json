@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-5v0j",
+  "title": "[review] lichend.rs: Epoch counter wrapping behavior may compromise rep",
+  "description": "When epoch reaches 255, `wrapping_add(1)` yields 0, which on next restart becomes 128 (due to the \u003c 128 floor). This 127-step backward jump could allow previously-seen frames to pass replay checks if peers track epoch windows, depending on the replay window size.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:13.697685Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:13.697685Z",
+  "labels": [
+    "review"
+  ]
+}

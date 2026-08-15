@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-4eul",
+  "title": "[review] lib.rs: Hash-based channel selection has same n_channels \u003c",
+  "description": "The hash-based path in select_channel_with_gnss also uses .max(3) clamping, allowing returned channel to exceed n_channels. Same fix needed as synchronized_hop_channel.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:59.523355Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:59.523355Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-jtxp",
+  "title": "[review] stack.rs: Transmission errors silently discarded in run loop",
+  "description": "The run() method uses 'let _ = self.handle_and_reply(\u0026frame).await' which silently ignores all TxError variants including SequenceExhausted. Once link-layer sequence space is exhausted, all subsequent auto-replies fail silently with no indication to the callback or caller.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:43.334774Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:43.334774Z",
+  "labels": [
+    "review"
+  ]
+}

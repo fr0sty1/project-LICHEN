@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-s6z2",
+  "title": "[review] receive.rs: u64 to u32 timestamp truncation",
+  "description": "The now_ms parameter (u64) is cast to u32 when passed to staged.process(). Values exceeding u32::MAX (~49.7 days of milliseconds) wrap around, potentially causing incorrect announce freshness checks, premature expiration, or acceptance of stale announces. If now_ms represents Unix epoch milliseconds, truncation occurs immediately; if relative to boot, after ~50 days uptime.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:46.70782Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:46.70782Z",
+  "labels": [
+    "review"
+  ]
+}

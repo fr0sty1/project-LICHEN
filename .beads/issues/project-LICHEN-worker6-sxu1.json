@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-sxu1",
+  "title": "[review] stack.rs: Invalid priority values silently coerced",
+  "description": "The match arms explicitly handle priorities 0, 1, 2, 4 but use catch-all '_' for 3 and values \u003e 4. While 3 correctly maps to Normal, values 5-255 are silently accepted as Normal instead of being validated or rejected. This could mask bugs in callers passing invalid priorities.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:43.889588Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:43.889588Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-aqb0",
+  "title": "[review] lichend.rs: HAT concentrator init errors ignored",
+  "description": "`conc.reset()` and `conc.configure()` results are discarded with `let _ = ...`. If hardware initialization fails, the concentrator may be in an undefined state, causing silent TX/RX failures or undefined behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:20.905121Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:20.905121Z",
+  "labels": [
+    "review"
+  ]
+}

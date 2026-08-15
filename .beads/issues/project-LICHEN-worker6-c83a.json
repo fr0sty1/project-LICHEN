@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-c83a",
+  "title": "[review] lichend.rs: Double mutex acquisition in push_tx_queue",
+  "description": "The mutex is locked for push(), released, then immediately locked again for stats(). Between the two locks, the queue depth may change, so the logged value does not reflect the state after push. Minor logging inaccuracy, not a correctness bug.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:13.476939Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:13.476939Z",
+  "labels": [
+    "review"
+  ]
+}

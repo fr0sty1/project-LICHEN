@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ahqn",
+  "title": "[review] stack.rs: Silent suppression of handle_and_reply errors",
+  "description": "In the `run()` receive loop, errors from `handle_and_reply()` are discarded with `let _ = ...`. This silently ignores radio TX failures, sequence exhaustion, or encoding errors when sending ICMPv6 replies. Consider logging or propagating these errors to avoid masking operational issues.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:38.09375Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:38.09375Z",
+  "labels": [
+    "review"
+  ]
+}

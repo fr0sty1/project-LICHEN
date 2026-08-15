@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-tfgb",
+  "title": "[review] transport.rs: Duplicate CongestionError type definition",
+  "description": "CongestionError is defined here with the same fields as duty_cycle::CongestionError (lines 131-155 in duty_cycle.rs). In Rust, these are distinct types despite identical structure. Code that mixes imports from both modules will get type mismatch errors. The transport module already imports CongestionLevel and CongestionState from duty_cycle - it should also import or re-export CongestionError rather than redefining it.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:09.614199Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:17:09.614199Z",
+  "labels": [
+    "review"
+  ]
+}

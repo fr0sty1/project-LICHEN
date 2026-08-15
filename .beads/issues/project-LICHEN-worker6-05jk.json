@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-05jk",
+  "title": "[review] duty_cycle.rs: Potential u32 truncation in retry_after_ms calcula",
+  "description": "Cast (next_tx - now_ms) as u32 can truncate if difference exceeds u32::MAX (~49 days in ms). When next_tx saturates to u64::MAX (via saturating_add on extreme timestamps near u64::MAX), the subtraction yields a huge value that truncates to garbage. Consider clamping to u32::MAX or returning None for unreasonably large delays.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:52.11464Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:52.11464Z",
+  "labels": [
+    "review"
+  ]
+}

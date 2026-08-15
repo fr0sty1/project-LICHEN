@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-z1vy",
+  "title": "[review] duty_cycle.rs: debug_assert allows invalid duty_permille in relea",
+  "description": "with_duty_permille(0) passes in release builds since debug_assert! is stripped. This causes max_tx_ms() to return 0, making remaining_ms() always 0 and can_transmit() always false for any duration \u003e 0. A node initialized with duty_permille=0 would refuse all transmissions silently. Use assert! or return Result for invariant enforcement.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:50.770666Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:50.770666Z",
+  "labels": [
+    "review"
+  ]
+}

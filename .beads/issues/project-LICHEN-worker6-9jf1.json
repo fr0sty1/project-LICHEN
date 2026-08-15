@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-9jf1",
+  "title": "Rust parity: Rust missing check_congestion param and CongestionError",
+  "description": "Python send_datagram has check_congestion:bool that calls check_congestion_allows() and may raise CongestionError. Rust has no equivalent blocking based on congestion/priority. Fix: add check_congestion and priority-aware blocking.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T14:55:02.427739Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:05:19.068299Z",
+  "closed_at": "2026-08-15T15:05:19.068299Z",
+  "close_reason": "Fixed: Added CongestionError, check_congestion_allows(level, priority) function, and congestion_level/congestion_state methods to DutyCycleTracker. Brings Rust to parity with Python coap/params.py congestion control API.",
+  "labels": [
+    "rust-parity"
+  ]
+}

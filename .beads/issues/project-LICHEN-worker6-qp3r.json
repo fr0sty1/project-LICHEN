@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-qp3r",
+  "title": "[review] lib.rs: Division by zero panic if superframe_duration_us i",
+  "description": "sfn_from_unix_time divides by superframe_duration_us without checking for zero. GnssHopConfig has public fields, so callers can construct it with superframe_duration_us = 0, causing a panic. Consider adding a guard (return 0 or saturate) when superframe_duration_us is 0, or validate in GnssHopConfig constructor.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:58.085677Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:58.085677Z",
+  "labels": [
+    "review"
+  ]
+}

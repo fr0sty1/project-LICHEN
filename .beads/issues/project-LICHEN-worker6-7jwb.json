@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-7jwb",
+  "title": "[review] lichend.rs: Epoch persistence failure silently ignored",
+  "description": "If `save_epoch` fails, the incremented epoch is lost. On restart, the old epoch loads, and frames may be rejected as replays by peers that already saw the higher epoch, or worse, old frames may be accepted as valid.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:12.871017Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:22:27.627632Z",
+  "closed_at": "2026-08-15T15:22:27.627632Z",
+  "close_reason": "Fixed: save_epoch now exits with error on failure instead of silently ignoring. Added SECURITY comment explaining replay protection rationale.",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-vwbr",
+  "title": "[review] stack.rs: Priority inversion: unknown priority val",
+  "description": "In transmit_forward(), the match on entry.priority maps values 0-2 and 4 explicitly, but the wildcard `_` catches both 3 (correct for Normal) and any value \u003e= 5 (incorrect). Values \u003e= 5 should default to Priority::Bulk (lowest priority), not Priority::Normal. This allows malformed or malicious packets with priority \u003e= 5 to receive higher priority than legitimate Bulk (4) traffic. Fix: add explicit case `3 =\u003e Priority::Normal` and change `_ =\u003e Priority::Bulk` for unknown values.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:28:42.648461Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:28:42.648461Z",
+  "labels": [
+    "review"
+  ]
+}

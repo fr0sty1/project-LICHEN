@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-7g9o",
+  "title": "Rust parity: Rust send methods missing priority parameter",
+  "description": "Python DatagramChannel.send_datagram() accepts priority kwarg. Rust send_coap_raw(), send_ipv6_raw() etc have no priority param - only queue_forward() at forwarding buffer level. Fix: add priority param to public send APIs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T14:55:02.427744Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:01:25.12219Z",
+  "closed_at": "2026-08-15T15:01:25.12219Z",
+  "close_reason": "Fixed: Added Priority enum (Sos/Routing/Urgent/Normal/Bulk) to stack.rs matching Python tx_queue.Priority. Added priority parameter to send_ipv6_raw, send_ipv6_to, send_ipv6_to_route, send_coap_raw, send_coap_raw_to. Updated all callers in secure.rs, rpl_stack/transmit.rs, rpl_stack/receive.rs, and tests. RPL control traffic uses Priority::Routing, forwarded/app traffic uses Priority::Normal.",
+  "labels": [
+    "rust-parity"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xq36",
+  "title": "[review] duty_cycle.rs: debug_assert used for input validation",
+  "description": "with_duty_permille() uses debug_assert! to validate duty_permille \u003e 0 and \u003c= 1000. These assertions are stripped in release builds. If duty_permille = 0 is passed in release, max_tx_ms() returns 0, causing can_transmit() to always return false and permanently blocking all transmissions with no error indication. Use a runtime check or return Result to fail gracefully.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:51.328944Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:51.328944Z",
+  "labels": [
+    "review"
+  ]
+}

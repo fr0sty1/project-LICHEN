@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-6hxl",
+  "title": "[review] tx_queue.rs: Spec comment mismatch",
+  "description": "Doc comment says 'control 10s' for deadline expiry but no DEADLINE_CONTROL_MS constant exists. DEADLINE_ROUTING_MS is 5000ms (5s). Either documentation is stale or a constant is missing.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:05.295175Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:05.295175Z",
+  "labels": [
+    "review"
+  ]
+}

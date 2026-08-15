@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-w5ol",
+  "title": "[review] stack.rs: Security assertion only enforced in debug builds",
+  "description": "The `debug_assert!(epoch \u003e= 128, ...)` only runs in debug builds. In release builds, epochs \u003c 128 are silently accepted, violating spec section 4.4 security requirements. Should use `assert!()` or runtime validation to enforce the security invariant in all builds.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:36.180809Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:36.180809Z",
+  "labels": [
+    "review"
+  ]
+}

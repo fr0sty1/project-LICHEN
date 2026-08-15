@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-l3kh",
+  "title": "[review] tx_queue.rs: Latency truncation from u64 to u32",
+  "description": "Casts (now_ms - enqueue_time_ms) to u32, truncating if latency exceeds ~49 days. Not reachable given DEADLINE_BULK_MS max of 120s, but if caller passes bogus timestamps, max_latency_ms and avg_latency_ms statistics become incorrect.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:05.295137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:05.295137Z",
+  "labels": [
+    "review"
+  ]
+}

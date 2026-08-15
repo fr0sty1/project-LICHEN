@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-elya",
+  "title": "Rust parity: Rust missing CongestionLevel enum",
+  "description": "Python has CongestionLevel (NORMAL/ELEVATED/CRITICAL/EXHAUSTED) per spec 07 §10.2.3. Rust DutyCycleTracker only tracks budget without congestion states. Fix: add CongestionLevel enum and state machine.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T14:55:02.427726Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:04:40.086667Z",
+  "closed_at": "2026-08-15T15:04:40.086667Z",
+  "close_reason": "Fixed: Added CongestionLevel enum (Normal/Elevated/Critical/Exhausted) with spec 07 thresholds (50/80/95%), congestion_level_from_permille(), CongestionState struct, CongestionError, check_congestion_allows(), and tracker methods congestion_level()/congestion_state(). All 33 tests pass.",
+  "labels": [
+    "rust-parity"
+  ]
+}

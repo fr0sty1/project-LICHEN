@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-sspi",
+  "title": "[review] lib.rs: Test uses wrong upper bound",
+  "description": "Assertion uses 'ch_epoch0 \u003c 16' but should be '\u003c= 16'. Same issue as other channel range tests.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:07.313882Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:17:07.313882Z",
+  "labels": [
+    "review"
+  ]
+}

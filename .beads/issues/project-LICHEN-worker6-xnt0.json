@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-xnt0",
+  "title": "[review] lichend.rs: Epoch counter wraps to zero, breaking replay prote",
+  "description": "`epoch.wrapping_add(1)` wraps 255 -\u003e 0. Although epochs \u003c 128 are bumped to 128 on load, the sequence 254 -\u003e 255 -\u003e 0 -\u003e 128 is non-monotonic across reboots. If epochs are used for anti-replay (likely given the context), an attacker could replay messages from epoch \u003e 128 after wrap.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:21.005749Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:22:45.134451Z",
+  "closed_at": "2026-08-15T15:22:45.134451Z",
+  "close_reason": "Fixed: Changed wrapping_add(1) to saturating_add(1) to prevent epoch wrap 255-\u003e0-\u003e128. Added warning when epoch saturates at 255 to alert operators to re-key.",
+  "labels": [
+    "review"
+  ]
+}

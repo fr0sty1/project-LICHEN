@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-h0p5",
+  "title": "[review] lib.rs: Test uses wrong upper bound (\u003c instead of \u003c=)",
+  "description": "Test asserts ch1 \u003c 16 but with n_channels=16, the function can return 16 (since 1 + 15 = 16). Should be ch1 \u003c= 16. Same issue at lines 278, 335, 365. These are test bugs that may miss catching actual range violations.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:01.508508Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:17:01.508508Z",
+  "labels": [
+    "review"
+  ]
+}

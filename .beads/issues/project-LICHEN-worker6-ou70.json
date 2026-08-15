@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ou70",
+  "title": "[review] duty_cycle.rs: usage_permille can truncate above 65535 permille",
+  "description": "Cast to u16 at line 390 truncates if (used * 1000 / WINDOW_MS) exceeds 65535. While legitimate usage caps at ~1000 permille, malformed or adversarial record_tx calls with huge durations could cause total_tx_in_window to return values that produce permille \u003e 65535, yielding incorrect congestion levels. Consider saturating to 1000 or using u32 internally.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:54.171661Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:54.171661Z",
+  "labels": [
+    "review"
+  ]
+}

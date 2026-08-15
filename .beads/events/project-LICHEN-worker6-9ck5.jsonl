@@ -1,0 +1,3 @@
+{"id":"01a005fe-9451-7f17-8ccf-094e91e7a428","issue_id":"project-LICHEN-worker6-9ck5","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-15T15:16:05.32999Z"}
+{"id":"01a005fe-9470-7cae-bf14-33f1acd9e748","issue_id":"project-LICHEN-worker6-9ck5","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-15T15:16:05.360831Z"}
+{"id":"01a00601-e590-73fb-9e7d-936e96b4cac0","issue_id":"project-LICHEN-worker6-9ck5","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: read_exact from /dev/urandom now properly checked with if-let-err pattern; exits with error on failure instead of silently using weak/zero seed","created_at":"2026-08-15T15:19:42.736261Z"}

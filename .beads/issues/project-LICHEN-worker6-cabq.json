@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-cabq",
+  "title": "[review] stack.rs: Security-critical epoch validation only enforced i",
+  "description": "The check `epoch \u003e= 128` uses `debug_assert!`, which is compiled out in release builds. Per spec section 4.4, epoch values below 128 violate replay protection requirements. This security invariant should use a runtime check that returns an error or panics in all builds, not just debug.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:36.969138Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:20:45.824201Z",
+  "closed_at": "2026-08-15T15:20:45.824201Z",
+  "close_reason": "Fixed: Changed debug_assert! to assert! for epoch validation so the security check runs in release builds",
+  "labels": [
+    "review"
+  ]
+}

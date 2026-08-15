@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-pzu6",
+  "title": "[review] lib.rs: Division by zero panic",
+  "description": "sfn_from_unix_time divides by superframe_duration_us with no guard. If caller passes 0, the function panics. This is a public API with no documentation of this precondition.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:02.640577Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:21:31.002253Z",
+  "closed_at": "2026-08-15T15:21:31.002253Z",
+  "close_reason": "Fixed: Added guard for superframe_duration_us == 0, returns 0 instead of panicking. Added documentation and test case.",
+  "labels": [
+    "review"
+  ]
+}

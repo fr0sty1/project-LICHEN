@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-9mpe",
+  "title": "[review] tx_queue.rs: Push accepts already-expired deadlines",
+  "description": "When deadline_ms \u003c= now_ms, the item is created and pushed successfully. expire_before() at line 298 only expires EXISTING items, not the new one. The item is immediately considered expired but occupies a slot until the next expire_before call, potentially causing a concurrent higher-priority push to fail unnecessarily.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:05.295139Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:05.295139Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-8ndv",
+  "title": "[review] lib.rs: Division by zero via GnssHopConfig",
+  "description": "select_channel_with_gnss passes gnss_config.superframe_duration_us to sfn_from_unix_time. Since GnssHopConfig fields are public, a caller can construct a config with superframe_duration_us=0, causing a panic at runtime.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:17:05.200816Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:21:31.002258Z",
+  "closed_at": "2026-08-15T15:21:31.002258Z",
+  "close_reason": "Fixed: sfn_from_unix_time now guards against superframe_duration_us=0 by checking for zero and returning 0 early",
+  "labels": [
+    "review"
+  ]
+}

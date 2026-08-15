@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-1x4q",
+  "title": "[review] lichend.rs: HAT mode loses queued packets on shutdown",
+  "description": "When ctrl_c fires, the `break` at line 750 exits the loop before the TX queue draining code at lines 753-762 executes. Compare to sim mode which has explicit shutdown draining (lines 490-502). Queued packets are lost on graceful shutdown.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:28:41.239098Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:28:41.239098Z",
+  "labels": [
+    "review"
+  ]
+}

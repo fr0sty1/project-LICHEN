@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-if1x",
+  "title": "[review] lichend.rs: save_seed failure ignored",
+  "description": "If save_seed fails, the newly generated seed is used but not persisted. On next startup, a different seed will be generated, causing identity churn. The failure should at least be logged as a warning.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:31.179982Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:31.179982Z",
+  "labels": [
+    "review"
+  ]
+}

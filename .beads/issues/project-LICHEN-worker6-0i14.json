@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-0i14",
+  "title": "[review] lichend.rs: Seed persistence failure silently ignored",
+  "description": "If `save_seed` fails, the newly generated seed is lost. On next restart, a different seed will be generated, causing identity drift. The node would have a different public key, breaking peer authentication and potentially orphaning mesh routes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:05.295137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:22:46.356977Z",
+  "closed_at": "2026-08-15T15:22:46.356977Z",
+  "close_reason": "Fixed: save_seed failure now fails closed with error log and exit(1), matching epoch persistence pattern. Prevents identity drift on restart.",
+  "labels": [
+    "review"
+  ]
+}

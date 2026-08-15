@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-egz2",
+  "title": "[review] lichend.rs: Epoch wrapping at u8::MAX may cause replay window ",
+  "description": "When epoch equals 255, wrapping_add(1) produces 0, which triggers the `if epoch \u003c 128` fallback to 128. This 127-epoch jump backwards could reopen a replay window if nodes cache epochs. Consider saturating_add or using a wider type.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:28.662787Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:28.662787Z",
+  "labels": [
+    "review"
+  ]
+}

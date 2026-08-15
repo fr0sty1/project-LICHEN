@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-q52t",
+  "title": "[review] lichend.rs: TUN errors silently swallowed in HAT mode",
+  "description": "In run_hat_inner, TUN recv errors are handled with `if let Ok(n) = result`, silently dropping errors. Other code paths (sim/serial) treat TUN errors as fatal. Inconsistent error handling may mask hardware or permission issues.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:20.840808Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:20.840808Z",
+  "labels": [
+    "review"
+  ]
+}

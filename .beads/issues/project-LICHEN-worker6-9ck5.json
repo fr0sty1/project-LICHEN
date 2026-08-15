@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-9ck5",
+  "title": "[review] lichend.rs: Cryptographic seed read failure silently ignored",
+  "description": "The result of `read_exact` from /dev/urandom is discarded with `let _`. If reading fails (file descriptor error, interrupted syscall), the seed buffer `b` remains all zeros or partially filled. This weak/zero seed is then used to derive the node's cryptographic identity, compromising authentication and replay protection for the entire mesh.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:05.295137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:19:42.728085Z",
+  "closed_at": "2026-08-15T15:19:42.728085Z",
+  "close_reason": "Fixed: read_exact from /dev/urandom now properly checked with if-let-err pattern; exits with error on failure instead of silently using weak/zero seed",
+  "labels": [
+    "review"
+  ]
+}

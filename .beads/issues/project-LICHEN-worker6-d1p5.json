@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-d1p5",
+  "title": "[review] lichend.rs: Mutex unwrap can panic on poisoned lock",
+  "description": "`tx_queue.lock().unwrap()` will panic if the mutex is poisoned (another thread panicked while holding the lock). In a daemon, this causes an unclean crash. Use `.lock().ok()` or `.lock().unwrap_or_else()` with recovery logic, or let the poison propagate explicitly.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:20.715609Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:23:12.675971Z",
+  "closed_at": "2026-08-15T15:23:12.675971Z",
+  "close_reason": "Fixed: Replaced all tx_queue.lock().unwrap() calls with .unwrap_or_else(|poisoned| poisoned.into_inner()) to recover gracefully from poisoned mutex instead of panicking. Also removed unused sync::mpsc import.",
+  "labels": [
+    "review"
+  ]
+}

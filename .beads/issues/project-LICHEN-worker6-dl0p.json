@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-dl0p",
+  "title": "[review] lichend.rs: Serial mode loses queued packets on shut",
+  "description": "Same issue as HAT mode: when ctrl_c fires at line 584-587, the loop breaks before the TX queue and SLIP framer draining code at lines 591-604 executes. Unlike sim mode which explicitly drains on shutdown, serial mode loses queued packets.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:28:40.456701Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:28:40.456701Z",
+  "labels": [
+    "review"
+  ]
+}

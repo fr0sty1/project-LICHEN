@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-hv4d",
+  "title": "[review] lib.rs: Division by zero panic",
+  "description": "sfn_from_unix_time divides by superframe_duration_us. If caller passes 0, this causes a panic. The function should either return 0, saturate, or return Result\u003cu32, Error\u003e when superframe_duration_us is 0.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:59.045179Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:21:32.803279Z",
+  "closed_at": "2026-08-15T15:21:32.803279Z",
+  "close_reason": "Fixed: Added zero-check for superframe_duration_us at function entry, returns 0 to avoid division by zero panic. Added test coverage.",
+  "labels": [
+    "review"
+  ]
+}

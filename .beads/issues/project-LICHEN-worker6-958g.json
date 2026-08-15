@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-958g",
+  "title": "[review] lichend.rs: TUN recv error silently ignored in HAT mode",
+  "description": "Unlike sim mode (line 448) and serial mode (line 549) which break the loop on TUN errors, HAT mode uses `if let Ok(n) = result` which silently swallows errors. A persistent TUN failure would cause silent packet loss with no log entry or shutdown.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:13.014469Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:13.014469Z",
+  "labels": [
+    "review"
+  ]
+}

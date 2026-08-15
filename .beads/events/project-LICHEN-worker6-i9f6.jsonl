@@ -1,0 +1,3 @@
+{"id":"01a005fe-db4e-76c2-b6a7-ea90fc6d220d","issue_id":"project-LICHEN-worker6-i9f6","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-15T15:16:23.502444Z"}
+{"id":"01a005fe-db55-7d59-93d6-b84172a93e66","issue_id":"project-LICHEN-worker6-i9f6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-15T15:16:23.509875Z"}
+{"id":"01a00601-dd5c-7651-8e46-8f070e14fbda","issue_id":"project-LICHEN-worker6-i9f6","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: read_exact result is now properly checked with if-let-Err pattern; process exits with error if entropy read fails, preventing weak seed creation","created_at":"2026-08-15T15:19:40.636415Z"}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-3sci",
+  "title": "[review] stack.rs: Security invariant enforced only in debug builds",
+  "description": "The epoch \u003e= 128 requirement (per spec section 4.4) uses debug_assert!, which is stripped in release builds. A caller could pass epoch \u003c 128 in production, violating the security invariant. Should use assert! or return Result for security-critical invariants.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:43.25129Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:21:32.178014Z",
+  "closed_at": "2026-08-15T15:21:32.178014Z",
+  "close_reason": "Fixed: Changed debug_assert! to assert! for epoch \u003e= 128 check. Security invariants must be enforced in all builds, not just debug. Also added SECURITY comment explaining the rationale.",
+  "labels": [
+    "review"
+  ]
+}

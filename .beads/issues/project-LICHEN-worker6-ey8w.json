@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ey8w",
+  "title": "[review] lichend.rs: TUN receive errors silently swallowed",
+  "description": "In run_hat_inner, the TUN receive result is handled with `if let Ok(n) = result`, silently discarding errors. This is inconsistent with run_serial_inner (line 549) and run_sim_inner (line 448) which both log and break on TUN errors. A failing TUN could go unnoticed indefinitely.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T15:16:28.153092Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T15:16:28.153092Z",
+  "labels": [
+    "review"
+  ]
+}
