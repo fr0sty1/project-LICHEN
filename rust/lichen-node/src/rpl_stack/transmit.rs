@@ -14,7 +14,7 @@ use lichen_link::schnorr;
 use lichen_rpl::routing::DaoTxError;
 
 use crate::node::{rpl_code, valid_ipv6_envelope};
-use crate::stack::TxError;
+use crate::stack::{Priority, TxError};
 
 use super::error::{DaoSendError, RplControlError};
 use super::util::{dao_ipv6_packet, ipv6_eui64, ipv6_l2_destination, rpl_ipv6_packet};
@@ -66,10 +66,12 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         )
         .ok_or(TxError::BufferTooSmall)?;
         let l2_destination = ipv6_l2_destination(destination);
+        // RPL DIO is control traffic (P1)
         self.stack
             .send_ipv6_to(
                 &packet,
                 l2_destination.as_ref().map_or(&[], <[u8; 8]>::as_slice),
+                Priority::Routing,
             )
             .await
     }
@@ -78,10 +80,12 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let packet = rpl_ipv6_packet(self.local_rpl_addr, destination, rpl_code::DIS, &[0, 0])
             .ok_or(TxError::BufferTooSmall)?;
         let l2_destination = ipv6_l2_destination(destination);
+        // RPL DIS is control traffic (P1)
         self.stack
             .send_ipv6_to(
                 &packet,
                 l2_destination.as_ref().map_or(&[], <[u8; 8]>::as_slice),
+                Priority::Routing,
             )
             .await
     }
@@ -118,8 +122,9 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             .ok_or(DaoSendError::Dao(DaoTxError::NotJoined))?;
         let packet = dao_ipv6_packet(self.local_rpl_addr, dodag_id, dao)
             .ok_or(DaoSendError::PacketTooLarge)?;
+        // RPL DAO is control traffic (P1)
         self.stack
-            .send_ipv6_to(&packet, &ipv6_eui64(next_hop))
+            .send_ipv6_to(&packet, &ipv6_eui64(next_hop), Priority::Routing)
             .await
             .map_err(DaoSendError::Transmit)
     }
@@ -144,8 +149,9 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let route = self
             .route_for(header.dst.0, now_ms, false)
             .ok_or(TxError::NoRoute)?;
+        // Non-CoAP IPv6 diagnostic uses Normal priority (P3)
         self.stack
-            .send_ipv6_to_route(ipv6, &route.next_hop, &route.source_route)
+            .send_ipv6_to_route(ipv6, &route.next_hop, &route.source_route, Priority::Normal)
             .await
     }
 

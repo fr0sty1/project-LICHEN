@@ -60,6 +60,7 @@ pub mod loadng;
 pub mod neighbor_monitor;
 pub mod rf_health;
 pub mod tdma_beacon;
+pub mod transport;
 pub mod tx_queue;
 pub mod udp;
 
@@ -76,12 +77,14 @@ pub fn lichen_hash_32(data: &[u8]) -> u32 {
 }
 
 /// Derive superframe number from UTC time in microseconds.
+///
+/// Returns 0 if `superframe_duration_us` is 0 (avoids division by zero).
 pub fn sfn_from_unix_time(
     unix_time_us: u64,
     superframe_duration_us: u64,
     epoch_base_us: u64,
 ) -> u32 {
-    if unix_time_us < epoch_base_us {
+    if superframe_duration_us == 0 || unix_time_us < epoch_base_us {
         return 0;
     }
     ((unix_time_us - epoch_base_us) / superframe_duration_us) as u32
@@ -169,6 +172,13 @@ pub fn select_channel_with_gnss(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_sfn_from_unix_time_zero_duration() {
+        // Zero superframe duration should return 0 (avoid division by zero)
+        let result = sfn_from_unix_time(GNSS_EPOCH_BASE_US + 1_000_000, 0, GNSS_EPOCH_BASE_US);
+        assert_eq!(result, 0);
+    }
 
     #[test]
     fn test_sfn_from_unix_time_before_epoch() {

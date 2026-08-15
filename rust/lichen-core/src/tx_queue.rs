@@ -37,17 +37,20 @@ impl core::error::Error for TxQueueError {}
 /// Maximum number of items in the TX queue (spec: 4 packets).
 pub const TX_QUEUE_CAPACITY: usize = 4;
 
+/// Default deadline for SOS/emergency messages (2 seconds).
+pub const DEADLINE_SOS_MS: u64 = 2_000;
+
 /// Default deadline for routing control messages (5 seconds).
 pub const DEADLINE_ROUTING_MS: u64 = 5_000;
 
-/// Default deadline for control/ACK messages (10 seconds).
-pub const DEADLINE_CONTROL_MS: u64 = 10_000;
+/// Default deadline for urgent/time-sensitive messages (30 seconds).
+pub const DEADLINE_URGENT_MS: u64 = 30_000;
 
-/// Default deadline for user application data (60 seconds).
-pub const DEADLINE_USER_MS: u64 = 60_000;
+/// Default deadline for normal application data (60 seconds).
+pub const DEADLINE_NORMAL_MS: u64 = 60_000;
 
-/// Default deadline for bulk data (60 seconds).
-pub const DEADLINE_BULK_MS: u64 = 60_000;
+/// Default deadline for bulk data (120 seconds).
+pub const DEADLINE_BULK_MS: u64 = 120_000;
 
 /// Maximum payload size for a queued item.
 pub const TX_ITEM_MAX_PAYLOAD: usize = 255;
@@ -55,31 +58,35 @@ pub const TX_ITEM_MAX_PAYLOAD: usize = 255;
 /// Priority levels for TX queue items.
 ///
 /// Lower numeric value = higher priority (processed first).
+/// Maps 1:1 to the spec's P0-P4 levels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TxPriority {
-    /// Control frames (acks, link management). Highest priority.
-    Control = 0,
-    /// Routing protocol messages (RPL, LOADng, Announce).
+    /// P0: Emergency traffic (SOS beacons). Highest priority.
+    Sos = 0,
+    /// P1: Routing protocol messages (RPL, LOADng, Announce, ACKs).
     Routing = 1,
-    /// User application traffic.
-    User = 2,
-    /// Bulk transfers (firmware updates, large data). Lowest priority.
-    Bulk = 3,
+    /// P2: Urgent/time-sensitive traffic (CoAP CON, tactical chat).
+    Urgent = 2,
+    /// P3: Normal application traffic (CoAP NON, telemetry, position).
+    Normal = 3,
+    /// P4: Bulk transfers (firmware updates, large data). Lowest priority.
+    Bulk = 4,
 }
 
 impl TxPriority {
     /// Number of distinct priority levels.
-    pub const COUNT: usize = 4;
+    pub const COUNT: usize = 5;
 
     /// Convert from u8, returning None for invalid values.
     #[inline]
     pub const fn from_u8(value: u8) -> Option<Self> {
         match value {
-            0 => Some(Self::Control),
+            0 => Some(Self::Sos),
             1 => Some(Self::Routing),
-            2 => Some(Self::User),
-            3 => Some(Self::Bulk),
+            2 => Some(Self::Urgent),
+            3 => Some(Self::Normal),
+            4 => Some(Self::Bulk),
             _ => None,
         }
     }
@@ -497,7 +504,7 @@ mod tests {
 
         assert_eq!(stats.depth, 0);
         assert_eq!(stats.bytes_pending, 0);
-        assert_eq!(stats.by_priority, [0, 0, 0, 0]);
+        assert_eq!(stats.by_priority, [0, 0, 0, 0, 0]);
         assert_eq!(stats.packets_queued, 0);
         assert_eq!(stats.packets_dropped_deadline, 0);
         assert_eq!(stats.packets_dropped_full, 0);
@@ -510,17 +517,17 @@ mod tests {
     fn push_pop_basic() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         queue
-            .push(TxPriority::User, deadline, now, b"hello")
+            .push(TxPriority::Normal, deadline, now, b"hello")
             .unwrap();
         assert_eq!(queue.len(), 1);
 
         let pop_time = now + 50; // 50ms later
         let item = queue.pop(pop_time).unwrap();
         assert_eq!(item.data(), b"hello");
-        assert_eq!(item.priority, TxPriority::User);
+        assert_eq!(item.priority, TxPriority::Normal);
         assert_eq!(item.deadline_ms, deadline);
         assert!(queue.is_empty());
     }
@@ -529,26 +536,26 @@ mod tests {
     fn priority_ordering() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Push in reverse priority order (all 4 slots)
         queue
             .push(TxPriority::Bulk, deadline, now, b"bulk")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"user")
+            .push(TxPriority::Normal, deadline, now, b"normal")
             .unwrap();
         queue
             .push(TxPriority::Routing, deadline, now, b"routing")
             .unwrap();
         queue
-            .push(TxPriority::Control, deadline, now, b"control")
+            .push(TxPriority::Sos, deadline, now, b"sos")
             .unwrap();
 
         // Should pop in priority order (lowest enum value first)
-        assert_eq!(queue.pop(now).unwrap().priority, TxPriority::Control);
+        assert_eq!(queue.pop(now).unwrap().priority, TxPriority::Sos);
         assert_eq!(queue.pop(now).unwrap().priority, TxPriority::Routing);
-        assert_eq!(queue.pop(now).unwrap().priority, TxPriority::User);
+        assert_eq!(queue.pop(now).unwrap().priority, TxPriority::Normal);
         assert_eq!(queue.pop(now).unwrap().priority, TxPriority::Bulk);
     }
 
@@ -556,16 +563,16 @@ mod tests {
     fn fifo_within_priority() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         queue
-            .push(TxPriority::User, deadline, now, b"first")
+            .push(TxPriority::Normal, deadline, now, b"first")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"second")
+            .push(TxPriority::Normal, deadline, now, b"second")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"third")
+            .push(TxPriority::Normal, deadline, now, b"third")
             .unwrap();
 
         assert_eq!(queue.pop(now).unwrap().data(), b"first");
@@ -577,16 +584,16 @@ mod tests {
     fn stats_tracking() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         queue
-            .push(TxPriority::Control, deadline, now, b"ack")
+            .push(TxPriority::Sos, deadline, now, b"sos")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"hello world")
+            .push(TxPriority::Normal, deadline, now, b"hello world")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"test")
+            .push(TxPriority::Normal, deadline, now, b"test")
             .unwrap();
         queue
             .push(TxPriority::Bulk, deadline, now, b"data")
@@ -595,9 +602,9 @@ mod tests {
         let stats = queue.stats();
         assert_eq!(stats.depth, 4);
         assert_eq!(stats.bytes_pending, 3 + 11 + 4 + 4); // 22
-        assert_eq!(stats.by_priority[TxPriority::Control as usize], 1);
+        assert_eq!(stats.by_priority[TxPriority::Sos as usize], 1);
         assert_eq!(stats.by_priority[TxPriority::Routing as usize], 0);
-        assert_eq!(stats.by_priority[TxPriority::User as usize], 2);
+        assert_eq!(stats.by_priority[TxPriority::Normal as usize], 2);
         assert_eq!(stats.by_priority[TxPriority::Bulk as usize], 1);
         assert_eq!(stats.packets_queued, 4);
 
@@ -606,18 +613,18 @@ mod tests {
         let stats = queue.stats();
         assert_eq!(stats.depth, 3);
         assert_eq!(stats.bytes_pending, 19); // 22 - 3
-        assert_eq!(stats.by_priority[TxPriority::Control as usize], 0);
+        assert_eq!(stats.by_priority[TxPriority::Sos as usize], 0);
     }
 
     #[test]
     fn estimated_drain_time() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // 100 bytes total
         queue
-            .push(TxPriority::User, deadline, now, &[0u8; 100])
+            .push(TxPriority::Normal, deadline, now, &[0u8; 100])
             .unwrap();
 
         // At 1000 us/byte = 1ms/byte, 100 bytes = 100ms
@@ -635,11 +642,11 @@ mod tests {
     fn estimated_drain_time_rounds_up() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // 1 byte at 1 us/byte = 1 us, should round up to 1 ms
         queue
-            .push(TxPriority::User, deadline, now, &[0u8; 1])
+            .push(TxPriority::Normal, deadline, now, &[0u8; 1])
             .unwrap();
         assert_eq!(queue.estimated_drain_time_ms(1), 1);
     }
@@ -648,21 +655,21 @@ mod tests {
     fn queue_full_error() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Fill queue with same priority items
         for i in 0..TX_QUEUE_CAPACITY {
             queue
-                .push(TxPriority::User, deadline, now, &[i as u8])
+                .push(TxPriority::Normal, deadline, now, &[i as u8])
                 .unwrap();
         }
 
         assert!(queue.is_full());
         // Same priority cannot preempt, should fail
         assert!(queue
-            .push(TxPriority::User, deadline, now, b"overflow")
+            .push(TxPriority::Normal, deadline, now, b"overflow")
             .is_err());
-        // Lower priority (Bulk) cannot preempt User, should fail
+        // Lower priority (Bulk) cannot preempt Normal, should fail
         assert!(queue
             .push(TxPriority::Bulk, deadline, now, b"bulk")
             .is_err());
@@ -670,11 +677,12 @@ mod tests {
 
     #[test]
     fn priority_from_u8() {
-        assert_eq!(TxPriority::from_u8(0), Some(TxPriority::Control));
+        assert_eq!(TxPriority::from_u8(0), Some(TxPriority::Sos));
         assert_eq!(TxPriority::from_u8(1), Some(TxPriority::Routing));
-        assert_eq!(TxPriority::from_u8(2), Some(TxPriority::User));
-        assert_eq!(TxPriority::from_u8(3), Some(TxPriority::Bulk));
-        assert_eq!(TxPriority::from_u8(4), None);
+        assert_eq!(TxPriority::from_u8(2), Some(TxPriority::Urgent));
+        assert_eq!(TxPriority::from_u8(3), Some(TxPriority::Normal));
+        assert_eq!(TxPriority::from_u8(4), Some(TxPriority::Bulk));
+        assert_eq!(TxPriority::from_u8(5), None);
         assert_eq!(TxPriority::from_u8(255), None);
     }
 
@@ -682,10 +690,10 @@ mod tests {
     fn peek_does_not_modify() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         queue
-            .push(TxPriority::User, deadline, now, b"data")
+            .push(TxPriority::Normal, deadline, now, b"data")
             .unwrap();
 
         assert_eq!(queue.peek().unwrap().data(), b"data");
@@ -697,23 +705,23 @@ mod tests {
     fn fifo_across_sequence_wrap() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Set sequence counter near wrap point
         queue.sequence = u32::MAX - 1;
 
         // Push items that span the wrap (fills the queue of 4)
         queue
-            .push(TxPriority::User, deadline, now, b"before_wrap_1")
+            .push(TxPriority::Normal, deadline, now, b"before_wrap_1")
             .unwrap(); // seq = MAX-1
         queue
-            .push(TxPriority::User, deadline, now, b"before_wrap_2")
+            .push(TxPriority::Normal, deadline, now, b"before_wrap_2")
             .unwrap(); // seq = MAX
         queue
-            .push(TxPriority::User, deadline, now, b"after_wrap_1")
+            .push(TxPriority::Normal, deadline, now, b"after_wrap_1")
             .unwrap(); // seq = 0 (wrapped)
         queue
-            .push(TxPriority::User, deadline, now, b"after_wrap_2")
+            .push(TxPriority::Normal, deadline, now, b"after_wrap_2")
             .unwrap(); // seq = 1
 
         // FIFO should be preserved despite wrap
@@ -730,11 +738,11 @@ mod tests {
 
         // Push item that expires at now + 100
         queue
-            .push(TxPriority::User, now + 100, now, b"short_lived")
+            .push(TxPriority::Normal, now + 100, now, b"short_lived")
             .unwrap();
         // Push item that expires at now + 10000
         queue
-            .push(TxPriority::User, now + 10000, now, b"long_lived")
+            .push(TxPriority::Normal, now + 10000, now, b"long_lived")
             .unwrap();
 
         assert_eq!(queue.len(), 2);
@@ -759,17 +767,17 @@ mod tests {
 
         // Push item with short deadline
         queue
-            .push(TxPriority::User, now + 100, now, b"will_expire")
+            .push(TxPriority::Normal, now + 100, now, b"will_expire")
             .unwrap();
         // Fill rest of queue
         queue
-            .push(TxPriority::User, now + 10000, now, b"keeper1")
+            .push(TxPriority::Normal, now + 10000, now, b"keeper1")
             .unwrap();
         queue
-            .push(TxPriority::User, now + 10000, now, b"keeper2")
+            .push(TxPriority::Normal, now + 10000, now, b"keeper2")
             .unwrap();
         queue
-            .push(TxPriority::User, now + 10000, now, b"keeper3")
+            .push(TxPriority::Normal, now + 10000, now, b"keeper3")
             .unwrap();
 
         assert!(queue.is_full());
@@ -777,7 +785,7 @@ mod tests {
         // Push new item after first one expired - should succeed due to expiry
         let later = now + 500;
         queue
-            .push(TxPriority::User, later + 10000, later, b"new_item")
+            .push(TxPriority::Normal, later + 10000, later, b"new_item")
             .unwrap();
 
         // Queue should still be full (4 items: 3 keepers + new_item)
@@ -790,7 +798,7 @@ mod tests {
     fn preemption_higher_priority() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Fill queue with Bulk priority
         queue
@@ -808,9 +816,9 @@ mod tests {
 
         assert!(queue.is_full());
 
-        // Higher priority (Control) should preempt
+        // Higher priority (Sos) should preempt
         queue
-            .push(TxPriority::Control, deadline, now, b"urgent")
+            .push(TxPriority::Sos, deadline, now, b"urgent")
             .unwrap();
 
         // Verify preemption stats
@@ -826,27 +834,27 @@ mod tests {
     fn preemption_evicts_oldest_lowest_priority() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Fill with mixed priorities
         queue
             .push(TxPriority::Bulk, deadline, now, b"bulk_oldest")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"user")
+            .push(TxPriority::Normal, deadline, now, b"normal")
             .unwrap();
         queue
             .push(TxPriority::Bulk, deadline, now, b"bulk_newer")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"user2")
+            .push(TxPriority::Normal, deadline, now, b"normal2")
             .unwrap();
 
         assert!(queue.is_full());
 
         // Push higher priority item
         queue
-            .push(TxPriority::Control, deadline, now, b"control")
+            .push(TxPriority::Sos, deadline, now, b"sos")
             .unwrap();
 
         // Should have preempted oldest Bulk item
@@ -860,10 +868,10 @@ mod tests {
         }
 
         let payloads: std::vec::Vec<_> = items.iter().map(|i| i.data()).collect();
-        assert!(payloads.contains(&b"control".as_slice()));
-        assert!(payloads.contains(&b"user".as_slice()));
+        assert!(payloads.contains(&b"sos".as_slice()));
+        assert!(payloads.contains(&b"normal".as_slice()));
         assert!(payloads.contains(&b"bulk_newer".as_slice()));
-        assert!(payloads.contains(&b"user2".as_slice()));
+        assert!(payloads.contains(&b"normal2".as_slice()));
         assert!(!payloads.contains(&b"bulk_oldest".as_slice()));
     }
 
@@ -876,23 +884,24 @@ mod tests {
     #[test]
     fn default_deadline_constants() {
         // Verify spec-mandated deadlines
+        assert_eq!(DEADLINE_SOS_MS, 2_000);
         assert_eq!(DEADLINE_ROUTING_MS, 5_000);
-        assert_eq!(DEADLINE_CONTROL_MS, 10_000);
-        assert_eq!(DEADLINE_USER_MS, 60_000);
-        assert_eq!(DEADLINE_BULK_MS, 60_000);
+        assert_eq!(DEADLINE_URGENT_MS, 30_000);
+        assert_eq!(DEADLINE_NORMAL_MS, 60_000);
+        assert_eq!(DEADLINE_BULK_MS, 120_000);
     }
 
     #[test]
     fn packets_queued_counter() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Push 3 items
-        queue.push(TxPriority::User, deadline, now, b"one").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"two").unwrap();
+        queue.push(TxPriority::Normal, deadline, now, b"one").unwrap();
+        queue.push(TxPriority::Normal, deadline, now, b"two").unwrap();
         queue
-            .push(TxPriority::User, deadline, now, b"three")
+            .push(TxPriority::Normal, deadline, now, b"three")
             .unwrap();
 
         let stats = queue.stats();
@@ -901,7 +910,7 @@ mod tests {
         // Pop one and push another - counter should still increment
         queue.pop(now);
         queue
-            .push(TxPriority::User, deadline, now, b"four")
+            .push(TxPriority::Normal, deadline, now, b"four")
             .unwrap();
 
         let stats = queue.stats();
@@ -913,24 +922,24 @@ mod tests {
     fn packets_dropped_full_counter() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Fill queue with same priority items (4 slots)
         for i in 0..TX_QUEUE_CAPACITY {
             queue
-                .push(TxPriority::User, deadline, now, &[i as u8])
+                .push(TxPriority::Normal, deadline, now, &[i as u8])
                 .unwrap();
         }
 
         // Try to push more - these should fail and increment dropped counter
         assert!(queue
-            .push(TxPriority::User, deadline, now, b"drop1")
+            .push(TxPriority::Normal, deadline, now, b"drop1")
             .is_err());
         assert!(queue
             .push(TxPriority::Bulk, deadline, now, b"drop2")
             .is_err());
         assert!(queue
-            .push(TxPriority::User, deadline, now, b"drop3")
+            .push(TxPriority::Normal, deadline, now, b"drop3")
             .is_err());
 
         let stats = queue.stats();
@@ -942,10 +951,10 @@ mod tests {
     fn latency_tracking_basic() {
         let mut queue = TxQueue::new();
         let enqueue_time = 1000u64;
-        let deadline = enqueue_time + DEADLINE_USER_MS;
+        let deadline = enqueue_time + DEADLINE_NORMAL_MS;
 
         queue
-            .push(TxPriority::User, deadline, enqueue_time, b"test")
+            .push(TxPriority::Normal, deadline, enqueue_time, b"test")
             .unwrap();
 
         // Pop 100ms later
@@ -964,15 +973,15 @@ mod tests {
     fn latency_tracking_max() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Push three items
-        queue.push(TxPriority::User, deadline, now, b"a").unwrap();
+        queue.push(TxPriority::Normal, deadline, now, b"a").unwrap();
         queue
-            .push(TxPriority::User, deadline, now + 50, b"b")
+            .push(TxPriority::Normal, deadline, now + 50, b"b")
             .unwrap();
         queue
-            .push(TxPriority::User, deadline, now + 100, b"c")
+            .push(TxPriority::Normal, deadline, now + 100, b"c")
             .unwrap();
 
         // Pop at different times to create varying latencies
@@ -992,27 +1001,27 @@ mod tests {
     fn latency_ewma_smoothing() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         // Push and pop multiple items with consistent latency to observe EWMA behavior
         // EWMA formula: scaled = scaled - scaled/8 + sample
         // Display: avg = scaled / 8
 
         // Sample 1: 80ms -> scaled = 0 - 0 + 80 = 80 -> avg = 10
-        queue.push(TxPriority::User, deadline, now, b"1").unwrap();
+        queue.push(TxPriority::Normal, deadline, now, b"1").unwrap();
         queue.pop(now + 80);
         assert_eq!(queue.stats().avg_latency_ms, 10);
 
         // Sample 2: 80ms -> scaled = 80 - 10 + 80 = 150 -> avg = 18
         queue
-            .push(TxPriority::User, deadline, now + 100, b"2")
+            .push(TxPriority::Normal, deadline, now + 100, b"2")
             .unwrap();
         queue.pop(now + 180);
         assert_eq!(queue.stats().avg_latency_ms, 18);
 
         // Sample 3: 80ms -> scaled = 150 - 18 + 80 = 212 -> avg = 26
         queue
-            .push(TxPriority::User, deadline, now + 200, b"3")
+            .push(TxPriority::Normal, deadline, now + 200, b"3")
             .unwrap();
         queue.pop(now + 280);
         assert_eq!(queue.stats().avg_latency_ms, 26);
@@ -1022,10 +1031,10 @@ mod tests {
     fn enqueue_time_accessor() {
         let mut queue = TxQueue::new();
         let now = 1000u64;
-        let deadline = now + DEADLINE_USER_MS;
+        let deadline = now + DEADLINE_NORMAL_MS;
 
         queue
-            .push(TxPriority::User, deadline, now, b"test")
+            .push(TxPriority::Normal, deadline, now, b"test")
             .unwrap();
 
         let item = queue.pop(now + 50).unwrap();

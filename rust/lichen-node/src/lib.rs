@@ -94,7 +94,7 @@ pub use rpl_stack::{RplReceiveOutcome, RplStack};
 #[cfg(feature = "std")]
 pub use secure::{SecureError, SecureStack};
 #[cfg(feature = "std")]
-pub use stack::{ReceivedIpv6, RxError, Stack, TxError};
+pub use stack::{Priority, ReceivedIpv6, RxError, Stack, TxError};
 /// Type alias for `Stack` — use only for ICMPv6, diagnostics, or testing.
 /// For CoAP traffic, use [`SecureStack`] instead (per spec section 8.7).
 #[cfg(feature = "std")]

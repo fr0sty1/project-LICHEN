@@ -3,13 +3,13 @@
 //! Displays:
 //!   - Duty cycle usage bar (visual, percentage, ms remaining)
 //!   - Time until budget refill
-//!   - TX queue depth by priority (Control/Routing/User/Bulk)
+//!   - TX queue depth by priority (SOS/Routing/Urgent/Normal/Bulk)
 //!   - Estimated drain time
 
 use lichen_core::duty_cycle::{DutyCycleTracker, WINDOW_MS};
 use lichen_core::tx_queue::{
-    TxPriority, TxQueue, DEADLINE_BULK_MS, DEADLINE_CONTROL_MS, DEADLINE_ROUTING_MS,
-    DEADLINE_USER_MS,
+    TxPriority, TxQueue, DEADLINE_BULK_MS, DEADLINE_NORMAL_MS, DEADLINE_ROUTING_MS,
+    DEADLINE_SOS_MS,
 };
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -77,11 +77,11 @@ impl RadioState {
         // Add some items to the TX queue (capacity is 4 per spec)
         let now = self.now_ms;
         let _ = self.tx_queue.push(
-            TxPriority::Control,
-            now + DEADLINE_CONTROL_MS,
+            TxPriority::Sos,
+            now + DEADLINE_SOS_MS,
             now,
             &[0u8; 12],
-        ); // ACK
+        ); // Emergency SOS
         let _ = self.tx_queue.push(
             TxPriority::Routing,
             now + DEADLINE_ROUTING_MS,
@@ -90,7 +90,7 @@ impl RadioState {
         ); // RPL DIO
         let _ = self
             .tx_queue
-            .push(TxPriority::User, now + DEADLINE_USER_MS, now, &[0u8; 64]); // User message
+            .push(TxPriority::Normal, now + DEADLINE_NORMAL_MS, now, &[0u8; 64]); // Normal message
         let _ = self
             .tx_queue
             .push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
@@ -129,7 +129,7 @@ pub fn render_radio_tab(f: &mut Frame, area: Rect, state: &mut RadioState) {
         .constraints([
             Constraint::Length(6), // Duty cycle section
             Constraint::Length(1), // Spacer
-            Constraint::Length(9), // TX queue section
+            Constraint::Length(10), // TX queue section (5 priorities + summary + spacer + borders)
             Constraint::Min(0),    // Remaining space
             Constraint::Length(1), // Status bar
         ])
@@ -237,9 +237,10 @@ fn render_tx_queue(f: &mut Frame, area: Rect, state: &mut RadioState) {
         .constraints([
             Constraint::Length(1), // Summary
             Constraint::Length(1), // Spacer
-            Constraint::Length(1), // Control
+            Constraint::Length(1), // SOS
             Constraint::Length(1), // Routing
-            Constraint::Length(1), // User
+            Constraint::Length(1), // Urgent
+            Constraint::Length(1), // Normal
             Constraint::Length(1), // Bulk
             Constraint::Min(0),    // Padding
         ])
@@ -270,9 +271,10 @@ fn render_tx_queue(f: &mut Frame, area: Rect, state: &mut RadioState) {
 
     // Priority breakdown
     let priorities = [
-        ("Control", TxPriority::Control, Color::Red),
+        ("SOS", TxPriority::Sos, Color::Red),
         ("Routing", TxPriority::Routing, Color::Yellow),
-        ("User", TxPriority::User, Color::Cyan),
+        ("Urgent", TxPriority::Urgent, Color::Magenta),
+        ("Normal", TxPriority::Normal, Color::Cyan),
         ("Bulk", TxPriority::Bulk, Color::DarkGray),
     ];
 

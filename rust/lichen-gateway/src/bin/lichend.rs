@@ -14,8 +14,7 @@ use lichen_core::{
     addr::NodeId,
     ipv6::{field, IPV6_HEADER_LEN},
     tx_queue::{
-        TxPriority, TxQueue, TxQueueError, DEADLINE_CONTROL_MS, DEADLINE_ROUTING_MS,
-        DEADLINE_USER_MS,
+        TxPriority, TxQueue, TxQueueError, DEADLINE_NORMAL_MS, DEADLINE_ROUTING_MS, DEADLINE_SOS_MS,
     },
 };
 use lichen_gateway::{
@@ -39,7 +38,6 @@ use std::{
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
-    sync::mpsc,
     time::{interval, sleep, Duration, MissedTickBehavior},
 };
 use tracing::{debug, error, info, warn};
@@ -136,9 +134,18 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            let _ = std::io::Read::read_exact(&mut f, &mut b);
+            if let Err(e) = std::io::Read::read_exact(&mut f, &mut b) {
+                error!("cannot read from urandom: {}", e);
+                std::process::exit(1);
+            }
             let s = Seed::new(b);
-            let _ = save_seed(&mut storage, &s);
+            // SECURITY: Seed persistence is critical for identity stability. If we can't
+            // persist the seed, the node will generate a different identity on restart,
+            // breaking peer authentication and orphaning mesh routes. Fail closed.
+            if let Err(e) = save_seed(&mut storage, &s) {
+                error!("seed persistence failed: {}; aborting to prevent identity drift", e);
+                std::process::exit(1);
+            }
             s
         }
     };
@@ -148,12 +155,23 @@ async fn main() {
         std::process::exit(1);
     }
     let epoch = load_epoch(&storage).ok().flatten().unwrap_or(128);
+    // SECURITY: Use saturating_add to prevent wrap 255->0->128, which would break
+    // replay protection by creating a non-monotonic epoch sequence.
     let safe_epoch = if epoch < 128 {
         128
     } else {
-        epoch.wrapping_add(1)
+        epoch.saturating_add(1)
     };
-    let _ = save_epoch(&mut storage, safe_epoch);
+    if safe_epoch == 255 {
+        warn!("epoch counter saturated at 255; re-key this node to restore replay protection headroom");
+    }
+    // SECURITY: Epoch persistence is critical for replay protection. If we can't
+    // persist the incremented epoch, peers that saw frames with the higher epoch
+    // will reject our frames as replays on restart. Fail closed.
+    if let Err(e) = save_epoch(&mut storage, safe_epoch) {
+        error!("epoch persistence failed: {}; aborting to prevent replay vulnerability", e);
+        std::process::exit(1);
+    }
 
     let use_sim = use_sim_mode && !use_hat;
     let backend = if use_hat {
@@ -220,9 +238,9 @@ async fn main() {
 /// Push a packet into a synchronous (non-shared) TX queue with appropriate priority and deadline.
 fn push_tx_queue_sync(tx_queue: &mut TxQueue, priority: TxPriority, data: &[u8], now_ms: u64) {
     let deadline = match priority {
-        TxPriority::Control => now_ms + DEADLINE_CONTROL_MS,
+        TxPriority::Sos => now_ms + DEADLINE_SOS_MS,
         TxPriority::Routing => now_ms + DEADLINE_ROUTING_MS,
-        TxPriority::User | TxPriority::Bulk => now_ms + DEADLINE_USER_MS,
+        TxPriority::Urgent | TxPriority::Normal | TxPriority::Bulk => now_ms + DEADLINE_NORMAL_MS,
     };
     match tx_queue.push(priority, deadline, now_ms, data) {
         Ok(()) => {
@@ -243,17 +261,20 @@ fn push_tx_queue_sync(tx_queue: &mut TxQueue, priority: TxPriority, data: &[u8],
 /// Push a packet into the shared TX queue with appropriate priority and deadline.
 fn push_tx_queue(tx_queue: &Mutex<TxQueue>, priority: TxPriority, data: &[u8], now_ms: u64) {
     let deadline = match priority {
-        TxPriority::Control => now_ms + DEADLINE_CONTROL_MS,
+        TxPriority::Sos => now_ms + DEADLINE_SOS_MS,
         TxPriority::Routing => now_ms + DEADLINE_ROUTING_MS,
-        TxPriority::User | TxPriority::Bulk => now_ms + DEADLINE_USER_MS,
+        TxPriority::Urgent | TxPriority::Normal | TxPriority::Bulk => now_ms + DEADLINE_NORMAL_MS,
     };
     match tx_queue
         .lock()
-        .unwrap()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
         .push(priority, deadline, now_ms, data)
     {
         Ok(()) => {
-            let stats = tx_queue.lock().unwrap().stats();
+            let stats = tx_queue
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .stats();
             debug!(depth = stats.depth, "TX queued");
         }
         Err(TxQueueError::QueueFull) => {
@@ -350,7 +371,9 @@ where
             };
             // Collect items under lock, then transmit outside the lock
             let items_to_tx: Vec<_> = {
-                let mut q = sim_tx_queue.lock().unwrap();
+                let mut q = sim_tx_queue
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
                 let mut items = Vec::new();
                 while let Some(item) = q.pop(now_ms) {
                     items.push(item.data().to_vec());
@@ -384,7 +407,9 @@ where
             start.elapsed().as_millis() as u64
         };
         let items_to_tx: Vec<_> = {
-            let mut q = sim_tx_queue.lock().unwrap();
+            let mut q = sim_tx_queue
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             let mut items = Vec::new();
             while let Some(item) = q.pop(now_ms) {
                 items.push(item.data().to_vec());
@@ -411,8 +436,14 @@ where
                 };
                 gw.maintain(now_ms);
                 // Expire stale entries from TX queue
-                tx_queue.lock().unwrap().expire_before(now_ms);
-                let stats = tx_queue.lock().unwrap().stats();
+                tx_queue
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .expire_before(now_ms);
+                let stats = tx_queue
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .stats();
                 debug!(depth = stats.depth, packets_dropped = stats.packets_dropped_full, "TX queue stats");
             }
             frame_opt = rx_recv.recv() => {
@@ -423,7 +454,7 @@ where
                 match frame_opt {
                     Some(frame) => {
                         if let Some(reply) = forward_mesh_to_upstream(gw, &frame, &tun).await {
-                            push_tx_queue(&tx_queue, TxPriority::Control, &reply, now_ms);
+                            push_tx_queue(&tx_queue, TxPriority::Routing, &reply, now_ms);
                         }
                     }
                     None => {
@@ -443,7 +474,7 @@ where
                 match result {
                     Ok(n) => {
                         if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                            push_tx_queue(&tx_queue, TxPriority::User, &schc, now_ms);
+                            push_tx_queue(&tx_queue, TxPriority::Normal, &schc, now_ms);
                         }
                     }
                     Err(e) => { error!("TUN recv: {e}"); break; }
@@ -526,7 +557,7 @@ where
                         let packets: Vec<_> = slip.feed(&rx_buf[..n]).collect();
                         for packet in packets {
                             if let Some(to_tx) = forward_mesh_to_upstream(gw, &packet, &tun).await {
-                                push_tx_queue_sync(&mut tx_queue, TxPriority::Control, &to_tx, now_ms);
+                                push_tx_queue_sync(&mut tx_queue, TxPriority::Routing, &to_tx, now_ms);
                             }
                         }
                     }
@@ -544,7 +575,7 @@ where
                 match result {
                     Ok(n) => {
                         if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                            push_tx_queue_sync(&mut tx_queue, TxPriority::User, &schc, now_ms);
+                            push_tx_queue_sync(&mut tx_queue, TxPriority::Normal, &schc, now_ms);
                         }
                     }
                     Err(e) => { error!("TUN recv: {e}"); break; }
@@ -659,8 +690,14 @@ where
 {
     info!("initializing Sx1302Concentrator");
     let mut conc = Sx1302Concentrator;
-    let _ = conc.reset().await;
-    let _ = conc.configure(&RadioConfig::default()).await;
+    if let Err(e) = conc.reset().await {
+        error!("concentrator reset failed: {e}; aborting HAT mode");
+        return;
+    }
+    if let Err(e) = conc.configure(&RadioConfig::default()).await {
+        error!("concentrator configure failed: {e}; aborting HAT mode");
+        return;
+    }
     let mut tun_buf = vec![0u8; 1500];
     let mut rx_buf = vec![0u8; 255];
     let mut tx_queue = TxQueue::new();
@@ -687,7 +724,7 @@ where
                     Ok(Some((len, rssi, snr))) => {
                         info!(len, rssi, snr, "hat RX");
                         if let Some(reply) = forward_mesh_to_upstream(gw, &rx_buf[..len], &tun).await {
-                            push_tx_queue_sync(&mut tx_queue, TxPriority::Control, &reply, now_ms);
+                            push_tx_queue_sync(&mut tx_queue, TxPriority::Routing, &reply, now_ms);
                         }
                     }
                     Ok(None) => {}
@@ -704,7 +741,7 @@ where
                 };
                 if let Ok(n) = result {
                     if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                        push_tx_queue_sync(&mut tx_queue, TxPriority::User, &schc, now_ms);
+                        push_tx_queue_sync(&mut tx_queue, TxPriority::Normal, &schc, now_ms);
                     }
                 }
             }

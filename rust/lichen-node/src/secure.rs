@@ -22,7 +22,7 @@ use lichen_oscore::{
     TAG_LEN,
 };
 
-use crate::stack::{ReceivedIpv6, RxError, Stack, TxError};
+use crate::stack::{Priority, ReceivedIpv6, RxError, Stack, TxError};
 use lichen_core::addr::NodeId;
 
 /// OSCORE option number.
@@ -304,8 +304,9 @@ impl<R: Radio> SecureStack<R> {
         &mut self,
         ipv6: &[u8],
         destination: &[u8],
+        priority: Priority,
     ) -> Result<(), TxError> {
-        self.stack.send_ipv6_to(ipv6, destination).await
+        self.stack.send_ipv6_to(ipv6, destination, priority).await
     }
 
     pub(crate) async fn send_ipv6_to_route(
@@ -313,9 +314,10 @@ impl<R: Radio> SecureStack<R> {
         ipv6: &[u8],
         destination: &[u8],
         source_route: &[[u8; 16]],
+        priority: Priority,
     ) -> Result<(), TxError> {
         self.stack
-            .send_ipv6_to_route(ipv6, destination, source_route)
+            .send_ipv6_to_route(ipv6, destination, source_route, priority)
             .await
     }
 
@@ -539,6 +541,7 @@ impl<R: Radio> SecureStack<R> {
                 &outer[..outer_len],
                 route.l2_destination,
                 route.source_route,
+                Priority::Normal,
             )
             .await?;
         let mut correlation_token = [0; MAX_TOKEN_LEN];
@@ -622,6 +625,7 @@ impl<R: Radio> SecureStack<R> {
                     &ack,
                     route.l2_destination,
                     route.source_route,
+                    Priority::Normal,
                 )
                 .await?;
             return Ok(SecureResponse::Acknowledged);
@@ -686,6 +690,7 @@ impl<R: Radio> SecureStack<R> {
                     &ack,
                     route.l2_destination,
                     route.source_route,
+                    Priority::Normal,
                 )
                 .await?;
         }
@@ -820,6 +825,7 @@ impl<R: Radio> SecureStack<R> {
                 &outer[..outer_len],
                 route.l2_destination,
                 route.source_route,
+                Priority::Normal,
             )
             .await?;
         self.pending_requests.remove(pending_index);
@@ -1558,7 +1564,7 @@ mod tests {
 
         let empty_ack = [0x60, 0x00, 0x12, 0x34];
         alice
-            .send_coap_raw(&bob.local_addr(), &empty_ack)
+            .send_coap_raw(&bob.local_addr(), &empty_ack, Priority::Normal)
             .await
             .unwrap();
         let received = bob.receive_secure_datagram(1000).await.unwrap().unwrap();
@@ -1570,7 +1576,7 @@ mod tests {
 
         // One OSCORE option with reserved flag bit 5 set.
         alice
-            .send_coap_raw(&bob.local_addr(), &[0x40, 0x02, 0x12, 0x34, 0x91, 0x20])
+            .send_coap_raw(&bob.local_addr(), &[0x40, 0x02, 0x12, 0x34, 0x91, 0x20], Priority::Normal)
             .await
             .unwrap();
 

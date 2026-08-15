@@ -28,6 +28,40 @@ use crate::Node;
 
 /// Maximum wire frame size (LoRa MTU with some headroom).
 pub const MAX_FRAME_SIZE: usize = 255;
+
+/// TX packet priority levels (spec section 10.2.3 Priority Queue).
+///
+/// Lower numeric value = higher priority. Maps 1:1 to the spec's P0-P4 levels.
+/// This mirrors the Python `lichen.link.tx_queue.Priority` enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[repr(u8)]
+pub enum Priority {
+    /// P0: Emergency traffic (SOS beacons).
+    Sos = 0,
+    /// P1: RPL control (DIO, DAO). Also used for link-layer ACKs.
+    Routing = 1,
+    /// P2: CoAP CON, tactical chat.
+    Urgent = 2,
+    /// P3: CoAP NON, telemetry, position.
+    #[default]
+    Normal = 3,
+    /// P4: Bulk transfer, firmware.
+    Bulk = 4,
+}
+
+impl Priority {
+    /// Convert to raw u8 value for forwarding buffer.
+    #[inline]
+    pub const fn as_u8(self) -> u8 {
+        self as u8
+    }
+}
+
+impl From<Priority> for u8 {
+    fn from(p: Priority) -> u8 {
+        p.as_u8()
+    }
+}
 // 254-byte frame body minus fixed header, EUI-64 destination, 48-byte signature,
 // and the L2 SCHC dispatch byte.
 const MAX_EXTENDED_SCHC_SIZE: usize = 193;
@@ -184,9 +218,11 @@ impl<R: Radio> Stack<R> {
     ///
     /// # Panics
     ///
-    /// Debug builds panic if `epoch < 128` to catch non-compliant initialization.
+    /// Panics if `epoch < 128` (security invariant per spec section 4.4).
     pub fn new(radio: R, identity: lichen_link::identity::Identity, epoch: u8, seq: u16) -> Self {
-        debug_assert!(
+        // SECURITY: Per spec section 4.4, epoch MUST be >= 128 to prevent replay attacks
+        // after reboot. This is enforced unconditionally, not just in debug builds.
+        assert!(
             epoch >= 128,
             "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
         );
@@ -267,10 +303,21 @@ impl<R: Radio> Stack<R> {
     /// Send an OSCORE-protected CoAP message to destination.
     ///
     /// Path: CoAP → IPv6/UDP → SCHC compress → L2 sign → Radio TX
+    ///
+    /// # Arguments
+    ///
+    /// * `dst` - Destination IPv6 address
+    /// * `coap` - CoAP message payload
+    /// * `priority` - Transmission priority (default: Normal)
     #[allow(dead_code)]
-    pub(crate) async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
+    pub(crate) async fn send_coap_raw(
+        &mut self,
+        dst: &Addr,
+        coap: &[u8],
+        priority: Priority,
+    ) -> Result<(), TxError> {
         let src = self.local_addr();
-        self.send_coap_raw_to(&src, dst, coap, &[], &[]).await
+        self.send_coap_raw_to(&src, dst, coap, &[], &[], priority).await
     }
 
     pub(crate) async fn send_coap_raw_to(
@@ -280,7 +327,9 @@ impl<R: Radio> Stack<R> {
         coap: &[u8],
         _l2_destination: &[u8],
         source_route: &[[u8; 16]],
+        priority: Priority,
     ) -> Result<(), TxError> {
+        let _ = priority; // Reserved for future congestion checking
         // Build IPv6 + UDP + CoAP packet
         let udp_total = UDP_HEADER_LEN + coap.len();
         let mut ipv6 = [0u8; 256];
@@ -349,15 +398,26 @@ impl<R: Radio> Stack<R> {
     /// Send a raw IPv6 packet (already constructed).
     ///
     /// Path: IPv6 → SCHC compress → L2 sign → Radio TX
-    pub async fn send_ipv6_raw(&mut self, ipv6: &[u8]) -> Result<(), TxError> {
-        self.send_ipv6_to(ipv6, &[]).await
+    ///
+    /// # Arguments
+    ///
+    /// * `ipv6` - Complete IPv6 packet
+    /// * `priority` - Transmission priority (default: Normal)
+    pub async fn send_ipv6_raw(
+        &mut self,
+        ipv6: &[u8],
+        priority: Priority,
+    ) -> Result<(), TxError> {
+        self.send_ipv6_to(ipv6, &[], priority).await
     }
 
     pub(crate) async fn send_ipv6_to(
         &mut self,
         ipv6: &[u8],
         dst_addr: &[u8],
+        priority: Priority,
     ) -> Result<(), TxError> {
+        let _ = priority; // Reserved for future congestion checking
         let mut schc = [0u8; 200];
         let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
         let mut l2_payload = [0u8; 201];
@@ -371,13 +431,14 @@ impl<R: Radio> Stack<R> {
         ipv6: &[u8],
         dst_addr: &[u8],
         source_route: &[[u8; 16]],
+        priority: Priority,
     ) -> Result<(), TxError> {
         if source_route.len() <= 1 {
-            return self.send_ipv6_to(ipv6, dst_addr).await;
+            return self.send_ipv6_to(ipv6, dst_addr, priority).await;
         }
         let mut routed = [0u8; 512];
         let routed_len = add_rpl_source_route(ipv6, source_route, &mut routed)?;
-        self.send_ipv6_to(&routed[..routed_len], dst_addr).await
+        self.send_ipv6_to(&routed[..routed_len], dst_addr, priority).await
     }
 
     pub(crate) async fn send_l2_payload_to(
@@ -466,7 +527,8 @@ impl<R: Radio> Stack<R> {
         let reply_len = self.node.handle_ipv6(&frame.ipv6, &mut reply_ipv6);
 
         if reply_len > 0 {
-            self.send_ipv6_raw(&reply_ipv6[..reply_len]).await?;
+            // ICMPv6 replies use Normal priority (P3)
+            self.send_ipv6_raw(&reply_ipv6[..reply_len], Priority::Normal).await?;
             Ok(true)
         } else {
             Ok(false)
@@ -551,7 +613,15 @@ impl<R: Radio> Stack<R> {
             return Ok(false);
         };
 
-        self.send_ipv6_raw(&entry.packet).await?;
+        // Use the priority from the queued entry
+        let priority = match entry.priority {
+            0 => Priority::Sos,
+            1 => Priority::Routing,
+            2 => Priority::Urgent,
+            4 => Priority::Bulk,
+            _ => Priority::Normal,
+        };
+        self.send_ipv6_raw(&entry.packet, priority).await?;
         Ok(true)
     }
 
@@ -589,7 +659,8 @@ pub fn add_rpl_source_route(
     out: &mut [u8],
 ) -> Result<usize, TxError> {
     let remaining = route.len().checked_sub(1).ok_or(TxError::NoRoute)?;
-    if remaining == 0 || remaining > u8::MAX as usize {
+    // Hdr Ext Len = routing_len / 8 - 1 = 2 * remaining; must fit in u8
+    if remaining == 0 || remaining > 127 {
         return Err(TxError::NoRoute);
     }
     let routing_len = 8usize
@@ -725,7 +796,7 @@ mod tests {
             .unwrap();
         ipv6.extend_from_slice(&icmp);
 
-        alice.send_ipv6_raw(&ipv6).await.unwrap();
+        alice.send_ipv6_raw(&ipv6, Priority::Normal).await.unwrap();
 
         // Bob receives and auto-replies
         let frame = bob.receive(1000).await.unwrap().unwrap();
@@ -744,12 +815,12 @@ mod tests {
         let coap = [0u8; 209];
 
         assert_ne!(
-            stack.send_coap_raw(&dst, &coap[..208]).await,
+            stack.send_coap_raw(&dst, &coap[..208], Priority::Normal).await,
             Err(TxError::BufferTooSmall)
         );
         let tuple_state = (stack.epoch, stack.seqnum, stack.sequence_exhausted);
         assert_eq!(
-            stack.send_coap_raw(&dst, &coap).await,
+            stack.send_coap_raw(&dst, &coap, Priority::Normal).await,
             Err(TxError::BufferTooSmall)
         );
         assert_eq!(

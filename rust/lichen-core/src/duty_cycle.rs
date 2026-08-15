@@ -10,10 +10,18 @@
 //! Duty cycle is expressed in permille (parts per thousand) to avoid floating
 //! point on soft-float embedded targets. 1% = 10 permille, 0.1% = 1 permille.
 //!
+//! # Congestion Levels (spec 07 section 10.2.3)
+//!
+//! The tracker also provides congestion state based on duty cycle usage:
+//! - NORMAL: < 50% duty cycle used - all traffic allowed
+//! - ELEVATED: 50-80% - delay non-urgent traffic (NORMAL/BULK)
+//! - CRITICAL: 80-95% - only SOS/routing traffic
+//! - EXHAUSTED: > 95% - stop all transmission
+//!
 //! # Example
 //!
 //! ```
-//! use lichen_core::duty_cycle::DutyCycleTracker;
+//! use lichen_core::duty_cycle::{DutyCycleTracker, CongestionLevel};
 //!
 //! let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
 //!
@@ -23,15 +31,193 @@
 //! // Check remaining budget at time 2000ms
 //! let remaining = tracker.remaining_ms(2000);
 //! assert!(remaining > 0);
+//!
+//! // Check congestion level
+//! assert_eq!(tracker.congestion_level(2000), CongestionLevel::Normal);
 //! ```
 
+use core::fmt;
+
 use heapless::Deque;
+
+use crate::tx_queue::TxPriority;
 
 pub const WINDOW_MS: u64 = 3_600_000;
 pub const DEFAULT_DUTY_PERMILLE: u16 = 10;
 pub const REGION_EU: u8 = 0;
 pub const REGION_US: u8 = 1;
 pub const REGION_AS: u8 = 2;
+
+// Congestion thresholds in permille (spec 07 section 10.2.3)
+const THRESHOLD_ELEVATED: u16 = 500; // 50%
+const THRESHOLD_CRITICAL: u16 = 800; // 80%
+const THRESHOLD_EXHAUSTED: u16 = 950; // 95%
+
+/// Duty cycle congestion levels (spec 07 section 10.2.3).
+///
+/// These levels determine which traffic priorities are allowed:
+/// - `Normal`: All traffic allowed (< 50% duty cycle used)
+/// - `Elevated`: Delay non-urgent (NORMAL/BULK), allow SOS/ROUTING/URGENT (50-80%)
+/// - `Critical`: Only SOS/ROUTING traffic (80-95%)
+/// - `Exhausted`: Stop all transmission (> 95%)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum CongestionLevel {
+    /// < 50% duty cycle used. All traffic allowed.
+    Normal = 0,
+    /// 50-80% duty cycle used. Delay non-urgent traffic.
+    Elevated = 1,
+    /// 80-95% duty cycle used. Only SOS/routing traffic.
+    Critical = 2,
+    /// > 95% duty cycle used. Stop all transmission.
+    Exhausted = 3,
+}
+
+impl CongestionLevel {
+    /// Returns true if this level allows any transmission at all.
+    #[inline]
+    pub const fn allows_any(&self) -> bool {
+        !matches!(self, CongestionLevel::Exhausted)
+    }
+
+    /// Returns true if this level is at or above the given level.
+    #[inline]
+    pub const fn is_at_least(&self, other: CongestionLevel) -> bool {
+        (*self as u8) >= (other as u8)
+    }
+}
+
+/// Map duty cycle usage in permille to congestion level.
+///
+/// # Arguments
+///
+/// - `usage_permille`: Current duty cycle usage (0-1000+).
+///
+/// # Returns
+///
+/// The corresponding congestion level per spec 07 section 10.2.3.
+#[inline]
+pub const fn congestion_level_from_permille(usage_permille: u16) -> CongestionLevel {
+    if usage_permille > THRESHOLD_EXHAUSTED {
+        CongestionLevel::Exhausted
+    } else if usage_permille >= THRESHOLD_CRITICAL {
+        CongestionLevel::Critical
+    } else if usage_permille >= THRESHOLD_ELEVATED {
+        CongestionLevel::Elevated
+    } else {
+        CongestionLevel::Normal
+    }
+}
+
+/// Atomic snapshot of congestion level and retry delay.
+///
+/// This struct provides an atomic read of both congestion_level and
+/// retry_after_ms to avoid race conditions when these values are read
+/// separately in concurrent environments.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CongestionState {
+    /// Current congestion level.
+    pub level: CongestionLevel,
+    /// Estimated time until transmission may be allowed (ms), or None if unknown.
+    pub retry_after_ms: Option<u32>,
+}
+
+/// Error returned when transmission is blocked due to duty cycle congestion.
+///
+/// Per spec 07 section 10.2.3, congested nodes must shed traffic:
+/// - ELEVATED: delay non-urgent (NORMAL/BULK)
+/// - CRITICAL: only SOS/routing
+/// - EXHAUSTED: stop all TX
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CongestionError {
+    /// Current congestion level.
+    pub level: CongestionLevel,
+    /// Priority of the blocked transmission.
+    pub priority: TxPriority,
+    /// Estimated time until transmission may be allowed (ms), or None if unknown.
+    pub retry_after_ms: Option<u32>,
+}
+
+impl CongestionError {
+    /// Create a new CongestionError.
+    #[inline]
+    pub const fn new(
+        level: CongestionLevel,
+        priority: TxPriority,
+        retry_after_ms: Option<u32>,
+    ) -> Self {
+        Self {
+            level,
+            priority,
+            retry_after_ms,
+        }
+    }
+}
+
+impl fmt::Display for CongestionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "transmission blocked at {:?} congestion (priority {:?})",
+            self.level, self.priority
+        )
+    }
+}
+
+impl core::error::Error for CongestionError {}
+
+/// Check if a transmission is allowed at the given congestion level.
+///
+/// Implements spec 07 section 10.2.3:
+/// - NORMAL (<50%): all traffic allowed
+/// - ELEVATED (50-80%): delay non-urgent (NORMAL/BULK), allow SOS/ROUTING/URGENT
+/// - CRITICAL (80-95%): only SOS/ROUTING
+/// - EXHAUSTED (>95%): stop all TX
+///
+/// # Arguments
+///
+/// * `level` - Current duty cycle congestion level.
+/// * `priority` - Priority of the transmission (SOS=highest, BULK=lowest).
+///
+/// # Returns
+///
+/// `true` if transmission is allowed, `false` if it should be blocked.
+///
+/// # Example
+///
+/// ```
+/// use lichen_core::duty_cycle::{CongestionLevel, check_congestion_allows};
+/// use lichen_core::tx_queue::TxPriority;
+///
+/// // Normal level allows all traffic
+/// assert!(check_congestion_allows(CongestionLevel::Normal, TxPriority::Bulk));
+///
+/// // Elevated blocks NORMAL and BULK
+/// assert!(!check_congestion_allows(CongestionLevel::Elevated, TxPriority::Normal));
+/// assert!(check_congestion_allows(CongestionLevel::Elevated, TxPriority::Urgent));
+///
+/// // Critical only allows SOS and ROUTING
+/// assert!(!check_congestion_allows(CongestionLevel::Critical, TxPriority::Urgent));
+/// assert!(check_congestion_allows(CongestionLevel::Critical, TxPriority::Routing));
+///
+/// // Exhausted blocks all
+/// assert!(!check_congestion_allows(CongestionLevel::Exhausted, TxPriority::Sos));
+/// ```
+#[inline]
+pub const fn check_congestion_allows(level: CongestionLevel, priority: TxPriority) -> bool {
+    match level {
+        CongestionLevel::Normal => true,
+        CongestionLevel::Elevated => {
+            // Allow SOS, ROUTING, URGENT (values 0-2)
+            (priority as u8) <= (TxPriority::Urgent as u8)
+        }
+        CongestionLevel::Critical => {
+            // Only SOS, ROUTING (values 0-1)
+            (priority as u8) <= (TxPriority::Routing as u8)
+        }
+        CongestionLevel::Exhausted => false,
+    }
+}
 
 pub fn adaptive_duty_permille(density: u8, region: u8) -> u16 {
     let base = match region {
@@ -202,6 +388,48 @@ impl<const N: usize> DutyCycleTracker<N> {
         // used_permille = (used * 1000) / WINDOW_MS
         // Use u64 to avoid overflow
         ((used as u64) * 1000 / WINDOW_MS) as u16
+    }
+
+    /// Returns the current congestion level (spec 07 section 10.2.3).
+    ///
+    /// # Arguments
+    ///
+    /// - `now_ms`: Current timestamp in milliseconds.
+    pub fn congestion_level(&mut self, now_ms: u64) -> CongestionLevel {
+        congestion_level_from_permille(self.usage_permille(now_ms))
+    }
+
+    /// Returns an atomic snapshot of congestion level and retry delay.
+    ///
+    /// This method computes both the congestion level and the estimated time
+    /// until a minimal transmission (1ms) would be allowed, returning them
+    /// together to avoid race conditions.
+    ///
+    /// # Arguments
+    ///
+    /// - `now_ms`: Current timestamp in milliseconds.
+    pub fn congestion_state(&mut self, now_ms: u64) -> CongestionState {
+        let usage = self.usage_permille(now_ms);
+        let level = congestion_level_from_permille(usage);
+
+        // Calculate retry_after_ms only if we're above normal level
+        let retry_after_ms = if level != CongestionLevel::Normal {
+            let next_tx = self.next_tx_available_ms(now_ms, 1);
+            if next_tx == u64::MAX {
+                None
+            } else if next_tx <= now_ms {
+                Some(0)
+            } else {
+                Some((next_tx - now_ms) as u32)
+            }
+        } else {
+            None
+        };
+
+        CongestionState {
+            level,
+            retry_after_ms,
+        }
     }
 
     /// Returns when a transmission of the given duration will be allowed.
@@ -554,5 +782,160 @@ mod tests {
         assert_eq!(adaptive_duty_permille(5, REGION_EU), 10);
         assert_eq!(adaptive_duty_permille(10, REGION_US), 500);
         assert_eq!(adaptive_duty_permille(10, 255), 5);
+    }
+
+    // --- CongestionLevel tests (spec 07 section 10.2.3) ---
+
+    #[test]
+    fn congestion_level_normal_below_50_percent() {
+        // 0-499 permille = NORMAL
+        assert_eq!(congestion_level_from_permille(0), CongestionLevel::Normal);
+        assert_eq!(congestion_level_from_permille(100), CongestionLevel::Normal);
+        assert_eq!(congestion_level_from_permille(499), CongestionLevel::Normal);
+    }
+
+    #[test]
+    fn congestion_level_elevated_50_to_80_percent() {
+        // 500-799 permille = ELEVATED
+        assert_eq!(
+            congestion_level_from_permille(500),
+            CongestionLevel::Elevated
+        );
+        assert_eq!(
+            congestion_level_from_permille(650),
+            CongestionLevel::Elevated
+        );
+        assert_eq!(
+            congestion_level_from_permille(799),
+            CongestionLevel::Elevated
+        );
+    }
+
+    #[test]
+    fn congestion_level_critical_80_to_95_percent() {
+        // 800-950 permille = CRITICAL
+        assert_eq!(
+            congestion_level_from_permille(800),
+            CongestionLevel::Critical
+        );
+        assert_eq!(
+            congestion_level_from_permille(900),
+            CongestionLevel::Critical
+        );
+        assert_eq!(
+            congestion_level_from_permille(950),
+            CongestionLevel::Critical
+        );
+    }
+
+    #[test]
+    fn congestion_level_exhausted_above_95_percent() {
+        // > 950 permille = EXHAUSTED
+        assert_eq!(
+            congestion_level_from_permille(951),
+            CongestionLevel::Exhausted
+        );
+        assert_eq!(
+            congestion_level_from_permille(1000),
+            CongestionLevel::Exhausted
+        );
+        assert_eq!(
+            congestion_level_from_permille(1500),
+            CongestionLevel::Exhausted
+        );
+    }
+
+    #[test]
+    fn congestion_level_allows_any() {
+        assert!(CongestionLevel::Normal.allows_any());
+        assert!(CongestionLevel::Elevated.allows_any());
+        assert!(CongestionLevel::Critical.allows_any());
+        assert!(!CongestionLevel::Exhausted.allows_any());
+    }
+
+    #[test]
+    fn congestion_level_is_at_least() {
+        assert!(CongestionLevel::Exhausted.is_at_least(CongestionLevel::Normal));
+        assert!(CongestionLevel::Critical.is_at_least(CongestionLevel::Elevated));
+        assert!(CongestionLevel::Normal.is_at_least(CongestionLevel::Normal));
+        assert!(!CongestionLevel::Normal.is_at_least(CongestionLevel::Elevated));
+    }
+
+    #[test]
+    fn tracker_congestion_level_normal_when_empty() {
+        let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
+        assert_eq!(tracker.congestion_level(0), CongestionLevel::Normal);
+    }
+
+    #[test]
+    fn tracker_congestion_level_escalates_with_usage() {
+        // Use a 100% duty cycle limit so we can easily hit thresholds
+        let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::with_duty_permille(1000);
+
+        // 45% usage = NORMAL (< 50%)
+        // 45% of 3600000ms = 1620000ms
+        tracker.record_tx(0, 1_620_000);
+        assert_eq!(tracker.congestion_level(0), CongestionLevel::Normal);
+
+        tracker.clear();
+
+        // 60% usage = ELEVATED (>= 50%, < 80%)
+        // 60% of 3600000ms = 2160000ms
+        tracker.record_tx(0, 2_160_000);
+        assert_eq!(tracker.congestion_level(0), CongestionLevel::Elevated);
+
+        tracker.clear();
+
+        // 85% usage = CRITICAL (>= 80%, <= 95%)
+        // 85% of 3600000ms = 3060000ms
+        tracker.record_tx(0, 3_060_000);
+        assert_eq!(tracker.congestion_level(0), CongestionLevel::Critical);
+
+        tracker.clear();
+
+        // 98% usage = EXHAUSTED (> 95%)
+        // 98% of 3600000ms = 3528000ms
+        tracker.record_tx(0, 3_528_000);
+        assert_eq!(tracker.congestion_level(0), CongestionLevel::Exhausted);
+    }
+
+    #[test]
+    fn tracker_congestion_state_normal() {
+        let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
+        let state = tracker.congestion_state(0);
+        assert_eq!(state.level, CongestionLevel::Normal);
+        assert_eq!(state.retry_after_ms, None);
+    }
+
+    #[test]
+    fn tracker_congestion_state_elevated_has_retry_after() {
+        // Use a 100% duty cycle limit
+        let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::with_duty_permille(1000);
+
+        // 60% usage = ELEVATED
+        tracker.record_tx(0, 2_160_000);
+        let state = tracker.congestion_state(0);
+        assert_eq!(state.level, CongestionLevel::Elevated);
+        // retry_after_ms should be 0 since we can still transmit
+        assert_eq!(state.retry_after_ms, Some(0));
+    }
+
+    #[test]
+    fn congestion_state_struct_fields() {
+        let state = CongestionState {
+            level: CongestionLevel::Critical,
+            retry_after_ms: Some(5000),
+        };
+        assert_eq!(state.level, CongestionLevel::Critical);
+        assert_eq!(state.retry_after_ms, Some(5000));
+    }
+
+    #[test]
+    fn congestion_level_copy_clone() {
+        let level = CongestionLevel::Critical;
+        let copied = level;
+        let cloned = level.clone();
+        assert_eq!(level, copied);
+        assert_eq!(level, cloned);
     }
 }

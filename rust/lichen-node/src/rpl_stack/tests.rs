@@ -10,7 +10,7 @@ use crate::announce::MAX_TRACKED_ORIGINATORS;
 use crate::routing::{DaoRxState, Router, ROOT_RANK};
 use crate::runtime::{RplRuntimeAction, RplRuntimeActionError, RplRuntimeConfig};
 use crate::secure::SecureStack;
-use crate::stack::{Stack, TxError, MAX_FRAME_SIZE};
+use crate::stack::{Priority, Stack, TxError, MAX_FRAME_SIZE};
 
 use lichen_core::announce::AnnounceBuilder;
 use lichen_core::constants::L2_DISPATCH_ROUTING;
@@ -455,7 +455,7 @@ async fn plaintext_coap_is_not_delivered_by_rpl_owner() {
     .unwrap();
 
     sender
-        .send_coap_raw(&Addr(receiver_addr), &[0x40, 0x01, 0x12, 0x34])
+        .send_coap_raw(&Addr(receiver_addr), &[0x40, 0x01, 0x12, 0x34], Priority::Normal)
         .await
         .unwrap();
 
@@ -572,7 +572,7 @@ async fn join_leaf<R: Radio, L: Radio, S: NonVolatile>(
         .unwrap()
         .is_some());
     sender
-        .send_ipv6_to(&dio_packet(root_addr, leaf_addr), &ipv6_eui64(leaf_addr))
+        .send_ipv6_to(&dio_packet(root_addr, leaf_addr), &ipv6_eui64(leaf_addr), Priority::Routing)
         .await
         .unwrap();
     assert!(matches!(
@@ -847,7 +847,7 @@ async fn rpl_dispatch_rejects_invalid_ipv6_length_and_checksum() {
     cases.push(partial_rpl);
 
     for packet in cases {
-        root.send_ipv6_to(&packet, &ipv6_eui64(leaf_addr))
+        root.send_ipv6_to(&packet, &ipv6_eui64(leaf_addr), Priority::Routing)
             .await
             .unwrap();
         assert!(matches!(
@@ -1749,6 +1749,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &signed).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1763,6 +1764,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &signed).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1818,6 +1820,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(substituted_source, root_addr, &signed).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1856,6 +1859,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(unknown_addr, root_addr, &unknown_dao).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1872,6 +1876,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &second).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1891,6 +1896,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &third).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1906,6 +1912,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &third).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1946,6 +1953,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &third).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1962,6 +1970,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &signed).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1975,6 +1984,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &malformed_replay).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();
@@ -1990,6 +2000,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     leaf.send_ipv6_to(
         &dao_ipv6_packet(leaf_addr, root_addr, &fourth).unwrap(),
         &ipv6_eui64(root_addr),
+        Priority::Routing,
     )
     .await
     .unwrap();

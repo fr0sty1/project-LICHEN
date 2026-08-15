@@ -25,7 +25,7 @@ use crate::node::{
     DaoHandlingOutcome, RplEvent,
 };
 use crate::secure::secure_datagram_from_received;
-use crate::stack::{ReceivedIpv6, RxError, MAX_FRAME_SIZE};
+use crate::stack::{Priority, ReceivedIpv6, RxError, MAX_FRAME_SIZE};
 
 use super::error::RplReceiveError;
 use super::util::{
@@ -161,8 +161,9 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                             return Err(RplReceiveError::Receive(RxError::HopLimitExceeded));
                         }
                         forwarded[7] -= 1;
+                        // Forwarded traffic uses Normal priority (P3)
                         self.stack
-                            .send_ipv6_to(&forwarded, &next_hop)
+                            .send_ipv6_to(&forwarded, &next_hop, Priority::Normal)
                             .await
                             .map_err(RplReceiveError::Transmit)?;
                         return Ok(Some(RplReceiveOutcome::Forwarded {
@@ -222,8 +223,9 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         }
         received.ipv6[7] -= 1;
         let next_hop = ipv6_eui64(next_destination);
+        // Forwarded traffic uses Normal priority (P3)
         self.stack
-            .send_ipv6_to(&received.ipv6, &next_hop)
+            .send_ipv6_to(&received.ipv6, &next_hop, Priority::Normal)
             .await
             .map_err(RplReceiveError::Transmit)?;
         Ok(Some(RplReceiveOutcome::Forwarded {
