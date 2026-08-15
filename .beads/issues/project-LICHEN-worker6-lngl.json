@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-lngl",
+  "title": "[review] packet_coap.py: close() exception could mask original",
+  "description": "In _read_packets() except handler (line 755), if close() raises it masks the original exception. Rest of file uses 'with suppress(BaseException):' for cleanup. Low risk but inconsistent.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T03:10:04.226573Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T03:17:04.391395Z",
+  "closed_at": "2026-08-15T03:17:04.391395Z",
+  "close_reason": "Fixed: wrapped close() in suppress(Exception) to prevent masking original exception",
+  "labels": [
+    "review"
+  ]
+}

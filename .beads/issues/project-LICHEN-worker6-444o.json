@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-444o",
+  "title": "[review] channel.py: send_message signature mismatch with base class",
+  "description": "SecureDatagramChannel.send_message() uses 'priority: Priority | None = None' but base DatagramChannel uses 'priority: Priority = Priority.NORMAL'. Also missing 'check_congestion: bool = True' parameter. Fix: match base class signature.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T03:10:03.82778Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T03:16:02.235564Z",
+  "closed_at": "2026-08-15T03:16:02.235564Z",
+  "close_reason": "Fixed: send_message now uses Priority = Priority.NORMAL matching base class",
+  "labels": [
+    "review"
+  ]
+}

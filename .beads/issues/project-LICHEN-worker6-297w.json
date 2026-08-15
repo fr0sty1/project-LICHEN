@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-297w",
+  "title": "[review] channel.py: check_congestion param not propagated",
+  "description": "send_datagram() accepts check_congestion (line 1017) but doesn't propagate it through _schedule_send/_send_protected to _inner.send_datagram(). Silently dropped.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T03:18:25.514647Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T03:19:09.3421Z",
+  "closed_at": "2026-08-15T03:19:09.3421Z",
+  "close_reason": "Fixed: Added check_congestion to _schedule_send, _send_protected, and all 3 _inner.send_datagram calls",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xy6u",
+  "title": "Review finding clarification: IID validation not in NodeChannel",
+  "description": "Finding 1 from code review suggests adding IID length boundary tests to test_node_channel.py, but this is not applicable:\n\n- node_channel.py lines 205-210 explicitly state 'No IID check here' in a SECURITY comment\n- IID validation happens at the link layer (Node), not in NodeChannel\n- The sender.iid attribute is never accessed in node_channel.py\n- Multi-hop routing requires accepting packets where link-layer sender IID differs from IPv6 source\n\nThe existing test_node_channel_accepts_multihop_packets already verifies this design decision.\n\nNo code change needed - this is a false positive finding for this file.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T00:36:35.932186Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T00:36:35.932186Z",
+  "labels": [
+    "review"
+  ]
+}

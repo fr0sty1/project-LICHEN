@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-n4fz",
+  "title": "SchcChannel port boundary test blocked by SCHC profile constraints",
+  "description": "Review finding #4 requested a test for UDP port boundary values (0, 1, 65535). The implementation correctly accepts ports 1-65535 at the Endpoint layer, but the SCHC compression layer (compress_packet in schc/headers.py) uses MSB matching against port 5683 for the link-local CoAP rule. Non-standard ports fail compression with 'MSB target_value mismatch'. Either the SCHC profile needs a rule for arbitrary ports, or this limitation should be documented.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-14T22:53:08.284648Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-14T22:53:08.284648Z",
+  "labels": [
+    "review"
+  ]
+}

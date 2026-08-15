@@ -1,2 +1,3 @@
 {"id":"01a0023c-43e3-7f07-9b4b-9abcea048e9b","issue_id":"project-LICHEN-worker6-xf8z","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-14T21:44:59.107986Z"}
 {"id":"01a0023c-43f4-721b-90bb-f6f2e35737d3","issue_id":"project-LICHEN-worker6-xf8z","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: test","created_at":"2026-08-14T21:44:59.124139Z"}
+{"id":"01a00366-28ac-7f23-80a4-74f952d70bff","issue_id":"project-LICHEN-worker6-xf8z","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: added priority parameter throughout call chain, all 78 tests pass","created_at":"2026-08-15T03:10:21.868993Z"}

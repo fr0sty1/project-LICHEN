@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-r3hl",
+  "title": "[review] channel.py: Priority parameter in send_message/send_datagram not propagated",
+  "description": "SecureDatagramChannel.send_message() and send_datagram() accept priority param but don't propagate it. _schedule_send() and _send_protected() don't accept priority. The 3 self._inner.send_datagram() calls (lines 1274, 1304, 1376) omit priority. Fix: Add priority param to _schedule_send() and _send_protected(), pass to all inner calls.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T03:08:25.832956Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T03:16:00.751145Z",
+  "closed_at": "2026-08-15T03:16:00.751145Z",
+  "close_reason": "Fixed: Added priority param to _schedule_send, _send_protected, and 3 _inner.send_datagram calls. Also updated test fixtures to accept **kwargs.",
+  "labels": [
+    "review"
+  ]
+}

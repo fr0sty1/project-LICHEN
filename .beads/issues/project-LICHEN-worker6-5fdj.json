@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-5fdj",
+  "title": "[review] channel.py: Inconsistent priority type send_datagram vs send_message",
+  "description": "send_datagram() uses 'priority: Priority = Priority.NORMAL' while send_message() uses 'priority: Priority | None = None'. Inconsistent nullable vs non-nullable semantics.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T03:08:26.638629Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T03:16:03.646261Z",
+  "closed_at": "2026-08-15T03:16:03.646261Z",
+  "close_reason": "Fixed: type consistency addressed by using non-nullable Priority with default",
+  "labels": [
+    "review"
+  ]
+}

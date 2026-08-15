@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ocdv",
+  "title": "[review] packet_coap.py: direct cancellation bypasses close()",
+  "description": "CancelledError bypasses 'except Exception' handler. Direct _reader_task.cancel() without aclose() leaves channel inconsistent. Low priority - API misuse scenario.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T03:10:04.62217Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T03:17:05.648317Z",
+  "closed_at": "2026-08-15T03:17:05.648317Z",
+  "close_reason": "Won't fix: direct _reader_task.cancel() is API misuse. aclose() correctly handles cleanup. Documenting expected usage is sufficient.",
+  "labels": [
+    "review"
+  ]
+}
