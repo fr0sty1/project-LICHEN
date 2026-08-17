@@ -269,7 +269,6 @@ impl Ack {
                 out[1] |= 1 << (5 - i);
             }
         }
-        // RFC 8724 section 8.4.2.3: padding bits are 0 (already set by fill(0))
         for i in 0..remaining {
             if self.bitmap & (1u64 << (56 - i)) != 0 {
                 let byte_idx = 2 + i / 8;
@@ -277,7 +276,15 @@ impl Ack {
                 out[byte_idx] |= 1 << bit_idx;
             }
         }
-        // RFC 8724 section 8.4.2.3: padding bits are 0 (already set by fill(0))
+        // Trailing 1s can be elided per RFC 8724, but to byte-align we must
+        // restore some of them. Only do this if there are trailing 1s to restore.
+        if trailing > 0 {
+            let restored = body_bytes * 8 - remaining;
+            if restored > 0 {
+                let last_byte = &mut out[needed - 1];
+                *last_byte |= (1u8 << restored) - 1;
+            }
+        }
         Ok(needed)
     }
 
