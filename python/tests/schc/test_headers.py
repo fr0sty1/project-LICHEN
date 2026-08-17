@@ -175,3 +175,33 @@ def test_decompress_rejects_plain_content_under_oscore_rule() -> None:
     compressed[0] = 5
     with pytest.raises(SchcError, match="does not reconstruct its packet profile"):
         decompress_packet(bytes(compressed))
+
+
+def test_oscore_without_payload_compresses_to_oscore_rule() -> None:
+    """OSCORE-protected CoAP GET without payload must use OSCORE rule (5), not plain CoAP.
+
+    Per RFC 7252, the payload marker (0xFF) is ONLY present if there is a payload.
+    A valid OSCORE-protected CoAP message without payload body is legal and should
+    still be detected as OSCORE-protected.
+    """
+    # Build a minimal OSCORE-protected CoAP GET with no payload:
+    # Ver=1, T=0 (CON), TKL=0 -> 0x40
+    # Code=GET (0.01) -> 0x01
+    # MID -> 0x00 0x01
+    # OSCORE option (option 9): delta=9, length=2 -> (9 << 4) | 2 = 0x92
+    # OSCORE value: flags=0x09 (partial IV len=1, kid present), PIV=0x01
+    # No payload marker (0xFF) - this is valid per RFC 7252 when there's no payload
+    coap_oscore_no_payload = bytes([
+        0x40,  # Ver=1, T=CON, TKL=0
+        0x01,  # Code: GET
+        0x00, 0x01,  # Message ID
+        0x92,  # Option: delta=9 (OSCORE), length=2
+        0x09, 0x01,  # OSCORE value: flags + partial IV
+        # No 0xFF payload marker - valid for empty payload
+    ])
+    raw = _build_packet(coap_oscore_no_payload)
+    compressed = compress_packet(raw)
+    # Must match OSCORE rule 5 (link-local), not plain CoAP rule 0
+    assert compressed[0] == 5, "OSCORE without payload should use OSCORE rule 5, not CoAP rule 0"
+    # Round-trip must work
+    assert decompress_packet(compressed) == raw

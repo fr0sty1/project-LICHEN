@@ -181,7 +181,9 @@ def _coap_oscore_status(coap: bytes) -> bool | None:
             return False  # Malformed: declared length exceeds remaining bytes
         offset += length
 
-    return None if oscore_found else False
+    # Valid end of options without payload marker: per RFC 7252, 0xFF is only
+    # present if there IS a payload. Return OSCORE status.
+    return oscore_found
 
 
 def _ipv6_fields(header: IPv6Header) -> dict[str, int]:
@@ -199,7 +201,8 @@ def _ipv6_fields(header: IPv6Header) -> dict[str, int]:
 
 def _require_field(fields: dict[str, int | None], key: str) -> int:
     val = fields.get(key)
-    assert val is not None, f"decompress returned None for non-COMPUTE {key}"
+    if val is None:
+        raise SchcError(f"decompress returned None for required field {key}")
     return int(val)
 
 

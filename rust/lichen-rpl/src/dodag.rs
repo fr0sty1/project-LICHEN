@@ -324,6 +324,10 @@ impl DodagState {
         if !link_etx.is_finite() || link_etx < 1.0 {
             return DioOutcome::Rejected;
         }
+        // SECURITY: Root nodes are DODAG authorities; they do not accept DIOs.
+        if self.role == DodagRole::Root {
+            return DioOutcome::Rejected;
+        }
         if dio.rpl_instance_id != self.rpl_instance_id || dio.dodag_id != self.dodag_id {
             return DioOutcome::Rejected;
         }
@@ -725,8 +729,25 @@ mod tests {
     #[test]
     fn root_ignores_dio() {
         let mut root = DodagState::as_root(0, dodag_id(), 0);
-        root.process_dio(&dio(ROOT_RANK), ll(99), 1.0);
+        // Same-version DIO rejected
+        let outcome = root.process_dio(&dio(ROOT_RANK), ll(99), 1.0);
+        assert_eq!(outcome, DioOutcome::Rejected);
         assert_eq!(root.rank, ROOT_RANK); // unchanged
+        assert_eq!(root.parent_count(), 0);
+    }
+
+    #[test]
+    fn root_ignores_newer_version_dio() {
+        // Root must reject DIOs even with newer versions - roots are DODAG authorities
+        let mut root = DodagState::as_root(0, dodag_id(), 0);
+        let newer_dio = Dio {
+            version: 1, // newer than root's version 0
+            ..dio(ROOT_RANK)
+        };
+        let outcome = root.process_dio(&newer_dio, ll(99), 1.0);
+        assert_eq!(outcome, DioOutcome::Rejected);
+        assert_eq!(root.version, 0); // version unchanged
+        assert_eq!(root.rank, ROOT_RANK);
         assert_eq!(root.parent_count(), 0);
     }
 

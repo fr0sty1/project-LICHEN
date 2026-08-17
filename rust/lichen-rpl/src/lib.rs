@@ -18,6 +18,7 @@ pub mod announce;
 pub mod dao_origin;
 pub mod dodag;
 pub mod message;
+pub mod multi_instance;
 pub mod persistence;
 pub mod routing;
 pub mod srh;
