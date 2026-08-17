@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-y9je",
+  "title": "Python: B.2.1 Small Bounded Queues oracle",
+  "description": "Part of TX Queue / Forwarding Buffer oracles (queue)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:57.26966Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:02:22.262966Z",
+  "closed_at": "2026-08-15T19:02:22.262966Z",
+  "close_reason": "Implemented B.2.1 Small Bounded Queues oracle: added test/vectors/tx_queue_bounded.json with 18 vectors covering capacity, priority ordering, deadline expiry, preemption, backpressure, and stats. Added TestOracleBoundedQueues class with 10 oracle-based tests to python/tests/link/test_tx_queue.py. All 93 tests pass.",
+  "labels": [
+    "queue"
+  ]
+}

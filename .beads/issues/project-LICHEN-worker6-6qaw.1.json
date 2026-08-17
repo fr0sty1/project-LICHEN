@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-6qaw.1",
+  "title": "Integer overflow on 32-bit in UDP length calculation",
+  "description": "**File:** rust/lichen-ipv6/src/lib.rs\n**Lines:** 451, 487\n\n**Issue:**\n`UDP_HEADER_LEN + payload.len()` can wrap on 32-bit platforms when payload.len() is near usize::MAX.\n\n```rust\nlet total = UDP_HEADER_LEN + payload.len();  // line 451, 487\nif total \u003e u16::MAX as usize { ... }\n```\n\nOn 32-bit: 8 + 0xFFFFFFF8 = 0 (wraps). The subsequent check `0 \u003e 65535` is false, so an invalid length passes validation.\n\n**Trigger:** 32-bit embedded target with maliciously large payload slice (theoretical - requires attacker control of slice length).\n\n**Fix:** Use `payload.len().checked_add(UDP_HEADER_LEN).filter(|\u0026t| t \u003c= u16::MAX as usize).ok_or(...)` or validate payload.len() first.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:25:20.463708Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:54:52.883668Z",
+  "closed_at": "2026-08-16T20:54:52.883668Z",
+  "close_reason": "Fixed: use checked_add for UDP length calculations to prevent overflow on 32-bit",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6qaw.1",
+      "depends_on_id": "project-LICHEN-worker6-6qaw",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:25:20.78417Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

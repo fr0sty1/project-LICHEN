@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-8sw8",
+  "title": "fuzz_fragment: Exercise FragmentSender state machine",
+  "description": "FragmentSender lifecycle methods are unfuzzed: start(), handle_ack_bytes(), handle_ack(), timeout(), write_next(). These contain complex state transitions, bitmap logic, and retry counting. Add sender protocol simulation to the fuzzer.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:37.695135Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:05:37.695135Z"
+}

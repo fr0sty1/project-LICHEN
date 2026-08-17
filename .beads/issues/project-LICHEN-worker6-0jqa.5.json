@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-0jqa.5",
+  "title": "Typestate pattern for RouteDiscovery prevents invalid state transitions",
+  "description": "Location: rust/lichen-core/src/loadng.rs lines 193-358\n\nWhat is good: The RouteDiscovery\u003cS\u003e typestate pattern enforces valid state machine transitions at compile time:\n- Idle -\u003e Searching (start)\n- Searching -\u003e Searching | Replied | Failed (advance_ring, receive_rrep, fail)\n- Replied/Failed -\u003e (terminal)\n\nThis eliminates an entire class of runtime bugs where code attempts invalid transitions. The pattern is correctly implemented with PhantomData markers and type-safe transition methods.\n\nAdditionally, receive_rrep (line 338) enforces signature presence for RREPs, preventing route injection attacks at the API level - the right layer to enforce this invariant.\n\nWorth defending if someone suggests simplifying to runtime enum state.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:42.312661Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:42.312661Z",
+  "labels": [
+    "review",
+    "positive",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0jqa.5",
+      "depends_on_id": "project-LICHEN-worker6-0jqa",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:42.667522Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

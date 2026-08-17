@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-s3eb",
+  "title": "[review] message.rs:562: Missing prefix_len validation ",
+  "description": "RplTarget::write_to computes nbytes = div_ceil(prefix_len, 8) without validating prefix_len \u003c= 128. If prefix_len \u003e 128, then nbytes \u003e 16, and the slice self.prefix[..nbytes] at line 574 will panic because prefix is only [u8; 16]. While from_bytes validates this (line 550-552), direct construction of RplTarget with invalid prefix_len followed by write_to causes an unhandled panic. Should add: if self.prefix_len \u003e 128 { return Err(RplError::InvalidOption); }",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:13.954367Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:13.954367Z",
+  "labels": [
+    "review"
+  ]
+}

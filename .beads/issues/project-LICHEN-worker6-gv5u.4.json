@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-gv5u.4",
+  "title": "trust.rs: Ygg/IID binding uses non-constant-time equality",
+  "description": "Line 196-197: verify_ygg_iid_binding compares \u0026ygg_addr[8..16] == iid using standard equality.\n\nSame concern as IID derivation check - defensive practice would use constant-time comparison.\n\nFix: Use subtle::ConstantTimeEq:\n  ygg_addr[8..16].ct_eq(iid).into()",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:48:13.214082Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:48:13.214082Z",
+  "labels": [
+    "crypto-security",
+    "side-channel",
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-gv5u.4",
+      "depends_on_id": "project-LICHEN-worker6-gv5u",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:48:13.549262Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

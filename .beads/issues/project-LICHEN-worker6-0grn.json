@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-0grn",
+  "title": "fuzz_fragment: Improve chunk splitting strategy for window coverage",
+  "description": "Current split_inclusive on null bytes creates biased chunk distributions that rarely exercise WINDOW_SIZE (63 fragment) boundaries or multi-window scenarios. Replace with fixed-size chunking or use arbitrary crate for structured fragment sequences.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:31.593651Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:05:31.593651Z"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-6qaw.4",
+  "title": "verify_udp_checksum is dead code but may be needed",
+  "description": "**File:** rust/lichen-ipv6/src/lib.rs\n**Lines:** 763-778\n\n**Issue:**\n`verify_udp_checksum` is marked `#[allow(dead_code)]` and only used in tests. However:\n1. If UDP checksum verification is needed, it should be public\n2. If not needed, it should be removed or cfg(test)-gated\n\n```rust\n#[allow(dead_code)]\nfn verify_udp_checksum(src: \u0026Addr, dst: \u0026Addr, udp_datagram: \u0026[u8]) -\u003e bool {\n```\n\n**Current state:** Function exists but isn't part of public API. The ICMPv6 path has checksum verification (line 866), but UDP handling doesn't.\n\n**Fix:** Either:\n1. Make `pub fn verify_udp_checksum(...)` if callers need it\n2. Move to `#[cfg(test)]` module if test-only\n3. Remove if genuinely dead",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:25:39.75475Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:25:39.75475Z",
+  "labels": [
+    "readability",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6qaw.4",
+      "depends_on_id": "project-LICHEN-worker6-6qaw",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:25:40.07156Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

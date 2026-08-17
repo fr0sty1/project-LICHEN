@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-qrtw",
+  "title": "hybrid.rs: Queue eviction tie-breaker fails on timestamp wraparound",
+  "description": "Line 365: Uses `Reverse(p.queued_at_ms)` to evict oldest packet on priority tie. With timestamp wraparound (every ~49 days), older packets (high ms values near u32::MAX) appear newer than packets queued after wraparound (low ms values near 0), causing wrong packet eviction. Should use wrapping age comparison instead.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:47.160793Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:16:47.160793Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

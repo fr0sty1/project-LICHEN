@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-7yb3",
+  "title": "verify_slot_claim lacks domain separation prefix validation",
+  "description": "In trust.rs, verify_key_rotation validates the KEY_ROTATE: prefix (lines 165-170) for domain separation to prevent confused deputy attacks, but verify_slot_claim does NOT validate any prefix. This is asymmetric and allows cross-context signature replay: a valid key rotation message+signature could be accepted by verify_slot_claim since it only checks message length and signature verification. The slot claim test vector shows messages should start with SLOT_CLAIM: prefix (534c4f545f434c41494d3a), but this is not enforced. Fix: add prefix validation similar to verify_key_rotation, checking message.starts_with(b\"SLOT_CLAIM:\") and appropriate length bounds.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T21:00:45.618427Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:41:35.325566Z",
+  "closed_at": "2026-08-17T03:41:35.325566Z",
+  "close_reason": "Fixed: Added SLOT_CLAIM: prefix validation to verify_slot_claim for domain separation parity with verify_key_rotation. Also added trust module export to lib.rs (was orphaned). Three tests added: slot_claim_rejects_key_rotation_message, slot_claim_rejects_wrong_prefix."
+}

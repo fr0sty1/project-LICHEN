@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-6qaw.2",
+  "title": "UdpHeader::from_bytes reports wrong minimum in error",
+  "description": "**File:** rust/lichen-ipv6/src/lib.rs\n**Lines:** 503-504\n\n**Issue:**\nWhen the UDP length field claims a value less than 8 (e.g., length=5), the error says \"expected 5 bytes, got N\" but the actual minimum valid UDP datagram is 8 bytes.\n\n```rust\nif length \u003c UDP_HEADER_LEN as u16 || length as usize \u003e buf.len() {\n    return Err(TooShort::new(length as usize, buf.len()).into());\n}\n```\n\n**Trigger:** Malformed UDP header with length field \u003c 8.\n\n**Current behavior:** Error says \"expected 5, got 100\" which is confusing.\n**Expected behavior:** Error should indicate minimum UDP header is 8 bytes.\n\n**Fix:** Split into two checks:\n```rust\nif length \u003c UDP_HEADER_LEN as u16 {\n    return Err(TooShort::new(UDP_HEADER_LEN, length as usize).into());\n}\nif (length as usize) \u003e buf.len() {\n    return Err(TooShort::new(length as usize, buf.len()).into());\n}\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:25:24.913999Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:25:24.913999Z",
+  "labels": [
+    "correctness",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6qaw.2",
+      "depends_on_id": "project-LICHEN-worker6-6qaw",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:25:25.282759Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

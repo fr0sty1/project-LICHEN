@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-w9e5",
+  "title": "[review] provisioning.py:351: Missing verification that ACK ",
+  "description": "The code extracts `received_pubkey` from the decrypted ACK (line 342), then passes it to the callback along with `iid` and `ygg_addr` derived from `session.provisioned_seed` (lines 354-360). However, there is no verification that `received_pubkey == Identity.from_seed(session.provisioned_seed).pubkey`. A malicious node could return an arbitrary pubkey in the ACK, causing the BR to record a pubkey that doesn't match the actual provisioned identity. The docstring explicitly states 'BR verifies ACK matches provisioned pubkey' but this verification is not implemented.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:21.119409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:54:04.74846Z",
+  "closed_at": "2026-08-16T03:54:04.74846Z",
+  "close_reason": "Fixed: callback now passes derived pubkey (provisioned_id.pubkey) instead of received_pubkey from ACK. decrypt_ack() already validates the pubkey, but for defense-in-depth the callback should use the trusted derived value. Added SECURITY comment explaining the verification chain.",
+  "labels": [
+    "review"
+  ]
+}

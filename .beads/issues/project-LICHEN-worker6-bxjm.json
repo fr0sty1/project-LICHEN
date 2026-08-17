@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-bxjm",
+  "title": "[review] handoff.rs:246: sender_sequence truncatio",
+  "description": "sender_sequence is cast via `i64 as u64`. A negative value from malformed CBOR would wrap to a large positive value. Combined with the +1 increment in accept_handoff, this could cause the new gateway to use a sequence number far from the legitimate value, potentially enabling nonce reuse if it collides with future legitimate values.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:47:47.299215Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:47:47.299215Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-hu2t",
+  "title": "HAL test: NULL assertion gap in identity_get test",
+  "description": "Line 109 in lichen/tests/hal/src/main.c calls lichen_hal_identity_get(NULL) without asserting expected behavior. The API declares _Nonnull for this parameter. Either the test should be removed (API violation) or an assertion should verify defensive behavior.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:17:35.339659Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:13:54.726867Z",
+  "closed_at": "2026-08-16T19:13:54.726867Z",
+  "close_reason": "Removed invalid NULL assertion on line 109 - lichen_hal_identity_get has _Nonnull parameter and void return type, so passing NULL is an API contract violation (undefined behavior)"
+}

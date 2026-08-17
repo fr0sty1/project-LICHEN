@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.5",
   "title": "Spec: 08 GCP-7 Node Handoff",
   "description": "Node handoff protocol when nodes move between gateway coverage: DAO to new gateway, POST /handoff to old gateway via backbone, state transfer (sequence numbers, security contexts), RPL DODAG route update.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:39.853702Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:39.853702Z",
+  "updated_at": "2026-08-17T04:24:14.551506Z",
+  "closed_at": "2026-08-17T04:24:14.551506Z",
+  "close_reason": "Already fixed: Node Handoff (GCP-7) fully implemented in Python (573 lines, 33 passing tests), Rust (1288 lines), and Zephyr C (1083 lines). Protocol covers DAO to new gateway, POST /handoff, state transfer (OSCORE/sequence numbers), and route updates.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.5",

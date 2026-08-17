@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-00wh",
+  "title": "loadng.c: Prune interval off-by-one",
+  "description": "Line 424: The condition `atomic_dec(\u0026prune_countdown) \u003c= 1` triggers pruning when countdown reaches 1 (after 15 calls) rather than 0 (after 16 calls). With PRUNE_INTERVAL=16, the actual interval is 15. The condition should be `\u003c= 0` or `== 0` to match the defined interval constant.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:36:30.623363Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:36:30.623363Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

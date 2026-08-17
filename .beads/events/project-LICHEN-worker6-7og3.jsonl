@@ -1,0 +1,2 @@
+{"id":"01a00bec-a8e1-7c2d-be92-914c011842f3","issue_id":"project-LICHEN-worker6-7og3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:54:14.241798Z"}
+{"id":"01a00c09-181f-76ca-bb82-1db7c109b549","issue_id":"project-LICHEN-worker6-7og3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Eliminated TOCTOU race in get_role() by holding peers lock for entire role determination (peer check + time master election)","created_at":"2026-08-16T19:25:17.727446Z"}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-sqka.2",
+  "title": "Pending propagation queue has no size limit",
+  "description": "**File:** rust/lichen-rpl/src/multi_instance.rs\n**Lines:** 590-592 (queue_for_propagation)\n\n**Issue:** Unlike peers (MAX_PEERS=64), candidates (MAX_CANDIDATES=32), and received_routes (MAX_RECEIVED_ROUTE_PEERS=64), the pending propagation queue has no maximum size. A malicious or buggy caller can queue unlimited messages.\n\n**Trigger:** Repeated calls to `queue_for_propagation()` without draining via `get_pending_propagations()`.\n\n**Impact:** Memory exhaustion DoS. Inconsistent with other collections in this module that have documented DoS protection.\n\n**Fix:** Add `MAX_PENDING_PROPAGATIONS` constant and return `false` when limit reached:\n```rust\npub const MAX_PENDING_PROPAGATIONS: usize = 256;\n\npub fn queue_for_propagation(\u0026self, message: DaoBackboneMessage) -\u003e bool {\n    let mut pending = self.pending.lock().expect(\"pending mutex poisoned\");\n    if pending.len() \u003e= MAX_PENDING_PROPAGATIONS {\n        return false;\n    }\n    pending.push(message);\n    true\n}\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:05.754302Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:05.754302Z",
+  "labels": [
+    "correctness",
+    "resource-exhaustion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqka.2",
+      "depends_on_id": "project-LICHEN-worker6-sqka",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:06.103359Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

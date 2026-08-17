@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-kgmk",
+  "title": "hybrid.rs: Route injection via unsolicited RREP - no active discovery validation",
+  "description": "on_rrep_received (line 428) installs gradient entries and records local evidence without validating that an active discovery exists for the destination. The active_discoveries.retain() on line 453 happens AFTER route installation and is not used as a guard. An attacker can send spoofed RREP packets to inject arbitrary routes pointing traffic to attacker-controlled next_hop addresses. Should check active_discoveries contains dst BEFORE installing the gradient entry.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:35.788966Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:14:13.8776Z",
+  "closed_at": "2026-08-17T15:14:13.8776Z",
+  "close_reason": "Fixed: Added active discovery validation guard before installing gradient entries. on_rrep_received (line 474) and handle_incoming_rrep (line 544) now check active_discoveries.iter().any(|d| d.destination == dst) before installing routes. Unsolicited RREPs are dropped to prevent route injection attacks.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

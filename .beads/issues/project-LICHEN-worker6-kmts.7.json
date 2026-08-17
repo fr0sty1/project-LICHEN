@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-kmts.7",
+  "title": "FragmentReceiver bitmaps array size limits windows to 2",
+  "description": "Line 737:\n```rust\nbitmaps: [u64; 2],\n```\n\nThe receiver only supports 2 windows (indices 0 and 1). This is validated implicitly via `fragment.window \u003c= 1` in the validation check, but:\n\n1. The constant `2` is hardcoded, not derived from a named constant\n2. If WINDOW_SIZE or fragmentation parameters change, this could become inconsistent\n3. Line 890-891 uses `.skip(usize::from(fragment.window) + 1)` which assumes the array is exactly 2 elements\n\nSuggested fix: Define a constant `const MAX_WINDOWS: usize = 2;` and use it consistently:\n```rust\nbitmaps: [u64; MAX_WINDOWS],\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:47:23.004828Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:47:23.004828Z",
+  "labels": [
+    "correctness",
+    "bounds-check",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.7",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:47:23.351409Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

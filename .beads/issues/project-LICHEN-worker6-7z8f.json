@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-7z8f",
+  "title": "Root node can be demoted by receiving DIO with newer version",
+  "description": "In dodag.rs process_dio(), when a Root node receives a DIO with a newer DODAG version number, the code calls adopt_version() which demotes the root to Unjoined state. This allows any node advertising a newer version to demote the authoritative root.\n\nLocation: lichen-rpl/src/dodag.rs lines 341-354\n\nCode path:\n1. Root receives DIO with version N+1 (newer than root's version N)\n2. version_is_newer() returns true\n3. candidate_admissible() is called with (INFINITE_RANK, INFINITE_RANK) for node_rank/lowest_rank, bypassing rank checks\n4. adopt_version() is called, which:\n   - Sets role to Unjoined\n   - Clears parents\n   - Resets rank to INFINITE_RANK\n5. Root is now demoted and could join through the attacker as parent\n\nImpact: DODAG instability, potential for routing loops or network partitioning if there's a misconfigured second root or malicious actor.\n\nFix: Add a check at the start of process_dio to reject all DIOs when role == Root (roots don't need parents), or specifically guard the adopt_version call to not apply to roots.\n\nThe test root_ignores_dio() only tests same-version DIOs and misses this case.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T21:17:00.340839Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:40:50.718674Z",
+  "closed_at": "2026-08-17T03:40:50.718674Z",
+  "close_reason": "Already fixed: Root DIO rejection is implemented at dodag.rs lines 344-346 with SECURITY comment. Test root_ignores_newer_version_dio() validates the exact scenario."
+}

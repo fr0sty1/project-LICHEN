@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.4",
   "title": "10.6 RERR Processing",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:37.096596Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:37.096596Z",
+  "updated_at": "2026-08-17T05:27:29.826615Z",
+  "closed_at": "2026-08-17T05:27:29.826615Z",
+  "close_reason": "Invalid: This is an EPIC tracking container for RERR implementation across platforms, not a bug. 3/5 children complete. Remaining children (Zephyr impl, gradient invalidation) are independent work items.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.4",

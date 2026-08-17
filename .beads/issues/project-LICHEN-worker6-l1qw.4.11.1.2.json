@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.4.11.1.2",
   "title": "Implement: Python oracle for Address Format",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:40:24.046285Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:24.046285Z",
+  "updated_at": "2026-08-17T04:46:10.583053Z",
+  "closed_at": "2026-08-17T04:46:10.583053Z",
+  "close_reason": "Already fixed: Implementation in python/src/lichen/crypto/identity.py (_pubkey_to_iid, iid_to_human_address, PeerIdentity.human_address)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.11.1.2",

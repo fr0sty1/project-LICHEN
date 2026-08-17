@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-n9ik.7",
+  "title": "Positive: SECURITY comments document critical invariants",
+  "description": "## Locations\n- Line 369-370: RFC 6550 Section 8.2.2.5 rank loop prevention\n- Line 440-444: Root parent selection guard\n- Line 457-459, 485-487: State machine transition assertions\n\n## Why this is worth defending\nExplicit SECURITY: prefixed comments highlight security-critical code paths. The comments explain not just what the code does but WHY it matters for security.\n\n(Note: One comment at line 405-408 is misleading and filed separately as a bug.)",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:41:59.314409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:41:59.314409Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n9ik.7",
+      "depends_on_id": "project-LICHEN-worker6-n9ik",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:41:59.666665Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

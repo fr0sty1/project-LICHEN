@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-c8xy",
+  "title": "[review] router.rs:693: Silent failure on buffer under",
+  "description": "build_dio returns 0 when the output buffer is too small for any of the three write operations (DIO, config, SCHC version). This is indistinguishable from 'no data to write' and callers may not realize the DIO wasn't built. Consider returning Result or Option to make failure explicit.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:34:00.449247Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:34:00.449247Z",
+  "labels": [
+    "review"
+  ]
+}

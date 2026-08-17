@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ftek",
+  "title": "hybrid.rs: MeshPrefix::contains panics on prefix_len \u003e= 136 (duplicate)",
+  "description": "Line 162-166: full_bytes = prefix_len / 8 can exceed 16 when prefix_len \u003e= 136, causing index out-of-bounds panic on addr[..full_bytes]. No validation exists in MeshPrefix::new or add_mesh_prefix. Valid IPv6 prefix lengths are 0-128.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:36:35.717378Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:36:35.717378Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

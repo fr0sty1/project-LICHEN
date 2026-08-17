@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-x6op.5",
+  "title": "Minimum ciphertext check allows degenerate input",
+  "description": "File: oscore/src/edhoc/initiator.rs:280\n\nIssue: The check `g_y_ct2.len() \u003c KEY_LEN_32 + 1` allows exactly 33 bytes (32 for G_Y + 1 for CIPHERTEXT_2). However, CIPHERTEXT_2 must contain at least C_R (1 byte), ID_CRED_R (1+ bytes), and SIGNATURE_OR_MAC_2 (48-64 bytes). A 1-byte ciphertext will pass this check but fail later during signature parsing with an unclear `InvalidMessage` error.\n\nTrigger: Malformed message with exactly 33 bytes (32-byte G_Y + 1-byte garbage).\n\nImpact: Error is reported at signature parsing rather than at the appropriate boundary check, making debugging harder.\n\nSuggested fix: Enforce a realistic minimum:\n```rust\n// C_R(1) + ID_CRED_R(min 1) + signature(48 or 64) = 50+ minimum\nif g_y_ct2.len() \u003c KEY_LEN_32 + 50 {\n    return Err(EdhocError::InvalidMessage);\n}\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:41:47.156362Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:23:56.369461Z",
+  "closed_at": "2026-08-16T21:23:56.369461Z",
+  "close_reason": "Fixed: enforced realistic minimum ciphertext length (KEY_LEN_32 + 1 + SIG_LEN) to reject degenerate inputs early with clear error",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x6op.5",
+      "depends_on_id": "project-LICHEN-worker6-x6op",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:41:47.510642Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

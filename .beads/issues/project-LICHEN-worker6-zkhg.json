@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-zkhg",
+  "title": "[review] router.rs:32: Unchecked extreme trickle inte",
+  "description": "When dio_int_min is large (e.g., 30-31), the computed imin_ms can be ~12-24 days (1\u003c\u003c30 = 1073741824 ms). The function validates dio_int_min \u003e= 32 returns None via the checked_shl overflow, but values 30-31 produce valid but extreme intervals that may cause Trickle timer malfunction or unexpected behavior. No upper bound validation exists.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:34:00.447888Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:34:00.447888Z",
+  "labels": [
+    "review"
+  ]
+}

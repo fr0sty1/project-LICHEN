@@ -1,0 +1,2 @@
+{"id":"01a00bec-8939-7b1b-8d32-ad683c15a3ee","issue_id":"project-LICHEN-worker6-ixrb","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:54:06.137728Z"}
+{"id":"01a00c0b-a799-731c-86ff-1be9e2751a92","issue_id":"project-LICHEN-worker6-ixrb","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: RootCandidate::cmp() at multi_instance.rs:901 uses f32::total_cmp() which properly handles NaN values with deterministic ordering","created_at":"2026-08-16T19:28:05.529205Z"}

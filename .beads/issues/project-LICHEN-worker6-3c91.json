@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-3c91",
+  "title": "[review] 03-adaptation.md: Concurrent fragmentation handling u",
+  "description": "The spec states 'With T=0, only one fragmented packet per signed link and data Rule ID may be active' but does not specify behavior when this constraint is violated. If a new fragmented packet begins arriving before the current reassembly completes, implementations need guidance on whether to abort the old packet, reject the new one, or take other action.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:59.866036Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:59.866036Z",
+  "labels": [
+    "review"
+  ]
+}

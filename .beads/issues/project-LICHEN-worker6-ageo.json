@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ageo",
+  "title": "Use total_cmp for RootCandidate float comparison",
+  "description": "In rust/lichen-rpl/src/multi_instance.rs line 762-768, RootCandidate::cmp() uses partial_cmp().unwrap_or(Equal) for comparing combined RF scores. This can violate Ord transitivity if NaN values appear. Replace with f32::total_cmp() which provides a total ordering including for NaN values.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:05.959517Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:16:17.663173Z",
+  "closed_at": "2026-08-16T19:16:17.663173Z",
+  "close_reason": "Fixed: Replaced partial_cmp().unwrap_or(Equal) with total_cmp() for f32 combined_score comparison in RootCandidate::cmp(). This ensures Ord transitivity compliance even when NaN values appear."
+}

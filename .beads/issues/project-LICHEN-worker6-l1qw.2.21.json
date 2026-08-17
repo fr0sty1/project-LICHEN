@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.21",
   "title": "Spec: 02a 2 Frame Structure",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:28.374239Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:21:28.374239Z",
+  "updated_at": "2026-08-17T04:43:45.595027Z",
+  "closed_at": "2026-08-17T04:43:45.595027Z",
+  "close_reason": "Already fixed: Python Frame Structure oracle complete in ccp.py and timing/sfn.py with 182 passing tests covering slot_for(), sfn_delta(), CCP FSM, DriftWatchdog, RecoveryCountdown, and test vectors",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.21",

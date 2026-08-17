@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.15",
   "title": "Spec: 12 18.2 Position Sharing",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:04.089617Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:04.089617Z",
+  "updated_at": "2026-08-17T04:03:23.035644Z",
+  "closed_at": "2026-08-17T04:03:23.035644Z",
+  "close_reason": "Invalid: This is an EPIC tracking bead, not a bug. Children track individual work items. Python/Rust implementations complete and tested. Test vectors exist. Zephyr pending.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.15",

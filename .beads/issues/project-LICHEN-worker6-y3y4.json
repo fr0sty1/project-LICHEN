@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-y3y4",
+  "title": "Python: B.2.3 Priority Queuing oracle",
+  "description": "Part of TX Queue / Forwarding Buffer oracles (queue)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:57.269656Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:04:51.003584Z",
+  "closed_at": "2026-08-15T19:04:51.003584Z",
+  "close_reason": "Implemented B.2.3 Priority Queuing oracle: created test/vectors/tx_queue_priority.json with 17 test vectors covering strict priority ordering, FIFO within same priority, preemption behavior, backpressure, traffic type mapping, and priority comparisons. Added TestOraclePriorityQueuing class to python/tests/link/test_tx_queue.py with 18 oracle tests validating the implementation. All 130 queue tests pass.",
+  "labels": [
+    "queue"
+  ]
+}

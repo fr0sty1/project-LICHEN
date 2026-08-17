@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-uaqu",
+  "title": "[review] tx_queue.py:350: Preemption path may evict vali",
+  "description": "After ensure_can_push() passes due to expired entries in active_entries calculation, line 350 finds lowest priority in self._entries (which still contains the expired entry). If the expired entry has higher priority than entries being considered for eviction, a valid lower-priority entry gets evicted while the expired one remains until next expire_stale() call. This violates the principle that expired packets should be removed before evicting valid ones.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:46.95747Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:26:46.95747Z",
+  "labels": [
+    "review"
+  ]
+}

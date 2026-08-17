@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-2rkp.6",
+  "title": "GOOD: Saturating arithmetic prevents integer overflow attacks",
+  "description": "Location: rust/lichen-rpl/src/dodag.rs lines 116, 175, 417, 465, 478\n\nThe code consistently uses saturating_add for rank calculations, preventing integer overflow:\n- Line 116: lowest_rank.saturating_add(max_rank_increase)\n- Line 175: self.rank.saturating_add(link_cost as u16)\n- Line 417: self.lowest_rank.saturating_add(self.max_rank_increase)\n- Line 465: cur_cost.saturating_sub(threshold)\n- Line 478: chosen_cost comparison\n\nThis is correct for a routing protocol where overflowing rank values could create routing loops or security vulnerabilities. Worth defending if someone suggests changing to unchecked arithmetic.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:57.921919Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:57.921919Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rkp.6",
+      "depends_on_id": "project-LICHEN-worker6-2rkp",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:58.242168Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

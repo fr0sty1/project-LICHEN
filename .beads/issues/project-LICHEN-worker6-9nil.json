@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-9nil",
+  "title": "HAL test: Reformat compressed duty cycle test",
+  "description": "test_duty_cycle_ccp13 (line 1340) is compressed into a single ~360 character line, making audit difficult. Either reformat with proper structure or consolidate with test_duty_cycle_tracker_matches_ccp13_vectors which covers the same logic more readably.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:17:35.168411Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:15:15.337507Z",
+  "closed_at": "2026-08-16T19:15:15.337507Z",
+  "close_reason": "Already fixed: the unreadable test_duty_cycle_ccp13 was already removed. The test_duty_cycle_tracker_matches_ccp13_vectors test at lines 1341-1364 is properly formatted with reasonable line lengths (max 96 chars). Related bead project-LICHEN-worker6-pgu6 was previously closed for the same fix."
+}

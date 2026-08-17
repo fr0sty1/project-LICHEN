@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-m6pt.6",
+  "title": "decompress_packet returns empty bytes for rule 255 with single-byte input",
+  "description": "**File:** python/src/lichen/schc/headers.py\n**Lines:** 592-594\n\n**Issue:** When `data = bytes([255])` (just the uncompressed rule ID with no payload), `decompress_packet` returns `data[1:]` which is empty bytes. This is technically correct per the code logic (uncompressed rule just strips the rule ID), but an empty IPv6 packet is always invalid.\n\n**Bad behavior:** Callers may receive empty bytes and attempt to parse as IPv6, causing downstream errors with confusing context.\n\n**Trigger:** `decompress_packet(bytes([255]))`\n\n**Fix:** Add minimum length check after stripping rule 255:\n```python\nif rule_id == RULE_ID_UNCOMPRESSED:\n    raw = data[1:]\n    if len(raw) \u003c HEADER_LENGTH:\n        raise SchcError(\"uncompressed packet too short for IPv6 header\")\n    return raw\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:10:37.545458Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:10:37.545458Z",
+  "labels": [
+    "error-handling",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-m6pt.6",
+      "depends_on_id": "project-LICHEN-worker6-m6pt",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:10:37.868537Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

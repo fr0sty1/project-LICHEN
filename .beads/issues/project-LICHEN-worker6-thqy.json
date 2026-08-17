@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-thqy",
+  "title": "Review: discovery.rs edge cases 2026-08-16",
+  "description": "Review confidence: 85% chance of no missed edge-case bugs.\nLeast confident areas: CoapBuilder internals (not reviewed - assumed to validate token length).\nWould raise confidence if: reviewed CoapBuilder::new() for token length validation.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:10.289004Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:48:09.90472Z",
+  "started_at": "2026-08-16T18:47:10.969255Z",
+  "lease_expires_at": "2026-08-16T18:52:10.969255Z",
+  "heartbeat_at": "2026-08-16T18:47:10.969255Z",
+  "labels": [
+    "review"
+  ]
+}

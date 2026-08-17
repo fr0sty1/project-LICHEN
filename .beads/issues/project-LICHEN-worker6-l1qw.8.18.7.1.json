@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.18.7.1",
   "title": "Parse: Extract requirements from B.3.3",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:37:49.734754Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:49.734754Z",
+  "updated_at": "2026-08-17T16:09:19.701341Z",
+  "closed_at": "2026-08-17T16:09:19.701341Z",
+  "close_reason": "Extracted requirements from spec/appendix-bufferbloat.md lines 137-151 (Measuring Queue Latency subsection):\n\nSpec section uses no explicit RFC 2119 keywords. Implicit requirements:\n1. Track time-in-queue (latency), not just queue depth\n2. queue_stats structure with: packets_queued, packets_dropped_deadline, packets_dropped_full, max_latency_ms, avg_latency_ms\n3. Expose via /status/queues CoAP resource for diagnostics\n\nUpdated parent bead project-LICHEN-worker6-l1qw.8.18.7 with full checklist. Implementation already exists in python/src/lichen/link/tx_queue.py (TxQueueStats class, lines 174-195).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.18.7.1",

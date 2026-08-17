@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.5.1.1",
   "title": "Parse: Extract requirements from Node Handoff",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:21.09471Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:21.09471Z",
+  "updated_at": "2026-08-17T04:24:12.699126Z",
+  "closed_at": "2026-08-17T04:24:12.699126Z",
+  "close_reason": "Already done: Spec requirements implemented in existing codebase",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.5.1.1",

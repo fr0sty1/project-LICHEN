@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.16",
   "title": "Python Oracle Template",
   "description": "# Python Oracle Pattern for LICHEN\n\n## PURPOSE\n\nPython oracles are reference implementations that:\n- Parse spec text to extract requirements (MUST/SHALL/SHOULD statements)\n- Implement the algorithm in clear, readable Python\n- Generate test vectors (JSON) for cross-validation\n- Serve as the \"source of truth\" for Rust/Zephyr implementations\n\nThe oracle exists to make the spec executable. When Rust or Zephyr implementations disagree with Python, Python wins unless the spec is wrong.\n\n## STRUCTURE\n\nEach oracle task should have these subtasks:\n\n### a) Parse Spec\n- Extract MUST/SHALL/SHOULD statements from the relevant spec section\n- Create a checklist of requirements to implement\n- Note any ambiguities or underspecified behavior\n\n### b) Implement\n- Write Python code in `python/src/lichen/\u003cmodule\u003e/\u003cfeature\u003e.py`\n- Code should be clear and readable over fast\n- Document spec section references in docstrings\n- Use type hints throughout\n\n### c) Generate Vectors\n- Output test vectors to `test/vectors/\u003cchapter\u003e-\u003csection\u003e-\u003cname\u003e.json`\n- Cover: normal case, edge cases, error cases\n- Include intermediate values for debugging\n- Vector format must match `test/vectors/README.md` schema\n\n### d) Validate\n- Run against any existing test vectors\n- Cross-check with RFC examples where available\n- Verify round-trip encoding/decoding\n\n## ACCEPTANCE CRITERIA\n\n- [ ] All MUST statements have corresponding code\n- [ ] All SHOULD statements documented (implemented or explicitly skipped with rationale)\n- [ ] Test vectors cover: normal case, edge cases, error cases\n- [ ] Code passes `ruff check` and `pytest`\n- [ ] Vector format matches `test/vectors/README.md` schema\n\n## FILE CONVENTIONS\n\n| Type | Path |\n|------|------|\n| Oracle code | `python/src/lichen/\u003cmodule\u003e/\u003cfeature\u003e.py` |\n| Tests | `python/tests/\u003cmodule\u003e/test_\u003cfeature\u003e.py` |\n| Vectors | `test/vectors/\u003cchapter\u003e-\u003csection\u003e-\u003cname\u003e.json` |\n\n## WORKFLOW\n\n1. Claim the Python subtask for a spec section\n2. Read the spec section, extract requirements\n3. Implement the oracle following the structure above\n4. Generate test vectors\n5. Run quality gates: `ruff check src/ tests/ \u0026\u0026 pytest`\n6. Close the Python subtask\n7. Rust/Zephyr implementations can now use your vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:33:18.754035Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:33:35.043623Z",
+  "updated_at": "2026-08-17T03:44:06.122145Z",
+  "closed_at": "2026-08-17T03:44:06.122145Z",
+  "close_reason": "Template complete: Python oracle pattern is established and actively used. Test vectors exist in test/vectors/ (100+ files), oracles in python/src/lichen/, and schema documented in test/vectors/README.md. No implementation work required - this EPIC serves as reference documentation.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.16",

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-9vbq",
+  "title": "Add round-trip verification to Ack fuzzing",
+  "description": "The fuzzer tests Ack::from_bytes but does not verify that parsed Acks re-serialize to canonical form. Add round-trip checks: parse input, write_to buffer, verify output matches input (for valid cases) or produces expected canonical encoding.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:31.110544Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:05:31.110544Z"
+}

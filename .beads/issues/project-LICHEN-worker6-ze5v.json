@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ze5v",
+  "title": "[review] provisioning.py:355: Silent callback exception supp",
+  "description": "contextlib.suppress(Exception) swallows all errors from on_provisioned callback. If the callback fails (e.g., database write fails, node registration fails), provisioning reports success (returns CHANGED) but the node may not be registered. This can create orphaned nodes that believe they are provisioned but are unknown to the network.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:54.728786Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:06:54.728786Z",
+  "labels": [
+    "review"
+  ]
+}

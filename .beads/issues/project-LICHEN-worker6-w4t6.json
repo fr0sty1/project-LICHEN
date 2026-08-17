@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-w4t6",
+  "title": "[review] tx_queue.py:416: confirm_transmitted() does not",
+  "description": "The _remove_first() helper called by confirm_transmitted() updates stats but never signals entry.reservation.set_result(). If a packet pushed with return_reservation=True is removed via confirm_transmitted(), the awaiting coroutine hangs forever. Both pop() (line 405) and complete() (line 516-517) correctly signal reservations; this path does not.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:32.387791Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:08:25.156527Z",
+  "closed_at": "2026-08-15T21:08:25.156527Z",
+  "close_reason": "Fixed: _remove_first() now signals entry.reservation.set_result(True) when confirm_transmitted() path is used. This prevents coroutines from hanging when awaiting reservations on packets removed via confirm_transmitted().",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-2umt",
+  "title": "[review] message.rs:212: Dao D-flag normalization break",
+  "description": "When parsing D=0 (DODAGID elided per RFC 6550 section 6.4.2), the code stores Some([0u8; 16]) instead of None. However, write_to checks is_some() to set D=1 (line 238). This means parsing a wire D=0 DAO and re-encoding it produces D=1 output with explicit zeros. While documented as intentional for LICHEN, this non-idempotent behavior could cause interop issues with RFC 6550-compliant nodes expecting D=0 preservation.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:33:49.453921Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:33:49.453921Z",
+  "labels": [
+    "review"
+  ]
+}

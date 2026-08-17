@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-37sc",
+  "title": "HAL tests: Fix hal_after fixture to clear reset test state",
+  "description": "The hal_after() fixture cleanup function does not call lichen_hal_reset_test_clear_request(), but test_reset_diagnostics_and_request_boundaries modifies this state. Add the cleanup call to prevent state leakage between tests.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:17:42.65982Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:14:29.749406Z",
+  "closed_at": "2026-08-16T19:14:29.749406Z",
+  "close_reason": "Fixed: Added lichen_hal_reset_test_clear_request() call to hal_after fixture to prevent state leakage between tests"
+}

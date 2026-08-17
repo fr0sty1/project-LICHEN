@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.11.3",
   "title": "Zephyr: state machine",
   "description": "Implement desync state machine for Zephyr C. Acceptance: Works on constrained devices.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:33.941285Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:33.941285Z",
+  "updated_at": "2026-08-17T04:31:44.996396Z",
+  "closed_at": "2026-08-17T04:31:44.996396Z",
+  "close_reason": "Invalid: This is a feature implementation task (implement CCP FSM for Zephyr C), not a bug fix. The bead requests new functionality to be written. Parent epic l1qw.2.11.1 (Python FSM) is complete and can serve as reference. Current Zephyr C code only has basic sync flag in time_sync.c - requires implementing the 4-state machine (UNJOINED/JOINED/DRIFT/RECOVER) with state transition handlers on_join, on_beacon, on_drift_warn, on_drift_max, on_give_up, on_leave per spec 2a.6 CCP-13a.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.11.3",

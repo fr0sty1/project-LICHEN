@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ixrn",
+  "title": "[review] 03-adaptation.md: Table inconsistent with prose for MQTT-S",
+  "description": "Lines 127-128 show both UDP ports as '10883 | equal | not-sent', but line 113 states Rule 7 uses 'direction bit + residue for the non-10883 port'. The table is incomplete - it should reflect that one port may be non-10883 and require value-sent handling.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:25.881968Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:25.881968Z",
+  "labels": [
+    "review"
+  ]
+}

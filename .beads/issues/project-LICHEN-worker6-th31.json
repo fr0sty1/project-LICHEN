@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-th31",
+  "title": "path_cost infinity handling is implicit, not explicit",
+  "description": "At line 172, the check `if link_cost.is_nan() || link_cost \u003c 0.0` does not explicitly handle positive infinity. When link_etx * mhri overflows to f32::INFINITY, the check passes, and Rust saturates the cast to u16::MAX. Code works correctly but relies on implicit saturation behavior. Should use `!link_cost.is_finite()` for clarity.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:11.729717Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:15:47.725525Z",
+  "closed_at": "2026-08-16T20:15:47.725525Z",
+  "close_reason": "Fixed: changed is_nan() || link_cost \u003c 0.0 to !link_cost.is_finite() || link_cost \u003c 0.0 for explicit handling of infinity"
+}

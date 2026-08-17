@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-z63v.5",
+  "title": "receive_from_peer silently falls back to default transit on index mismatch",
+  "description": "File: rust/lichen-rpl/src/multi_instance.rs\nLines: 555-570\n\nIssue: When targets.len() \u003e transit.len(), extra targets silently receive a hardcoded default transit with no diagnostic output.\n\nThe default_transit uses path_lifetime: 60 (hardcoded). This is likely intentional per RFC, but:\n1. No logging when fallback occurs - makes debugging route issues harder\n2. Hardcoded path_lifetime may not match sender intent\n\nSuggestion: Add trace-level log when using default transit.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:21:14.74175Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:21:14.74175Z",
+  "labels": [
+    "efficiency",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-z63v.5",
+      "depends_on_id": "project-LICHEN-worker6-z63v",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:21:15.11039Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

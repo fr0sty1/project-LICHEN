@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-3pg6",
+  "title": "[review] 03-adaptation.md: Misleading terminology",
+  "description": "The phrase '26B SCHC header' is incorrect. The SCHC Rule ID header is 1 byte; 26 bytes is the compressed residue/size. Should say '26B compressed' or '26B residue' for clarity.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:42.332244Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:42.332244Z",
+  "labels": [
+    "review"
+  ]
+}

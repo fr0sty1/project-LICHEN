@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-rwi4",
+  "title": "HAL test: Remove unused old_fix_ms variable",
+  "description": "Line 1037 declares `const int64_t old_fix_ms = 1000` but it's never used. The value 1000 is hardcoded at line 1043. Either use the variable or remove it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:23:35.264597Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:36:01.433059Z",
+  "closed_at": "2026-08-16T19:36:01.433059Z",
+  "close_reason": "Already fixed: old_fix_ms variable IS used at line 1043 (.observed_uptime_ms = old_fix_ms). The bead description stating the value was hardcoded is outdated."
+}

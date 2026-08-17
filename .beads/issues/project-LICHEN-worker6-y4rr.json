@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-y4rr",
+  "title": "sync_hop.c: Potential division by zero if CONFIG_LICHEN_SYNC_HOP_SUPERFRAME_MS is 0",
+  "description": "Line 48: Division by superframe_ms has no guard against zero. If CONFIG_LICHEN_SYNC_HOP_SUPERFRAME_MS is misconfigured to 0, this causes undefined behavior. However, this requires compile-time misconfiguration rather than runtime input, so it is an unlikely edge case.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:52:20.821585Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:52:20.821585Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-m8u8",
+  "title": "tx_queue.c: tx_queue_empty returns false when all packets expired",
+  "description": "Lines 404-420: tx_queue_empty can return false when all packets have expired deadlines. Caller pattern 'if (!tx_queue_empty()) tx_queue_pop()' fails because pop expires packets first and returns EAGAIN. Function does not call expire_packets_locked() before checking.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:30.904814Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:30.904814Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

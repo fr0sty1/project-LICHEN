@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.7.4.3",
   "title": "Zephyr: serial replay window per verified origin",
   "description": "Track replay window per origin for SOS sequence numbers",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:07.425036Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:07.425036Z",
+  "updated_at": "2026-08-17T04:04:02.582873Z",
+  "closed_at": "2026-08-17T04:04:02.582873Z",
+  "close_reason": "Blocked: depends on SOS relay infrastructure (project-LICHEN-worker6-l1qw.10.7.4.2). No SOS subsystem exists yet in Zephyr C code. Existing replay.c per-public-key tracking can be adapted once SOS relay container is implemented.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.7.4.3",

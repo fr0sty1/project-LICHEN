@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.4.7",
   "title": "T1000-E: Internal flash storage",
   "description": "Validate internal flash partitions on T1000-E. UF2-style layout is modeled. Test NonVolatile operations via settings or NVS.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:50.417368Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:50.417368Z",
+  "updated_at": "2026-08-17T16:41:55.082616Z",
+  "closed_at": "2026-08-17T16:41:55.082616Z",
+  "close_reason": "Already validated: T1000-E internal flash is fully modeled in t1000_e_nrf52840.dts (storage_partition at 0xBF000, 16KB). NVS/Settings enabled in board config, used by epoch_persist.c for link-layer epoch persistence. Flash layout documented in FLASHING.md with hardware-tested errata. SMP OTA working confirms flash operations functional.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.4.7",

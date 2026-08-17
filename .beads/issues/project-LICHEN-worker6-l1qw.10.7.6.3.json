@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.7.6.3",
   "title": "Zephyr: TX queue priority for SOS",
   "description": "Prioritize SOS in TX queue",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:26.959477Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:26.959477Z",
+  "updated_at": "2026-08-17T04:07:35.209059Z",
+  "closed_at": "2026-08-17T04:07:35.209059Z",
+  "close_reason": "Added TX_PRIORITY_SOS (P0) as highest priority in enum tx_queue_priority. Updated deadlines: SOS=2s (8 slots), ROUTING=5s (20 slots), ACK=5s (20 slots), URGENT=30s (120 slots), BULK=60s (240 slots). Added SOS case to tx_queue_push_default_deadline switch. Added 3 tests: test_sos_priority_highest, test_sos_preempts_full_queue, test_sos_default_deadline. Also fixed pre-existing issues: function signature mismatches and missing tx_queue_destroy implementation. All 22 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.7.6.3",

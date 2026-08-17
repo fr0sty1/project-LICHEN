@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-yb9b",
+  "title": "spec/appendix-ccp12-hopping.md: Incorrect MOD calculation in example",
+  "description": "The example claims '926423932 MOD 7 = 1' yielding channel 2, but the correct calculation is 926423932 MOD 7 = 0 (since 926423932 = 7 * 132346276 exactly), yielding channel 1. The authoritative test vectors file (test/vectors/ccp16.json line 19) confirms the correct answer is channel 1. Implementers verifying against this example would produce incorrect code.\n\nFix suggestion: Change line 121 from 'Channel = 1 + (926423932 MOD 7) = 1 + 1 = 2' to 'Channel = 1 + (926423932 MOD 7) = 1 + 0 = 1' and change line 123 from 'Result: Channel 2' to 'Result: Channel 1'",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:13:16.920587Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:27:36.934886Z",
+  "closed_at": "2026-08-17T15:27:36.934886Z",
+  "close_reason": "Already fixed: spec/appendix-ccp12-hopping.md lines 121 and 123 already show the correct values (1 + 0 = 1, Channel 1). Test vectors also confirm channel=1.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

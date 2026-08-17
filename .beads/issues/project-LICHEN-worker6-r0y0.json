@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-r0y0",
+  "title": "[review] provisioning.py:364: Fragile access to private",
+  "description": "The code accesses br_session._provisioned_seed, an internal implementation detail of BRProvisioningSession. While documented, this creates tight coupling between the resource layer and the crypto layer's internal structure. If the crypto module refactors this field, this code will break silently or raise AttributeError.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:13:26.925642Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:13:26.925642Z",
+  "labels": [
+    "review"
+  ]
+}

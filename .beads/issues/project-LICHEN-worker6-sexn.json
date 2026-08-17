@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-sexn",
+  "title": "[review] tx_queue.py:407: confirm_transmitted() doe",
+  "description": "confirm_transmitted() calls _remove_first() which updates stats but never signals the entry's reservation. Callers awaiting a reservation for a packet removed via this path will hang indefinitely. Unlike complete(), there is no reservation.set_result() call.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:28:26.15342Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:30:14.041059Z",
+  "closed_at": "2026-08-16T04:30:14.041059Z",
+  "close_reason": "Fixed: confirm_transmitted() now signals the entry's reservation as successful (True) after calling _remove_first(). Added regression test.",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,3 @@
+{"id":"01a008d3-feb0-795a-b860-7fac95b6d14d","issue_id":"project-LICHEN-worker6-sexn","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T04:28:26.160613Z"}
+{"id":"01a008d3-febb-72e2-8495-a2ed8d04cf6f","issue_id":"project-LICHEN-worker6-sexn","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T04:28:26.17119Z"}
+{"id":"01a008d5-a423-7dde-a0ab-ebebdc77ae9c","issue_id":"project-LICHEN-worker6-sexn","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: confirm_transmitted() now signals the entry's reservation as successful (True) after calling _remove_first(). Added regression test.","created_at":"2026-08-16T04:30:14.05191Z"}

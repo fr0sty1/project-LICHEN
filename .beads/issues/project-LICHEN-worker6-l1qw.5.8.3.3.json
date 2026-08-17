@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.3.3",
   "title": "Zephyr: RREP encode/decode",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:27.768537Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:27.768537Z",
+  "updated_at": "2026-08-17T05:26:15.24313Z",
+  "closed_at": "2026-08-17T05:26:15.24313Z",
+  "close_reason": "Already fixed: RREP encode/decode implemented in loadng.c (lichen_loadng_rrep_parse at line 84, lichen_loadng_rrep_write at line 103), with roundtrip tests in lichen/tests/loadng/main.c (test_rrep_roundtrip at line 413)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.3.3",

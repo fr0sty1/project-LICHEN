@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-buey",
+  "title": "appendix-ccp12-hopping.md:121: Incorrect modulo calculation in example",
+  "description": "The example calculation claims 926423932 MOD 7 = 1 yielding channel 2, but mathematically 926423932 MOD 7 = 0, so the correct channel is 1. Verified: 132346276 * 7 = 926423932 exactly (no remainder). This would mislead implementers validating their code against the example. Fix: Change line 121 from 'Step 5: Channel = 1 + (926423932 MOD 7) = 1 + 1 = 2' to 'Step 5: Channel = 1 + (926423932 MOD 7) = 1 + 0 = 1' and update 'Result: Channel 2' to 'Result: Channel 1'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:55.808249Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:26:06.637857Z",
+  "closed_at": "2026-08-17T15:26:06.637857Z",
+  "close_reason": "Fixed incorrect modulo calculation in spec example: 926423932 MOD 7 = 0 (not 1), so channel = 1 (not 2). Also corrected hex representation from 0x373854FC to 0x37381B7C. The example test vector in the spec was already correct; only the step-by-step calculation needed fixing.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

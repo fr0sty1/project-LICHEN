@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-qe8k",
+  "title": "[review] router.rs:326: Floating point ETX boundary co",
+  "description": "The ETX validation uses 'etx \u003c 1.0' for the lower bound. While semantically correct (perfect link = 1.0), floating point arithmetic computing ETX values could yield 0.9999999... or 1.0000001, causing unexpected rejection or acceptance at the boundary. Consider using an epsilon comparison or documenting the expected precision.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:34:00.44802Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:34:00.44802Z",
+  "labels": [
+    "review"
+  ]
+}

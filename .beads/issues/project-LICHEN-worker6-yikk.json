@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-yikk",
+  "title": "[review] lib.rs:203: Type inconsistency betwee",
+  "description": "select_channel() takes epoch as u32 per spec ('Epoch as LE u32 bytes'), but select_channel_with_gnss() takes epoch as u8 and casts to u32 at line 221. If link-layer epoch values exceed 255, the hash-based channel selection in priority-2 path would produce different results than select_channel() for the same logical epoch, causing channel rendezvous failures between nodes using different code paths.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:10:21.39855Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:10:21.39855Z",
+  "labels": [
+    "review"
+  ]
+}

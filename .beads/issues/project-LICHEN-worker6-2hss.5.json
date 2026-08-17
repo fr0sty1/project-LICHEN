@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-2hss.5",
+  "title": "RERR messages can be spoofed to trigger route deletions",
+  "description": "File: rust/lichen-core/src/loadng.rs:439-457\n\nRERR parsing accepts any error_code (0-255) and unreachable address without validation. Combined with optional signatures, an attacker can forge REERs to claim nodes are unreachable.\n\nFailure scenario: Attacker broadcasts RERR with unreachable=\u003cvictim_addr\u003e, error_code=1. Nodes delete routes to victim, causing denial of service or traffic rerouting.\n\nFix: Document that RERR MUST be authenticated (signature required). Consider adding error_code validation against known codes. Add SECURITY comment noting RERR is a route-deletion primitive that must be protected.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:03:39.190906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:03:39.190906Z",
+  "labels": [
+    "security",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2hss.5",
+      "depends_on_id": "project-LICHEN-worker6-2hss",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:03:39.506918Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-h6mg",
+  "title": "[review] slot_claim.py:288: signature_valid field can",
+  "description": "The signature_valid field is a public dataclass parameter that defaults to False. While from_cbor() always sets it False, direct construction with signature_valid=True and signature=None would skip verification in resolve_slot_conflict (line 292-295 check is bypassed if signature_valid is True). The field should be private or computed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:38:29.658411Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:38:29.658411Z",
+  "labels": [
+    "review"
+  ]
+}

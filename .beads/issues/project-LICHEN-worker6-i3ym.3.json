@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-i3ym.3",
+  "title": "MIC comparison uses timing-variant == operator",
+  "description": "File: rust/lichen-schc/src/fragment.rs\nLine: 963\n\nIssue: The MIC comparison uses == which is not constant-time:\n  if compute_mic(\u0026self.storage[..packet_len]) == self.all1_mic\n\nSeverity: Low (P3) - CRC-32 is not cryptographic, so timing attacks cannot be exploited for authentication bypass. However, this sets a bad pattern.\n\nWhat goes wrong: If this pattern is copied to code using cryptographic MACs, it creates a timing side-channel vulnerability. The == operator short-circuits on first byte difference.\n\nSuggested fix: Add a comment explaining why constant-time is not needed here:\n  // NOTE: CRC-32 is not cryptographic; constant-time comparison unnecessary\n\nAlternative: Mark as opinion/wontfix since CRC-32 timing is not exploitable. The real fix is the SECURITY comment on compute_mic clarifying CRC-32 is not for authentication.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:20:00.7481Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:20:00.7481Z",
+  "labels": [
+    "security",
+    "crypto-security",
+    "side-channel",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-i3ym.3",
+      "depends_on_id": "project-LICHEN-worker6-i3ym",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:20:01.087008Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

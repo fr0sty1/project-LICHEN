@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-m5vn",
+  "title": "Missing RFC 4861 hop limit validation in NS handling allows off-link NDP spoofing",
+  "description": "In lichen-ipv6/src/lib.rs handle_icmpv6() (line 860), Neighbor Solicitation messages are processed without validating that ip_header.hop_limit == 255.\n\nRFC 4861 Section 7.1.1 mandates: 'A node MUST silently discard any received Neighbor Solicitation messages that do not satisfy all of the following validity checks: The IP Hop Limit field has a value of 255, i.e., the packet could not possibly have been forwarded by a router.'\n\nImpact: Without this check, an attacker from a different network segment can send spoofed NS messages (which would have hop_limit \u003c 255 after being routed). This enables:\n- Off-link NDP cache poisoning\n- Address hijacking on the mesh\n- DoS by claiming another node's address\n\nFix: Add validation at the start of the NEIGHBOR_SOLICITATION case:\n  if ip_header.hop_limit != 255 { return Ok(None); }\n\nNote: Echo Request does not require hop_limit=255 per RFC 4443, so that path is not affected.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:59:11.88501Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:41:42.65281Z",
+  "closed_at": "2026-08-17T15:41:42.65281Z",
+  "close_reason": "Fixed: Added RFC 4861 Section 7.1.1 hop_limit == 255 validation at line 906-910 of lichen-ipv6/src/lib.rs. Packets with hop_limit \u003c 255 (indicating forwarding by a router) are now silently discarded, preventing off-link NDP spoofing attacks."
+}

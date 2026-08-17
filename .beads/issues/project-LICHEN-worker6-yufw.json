@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-yufw",
+  "title": "[review] 03-adaptation.md: CRC mismatch handling implicit",
+  "description": "RCS uses CRC-32/ISO-HDLC, and line 168 implies C=0 bitmap is sent on failure, but explicit behavior on CRC mismatch after all retries (drop reassembly buffer, log, notify) is not stated. Implementors must infer from RFC 8724.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:55.788766Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:55.788766Z",
+  "labels": [
+    "review"
+  ]
+}

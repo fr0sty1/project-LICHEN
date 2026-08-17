@@ -1,0 +1,4 @@
+{"id":"01a00dd4-bea0-702e-930b-3c0ff2bda8ce","issue_id":"project-LICHEN-worker6-ugzm","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T03:47:21.376012Z"}
+{"id":"01a00dd4-bea6-7670-b36b-c0595bf1c560","issue_id":"project-LICHEN-worker6-ugzm","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T03:47:21.382423Z"}
+{"id":"01a00dd4-bea9-7a87-94af-bd9a638eee34","issue_id":"project-LICHEN-worker6-ugzm","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T03:47:21.385691Z"}
+{"id":"01a00de1-ae5b-7ba0-8650-b96c3c8f05fc","issue_id":"project-LICHEN-worker6-ugzm","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added floor guard max(NChannels - 1, 1) to normative note at line 127, making it consistent with implementation example at line 306","created_at":"2026-08-17T04:01:29.179762Z"}

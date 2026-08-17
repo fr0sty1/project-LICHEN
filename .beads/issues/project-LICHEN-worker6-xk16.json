@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xk16",
+  "title": "[review] 03-adaptation.md: Retry count ambiguity",
+  "description": "'MAY retry up to 2 times (SCHC_VERSION_RETRIES)' is ambiguous. It could mean 2 total attempts or 2 additional attempts (3 total). Combined with the initial query, this could be 2 or 3 total queries. Convention varies across specifications.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:40.135777Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:40.135777Z",
+  "labels": [
+    "review"
+  ]
+}

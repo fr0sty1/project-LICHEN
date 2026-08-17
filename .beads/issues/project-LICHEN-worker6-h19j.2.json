@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-h19j.2",
+  "title": "demote() does not reset lowest_rank causing invalid max_rank_increase bounds",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs:301-308\n\n## Issue\nWhen a root demotes via `demote()`, only `role`, `preferred_parent`, `rank`, and `parents` are reset. `lowest_rank` retains its value (was `min_hop_rank_increase` from root creation).\n\n```rust\npub fn demote(\u0026mut self) {\n    if self.role == DodagRole::Root {\n        self.role = DodagRole::Unjoined;\n        self.preferred_parent = None;\n        self.rank = INFINITE_RANK;\n        self.parents.clear();\n        // lowest_rank NOT reset\n        // version NOT reset\n    }\n}\n```\n\n## Trigger\n1. Create root with `min_hop_rank_increase = 256`, so `lowest_rank = 256`\n2. Call `demote()` -\u003e node is Unjoined but `lowest_rank = 256`\n3. Process a DIO from a neighbor at rank 1000, with link_etx = 2.0\n4. Path cost = 1000 + 512 = 1512\n5. Admissibility check: `cost \u003c= lowest_rank + max_rank_increase` = `1512 \u003c= 256 + 1024` = `1512 \u003c= 1280` = FALSE\n\nThe demoted node cannot rejoin via a parent that would be valid for a fresh node.\n\n## Impact\nA demoted root cannot rejoin the DODAG through parents it should be able to accept, because `lowest_rank` is artificially constrained to its former root rank.\n\n## Suggested fix\n```rust\npub fn demote(\u0026mut self) {\n    if self.role == DodagRole::Root {\n        self.role = DodagRole::Unjoined;\n        self.preferred_parent = None;\n        self.rank = INFINITE_RANK;\n        self.lowest_rank = INFINITE_RANK;  // ADD\n        self.parents.clear();\n    }\n}\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:27:00.985764Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:04:11.947484Z",
+  "closed_at": "2026-08-16T21:04:11.947484Z",
+  "close_reason": "Fixed: demote() now resets lowest_rank to INFINITE_RANK, allowing demoted nodes to rejoin unconstrained",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-h19j.2",
+      "depends_on_id": "project-LICHEN-worker6-h19j",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:27:01.30271Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

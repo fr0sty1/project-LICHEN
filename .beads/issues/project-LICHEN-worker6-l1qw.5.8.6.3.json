@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.6.3",
   "title": "Zephyr: Discovery orchestration",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:17.810409Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:17.810409Z",
+  "updated_at": "2026-08-17T05:40:40.824323Z",
+  "closed_at": "2026-08-17T05:40:40.824323Z",
+  "close_reason": "Already fixed: Discovery orchestration fully implemented in lichen/subsys/lichen/routing/loadng.c with complete state machine (IDLE/SEARCHING/REPLIED/FAILED), expanding ring logic (4/8/15 hop limits), discovery_start/advance/get_rreq/receive_rrep functions, and process_rreq/process_rrep handlers. 18/18 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.6.3",

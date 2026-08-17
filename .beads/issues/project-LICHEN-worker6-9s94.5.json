@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-9s94.5",
+  "title": "FragmentSender::fragment_at_position has implicit ALL_1 mapping",
+  "description": "Location: rust/lichen-schc/src/fragment.rs:672-680\n\nIssue: The function maps position 62 to ALL_1 fragments via a special case:\n```rust\n\u0026\u0026 if fragment.is_all_1() {\n    position == 62\n} else {\n    position == 62 - fragment.fcn\n}\n```\n\nThis hardcodes the assumption that ALL_1 fragments occupy 'position 62' in the window's bit space. The mapping is:\n- Regular FCN 62 → position 0\n- Regular FCN 1 → position 61\n- ALL_1 (FCN 63) → position 62\n\nImpact: The position==62 special case is fragile if WINDOW_SIZE or the ALL_1 mapping ever changes. Additionally, this duplicates knowledge that exists elsewhere (fragment_bit function at line 684).\n\nSuggested fix: Extract the position-to-fragment mapping logic to a single source of truth, or add a comment explaining the position encoding scheme.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:15:21.61499Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:15:21.61499Z",
+  "labels": [
+    "edge-case",
+    "bounds",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9s94.5",
+      "depends_on_id": "project-LICHEN-worker6-9s94",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:15:21.928799Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

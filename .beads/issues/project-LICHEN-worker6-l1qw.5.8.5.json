@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.5",
   "title": "10.7 LOADng Parameters",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:38.041679Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:38.041679Z",
+  "updated_at": "2026-08-17T05:37:59.114049Z",
+  "closed_at": "2026-08-17T05:37:59.114049Z",
+  "close_reason": "Already fixed: All four LOADng parameters (RREQ_WAIT_TIME 5s, RREQ_RETRIES 3, MAX_HOP_LIMIT 15, suppress window 10s) are already implemented in loadng.h (C), discovery.py/messages.py (Python), and loadng.rs (Rust)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.5",

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-alqi",
+  "title": "[review] handoff.rs:803: Malformed parent addresse",
+  "description": "Parent addresses in the array with length != 16 are silently ignored (lines 803-809). This is inconsistent with node_address parsing (lines 518-523) which returns an error. Silent skipping could mask data corruption or malicious payloads designed to exploit the inconsistency.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:47:58.50208Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:47:58.50208Z",
+  "labels": [
+    "review"
+  ]
+}

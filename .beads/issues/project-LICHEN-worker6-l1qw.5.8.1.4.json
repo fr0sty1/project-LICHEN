@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.1.4",
   "title": "Reject discovery for unknown 0200::/8",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:49.086861Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:49.086861Z",
+  "updated_at": "2026-08-17T05:10:48.762734Z",
+  "closed_at": "2026-08-17T05:10:48.762734Z",
+  "close_reason": "Fixed: Added YGGDRASIL_PREFIX (0200::/8) check in LoadngRouter.originate_rreq() that rejects discovery for addresses in this prefix without prior gradient evidence. Added 3 tests: yggdrasil_without_evidence_rejected, yggdrasil_with_evidence_allowed, ula_without_evidence_allowed. Per spec B2, LOADng MUST NOT probe arbitrary 0200::/8 destinations.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.1.4",

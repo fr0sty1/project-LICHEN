@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-b8nz",
   "title": "Simulator: mobility, topology generators, scenario DSL",
   "description": "Three quick wins for simulator usefulness:\n\n1. Mobility - Medium.update_position(node_id, x, y, z)\n2. Topology generators - grid(), random_disk(), line()\n3. Scenario DSL - YAML with Python escape hatch\n\nScenario format:\n```yaml\ntopology: grid(9, spacing=100)\nevents:\n  - at: 0s\n    spawn: [node-1, node-2]\n  - at: 30s\n    kill: node-5\n  - at: 60s\n    move: {node: node-1, to: [200, 0, 0]}\n  - at: 120s\n    python: |\n      if sim.metrics.delivery_rate \u003c 0.8:\n          sim.chaos.add_loss(0.2)\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-27T01:46:30.504467Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-27T01:46:30.504467Z",
+  "updated_at": "2026-08-17T03:48:58.323354Z",
+  "closed_at": "2026-08-17T03:48:58.323354Z",
+  "close_reason": "Already fixed: all three features are fully implemented and tested (74 passing tests) — mobility.py provides MobilityManager/RandomWaypoint + Simulation.update_position(); topology.py provides grid()/line()/random_disk()/star(); scenario.py provides full YAML DSL with spawn/kill/move/chaos/python events",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-b8nz",

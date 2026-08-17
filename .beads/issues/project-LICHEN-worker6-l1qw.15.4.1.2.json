@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.4.1.2",
   "title": "Implement: Python oracle for Slot Coordination",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:23.113235Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:23.113235Z",
+  "updated_at": "2026-08-17T16:07:43.784611Z",
+  "closed_at": "2026-08-17T16:07:43.784611Z",
+  "close_reason": "Already fixed: Python oracle for Slot Coordination is fully implemented in python/src/lichen/link/slot_coordination.py (454 lines). Implements all GCP-6 requirements: slot map validation, TX allowed checks, multi-root conflict resolution (RootCandidate/select_root), IID tiebreaks (compare_iid), MultiRootState with 3-superframe holdoff per spec 2a.5.3, and RPL version change handling per spec 2a.5.4. All 83 tests pass including vector-based tests against ccp_slot_map_validation.json and ccp_sfn_wrap_slot_hash.json.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.4.1.2",

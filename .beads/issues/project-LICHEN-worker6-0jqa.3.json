@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-0jqa.3",
+  "title": "No validation of IPv6 address semantics in LOADng messages",
+  "description": "Location: rust/lichen-core/src/loadng.rs lines 376-382, 443-449, 520-523\n\nIssue: The from_bytes methods accept any 16 bytes as IPv6 addresses without validating semantic validity. Unspecified (::), loopback (::1), and multicast addresses are accepted without rejection.\n\nAttack vectors:\n- RREQ with originator=:: wastes network resources on unanswerable queries\n- RERR with unreachable=:: could trigger deletion of default route\n- RREP with crafted addresses could poison routing tables\n\nSuggested fix: Add address validation or document that callers must validate. Consider rejecting unspecified/loopback/multicast at parse time for security-critical address fields.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:28.150657Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:28.150657Z",
+  "labels": [
+    "security",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0jqa.3",
+      "depends_on_id": "project-LICHEN-worker6-0jqa",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:28.474472Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.15",
   "title": "Spec: 05.10 LOADng (Peer-to-Peer Fallback)",
+  "notes": "2026-08-17: Epic triage - 0/8 sub-issues closed. Code inspection shows Python and Rust LOADng message codecs appear complete, test vectors exist, but: (1) Zephyr implementation is genuinely missing, (2) sub-issues need individual triage to close the completed ones. Process sub-issues individually to unblock this epic.",
   "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:05.256455Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:22:05.256455Z",
+  "updated_at": "2026-08-17T16:26:50.876364Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.15",

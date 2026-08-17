@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-x6op.9",
+  "title": "AEAD failure returns InvalidState instead of dedicated error",
+  "description": "File: oscore/src/edhoc/initiator.rs:441, 445-446\n\nIssue: AEAD cipher initialization (`AesCcm::new_from_slice`) and encryption (`encrypt_in_place_detached`) both map their errors to `EdhocError::InvalidState`. This is misleading since:\n1. Cipher init failure is typically a key length issue (should be `KeyDerivation`)\n2. Encryption failure in CCM indicates internal error (should be separate variant)\n\nImpact: Debugging crypto failures becomes harder when multiple failure modes map to generic `InvalidState`.\n\nSuggested fix: Use appropriate error variants:\n```rust\nlet cipher = AesCcm::new_from_slice(\u0026k_3)\n    .map_err(|_| EdhocError::KeyDerivation)?;  // or BufferTooSmall\nlet tag = cipher.encrypt_in_place_detached(...)\n    .map_err(|_| EdhocError::EncryptFailed)?;  // new variant\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:42:15.402946Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:42:15.402946Z",
+  "labels": [
+    "readability",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x6op.9",
+      "depends_on_id": "project-LICHEN-worker6-x6op",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:42:15.76421Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

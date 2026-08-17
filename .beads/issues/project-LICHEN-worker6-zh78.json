@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-zh78",
+  "title": "Python: Add rule version to SCHC context",
+  "description": "Part of SCHC rule set versioning (schc)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:36.105363Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:57:39.278579Z",
+  "closed_at": "2026-08-15T18:57:39.278579Z",
+  "close_reason": "Already implemented: SchcContext.version property, RULE_SET_VERSION constant (=2), SchcRuleVersionOption for DIO messages with TLV serialization, version compatibility checking functions (versions_compatible, check_version_compatibility, VersionMismatchError). Full test coverage in test_context.py (42 tests). All 173 SCHC tests pass.",
+  "labels": [
+    "schc"
+  ]
+}

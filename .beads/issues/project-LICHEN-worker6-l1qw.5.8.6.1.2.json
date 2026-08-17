@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.8.6.1.2",
   "title": "Implement: Python oracle for Discovery",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:01.586042Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:01.586042Z",
+  "updated_at": "2026-08-17T16:01:11.054374Z",
+  "closed_at": "2026-08-17T16:01:11.054374Z",
+  "close_reason": "Already fixed: LoadngRouter in python/src/lichen/loadng/discovery.py fully implements Discovery oracle - 253-line reference implementation with spec-compliant RREQ/RREP handling (sections 10.3-10.5, B2.6), MUST requirements coverage, and 23 passing tests",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.6.1.2",

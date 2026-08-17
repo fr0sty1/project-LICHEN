@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-97bj",
+  "title": "gradient.rs: Panic when table created with max_entries=0",
+  "description": "Line 237: When GradientTable::new(0) is called and then update() is invoked, the condition `self.entries.len() \u003e= self.max_entries` evaluates to `0 \u003e= 0` (true), causing `self.entries.remove(0)` to panic on the empty vector. Fix by either asserting max_entries \u003e 0 in new(), or guarding the remove with a len \u003e 0 check.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:21.827992Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:16:21.827992Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,3 @@
+{"id":"01a008d3-fcb6-7222-b18e-cb0b82baa420","issue_id":"project-LICHEN-worker6-n9uj","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T04:28:25.654141Z"}
+{"id":"01a008d3-fcc4-7543-8c9c-7b81d0ddf62a","issue_id":"project-LICHEN-worker6-n9uj","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T04:28:25.668345Z"}
+{"id":"01a008d5-e618-756e-b1fb-700f82946858","issue_id":"project-LICHEN-worker6-n9uj","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: pop() now signals reservation.set_result(True) before returning data","created_at":"2026-08-16T04:30:30.936356Z"}

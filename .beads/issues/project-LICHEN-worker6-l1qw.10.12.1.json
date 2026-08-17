@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.12.1",
   "title": "Python: CoAP resource site integration",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:53.516999Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:53.516999Z",
+  "updated_at": "2026-08-17T03:50:05.858197Z",
+  "closed_at": "2026-08-17T03:50:05.858197Z",
+  "close_reason": "Already fixed: CoAP resource site integration is complete with build_site() function, CongestionAwareSite class, and comprehensive resource exports in lichen.coap.resources. Implementation includes StatusResource, NeighborsResource, ConfigResource, SosResource, MessagesResource, PresenceResource, EdhocResource, SenML resources, and proper congestion-aware request handling.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.12.1",

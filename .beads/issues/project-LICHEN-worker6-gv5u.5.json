@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-gv5u.5",
+  "title": "trust.rs: Key rotation message format not validated",
+  "description": "Lines 143-157: verify_key_rotation documents expected format 'KEY_ROTATE:' || new_pubkey_hex but does not validate it. The function verifies any arbitrary bytes against the signature.\n\nSecurity risk: If multiple message types share the same signing key, an attacker could potentially replay a signature from one context (e.g., slot claim) as a rotation message, or vice versa. This is a confused deputy scenario.\n\nCurrent mitigations: Different message prefixes (KEY_ROTATE:, SLOT_CLAIM:) provide domain separation IF callers construct messages correctly.\n\nOptions:\n1. Validate message prefix inside the function (parsing the expected format)\n2. Document clearly that callers MUST validate message format before calling\n3. Add typed message wrappers that enforce format at compile time\n\nRecommend option 1 or 3 for defense in depth.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:48:31.514693Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:56:42.141129Z",
+  "closed_at": "2026-08-16T20:56:42.141129Z",
+  "close_reason": "Fixed: verify_key_rotation now validates message format (KEY_ROTATE: prefix + 32-byte pubkey) to prevent cross-context signature replay",
+  "labels": [
+    "crypto-security",
+    "api-contract",
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-gv5u.5",
+      "depends_on_id": "project-LICHEN-worker6-gv5u",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:48:31.827134Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

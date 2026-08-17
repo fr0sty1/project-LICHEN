@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-26l6.10",
+  "title": "set_rank_config resets joined node state but keeps lowest_rank logic inconsistent",
+  "description": "File: rust/lichen-rpl/src/dodag.rs Lines 260-279. When rank config changes on a Joined node: rank and lowest_rank are set to INFINITE_RANK, then select_parent() is called. If select_parent() finds a valid parent, lowest_rank is updated. But if no valid parent exists after the config change (all parents inadmissible with new config), the node becomes Unjoined with lowest_rank=INFINITE_RANK. Later DIOs could re-join at any rank. Edge case: A config change from (256, 1024) to (128, 512) could invalidate all existing parents, reset lowest_rank, then allow rejoining at a much lower rank than originally established. This might be intentional for network reconfiguration but should be documented.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:12.616644Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:12.616644Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.10",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:12.940702Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

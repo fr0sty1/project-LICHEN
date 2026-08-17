@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.20.1.1",
   "title": "Parse: Extract requirements from Channel Agility",
-  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description\n\n## Extracted Requirements from 02a-coordinated-capacity.md Section 2a.3\n\n### Channel Agility (2a.3.1)\n\n- [ ] MUST: All nodes MUST listen continuously on CH0 for DIOs and beacons\n- [ ] MUST: All implementations MUST produce identical results to test vectors in ccp16.json, ccp9*.json, ccp_load_balancing.json\n- [ ] MUST: All subtractions/comparisons/MOD operations MUST use unsigned 32-bit modular arithmetic (modulo 2^32) for wraparound\n\n### SelectChannel Procedure\n\n- [ ] MUST: IF Density \u003e 8 THEN RETURN 0 (fallback to CH0)\n- [ ] MUST: Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes)\n- [ ] MUST: Hash = FNV1A32(Data) with basis 0x811c9dc5\n- [ ] MUST: N = MAX(NChannels, 3)\n- [ ] MUST: RETURN 1 + (Hash MOD N)\n\n### Adaptive SF Selection (2a.7)\n\n- [ ] REQUIRED: SF10 is the REQUIRED baseline for moderate density (5-20 nodes)\n- [ ] MUST: Load_factor from gateway DIOs takes precedence\n- [ ] MUST: All paths MUST match ccp16.json and ccp_load_balancing.json exactly\n\n### AdaptiveSFSelect Procedure\n\n- [ ] MUST: IF SF absent THEN SF = 10\n- [ ] MUST: IF (Density \u003e 10) OR (Utilization \u003e 150) THEN SF = MIN(12, SF + 2)\n- [ ] SHOULD: IF (Neighbor.EMA_SNR \u003e 8) AND (Density \u003c 5) THEN SF = MAX(7, SF - 1)\n- [ ] MUST: IF (Neighbor.EMA_Loss \u003e 0.25) OR (Utilization \u003e 200) THEN SF = MIN(12, SF + 1)\n- [ ] MUST: IF Utilization \u003e 200 THEN RETURN (SF, false) -- tx not allowed\n\n### SF Threshold Table (Downgrade = MUST, Upgrade = SHOULD)\n\n- [ ] MUST: SF7 downgrade when SNR \u003c 0 OR loss \u003e 0.25\n- [ ] SHOULD: SF9 upgrade when Density \u003c 5 AND SNR_EMA \u003e 8\n- [ ] MUST: SF9 downgrade when SNR \u003c 0 OR Density \u003e 8\n- [ ] MUST: SF10 downgrade when SNR \u003c 0 OR load_factor \u003e 0.8\n- [ ] MUST: SF11 downgrade when Density \u003e 8 OR SNR_EMA \u003c 0 OR load \u003e 0.8\n- [ ] MUST: SF12 downgrade when Density \u003e 20 OR SNR_EMA \u003c -5\n\n### EMA_Update\n\n- [ ] MUST: EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2) [alpha = 1/4]\n- [ ] MUST: Update per-neighbor state on every RX",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:39:47.803212Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:39:47.803212Z",
+  "updated_at": "2026-08-17T04:41:51.723063Z",
+  "closed_at": "2026-08-17T04:41:40.418713Z",
+  "close_reason": "Already fixed: Requirements extracted and implemented in python/src/lichen/ccp.py per spec section 2a.3.1 pseudocode",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.20.1.1",

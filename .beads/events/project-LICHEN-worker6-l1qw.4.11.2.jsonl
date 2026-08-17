@@ -1,1 +1,2 @@
 {"id":"019fb99f-740c-7603-8deb-804672375010","issue_id":"project-LICHEN-worker6-l1qw.4.11.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:21:02.732394Z"}
+{"id":"01a00e0a-e0ec-7f23-bc15-a92a655d29bb","issue_id":"project-LICHEN-worker6-l1qw.4.11.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: human_address_from_pubkey() in rust/lichen-link/src/identity.rs passes test_node_address_vectors","created_at":"2026-08-17T04:46:29.100992Z"}

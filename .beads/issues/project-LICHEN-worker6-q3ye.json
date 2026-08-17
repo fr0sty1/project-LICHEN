@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-q3ye",
+  "title": "receive_frame modifies pinned state before validating state transition",
+  "description": "Line 689: pinned.insert() happens before line 696 state transition check. On validation failure, pinned map retains entry that should not have been added.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:08.019137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:43:53.814803Z",
+  "closed_at": "2026-08-17T15:43:53.814803Z",
+  "close_reason": "Fixed: moved state transition check before pinned.insert() so validation failure doesn't leave pinned map in inconsistent state"
+}

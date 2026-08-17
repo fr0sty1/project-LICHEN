@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-6l4n",
+  "title": "[review] 03-adaptation.md: Rule 7 description contradicts tabl",
+  "description": "Text states 'Rule 7 supports both link-local and global addresses (via address-mode bit) and direction bit + residue for the non-10883 port' but the table at lines 117-130 shows only link-local prefixes (fe80::/64) and both SrcPort/DstPort as TV=10883 with CDA=not-sent. The described address-mode bit and direction bit are not reflected in the table.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:44.046485Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T16:52:39.400817Z",
+  "closed_at": "2026-08-16T16:52:39.400817Z",
+  "close_reason": "Fixed: Updated Rule 7 table in 03-adaptation.md to match the actual implementation in codec.rs. The table now correctly shows the address-mode bit (1 bit for link-local vs global), conditional address sizes (64-bit IID for link-local, 128-bit for global), direction bit (which port is 10883), and OtherPort field. Updated compressed size from incorrect 18 bytes to 21 bytes (link-local) / 37 bytes (global).",
+  "labels": [
+    "review"
+  ]
+}

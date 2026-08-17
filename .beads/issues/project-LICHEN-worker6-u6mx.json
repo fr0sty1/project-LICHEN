@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-u6mx",
+  "title": "test_vectors.py: format string crashes if result is None (P2)",
+  "description": "**File:** python/tests/test_vectors.py\n**Line:** 2157\n\n**Issue:**\n```python\nresult = dad_retry(eui64, existing)\nassert result == expected_result, f\"{name}: result {result:#x} != expected {expected_result:#x}\"\n```\n\n**Problem:** If `result` is unexpectedly `None` (e.g., bug in `dad_retry`), the format specifier `#x` raises `TypeError: unsupported format character 'x' (0x78) at index 20`. This masks the real assertion failure with a confusing format error.\n\nNote: The current code handles the \"exhausted\" case (where None is expected) separately at line 2139-2149, but if a new vector incorrectly returns None, the error message will crash.\n\n**Suggested fix:**\n```python\ndef _fmt_addr(addr: int | None) -\u003e str:\n    return f\"{addr:#06x}\" if addr is not None else \"None\"\n\nassert result == expected_result, (\n    f\"{name}: result {_fmt_addr(result)} != expected {_fmt_addr(expected_result)}\"\n)\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:53:29.036071Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:53:29.036071Z",
+  "labels": [
+    "correctness"
+  ]
+}

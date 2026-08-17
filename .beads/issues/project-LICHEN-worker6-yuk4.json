@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-yuk4",
+  "title": "[review] provisioning.py:435: Session expiration happens aft",
+  "description": "In create_br_session(), the check `len(self._sessions) \u003e= self._max_sessions` (line 435) happens BEFORE `_expire_sessions()` is called (line 440). This means if sessions have expired but not yet been cleaned up, the check will reject new sessions unnecessarily. The same bug exists in create_node_session() at line 477 vs 482. The expiration should happen before the capacity check.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:28.588451Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:53:17.429327Z",
+  "closed_at": "2026-08-16T03:53:17.429327Z",
+  "close_reason": "Fixed: moved _expire_sessions() before max_sessions capacity check in both create_br_session() and create_node_session() methods. This ensures expired sessions are cleaned up before checking capacity, preventing unnecessary rejection of new sessions.",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-s3nx",
+  "title": "test_channel_plan.py: Channel assertion skipped entirely when expected value is missing",
+  "description": "Lines 232-238: If none of `select_channel`, `expected_channel`, or `channel` keys exist in the vector, `actual_ch` is None and the assertion is bypassed via `if actual_ch is not None`. Test vectors missing expected channel values pass without any validation. Fix: either require the key or explicitly fail when no expected value is present.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T16:06:23.334848Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T16:06:23.334848Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

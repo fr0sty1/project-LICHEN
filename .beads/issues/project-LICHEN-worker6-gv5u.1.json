@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-gv5u.1",
+  "title": "trust.rs: schnorr48-dependent functions missing feature gate",
+  "description": "Lines 143-157 (verify_key_rotation) and 175-189 (verify_slot_claim) call schnorr48::verify but schnorr48 is an optional dependency (feature = 'schnorr'). These functions will cause compilation errors when the schnorr feature is not enabled.\n\nFix: Wrap both functions with #[cfg(feature = \"schnorr\")]",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:50.964301Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:44:48.434554Z",
+  "closed_at": "2026-08-16T20:44:48.434554Z",
+  "close_reason": "Not a bug: trust.rs module is already gated by #[cfg(feature = \"schnorr\")] at module level in lib.rs (lines 62-63). Verified: cargo check succeeds both with and without schnorr feature.",
+  "labels": [
+    "correctness",
+    "crypto-security",
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-gv5u.1",
+      "depends_on_id": "project-LICHEN-worker6-gv5u",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:51.282948Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

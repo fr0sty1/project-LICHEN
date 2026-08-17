@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-thqy.6",
+  "title": "LoraAnnounceError missing #[non_exhaustive]",
+  "description": "File: rust/lichen-gateway/src/discovery.rs\nLines: 181-188\n\nPublic error enum LoraAnnounceError lacks #[non_exhaustive]. If new error variants are added (e.g., InvalidChannelId for the channel_id validation fix), downstream crates with exhaustive matches will break.\n\nFix:\n```rust\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\n#[non_exhaustive]\npub enum LoraAnnounceError {\n    TooShort { got: usize, expected: usize },\n    GatewayFlagNotSet,\n}\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:40.63088Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:47:40.63088Z",
+  "labels": [
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-thqy.6",
+      "depends_on_id": "project-LICHEN-worker6-thqy",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:40.957579Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

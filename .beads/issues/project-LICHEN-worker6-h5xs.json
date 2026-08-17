@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-h5xs",
+  "title": "tx_queue/main.c: Buffer size mismatch causes potential over-read",
+  "description": "Line 100-101: Test declares uint8_t data[10] but passes TX_QUEUE_MAX_PACKET_SIZE + 1 as the length parameter to tx_queue_push(). This misrepresents the actual buffer size. If the implementation reads any data before validating the length parameter, this is undefined behavior. ASAN may flag this as a buffer over-read. Fix: declare the buffer as uint8_t data[TX_QUEUE_MAX_PACKET_SIZE + 1] to match the claimed length.\n\nFile: /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/main.c\nLine: 100",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:28.915531Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:12:28.915531Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

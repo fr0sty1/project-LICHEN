@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.2.7",
   "title": "Duplicate RREQ suppression",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:05.980424Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:05.980424Z",
+  "updated_at": "2026-08-17T05:19:03.44856Z",
+  "closed_at": "2026-08-17T05:19:03.44856Z",
+  "close_reason": "Already fixed: Duplicate RREQ suppression fully implemented in python/src/lichen/loadng/discovery.py (lines 91, 126-128, 217-249) with _seen cache, _is_suppressed(), and _mark_seen() methods. Tests in test_discovery.py verify functionality (10 suppression tests pass). Rust loadng.rs contains only message codecs, no routing logic.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.2.7",

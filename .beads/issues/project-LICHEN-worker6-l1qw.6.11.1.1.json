@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.11.1.1",
   "title": "Parse: Extract requirements from Key Persistence",
-  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "description": "## Requirements Checklist from Spec\n\n### Section 15.2: Key Storage (06-security.md)\n\n- [ ] **[MUST]** Private keys MUST be stored in:\n  - Hardware secure element (preferred), OR\n  - Flash with readout protection\n- [ ] **[MUST]** Private key never transmitted over the air\n\n### Section 8.5: Bootstrap and Key Derivation (06-security.md)\n\n- [ ] **[MUST]** Private key stored securely (never transmitted)\n- [ ] **[MUST]** Implementations MUST support TOFU (Trust On First Use)\n- [ ] **[must]** The key must match the one that derives the observed IID/02xx address\n- [ ] **[MUST]** All derived addresses (02xx, IID) MUST match key\n\n### Section 8.6: Key Compromise and Rotation (06-security.md)\n\n- [ ] **[SHOULD]** Nodes SHOULD support key rotation announcements\n- [ ] **[MUST]** An authenticated new key creates fresh per-peer replay state; counters from the old key MUST NOT constrain the new key\n\n### Section 8.5: BR-Provisioned Mode (06-security.md)\n\n- [ ] **[MUST]** Channel MUST be encrypted and authenticated (for BR-provisioned)\n- [ ] **[impl]** Private key deleted from BR immediately after transfer\n\n### Section 16.7: DAO Origin Persistence (10-implementation.md)\n\n- [ ] **[impl]** TX stores: public-key identity, last reserved Origin Sequence, complete last signed DAO bytes in crash-safe record\n- [ ] **[impl]** RX stores: public key, accepted high-water sequence, digest of complete signed DAO\n- [ ] **[MUST]** Implementations MUST snapshot the complete route, replay-floor, and storage state around rejected DAOs to test that no partial mutation occurs\n\n### Summary for Python Oracle\n\nThe Python prototype needs:\n1. Secure key storage abstraction (file-based with proper permissions for dev/test)\n2. TOFU support for pinning keys to IID/02xx\n3. Key-to-address derivation verification\n4. Replay state management per peer\n5. Crash-safe persistence primitives for DAO TX/RX records",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:38.308157Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:38.308157Z",
+  "updated_at": "2026-08-17T16:00:19.580908Z",
+  "closed_at": "2026-08-17T16:00:19.580908Z",
+  "close_reason": "Extracted 13 requirements from spec sections 06-security.md (15.2, 8.5, 8.6) and 10-implementation.md (16.7). Created checklist covering: key storage (MUST use secure element/flash, never transmit), TOFU support (MUST), key-address binding (MUST), replay state isolation on key rotation (MUST), and DAO persistence (MUST snapshot state around rejections). Checklist now documented in bead description to guide implementation task.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.11.1.1",

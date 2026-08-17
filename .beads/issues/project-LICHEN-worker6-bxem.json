@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-bxem",
+  "title": "Trust boundary between codec and link layer is implicit",
+  "description": "The security model relies on link layer performing cryptographic verification before codecs see data, but this is documented only in scattered SECURITY comments. No runtime or compile-time mechanism ensures the invariant holds. Consider Verified\u003cT\u003e newtype pattern.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:04.521768Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:16:57.741634Z",
+  "closed_at": "2026-08-16T20:16:57.741634Z",
+  "close_reason": "Fixed: Added VerifiedPayload newtype to enforce trust boundary at compile time. The link layer now wraps authenticated payloads in VerifiedPayload (only constructible internally after signature verification), and AuthenticatedFrame uses this type instead of raw Vec\u003cu8\u003e. Upper layers receive data that is verified by construction, not convention."
+}

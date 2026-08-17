@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-jvue",
+  "title": "[review] handoff.rs:761: Sequence number truncatio",
+  "description": "dao_sequence and path_sequence are cast from i128 to u32 without bounds checking. A peer sending sequence=4294967296 (2^32) would have it truncated to 0, potentially resetting replay protection and allowing old messages to be accepted.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:47:47.299213Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:47:47.299213Z",
+  "labels": [
+    "review"
+  ]
+}

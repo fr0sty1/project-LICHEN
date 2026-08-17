@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gy00",
+  "title": "spec/appendix-ccp12-hopping.md: Out-of-bounds channel index when NChannels \u003c= 2",
+  "description": "The formula '1 + (Hash MOD MAX(NChannels-1, 2))' returns channel indices 1 or 2 when NChannels \u003c= 2. For NChannels=2, valid channels are 0 and 1, so channel 2 is out-of-bounds. For NChannels=1, both 1 and 2 are invalid. The spec does not document a minimum NChannels requirement.\n\nFix suggestion: Either document that NChannels must be \u003e= 3, or change the formula to clamp the result: 'RETURN MIN(1 + (Hash MOD N), NChannels - 1)' or use 'N = MAX(NChannels - 1, 1)' and accept single-channel data operation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:13:25.930465Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:13:25.930465Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

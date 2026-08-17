@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-2rkp.8",
+  "title": "GOOD: SECURITY comment documents RFC 6550 loop prevention",
+  "description": "Location: rust/lichen-rpl/src/dodag.rs lines 369-378\n\nThe code includes a SECURITY comment explaining the RFC 6550 Section 8.2.2.5 requirement:\n\n// SECURITY: RFC 6550 Section 8.2.2.5 - reject parents with equal or\n// higher rank to prevent routing loops. Only accept neighbors with\n// strictly lower rank (unless we are unjoined with infinite rank).\n\nThis documents the security rationale and cites the specification. Worth defending - security-critical logic should have such annotations.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:06:04.604681Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:06:04.604681Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rkp.8",
+      "depends_on_id": "project-LICHEN-worker6-2rkp",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:06:04.920429Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

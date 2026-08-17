@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-re0j.2.2",
   "title": "Line topology generator",
   "description": "Test line() topology generator for linear network chains. Verify correct spacing and that terminal nodes have single neighbors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:19:10.869795Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:19:10.869795Z",
+  "updated_at": "2026-08-17T16:34:41.346195Z",
+  "closed_at": "2026-08-17T16:34:41.346195Z",
+  "close_reason": "Added test_line_terminal_nodes_single_neighbor test that verifies: (1) terminal nodes have exactly 1 neighbor, (2) interior nodes have exactly 2 neighbors, using geometric distance calculation with radio range just over spacing. Test passes.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-re0j.2.2",

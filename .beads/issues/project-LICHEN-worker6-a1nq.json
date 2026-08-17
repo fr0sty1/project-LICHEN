@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-a1nq",
+  "title": "[review] 03-adaptation.md: Rule 7 table contradicts prose descripti",
+  "description": "Line 113 states Rule 7 'supports both link-local and global addresses (via address-mode bit) and direction bit + residue for the non-10883 port'. However, the Rule 7 table (lines 117-130) shows only link-local fe80::/64 prefixes with 'equal/not-sent' and both ports as 10883 exact match. The table does not show the address-mode bit, direction bit, or variable port residue described in prose.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:25.778565Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T16:54:33.57328Z",
+  "closed_at": "2026-08-16T16:54:33.57328Z",
+  "close_reason": "Table and prose now aligned: Rule 7 spec updated to show AddrMode bit, Direction bit, and OtherPort, matching rust/lichen-schc/src/codec.rs implementation (compress_mqtt_sn/decompress_mqtt_sn). MQTT-SN tests pass.",
+  "labels": [
+    "review"
+  ]
+}

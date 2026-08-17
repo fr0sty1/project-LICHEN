@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.2.4",
   "title": "Vectors: Discovery test vectors",
   "description": "Test vectors for GCP-4: backbone discovery CoAP messages, /.well-known/lichen-gw/info response format, LoRa GATEWAY flag frame examples.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:05.224805Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:05.224805Z",
+  "updated_at": "2026-08-17T16:19:44.020577Z",
+  "closed_at": "2026-08-17T16:19:44.020577Z",
+  "close_reason": "Already fixed: test/vectors/gateway_discovery.json exists with 22 comprehensive test vectors covering GCP-4 Discovery: CoAP backbone discovery (GET /.well-known/lichen-gw/info), GatewayInfo CBOR encoding (minimal/full/contiguous slot modes), LoRa GATEWAY flag frames (0x80 bit, announce wire format), IID comparison for slot conflict resolution, time master election, and error cases.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.2.4",

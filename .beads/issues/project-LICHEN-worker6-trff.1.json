@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-trff.1",
+  "title": "TOCTOU race in get_role() between peer check and elect_time_master",
+  "description": "File: rust/lichen-rpl/src/multi_instance.rs\nLines: 346-360\n\nThe get_role() method has a time-of-check-time-of-use race condition:\n\n```rust\nlet has_peers = {\n    let peers = self.peers.lock().expect(\"peers mutex poisoned\");\n    !peers.is_empty()\n};\n// Lock released here - another thread can modify peers\n\nif !has_peers {\n    return GatewayRole::Standalone;\n}\n\n// Another thread could remove all peers between check and use\nlet master = self.elect_time_master();\n```\n\nTrigger: Thread A calls get_role(), checks has_peers=true, releases lock. Thread B calls remove_peer() for all peers. Thread A calls elect_time_master() which now returns None (no local, no peers), but get_role() proceeds assuming peers exist.\n\nBad behavior: elect_time_master() returns None, causing match to return Secondary instead of Standalone. Role determination is inconsistent with actual federation state.\n\nFix: Hold the peers lock across the entire role determination, or redesign to use a single atomic operation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:26.01526Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:23:33.419659Z",
+  "closed_at": "2026-08-16T21:23:33.419659Z",
+  "close_reason": "Already fixed: get_role() now holds peers lock for entire role determination and performs election inline",
+  "labels": [
+    "correctness",
+    "race-condition",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-trff.1",
+      "depends_on_id": "project-LICHEN-worker6-trff",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:26.363992Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

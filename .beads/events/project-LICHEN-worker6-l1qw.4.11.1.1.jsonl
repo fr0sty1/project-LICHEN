@@ -1,1 +1,2 @@
 {"id":"019fb9b1-2672-78ed-a9d2-13854d3b3831","issue_id":"project-LICHEN-worker6-l1qw.4.11.1.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:40:22.514587Z"}
+{"id":"01a00e0a-8951-7d5d-88a9-3b9c09bb392b","issue_id":"project-LICHEN-worker6-l1qw.4.11.1.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Requirements extracted in spec/03-addressing.md and implemented","created_at":"2026-08-17T04:46:06.673876Z"}

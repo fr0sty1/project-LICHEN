@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-erkb",
+  "title": "adaptive_sf.py: Redundant isinstance check - both branches identical",
+  "description": "Line 85: 'snr = int(snr_ema) if isinstance(snr_ema, int) else int(snr_ema)' - both branches produce the same result (int(snr_ema)). The conditional serves no purpose. This may indicate the author intended different behavior (e.g., truncation vs rounding) but implemented it incorrectly.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:50:34.758059Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:50:34.758059Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

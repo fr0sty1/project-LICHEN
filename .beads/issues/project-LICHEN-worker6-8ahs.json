@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8ahs",
+  "title": "loadng.c: Missing hop_limit validation allows malformed RREQ processing",
+  "description": "Line 592: When processing an RREQ with hop_limit \u003e LICHEN_LOADNG_MAX_HOP_LIMIT (15), the subtraction `LICHEN_LOADNG_MAX_HOP_LIMIT - rreq-\u003ehop_limit` produces a negative int value that becomes 255 after uint8_t cast. This creates routes with bogus hop_count=255 and metric=255. Additionally, line 641 forwards such packets, allowing a malformed RREQ with hop_limit=255 to propagate up to 255 hops through the network, wasting bandwidth. Input should be validated or capped before arithmetic.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:36:27.546528Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:36:27.546528Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

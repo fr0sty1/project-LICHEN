@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-f6ys.4",
+  "title": "Good: saturating_add usage and explicit overflow checks",
+  "description": "Lines 294, 691, 961, 1044: The code consistently uses saturating_add for size calculations and explicit bounds checks before u16 casts. This prevents integer overflow vulnerabilities in size calculations.\n\nExample (line 691-695):\n```rust\nlet total_udp = 8usize.saturating_add(coap_len);\nif total_udp \u003e u16::MAX as usize {\n    return Err(BufferTooSmall::new(total_udp, u16::MAX as usize).into());\n}\nlet udp_len = total_udp as u16;\n```\n\nThis pattern is correct and worth preserving.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:16:50.693986Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:16:50.693986Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-f6ys.4",
+      "depends_on_id": "project-LICHEN-worker6-f6ys",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:16:51.019227Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

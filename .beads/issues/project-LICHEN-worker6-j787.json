@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-j787",
+  "title": "Add fuzz tests for SCHC fragment parser",
+  "description": "The Fragment::from_bytes parser should be fuzz-tested to ensure it handles all malformed inputs gracefully without panicking. The ALL_1 underflow bug was not caught by existing tests.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:23:41.990627Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:52:31.604986Z",
+  "closed_at": "2026-08-16T19:52:31.604986Z",
+  "close_reason": "Added comprehensive fuzz tests for SCHC fragment parser: Fixed fuzz crate workspace configuration, updated Fragment/Ack/Receiver/Sender fuzzing, fixed broken imports"
+}

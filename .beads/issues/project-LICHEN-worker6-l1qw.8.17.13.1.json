@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.8.17.13.1",
   "title": "Parse: Extract requirements from B.2.5",
-  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description\n\n## Extracted Requirements from B.2.5 'No Silent Drops'\n\nSource: spec/appendix-bufferbloat.md, Section 5 under Design Principles\n\nThe spec uses descriptive language ('LICHEN prefers') rather than RFC 2119 keywords.\nImplied requirements extracted as SHOULD-level (preference, not mandatory):\n\n### Requirements Checklist\n\n- [ ] **R1**: Local queue-full SHOULD return error (e.g., ENOBUFS/QueueFull) to sender, not silently drop\n- [ ] **R2**: Mesh-forwarded queue-full SHOULD send NACK to mesh source if routable\n- [ ] **R3**: Queue-full events SHOULD be logged for diagnostics\n\n### Related Context from Section 4 (Explicit Backpressure)\n\n- ENOBUFS / QueueFull for immediate sends\n- Negative acknowledgment for mesh-forwarded packets\n- Senders must handle backpressure (back off/retry or drop with notification)\n\n### Test Points (from Testing section)\n\n1. Queue-full handling: Sender gets ENOBUFS when queue full\n2. Deadline expiry: Old packets dropped before transmission\n3. Priority preemption: High-priority packets bypass queue\n4. Multi-hop latency: End-to-end delay bounded under load\n5. Fairness: No single source monopolizes forwarding capacity\n\n### Implementation Hints\n\nTX Queue (lines 104-122):\n- On full + same/lower priority: return -ENOBUFS\n\nForwarding Buffer (lines 124-135):\n- If source has MAX_PACKETS_PER_SOURCE queued: send NACK upstream",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:37:43.022586Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:43.022586Z",
+  "updated_at": "2026-08-17T16:08:53.000877Z",
+  "closed_at": "2026-08-17T16:08:53.000877Z",
+  "close_reason": "Extracted 3 implied SHOULD-level requirements from B.2.5 'No Silent Drops': (R1) local queue-full returns error to sender, (R2) mesh queue-full sends NACK if routable, (R3) log queue-full events. Spec uses descriptive language not RFC 2119 keywords. Added test points from Testing section and implementation hints for tx_queue_push() and forwarding buffer.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.13.1",

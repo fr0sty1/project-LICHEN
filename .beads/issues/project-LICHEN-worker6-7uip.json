@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-7uip",
+  "title": "[review] messaging.py:142: Duplicate message IDs silently",
+  "description": "POST with an existing id replaces the stored message without error or warning. Line 143-144 correctly avoids duplicating in _sent_order, but line 142 overwrites content. This could cause silent data loss if a client accidentally reuses an ID. Consider returning 4.09 Conflict for duplicate IDs, or document this as intentional idempotent behavior.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:34.726158Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:34.726158Z",
+  "labels": [
+    "review"
+  ]
+}

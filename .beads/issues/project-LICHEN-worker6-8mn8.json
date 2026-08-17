@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-8mn8",
+  "title": "[review] 03-adaptation.md: Behavior after MAX_ACK_REQUESTS exhausti",
+  "description": "The spec states MAX_ACK_REQUESTS=4 but does not define what happens when all retries are exhausted. Expected behavior (drop packet, notify upper layer, log error) should be explicit for implementors.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:39.343642Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:39.343642Z",
+  "labels": [
+    "review"
+  ]
+}

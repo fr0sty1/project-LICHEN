@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.17",
   "title": "Spec: 12 18.4 Emergency / SOS",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:06.187673Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:06.187673Z",
+  "updated_at": "2026-08-17T04:01:24.855316Z",
+  "closed_at": "2026-08-17T04:01:24.855316Z",
+  "close_reason": "Invalid: Not a bug - this is an EPIC tracking issue for spec section 12.18.4. EPICs aggregate work and are completed by finishing their child issues (l1qw.10.17.1-5), not by direct code fixes. Re-open and work the children when implementing Emergency/SOS feature.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.17",

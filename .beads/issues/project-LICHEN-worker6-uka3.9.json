@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-uka3.9",
+  "title": "Empty signer_iid slice passed to sign_frame/verify_frame without documentation",
+  "description": "**File:** rust/lichen-link/src/link_layer.rs\n**Lines:** 599, 645\n\n**Issue:** Both sign_frame() and verify_frame() calls pass '\u0026[]' for signer_iid with comment '// signer_iid not yet implemented'. This is undocumented in the function signature or error types.\n\nIf signer_iid becomes required in the future, all call sites silently pass empty, leading to signature verification failures that would be hard to debug.\n\n**Trigger:** Future protocol change requiring signer_iid.\n\n**Bad behavior:** Silent incompatibility, frames signed without signer_iid rejected by updated verifiers.\n\n**Suggested fix:** Either: (1) make signer_iid a type-safe Option\u003c\u0026[u8; 8]\u003e to make emptiness explicit, (2) add TODO/FIXME tracking issue, or (3) document in code comment what conditions will enable this.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:20:03.599605Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:20:03.599605Z",
+  "labels": [
+    "readability",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-uka3.9",
+      "depends_on_id": "project-LICHEN-worker6-uka3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:20:03.98736Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

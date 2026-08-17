@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-k4cc",
+  "title": "Fix root node state corruption via invalid-rank DIOs",
+  "description": "Root nodes can have rank and preferred_parent corrupted by DIOs with rank \u003c MIN_HOP_RANK_INCREASE. The select_parent() function modifies state (lines 471-472) before validating the role transition (line 473). For roots, the transition fails but state is already changed. Fix by either guarding select_parent() early for Root role, or moving state modifications after role validation.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:13:02.376606Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:35:16.889405Z",
+  "closed_at": "2026-08-16T19:35:16.889405Z",
+  "close_reason": "Fixed: Added early guard in select_parent() to return immediately for Root role, preventing state corruption from malicious DIOs. Added regression test."
+}

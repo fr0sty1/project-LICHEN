@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-41ph",
+  "title": "appendix-ccp12-hopping.md:84,159,303: NChannels \u003c 3 produces invalid channel indices",
+  "description": "The formula N = MAX(NChannels - 1, 2) followed by 1 + (Hash MOD N) returns invalid channel indices when NChannels \u003c 3. For NChannels=2, can return channel 2 (only 0-1 exist). For NChannels=1, returns 1 or 2 (only 0 exists). For NChannels=0 with unsigned arithmetic, underflows to 255 and returns channels up to 255. This would cause transmissions on non-existent channels. Same bug at line 84 (CCP-16), line 159 (CCP-12 SynchronizedHopChannel), and line 303 (Python reference). Fix: Add guard IF NChannels \u003c 3 THEN RETURN 0 before the hash computation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:23:03.996966Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:23:03.996966Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-67uz",
+  "title": "Hop limit not validated against MAX_HOP_LIMIT on parse",
+  "description": "Lines 319-337, 383-401: MAX_HOP_LIMIT=15 defined but from_bytes accepts 0-255. Attacker can send messages with hop_limit=255. Fix: validate/clamp in from_bytes.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:12:55.042312Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:29:33.816749Z",
+  "closed_at": "2026-08-16T19:29:33.816749Z",
+  "close_reason": "Fixed: Clamp hop_limit to MAX_HOP_LIMIT (15) in Rreq::from_bytes to prevent flood amplification attacks. Added SECURITY comment and 3 tests."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-1727",
+  "title": "test_messages.py: Duplicate test function name shadows first definition",
+  "description": "The function test_rreq_from_bytes_rejects_invalid_hop_limit is defined twice (lines 95 and 144). Python's second definition silently overwrites the first, so only lines 144-153 execute. The test at lines 95-106 is dead code and will never run, potentially masking bugs. Rename one of them (e.g., test_rreq_from_bytes_rejects_invalid_hop_limit_via_patch for lines 95-106).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:24:41.852511Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:24:41.852511Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.8.2.1.1",
   "title": "Parse: Extract requirements from RREQ",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:42:34.314807Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:42:34.314807Z",
+  "updated_at": "2026-08-17T05:17:50.550615Z",
+  "closed_at": "2026-08-17T05:17:50.550615Z",
+  "close_reason": "Already fixed: RREQ spec requirements are implemented in loadng/messages.py following spec section 10.3 wire layout",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.2.1.1",

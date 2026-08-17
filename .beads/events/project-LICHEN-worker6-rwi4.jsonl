@@ -1,0 +1,2 @@
+{"id":"01a00c07-87e6-7668-a190-ae2d1375146b","issue_id":"project-LICHEN-worker6-rwi4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:23:35.270421Z"}
+{"id":"01a00c12-eabe-76ba-9a04-a28f04e1b021","issue_id":"project-LICHEN-worker6-rwi4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: old_fix_ms variable IS used at line 1043 (.observed_uptime_ms = old_fix_ms). The bead description stating the value was hardcoded is outdated.","created_at":"2026-08-16T19:36:01.470441Z"}

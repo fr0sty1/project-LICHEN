@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-3b2b",
+  "title": "[review] site.py:184: Dead callback function - regis",
+  "description": "The register_sent_detail closure is defined with only 'pass' and then passed to set_sent_detail_registrar(). Comment says functionality moved to SentMessageDetailsResource but the callback pattern remains. This is dead code that should be removed or the registration pattern should be cleaned up.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:20.53446Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:20.53446Z",
+  "labels": [
+    "review"
+  ]
+}

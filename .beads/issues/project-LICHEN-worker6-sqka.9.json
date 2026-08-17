@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-sqka.9",
+  "title": "Mutex poisoning causes panic, no recovery path",
+  "description": "All lock acquisitions use .expect(mutex poisoned) pattern (lines 328, 341, 347, 353, 359, 369, 397, 420, 429, 436, 497, 591, 598, 688, 701, 707, 713). If any thread panics while holding a lock, subsequent operations panic. This is a common Rust pattern but worth documenting. Consider using .lock().unwrap_or_else() to log and recover, or document that coordinator must be recreated after panic.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:54.385328Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:54.385328Z",
+  "labels": [
+    "edge-case",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqka.9",
+      "depends_on_id": "project-LICHEN-worker6-sqka",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:54.708004Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

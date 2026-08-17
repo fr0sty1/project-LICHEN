@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-0jqa.2",
+  "title": "Trust boundary between codec and link layer is implicit",
+  "description": "## Location\nrust/lichen-core/src/loadng.rs lines 152-158, 425-429, 489-496\n\n## Issue\nThe security model relies on the link layer performing cryptographic signature verification before these codecs see the data. This assumption is documented only in SECURITY comments scattered through the file:\n\n- Line 152-155: \"Trust boundary - the link layer performs cryptographic verification...\"\n- Line 425-427: Same comment on RREP\n- Line 489-494: Same comment on RERR\n\nThe codec provides no runtime or compile-time mechanism to ensure this invariant holds. If a caller constructs messages directly or bypasses the link layer, the trust boundary is violated silently.\n\n## Risk\nIf link layer integration has a bug where unverified messages reach these codecs, attackers can inject routes (RREP) or delete routes (RERR) without valid signatures. The codec will happily parse and return the message as if authenticated.\n\n## Suggested mitigation\n1. Document the trust boundary contract prominently in module-level docs\n2. Consider a newtype pattern: link layer produces `Verified\u003cRrep\u003e` instead of raw `Rrep`\n3. Add integration tests asserting the link layer rejects unverified messages before codec parsing",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:14.914495Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:14.914495Z",
+  "labels": [
+    "security",
+    "crypto-security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0jqa.2",
+      "depends_on_id": "project-LICHEN-worker6-0jqa",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:15.269356Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

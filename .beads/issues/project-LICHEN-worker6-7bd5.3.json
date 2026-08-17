@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-7bd5.3",
+  "title": "Flags field not validated - reserved bits accepted",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 377, 443, 520\n\nThe `flags` field in RREQ/RREP/RERR is parsed as raw u8 without validation. If the protocol spec reserves certain flag bits for future use or defines invalid combinations, malformed input could pass through undetected.\n\nBad outcome: Protocol extension adds meaning to flag bit 7, but older nodes accept messages with bit 7 set and process them incorrectly.\n\nSuggestion: Define a `Flags` newtype with validation, or document that all flag values are intentionally accepted.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:29.177217Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:29.177217Z",
+  "labels": [
+    "edge-case",
+    "untrusted-input",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7bd5.3",
+      "depends_on_id": "project-LICHEN-worker6-7bd5",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:29.503596Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

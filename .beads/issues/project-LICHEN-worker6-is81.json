@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-is81",
+  "title": "[review] appendix-schc.md: Match-mapping index overflow unspecified",
+  "description": "The match-mapping uses a 3-bit index (max 8 values) but the type list '[0,3,2,5,6,7,...]' implies more entries. Behavior when encountering a type beyond index 7 is unspecified - should it fall back to value-sent or fail?",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:21:00.787153Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T16:51:05.989077Z",
+  "closed_at": "2026-08-16T16:51:05.989077Z",
+  "close_reason": "Fixed: Corrected PIO type from 3 to 8 per RFC 6550, replaced unbounded mapping list [0,3,2,5,6,7,...] with exact [0,8,2,5,6,7], and added fallback behavior note (unrecognized types cause rule mismatch and fall back to rule 255). Updated both appendix-schc.md and draft-lichen-schc-lora-00.md for consistency.",
+  "labels": [
+    "review"
+  ]
+}

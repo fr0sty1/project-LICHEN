@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-5oop.7",
+  "title": "Good: forbid(unsafe_code) enforced at crate level",
+  "description": "Location: rust/lichen-link/src/lib.rs line 45\n\nThe crate-level `#![forbid(unsafe_code)]` attribute ensures no unsafe blocks can be added to this crate. All memory safety is delegated to dependencies (schnorr48, sha2, etc.) which are audited separately.\n\nThis is the correct approach for a security-critical protocol implementation.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:50:14.9163Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:50:14.9163Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.7",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:50:15.242155Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

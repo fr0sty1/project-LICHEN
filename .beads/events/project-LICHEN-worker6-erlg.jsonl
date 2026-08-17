@@ -1,0 +1,2 @@
+{"id":"01a00bec-8fef-70a7-98a6-57293cb630f6","issue_id":"project-LICHEN-worker6-erlg","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:54:07.855043Z"}
+{"id":"01a00c01-5012-7246-9961-43c55f2867d9","issue_id":"project-LICHEN-worker6-erlg","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed receive_from_peer() to pair targets with transits by index using enumerate/get(i), added test to verify multi-target/multi-transit pairing","created_at":"2026-08-16T19:16:47.762149Z"}

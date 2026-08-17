@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-9s94.1",
+  "title": "FragmentReceiver::finalize() silently uses default rule_id",
+  "description": "Location: rust/lichen-schc/src/fragment.rs:937\n\nIssue: `self.rule_id.unwrap_or(RULE_ID_A_TO_B)` silently falls back to a default rule ID when `finalize()` is called without any fragment having been received.\n\nEdge case trigger: If `finalize()` is somehow called before receiving any fragments (e.g., after a timeout or via `receive_ack_request()` on a fresh receiver), the rule_id will be None but the code proceeds with a default.\n\nImpact: This could mask logic errors where the receiver processes control messages before actual data, or where protocol state machine transitions are incorrect.\n\nSuggested fix: Either assert that rule_id is Some (indicating a caller bug), or return an InvalidState error when finalize() is called with no rule_id set.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:14:56.397556Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:14:56.397556Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9s94.1",
+      "depends_on_id": "project-LICHEN-worker6-9s94",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:14:56.731561Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

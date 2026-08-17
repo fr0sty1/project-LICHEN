@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-sqka.5",
+  "title": "add_peer returns bool but callers cannot distinguish capacity vs update",
+  "description": "**File:** rust/lichen-rpl/src/multi_instance.rs\n**Lines:** 326-334\n\n**Issue:** `add_peer()` returns `bool` where `false` means \"peer limit reached\" but the caller cannot distinguish this from a successful update of an existing peer (which always returns `true`).\n\n**Current code:**\n```rust\npub fn add_peer(\u0026self, gateway: GatewayInfo) -\u003e bool {\n    let mut peers = self.peers.lock().expect(\"peers mutex poisoned\");\n    if peers.len() \u003e= MAX_PEERS \u0026\u0026 !peers.contains_key(\u0026gateway.iid) {\n        return false;\n    }\n    peers.insert(gateway.iid, gateway);\n    true\n}\n```\n\n**Scenario:** Caller adds 64 peers, then tries to add #65. Gets `false`. But was it a capacity issue or a silent failure? Callers wanting to log DoS attempts cannot tell.\n\n**Suggestion:** Return an enum or `Result`:\n```rust\npub enum AddPeerResult {\n    Added,\n    Updated,\n    AtCapacity,\n}\n```\nOr at minimum, document the return value semantics clearly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:26.692811Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:26.692811Z",
+  "labels": [
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqka.5",
+      "depends_on_id": "project-LICHEN-worker6-sqka",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:27.002659Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

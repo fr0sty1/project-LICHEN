@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-uka3.7",
+  "title": "forget_peer may reset replay for different keys if pinned differs from peer table",
+  "description": "**File:** rust/lichen-link/src/link_layer.rs\n**Lines:** 509-520\n\n**Issue:** forget_peer() removes peer from peers table, removes from pinned, and resets replay state for both keys. The logic at line 516-518 tries to avoid double-reset if keys match.\n\nHowever, consider: peer has pubkey A, but pinned has pubkey B (from earlier session before re-add with new key). forget_peer resets replay for BOTH A and B. This could clear replay state for an unrelated peer if another peer happens to use pubkey B.\n\n**Trigger:** Complex peer lifecycle: (1) add peer with key A, (2) receive frame pinning key A, (3) remove peer, (4) add peer with key B (same IID), (5) call forget_peer. This resets replay for both A and B.\n\n**Bad behavior:** Replay protection for a different peer using pubkey A is cleared, allowing replayed frames.\n\n**Suggested fix:** Only reset replay for the peer_key from peers table, not the pinned key. The pinned key should only be cleared from pinned map, not from replay state (since pinned key may be shared with another peer).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:19:51.518981Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:19:51.518981Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-uka3.7",
+      "depends_on_id": "project-LICHEN-worker6-uka3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:19:51.872881Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

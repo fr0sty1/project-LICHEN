@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-z63v.2",
+  "title": "TOCTOU race in get_role() between peer count check and election",
+  "description": "**File:** rust/lichen-rpl/src/multi_instance.rs\n**Lines:** 340-361\n\n**Issue:** `get_role()` acquires the peers lock twice with a gap between acquisitions:\n\n```rust\npub fn get_role(\u0026self) -\u003e GatewayRole {\n    let Some(ref local) = self.local_gateway else {\n        return GatewayRole::Standalone;\n    };\n\n    // First lock: check peer count\n    let has_peers = {\n        let peers = self.peers.lock().expect(\"peers mutex poisoned\");\n        !peers.is_empty()\n    };\n    // Lock released here\n\n    if !has_peers {\n        return GatewayRole::Standalone;\n    }\n\n    // Second lock: inside elect_time_master()\n    let master = self.elect_time_master();\n    // ...\n}\n```\n\n**Trigger:** If `has_peers` is true but all peers are removed before `elect_time_master()` runs, election succeeds (local gateway wins) but the role could be inconsistent with actual federation state.\n\n**Fix:** Either:\n1. Hold lock across both operations (requires refactoring elect_time_master to take pre-locked peers)\n2. Accept the race but document the eventual-consistency semantics\n3. Re-check peer count after election",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:20:49.591242Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:22:04.002029Z",
+  "closed_at": "2026-08-16T21:22:04.002029Z",
+  "close_reason": "Already fixed: get_role() now holds peers lock for entire role determination, inlining time master election logic to avoid TOCTOU race",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "race-condition",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-z63v.2",
+      "depends_on_id": "project-LICHEN-worker6-z63v",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:20:49.964668Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

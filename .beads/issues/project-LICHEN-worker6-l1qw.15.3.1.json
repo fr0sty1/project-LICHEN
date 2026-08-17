@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.3.1",
   "title": "Python: RPL Multi-Instance Coordination oracle implementation",
   "description": "Python oracle for GCP-5: shared RPLInstanceID management, multi-DODAG-root simulation, DAO backbone propagation.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:13.40508Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:39:05.358486Z",
+  "updated_at": "2026-08-17T04:24:01.537917Z",
+  "closed_at": "2026-08-17T04:24:01.537917Z",
+  "close_reason": "Fixed: Added missing exports from lichen.rpl for multi_instance module. Implementation existed but was not exported from __init__.py. All 30 tests now pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.3.1",

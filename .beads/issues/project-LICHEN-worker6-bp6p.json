@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-bp6p",
+  "title": "Flags field not validated",
+  "description": "Filed as project-LICHEN-worker6-7bd5.3",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:09.616601Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:18:03.962911Z",
+  "closed_at": "2026-08-16T20:18:03.962911Z",
+  "close_reason": "Fixed: Added flags validation to reject reserved bits in RREQ/RREP/RERR parsing. LICHEN LOADng does not define any flags, so all bits are reserved and non-zero values are now rejected with LoadngError::ReservedFlagsSet. Added 5 tests."
+}

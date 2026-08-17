@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.8.1.1.2",
   "title": "Implement: Python oracle for Local Evidence",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:11.922685Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:11.922685Z",
+  "updated_at": "2026-08-17T15:55:39.155653Z",
+  "closed_at": "2026-08-17T15:55:39.155653Z",
+  "close_reason": "Already fixed: Python oracle implemented in discovery.py:originate_rreq() lines 106-110. Local evidence check uses gradient table lookup (populated only by authenticated sources). Tests in test_discovery.py cover: rejected without evidence, allowed with evidence, ULA exemption.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.1.1.2",

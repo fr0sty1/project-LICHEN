@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-5y7s",
+  "title": "[review] provisioning.py:454: Multiple encrypt_seed cal",
+  "description": "State check at line 447 allows multiple encrypt_seed() calls while state is ESTABLISHED. If called twice before receiving ACK (e.g., retry logic bug generates new seed instead of resending), _provisioned_seed is silently overwritten. ACK verification at line 491-492 then compares against the wrong seed, causing spurious verification failures even though the node correctly received the first seed.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:10:21.398555Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:10:21.398555Z",
+  "labels": [
+    "review"
+  ]
+}

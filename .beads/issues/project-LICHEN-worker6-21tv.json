@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-21tv",
+  "title": "[review] 03-adaptation.md: Ambiguous RCS placement wording",
+  "description": "The phrase 'RCS: CRC-32/ISO-HDLC, carried before the final tile in All-1' is ambiguous. It is unclear whether the RCS field precedes the final tile data in the wire format of the All-1 fragment, or if this describes what data the RCS covers. RFC 8724 typically places RCS after payload data; this ambiguity could cause implementation divergence.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:59.746281Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:59.746281Z",
+  "labels": [
+    "review"
+  ]
+}

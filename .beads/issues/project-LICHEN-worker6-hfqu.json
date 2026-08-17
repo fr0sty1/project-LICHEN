@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-hfqu",
+  "title": "[review] provisioning.py:283: Session keyed on spoofabl",
+  "description": "Sessions are keyed by request.remote.hostinfo which depends on transport-layer addressing. If the underlying transport does not authenticate peer addresses (e.g., UDP without DTLS), an attacker could spoof the remote address to interfere with legitimate provisioning sessions. The spec indicates USB/BLE/LCI transports which may have different spoofing risks than IP.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T03:56:28.794177Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:56:28.794177Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-sb5g",
+  "title": "channel.py: ZeroDivisionError if superframe_duration_us is 0",
+  "description": "Line 58: `(unix_time_us - epoch_base_us) // superframe_duration_us` will crash if superframe_duration_us is 0. GnssHopConfig accepts arbitrary int values with no validation. A misconfigured config or deserialized corrupt data causes uncaught exception.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:01.409794Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:01.409794Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

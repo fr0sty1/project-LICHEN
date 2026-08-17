@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-thqy.3",
+  "title": "parse_observe_option accepts 4-byte values but should be max 3 bytes",
+  "description": "File: rust/lichen-gateway/src/discovery.rs\nLines: 147-159\n\nThe function correctly rejects values \u003e 3 bytes at line 151-152, but the comment at line 152 says 'max 3 bytes (24-bit)'. This is correct per RFC 7641 Section 3.4.\n\nHowever, the check uses 'value.len() \u003e 3' which rejects 4+ bytes. The edge case of exactly 3 bytes with value 0xFFFFFF is correctly handled.\n\nStatus: NOT A BUG - code is correct. Closing as verified-correct.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:28.749127Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:47:54.872399Z",
+  "closed_at": "2026-08-16T18:47:54.872399Z",
+  "close_reason": "Verified correct - not a bug. The check properly rejects 4+ byte values.",
+  "labels": [
+    "correctness",
+    "boundary-condition",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-thqy.3",
+      "depends_on_id": "project-LICHEN-worker6-thqy",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:29.201486Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

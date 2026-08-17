@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-2rkp.1",
+  "title": "SECURITY: debug_assert masks invariant violations in release builds",
+  "description": "**Location:** rust/lichen-rpl/src/dodag.rs lines 474-477 (select_parent)\n\n**Issue:** The `debug_assert!` on line 474 is compiled out in release builds, allowing state corruption when invariants are violated.\n\n```rust\nlet r = self.set_role(DodagRole::Joined);\ndebug_assert!(\n    r.is_ok(),\n    \"non-root DODAG can join through a selected parent\"\n);\n```\n\nBefore this assertion, lines 471-472 already mutated state:\n- `self.preferred_parent = Some(chosen_addr);`\n- `self.rank = chosen_cost;`\n\nIf `set_role` fails (e.g., Root cannot transition to Joined), the state is partially corrupted but the error is silently ignored in release builds.\n\n**Impact:** Silent state corruption in release; Root nodes could have incorrect rank/preferred_parent while still being Root.\n\n**Fix:** Either:\n1. Check role before mutating state: move rank/parent assignment inside a match on role\n2. Use proper error handling instead of debug_assert (return Result or explicit match)\n3. Guard process_dio to reject all DIOs for root nodes (addressing the root cause)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:07.880479Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:07.880479Z",
+  "labels": [
+    "security",
+    "release-safety",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rkp.1",
+      "depends_on_id": "project-LICHEN-worker6-2rkp",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:08.21549Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

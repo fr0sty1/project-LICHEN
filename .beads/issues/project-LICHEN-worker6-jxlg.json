@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-jxlg",
+  "title": "appendix-ccp12-hopping.md:381: Quoted test vector does not match actual file",
+  "description": "The example test vector on lines 372-385 shows 'channel: 2, expected_channel: 2', but the actual test vector file at test/vectors/ccp16.json line 19-20 shows 'channel: 1, expected_channel: 1'. The spec document has stale example data. Fix: Update the example JSON in section 9 to match the actual test vector file.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:58.929358Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:25:40.71435Z",
+  "closed_at": "2026-08-17T15:25:40.71435Z",
+  "close_reason": "Fixed: Updated example test vector in spec/appendix-ccp12-hopping.md section 9 to match actual test/vectors/ccp16.json values (channel: 2 -\u003e 1, expected_channel: 2 -\u003e 1)",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

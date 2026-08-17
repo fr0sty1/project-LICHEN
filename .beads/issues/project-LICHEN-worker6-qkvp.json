@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qkvp",
+  "title": "remove_peer omits replay reset for divergent pinned pubkey",
+  "description": "In link_layer.rs line 502-506, remove_peer clears the peer entry and its replay state, but if the pinned pubkey differs from the peer pubkey (e.g., peer was updated after initial authentication), the pinned pubkey's replay state is not cleared. This inconsistency with forget_peer (which handles both) could cause unexpected replay rejections when re-adding that pubkey, or theoretical replay vulnerabilities. Fix: reset replay for both pubkeys when they differ, matching forget_peer logic.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:01.093823Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:28:01.093823Z"
+}

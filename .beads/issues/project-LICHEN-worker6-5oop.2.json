@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-5oop.2",
+  "title": "O(n) peer signature scan has observable timing variation",
+  "description": "Location: rust/lichen-link/src/link_layer.rs lines 531-547\n\nreceive_frame() scans all peers calling verify_frame() until one succeeds. The number of verification attempts before success/failure is observable via timing.\n\nThis is already documented in the comment on lines 305-314 and acknowledged as acceptable in the threat model (lib.rs lines 21-27: 'Remote timing attacks over a high-latency LoRa mesh are impractical'). However, for completeness:\n\n1. An attacker could learn relative position of sender in HashMap iteration order\n2. Distinguishes 'unknown sender' (all peers checked) from 'known sender' (early exit)\n\nThis is informational only. The threat model explicitly considers this acceptable. No code change recommended for LoRa use case.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:49:52.942619Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:49:52.942619Z",
+  "labels": [
+    "security",
+    "side-channel",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.2",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:49:53.345759Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

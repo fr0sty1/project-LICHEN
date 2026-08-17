@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-mpnp",
+  "title": "[review] router.rs:667: Sequence number leak on sign_d",
+  "description": "In build_signed_dao, reserve_next() is called at line 667 to consume a sequence number. If sign_dao() fails at line 671-672, the function returns early with an error but the sequence number is already consumed and never finalized. While the 64-bit sequence space makes exhaustion unlikely, this creates gaps in the replay protection floor that could confuse debugging or have subtle replay window effects if the pattern repeats.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:34:00.4492Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T16:50:29.522142Z",
+  "closed_at": "2026-08-16T16:50:29.522142Z",
+  "close_reason": "Fixed: Moved unsigned DAO construction before reserve_next() and added can_sign_unsigned_dao() pre-validation. Now if DAO validation fails (malformed, already signed, DODAG ID mismatch), the error is returned before any sequence number is consumed. This prevents sequence gaps when sign_dao() would fail.",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-oua2.2",
+  "title": "edhoc_kdf redundant copy leaves key material on stack",
+  "description": "File: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/kdf.rs\nLines: 91-101\n\nedhoc_kdf creates okm, expands into it, then copies to result:\n```rust\nlet mut okm = heapless::Vec::\u003cu8, 128\u003e::new();\nokm.resize(length, 0).map_err(...)?;\nhk.expand(\u0026info, \u0026mut okm).map_err(...)?;\nlet mut result = heapless::Vec::new();\nresult.extend_from_slice(okm.as_slice()).map_err(...)?;\nOk(result)\n```\n\nThis copy serves no purpose (both are heapless::Vec\u003cu8, 128\u003e) and is worse for security: it leaves key material in TWO stack locations (okm and result), neither of which is zeroized on drop.\n\nFix: Return okm directly: `Ok(okm)`",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:24.50111Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:53:31.364668Z",
+  "closed_at": "2026-08-17T15:53:31.364668Z",
+  "close_reason": "Fixed: removed redundant copy in edhoc_kdf. Now returns okm directly instead of copying to a separate result vector. This eliminates one stack copy of key material and simplifies the code.",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-oua2.2",
+      "depends_on_id": "project-LICHEN-worker6-oua2",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:24.901727Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

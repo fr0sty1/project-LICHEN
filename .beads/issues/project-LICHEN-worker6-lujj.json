@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-lujj",
+  "title": "Test: DAO persistence and recovery vectors",
+  "description": "Part of DAO persistence crash safety (rpl)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:43.668802Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:07:06.278804Z",
+  "closed_at": "2026-08-15T19:07:06.278804Z",
+  "close_reason": "Implemented 15 DAO persistence and recovery vector tests covering: slot header format verification, truncated write recovery, checksum/payload manipulation detection, generation number ordering, batch RX floor atomicity, TX/RX state recovery after simulated crash, fresh node handling, route state recovery, malformed JSON handling, and sequence wraparound edge cases",
+  "labels": [
+    "rpl"
+  ]
+}

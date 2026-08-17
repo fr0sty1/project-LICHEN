@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.3.4",
   "title": "Vectors: RPL Multi-Instance Coordination test vectors",
   "description": "Test vectors for GCP-5: multi-gateway DODAG scenarios, DAO propagation across backbone, route aggregation examples.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:17.66031Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:17.66031Z",
+  "updated_at": "2026-08-17T16:19:24.028383Z",
+  "closed_at": "2026-08-17T16:19:24.028383Z",
+  "close_reason": "Already fixed: Test vectors exist at test/vectors/rpl_multi_instance.json with 13 comprehensive GCP-5 test cases. Validated by Rust (11 tests in multi_instance_vectors.rs) and Python (30 tests in test_multi_instance.py), all passing.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.3.4",

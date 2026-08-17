@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-worker6-f6ys",
+  "title": "Review: codec.rs SECURITY 2026-08-16",
+  "description": "Review confidence: 15% chance of missed bug.\nLeast confident areas: BitReader/BitWriter edge cases, checksum calculation correctness.\nWould raise confidence if: Fuzz testing with AFL/cargo-fuzz on compress/decompress paths.\n\nSummary:\n- 1x P0 (panic on malformed UDP input - DoS)\n- 0x P1\n- 1x P2 (theoretical integer overflow on 32-bit)\n- 2x P3 (defensive coding, positive finding)\n\nLanguage: Rust\nMode: library\nSupplements: crypto (OSCORE mentioned)",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:15:15.155448Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:17:08.00165Z",
+  "started_at": "2026-08-16T18:16:51.700613Z",
+  "lease_expires_at": "2026-08-16T18:21:51.700613Z",
+  "heartbeat_at": "2026-08-16T18:16:51.700613Z",
+  "labels": [
+    "review",
+    "security"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-u3be",
+  "title": "[review] tx_queue.rs:420: pop() returns expired ite",
+  "description": "pop() does not call expire_before() or check is_expired(). If time advances between the last push() and a subsequent pop(), the returned item may have deadline_ms \u003c now_ms (already expired). The caller must either call expire_before() before pop(), or check is_expired() on the returned item. This is likely intentional for performance but could surprise callers expecting only valid items.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:28:36.5259Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:28:36.5259Z",
+  "labels": [
+    "review"
+  ]
+}

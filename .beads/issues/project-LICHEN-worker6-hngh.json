@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-hngh",
+  "title": "loadng: seq_is_fresher not exposed for production use",
+  "description": "Sequence freshness logic (critical for replay protection) is only in test module. Tests verify the test helper, not production code. Should be exported as pub fn.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:13:02.514843Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:34:37.921751Z",
+  "closed_at": "2026-08-16T19:34:37.921751Z",
+  "close_reason": "Already fixed: seq_is_fresher is pub fn at lines 540-580 (outside #[cfg(test)]), exported via pub mod loadng, and doctest confirms it is accessible as lichen_core::loadng::seq_is_fresher"
+}

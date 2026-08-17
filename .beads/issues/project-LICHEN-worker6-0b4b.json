@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-0b4b",
+  "title": "dodag.py: Hysteresis check considers non-admissible current parent",
+  "description": "Lines 250-256: The hysteresis logic retrieves 'current' from self.parents directly, not from the admissible list. If the current preferred parent's path cost exceeds _lowest_rank + max_rank_increase (making it non-admissible), but the improvement over an admissible candidate is below threshold, the node incorrectly sticks with the non-admissible parent. Should check 'if current is not None and self._admissible(current) and current.neighbor_id != best.neighbor_id' before applying hysteresis.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:52:27.93346Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:52:27.93346Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

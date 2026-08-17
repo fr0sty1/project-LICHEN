@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-olqr",
+  "title": "sync_hop.c: Unsigned underflow when unix_time_ms \u003c EPOCH_BASE_MS",
+  "description": "Line 42: The subtraction unix_time_ms - EPOCH_BASE_MS has no bounds check. If unix_time_ms is before 2024-01-01 (e.g., GNSS not yet synced, RTC defaulting to 1970/2000, or uninitialized timestamp), the unsigned subtraction wraps to a huge positive value, returning garbage SFN. Fix: return 0 or error sentinel when unix_time_ms \u003c EPOCH_BASE_MS.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:03.742192Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:40:26.400206Z",
+  "closed_at": "2026-08-17T15:40:26.400206Z",
+  "close_reason": "Already fixed: bounds check added at line 44 - returns 0 when unix_time_ms \u003c EPOCH_BASE_MS to prevent unsigned underflow",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.16",
   "title": "Spec: 12 18.3 Waypoints",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:05.121934Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:05.121934Z",
+  "updated_at": "2026-08-17T04:02:09.764006Z",
+  "closed_at": "2026-08-17T04:02:09.764006Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-l1qw.10.6: Both EPICs track spec section 18.3 Waypoints. The earlier .10.6 bead has a functionality-based structure (CRUD, Sharing, Routes) which is more appropriate than the platform-based structure here.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.16",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0dgd.2",
   "title": "Shared: SFN derivation spec",
   "description": "Document the SFN (Superframe Number) derivation algorithm in the spec.\n\n## File\nspec/appendix-ccp12-hopping.md\n\n## Required Content\n\n### SFN Derivation Formula\n```\nsfn = (unix_time_ms - EPOCH_BASE_MS) // SUPERFRAME_DURATION_MS\n```\n\n### Constants to Define\n- **EPOCH_BASE**: 2024-01-01 00:00:00 UTC (unix timestamp: 1704067200000 ms)\n- **SUPERFRAME_DURATION_MS**: 100ms (default, configurable)\n\n### Channel Selection\n```\nchannel = 1 + (lichen_hash_32(seed || sfn) % n_channels)\n```\n\n### Fallback Chain\n1. GNSS-synchronized (when GNSS fix available)\n2. Epoch-based hash (existing implementation)\n3. Channel 0 (density \u003e 8 or error)\n\n## References\n- Cross-reference test/vectors/sync_hop.json\n- Reference existing CCP-12 density-based channel selection",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:53:14.064565Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:53:14.064565Z",
+  "updated_at": "2026-08-17T03:40:02.158435Z",
+  "closed_at": "2026-08-17T03:40:02.158435Z",
+  "close_reason": "Documented SFN derivation algorithm in spec/appendix-ccp12-hopping.md: added Section 4.2 (SfnFromUnixTime formula, GNSS_EPOCH_BASE and SUPERFRAME_DURATION constants, example calculation) and Section 4.6 (GNSS-synced fallback chain). Fixed duplicate section numbering (4.3 through 4.7).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0dgd.2",

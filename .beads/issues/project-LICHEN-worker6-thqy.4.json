@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-thqy.4",
+  "title": "Redundant obs_value assignment for observe=0",
+  "description": "File: rust/lichen-gateway/src/discovery.rs\nLines: 120-132\n\nThe observe option encoding has redundant logic:\n- Lines 123-124: When obs_val == 0, sets obs_value to \u0026obs_bytes[3..4] which is [0]\n- Line 131: Overrides to \u0026[0u8][..] when obs_val == 0\n\nBoth produce identical output. The double-assignment is confusing.\n\nFix: Simplify to single conditional:\n```rust\nlet obs_value: \u0026[u8] = if obs_val == 0 {\n    \u0026[0u8]\n} else if obs_val \u003c= 0xFF {\n    \u0026obs_bytes[3..4]\n} else if obs_val \u003c= 0xFFFF {\n    \u0026obs_bytes[2..4]\n} else if obs_val \u003c= 0xFFFFFF {\n    \u0026obs_bytes[1..4]\n} else {\n    \u0026obs_bytes[..]\n};\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:32.966258Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:47:32.966258Z",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-thqy.4",
+      "depends_on_id": "project-LICHEN-worker6-thqy",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:33.285489Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

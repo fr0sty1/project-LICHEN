@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-dlmd",
+  "title": "Public enums missing #[non_exhaustive]",
+  "description": "GatewayRole (67), MultiInstanceError (132), VersionChangeOutcome (780) need #[non_exhaustive] for semver safety.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:18.023424Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:53:01.477338Z",
+  "closed_at": "2026-08-16T19:53:01.477338Z",
+  "close_reason": "Fixed: Added #[non_exhaustive] to GatewayRole, MultiInstanceError, and VersionChangeOutcome enums for semver safety"
+}

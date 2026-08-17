@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-kmts.9",
+  "title": "attempts counter wraparound is prevented by abort but not documented",
+  "description": "Line 437 and 743:\n```rust\nattempts: u8,\n```\n\nThe `attempts` counter is u8 (max 255). The code correctly checks `u32::from(self.attempts) \u003e= MAX_ACK_REQUESTS` (which is 4) before incrementing, preventing wraparound.\n\nHowever, if someone modifies `MAX_ACK_REQUESTS` to a value \u003e 255, the u8 could wrap. This is not a current bug but a maintenance hazard.\n\nSuggested fix: Add a static assertion:\n```rust\nconst _: () = assert!(MAX_ACK_REQUESTS \u003c= u8::MAX as u32);\n```\n\nOr change `attempts` to `u32` to match `MAX_ACK_REQUESTS` type.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:47:33.610997Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:47:33.610997Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.9",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:47:33.932293Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

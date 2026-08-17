@@ -1,1 +1,2 @@
 {"id":"019fb9b3-2954-7b56-9d62-ae5499d04a3b","issue_id":"project-LICHEN-worker6-l1qw.5.8.2.1.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:42:34.324743Z"}
+{"id":"01a00e27-9669-7b9c-9404-83aadd0c957b","issue_id":"project-LICHEN-worker6-l1qw.5.8.2.1.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: RREQ spec requirements are implemented in loadng/messages.py following spec section 10.3 wire layout","created_at":"2026-08-17T05:17:50.569761Z"}

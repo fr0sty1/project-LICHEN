@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-mfn5",
+  "title": "[review] messaging.py:197: get_resources_as_linkheader ge",
+  "description": "Link paths are formatted as f'/{msg_id}' which produces '/1', '/2', etc. When this resource is mounted at /msg/sent, the relative links may not resolve correctly to /msg/sent/1 depending on the base URI context. Should likely be f'/msg/sent/{msg_id}' for absolute paths, or verify aiocoap resolves relative links correctly from the resource's mount point.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:39.449674Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:01:39.449674Z",
+  "labels": [
+    "review"
+  ]
+}

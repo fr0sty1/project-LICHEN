@@ -1,0 +1,5 @@
+{"id":"01a00c16-aa37-720f-a06f-631bcc5fb176","issue_id":"project-LICHEN-worker6-0jqa.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:40:07.095136Z"}
+{"id":"01a00c16-aa41-743d-8cc2-d89ee26c8160","issue_id":"project-LICHEN-worker6-0jqa.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: security","created_at":"2026-08-16T19:40:07.105278Z"}
+{"id":"01a00c16-aa48-7105-a073-79cb1eb307e3","issue_id":"project-LICHEN-worker6-0jqa.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-16T19:40:07.112067Z"}
+{"id":"01a00c16-aa4e-7dcf-a653-9a46f99c6f7f","issue_id":"project-LICHEN-worker6-0jqa.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T19:40:07.118905Z"}
+{"id":"01a00c59-7b1f-74ab-bd67-0e61c49b59ba","issue_id":"project-LICHEN-worker6-0jqa.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Rerr::require_signature() method exists at lines 699-725 with tests at 1441-1495","created_at":"2026-08-16T20:53:05.951307Z"}

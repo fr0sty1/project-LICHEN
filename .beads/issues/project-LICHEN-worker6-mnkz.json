@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-mnkz",
+  "title": "[review] 03-adaptation.md: Incorrect field breakdown for RPL rules",
+  "description": "The breakdown '(Rule ID + Hop Limit + endpoint IIDs + ports)' is wrong for Rules 3/4. These rules compress RPL DIO/DAO over ICMPv6 (type 155), not UDP - there are no ports. The breakdown appears to be copy-pasted from a UDP-based rule.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:26.052665Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:37:43.05147Z",
+  "closed_at": "2026-08-15T19:37:43.05147Z",
+  "close_reason": "Fixed: Changed field breakdown from 'Rule ID + Hop Limit + endpoint IIDs + ports' to 'Rule ID + Hop Limit + endpoint IIDs + RPL fields'. Rules 3/4 compress RPL DIO/DAO over ICMPv6 (type 155), not UDP, so ports do not apply.",
+  "labels": [
+    "review"
+  ]
+}

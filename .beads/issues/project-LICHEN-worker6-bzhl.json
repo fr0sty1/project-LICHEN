@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-bzhl",
+  "title": "[review] 03-adaptation.md: MTU-exceeding packets implicitly fa",
+  "description": "When status=INCOMPATIBLE, nodes MUST NOT use fragmentation and MAY use unfragmented Rule 255. The spec does not explicitly state that packets exceeding L2 MTU cannot be communicated at all in this scenario; this consequence is implied but not documented.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:41:09.860716Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:41:09.860716Z",
+  "labels": [
+    "review"
+  ]
+}

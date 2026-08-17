@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-ngcs",
+  "title": "ccp16_utilization.json: Incorrect expected sf value contradicts oracle_provenance",
+  "description": "Line 125: Vector 'utilization_high_with_sf7_baseline' expects sf=10, but per the oracle_provenance algorithm ('if utilization \u003e 150: SF += 2; if utilization \u003e 200: return (SF, false)'), assigned_sf=7 with utilization=201 should yield sf=9 (7+2=9), not sf=10. The description claims '+1 for util\u003e200' but this rule is not documented in oracle_provenance and contradicts vector 'utilization_201_tx_blocked' which correctly applies only +2 for the same utilization value.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:50:40.88611Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:18:28.251121Z",
+  "closed_at": "2026-08-17T15:18:28.251121Z",
+  "close_reason": "Fixed: corrected test vector sf expectation from 10 to 12 per spec (return 12, false when util\u003e200). Also fixed Rust implementation which incorrectly added +1 instead of hardcoding SF=12. Updated oracle_provenance to clarify hardcoded SF=12 behavior.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

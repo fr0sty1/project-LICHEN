@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-2na2",
+  "title": "adaptive_sf.py: Congestion SF not forced to 12 as spec requires",
+  "description": "Lines 142-145: When utilization \u003e 200, spec pseudocode says 'return 12, false' (constant 12). Implementation returns 'sf, False' where sf may be less than 12. Example: if sf=8 initially and utilization=210, spec returns (12, false) but code returns (11, False) after increments. The OR-merge of conditions causes sf to only increment rather than being forced to the congestion ceiling.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:50:32.932188Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:28:23.21853Z",
+  "closed_at": "2026-08-17T15:28:23.21853Z",
+  "close_reason": "Fixed: Separated the OR-merged conditions at lines 142-145. The spec pseudocode has 'if utilization \u003e 200: return 12, false' as a distinct step that forces SF to constant 12, not an SF increment. Changed the code to: (1) apply ema_loss \u003e 0.25 increment separately, then (2) check utilization \u003e 200 and return (12, False) as required by spec. Verified with test cases.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

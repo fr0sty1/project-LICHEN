@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-szr8",
+  "title": "[review] provisioning.py:567: Session not cleaned up on",
+  "description": "If any step after create_br_session() fails (receive_message, send_message, or EDHOC processing), the session remains in _sessions until timeout expiry. The method should wrap the provisioning logic in try/finally to remove the session on failure, preventing resource leakage and potential DoS from accumulated orphaned sessions.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:02:08.426722Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T16:48:16.038899Z",
+  "closed_at": "2026-08-16T16:48:16.038899Z",
+  "close_reason": "Fixed: Wrapped provision_node() logic in try/finally to ensure session cleanup on any failure (receive_message, send_message, EDHOC processing). The finally block looks up and removes the session if it exists, consolidating cleanup logic that was previously only in the success path and ACK verification failure path.",
+  "labels": [
+    "review"
+  ]
+}

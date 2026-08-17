@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-9ey2",
+  "title": "[review] provisioning.py:284: Empty peer_host string ac",
+  "description": "If request.remote.hostinfo returns an empty string, it passes the 'if not peer_host' check (since empty string is falsy... wait no, empty string IS falsy). Actually this is fine - empty string would fail the check. Let me reconsider: create_br_session() and create_node_session() do not validate peer_host, so if called directly with empty string, it would be accepted as a valid session key.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:02:20.37465Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:02:20.37465Z",
+  "labels": [
+    "review"
+  ]
+}

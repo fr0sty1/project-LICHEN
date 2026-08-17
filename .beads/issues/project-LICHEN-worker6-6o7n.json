@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-6o7n",
+  "title": "[review] tx_queue.py:416: `confirm_transmitted()` does n",
+  "description": "The `confirm_transmitted()` method calls `_remove_first()` which updates transmission stats but never calls `reservation.set_result()`. If a packet was pushed with `return_reservation=True` and later transmitted via the `peek()`/`confirm_transmitted()` flow, callers awaiting the reservation will hang indefinitely since the Future is never resolved.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:39.22838Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:08:01.569991Z",
+  "closed_at": "2026-08-15T21:08:01.569991Z",
+  "close_reason": "Fixed: _remove_first() now signals reservation.set_result(True) so confirm_transmitted() flow no longer leaves callers hanging",
+  "labels": [
+    "review"
+  ]
+}

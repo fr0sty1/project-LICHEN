@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-6det",
+  "title": "[review] messaging.py:159: Exception in _sent_detail_regi",
+  "description": "After recording message in _sent (line 150), if the registrar callback throws an exception, deliver() is never called (line 160 is skipped). This leaves the message in _sent but not in _inbox, creating an inconsistent state. Unlike the receipt handler (lines 239-245), this callback has no exception handling. If the registrar fails, the message is recorded as sent but never delivered to inbox, and the client receives an error despite partial success.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:47.456396Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:47.456396Z",
+  "labels": [
+    "review"
+  ]
+}

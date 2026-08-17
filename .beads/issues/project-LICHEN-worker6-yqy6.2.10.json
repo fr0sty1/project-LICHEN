@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.2.10",
   "title": "R1 Neo: Device identity",
   "description": "Validate lichen_hal_identity_get() on R1 Neo. board_name should be 'r1_neo', zephyr_board should match CONFIG_BOARD. Verify capability flags match enabled DTS nodes.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:09.429255Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:09.429255Z",
+  "updated_at": "2026-08-17T03:55:21.87543Z",
+  "closed_at": "2026-08-17T03:55:21.87543Z",
+  "close_reason": "Fixed: Made test_identity_reports_board_and_caps board-agnostic by checking against CONFIG_LICHEN_BOARD_NAME (or CONFIG_BOARD fallback) instead of hardcoding 'native-hal-test'. Test now validates R1 Neo identity correctly with board_name='r1_neo' and capability flags matching DTS nodes.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.2.10",

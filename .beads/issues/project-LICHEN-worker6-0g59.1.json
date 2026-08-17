@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-0g59.1",
+  "title": "loadng: unwrap() calls lack infallibility documentation",
+  "description": "Several .unwrap() calls in from_bytes() rely on implicit length guarantees:\n- Line 479: sig_data.try_into().unwrap() - safe because match arm guarantees len==48\n- Lines 487-488: data[4..20].try_into().unwrap() - safe because line 470 checks len\u003e=36\n- Lines 560, 569-570: same pattern in Rrep::from_bytes()\n- Lines 671, 675: same pattern in Rerr::from_bytes()\n\nWhile the logic is sound (parent length checks guarantee slice sizes), the infallibility reasoning is implicit. Security-critical parsing code should document why panics are unreachable. A future refactor could inadvertently break the invariant.\n\nSuggestion: Add inline comments or use .expect() with the invariant stated, e.g.:\n  data[4..20].try_into().expect(\"len checked at line 470\")\n\nSeverity: P2 - correctness is fine but clarity aids security review.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:20:13.67336Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:20:13.67336Z",
+  "labels": [
+    "security",
+    "idiomatic-rust",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0g59.1",
+      "depends_on_id": "project-LICHEN-worker6-0g59",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:20:14.032274Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

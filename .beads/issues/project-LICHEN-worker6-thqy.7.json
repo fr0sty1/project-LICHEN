@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-thqy.7",
+  "title": "Type byte bit layout undocumented in encode()",
+  "description": "File: rust/lichen-gateway/src/discovery.rs\nLine: 248\n\n```rust\nbuf[0] = GATEWAY_FLAG | 0x01; // Type byte: GATEWAY flag + announce type\n```\n\nThe comment says 'announce type' is 0x01 but this is not documented in the struct's doc comment. The doc comment at lines 203-215 says 'bits 0-6 = reserved' but the code uses bit 0.\n\nEither:\n1. Document that 0x01 is the announce type value, or\n2. Add a const ANNOUNCE_TYPE: u8 = 0x01 with doc comment\n\nThis affects decode() too - it should potentially validate the lower bits match expected announce type.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:45.783846Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:47:45.783846Z",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-thqy.7",
+      "depends_on_id": "project-LICHEN-worker6-thqy",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:46.094178Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

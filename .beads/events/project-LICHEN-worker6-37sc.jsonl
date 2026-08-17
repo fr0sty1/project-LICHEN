@@ -1,0 +1,2 @@
+{"id":"01a00bcb-380a-719a-b5c0-92f1a928b094","issue_id":"project-LICHEN-worker6-37sc","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:17:42.666105Z"}
+{"id":"01a00bff-3504-79c0-8439-aeaaf1c0d511","issue_id":"project-LICHEN-worker6-37sc","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added lichen_hal_reset_test_clear_request() call to hal_after fixture to prevent state leakage between tests","created_at":"2026-08-16T19:14:29.764639Z"}

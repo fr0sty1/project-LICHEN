@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-m6pt.1",
+  "title": "OSCORE detection fails on payload-less CoAP messages",
+  "description": "**File:** python/src/lichen/schc/headers.py\n**Line:** 185\n\n**Issue:** The function `_coap_oscore_status` returns `None` (malformed) when OSCORE is found but no payload marker (0xFF) is encountered. However, per RFC 7252, the payload marker is ONLY present if there IS a payload. A valid OSCORE-protected CoAP GET with no payload body is legal and would not have a 0xFF marker.\n\n**Bad behavior:** Valid OSCORE-protected CoAP packets without payload are incorrectly classified as malformed, causing `_OscoreUdpProfile.matches()` to return False and fall back to a non-OSCORE rule.\n\n**Trigger:** Any OSCORE-protected CoAP message with zero-length payload (e.g., GET requests, empty ACKs).\n\n**Fix:** Line 185 should return `oscore_found` unconditionally:\n```python\nreturn oscore_found\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:10:09.063477Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:21:44.778347Z",
+  "closed_at": "2026-08-16T21:21:44.778347Z",
+  "close_reason": "Fixed: Return oscore_found unconditionally at end of options loop instead of None, per RFC 7252 payload marker semantics",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-m6pt.1",
+      "depends_on_id": "project-LICHEN-worker6-m6pt",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:10:09.390419Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

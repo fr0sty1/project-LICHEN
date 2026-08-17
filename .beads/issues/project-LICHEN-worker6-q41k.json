@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-q41k",
+  "title": "test_vectors.py: _epoch_counter lacks input validation (P3)",
+  "description": "**File:** python/tests/test_vectors.py\n**Lines:** 1678-1680\n\n**Issue:**\n```python\ndef _epoch_counter(epoch: int, seqnum: int) -\u003e int:\n    \"\"\"Compute 24-bit replay counter from epoch and seqnum (spec 4.4).\"\"\"\n    return (epoch \u003c\u003c 16) | seqnum\n```\n\n**Problem:** No validation that:\n- `epoch` is 8-bit (0-255)\n- `seqnum` is 16-bit (0-65535)\n\nIf out-of-range values are passed (e.g., from corrupted test vector), the function silently produces incorrect results larger than 24 bits.\n\nIn test context this is low risk since vectors are controlled, but adding validation would catch malformed test data earlier.\n\n**Suggested fix:**\n```python\ndef _epoch_counter(epoch: int, seqnum: int) -\u003e int:\n    \"\"\"Compute 24-bit replay counter from epoch and seqnum (spec 4.4).\"\"\"\n    if not (0 \u003c= epoch \u003c= 255):\n        raise ValueError(f\"epoch {epoch} out of range [0, 255]\")\n    if not (0 \u003c= seqnum \u003c= 65535):\n        raise ValueError(f\"seqnum {seqnum} out of range [0, 65535]\")\n    return (epoch \u003c\u003c 16) | seqnum\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:53:39.176968Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:53:39.176968Z",
+  "labels": [
+    "correctness"
+  ]
+}

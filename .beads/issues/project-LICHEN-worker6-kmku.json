@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kmku",
+  "title": "ccp16_utilization.json: Oracle provenance inconsistent with vector 7 expected SF",
+  "description": "Line 127: Vector 'utilization_high_with_sf7_baseline' expects sf=10, but the oracle_provenance (line 6) states 'if utilization \u003e 150: SF += 2; if utilization \u003e 200: return (SF, false)' which would produce sf=9 (7+2=9). The vector description claims '+1 for util\u003e200' but this rule is absent from the oracle. Either the oracle_provenance is incomplete (missing the +1 rule) or the expected sf should be 9, not 10.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:50:39.257264Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:50:39.257264Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

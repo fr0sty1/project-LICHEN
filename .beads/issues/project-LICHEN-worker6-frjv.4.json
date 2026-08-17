@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-frjv.4",
+  "title": "DodagState not thread-safe",
+  "description": "File: python/src/lichen/rpl/dodag.py\nLines: 99-268\n\nDodagState mutates multiple related fields (role, rank, parents, preferred_parent, _lowest_rank) without synchronization.\n\n**Race condition scenario:**\n1. Thread A calls process_dio() for neighbor X, enters select_parent()\n2. Thread B calls process_dio() for neighbor Y, also enters select_parent()\n3. Thread A reads self.parents.values() into admissible list\n4. Thread B modifies self.parents (adds Y)\n5. Thread A selects parent from stale view, misses better candidate Y\n6. Both threads write to self.preferred_parent, self.rank, etc. - last write wins\n\n**Trigger:** Any concurrent DIO processing. While the GIL prevents memory corruption, the interleaving of read-modify-write sequences across multiple attributes can leave state inconsistent.\n\n**Impact:** Preferred parent selection may be suboptimal or inconsistent. _lowest_rank may not reflect the true minimum.\n\n**Fix options:**\n1. Document as single-threaded only (acceptable for embedded use)\n2. Add threading.Lock around process_dio/select_parent\n3. Use copy-on-write pattern for parents dict",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:44:24.214641Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:44:24.214641Z",
+  "labels": [
+    "correctness",
+    "race-condition",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-frjv.4",
+      "depends_on_id": "project-LICHEN-worker6-frjv",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:44:24.567193Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-gjze",
+  "title": "[review] provisioning.py:315: render_get() reports stal",
+  "description": "render_get() uses session.state (the ProvisioningSession wrapper's state field) which is only set at creation time (lines 491, 534) and never updated. It always returns 'idle' regardless of actual crypto session progress. Should use session.session.state to get the actual state from BRProvisioningSession or NodeProvisioningSession.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:13:26.483384Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:13:26.483384Z",
+  "labels": [
+    "review"
+  ]
+}

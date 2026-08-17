@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kxwt",
+  "title": "emergency.py: Unbounded timeout_s allows permanent resource exhaustion",
+  "description": "Line 218: timeout_s is taken directly from user input without upper bound. An attacker can POST 256 rollcalls with timeout_s=2**63 or float('inf'). Since expiration check (line 167) will never pass, entries persist forever, permanently filling all 256 slots.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:52:07.558086Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:52:07.558086Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

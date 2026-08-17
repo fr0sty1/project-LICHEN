@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-yqy6.9.7",
   "title": "USB CDC validation across boards",
   "description": "Cross-validate USB CDC serial transport on all nRF52840 and ESP32-S3 boards. Ensure consistent enumeration and frame exchange.",
-  "status": "open",
+  "notes": "Requires physical hardware: Manual testing of USB CDC enumeration and frame exchange on actual nRF52840 and ESP32-S3 boards. Cannot be validated in simulation or code.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:15:26.752504Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:15:26.752504Z",
+  "updated_at": "2026-08-17T16:39:44.260542Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.9.7",

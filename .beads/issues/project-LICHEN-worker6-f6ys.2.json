@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-f6ys.2",
+  "title": "has_oscore_option: unchecked pos += len can wrap on 32-bit",
+  "description": "Line 233: `pos += len` where len can be up to 65804 (from extended CoAP option length encoding: 65535 + 269). On 32-bit systems with contrived input, this could theoretically wrap, causing the parser to re-read earlier buffer contents.\n\nPractical impact: Low. SCHC packets are constrained by LoRa MTU (~200 bytes), and 32-bit systems cannot allocate 4GB buffers. However, for correctness and defense-in-depth:\n\nFix: Use checked_add:\n```rust\npos = pos.checked_add(len).ok_or(SchcError::TooShort(...))?;\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:16:38.554617Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:16:38.554617Z",
+  "labels": [
+    "security",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-f6ys.2",
+      "depends_on_id": "project-LICHEN-worker6-f6ys",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:16:38.869455Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

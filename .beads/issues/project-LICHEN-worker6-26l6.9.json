@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-26l6.9",
+  "title": "version_is_newer special case (0,127) duplicates lollipop_cmp logic",
+  "description": "File: rust/lichen-rpl/src/dodag.rs Line 77-78. The special case (new_ver, old_ver) == (0, 127) handles the linear-to-circular transition but lollipop_cmp already handles this via wrap_distance calculation. For (0, 127): a=0 linear, b=127 linear, abs_diff=127 \u003e 16, returns None. So the special case is necessary. However, this duplicates RFC 6550 Appendix A logic - the special case encodes one specific valid wraparound while lollipop_cmp uses SEQUENCE_WINDOW for others. Document why this special case exists alongside the general algorithm.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:07.554129Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:07.554129Z",
+  "labels": [
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.9",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:07.896442Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

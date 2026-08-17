@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-m6pt.4",
+  "title": "_require_field uses assert which is stripped in optimized mode",
+  "description": "**File:** python/src/lichen/schc/headers.py\n**Lines:** 201-204\n\n**Issue:** The `_require_field` function uses `assert` to validate that a required field is not None. Python's `assert` statements are removed when running with `python -O` (optimize flag).\n\n**Bad behavior:** In production builds with optimization enabled, if `decompress()` returns `None` for a required field (due to rule mismatch or corruption), the assertion silently passes and `int(None)` raises an unhandled `TypeError` with a confusing message.\n\n**Trigger:** Corrupted or mismatched SCHC residue processed in an optimized Python environment.\n\n**Fix:** Replace assert with explicit raise:\n```python\ndef _require_field(fields: dict[str, int | None], key: str) -\u003e int:\n    val = fields.get(key)\n    if val is None:\n        raise SchcError(f\"decompress returned None for required field {key}\")\n    return int(val)\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:10:26.23552Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:21:04.591069Z",
+  "closed_at": "2026-08-16T21:21:04.591069Z",
+  "close_reason": "Fixed: replaced assert with explicit raise SchcError for _require_field validation",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-m6pt.4",
+      "depends_on_id": "project-LICHEN-worker6-m6pt",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:10:26.571914Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-sk7i",
+  "title": "tx_queue.c: pthread_mutex_init return value not checked",
+  "description": "Line 217: pthread_mutex_init(\u0026queue-\u003elock, NULL) can fail (EAGAIN, ENOMEM, EPERM) but the return value is ignored. If initialization fails, subsequent lock/unlock operations will have undefined behavior. In practice this is rare with NULL attributes but should be checked for robustness.\n\nFile: /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/tx_queue.c\nLine: 217",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:20.424959Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:12:20.424959Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-n9ik.2",
+  "title": "Root processes DIOs instead of rejecting them",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs line 323 (`process_dio` entry)\n\n## Issue\n`process_dio()` has no early return for `DodagRole::Root`. A root node should never accept DIOs since it IS the DODAG authority. Currently, roots only happen to reject same-version DIOs due to the rank equality check at line 370, which is accidental protection.\n\n## Why this matters\n- Root state can be corrupted by crafted DIOs\n- Opens door to version-bump attack (see related P0)\n- Future code changes might remove the accidental protection\n\n## Existing test misleading\nTest `root_ignores_dio` (line 802) passes because same-version DIOs are rejected by rank check, not by role check. Test does not cover newer-version DIOs.\n\n## Suggested fix\nAdd at function entry (after ETX validation):\n```rust\n// SECURITY: Root nodes are DODAG authorities; they do not accept DIOs.\nif self.role == DodagRole::Root {\n    return DioOutcome::Rejected;\n}\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:41:23.363883Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:21:38.179701Z",
+  "closed_at": "2026-08-16T21:21:38.179701Z",
+  "close_reason": "Fixed: Root now explicitly rejects all DIOs via early return on role check, added test for newer-version DIOs",
+  "labels": [
+    "correctness",
+    "security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n9ik.2",
+      "depends_on_id": "project-LICHEN-worker6-n9ik",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:41:23.693536Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

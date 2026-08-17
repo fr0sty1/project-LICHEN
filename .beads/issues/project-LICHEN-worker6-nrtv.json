@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-nrtv",
+  "title": "[review] 03-adaptation.md: DIO/DAO sizes inconsistent with app",
+  "description": "States 'DIO 40 bytes, DAO 37 bytes' but appendix-schc.md lines 15-16 show 'RPL DIO | 8 bytes' and 'RPL DAO | 6 bytes'. The values may represent different metrics (total packet vs residue), but this ambiguity could cause implementation confusion.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:44.057701Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:44.057701Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-42t4",
+  "title": "[review] tx_queue.py:318: TOCTOU between expire_stale() ",
+  "description": "expire_stale() at line 318 and ensure_can_push() at line 319 each call self._clock() independently. If an entry's deadline passes between these calls, ensure_can_push() excludes it from active_entries (line 368) but expire_stale() never removed it. When len(active_entries) \u003c capacity but len(self._entries) \u003e= capacity, the code enters preemption path (line 350) and evicts a valid entry, while the truly-expired entry remains queued. Fix: pass a single 'now' timestamp through both methods, or re-run expire_stale() before the preemption path.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:47.284332Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:26:47.284332Z",
+  "labels": [
+    "review"
+  ]
+}

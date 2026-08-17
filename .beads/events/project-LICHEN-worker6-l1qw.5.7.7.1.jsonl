@@ -1,1 +1,2 @@
 {"id":"019f9762-a2f5-781a-9a59-796d7e257d17","issue_id":"project-LICHEN-worker6-l1qw.5.7.7.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:47:31.701532Z"}
+{"id":"01a00e1a-8c9f-7501-a5ce-1fde35e31543","issue_id":"project-LICHEN-worker6-l1qw.5.7.7.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Type 0x01 coords encode/decode implemented in python/src/lichen/announce/coords.py (encode_coords, decode_coords). 71 tests pass.","created_at":"2026-08-17T05:03:36.095329Z"}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-kf8q",
+  "title": "[review] provisioning.py:641: Multiple decrypt_seed cal",
+  "description": "Calling decrypt_seed() multiple times overwrites _provisioned_pubkey. While each call must decrypt successfully with the session key, if two different valid payloads are processed (e.g., BR retry sends different seed), only the last pubkey is used for ACK verification via create_ack(). The node would ACK the second seed while potentially having stored the first identity.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:10:22.179915Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:10:22.179915Z",
+  "labels": [
+    "review"
+  ]
+}

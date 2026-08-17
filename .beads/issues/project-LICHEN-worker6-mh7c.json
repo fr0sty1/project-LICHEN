@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-mh7c",
+  "title": "[review] provisioning.py:451: Existing session overwritten w",
+  "description": "create_br_session() overwrites any existing session for the same peer_host without calling _remove_session(wipe=True) on the old session. This leaks cryptographic state and could leave session keys in memory.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:46.419977Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:26:23.549637Z",
+  "closed_at": "2026-08-15T22:26:23.549637Z",
+  "close_reason": "Fixed: Added _remove_session(wipe=True) before overwriting existing sessions in create_br_session() and create_node_session(). Added tests to verify cryptographic state is wiped when sessions are replaced.",
+  "labels": [
+    "review"
+  ]
+}

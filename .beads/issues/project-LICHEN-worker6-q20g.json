@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-q20g",
+  "title": "[review] messaging.py:144: Auto-generated message IDs alw",
+  "description": "The `candidate_next_id` value is computed but never assigned back to `self._next_id`. After processing a POST, `self._next_id` remains at its initial value of 1. Every subsequent POST without an explicit ID will receive id=1, causing the new message to silently overwrite the previous one in `_sent` dict (line 149). This results in data loss.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:39.50634Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:28:23.756042Z",
+  "closed_at": "2026-08-15T21:28:23.756042Z",
+  "close_reason": "Fixed: Added missing self._next_id = candidate_next_id assignment at line 145 in messaging.py. Auto-generated message IDs now properly increment after each POST.",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-erlg",
+  "title": "Fix DAO transit-to-target pairing in receive_from_peer()",
+  "description": "In rust/lichen-rpl/src/multi_instance.rs line 553-561, the receive_from_peer() function always uses message.transit.first() for ALL targets, ignoring any subsequent transit entries. This means if a DAO backbone message has targets=[A,B,C] with transits=[T1,T2,T3], routes will be stored as [(A,T1),(B,T1),(C,T1)] instead of the correct [(A,T1),(B,T2),(C,T3)]. Fix by pairing by index or documenting the expected 1:N relationship.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:07.847717Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:16:47.745683Z",
+  "closed_at": "2026-08-16T19:16:47.745683Z",
+  "close_reason": "Fixed receive_from_peer() to pair targets with transits by index using enumerate/get(i), added test to verify multi-target/multi-transit pairing"
+}

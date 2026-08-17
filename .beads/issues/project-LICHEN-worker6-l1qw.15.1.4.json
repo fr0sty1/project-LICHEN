@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.1.4",
   "title": "Vectors: Trust Models test vectors",
   "description": "Test vectors for GCP-3: PSK derivation vectors, signature verification vectors for both federation modes.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:52.424696Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:52.424696Z",
+  "updated_at": "2026-08-17T16:20:24.277153Z",
+  "closed_at": "2026-08-17T16:20:24.277153Z",
+  "close_reason": "Already fixed: Test vectors exist at test/vectors/gcp3_trust_models.json with 16 vectors covering PSK derivation (closed_federation_psk_derivation, context_isolation), signature verification for both federation modes (open_federation_* for open, PSK-based context for closed), key derivation, TOFU, key rotation, and binding invariants. Python oracle (46 tests) and Rust (104 tests across gateway+link) pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.1.4",

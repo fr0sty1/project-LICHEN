@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-gv5u.3",
+  "title": "trust.rs: IID comparison uses non-constant-time equality",
+  "description": "Line 102: verify_iid_derivation compares derived_iid == *claimed_iid using standard equality.\n\nWhile IIDs are derived from public keys (not secret), constant-time comparison is defensive practice. An attacker probing for valid IIDs could theoretically extract timing information about which bytes matched.\n\nFix: Use subtle::ConstantTimeEq for the comparison:\n  use subtle::ConstantTimeEq;\n  derived_iid.ct_eq(claimed_iid).into()\n\nNote: subtle is already a dependency of lichen-link.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:58.002849Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:47:58.002849Z",
+  "labels": [
+    "crypto-security",
+    "side-channel",
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-gv5u.3",
+      "depends_on_id": "project-LICHEN-worker6-gv5u",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:58.48214Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

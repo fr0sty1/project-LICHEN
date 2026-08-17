@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-z453",
+  "title": "[review] router.rs:926: GPSR strict less-than excludes",
+  "description": "In gpsr_forward, the comparison 'd \u003c best_dist' means if a neighbor is at exactly the destination coordinates (d=0) and we're at the destination (best_dist=0), the neighbor won't be selected. In the degenerate case where multiple nodes share coordinates, this could prevent forwarding to a valid next hop. Using '\u003c=' would be more robust.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:34:00.450919Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:34:00.450919Z",
+  "labels": [
+    "review"
+  ]
+}

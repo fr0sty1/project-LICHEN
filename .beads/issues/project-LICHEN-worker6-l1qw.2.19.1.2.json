@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.19.1.2",
   "title": "Implement: Python oracle for Regional Channel Plans",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:40:26.197144Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:26.197144Z",
+  "updated_at": "2026-08-17T16:04:38.707997Z",
+  "closed_at": "2026-08-17T16:04:38.707997Z",
+  "close_reason": "Completed Python oracle for Regional Channel Plans (CCP-4). Added: RegulatoryMode enum (DUTY_CYCLE/DWELL_TIME/LBT), RegulatoryRules dataclass, regulatory_rules attribute on all 7 regional plans (EU868, US915, AU915, CN470, AS923, IN865, KR920), validate_plan_id(), ch0_fallback_required(), validate_channel_mask(), is_valid_power() methods. Fixed test formula bug (n_channels vs max(n_channels-1, 2)) and default channel count (3 to 8). All 32 channel_plan tests pass, 562 core tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.19.1.2",

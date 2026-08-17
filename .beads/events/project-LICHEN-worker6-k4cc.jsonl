@@ -1,0 +1,2 @@
+{"id":"01a00bfd-dfae-7eff-9cb0-c9c920c7dfbd","issue_id":"project-LICHEN-worker6-k4cc","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:13:02.382984Z"}
+{"id":"01a00c12-3cac-7825-a553-69c852dfd801","issue_id":"project-LICHEN-worker6-k4cc","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added early guard in select_parent() to return immediately for Root role, preventing state corruption from malicious DIOs. Added regression test.","created_at":"2026-08-16T19:35:16.908535Z"}

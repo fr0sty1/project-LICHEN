@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-aivm",
+  "title": "hybrid.rs: MeshPrefix::contains panics if prefix_len \u003e 128",
+  "description": "Line 135 computes `full_bytes = (prefix_len / 8) as usize`. If prefix_len \u003e 128 (e.g., 200), full_bytes = 25, and line 139's slice `addr[..full_bytes]` panics on a 16-byte array. No validation on prefix_len. Callers of add_mesh_prefix can trigger this panic with invalid input.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:31.834188Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:16:31.834188Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

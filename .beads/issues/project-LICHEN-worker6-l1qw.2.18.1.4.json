@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.18.1.4",
   "title": "Validate: Cross-check Beacon Conflict oracle",
   "description": "Run oracle against existing vectors if any. Compare with RFC examples. Verify all MUST statements covered.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:40:25.256666Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:25.256666Z",
+  "updated_at": "2026-08-17T04:41:12.731018Z",
+  "closed_at": "2026-08-17T04:41:12.731018Z",
+  "close_reason": "Already fixed: Oracle validated against test vectors in test/vectors/ccp_*.json. Tests in tests/link/test_slot_coordination.py verify: signature verification gate, DODAG preference ordering, stratum ordering, RSSI+SNR weighted scoring, IID tiebreak, holdoff transitions, version change handling. All 83 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.18.1.4",

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-cqmi",
+  "title": "[review] messaging.py:240: MessageReceiptsResource._recei",
+  "description": "Unlike MessagesResource._inbox which trims to _max_messages, the _receipts list in MessageReceiptsResource appends receipts indefinitely (line 240) with no upper bound. On long-running nodes with many receipt acknowledgments, this could consume unbounded memory. Consider adding a similar max_receipts limit with oldest-first trimming.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:39.432798Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:01:39.432798Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-18y6",
+  "title": "appendix-ccp12-hopping.md: Inconsistent modulus formula in GNSS fallback chain",
+  "description": "Line 162 defines CCP-12 as '1 + (Hash MOD N)' where N = MAX(NChannels, 3), but line 259 in the GNSS fallback chain uses '1 + (FNV1A32(Seed || SFN) % (N-1))'. These produce different channel ranges (1..N vs 1..N-1). If both describe the same synchronized hopping algorithm, the formulas must match.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:16.351125Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:47:16.351125Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-oua2.1",
+  "title": "Intermediate key material not zeroized in export_context",
+  "description": "File: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/kdf.rs\nLines: 111, 115-116, 120-121, 124-125\n\nThe intermediate heapless::Vec values holding derived key material are not wrapped in Zeroizing:\n- prk_out_vec (line 111)\n- prk_exporter_vec (line 115-116)\n- master_secret_vec (line 120-121)\n- master_salt_vec (line 124-125)\n\nheapless::Vec does not implement ZeroizeOnDrop, so when these go out of scope the key bytes remain in memory.\n\nFix: Either wrap in Zeroizing (if heapless::Vec implements Zeroize), or manually zeroize before drop, or refactor edhoc_kdf to write directly into a Zeroizing buffer.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:20.602306Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:54:50.402048Z",
+  "closed_at": "2026-08-17T15:54:50.402048Z",
+  "close_reason": "Fixed: Added explicit zeroize calls on intermediate heapless::Vec key material (prk_out_vec, prk_exporter_vec, master_secret_vec, master_salt_vec) in export_context(). Since heapless::Vec does not implement ZeroizeOnDrop, we now call .as_mut_slice().zeroize() after copying to Zeroizing arrays. Added SECURITY comment documenting the requirement.",
+  "labels": [
+    "crypto-security",
+    "key-lifecycle",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-oua2.1",
+      "depends_on_id": "project-LICHEN-worker6-oua2",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:20.968032Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

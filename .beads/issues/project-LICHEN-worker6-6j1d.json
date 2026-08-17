@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-6j1d",
+  "title": "[review] messaging.py:145: Sent messages use module const",
+  "description": "Sent message trimming uses `_MESSAGES_MAX` (module constant 100) instead of `self._max_messages` (instance parameter). Contrast with inbox trimming at line 86 which correctly uses `self._max_messages`. If MessagesResource(max_messages=10) is constructed, inbox caps at 10 but sent caps at 100, violating caller expectations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:27.963185Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:27.963185Z",
+  "labels": [
+    "review"
+  ]
+}

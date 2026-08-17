@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-xw4e",
+  "title": "spec/appendix-ccp12-hopping.md: Missing validation of announce_rx_channel allows out-of-bounds channel selection",
+  "description": "The Python priority chain code returns announce_rx_channel directly without validating it is within valid range (0 to n_channels-1). A malicious peer can advertise an arbitrary channel number in their Announce message, causing receivers to attempt tuning to non-existent channels. This could cause undefined behavior in radio hardware, denial of service, or array index out-of-bounds crashes in implementations that use channel as an array index.\n\nFix suggestion: Add validation before returning: if 0 \u003c= announce_rx_channel \u003c n_channels: return announce_rx_channel",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:13:02.1851Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:15:48.181511Z",
+  "closed_at": "2026-08-17T04:15:48.181511Z",
+  "close_reason": "Fixed: Added bounds validation (0 \u003c= announce_rx_channel \u003c n_channels) before returning announce-driven channel. Invalid channels now fall through to the next priority level with a warning log. Added test coverage for negative, equal-to-n_channels, and large invalid channel values.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

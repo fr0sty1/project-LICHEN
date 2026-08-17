@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-otbp",
+  "title": "[review] 03-adaptation.md: Confusing version 0 description",
+  "description": "Version 0 is described as 'Reserved (uncompressed fallback)' which creates confusion with Rule ID 255, the actual uncompressed fallback mechanism defined at line 225. The relationship between version 0 reservation and Rule 255 functionality is unclear.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:59.231486Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:59.231486Z",
+  "labels": [
+    "review"
+  ]
+}

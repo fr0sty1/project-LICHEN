@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-101z",
+  "title": "[review] provisioning.py:310: Session state disclosure ",
+  "description": "The GET endpoint returns session state (idle vs active state name) and role for any peer that can reach the endpoint. An attacker could probe to determine when provisioning is in progress for specific peers, enabling timing attacks or network topology reconnaissance. Consider restricting GET to authenticated peers or removing state disclosure.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T03:56:29.282836Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:56:29.282836Z",
+  "labels": [
+    "review"
+  ]
+}

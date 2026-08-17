@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-l6xj",
+  "title": "[review] provisioning.py:591: provision_node does not w",
+  "description": "The provision_node method docstring claims it 'Verifies the ACK' (step 4), but after sending the encrypted seed via await send_message(encrypted.encode()), it immediately returns seed without calling await receive_message() to get the ACK or br_session.decrypt_ack() to verify it. This breaks the documented security contract - the BR believes provisioning succeeded without confirmation the node received and derived the correct identity.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:02:08.535617Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:04:25.522994Z",
+  "closed_at": "2026-08-16T04:04:25.522994Z",
+  "close_reason": "Fixed: provision_node now waits for and verifies the ACK from the node. Added await receive_message() to get the ACK, and br_session.decrypt_ack() to verify the node derived the correct pubkey per spec 8.7. Updated test to simulate the node ACK response.",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-3t43",
+  "title": "[review] routing.py:263: replace_routes() silently",
+  "description": "The method calls _add_target_route() in a loop but ignores its boolean return value. When the routing table reaches MAX_ROUTES (256) capacity, _add_target_route() returns False and subsequent routes are silently dropped without error or warning. Callers have no indication that their route replacement was incomplete.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:05:40.965773Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:05:40.965773Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.13.3",
   "title": "Vectors: Generate test vectors for B.2.5",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:37:45.300816Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:45.300816Z",
+  "updated_at": "2026-08-17T16:14:19.79784Z",
+  "closed_at": "2026-08-17T16:14:19.79784Z",
+  "close_reason": "Already implemented: test_tx_queue.py and test_forwarding_buffer.py already provide comprehensive test coverage for B.2.5 No Silent Drops, including backpressure tests and explicit 'No Silent Drops' compliance tests (lines 106-134 in test_tx_queue.py).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.13.3",

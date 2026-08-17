@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-jazn",
+  "title": "hybrid.rs: Yggdrasil /7 prefix check only matches /8",
+  "description": "Line 246 checks `addr[0] == 0x02` but the spec (04-network.md) defines 0200::/7 which includes both 0x02 and 0x03 first bytes. The Python impl uses `(first_byte \u0026 0xFE == 0x02)` and gateway.rs uses `dst[0] \u0026 0xfe == 0x02`. Addresses starting with 0x03 would be misclassified as External instead of MeshLocal, causing incorrect routing via border router instead of mesh routing. Fix: change to `(addr[0] \u0026 0xFE) == 0x02`.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:36:32.575666Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:12:24.358634Z",
+  "closed_at": "2026-08-17T15:12:24.358634Z",
+  "close_reason": "Fixed: Changed addr[0] == 0x02 to addr[0] \u0026 0xfe == 0x02 in hybrid.rs line 246 to correctly match 0200::/7 prefix (covers both 0x02xx and 0x03xx). This aligns with gateway.rs and Python implementation.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

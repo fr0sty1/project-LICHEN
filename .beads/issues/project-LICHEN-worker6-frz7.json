@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-frz7",
+  "title": "spec/appendix-ccp12-hopping.md: No guard for NChannels \u003c= 1 causes selection of non-existent channels",
+  "description": "When NChannels = 0 or 1, the formula N = MAX(NChannels - 1, 2) yields N=2, then returns 1 + (Hash MOD 2) which selects channels 1 or 2. These channels do not exist when only CH0 is available. Same issue exists at line 159 for synchronized hopping.\n\nFix suggestion: Add early return for NChannels \u003c= 1: IF NChannels \u003c= 1 THEN RETURN 0",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:13:12.143692Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:13:12.143692Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

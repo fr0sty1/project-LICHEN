@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-9rso",
+  "title": "[review] provisioning.py:539: expiry_handle.cancel() assumes",
+  "description": "expiry_handle is typed as Any and assumed to have a cancel() method. If set to an incompatible type, this will raise AttributeError. The field should be typed more specifically or the cancel() call should be guarded.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:53.89497Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:06:53.89497Z",
+  "labels": [
+    "review"
+  ]
+}

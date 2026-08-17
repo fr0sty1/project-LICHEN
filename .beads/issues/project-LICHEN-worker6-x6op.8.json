@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-x6op.8",
+  "title": "Partial encryption state on AEAD failure",
+  "description": "File: oscore/src/edhoc/initiator.rs:439-447\n\nIssue: The code clones `data_3 = ciphertext_3.0.clone()` before encrypting in place. If `encrypt_in_place_detached` fails at line 445, `ciphertext_3` may be in a partially modified state. While this is immediately followed by `poison()` on error, the partially-encrypted data could theoretically leak through the error path before zeroization.\n\nCurrent mitigation: The error path calls `poison()` which zeroizes state, and the function returns before exposing `ciphertext_3`.\n\nSuggested improvement: Encrypt into a separate buffer and only commit on success:\n```rust\nlet mut aead_input = ciphertext_3.0.clone();\nlet tag = cipher.encrypt_in_place_detached(...)\n    .map_err(|_| EdhocError::InvalidState)?;\nciphertext_3.0 = aead_input;\nciphertext_3.extend_err(\u0026tag)?;\n```\n\nPriority 2 because current code is safe but could be cleaner.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:42:13.905411Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:42:13.905411Z",
+  "labels": [
+    "correctness",
+    "resource-cleanup",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x6op.8",
+      "depends_on_id": "project-LICHEN-worker6-x6op",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:42:14.277216Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

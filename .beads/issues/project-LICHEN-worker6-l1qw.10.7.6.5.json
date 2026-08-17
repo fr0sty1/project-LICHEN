@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.7.6.5",
   "title": "Vectors: SOS network behavior test cases",
   "description": "Test vectors for priority routing and beacon boost",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:30.389691Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:30.389691Z",
+  "updated_at": "2026-08-17T04:05:49.188181Z",
+  "closed_at": "2026-08-17T04:05:49.188181Z",
+  "close_reason": "Already covered / Not applicable: Priority routing is covered by tx_queue_priority.json (SOS P0 priority, preemption, strict ordering). Beacon boost (30s interval) is a timer-based behavior not suitable for test vectors - test vectors in this project are byte-level codec/format conformance tests. Timer behaviors should be tested in integration/unit tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.7.6.5",

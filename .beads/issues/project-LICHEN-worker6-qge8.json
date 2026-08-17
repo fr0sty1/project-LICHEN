@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qge8",
+  "title": "Fix VerifiedPayload::new visibility documentation mismatch",
+  "description": "In link_layer.rs line 42, the doc comment says \"only callable within this module\" but visibility is pub(crate). Either update comment to reflect crate-wide visibility, or narrow visibility to pub(super) if appropriate.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:11.769285Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:28:11.769285Z"
+}

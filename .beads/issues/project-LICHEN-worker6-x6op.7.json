@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-x6op.7",
+  "title": "PRK zero check uses non-constant-time comparison",
+  "description": "File: oscore/src/edhoc/initiator.rs:470\n\nIssue: `self.state.prk_4e3m.iter().fold(0u8, |acc, \u0026b| acc | b) == 0` checks if the PRK is all-zeros as a handshake-completion guard. While the fold itself is constant-time, the final `== 0` comparison and the overall branch may be optimized by the compiler.\n\nContext: This is not comparing secrets against each other, so it's not a classic timing attack vector. The PRK being zero would indicate either:\n1. Handshake not completed (legitimate case)\n2. Zero shared secret (should have been caught earlier at line 297)\n\nImpact: Low risk since this is internal state validation, not secret comparison. However, for defense-in-depth in a crypto library, constant-time operations are preferred.\n\nSuggested fix: Use subtle crate for consistency:\n```rust\nuse subtle::ConstantTimeEq;\nif !self.state.completed || self.state.prk_4e3m.ct_eq(\u0026[0u8; 32]).unwrap_u8() == 1 {\n    return Err(OscoreError::NoContext);\n}\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:41:59.254372Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:41:59.254372Z",
+  "labels": [
+    "crypto-security",
+    "side-channel",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x6op.7",
+      "depends_on_id": "project-LICHEN-worker6-x6op",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:41:59.612989Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

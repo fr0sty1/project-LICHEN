@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ojz9",
+  "title": "receive_rrep ignores signature field - auth bypass",
+  "description": "Line 300-314: receive_rrep() validates address/seq fields but ignores signature. Attacker sends RREP with matching fields but no/invalid signature, receive_rrep returns Ok, caller installs attacker-controlled route. Fix: enforce signature presence or add verified flag from link layer.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:12:54.479623Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:28:52.005196Z",
+  "closed_at": "2026-08-16T19:28:52.005196Z",
+  "close_reason": "Fixed: Added MissingSignature error and signature presence check in receive_rrep() to prevent unauthenticated route injection attacks. Added test for rejection of unsigned RREPs."
+}

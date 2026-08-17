@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-2hss.1",
+  "title": "receive_rrep ignores signature field - auth bypass",
+  "description": "File: rust/lichen-core/src/loadng.rs:300-314\n\nThe receive_rrep() method validates that RREP originator/destination/seq_num match the discovery, but completely ignores the signature field. An attacker can spoof route replies without a valid signature.\n\nFailure scenario: Attacker sends RREP with matching addresses/seq but signature=None (or invalid signature). receive_rrep returns Ok, caller installs the route, traffic routed through attacker.\n\nFix: Either (a) require signature.is_some() and document that link layer verified it, or (b) pass a verified:bool flag from the link layer that this function checks, or (c) add SECURITY comment documenting that signature validation is the caller's responsibility after receive_rrep returns.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:03:20.29442Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:43:48.646615Z",
+  "closed_at": "2026-08-16T20:43:48.646615Z",
+  "close_reason": "Already fixed: receive_rrep() already checks signature.is_none() and returns LoadngError::MissingSignature (lines 447-451). Tests at lines 1102, 1466, 1495 verify the behavior.",
+  "labels": [
+    "security",
+    "auth-bypass",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2hss.1",
+      "depends_on_id": "project-LICHEN-worker6-2hss",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:03:20.678789Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

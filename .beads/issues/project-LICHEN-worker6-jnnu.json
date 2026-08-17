@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-jnnu",
+  "title": "[review] handoff.rs:257: Negative CBOR integers ca",
+  "description": "replay_index is decoded via `i128::from(*i) as u64`. A negative CBOR integer (e.g., -1) produces a very large u64 (u64::MAX), corrupting the replay window state. An attacker controlling the response could set replay_index to MAX, potentially enabling replay attacks by invalidating the window.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:47:48.272463Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:47:48.272463Z",
+  "labels": [
+    "review"
+  ]
+}

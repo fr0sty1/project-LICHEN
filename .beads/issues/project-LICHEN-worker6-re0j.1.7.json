@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-re0j.1.7",
   "title": "Duty cycle enforcement (EU868 compliance)",
   "description": "Test EU868 1% duty cycle enforcement with configurable per-node limits. Verify duty cycle tracker correctly blocks transmissions when limit exceeded. File: python/src/lichen/sim/duty_cycle.py",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:18:59.633681Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:18:59.633681Z",
+  "updated_at": "2026-08-17T16:34:36.021629Z",
+  "closed_at": "2026-08-17T16:34:36.021629Z",
+  "close_reason": "Already implemented: DutyCycleTracker in lora_medium.duty_cycle provides EU868 1% enforcement with configurable limits (limit_percent, window_seconds) and transmission blocking (can_transmit). 30 tests pass in tests/sim/test_duty_cycle.py.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-re0j.1.7",

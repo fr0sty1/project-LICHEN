@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-bxdq",
+  "title": "[review] 03-adaptation.md: Rule 7 compressed size inconsistent",
+  "description": "States 'Compressed size: 18 bytes' but appendix-schc.md line 19 shows 'MQTT-SN | ~6 bytes'. The calculation in the main doc (Rule ID + Hop Limit + 2x IIDs = 18 bytes) is mathematically correct for the table shown, but disagrees with the appendix.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:43.531446Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:43.531446Z",
+  "labels": [
+    "review"
+  ]
+}

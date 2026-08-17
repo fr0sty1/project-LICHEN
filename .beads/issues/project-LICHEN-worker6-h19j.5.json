@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-h19j.5",
+  "title": "Redundant root check in select_parent after early return",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs:463\n\n## Issue\n```rust\npub fn select_parent(\u0026mut self) {\n    // SECURITY: Root nodes never select a parent - they ARE the DODAG root.\n    // Early exit prevents state corruption from malicious DIOs with low ranks.\n    if self.role == DodagRole::Root {\n        return;  // line 449-451\n    }\n    // ... lines 452-461 ...\n    let Some(best) = best else {\n        if self.role != DodagRole::Root {  // line 463 - redundant\n            // ...\n        }\n        return;\n    };\n}\n```\n\nThe check `if self.role != DodagRole::Root` at line 463 is dead code because we already returned at line 449-451 if role was Root.\n\n## Impact\nNo correctness issue. Minor readability concern - the redundant check suggests the early return might not be comprehensive, but it is.\n\n## Suggested fix\nRemove the redundant check:\n```rust\nlet Some(best) = best else {\n    let r = self.set_role(DodagRole::Unjoined);\n    assert!(r.is_ok(), \"joined DODAG can return to unjoined\");\n    self.preferred_parent = None;\n    self.rank = INFINITE_RANK;\n    return;\n};\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:27:20.733727Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:27:20.733727Z",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-h19j.5",
+      "depends_on_id": "project-LICHEN-worker6-h19j",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:27:21.050634Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

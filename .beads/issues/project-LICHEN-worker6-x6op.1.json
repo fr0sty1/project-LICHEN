@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-x6op.1",
+  "title": "Nonce slice copy panics if KDF returns wrong length",
+  "description": "External crate (/crates/oscore/) - out of scope for project-LICHEN convergence",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:41:27.348659Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:47:00.366346Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x6op.1",
+      "depends_on_id": "project-LICHEN-worker6-x6op",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:41:27.756763Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

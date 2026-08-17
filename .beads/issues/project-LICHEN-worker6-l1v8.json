@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-l1v8",
+  "title": "hybrid.rs: Pending eviction breaks on timestamp wraparound",
+  "description": "Line 393: max_by_key compares raw queued_at_ms values with Reverse(). After u32 ms wraps (~49.7 days), a packet queued at 0xFFFFFF00 appears newer than one at 0x00000100, causing wrong packet eviction. Should use wrapping arithmetic for comparison.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:36:36.963757Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:36:36.963757Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

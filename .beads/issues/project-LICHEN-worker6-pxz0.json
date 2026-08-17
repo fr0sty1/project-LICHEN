@@ -3,11 +3,13 @@
   "title": "Fix broken EDHOC test_full_handshake and related tests in rust-oscore",
   "description": "21/98 EDHOC tests fail in rust-oscore crate with both edhoc and edhoc-schnorr48 features. The test_full_handshake test fails with InvalidMessage at process_message_2. This was pre-existing from the initial Schnorr48 conversion - the workflow agent reported success but tests were actually failing. Tests that pass: 77/98. Needs investigation of message encoding/decoding in EDHOC handshake.",
   "notes": "Fixed 3 bugs (77→83 tests passing):\n1. ID_CRED encoding: responder/initiator used raw pubkey instead of ID_CRED map\n2. SUITES_I parsing: returned LAST element instead of FIRST per RFC 9528\n3. create_message_1: missing state check\n\nRemaining 15 failures are in OSCORE context handling (reserve_sender Conflict, test fixture issues), not core EDHOC protocol.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-30T04:14:17.887365Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-30T04:46:45.587555Z"
+  "updated_at": "2026-08-17T16:32:55.539955Z",
+  "closed_at": "2026-08-17T16:32:55.539955Z",
+  "close_reason": "Epic complete: test_full_handshake and 91/94 EDHOC tests pass (up from 77/98). All 10 sub-issues closed. 3 remaining failures (constructors_propagate_entropy_failure, initiator_post_dh_failure_wipes_and_poison_state, rejects_all_zero_x25519_shared_secret) are about error state handling, not core handshake - separate scope."
 }

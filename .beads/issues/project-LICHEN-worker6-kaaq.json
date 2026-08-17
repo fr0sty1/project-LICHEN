@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-kaaq",
+  "title": "Fix arithmetic underflow in Fragment::from_bytes for malformed ALL_1 inputs",
+  "description": "Fragment::from_bytes panics in debug mode (or returns misleading error in release) when given a short message (5-6 bytes) with ALL_1 FCN bits set. Line 184 computes `payload_len = content_len - content_offset` before validating that content_len is large enough. Move the validation before the subtraction, or use checked_sub.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:23:35.188349Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:37:54.894662Z",
+  "closed_at": "2026-08-16T19:37:54.894662Z",
+  "close_reason": "Fixed: Moved ALL_1 content_len validation before payload_len subtraction to prevent arithmetic underflow. Added regression test for short ALL_1 inputs."
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-82gi",
+  "title": "Pending propagation queue has no size limit",
+  "description": "Line 590: queue_for_propagation has no MAX_PENDING limit unlike other collections. Potential memory exhaustion DoS.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:11.725591Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:52:21.342087Z",
+  "closed_at": "2026-08-16T19:52:21.342087Z",
+  "close_reason": "Fixed: Added MAX_PENDING_PROPAGATIONS (128) limit to queue_for_propagation() to prevent memory exhaustion DoS. Returns bool to indicate if message was queued or rejected due to limit."
+}

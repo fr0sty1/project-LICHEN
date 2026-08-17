@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-q9gz",
+  "title": "emergency.py: Missing type validation on ts/timeout_s enables crash-based DoS",
+  "description": "Lines 217-218: POST accepts ts and timeout_s from user input without type validation. Sending {\"id\":\"x\", \"ts\":\"bad\"} stores started=\"bad\". Subsequent _prune_expired() calls crash with TypeError on line 167 (int - str), permanently breaking the resource with 500 errors.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:52:04.974575Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:52:04.974575Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

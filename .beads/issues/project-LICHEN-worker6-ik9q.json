@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ik9q",
+  "title": "[review] provisioning.py:142: ProvisioningSession.state",
+  "description": "The state field in ProvisioningSession dataclass duplicates state already tracked in session.session (BRProvisioningSession or NodeProvisioningSession). It is initialized to IDLE but never updated, causing the bug at line 315. Either remove this field and always use session.session.state, or add code to keep it in sync.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T03:56:28.951702Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:56:28.951702Z",
+  "labels": [
+    "review"
+  ]
+}

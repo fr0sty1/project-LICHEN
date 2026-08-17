@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-365b",
+  "title": "[review] tx_queue.py:403: pop() signals reservation succ",
+  "description": "When pop() removes an entry, it signals entry.reservation.set_result(True) at line 405 but never increments stats.packets_transmitted or updates latency stats (avg_latency_ms, max_latency_ms). In contrast, complete() does both. If code uses push(return_reservation=True) followed by pop(), the awaiting caller receives success but packets_transmitted is not incremented, creating inconsistent statistics.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:32.387818Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:07:02.939163Z",
+  "closed_at": "2026-08-15T21:07:02.939163Z",
+  "close_reason": "Fixed: pop() now calls _remove_first() to update packets_transmitted, max_latency_ms, and avg_latency_ms consistently with reservation success signal. Updated test to verify new behavior.",
+  "labels": [
+    "review"
+  ]
+}

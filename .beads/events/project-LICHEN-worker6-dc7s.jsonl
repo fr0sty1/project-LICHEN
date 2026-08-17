@@ -1,0 +1,2 @@
+{"id":"01a00c1e-dbbf-792b-b4c0-25138b7d8ea8","issue_id":"project-LICHEN-worker6-dc7s","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:49:04.063602Z"}
+{"id":"01a00c35-7d4e-78cd-8d60-b9125c6aed75","issue_id":"project-LICHEN-worker6-dc7s","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Changed Rerr.error_code from u8 to RerrCode enum for type safety","created_at":"2026-08-16T20:13:47.214578Z"}

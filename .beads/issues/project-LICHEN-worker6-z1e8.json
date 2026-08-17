@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-z1e8",
+  "title": "hybrid.rs: Timestamp comparison in eviction ignores wraparound",
+  "description": "Line 397-398: queue_pending() uses std::cmp::Reverse(p.queued_at_ms) for ordering, which compares raw timestamps without wrapping arithmetic. When queued_at_ms values span the u32::MAX boundary (e.g., one packet at u32::MAX-100, another at 200 after wrap), the comparison incorrectly identifies the newer packet as older. This could evict the wrong packet during queue overflow. However, packets are unlikely to stay queued for ~49.7 days (u32::MAX ms) before expiration.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:24:35.328149Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:24:35.328149Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.5.2",
   "title": "RREQ_RETRIES (3)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:04.22539Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:04.22539Z",
+  "updated_at": "2026-08-17T05:37:28.807671Z",
+  "closed_at": "2026-08-17T05:37:28.807671Z",
+  "close_reason": "Already correct: LICHEN_LOADNG_RREQ_RETRIES=3U matches spec B2.1 requirement exactly",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.5.2",

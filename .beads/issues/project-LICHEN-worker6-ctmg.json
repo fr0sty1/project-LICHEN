@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ctmg",
+  "title": "Fuzzer: improve semantic clarity of TILE_SIZE loop bound",
+  "description": "In fuzz_fragment.rs line 30, .take(TILE_SIZE) uses a bytes-per-tile constant as a message count limit. Replace with WINDOW_SIZE * 2 or a dedicated constant for clarity.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:35.858218Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:05:35.858218Z"
+}

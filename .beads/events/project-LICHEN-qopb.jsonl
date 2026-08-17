@@ -1,0 +1,1 @@
+{"id":"01a00bf0-5eb7-7ad5-bcb6-f16309fdad6c","issue_id":"project-LICHEN-qopb","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: headers.rs and context.rs implementations are complete. Fixed build issue in lichen-core/loadng.rs (missing signature field in Rreq constructor). All 42 tests pass.","created_at":"2026-08-16T18:58:17.399711Z"}

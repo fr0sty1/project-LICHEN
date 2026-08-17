@@ -1,0 +1,2 @@
+{"id":"01a00c10-5734-7dea-9144-c184a2b857c7","issue_id":"project-LICHEN-worker6-svfd","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:33:12.628913Z"}
+{"id":"01a00c20-e034-7c40-a208-5c58b3a4be57","issue_id":"project-LICHEN-worker6-svfd","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added explicit NaN rejection to timestamp freshness check (age.is_nan()), plus comprehensive test covering both NaN timestamp and NaN current_time","created_at":"2026-08-16T19:51:16.276804Z"}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-ugzm",
+  "title": "appendix-ccp12-hopping.md: Missing floor guard allows division by zero",
+  "description": "Line 127 explains implementations use N = NChannels - 1 but omits the floor guard. If NChannels is 0 or 1, this causes division by zero. The Python example at line 306 shows the correct formula max(n_channels - 1, 1), but this guard is not reflected in the normative note. Implementations following the note exactly will crash with NChannels \u003c= 1.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:21.368303Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:01:29.174031Z",
+  "closed_at": "2026-08-17T04:01:29.174031Z",
+  "close_reason": "Fixed: Added floor guard max(NChannels - 1, 1) to normative note at line 127, making it consistent with implementation example at line 306",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

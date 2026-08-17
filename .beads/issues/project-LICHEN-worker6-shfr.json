@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-shfr",
+  "title": "[review] messaging.py:151: Duplicate explicit message IDs",
+  "description": "When a POST provides an explicit 'id' that already exists, line 150 overwrites the message in _sent, but lines 151-152 don't add to _sent_order since msg_id is already present. This allows silent message replacement without any indication to the caller. If this is intended idempotency, it should be documented; if not, duplicate IDs should return CONFLICT.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:47.454246Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:47.454246Z",
+  "labels": [
+    "review"
+  ]
+}

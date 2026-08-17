@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-n9ik.3",
+  "title": "Misleading SECURITY comment claims root cannot be demoted",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs lines 405-409\n\n## Issue\nComment says:\n```rust\n// SECURITY: Role transitions are critical state machine invariants.\n// Using unconditional assert! ensures violations are caught in all builds.\nlet r = self.set_role(DodagRole::Unjoined);\nassert!(r.is_ok(), \"DODAG version adoption cannot demote a root\");\n```\n\nBut the assertion message is FALSE. Looking at `can_transition_to()` (line 138):\n```rust\n(Self::Root, Self::Unjoined)  // Returns true!\n```\n\nThe Root→Unjoined transition IS allowed, so the assert never triggers.\n\n## Why this matters\n- Comment implies protection that does not exist\n- Developers may rely on this \"invariant\" that is not enforced\n- The actual vulnerability (root dethronement) persists\n\n## Suggested fix\nEither:\n1. Change state machine to disallow Root→Unjoined (breaking change, may affect `demote()`)\n2. Or: Fix the comment to accurately describe behavior and add explicit root check in `adopt_version()`",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:41:30.475458Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:06:19.685313Z",
+  "closed_at": "2026-08-16T21:06:19.685313Z",
+  "close_reason": "Fixed: Added explicit Root role check in adopt_version() with accurate comment explaining the defense-in-depth relationship with process_dio()",
+  "labels": [
+    "correctness",
+    "security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n9ik.3",
+      "depends_on_id": "project-LICHEN-worker6-n9ik",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:41:30.816355Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

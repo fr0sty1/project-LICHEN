@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ohhy",
+  "title": "[review] slot_claim.py:100: signature_valid field is settable via constructor",
+  "description": "The signature_valid dataclass field defaults to False but can be set to True in the SlotClaim constructor. Code in resolve_slot_conflict (lines 288-295) trusts this cached field and skips signature verification if signature_valid=True. An attacker who controls claim construction (not via from_cbor) could set signature_valid=True to bypass verification. Fix: add init=False to the field() call to prevent constructor setting, or always verify in resolve_slot_conflict regardless of cached state.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:38:18.007785Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:41:06.484031Z",
+  "closed_at": "2026-08-16T04:41:06.484031Z",
+  "close_reason": "Fixed: added init=False to signature_valid field, preventing constructor bypass of signature verification. Updated tests to use proper verification path via pubkeys.",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-yctx",
+  "title": "test_channel.py: Wraparound test does not verify wrapping semantics",
+  "description": "Line 101: test_sfn_wrapping claims to test that 0x100000000 'Wraps to 0' but the assertion only checks the output is in valid range [1,63]. Python integers do not automatically wrap at 32-bits. To actually verify wrapping, the test should assert ch2 == synchronized_hop_channel(0, seed=0, n_channels=64). As written, the test passes whether or not the implementation performs 32-bit wrapping.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:38:58.733625Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:38:58.733625Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

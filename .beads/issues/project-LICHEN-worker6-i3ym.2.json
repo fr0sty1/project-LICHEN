@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-i3ym.2",
+  "title": "Ack::from_bytes lacks documentation about bitmap validation requirement",
+  "description": "**File:** rust/lichen-schc/src/fragment.rs\n**Line:** 296\n\n**Issue:** The public `Ack::from_bytes()` function parses ACKs without validating the bitmap against assigned fragments. While `Ack::from_bytes_for()` provides this validation, the documentation does not warn callers about the security requirement.\n\nA malicious ACK could claim to have received fragments that were never sent, potentially causing the sender to skip retransmissions.\n\n**What goes wrong:** If a caller uses `from_bytes()` without subsequent validation against the assigned bitmap, they may act on a spoofed ACK with bits set for non-existent fragments.\n\n**Mitigating factors:** \n- The FragmentSender.handle_ack_bytes() correctly uses from_bytes_for() with assigned bitmap validation (line 558)\n- The UnassignedBitmapBit error exists for this purpose\n\n**Suggested fix:** Add documentation to from_bytes():\n```rust\n/// Parse an ACK from wire format.\n///\n/// # Security\n///\n/// This function parses any well-formed ACK, including those with bitmap\n/// bits set for fragments that may not have been assigned. Callers MUST\n/// validate the bitmap against the assigned fragment mask using\n/// [`from_bytes_for`] or equivalent logic before acting on the ACK.\npub fn from_bytes(data: \u0026[u8]) -\u003e Result\u003cSelf, FragmentError\u003e {\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:19:53.943925Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:19:53.943925Z",
+  "labels": [
+    "security",
+    "documentation",
+    "api-contract",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-i3ym.2",
+      "depends_on_id": "project-LICHEN-worker6-i3ym",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:19:54.282756Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

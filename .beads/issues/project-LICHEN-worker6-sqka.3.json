@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-sqka.3",
+  "title": "No TTL/expiration for received routes and peers",
+  "description": "**File:** rust/lichen-rpl/src/multi_instance.rs\n**Lines:** 270 (peers), 536 (received_routes)\n\n**Issue:** The `peers` HashMap in MultiRootCoordinator and `received_routes` HashMap in DaoBackboneBridge have MAX_ limits but no expiration/TTL mechanism. Once a peer or route is added, it persists until explicitly removed or the struct is dropped.\n\n**Scenario:** A gateway that goes offline remains in `peers` indefinitely, consuming one of the 64 slots. Over time in a mobile/dynamic network, stale entries could fill the capacity.\n\n**Impact:** \n- Stale peers still considered in time master election\n- Memory occupied by routes from disconnected gateways\n- No automatic recovery without explicit `remove_peer()` or `clear_received_routes()` calls\n\n**Suggestion:** Either:\n1. Add `last_seen: Instant` to GatewayInfo and provide `prune_stale_peers(max_age: Duration)` method\n2. Document that callers are responsible for stale entry management\n3. Use a bounded LRU cache instead of HashMap",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:13.243971Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:13.243971Z",
+  "labels": [
+    "resource-cleanup",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqka.3",
+      "depends_on_id": "project-LICHEN-worker6-sqka",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:13.565619Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

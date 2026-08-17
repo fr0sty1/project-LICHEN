@@ -1,0 +1,2 @@
+{"id":"01a00c6f-5e3d-7c92-b225-8157aecb82cb","issue_id":"project-LICHEN-worker6-7z8f","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T21:17:00.349824Z"}
+{"id":"01a00dce-c8b0-73a9-bc4b-26be4ed0c25b","issue_id":"project-LICHEN-worker6-7z8f","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Root DIO rejection is implemented at dodag.rs lines 344-346 with SECURITY comment. Test root_ignores_newer_version_dio() validates the exact scenario.","created_at":"2026-08-17T03:40:50.736241Z"}

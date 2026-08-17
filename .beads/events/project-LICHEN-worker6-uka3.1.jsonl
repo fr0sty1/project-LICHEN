@@ -1,0 +1,5 @@
+{"id":"01a00c3a-5f16-7e6b-ac05-831c0beba2d1","issue_id":"project-LICHEN-worker6-uka3.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T20:19:07.158946Z"}
+{"id":"01a00c3a-5f20-7b6d-9708-fb5c5305fb60","issue_id":"project-LICHEN-worker6-uka3.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-16T20:19:07.16875Z"}
+{"id":"01a00c3a-5f26-785c-941d-9073df4fd30d","issue_id":"project-LICHEN-worker6-uka3.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: edge-case","created_at":"2026-08-16T20:19:07.174549Z"}
+{"id":"01a00c3a-5f2c-764d-9e9e-d7d54c8d90b7","issue_id":"project-LICHEN-worker6-uka3.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T20:19:07.180414Z"}
+{"id":"01a00c63-c7b7-78e9-92d5-a93dcb75f41f","issue_id":"project-LICHEN-worker6-uka3.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: moved state transition check before pinned.insert() to prevent state corruption on validation failure","created_at":"2026-08-16T21:04:20.919584Z"}

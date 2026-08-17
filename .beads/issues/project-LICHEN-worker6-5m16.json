@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-5m16",
+  "title": "tx_queue.c: tx_queue_count includes expired packets despite documentation",
+  "description": "Lines 385-401: The header claims this returns 'the number of valid (non-expired) packets' but the implementation only checks the 'valid' flag, not whether deadlines have passed. Expired packets are counted until a push/pop cleans them up. API contract violation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:28.643157Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:28.643157Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

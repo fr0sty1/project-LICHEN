@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.7.3",
   "title": "Vectors: Generate test vectors for B.2.3",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:37:48.911618Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:48.911618Z",
+  "updated_at": "2026-08-17T16:15:50.295735Z",
+  "closed_at": "2026-08-17T16:15:50.295735Z",
+  "close_reason": "Already fixed: Test vectors exist in python/tests/link/test_tx_queue.py with 83 tests covering priority ordering, deadline expiry, preemption, backpressure, statistics, and spec compliance.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.7.3",

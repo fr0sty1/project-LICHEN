@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-yae1",
+  "title": "Add defensive frame_length bounds check in receive_frame",
+  "description": "In link_layer.rs line 639, `frame_length as u8` relies on frame parsing to enforce MAX_FRAME_BODY \u003c= 254. Add explicit assertion before cast to make safety invariant visible at point of use and prevent regression if frame.rs changes. Example: `debug_assert!(frame_length \u003c= u8::MAX as usize);` or return FrameTooLarge error.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:12.690924Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:28:12.690924Z"
+}

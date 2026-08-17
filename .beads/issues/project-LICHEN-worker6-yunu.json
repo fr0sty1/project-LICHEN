@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-yunu",
+  "title": "fix: validate payload_length in parse() functions before slicing",
+  "description": "The parse() functions in headers.rs trust the IPv6 payload_length field without validating it meets minimum size requirements. A crafted packet with raw.len() \u003e= min_len but small payload_length causes index-out-of-bounds panic when slicing. The matches() functions have this validation (lines 357, 564, 723, 880) but parse() functions (lines 373, 584, 743, 904) do not. Add: if payload_length \u003c REQUIRED_MIN { return Err(TooShort{...}); } to each parse function.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:39.497854Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:44:54.269364Z",
+  "closed_at": "2026-08-16T20:44:54.269364Z",
+  "close_reason": "Fixed: Added payload_length minimum validation to all 4 parse() functions in headers.rs before slicing"
+}

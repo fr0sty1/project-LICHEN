@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-worker6-gv5u",
+  "title": "Review: trust.rs security 2026-08-16",
+  "description": "Review confidence: 15% chance of missed bug.\nLeast confident areas: schnorr48::verify internals (not reviewed), callers of these functions (out of scope).\nWould raise confidence if: reviewed schnorr48 crate implementation, reviewed all callers of verify_key_rotation and verify_slot_claim.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:34.816486Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:48:49.480385Z",
+  "started_at": "2026-08-16T18:47:40.679845Z",
+  "lease_expires_at": "2026-08-16T18:52:40.679845Z",
+  "heartbeat_at": "2026-08-16T18:47:40.679845Z",
+  "labels": [
+    "review",
+    "security"
+  ]
+}

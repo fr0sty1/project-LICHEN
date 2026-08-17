@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-fjki.3",
+  "title": "Flags field parsed but never validated",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 124, 396, 456\n\nIssue: All three message types (Rreq, Rrep, Rerr) have a flags field that is parsed from input and serialized without validation. If the LOADng spec defines specific valid flag bits, invalid combinations should be rejected or logged.\n\nTrigger: Receiving a message with undefined flag bits set - currently silently accepted.\n\nImpact: Unknown flag bits may have meaning in future protocol versions. Accepting them silently could cause interoperability issues or mask malformed messages.\n\nSuggested fix:\n1. Document which flag bits are valid (if any are currently defined)\n2. Add validation in from_bytes() to reject unknown flags, or\n3. Log a warning when unknown flags are seen for debugging",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:50.680055Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:22.657832Z",
+  "closed_at": "2026-08-17T03:49:22.657832Z",
+  "close_reason": "Invalid: Flags field being parsed without validation is standard forward-compatible protocol design - unknown flags are ignored, allowing future extensions.",
+  "labels": [
+    "edge-case",
+    "validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.3",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:50.997326Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

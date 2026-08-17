@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-k4yg",
+  "title": "[review] messaging.py:158: Exception from registrar leave",
+  "description": "If `_sent_detail_registrar` raises, the message is already stored in `_sent` (line 149) and `_sent_order` is updated (line 151), but the exception propagates and the client receives an error. The message exists server-side but the client believes the POST failed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:39.50628Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:26:39.50628Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-he80",
+  "title": "[review] message.rs:562: RplTarget::write_to missing pr",
+  "description": "write_to does not validate that self.prefix_len \u003c= 128 before calculating nbytes. If an RplTarget is directly constructed with prefix_len \u003e 128 (e.g., 200), then nbytes = 25 and line 574 will panic with slice index out of bounds when accessing self.prefix[..nbytes] (prefix is only [u8; 16]). The from_bytes path validates this (line 550), but direct struct construction bypasses that check.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:13.957197Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:13.957197Z",
+  "labels": [
+    "review"
+  ]
+}

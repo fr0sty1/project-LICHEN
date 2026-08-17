@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-yiyd",
+  "title": "Sequence freshness function not exported - replay attack vector",
+  "description": "Line 678-684: ll_seq_is_fresher() is test-only. Production code cannot perform replay detection without reimplementing. Fix: export as pub fn seq_is_fresher() with documented half-window semantics.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:12:54.421675Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:28:52.005196Z",
+  "closed_at": "2026-08-16T19:28:52.005196Z",
+  "close_reason": "Fixed: exported seq_is_fresher() as a public function with documented half-window semantics for replay detection"
+}

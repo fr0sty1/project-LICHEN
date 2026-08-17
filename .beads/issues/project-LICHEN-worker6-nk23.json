@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-nk23",
+  "title": "[review] provisioning.py:406: Session wiped before response",
+  "description": "Session is wiped at line 406 BEFORE creating response at line 408. If ack.encode() fails (cbor2 error), exception propagates to line 299 returning INTERNAL_SERVER_ERROR. But session including provisioned_identity is already wiped. Node loses its identity and cannot retry because the session no longer exists.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:28.032547Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:53:06.046642Z",
+  "closed_at": "2026-08-16T03:53:06.046642Z",
+  "close_reason": "Fixed by reordering operations: encode ACK before wiping session. If ack.encode() fails, session remains intact allowing retry.",
+  "labels": [
+    "review"
+  ]
+}

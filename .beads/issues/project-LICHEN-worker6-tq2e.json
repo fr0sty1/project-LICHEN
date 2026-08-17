@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-tq2e",
+  "title": "[review] provisioning.py:564: EDHOC handshake failure i",
+  "description": "If receive_message() or the EDHOC processing methods raise an exception (timeout, protocol error, etc.), the session created at line 561 remains in _sessions. There's no try/finally to clean up the session on failure. Sessions accumulate until they expire via _expire_sessions(), potentially exhausting max_sessions slots if many provisioning attempts fail in quick succession.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T03:56:39.477097Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:56:39.477097Z",
+  "labels": [
+    "review"
+  ]
+}

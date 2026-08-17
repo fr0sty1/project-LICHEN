@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xwua",
+  "title": "[review] generate_forwarding_buffer.py:339: Missing boundary test vector f",
+  "description": "The expire_old logic at line 129 expires packets when deadline_ms \u003c= now_ms, but no test vector verifies behavior at the exact boundary where now_ms equals deadline_ms. Existing tests use now_ms=150 for deadlines 100/200, missing the boundary case. An implementation that uses \u003c instead of \u003c= would pass these tests but violate the spec.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:20.538878Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:20.538878Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-i1mm",
+  "title": "[review] messaging.py:121: Validation allows non-string b",
+  "description": "The check `isinstance(body.get('body'), str) or isinstance(body.get('text'), str)` accepts input like `{'body': 123, 'text': 'hello'}`. Since 'body' exists (as int), lines 138-139 do not copy text to body, storing the non-string body=123. Downstream code or legacy views expecting body to be a string will receive an integer.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:27.960965Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:27.960965Z",
+  "labels": [
+    "review"
+  ]
+}

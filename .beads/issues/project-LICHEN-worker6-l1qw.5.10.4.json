@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.10.4",
   "title": "Python: RPL + Announce + LOADng dispatch",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:52:09.245343Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:52:09.245343Z",
+  "updated_at": "2026-08-17T04:54:13.668397Z",
+  "closed_at": "2026-08-17T04:54:13.668397Z",
+  "close_reason": "Already fixed: Complete Python routing dispatch implementation exists in python/src/lichen/routing/router.py (961 lines). The Router class implements address classification (link-local, mesh-local, external), RPL parent routing for external traffic, gradient table lookup for mesh peers, and LOADng discovery fallback. All tests pass: 71 router + 19 RPL routing + 73 LOADng + 167 Announce. JSON test vectors cover forwarding, BR multicast filtering, and related components.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.10.4",

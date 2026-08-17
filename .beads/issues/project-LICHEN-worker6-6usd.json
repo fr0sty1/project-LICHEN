@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-6usd",
+  "title": "[review] messaging.py:159: Registrar callback can mutate ",
+  "description": "Lines 159-160: _sent_detail_registrar receives the same body dict reference that is then passed to deliver(). If the registrar mutates body, those mutations appear in the delivered inbox message. The _sent copy (line 150) uses deepcopy so it's isolated, but inbox receives the mutated version. Consider passing a copy to the registrar or to deliver.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:47.454231Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:47.454231Z",
+  "labels": [
+    "review"
+  ]
+}

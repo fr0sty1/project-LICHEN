@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-oua2.3",
+  "title": "Length validation in edhoc_kdf happens after CBOR encoding",
+  "description": "File: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/kdf.rs\nLines: 47, 76-93\n\nThe length parameter is validated at three separate points:\n1. Lines 76-88: CBOR encoding accepts length up to 0xffff\n2. Line 92-93: okm.resize fails if length \u003e 128 (buffer capacity)\n3. Line 94-95: HKDF-Expand fails if length \u003e 255*32\n\nThe CBOR encoding work is wasted if length \u003e 128.\n\nFix: Add early validation at function entry:\n```rust\nif length \u003e 128 {\n    return Err(EdhocError::BufferTooSmall);\n}\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:28.559002Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:39:28.559002Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-oua2.3",
+      "depends_on_id": "project-LICHEN-worker6-oua2",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:29.001249Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

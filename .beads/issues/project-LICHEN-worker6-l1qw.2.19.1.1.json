@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.19.1.1",
   "title": "Parse: Extract requirements from Regional Channel Plans",
-  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in\ntask description\n\n## Extracted Requirements from CCP-4 (spec/02a-coordinated-capacity.md:167-181)\n\n### MUST Requirements\n\n- [ ] CCP4-MUST-1: Regional channel plan MUST be provisioned locally (line 169)\n- [ ] CCP4-MUST-2: OTA message MUST NOT expand local plan (line 169)\n- [ ] CCP4-MUST-3: OTA message MUST NOT increase transmit power (line 169)\n- [ ] CCP4-MUST-4: OTA message MUST NOT relax regulatory limits (line 169)\n- [ ] CCP4-MUST-5: ADR MUST NOT change PHY profile 0x01 params inside schedule generation (line 179)\n- [ ] CCP4-MUST-6: Unknown plan identifiers or versions MUST cause CH0 fallback (line 181)\n\n### MAY Requirements\n\n- [ ] CCP4-MAY-1: Remote capability/schedule messages MAY reduce locally permitted intersection (line 181)\n\n### REQUIRE (future profiles)\n\n- [ ] CCP4-REQUIRE-1: Future profile IDs REQUIRE canonical airtime vectors and new spec revision before use (line 179)\n\n### Plan Contents (informative, lines 171-177)\n- plan identifier and version\n- ordered channel entries, with CH0 at index zero\n- center frequency, bandwidth, spreading factors, coding rates, max power per entry\n- regulatory accounting group for each channel\n- applicable duty-cycle, dwell-time, occupancy, and LBT rules\n- hardware-specific permitted channel mask",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:40:24.685829Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:24.685829Z",
+  "updated_at": "2026-08-17T04:41:13.332522Z",
+  "closed_at": "2026-08-17T04:41:13.332522Z",
+  "close_reason": "Requirements extracted from CCP-4 (spec/02a-coordinated-capacity.md:167-181): 6 MUST statements covering local provisioning, OTA restrictions, ADR constraints, and CH0 fallback; 1 MAY for intersection reduction; 1 REQUIRE for future profiles. Checklist added to bead description for oracle implementation.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.19.1.1",

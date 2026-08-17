@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-6qaw.3",
+  "title": "parse_packet uses TooShort for buffer-too-long case",
+  "description": "**File:** rust/lichen-ipv6/src/lib.rs\n**Lines:** 841-842\n\n**Issue:**\n`parse_packet` validates that buffer length exactly matches IPv6 header + payload_len. When buffer is longer than expected, it returns `TooShort` which is semantically wrong.\n\n```rust\nif buf.len() != payload_end {\n    return Err(TooShort::new(payload_end, buf.len()).into());\n}\n```\n\n**Trigger:** Buffer contains trailing bytes after a valid IPv6 packet (e.g., link-layer padding).\n\n**Current behavior:** Error says \"expected 60 bytes, got 64\" using TooShort type.\n**Expected behavior:** Either accept trailing bytes (common in real stacks) or use a different error variant (e.g., `LengthMismatch`).\n\n**Fix options:**\n1. Change `!=` to `\u003c` to accept trailing bytes (more lenient, matches smoltcp/lwIP behavior)\n2. Add `LengthMismatch` variant to `Ipv6Error` for this case",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:25:30.626762Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:25:30.626762Z",
+  "labels": [
+    "correctness",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6qaw.3",
+      "depends_on_id": "project-LICHEN-worker6-6qaw",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:25:30.948372Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-iz8a",
+  "title": "python/src/lichen/ccp.py: Silent truncation when eui64 is shorter than 8 bytes",
+  "description": "The zip(eui64, sfn_bytes) operation silently truncates to the shorter sequence. If eui64 is fewer than 8 bytes, the XOR produces fewer bytes than expected, resulting in incorrect slot assignments without any error.\n\nFix suggestion: Add validation at function start: `if len(eui64) != 8: raise ValueError('eui64 must be exactly 8 bytes')`",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:13:40.334164Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:13:40.334164Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-wx1w",
+  "title": "lichen/subsys/lichen/rpl/messages.c:407: Transit Info parse rejects all valid messages",
+  "description": "Line 407 requires data[0] (flags) == 0, but line 434 in write always sets flags=0x80 (E=1 per RFC 6550 6.7.8). Complete roundtrip failure: messages written by this module cannot be parsed by this module. Either parse should accept E=1 or write should not set it.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:00:49.200817Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:40:24.236979Z",
+  "closed_at": "2026-08-17T15:40:24.236979Z",
+  "close_reason": "Already fixed: Parse function (line 409) now requires data[0] == 0x80 matching write function (line 433). Roundtrip validated by test in lichen/tests/rpl_routing/src/main.c lines 76-109.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-wdk0",
+  "title": "[review] provisioning.py:355: Silent exception suppression i",
+  "description": "`contextlib.suppress(Exception)` at lines 355 and 402 swallows ALL exceptions from provisioning callbacks. If `on_provisioned` fails to record the new node (e.g., database write fails), the session is still removed and CHANGED is returned. The BR believes provisioning succeeded but has no record of the node. The node is now in a state where it thinks it's provisioned but the BR doesn't know it exists. At minimum, callback failures should be logged. Consider returning SERVICE_UNAVAILABLE if the callback fails for critical operations.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:21.119399Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T16:50:28.042535Z",
+  "closed_at": "2026-08-16T16:50:28.042535Z",
+  "close_reason": "Fixed: Added logging for provisioning callback exceptions via logger.exception(). Changed response code from INTERNAL_SERVER_ERROR to SERVICE_UNAVAILABLE to signal temporary unavailability and prompt client retry. Updated corresponding tests.",
+  "labels": [
+    "review"
+  ]
+}

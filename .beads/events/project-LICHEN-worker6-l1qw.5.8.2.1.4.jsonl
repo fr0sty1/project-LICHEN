@@ -1,1 +1,2 @@
 {"id":"019fb9b3-3dad-73e0-a0d7-3b94585a912c","issue_id":"project-LICHEN-worker6-l1qw.5.8.2.1.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:42:39.533254Z"}
+{"id":"01a00e27-c9b6-7f36-86a9-743780a5d3d2","issue_id":"project-LICHEN-worker6-l1qw.5.8.2.1.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Oracle validated via tests in test_messages.py including known vector comparison and round-trip verification","created_at":"2026-08-17T05:18:03.702997Z"}

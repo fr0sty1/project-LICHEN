@@ -1,1 +1,2 @@
 {"id":"019f9765-00b3-73c4-8d70-a26727eaa372","issue_id":"project-LICHEN-worker6-l1qw.5.8.5.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:50:06.771248Z"}
+{"id":"01a00e39-78c6-7d07-b830-30b42137a1f0","issue_id":"project-LICHEN-worker6-l1qw.5.8.5.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: MAX_HOP_LIMIT=15 correctly implemented in all code (Python, Rust, C) matching spec Section 10.7. Tests verify the value.","created_at":"2026-08-17T05:37:22.630857Z"}

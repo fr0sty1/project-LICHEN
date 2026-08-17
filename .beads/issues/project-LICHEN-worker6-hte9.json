@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-hte9",
+  "title": "[review] tx_queue.py:496: complete(success=True) signals",
+  "description": "Lines 496-497 signal the reservation as True BEFORE checking if the entry is at queue head (line 500). If a higher-priority entry was inserted after reserve() but before complete(), self._entries[0] is entry will be False, the entry stays in queue (only a warning is logged), but the reservation was already signaled True. The entry can be reserved and transmitted again, causing duplicate transmission while the original caller believes it succeeded.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:21.023215Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:51:13.428307Z",
+  "closed_at": "2026-08-15T20:51:13.428307Z",
+  "close_reason": "Fixed: Moved reservation.set_result(True) inside the block where entry is confirmed at head. The reservation is now only signaled True AFTER removing the entry, preventing duplicate transmissions when higher-priority entries preempt. Added regression test.",
+  "labels": [
+    "review"
+  ]
+}

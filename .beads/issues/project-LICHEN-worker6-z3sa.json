@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-z3sa",
+  "title": "[review] appendix-schc.md: Non-/64 prefix handling unspecified",
+  "description": "PIO.Prefix Length assumes '/64 default for LICHEN' with equal/not-sent CDA. If a prefix with different length (e.g., /128 for host routes, /48 for aggregation) is encountered, rule matching will fail silently or produce incorrect decompression.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:21:09.476547Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:21:09.476547Z",
+  "labels": [
+    "review"
+  ]
+}

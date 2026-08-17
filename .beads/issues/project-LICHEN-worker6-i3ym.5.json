@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-i3ym.5",
+  "title": "[Positive] Thorough input validation with no panic paths",
+  "description": "File: rust/lichen-schc/src/fragment.rs\n\nAll from_bytes functions perform thorough input validation:\n- Length checks before indexing (lines 176-177, 301-302)\n- Padding bit validation to detect malformed input (line 198-200)\n- Canonical encoding verification for ACKs (lines 311-314, 352-354)\n- Bounds validation on all variable-length fields\n\nNo panic paths are reachable from malformed external input. All error cases return Result errors. This is correct for protocol boundary code.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:20:12.971992Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:20:12.971992Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-i3ym.5",
+      "depends_on_id": "project-LICHEN-worker6-i3ym",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:20:13.346259Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

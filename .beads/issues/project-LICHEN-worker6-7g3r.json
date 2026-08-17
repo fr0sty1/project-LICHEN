@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-7g3r",
+  "title": "[review] slot_claim.py:417: validate_interleaved_patt",
+  "description": "The function iterates slots assuming they are sorted ascending, but does not verify this precondition. If called with unsorted slots that would otherwise match the pattern (e.g., [3, 0] for ordinal=0, gateway_count=3), it returns False incorrectly. Should either sort internally or document/enforce the precondition.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:38:29.113074Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:38:29.113074Z",
+  "labels": [
+    "review"
+  ]
+}

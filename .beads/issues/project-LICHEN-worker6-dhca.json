@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-dhca",
+  "title": "[review] messaging.py:144: `self._next_id` is never updat",
+  "description": "In `render_post`, the code reads `self._next_id` into `candidate_next_id` and computes a new value (line 142 or 144), but never writes it back to `self._next_id`. Every POST without an explicit ID will get ID 1, causing message collisions in `_sent`. Fix: add `self._next_id = candidate_next_id` before line 145.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:39.50629Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:29:13.542684Z",
+  "closed_at": "2026-08-15T21:29:13.542684Z",
+  "close_reason": "Fixed: Added self._next_id = candidate_next_id at line 145 to persist the auto-incremented ID counter. Without this, every POST without an explicit ID would get ID 1, causing collisions in _sent.",
+  "labels": [
+    "review"
+  ]
+}

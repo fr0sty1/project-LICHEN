@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-kyr4",
+  "title": "[review] message.rs:238: D-flag/dodag_id inconsistency",
+  "description": "Dao::write_to always sets D-flag=1 (line 238) but conditionally writes DODAGID bytes (line 244-246). When dodag_id=None with global instance ID (\u003c0x80), the check at line 230-232 passes, resulting in base_len=4 but D=1. The wire format claims 20 bytes (D=1) but only 4 are written, causing receivers to read past buffer bounds. Fix: reject dodag_id=None unconditionally since LICHEN requires D=1.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:33:49.453902Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:36:27.133049Z",
+  "closed_at": "2026-08-15T20:36:27.133049Z",
+  "close_reason": "Fixed: Simplified Dao::write_to to require dodag_id unconditionally since LICHEN sets D=1 always. Now extracts dodag_id via ok_or() and uses const BASE_LEN=20, eliminating the dead conditional code paths.",
+  "labels": [
+    "review"
+  ]
+}

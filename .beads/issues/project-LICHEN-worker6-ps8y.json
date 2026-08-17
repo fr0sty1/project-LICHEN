@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ps8y",
+  "title": "[review] provisioning.py:602: Insecure memory clearing ",
+  "description": "Setting provisioned_seed and provisioned_identity to None does not securely wipe memory. The original bytes objects remain in memory until garbage collected, and even then memory is not overwritten with zeros. An attacker with memory access (core dump, cold boot attack) could recover provisioned seeds. This is a Python limitation - consider using ctypes to zero the buffer before dereferencing, or memoryview with bytearray.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T03:56:29.253347Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:56:29.253347Z",
+  "labels": [
+    "review"
+  ]
+}

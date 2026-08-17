@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-rey2",
+  "title": "[review] tx_queue.py:518: complete() silently fails when",
+  "description": "When complete(success=True) is called but the entry is not at head of queue, the code logs a warning but does NOT signal the reservation. The caller awaiting reservation.wait() will hang. This edge case could occur if concurrent operations reordered the queue. Should either raise an exception or still signal the reservation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:46.380799Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:26:46.380799Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-lpbz",
+  "title": "channel.py: OverflowError if epoch is negative or exceeds 32 bits",
+  "description": "Line 146: `epoch.to_bytes(4, 'little')` raises OverflowError for negative epoch or epoch \u003e 0xFFFFFFFF. Same pattern as seed bug - sfn is masked on same line but epoch is not. Parameter has no documented bounds and no validation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:06.33276Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:06.33276Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

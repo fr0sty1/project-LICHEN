@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-gmge",
+  "title": "[review] 03-adaptation.md: Undefined parameter T in fragmentation c",
+  "description": "The statement 'With T=0, only one fragmented packet per signed link and data Rule ID may be active' references parameter T without defining it. T is the DTag field size in SCHC (RFC 8724), but this document never introduces or explains T. Readers unfamiliar with SCHC internals will not understand this constraint.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:24.289042Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:24.289042Z",
+  "labels": [
+    "review"
+  ]
+}

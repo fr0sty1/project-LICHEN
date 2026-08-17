@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-m9dv",
+  "title": "RouteDiscovery::new bypasses address validation",
+  "description": "RouteDiscovery::new(originator, destination, seq_num) accepts raw Ipv6Addr without validating that addresses are valid for routing (not unspecified, loopback, or multicast). The from_bytes parsers validate, but programmatic construction does not. Add fallible constructor try_new() or inline validation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:00.620575Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:28:00.620575Z"
+}

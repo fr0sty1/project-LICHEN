@@ -1,1 +1,2 @@
 {"id":"019fb9b1-37b3-764d-9934-8286c1899dcb","issue_id":"project-LICHEN-worker6-l1qw.4.11.1.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:40:26.931414Z"}
+{"id":"01a00e0a-b2b1-7874-a5fe-6ce614fe5ec2","issue_id":"project-LICHEN-worker6-l1qw.4.11.1.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Python tests pass (32 passed in test_identity.py including TestHumanAddressVectors)","created_at":"2026-08-17T04:46:17.265554Z"}

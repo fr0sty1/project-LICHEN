@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-n49j",
+  "title": "hybrid.rs: Evidence expiration comment describes unimplemented wraparound check",
+  "description": "Lines 316-319: Comment says 'Handle wraparound: if age is greater than half the u32 range, it's likely a future timestamp' but no such check exists. After wrap, evidence from 0xFFFFFF00 with now=0x00000100 yields age=512ms, incorrectly appearing fresh when actually ~50 days old.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:36:38.110529Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:36:38.110529Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

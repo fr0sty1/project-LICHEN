@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-j44d",
+  "title": "[review] handoff.rs:738: Status code truncation al",
+  "description": "The status code is read as i128 via get_int() then cast to u8 with `as u8`. Values like 256, 512, etc. truncate to 0, which maps to Success via try_from(). A malicious or buggy peer could send status=256 and have it accepted as a successful handoff response, bypassing rejection.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:47:48.429844Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:47:48.429844Z",
+  "labels": [
+    "review"
+  ]
+}

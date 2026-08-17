@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-krrw",
+  "title": "python/src/lichen/channel_plan.py: select_channel returns out-of-bounds index for small channel plans",
+  "description": "When num_channels \u003c= 2, the formula `1 + (h % max(num_channels-1, 2))` returns channel indices that exceed the valid range. For num_channels=2, it can return index 2 (valid: 0-1). For num_channels=1, it returns 1 or 2 (valid: only 0). For num_channels=0, it returns 1 or 2 for an empty list. Subsequent calls to frequency() with these indices will raise ValueError.\n\nFix suggestion: Add validation that num_channels \u003e= 3 in ChannelPlan.__post_init__, or modify the algorithm to handle small channel counts correctly: `return min(1 + (h % n), self.num_channels - 1)` or raise an error if num_channels \u003c 3.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:14:06.762799Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:14:06.762799Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

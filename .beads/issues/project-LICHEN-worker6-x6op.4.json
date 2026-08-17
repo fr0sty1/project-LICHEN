@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-x6op.4",
+  "title": "RNG failure mapped to misleading KeyDerivation error",
+  "description": "File: oscore/src/edhoc/initiator.rs:178-179\n\nIssue: `rng.try_fill_bytes(\u0026mut eph_seed[..]).map_err(|_| OscoreError::KeyDerivation)` discards the actual RNG error and maps it to `KeyDerivation`, which is semantically incorrect. An entropy source failure is not a key derivation failure.\n\nImpact: Debugging entropy issues becomes harder; callers cannot distinguish RNG problems from actual KDF failures.\n\nSuggested fix: Add a dedicated error variant or use a more appropriate existing one:\n```rust\n.map_err(|_| OscoreError::EntropyFailure)  // new variant\n// or at minimum:\n.map_err(|e| { log::warn!(\"RNG failed: {:?}\", e); OscoreError::Internal })\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:41:40.11531Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:54:15.553896Z",
+  "closed_at": "2026-08-17T15:54:15.553896Z",
+  "close_reason": "Already fixed: External oscore crate (patched from /Volumes/Attic/Desktop/Projects/crates/oscore) now correctly maps RNG errors to OscoreError::EntropyFailure at initiator.rs:178-179, not KeyDerivation. The EntropyFailure variant is defined in error.rs:55.",
+  "labels": [
+    "correctness",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x6op.4",
+      "depends_on_id": "project-LICHEN-worker6-x6op",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:41:40.470186Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

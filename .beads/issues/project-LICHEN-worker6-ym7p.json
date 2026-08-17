@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ym7p",
+  "title": "[review] provisioning.py:485: Existing session overwritten w",
+  "description": "create_node_session() has the same issue as create_br_session() - overwrites existing sessions without secure cleanup.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:46.41852Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:25:56.6541Z",
+  "closed_at": "2026-08-15T22:25:56.6541Z",
+  "close_reason": "Fixed: create_node_session() now checks for existing session and calls _remove_session(existing, wipe=True) before creating a new session, ensuring cryptographic material from the old session is securely cleared before overwrite.",
+  "labels": [
+    "review"
+  ]
+}

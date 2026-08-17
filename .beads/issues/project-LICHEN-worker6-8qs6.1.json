@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-8qs6.1",
+  "title": "RREP hop_count unbounded - input validation gap",
+  "description": "Location: rust/lichen-core/src/loadng.rs line 418\n\nIssue: Unlike RREQ hop_limit which is clamped to MAX_HOP_LIMIT (15) at line 348 to prevent flood amplification, RREP hop_count is read verbatim without validation.\n\nSecurity Impact: While RREP messages require signatures (preventing forgery), a misbehaving signed node could send RREP with hop_count=0 claiming to be 0 hops from destination. If routing logic prefers lower hop_count, attackers route gets selected.\n\nSuggested Fix: Add validation consistent with RREQ: hop_count = data[1].min(MAX_HOP_LIMIT)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:06.873379Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:06.873379Z",
+  "labels": [
+    "security",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-8qs6.1",
+      "depends_on_id": "project-LICHEN-worker6-8qs6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:07.212139Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

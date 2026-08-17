@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-e7zq",
+  "title": "[review] provisioning.py:143: Wrapper state field never upda",
+  "description": "ProvisioningSession.state is set to IDLE on creation (line 457/497) but never updated as inner session progresses. Lines 337/378 correctly check inner session state, but wrapper state is stale. Could cause bugs if future code relies on wrapper.state instead of wrapper.session.state.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:27.648291Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:37:27.648291Z",
+  "labels": [
+    "review"
+  ]
+}

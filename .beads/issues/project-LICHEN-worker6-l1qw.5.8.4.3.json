@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.4.3",
   "title": "Zephyr: RERR encode/decode",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:53.785463Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:53.785463Z",
+  "updated_at": "2026-08-17T05:38:24.046531Z",
+  "closed_at": "2026-08-17T05:38:24.046531Z",
+  "close_reason": "Already fixed: RERR encode/decode fully implemented in lichen/subsys/lichen/routing/loadng.c (lines 124-156), declared in loadng.h (lines 258-271), and tested in tests/loadng/main.c with passing test_rerr_roundtrip and test_rerr_parse_rejects_short tests (18/18 tests pass)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.4.3",

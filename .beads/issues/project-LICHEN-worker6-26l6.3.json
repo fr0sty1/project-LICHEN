@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-26l6.3",
+  "title": "candidate_admissible: integer division edge cases undocumented",
+  "description": "**File:** rust/lichen-rpl/src/dodag.rs\n**Lines:** 105-106, 110\n\n**Issue:** Integer division truncation behavior in DAGRank comparison is relied upon but not documented.\n\n```rust\n|| cost / min_hop_rank_increase \u003c= candidate.rank / min_hop_rank_increase\n...\n\u0026\u0026 candidate.rank / min_hop_rank_increase \u003e= node_rank / min_hop_rank_increase\n```\n\n**Edge cases:**\n- cost=511, mhri=256, rank=256: cost/mhri=1, rank/mhri=1 → 1\u003c=1 true → inadmissible (correct per RFC 6550)\n- cost=512, mhri=256, rank=256: cost/mhri=2, rank/mhri=1 → 2\u003c=1 false → admissible\n\nThe truncation implements `DAGRank = floor(Rank/MinHopRankIncrease)` from RFC 6550 Section 3.5.1, but this is non-obvious without a comment.\n\n**Risk:** A maintainer might \"fix\" the comparison without understanding the truncation is intentional.\n\n**Fix:** Add comment: `// RFC 6550 §3.5.1: DAGRank = floor(Rank / MinHopRankIncrease)`",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:04:22.08184Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:04:22.08184Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.3",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:04:22.401621Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

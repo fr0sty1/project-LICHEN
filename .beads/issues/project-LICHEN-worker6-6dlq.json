@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-6dlq",
+  "title": "[review] provisioning.py:485: Session collision in create_no",
+  "description": "Same issue as line 451 but in create_node_session(). Existing session for peer_host is silently overwritten without wiping cryptographic material. Should call _remove_session(existing, wipe=True) before creating new session.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:53.114668Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:26:04.484241Z",
+  "closed_at": "2026-08-15T22:26:04.484241Z",
+  "close_reason": "Fixed: create_node_session() now calls _remove_session(existing, wipe=True) before overwriting session, ensuring cryptographic material from existing sessions is properly wiped",
+  "labels": [
+    "review"
+  ]
+}

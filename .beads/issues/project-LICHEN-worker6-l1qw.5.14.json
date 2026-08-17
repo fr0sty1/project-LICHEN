@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.14",
   "title": "Spec: 05.9 Announce Routing (Peer-to-Peer Primary)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:04.089498Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:22:04.089498Z",
+  "updated_at": "2026-08-17T04:55:31.641943Z",
+  "closed_at": "2026-08-17T04:55:31.641943Z",
+  "close_reason": "Invalid: This is an EPIC (organizational container for 14 sub-issues), not a bug to fix. EPICs track work progress across children, they cannot be 'fixed' directly.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.14",

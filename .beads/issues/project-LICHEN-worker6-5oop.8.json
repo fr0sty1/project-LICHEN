@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-5oop.8",
+  "title": "Good: Epoch wraparound correctly rejected with SECURITY comment",
+  "description": "Location: rust/lichen-link/src/link_layer.rs lines 251-260\n\nThe ReplayProtector correctly handles epoch wraparound:\n- epoch \u003e last_epoch: accept, reset window\n- epoch == last_epoch: check seqnum window\n- epoch \u003c last_epoch: reject (replay)\n\nWhen epoch wraps from 255 to 0, the comparison 0 \u003c 255 correctly triggers rejection. This prevents an attacker from re-using old (epoch, seqnum) pairs after rollover.\n\nThe SECURITY comment on lines 251-252 documents the rationale: 'Epochs are finite for a given public key. Wrapping from 255 to 0 is a rollback and must be rejected - require key rotation.'\n\nTest coverage: epoch_wraparound_rejected_for_same_pubkey (line 797) verifies this behavior.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:50:34.717715Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:50:34.717715Z",
+  "labels": [
+    "review",
+    "security",
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.8",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:50:35.066981Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

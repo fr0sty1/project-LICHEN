@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-sqka.8",
+  "title": "f32::INFINITY values not sanitized in with_rf_metrics",
+  "description": "Lines 863-867: NaN values are sanitized to defaults, but f32::INFINITY and f32::NEG_INFINITY are not. While total_cmp handles infinities correctly for ordering, infinite RSSI/SNR values are physically meaningless and could indicate sensor errors. Consider clamping to valid physical ranges (e.g., -150 to 0 dBm for RSSI).",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:44.197426Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:44.197426Z",
+  "labels": [
+    "edge-case",
+    "overflow",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqka.8",
+      "depends_on_id": "project-LICHEN-worker6-sqka",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:44.52928Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

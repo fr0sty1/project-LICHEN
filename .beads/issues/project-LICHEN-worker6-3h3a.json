@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-3h3a",
+  "title": "rust/lichen-schc/src/context.rs: MSB matching panics when shift equals u128 bit width",
+  "description": "In rule_matches(), when Mo::Msb is used with mo_arg = 0 and fd.length_bits = 128 (a full IPv6 address), the calculation `shift = fd.length_bits - mo_arg` yields 128. The subsequent `val \u003e\u003e shift` panics in debug builds because shifting a u128 by 128 bits is an overflow. The guard on line 184 only rejects mo_arg \u003e length_bits, not the case where shift \u003e= 128.\n\nFix suggestion: Add an early-out check: `if mo_arg == 0 { /* comparing 0 MSBs always matches */ }` before the shift, or clamp shift to 127 max. Alternatively, use wrapping_shr or checked_shr to avoid the panic.\n\nFile: rust/lichen-schc/src/context.rs\nLine: 188\nCategory: correctness",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:52:50.451985Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:52:50.451985Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

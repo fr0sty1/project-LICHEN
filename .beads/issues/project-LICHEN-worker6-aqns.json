@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-aqns",
+  "title": "[review] provisioning.py:534: provision_node returns be",
+  "description": "Docstring claims step 4 is 'Verifies the ACK' but the method returns the seed at line 585 immediately after sending encrypted seed via send_message(), without waiting for or verifying the ACK. The ACK verification happens asynchronously via render_post/_handle_br_post, but this method's contract suggests it completes the full provisioning flow. Either add ACK verification (await receive_message() + br_session.decrypt_ack()) or correct the docstring.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T03:56:29.060814Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:56:29.060814Z",
+  "labels": [
+    "review"
+  ]
+}

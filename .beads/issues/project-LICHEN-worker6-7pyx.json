@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-7pyx",
+  "title": "Root processes DIOs instead of rejecting them",
+  "description": "Filed as project-LICHEN-worker6-n9ik.2. Missing early exit for root nodes in process_dio().",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:10.909556Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:18:10.077387Z",
+  "closed_at": "2026-08-16T20:18:10.077387Z",
+  "close_reason": "Already fixed: Root nodes have early exit in process_dio() at lines 324-330 with SECURITY comment. Tests root_ignores_dio and root_rejects_version_bump_dethronement_attack verify the behavior."
+}

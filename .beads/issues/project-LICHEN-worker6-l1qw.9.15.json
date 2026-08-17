@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.15",
   "title": "Spec: 11 17.6 Security",
+  "notes": "Epic status: 0/5 sub-issues complete. Root blocker is Python oracle (l1qw.9.15.1). Dependency chain: Python oracle -\u003e test vectors -\u003e Rust/Zephyr impls -\u003e cross-validation.",
   "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:42.375989Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:42.375989Z",
+  "updated_at": "2026-08-17T16:21:16.60879Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.15",

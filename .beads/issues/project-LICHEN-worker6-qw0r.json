@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-qw0r",
+  "title": "[review] tx_queue.py:416: confirm_transmitted() updates ",
+  "description": "_remove_first() called by confirm_transmitted() increments packets_transmitted and updates latency stats, but never calls reservation.set_result(). If an entry with a reservation is removed via confirm_transmitted(), the awaiting caller hangs forever because the Future is never resolved. The complete() method correctly signals the reservation at line 517 after updating stats.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:32.387842Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:08:07.509188Z",
+  "closed_at": "2026-08-15T21:08:07.509188Z",
+  "close_reason": "Fixed: _remove_first() now calls reservation.set_result(True) so confirm_transmitted() path signals the Future. All 146 tx_queue tests pass.",
+  "labels": [
+    "review"
+  ]
+}

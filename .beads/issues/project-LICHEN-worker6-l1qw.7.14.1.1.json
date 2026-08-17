@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.7.14.1.1",
   "title": "Parse: Extract requirements from RD Registration",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:52.135048Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:52.135048Z",
+  "updated_at": "2026-08-17T15:53:53.093899Z",
+  "closed_at": "2026-08-17T15:53:53.093899Z",
+  "close_reason": "Already fixed: Requirements are documented in test cases in python/tests/coap/test_resource_directory.py. The 20+ tests cover: ep mandatory, lt boundaries (1 to 2^32-1), CBOR validation, link descriptor validation, Location-Path response, GET filtering, DELETE semantics. RFC 9176 compliance is implicit in the working implementation.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.1.1",

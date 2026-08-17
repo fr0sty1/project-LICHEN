@@ -1,1 +1,2 @@
 {"id":"019fb9a3-8d71-7bfe-a3c2-fca7754cec7c","issue_id":"project-LICHEN-worker6-l1qw.10.16.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:25:31.377786Z"}
+{"id":"01a00de2-207e-7efb-969e-e4c847695c8d","issue_id":"project-LICHEN-worker6-l1qw.10.16.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate: Rust waypoints work is tracked in project-LICHEN-worker6-l1qw.10.6.x functionality-based epics (CRUD, Sharing, Routes)","created_at":"2026-08-17T04:01:58.398982Z"}

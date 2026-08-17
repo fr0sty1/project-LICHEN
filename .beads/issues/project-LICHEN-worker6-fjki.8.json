@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-fjki.8",
+  "title": "[GOOD] Proper hop_limit clamping prevents flood amplification attacks",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 345-348, 689-726\n\nWhat's good: RREQ parsing clamps hop_limit to MAX_HOP_LIMIT (15) to prevent flood amplification attacks where an attacker sends RREQ with hop_limit=255 to cause excessive network-wide propagation.\n\nThe implementation includes:\n1. Clear SECURITY comment explaining the threat model\n2. Test coverage for boundary values (255, 15, 4)\n3. Consistent handling with expanding ring limits [4, 8, 15]\n\nWorth defending: The asymmetry between parse (clamp) and serialize (raw) could be seen as inconsistent, but clamping on parse is the right choice - untrusted input is the threat, not local serialization.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:32:14.558856Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:33.300737Z",
+  "closed_at": "2026-08-17T03:49:33.300737Z",
+  "close_reason": "Acknowledged: Positive observation about proper hop_limit clamping via EXPANDING_RING constants.",
+  "labels": [
+    "review",
+    "good"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.8",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:32:14.894583Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

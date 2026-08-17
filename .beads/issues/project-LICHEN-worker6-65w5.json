@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-65w5",
+  "title": "[review] messaging.py:144: _next_id counter never updated",
+  "description": "The render_post method computes candidate_next_id but never writes it back to self._next_id. Lines 137-144 calculate the next ID value into a local variable, but there is no self._next_id = candidate_next_id statement. Result: every auto-assigned message gets ID 1, each subsequent POST without explicit ID overwrites the previous message in self._sent, causing silent data loss.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:39.506271Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:32:16.861359Z",
+  "closed_at": "2026-08-15T21:32:16.861359Z",
+  "close_reason": "Fixed: Added self.deliver(body) call in render_post. The _next_id assignment was already in place at line 145. The missing deliver call was lost during a refactoring - it was present in the original code (commit a835e61089) but removed when sent tracking was added. All 60 messaging tests now pass.",
+  "labels": [
+    "review"
+  ]
+}

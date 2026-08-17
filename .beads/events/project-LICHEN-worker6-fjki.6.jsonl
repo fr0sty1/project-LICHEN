@@ -1,0 +1,5 @@
+{"id":"01a00c0f-495b-7ea2-a226-6b6698ec6e95","issue_id":"project-LICHEN-worker6-fjki.6","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:32:03.54796Z"}
+{"id":"01a00c0f-4962-7d42-a6fa-dfe7cdb4f82e","issue_id":"project-LICHEN-worker6-fjki.6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: edge-case","created_at":"2026-08-16T19:32:03.55487Z"}
+{"id":"01a00c0f-4965-7c15-bbdd-0dd239fa7f8e","issue_id":"project-LICHEN-worker6-fjki.6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: error-handling","created_at":"2026-08-16T19:32:03.557792Z"}
+{"id":"01a00c0f-4968-7c7f-9b1b-45f105d4623d","issue_id":"project-LICHEN-worker6-fjki.6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T19:32:03.560819Z"}
+{"id":"01a00dd6-aa0d-7382-a91d-f6bd731f8a09","issue_id":"project-LICHEN-worker6-fjki.6","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Invalid: InvalidSignatureLength error does not exist in loadng.rs - this finding references a different file.","created_at":"2026-08-17T03:49:27.18123Z"}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-cak5",
+  "title": "[review] provisioning.py:315: render_get reports stale state",
+  "description": "The ProvisioningSession.state field is set once at creation (line 491) to ProvisioningState.IDLE and never updated. Meanwhile, the actual state is tracked in session.session.state (the underlying BRProvisioningSession or NodeProvisioningSession). The render_get method reports session.state.name.lower() which will always be 'idle' even when the channel is ESTABLISHED or COMPLETED. Should use session.session.state instead.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:02:08.777501Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:02:08.777501Z",
+  "labels": [
+    "review"
+  ]
+}

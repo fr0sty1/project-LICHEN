@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-wkqc",
+  "title": "RootCandidate comparison may behave unexpectedly with NaN RF metrics",
+  "description": "Filed as project-LICHEN-worker6-trff.4",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:14.253192Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:28:11.795459Z",
+  "closed_at": "2026-08-16T19:28:11.795459Z",
+  "close_reason": "Fixed: Sanitize NaN RF metrics in with_rf_metrics() to maintain Eq reflexivity - NaN replaced with worst-case defaults (-120.0 dBm RSSI, -20.0 dB SNR)"
+}

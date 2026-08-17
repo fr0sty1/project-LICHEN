@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-zcae",
+  "title": "Rust: Implement crash recovery for DAO routes",
+  "description": "Part of DAO persistence crash safety (rpl)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:43.913973Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:03:19.916084Z",
+  "closed_at": "2026-08-15T19:03:19.916084Z",
+  "close_reason": "Implemented crash recovery for DAO routes in Rust:\n\n**Changes:**\n- Added route state persistence types: PersistedCandidate, PersistedRouteEntry, DaoRouteState\n- Added encode_route_state/decode_route_state functions for crash-safe persistence\n- Added DaoRouteState with provision/open/update methods using redundant storage\n- Added DaoManager.route_state_snapshot() to extract route state for persistence\n- Added DaoManager.restore_route_state() to rebuild routes from persisted entries\n- Added DaoManager.provision_root_with_routes() for initial provisioning with route state\n- Added DaoManager.open_root_with_routes() for crash recovery with routes\n- Added DaoManager.process_signature_verified_with_route_persistence() to persist routes atomically with replay floors\n\n**Tests:**\n- route_state_crash_recovery_roundtrip: Full crash recovery with DAO processing\n- route_state_snapshot_and_restore: Direct snapshot/restore verification\n\n**Files modified:**\n- rust/lichen-rpl/src/persistence.rs\n- rust/lichen-rpl/src/routing.rs",
+  "labels": [
+    "rpl"
+  ]
+}

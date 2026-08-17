@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.18",
   "title": "Spec: 02a.5 Multi-Root Beacon Conflict Resolution",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:16.511277Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:21:16.511277Z",
+  "updated_at": "2026-08-17T04:35:33.702454Z",
+  "closed_at": "2026-08-17T04:35:33.702454Z",
+  "close_reason": "EPIC complete: All deliverables implemented - spec 02a.5.1-02a.5.4 documented in spec/02a-coordinated-capacity.md, Python oracle in multi_instance.py, Rust in multi_instance.rs (2321 lines with tests), Zephyr/C in rpl_multi_instance.c/.h, test vectors in rpl_multi_instance.json (13 vectors). Child issues track individual components - all work verified complete.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.18",

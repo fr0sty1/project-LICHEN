@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0ffq",
   "title": "C/Zephyr EDHOC KDF uses wrong info structure (4 elements instead of RFC 9528 3 elements)",
   "description": "## Bug\n\nC `edhoc_kdf()` in `lichen/subsys/lichen/edhoc/edhoc_kdf.c` builds info as `(length, TH, label, context)` - 4 elements.\n\nRFC 9528 Section 4.1.2 specifies `info = (label, context, length)` - 3 elements. TH should be passed AS context by the caller, not as a separate field.\n\n## File\n`lichen/subsys/lichen/edhoc/edhoc_kdf.c` - both `edhoc_kdf()` and `edhoc_kdf_int()` functions\n\n## Fix\nSame as Python fix in project-LICHEN-worker6-9xfw:\n1. Change signature to remove TH parameter\n2. Change info encoding to `(label, context, length)`\n3. Use integer labels per RFC\n4. Update all call sites to pass TH as context where needed\n\n## Blocked by\nMust coordinate with Rust fix and regenerate shared test vectors after all three implementations align.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T18:50:49.282119Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T18:50:49.282119Z",
+  "updated_at": "2026-08-17T03:44:11.218856Z",
+  "closed_at": "2026-08-17T03:44:11.218856Z",
+  "close_reason": "Fixed: Changed edhoc_kdf() info structure from (length, TH, label, context) to RFC 9528 compliant (label, context, length). Removed separate TH parameter - callers now pass TH as context. Eliminated edhoc_kdf_int() and unified on integer labels per RFC 9528 Figure 6. Updated all call sites in edhoc_initiator.c and edhoc_responder.c.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0ffq",

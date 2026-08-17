@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-fu6v",
+  "title": "[review] messaging.py:158: Callback mutation causes inbox",
+  "description": "In render_post, _sent receives a deepcopy of body at line 150, but _sent_detail_registrar callback at line 158-159 receives the original shallow copy. If the registrar modifies body before returning, deliver(body) at line 160 stores the modified version in inbox while _sent retains the pre-modification deepcopy. Same message ID will have different content in inbox vs sent.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:54.17017Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:54.17017Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-frjv.1",
+  "title": "Hysteresis can keep non-admissible parent",
+  "description": "File: python/src/lichen/rpl/dodag.py\nLines: 249-255\n\nIn select_parent(), the hysteresis check can select a non-admissible parent:\n\n```python\ncurrent = self.parents.get(self.preferred_parent) if self.preferred_parent else None\nif current is not None and current.neighbor_id != best.neighbor_id:\n    current_cost = current.path_cost(self.min_hop_rank_increase)\n    improvement = current_cost - best_cost\n    if improvement \u003c self.parent_switch_threshold:\n        best, best_cost = current, current_cost  # BUG: current may not be admissible\n```\n\n**Trigger:** The current preferred parent becomes non-admissible (e.g., their rank increased past _lowest_rank + max_rank_increase, or their path_cost hit INFINITE_RANK). The admissible list excludes them, but hysteresis logic retrieves them from self.parents and may keep them if improvement \u003c threshold.\n\n**Result:** Node selects a parent that violates MaxRankIncrease constraint (RFC 6550 Section 8.2.2.5), potentially creating routing loops or unbounded rank growth.\n\n**Fix:** Check that current is also admissible before applying hysteresis:\n```python\ncurrent = self.parents.get(self.preferred_parent) if self.preferred_parent else None\nif current is not None and current in admissible and current.neighbor_id != best.neighbor_id:\n    ...\n```\nOr lookup current from the admissible list instead of self.parents.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:44:01.720366Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:56:04.85208Z",
+  "closed_at": "2026-08-16T20:56:04.85208Z",
+  "close_reason": "Fixed: hysteresis now checks admissibility before keeping current parent",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-frjv.1",
+      "depends_on_id": "project-LICHEN-worker6-frjv",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:44:02.038094Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-exnk",
+  "title": "[review] provisioning.py:543: Race condition in provision_no",
+  "description": "Between create_br_session (line 530) and storing seed (line 548), multiple await points exist (lines 533-537). Concurrent requests can trigger _expire_sessions(), expiring this session if deadline passed. Code fails at line 544-546, but seed may already have been generated and sent encrypted. System left in inconsistent state - node has seed but BR lost session tracking.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:27.694411Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:37:27.694411Z",
+  "labels": [
+    "review"
+  ]
+}

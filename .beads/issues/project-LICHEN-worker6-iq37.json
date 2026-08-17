@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-iq37",
+  "title": "[review] rules.rs:18: GLOBAL_PREFIX_TV uses fd00::/6",
+  "description": "GLOBAL_PREFIX_TV is set to 0xfd00_0000... (fd00::/64 ULA prefix) but headers.rs line 147-148 defines Yggdrasil addresses as addr[0] == 0x02. Git commit b7d8cb70d9 message says 'restrict global profiles to 02xx::/8 Yggdrasil addresses'. If the network uses Yggdrasil addressing, packets with 02xx:: addresses will NOT match GLOBAL_COAP_RULE or GLOBAL_OSCORE_RULE because 0x02 != 0xfd in the MSB comparison.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:55.166229Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:55.166229Z",
+  "labels": [
+    "review"
+  ]
+}

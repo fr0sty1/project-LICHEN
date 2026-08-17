@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-exu5",
+  "title": "[review] tx_queue.py:385: pop() does not signal reservat",
+  "description": "The pop() method removes the front entry but never signals its reservation. If code calls push() with return_reservation=True, then later removes the entry via pop() instead of reserve()/complete(), the caller awaiting that reservation will hang forever. While documented in the docstring (lines 391-397), this API footgun could cause deadlocks if callers mix the two dequeue patterns.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:35.04886Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:35.04886Z",
+  "labels": [
+    "review"
+  ]
+}

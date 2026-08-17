@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-wzn3",
+  "title": "channel.py:58: ZeroDivisionError when superframe_duration_us is 0",
+  "description": "sfn_from_unix_time() divides by superframe_duration_us without checking for zero. GnssHopConfig allows this field to be set to any int, and there is no validation preventing 0. This causes ZeroDivisionError. Fix: Add validation if superframe_duration_us \u003c= 0: return 0 or raise ValueError at config creation time.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:24.300214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:22:24.300214Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

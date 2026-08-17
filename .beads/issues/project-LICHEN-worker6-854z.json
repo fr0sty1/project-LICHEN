@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-854z",
+  "title": "Test: Version mismatch handling vectors",
+  "description": "Part of SCHC rule set versioning (schc)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:36.105375Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:09:42.940155Z",
+  "closed_at": "2026-08-15T19:09:42.940155Z",
+  "close_reason": "Implemented version mismatch handling test vectors: Added 22 new vectors to schc_adaptation.json covering Version Query/Response serialization, status codes, negotiation flows, mismatch detection, malformed message rejection, and Rule 255 fallback behavior. Updated test_vectors.py to validate all new vectors. Updated schema.json with additional fields (status, flags, query_type, response_type, expect_compatible).",
+  "labels": [
+    "schc"
+  ]
+}

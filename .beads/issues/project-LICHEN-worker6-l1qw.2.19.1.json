@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.19.1",
   "title": "Python: Regional Channel Plans oracle implementation",
   "description": "(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:54.675599Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:33.005967Z",
+  "updated_at": "2026-08-17T04:41:35.874885Z",
+  "closed_at": "2026-08-17T04:41:35.874885Z",
+  "close_reason": "Invalid: Parent task bead that coordinates children. Implementation is incomplete (test_channel_plan.py expects RegulatoryMode, validate_plan_id, regulatory_rules etc. not in channel_plan.py), but work should be done through child bead project-LICHEN-worker6-l1qw.2.19.1.2 (Implement: Python oracle)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.19.1",

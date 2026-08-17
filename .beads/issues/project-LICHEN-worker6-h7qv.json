@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-h7qv",
+  "title": "[review] provisioning.py:435: Max sessions check before expi",
+  "description": "The check `len(self._sessions) \u003e= self._max_sessions` at line 435 happens BEFORE `_expire_sessions()` is called at line 440. If all sessions are expired but not yet cleaned up, new session creation is incorrectly rejected. This allows a DoS where an attacker opens max_sessions connections, lets them expire, and the resource is permanently stuck refusing new sessions until manually restarted. The fix is to call `_expire_sessions()` before checking the session count.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:21.119471Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:53:20.9654Z",
+  "closed_at": "2026-08-16T03:53:20.9654Z",
+  "close_reason": "Fixed: moved _expire_sessions() call before max_sessions check in both create_br_session and create_node_session methods. Added SECURITY comments explaining the DoS prevention rationale. All 23 provisioning tests pass.",
+  "labels": [
+    "review"
+  ]
+}

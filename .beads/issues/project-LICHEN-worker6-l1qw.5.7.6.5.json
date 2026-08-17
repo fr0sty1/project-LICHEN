@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.6.5",
   "title": "Key change rejection",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:21.273753Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:21.273753Z",
+  "updated_at": "2026-08-17T05:03:56.701875Z",
+  "closed_at": "2026-08-17T05:03:56.701875Z",
+  "close_reason": "Already fixed: Key change rejection is fully implemented and tested. TrustStore raises KeyMismatchError when different pubkey presented for pinned IID, DerivationMismatchError for derivation failures, and TrustError for invalid rotation signatures. All 46 trust tests pass including 8 key rejection scenarios (test_reject_key_mismatch, test_reject_derivation_mismatch, test_reject_key_mismatch_in_verify, test_rotate_key_rejects_invalid_signature, and 4 collision detection tests).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.6.5",

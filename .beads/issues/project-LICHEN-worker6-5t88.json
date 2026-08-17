@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-5t88",
+  "title": "[review] 03-adaptation.md: Incorrect compressed size for RPL rules",
+  "description": "The claimed 19-byte compressed size does not account for RPL base fields. Per the Python implementation (rules.py lines 576-617), DODAGID alone is 128 bits (16 bytes) value-sent, plus instance, kd_flags/dtsn/gmop/rank, and seq fields. The actual compressed size should be approximately 36+ bytes for DAO and larger for DIO.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:26.547337Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:38:22.050877Z",
+  "closed_at": "2026-08-15T19:38:22.050877Z",
+  "close_reason": "Fixed: Corrected compressed size claim from '19 bytes' to 'DIO 40 bytes, DAO 37 bytes'. The original figure omitted the DODAGID (16 bytes) and DIO-specific fields (version, rank, gmop, dtsn). Also removed misleading 'ports' reference since these are ICMPv6 messages.",
+  "labels": [
+    "review"
+  ]
+}

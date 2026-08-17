@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-uka3.1",
+  "title": "receive_frame modifies pinned state before validating state transition",
+  "description": "**File:** rust/lichen-link/src/link_layer.rs\n**Lines:** 689-703\n\n**Issue:** In receive_frame(), the pinned key is inserted at line 689 BEFORE the state transition is validated at line 696. If the transition check fails, LinkRxError::KeyChange is returned but the pinned table has already been modified.\n\n**Trigger:** A malformed state transition (which theoretically shouldn't happen with normal frames, but could occur due to concurrent modification or internal bugs) would leave pinned state inconsistent with error return.\n\n**Bad behavior:** The LinkLayer's pinned map retains an entry that should not have been added, potentially affecting subsequent frame processing.\n\n**Suggested fix:** Move the state transition check BEFORE modifying pinned state, or rollback pinned state on validation failure.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:19:07.151391Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:04:20.901471Z",
+  "closed_at": "2026-08-16T21:04:20.901471Z",
+  "close_reason": "Fixed: moved state transition check before pinned.insert() to prevent state corruption on validation failure",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-uka3.1",
+      "depends_on_id": "project-LICHEN-worker6-uka3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:19:07.507051Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8prb",
+  "title": "test_presence_resource.py: Resource leak - client context not shut down",
+  "description": "Line 152: test_purge_no_stale_returns_zero calls _setup() which creates both client and server contexts, but discards the client with `_, server, presence = await _setup()`. The finally block only calls `await server.shutdown()`, leaving the client aiocoap.Context unclosed. This could cause resource warnings or test interference. Fix: capture the client and call `await client.shutdown()` in the finally block.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:11.133901Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:22:11.133901Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

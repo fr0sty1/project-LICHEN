@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-uka3.10",
+  "title": "PeerAuthentication state transitions allow unexpected paths",
+  "description": "**File:** rust/lichen-link/src/link_layer.rs\n**Lines:** 159-170\n\n**Issue:** The can_transition_to() method defines allowed transitions but includes some questionable paths:\n- Unknown -\u003e Unknown (self-loop, ok)\n- Authenticated -\u003e Authenticating (re-auth, documented via unpin())\n\nHowever, there's no transition from Authenticated back to Unknown, nor from Authenticating to Unknown. These might be needed for forget_peer scenarios but aren't modeled.\n\n**Trigger:** Code that needs to fully reset a peer to Unknown state.\n\n**Bad behavior:** State machine doesn't model full lifecycle. Code using these types might need to reconstruct from scratch.\n\n**Suggested fix:** Consider if Unknown -\u003e Authenticating -\u003e Authenticated -\u003e Unknown cycle is needed. If not, document why Authenticated cannot return to Unknown.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:20:13.601638Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:20:13.601638Z",
+  "labels": [
+    "idiomatic-rust",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-uka3.10",
+      "depends_on_id": "project-LICHEN-worker6-uka3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:20:13.957653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

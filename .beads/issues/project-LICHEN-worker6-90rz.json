@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-90rz",
+  "title": "sync_hop.c: Division by zero if CONFIG_LICHEN_SYNC_HOP_SUPERFRAME_MS is 0",
+  "description": "Line 42: If the config macro CONFIG_LICHEN_SYNC_HOP_SUPERFRAME_MS evaluates to 0, the division causes undefined behavior (crash on most platforms). Fix: add compile-time assertion BUILD_ASSERT(CONFIG_LICHEN_SYNC_HOP_SUPERFRAME_MS \u003e 0).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:06.24495Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:47:06.24495Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

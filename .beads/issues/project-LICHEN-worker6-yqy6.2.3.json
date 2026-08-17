@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.2.3",
   "title": "R1 Neo: Serial local transport",
   "description": "Validate serial local-client transport via USB CDC on R1 Neo. Test native USB CDC ACM device, verify lichen_hal_serial_device_get() returns correct device.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:12:56.854464Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:12:56.854464Z",
+  "updated_at": "2026-08-17T03:54:57.946094Z",
+  "closed_at": "2026-08-17T03:54:57.946094Z",
+  "close_reason": "Fixed: Added testcase.yaml entry for R1 Neo USB CDC ACM serial validation. Test lichen.hal.serial_precedence.r1_neo_cdc_acm now wires the existing overlay (lichen,native-uart = \u0026cdc_acm_uart0) and conf file to the test suite, enabling hardware validation of lichen_hal_serial_device_get().",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.2.3",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.13.4.1",
   "title": "Parse: Extract requirements from 8.6",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:39:25.049568Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:39:25.049568Z",
+  "updated_at": "2026-08-17T04:56:40.433472Z",
+  "closed_at": "2026-08-17T04:56:40.433472Z",
+  "close_reason": "Already complete: Requirements extracted and implemented in dao_origin.py\n\nExtracted MUST/SHALL/SHOULD statements from spec section 8.6:\n\n**Structure Requirements:**\n- DAO MUST contain exactly one DAO Origin Signature Option (line 181)\n- Option MUST be the final DAO option (line 227)\n- DAO Origin Signature Option MUST have Data Length 56 (line 239)\n- RPL Target Option MUST have Data Length 18 exactly (line 235)\n- Transit Information Option MUST have Data Length 20 (line 237)\n\n**Signature Requirements:**\n- Origin IPv6 address MUST be sender's primary 02xx address (line 208)\n- Verification key MUST be from already authenticated and pinned Announce identity (line 241-242)\n- Preserved source address IID MUST equal identity's bound IID (line 242-244)\n- Receipt of DAO MUST NOT create or replace Announce pin (line 245)\n\n**Rejection Requirements:**\n- Malformed option framing MUST reject entire DAO without state mutation (line 234)\n- Equal sequence with different bytes or lower sequence MUST be rejected (line 265-266)\n- Missing, corrupt, or unavailable receive state MUST fail closed (line 266)\n\n**Persistence Requirements (TX):**\n- Origin MUST crash-safely commit sequence and signed bytes before transmission (line 250)\n- Storage backend MUST provide atomic commit semantics (line 251-253)\n- Origin MUST NOT transmit until valid state restored (line 254-256)\n- At max sequence, MUST NOT originate another DAO or wrap (line 256-257)\n- TX record MUST contain complete last signed DAO bytes (line 279)\n\n**Persistence Requirements (RX):**\n- Receiver MUST maintain crash-safe persistent state per pinned pubkey (line 259-260)\n- For fresh DAO, receiver MUST durably commit floor before route/ACK (line 268-269)\n- On retransmission, receiver MUST NOT rewrite replay floor (line 272)\n\n**Relay/Processing Requirements:**\n- Relays MUST preserve IPv6 Source Address and complete DAO bytes exactly (line 283)\n- Root MUST process DAO in specified order: link sig -\u003e structure -\u003e key/IID -\u003e replay -\u003e semantic -\u003e target -\u003e floor -\u003e route (line 287-291)\n\nImplementation: python/src/lichen/rpl/dao_origin.py",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.13.4.1",

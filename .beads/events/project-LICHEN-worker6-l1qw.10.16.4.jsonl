@@ -1,1 +1,2 @@
 {"id":"019fb9a3-9620-7109-b2d9-376dc5aa7d1a","issue_id":"project-LICHEN-worker6-l1qw.10.16.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:25:33.600068Z"}
+{"id":"01a00de2-066d-753b-887c-8a1cd73f61d2","issue_id":"project-LICHEN-worker6-l1qw.10.16.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of project-LICHEN-worker6-l1qw.10.6.4: Both track waypoint test vectors/cross-validation","created_at":"2026-08-17T04:01:51.725344Z"}

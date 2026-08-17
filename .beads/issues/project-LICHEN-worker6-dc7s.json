@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-dc7s",
+  "title": "Rerr.error_code stored as u8 instead of RerrCode enum",
+  "description": "Filed as project-LICHEN-worker6-7bd5.1",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:04.054445Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:13:47.163772Z",
+  "closed_at": "2026-08-16T20:13:47.163772Z",
+  "close_reason": "Fixed: Changed Rerr.error_code from u8 to RerrCode enum for type safety"
+}

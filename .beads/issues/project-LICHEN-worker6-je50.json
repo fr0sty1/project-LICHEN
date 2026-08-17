@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-je50",
+  "title": "[review] forwarding_buffer.py:229: Reentrancy bug in evictio",
+  "description": "The on_drop callback is invoked at line 229-235 BEFORE the new entry is added at lines 239-240. If on_drop re-enters try_buffer with a different source_iid, that call sees len(self._buffer) \u003c max_sources (since the evicted source was already removed) and adds a new source. Then the original call continues and adds its entry, resulting in max_sources + 1 tracked sources. Fix: defer on_drop calls until after state is fully updated, or guard against reentrant calls.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:13:38.647031Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:13:38.647031Z",
+  "labels": [
+    "review"
+  ]
+}

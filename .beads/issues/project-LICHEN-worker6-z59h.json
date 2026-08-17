@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-z59h",
+  "title": "python/src/lichen/channel_plan.py: select_channel returns out-of-bounds index for plans with 1-2 channels",
+  "description": "When num_channels is 1 or 2, the expression `max(num_channels - 1, 2)` evaluates to 2, causing `1 + (h % 2)` to return values 1 or 2. For a 2-channel plan (valid indices 0,1), returning 2 is out of bounds. For a 1-channel plan (valid index 0), returning 1 or 2 is out of bounds. This would cause ValueError when the returned index is used with the frequency() method.\n\nFix suggestion: Change line 57 to: `n = max(self.num_channels - 1, 1)` and adjust the return to handle small channel counts, or add validation that rejects plans with fewer than 3 channels.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:13:52.943065Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:13:52.943065Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

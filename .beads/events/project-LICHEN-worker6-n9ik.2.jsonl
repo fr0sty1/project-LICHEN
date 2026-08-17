@@ -1,0 +1,5 @@
+{"id":"01a00c17-d42b-7674-b328-6f255fb8f2eb","issue_id":"project-LICHEN-worker6-n9ik.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:41:23.371423Z"}
+{"id":"01a00c17-d433-7d0b-83c0-04504dd994c2","issue_id":"project-LICHEN-worker6-n9ik.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-16T19:41:23.379856Z"}
+{"id":"01a00c17-d437-77fe-bbbe-70110f7ea694","issue_id":"project-LICHEN-worker6-n9ik.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: security","created_at":"2026-08-16T19:41:23.383525Z"}
+{"id":"01a00c17-d43a-7d8c-bb4b-f65953a3ae55","issue_id":"project-LICHEN-worker6-n9ik.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T19:41:23.386888Z"}
+{"id":"01a00c73-9ba6-7386-b1ef-ba84111602e9","issue_id":"project-LICHEN-worker6-n9ik.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Root now explicitly rejects all DIOs via early return on role check, added test for newer-version DIOs","created_at":"2026-08-16T21:21:38.214231Z"}

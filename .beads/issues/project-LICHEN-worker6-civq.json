@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-civq",
+  "title": "add_peer returns ambiguous bool",
+  "description": "Line 326: Cannot distinguish capacity limit from update. Return enum or document semantics.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:18.570229Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:54:28.509306Z",
+  "closed_at": "2026-08-16T19:54:28.509306Z",
+  "close_reason": "Fixed: add_peer now returns AddPeerResult enum (Inserted/Updated/InsertedWithEviction) to distinguish new peer, existing peer update, and capacity-triggered eviction"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-fjki.1",
+  "title": "RREQ hop_limit not clamped on write_to, only on parse",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLine: 365\n\nIssue: Rreq.write_to() serializes hop_limit directly without clamping to MAX_HOP_LIMIT. While from_bytes() correctly clamps incoming hop_limit to 15 (line 348), write_to() will serialize any value set by the caller.\n\nTrigger: Code that constructs an Rreq manually with hop_limit \u003e 15 (e.g., hop_limit: 255) and calls write_to() will produce a message that, when parsed by a peer, gets clamped to 15 - creating asymmetry between sent and received values.\n\nImpact: Data inconsistency between sender's in-memory state and receiver's parsed value. Could cause confusion in logging/debugging.\n\nSuggested fix: Either clamp hop_limit in write_to(), or enforce the invariant at construction time by making hop_limit private and providing a constructor that clamps.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:41.063283Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:12.27606Z",
+  "closed_at": "2026-08-17T03:49:12.27606Z",
+  "close_reason": "Invalid: The finding claims from_bytes clamps hop_limit (line 348) but write_to does not. This is factually incorrect - from_bytes at line 310 does NOT clamp (just reads data[1] directly), and line 348 is in Rrep struct definition not parsing logic. Both methods are symmetric; neither clamps. No asymmetry exists.",
+  "labels": [
+    "edge-case",
+    "bounds",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.1",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:41.399882Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

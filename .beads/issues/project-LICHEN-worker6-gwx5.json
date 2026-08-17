@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gwx5",
+  "title": "emergency.py: Timestamp value 0 incorrectly treated as falsy",
+  "description": "Line 122 uses body.get(\"t\") or body.get(\"ts\") to select the timestamp field. Unix timestamp 0 (1970-01-01 00:00:00 UTC) is a valid value but is falsy in Python. If t=0 is provided, the expression falls back to the ts field. If ts is absent, the request is rejected with BAD_REQUEST even though t=0 is explicitly allowed by the validation on line 137 (timestamp \u003c 0 is rejected, not timestamp \u003c= 0). If ts is present with a different value, the wrong timestamp is used. Fix: use body.get(\"t\") if body.get(\"t\") is not None else body.get(\"ts\") or similar explicit None check.\n\nFile: python/src/lichen/coap/resources/emergency.py\nLine: 122",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:09.897224Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:12:09.897224Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

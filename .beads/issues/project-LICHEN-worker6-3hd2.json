@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-3hd2",
+  "title": "[review] provisioning.py:451: Session collision overwrites e",
+  "description": "When create_br_session() is called with a peer_host that already has an active session, the old session is silently overwritten via dict assignment. The old session's cryptographic material (_prov_key, _provisioned_seed) is not wiped, leaking secrets. An attacker could also exploit this to reset a legitimate provisioning attempt mid-flight by initiating a new session for the same peer_host.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:53.294927Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:26:27.140145Z",
+  "closed_at": "2026-08-15T22:26:27.140145Z",
+  "close_reason": "Fixed: Both create_br_session() and create_node_session() now wipe existing sessions before overwriting. This prevents cryptographic material leakage and protects against mid-flight provisioning reset attacks.",
+  "labels": [
+    "review"
+  ]
+}

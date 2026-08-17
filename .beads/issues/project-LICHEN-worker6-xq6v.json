@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-xq6v",
+  "title": "rust/lichen-schc/src/context.rs: MSB shift can overflow for 128-bit fields",
+  "description": "In rule_matches(), when processing Mo::Msb, the shift amount is computed as `fd.length_bits - mo_arg`. For 128-bit fields (like IPv6 addresses) with mo_arg=0, shift equals 128. The expression `val \u003e\u003e 128` where val is u128 causes a panic in debug mode ('attempt to shift right with overflow') and silently produces 0 in release mode.\n\nFix suggestion: Use checked_shr or add explicit bounds: if shift \u003e= 128 { return true; /* 0 prefix bits matches anything */ } or reject mo_arg=0 as invalid configuration.\n\nFile: rust/lichen-schc/src/context.rs\nLine: 187\nCategory: overflow",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:52:54.697507Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:52:54.697507Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

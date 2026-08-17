@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-5oop.6",
+  "title": "Good: Signature verification precedes replay window check",
+  "description": "Location: rust/lichen-link/src/link_layer.rs lines 531-578\n\nreceive_frame() performs operations in correct security order:\n1. Parse frame (lines 516-525)\n2. Verify signature (lines 531-547)\n3. Check key pinning (lines 555-565)\n4. Check replay window (lines 567-578)\n5. Pin key and update state (lines 580-599)\n\nCritically, the replay window is NOT updated until AFTER signature verification passes. This prevents an attacker from advancing a victim's replay window by sending unsigned or malformed frames.\n\nWorth defending - reordering would create a DoS vector.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:50:12.280585Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:50:12.280585Z",
+  "labels": [
+    "review",
+    "security",
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.6",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:50:12.639424Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

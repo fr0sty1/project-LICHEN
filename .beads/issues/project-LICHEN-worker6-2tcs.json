@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-2tcs",
+  "title": "[review] tx_queue.py:513: complete(success=True) fails t",
+  "description": "When a higher-priority packet is pushed between reserve() and complete(), the reserved entry shifts from position 0 but remains in the queue. The check `self._entries[0] is entry` fails, causing: (1) entry not removed - will be transmitted again (duplicate TX), (2) reservation not signaled - callers may hang, (3) stats not updated. The code only logs a warning and returns without removing the displaced entry.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:35.589092Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:35.589092Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,3 @@
+{"id":"01a00792-ac67-7806-8c89-247cdeabf9b1","issue_id":"project-LICHEN-worker6-nk23","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-15T22:37:28.039527Z"}
+{"id":"01a00792-ac6f-7094-9c84-59dbbc300237","issue_id":"project-LICHEN-worker6-nk23","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-15T22:37:28.047039Z"}
+{"id":"01a008b3-a50d-7eb9-b806-b007a99a6254","issue_id":"project-LICHEN-worker6-nk23","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed by reordering operations: encode ACK before wiping session. If ack.encode() fails, session remains intact allowing retry.","created_at":"2026-08-16T03:53:06.061966Z"}

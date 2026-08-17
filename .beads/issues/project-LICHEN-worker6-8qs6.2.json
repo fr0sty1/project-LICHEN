@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-8qs6.2",
+  "title": "Unsigned RERR enables route-invalidation DoS",
+  "description": "Location: rust/lichen-core/src/loadng.rs lines 456-464\n\nCurrent Design: SECURITY comment explains unsigned RERR is acceptable since they only invalidate routes.\n\nConcern: The comment does not document the attack scenario this enables. An attacker can forge RERR messages to invalidate legitimate routes (DoS vector). The replay limited by route lifetime mitigation assumes short-lived routes.\n\nSuggested Action: Document the explicit threat model - what attacks are possible, why acceptable in LICHENs threat model, what mitigations exist. P3 documentation not a code bug.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:09.261979Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:09.261979Z",
+  "labels": [
+    "security",
+    "documentation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-8qs6.2",
+      "depends_on_id": "project-LICHEN-worker6-8qs6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:09.587495Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

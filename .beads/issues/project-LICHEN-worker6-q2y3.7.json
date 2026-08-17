@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-q2y3.7",
+  "title": "RetransmitIter::next has potential underflow if pos \u003c start",
+  "description": "Line 1099: `let rel_pos = abs_pos - self.start;` - If self.pos \u003c self.start (possible since struct has pub fields and no constructor), this subtraction underflows. Currently low-risk because struct is unused (see .1). If retained, invariant start \u003c= pos must be enforced via constructor, or start/pos should be private. Related to finding .1 (dead code).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:00:52.910627Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:00:58.570265Z",
+  "labels": [
+    "correctness",
+    "boundary",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-q2y3.7",
+      "depends_on_id": "project-LICHEN-worker6-q2y3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:00:53.240917Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

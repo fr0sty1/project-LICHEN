@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-53wj",
+  "title": "RERR signature enforcement gap enables route deletion attacks",
+  "description": "Unlike RREP which has receive_rrep (line 338) enforcing signature presence at the API level, RERR parsing provides no equivalent validation helper. Callers using Rerr::from_bytes() must remember to manually check signature.is_some() before processing route invalidations. Add a require_signature() or receive_rerr() helper method.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:04.807805Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:13:09.00298Z",
+  "closed_at": "2026-08-16T20:13:09.00298Z",
+  "close_reason": "Fixed: Added require_signature() helper method to Rerr struct (lines 614-640 in loadng.rs) that enforces signature presence at the API level, mirroring the protection that receive_rrep provides for RREP. This prevents route deletion attacks by ensuring callers can chain Rerr::from_bytes()?.require_signature()? for safe RERR processing. Added 3 tests verifying the method accepts signed REERRs, rejects unsigned REERRs, and integrates with the from_bytes() API pattern."
+}

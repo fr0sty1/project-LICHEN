@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-56xt",
+  "title": "hybrid.rs: Yggdrasil /7 prefix incorrectly implemented as /8",
+  "description": "Lines 219 and 276 check `addr[0] == 0x02` but the comment and spec say 0200::/7, which includes both 0x02 AND 0x03 first bytes. Addresses starting with 0x03 will be misclassified as External instead of MeshLocal, causing them to be dropped (if not RPL-joined) or routed via border router instead of mesh-local discovery. Fix: `(addr[0] \u0026 0xFE) == 0x02` or `addr[0] == 0x02 || addr[0] == 0x03`.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:28.84243Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:15:47.5604Z",
+  "closed_at": "2026-08-17T15:15:47.5604Z",
+  "close_reason": "Fixed: Changed evidence check from dst[0] == 0x02 to (dst[0] \u0026 0xfe) == 0x02 to correctly handle full 0200::/7 range (both 0x02 and 0x03 first bytes). Updated comments from /8 to /7. Added tests for 0x03 prefix.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-60ey",
+  "title": "HAL test: Add duty cycle UINT32_MAX duration boundary test",
+  "description": "The duty cycle tests verify behavior when duration exceeds budget by 1ms (line 1357), but do not test with dur=UINT32_MAX. While the implementation handles this via uint64_t promotion, the edge case should be explicitly tested to prevent regressions.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:23:35.425691Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:38:40.467443Z",
+  "closed_at": "2026-08-16T19:38:40.467443Z",
+  "close_reason": "Fixed: Added UINT32_MAX duration boundary test to both C HAL tests (main.c:1449-1451) and Rust duty_cycle tests. Tests verify implementation correctly returns u64::MAX for impossible durations via uint64_t promotion."
+}

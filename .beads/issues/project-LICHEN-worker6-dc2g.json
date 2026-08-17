@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-dc2g",
+  "title": "[review] provisioning.py:403: Exception sanitization in",
+  "description": "process_message_1 lets EDHOC exceptions propagate directly, unlike process_message_3 which catches and re-raises as AuthenticationFailedError with generic message. Line 426 comments explicitly note 'Do not reveal exception details - could enable oracle attacks' but this protection is not applied here. Malformed msg1 inputs could leak internal EDHOC state through exception details.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:10:22.1153Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:10:22.1153Z",
+  "labels": [
+    "review"
+  ]
+}

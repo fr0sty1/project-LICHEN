@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-hhs8",
+  "title": "[review] 03-adaptation.md: Rule 7 table contradicts prose desc",
+  "description": "Line 113 states Rule 7 supports both link-local and global addresses via address-mode bit and a direction bit + residue for non-10883 ports. However, the table at lines 117-130 shows IPv6 prefixes fixed to fe80::/64 (link-local only) with MO=equal/CDA=not-sent, and both UDP ports fixed to 10883 with MO=equal. The table does not reflect the flexible address-mode or port handling described in the prose.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:41:01.08325Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:41:01.08325Z",
+  "labels": [
+    "review"
+  ]
+}

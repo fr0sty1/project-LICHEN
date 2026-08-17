@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-kg6k",
+  "title": "No TTL/expiration for received routes and peers",
+  "description": "Lines 270, 536: Entries persist indefinitely. Add pruning mechanism or document caller responsibility.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:11.618805Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:54:15.555362Z",
+  "closed_at": "2026-08-16T19:54:15.555362Z",
+  "close_reason": "Added TTL expiration for seen and pinned_keys entries. New fields: created_ms timestamps. New methods: expire_seen(), expire_pinned(), expire_all(). Constants: SEEN_TTL_MS (600s), PINNED_KEY_TTL_MS (24h). Callers should invoke expire methods periodically for cleanup."
+}

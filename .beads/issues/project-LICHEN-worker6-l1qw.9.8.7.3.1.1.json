@@ -2,13 +2,16 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.3.1.1",
   "title": "Parse: Extract requirements from LCI /msg/ack",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "notes": "LCI /msg/ack Requirements Checklist (from spec/11-lci.md:201 and spec/12-apps.md:88-101):\n\n**Protocol:**\n- POST method on /msg/ack\n- Content-Format: application/cbor (ct=60)\n- Resource type: rt=\"msg.ack\"\n\n**Payload Fields (all required):**\n- id (uint): message ID being acknowledged - u64 per LCI spec 17.5.7\n- status (string): one of \"delivered\", \"read\", \"failed\"\n- ts (uint): Unix timestamp\n\n**Behavior:**\n- Sent by recipient when original message had ack: true\n- Sent to original sender's address\n\n**Error Handling (implicit from CoAP):**\n- 4.00 Bad Request: invalid CBOR, missing fields, wrong types\n\n**Note:** Messaging is OPTIONAL (MAY implement), but format is normative when implemented.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:10.002497Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:10.002497Z",
+  "updated_at": "2026-08-17T15:57:16.124391Z",
+  "closed_at": "2026-08-17T15:57:16.124391Z",
+  "close_reason": "Extracted requirements from spec/11-lci.md:201 and spec/12-apps.md:88-101. Requirements documented in note: POST method, ct=60, rt=msg.ack, payload with id/status/ts fields. Existing MessageReceiptsResource already implements all requirements.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.3.1.1",

@@ -1,1 +1,2 @@
 {"id":"019f9764-c903-7d17-aa2b-d245d9e8624d","issue_id":"project-LICHEN-worker6-l1qw.5.8.4.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:49:52.515859Z"}
+{"id":"01a00e30-2fe1-7aba-bb94-bdcd9c0d47d1","issue_id":"project-LICHEN-worker6-l1qw.5.8.4.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Rust RERR fully implemented in lichen-core/src/loadng.rs with Rerr struct, from_bytes/write_to methods, and roundtrip test","created_at":"2026-08-17T05:27:14.145704Z"}

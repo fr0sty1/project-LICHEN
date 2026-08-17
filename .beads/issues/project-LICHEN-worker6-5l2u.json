@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-5l2u",
+  "title": "discovery.py: actual_hops calculation assumes INITIAL_HOP_LIMIT start value",
+  "description": "Line 134: actual_hops = max(0, INITIAL_HOP_LIMIT - rreq.hop_limit) assumes all RREQs start with INITIAL_HOP_LIMIT (10). But originate_rreq (line 98) allows custom hop_limit for expanding ring search. If RREQ originates with hop_limit=5, first receiver computes actual_hops=5 when real hop count is 0, corrupting reverse route metrics.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:24:49.237871Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:24:49.237871Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

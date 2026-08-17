@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-2rkp.7",
+  "title": "GOOD: MAX_PARENT_CANDIDATES prevents memory exhaustion DoS",
+  "description": "Location: rust/lichen-rpl/src/dodag.rs lines 30, 390-393\n\nThe parent candidate set is bounded by MAX_PARENT_CANDIDATES (16). New candidates beyond this limit are silently rejected (line 390-393). This prevents an attacker from exhausting memory by sending many unique neighbor addresses.\n\nThe limit is tested in parent_candidates_fail_closed_at_neighbor_limit (line 1056).",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:06:01.131628Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:06:01.131628Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rkp.7",
+      "depends_on_id": "project-LICHEN-worker6-2rkp",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:06:01.498633Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

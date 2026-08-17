@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-sqka.1",
+  "title": "NaN timestamp bypasses freshness validation",
+  "description": "**File:** rust/lichen-rpl/src/multi_instance.rs\n**Line:** 649-656\n\n**Issue:** If `current_time` or `message.timestamp` is `f64::NAN`, the age calculation produces NaN, and both conditions `age \u003e DAO_TIMESTAMP_FRESHNESS_SECONDS` and `age \u003c 0.0` evaluate to `false`, allowing the message through.\n\n**Trigger:** Caller passes NaN as `current_time` parameter to `receive_from_peer()`.\n\n**Impact:** DAO validation can be bypassed if current_time is corrupted/uninitialized.\n\n**Fix:**\n```rust\nlet age = current_time - message.timestamp;\nif age.is_nan() || age \u003e DAO_TIMESTAMP_FRESHNESS_SECONDS || age \u003c 0.0 {\n    return Err(MultiInstanceError::StaleTimestamp { ... });\n}\n```\n\nOr validate inputs are finite at function entry.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:00.736907Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:21:11.955692Z",
+  "closed_at": "2026-08-16T21:21:11.955692Z",
+  "close_reason": "Already fixed: age.is_nan() check already present at line 681 with explanatory comment",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqka.1",
+      "depends_on_id": "project-LICHEN-worker6-sqka",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:01.073536Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

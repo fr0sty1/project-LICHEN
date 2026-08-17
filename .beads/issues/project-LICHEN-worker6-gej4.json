@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-gej4",
+  "title": "[review] message.rs:597: TransitInfo E-flag not validat",
+  "description": "TransitInfo::from_bytes always expects 20 bytes and reads parent_address from data[4..20], assuming E=1 (parent present). If an attacker sends E=0 with padding to 20 bytes, garbage is accepted as parent_address. Per RFC 6550 6.7.8, E=0 means no parent address (4-byte option). The code should validate (data[0] \u0026 0x80) != 0 or handle E=0 case.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:33:49.453938Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:33:49.453938Z",
+  "labels": [
+    "review"
+  ]
+}

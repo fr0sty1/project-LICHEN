@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-88tp",
+  "title": "Test: BLE security level validation",
+  "description": "Part of BLE LESC security check (ble)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:50.185999Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:59:28.459521Z",
+  "closed_at": "2026-08-15T18:59:28.459521Z",
+  "close_reason": "Implemented: Added 19 tests for BLE security level validation covering _detect_security_level function and integration with connect flow. Tests include: detection from is_paired method/property, pair_state string parsing (lesc/secure_connections/bonded/paired), case insensitivity, exception handling, and full integration tests verifying security detection during transport.connect().",
+  "labels": [
+    "ble"
+  ]
+}

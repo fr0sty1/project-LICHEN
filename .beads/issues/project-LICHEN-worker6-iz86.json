@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-iz86",
+  "title": "hybrid.rs: Yggdrasil /7 classification misses 0x03 addresses",
+  "description": "Line 219: Code checks `addr[0] == 0x02` but comment says \"Yggdrasil: 02xx::/7\". A /7 prefix covers first bytes 0x02 AND 0x03 (binary 0000001x). Addresses starting with 0x03 are misclassified as External instead of MeshLocal, causing incorrect routing (packets sent to RPL parent instead of mesh discovery).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:45.284706Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:16:45.284706Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

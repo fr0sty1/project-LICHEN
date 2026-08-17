@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-x6op.6",
+  "title": "Indistinguishable error conditions in state check",
+  "description": "File: oscore/src/edhoc/initiator.rs:265-266\n\nIssue: `if self.state.lifecycle != Lifecycle::Message1Created || self.eph_secret.is_none()` returns the same `InvalidState` error for two distinct failure modes:\n1. Wrong lifecycle (called out of order)\n2. Ephemeral secret already consumed (called twice)\n\nImpact: Debugging protocol errors becomes harder since the error doesn't indicate which condition failed.\n\nSuggested fix: Return distinct errors or log which condition failed:\n```rust\nif self.state.lifecycle != Lifecycle::Message1Created {\n    return Err(EdhocError::WrongLifecycle);  // new variant\n}\nif self.eph_secret.is_none() {\n    return Err(EdhocError::EphemeralConsumed);  // new variant\n}\n```\n\nAlternatively, keep single error but document in error message which sub-condition.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:41:52.314042Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:41:52.314042Z",
+  "labels": [
+    "correctness",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x6op.6",
+      "depends_on_id": "project-LICHEN-worker6-x6op",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:41:52.669769Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

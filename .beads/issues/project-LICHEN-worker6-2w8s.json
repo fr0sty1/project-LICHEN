@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-2w8s",
+  "title": "appendix-ccp12-hopping.md:172: No guard against SuperframeDuration_us = 0",
+  "description": "SfnFromUnixTime divides by SuperframeDuration_us without validating it is non-zero. While the default constant is 2000000, the function signature accepts it as a parameter, and a configuration error could cause division by zero. Fix: Add guard IF SuperframeDuration_us = 0 THEN RETURN 0 or document that SuperframeDuration_us must be \u003e 0.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:23:06.350469Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:23:06.350469Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

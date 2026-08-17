@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-lpe0",
+  "title": "[review] message.rs:574: RplTarget::write_to panics on ",
+  "description": "write_to computes nbytes = prefix_len.div_ceil(8) and then accesses self.prefix[..nbytes]. If prefix_len \u003e 128, nbytes \u003e 16, but self.prefix is [u8; 16], causing a panic on copy_from_slice. from_bytes validates prefix_len \u003c= 128, but write_to does not, allowing manually constructed RplTarget with invalid prefix_len to crash.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:13.950768Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:13.950768Z",
+  "labels": [
+    "review"
+  ]
+}

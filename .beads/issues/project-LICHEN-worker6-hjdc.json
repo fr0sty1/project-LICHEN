@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-hjdc",
+  "title": "appendix-ccp12-hopping.md: Inconsistent modulus between CCP-12 pseudocode and fallback table",
+  "description": "Line 163 specifies 1 + (Hash MOD N) where N = MAX(NChannels, 3), but line 259 in the GNSS fallback table specifies % (N-1). With NChannels=8, line 163 produces channels 1-8 while line 259 produces channels 1-7. The channel ranges are inconsistent between the algorithm description and the fallback chain.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:23.30459Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:47:23.30459Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-vio7",
+  "title": "rust/lichen-schc/src/codec.rs: Panic on truncated UDP packets (40-47 bytes)",
+  "description": "The code `let coap = \u0026packet[48..];` is executed outside the length guard at line 998. When a packet has 40 \u003c= len \u003c 48 bytes with next_header=17 (UDP), this slice operation panics because index 48 is out of bounds. The MQTT-SN port check block (lines 998-1006) is guarded by `if packet.len() \u003e= 40 + 8`, but line 1008 is outside that guard and executes unconditionally for all UDP packets.\n\n**Location:** line 1008\n**Category:** correctness\n\n**Fix suggestion:** Move the `let coap = \u0026packet[48..];` line and subsequent OSCORE/CoAP compression logic inside a length check, or add `if packet.len() \u003c 48 { /* fall through to uncompressed */ }` before line 1008.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:43:05.99221Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:41:31.732667Z",
+  "closed_at": "2026-08-17T15:41:31.732667Z",
+  "close_reason": "Fixed: Added length guard (packet.len() \u003e= 48) before slicing at offset 48 in compress() for UDP packets. Truncated UDP packets (40-47 bytes) now fall through to uncompressed fallback instead of panicking. Added regression test truncated_udp_packet_no_panic.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

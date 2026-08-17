@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-re0j.2.8",
   "title": "Verify worker6-b8nz completion status",
   "description": "Review commit a50db87804 against bead worker6-b8nz requirements. Confirm mobility, topology generators, and scenario DSL are complete. Close bead if criteria met or document remaining gaps.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:19:20.407598Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:19:20.407598Z",
+  "updated_at": "2026-08-17T03:54:13.117216Z",
+  "closed_at": "2026-08-17T03:54:13.117216Z",
+  "close_reason": "Verified complete: commit a50db87804 implements all requirements - mobility.py provides MobilityManager/RandomWaypoint; topology.py provides grid/line/random_disk/star; scenario.py provides full YAML DSL with spawn/kill/move/chaos/python events. Parent bead worker6-b8nz already closed with 74 passing tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-re0j.2.8",

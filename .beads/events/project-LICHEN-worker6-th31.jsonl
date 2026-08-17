@@ -1,0 +1,2 @@
+{"id":"01a00c1e-f9b7-7a96-90d7-088af81cb116","issue_id":"project-LICHEN-worker6-th31","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:49:11.735694Z"}
+{"id":"01a00c37-5483-76b2-958f-7ff0f219f4b8","issue_id":"project-LICHEN-worker6-th31","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: changed is_nan() || link_cost \u003c 0.0 to !link_cost.is_finite() || link_cost \u003c 0.0 for explicit handling of infinity","created_at":"2026-08-16T20:15:47.84344Z"}

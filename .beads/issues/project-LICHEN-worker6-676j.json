@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-676j",
+  "title": "lib.rs: TooShort error returned for oversized buffers",
+  "description": "Line 836-837: parse_packet returns TooShort error when buf.len() \u003e payload_end (buffer longer than declared payload). The error type is semantically incorrect - it claims 'too short' when the buffer actually has trailing data. Functionally correct (rejects non-conforming input) but confusing diagnostics.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:52:35.321361Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:52:35.321361Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

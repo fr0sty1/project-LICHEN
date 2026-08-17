@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.11.6",
   "title": "Zephyr: drift watchdog timer",
   "description": "Implement drift watchdog for Zephyr C. Acceptance: Uses hardware timer efficiently.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:39.415608Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:39.415608Z",
+  "updated_at": "2026-08-17T04:32:28.510634Z",
+  "closed_at": "2026-08-17T04:32:28.510634Z",
+  "close_reason": "Blocked: Requires Zephyr state machine (project-LICHEN-worker6-l1qw.2.11.3) to be implemented first. The drift watchdog timer triggers the JOINED-\u003eDRIFT state transition via on_drift_warn(), but there is no CCP FSM in Zephyr yet (time_sync.c only has basic sync state, not the 4-state CcpFSM). Reopen after .3 is complete.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.11.6",

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-c7ai",
+  "title": "[review] message.rs:604: TransitInfo E-flag not validat",
+  "description": "from_bytes assumes E=1 (parent address present) and reads 16 bytes from data[4..20], but does not verify bit 7 of data[0] is actually set. Per RFC 6550 section 6.7.8, if E=0 the parent address is absent. A malformed option with length=20 but E=0 would cause bytes that RFC says should not exist to be parsed as parent_address. SignedDaoEnvelope mitigates by enforcing length==20, but the raw API trusts callers to provide E=1 data.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:33:49.454857Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:33:49.454857Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-9zv1",
+  "title": "MIC comparison uses timing-variant == operator",
+  "description": "Line 963: Uses == for MIC comparison. Low severity since CRC-32 is not cryptographic, but add comment explaining why constant-time is unnecessary here.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:23:41.945758Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:50:27.244022Z",
+  "closed_at": "2026-08-16T19:50:27.244022Z",
+  "close_reason": "Added SECURITY comment at MIC comparison explaining CRC-32 is non-cryptographic and timing-variant == is acceptable"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-wvgy",
+  "title": "lichen/tests/hal/src/main.c: Missing return value check for NULL input test",
+  "description": "lichen_hal_identity_get(NULL) is called without checking its return value. Every other NULL-input test in this file asserts that -EINVAL is returned (e.g., lines 171, 500, 1060). This either fails to verify the function properly rejects NULL, or is a dead call if the function is void.\n\nFix suggestion: Either add zassert_equal(lichen_hal_identity_get(NULL), -EINVAL); or remove the call if NULL handling is not part of the contract\n\nLocation: line 93",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:58:32.497796Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:58:32.497796Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

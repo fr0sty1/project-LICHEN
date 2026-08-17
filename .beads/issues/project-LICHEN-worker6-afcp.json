@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-afcp",
+  "title": "adaptive_sf.py: Double-application of SNR/density SF adjustment",
+  "description": "When assigned_sf is None and ema_loss \u003e 0.25, the SNR/density check is applied twice: once in adaptive_sf_for_metrics (line 90-91 returns SF9 for density\u003c5/snr\u003e8) and again in select_tx_sf (line 139 decrements sf by 1). This causes SF to be 1 lower than spec requires. Example: density=3, snr=10, loss=0.3 returns SF9 but spec requires SF10.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:50:36.0759Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:27:03.593768Z",
+  "closed_at": "2026-08-17T15:27:03.593768Z",
+  "close_reason": "Fixed: When assigned_sf is None and ema_loss \u003e 0.25, the code now resets sf to baseline (10) before applying pseudocode adjustments, avoiding double-application of the SNR/density decrement that was already in the table result. Verified with bug scenario: density=3, snr=10, loss=0.3 now correctly returns SF10.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

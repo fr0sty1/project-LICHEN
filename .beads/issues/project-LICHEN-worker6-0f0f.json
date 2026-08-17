@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-0f0f",
+  "title": "fragment.rs: Missing padding validation for ALL_1 fragments",
+  "description": "In Fragment::from_bytes (line 200-201), padding validation only applies to non-ALL_1 fragments:\n\n```rust\nif fcn != ALL_1_FCN \u0026\u0026 data[data.len() - 1] \u0026 1 != 0 {\n    return Err(FragmentError::NonZeroPadding);\n}\n```\n\nALL_1 fragments use the same 1-bit-shifted wire format and should also have zero padding in the LSB of the final byte. The missing check allows non-canonical encodings to be accepted.\n\nImpact: Defense-in-depth gap. The padding bit is not used during parsing (dead data), so this does not cause data corruption. However, accepting non-canonical wire formats could:\n- Cause interoperability issues with strict implementations\n- Complicate replay detection if raw bytes are used for deduplication\n\nFix: Remove the `fcn != ALL_1_FCN \u0026\u0026` condition to validate padding for all fragment types.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T21:19:39.194754Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:39:07.643346Z",
+  "closed_at": "2026-08-17T03:39:07.643346Z",
+  "close_reason": "Fixed: Removed the fcn != ALL_1_FCN condition from padding validation in Fragment::from_bytes. ALL_1 fragments use the same 1-bit-shifted wire format, so non-zero padding in the LSB should be rejected for all fragment types."
+}

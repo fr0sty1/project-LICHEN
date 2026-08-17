@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-jh1w",
+  "title": "[review] provisioning.py:520: Seed storage conditional but s",
+  "description": "After calling create_br_session() on line 514, the session is immediately retrieved with get() and conditionally updated. The session was just created so it must exist - this should assert or raise rather than silently skip storing the seed, which would cause later ACK verification to fail.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:46.41852Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:25:59.180218Z",
+  "closed_at": "2026-08-15T22:25:59.180218Z",
+  "close_reason": "Fixed: Replaced silent conditional seed storage with RuntimeError when session is missing after create_br_session(). Since the session is stored in _sessions during create_br_session(), its absence after creation indicates a programming error. Silently skipping would cause cryptic ACK verification failures later.",
+  "labels": [
+    "review"
+  ]
+}

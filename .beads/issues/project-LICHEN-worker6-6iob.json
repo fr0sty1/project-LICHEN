@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-6iob",
+  "title": "test_vectors.py: _read_varint lacks bounds checking (P2)",
+  "description": "**File:** python/tests/test_vectors.py\n**Lines:** 628-638\n\n**Issue:**\n```python\ndef _read_varint(data: bytes, offset: int) -\u003e tuple[int, int]:\n    value = 0\n    shift = 0\n    while True:\n        byte = data[offset]  # IndexError if offset \u003e= len(data)\n        offset += 1\n        value |= (byte \u0026 0x7F) \u003c\u003c shift\n        if byte \u003c 0x80:\n            return value, offset\n        shift += 7\n```\n\n**Problems:**\n1. No bounds check on `offset` before accessing `data[offset]`\n2. If data is truncated (all continuation bytes, no terminator), this loops until IndexError\n\nIn test context, input is controlled, but if test vector files are corrupted or truncated, the error message gives no indication of what went wrong.\n\n**Suggested fix:**\n```python\ndef _read_varint(data: bytes, offset: int) -\u003e tuple[int, int]:\n    value = 0\n    shift = 0\n    while offset \u003c len(data):\n        byte = data[offset]\n        offset += 1\n        value |= (byte \u0026 0x7F) \u003c\u003c shift\n        if byte \u003c 0x80:\n            return value, offset\n        shift += 7\n        if shift \u003e 63:  # Prevent infinite loop on pathological input\n            raise ValueError(\"varint too long\")\n    raise ValueError(f\"truncated varint at offset {offset}\")\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:53:34.621099Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:53:34.621099Z",
+  "labels": [
+    "correctness"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.13.4.2",
   "title": "Implement: Python oracle for 8.6",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:39:26.036458Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:39:26.036458Z",
+  "updated_at": "2026-08-17T16:03:13.613713Z",
+  "closed_at": "2026-08-17T16:03:13.613713Z",
+  "close_reason": "Already complete: Implementation exists in python/src/lichen/rpl/dao_origin.py with DaoOriginValidator (lines 221-375) implementing all spec 8.6 requirements: pin table lookup, IID binding validation, signature parsing/verification, and replay classification with is_fresh flag. Comprehensive test coverage in tests/rpl/test_dao_origin.py (1313 lines). Parent bead already confirmed completion.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.13.4.2",

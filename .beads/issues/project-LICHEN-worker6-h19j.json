@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-h19j",
+  "title": "Review: lichen-rpl/dodag.rs edge-cases 2026-08-16",
+  "description": "# Review: lichen-rpl/dodag.rs edge-cases\n\n**Language:** Rust\n**Mode:** library\n**Focus:** Edge cases (boundary conditions, error handling, resource cleanup, race conditions, overflow)\n\n## Summary\n\n| Priority | Count | Label |\n|----------|-------|-------|\n| P0 | 0 | - |\n| P1 | 2 | correctness, edge-case |\n| P2 | 2 | api-contract, readability |\n| P3 | 1 | readability |\n\n## Confidence Calibration\n\n**Review confidence:** 85% chance of no missed P0/P1 bug.\n\n**Least confident areas:**\n- Lollipop version comparison edge cases around wraparound boundaries (complex state machine)\n- Interaction between `max_rank_increase = 0` (disabled) and various admission paths\n\n**Would raise confidence if:**\n- Property-based tests for lollipop_cmp covering all boundary transitions\n- Integration test for full root demote -\u003e rejoin cycle\n- Explicit documentation of overflow/saturation semantics in path_cost",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:25:25.916123Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:27:41.117896Z",
+  "started_at": "2026-08-16T20:25:26.646476Z",
+  "lease_expires_at": "2026-08-16T20:30:26.646476Z",
+  "heartbeat_at": "2026-08-16T20:25:26.646476Z",
+  "labels": [
+    "review"
+  ]
+}

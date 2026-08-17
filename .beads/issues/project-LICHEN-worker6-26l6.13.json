@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-26l6.13",
+  "title": "MAX_PARENT_CANDIDATES limit silently drops new parents with no feedback",
+  "description": "File: rust/lichen-rpl/src/dodag.rs Lines 390-394. When parent count reaches MAX_PARENT_CANDIDATES (16), new parents are silently dropped with DioOutcome::Accepted. The caller has no way to know the parent was not added. Edge case: A better parent arrives when at capacity. It is rejected silently. The node stays with suboptimal routing. Consider: (1) return a distinct DioOutcome like AtCapacity, (2) replace worst existing parent, or (3) document this as intentional fail-safe behavior.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:30.523892Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:30.523892Z",
+  "labels": [
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.13",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:30.859064Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

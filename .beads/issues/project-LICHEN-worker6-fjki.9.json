@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-fjki.9",
+  "title": "[GOOD] Typestate pattern prevents invalid route discovery transitions",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 166-331\n\nWhat's good: The RouteDiscovery type uses Rust's typestate pattern with phantom types (Idle, Searching, Replied, Failed) to enforce valid state machine transitions at compile time:\n- Idle can only transition to Searching (via start())\n- Searching can transition to Searching (advance_ring), Replied (receive_rrep), or Failed (fail/exhausted)\n- Replied and Failed are terminal states with no outgoing transitions\n\nThis eliminates an entire class of runtime bugs where code could accidentally call methods in invalid states.\n\nWorth defending: The pattern adds type complexity but provides compile-time enforcement of the LOADng discovery state machine. Runtime checks are also available via RouteDiscoveryState for dynamic dispatch scenarios.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:32:19.083088Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:34.803273Z",
+  "closed_at": "2026-08-17T03:49:34.803273Z",
+  "close_reason": "Acknowledged: Positive observation about typestate pattern preventing invalid route discovery transitions.",
+  "labels": [
+    "review",
+    "good"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.9",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:32:19.397231Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

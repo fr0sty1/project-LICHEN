@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-9s94.7",
+  "title": "receive_bytes silently resets on fragment parse failure when done",
+  "description": "Location: rust/lichen-schc/src/fragment.rs:821-823\n\nIssue:\n```rust\nErr(_) if self.done =\u003e Ok(ReceiverResult::default()),\nErr(_) =\u003e Ok(self.abort(rule_id)),\n```\n\nWhen the receiver is in `done` state and receives a malformed fragment, it silently returns an empty result. This discards the parse error without any indication to the caller.\n\nEdge case: A corrupted retransmission after completion would be silently ignored rather than triggering an abort or error, potentially masking network issues.\n\nImpact: Reduced observability. The caller has no way to distinguish between 'no action needed' and 'malformed data received'.\n\nConsideration: This may be intentional (after completion, ignore garbage) but the asymmetry with non-done state (which aborts) could confuse protocol implementers.\n\nSuggested fix: Consider returning the original error wrapped in a 'no action needed' result, or add a comment explaining why silent discard is correct here.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:15:34.025514Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:15:34.025514Z",
+  "labels": [
+    "edge-case",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9s94.7",
+      "depends_on_id": "project-LICHEN-worker6-9s94",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:15:34.333513Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

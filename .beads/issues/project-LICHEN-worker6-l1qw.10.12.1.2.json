@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.12.1.2",
   "title": "Implement: Python oracle for CoAP Resources",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:40:56.831278Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:56.831278Z",
+  "updated_at": "2026-08-17T16:01:23.371108Z",
+  "closed_at": "2026-08-17T16:01:23.371108Z",
+  "close_reason": "Already fixed: Python CoAP resources oracle is complete in python/src/lichen/coap/resources/ with 14+ modules (StatusResource, NeighborsResource, ConfigResource, SosResource, PresenceResource, MessagesResource, SenMLSensorsResource, SenMLLocationResource, EdhocResource, etc.), build_site() function, CongestionAwareSite class, and comprehensive tests in python/tests/coap/. Parent task l1qw.10.12.1 was already closed as complete.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.12.1.2",

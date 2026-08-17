@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-fjki.2",
+  "title": "advance_ring ring_index increment could overflow on 32-bit with modified EXPANDING_RING",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLine: 282\n\nIssue: The check `self.ring_index + 1 \u003e= EXPANDING_RING.len()` performs addition before comparison. While safe with the current EXPANDING_RING length of 3, if EXPANDING_RING were extended to usize::MAX elements (theoretically), ring_index + 1 could overflow.\n\nTrigger: Only if EXPANDING_RING is modified to have more elements than fit in usize and ring_index reaches usize::MAX - unlikely in practice.\n\nImpact: Extremely low - only affects a theoretical future change. Current code is safe.\n\nSuggested fix: Use `self.ring_index \u003e= EXPANDING_RING.len() - 1` or `self.ring_index.checked_add(1).map_or(true, |n| n \u003e= EXPANDING_RING.len())` for defensive coding. This is a P3 polish item, not a real bug.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:46.277988Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:17.434936Z",
+  "closed_at": "2026-08-17T03:49:17.434936Z",
+  "close_reason": "Invalid: Finding self-admits it is theoretical and 'not a real bug'. EXPANDING_RING has 3 elements, ring_index bounded by advance_ring check, max value is 2. Overflow impossible without changing constants to usize::MAX elements.",
+  "labels": [
+    "edge-case",
+    "overflow",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.2",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:46.613375Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-uytg",
+  "title": "sync_hop.c: Integer underflow in lichen_sfn_from_unix_ms",
+  "description": "Line 42: (unix_time_ms - EPOCH_BASE_MS) underflows when unix_time_ms \u003c EPOCH_BASE_MS (1704067200000, i.e., before 2024-01-01). Both are uint64_t, so subtraction wraps to a large positive value, producing an incorrect SFN. If GNSS time source is spoofed or malformed to a pre-epoch timestamp, this yields an arbitrary SFN value that could desynchronize frequency hopping or, if SFN participates in replay protection, potentially enable replay attacks.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:00.581833Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:40:58.107042Z",
+  "closed_at": "2026-08-17T15:40:58.107042Z",
+  "close_reason": "Fixed: Added guard to return 0 when unix_time_ms \u003c EPOCH_BASE_MS, preventing unsigned integer underflow. Matches Python reference implementation behavior.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

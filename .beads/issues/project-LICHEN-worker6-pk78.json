@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-pk78",
+  "title": "[review] messaging.py:151: Duplicate message ID updates c",
+  "description": "When a message is POSTed with an explicit id that already exists in _sent_order, the content in _sent is overwritten (line 150) but the id is not re-added to _sent_order (line 151-152 only appends if not present). This means 'updated' messages retain their original creation position rather than appearing at the end, which may cause confusion in ordered listings.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:54.697137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:54.697137Z",
+  "labels": [
+    "review"
+  ]
+}

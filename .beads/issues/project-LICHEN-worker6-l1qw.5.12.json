@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.12",
   "title": "Spec: 05.7 Routing Overview",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:01.76876Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:22:01.76876Z",
+  "updated_at": "2026-08-17T04:55:33.229391Z",
+  "closed_at": "2026-08-17T04:55:33.229391Z",
+  "close_reason": "Invalid: This is an EPIC (parent container), not a fixable bug. EPICs complete when their children complete. Has 5 open children: Python/Rust/Zephyr implementations, test vectors, and review tasks.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.12",

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-2fpi",
+  "title": "Add MAX_ROUTES_PER_MESSAGE limit to prevent memory exhaustion",
+  "description": "DaoBackboneMessage.targets and .transit vectors have no size limit. Add MAX_ROUTES_PER_MESSAGE constant and validate in receive_from_peer before route reconstruction. Currently a malicious peer can send millions of routes in a single message to exhaust memory.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:11.618805Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:53:24.474364Z",
+  "closed_at": "2026-08-16T19:53:24.474364Z",
+  "close_reason": "Added MAX_ROUTES_PER_MESSAGE (256) constant and validation in receive_from_peer to reject messages with too many targets or transits. Includes TooManyRoutes error variant and test coverage."
+}

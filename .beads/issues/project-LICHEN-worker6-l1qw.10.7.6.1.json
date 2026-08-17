@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.7.6.1",
   "title": "Python: priority routing (SOS packets first)",
   "description": "Route SOS packets with highest priority",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:23.090646Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:23.090646Z",
+  "updated_at": "2026-08-17T04:06:35.101022Z",
+  "closed_at": "2026-08-17T04:06:35.101022Z",
+  "close_reason": "Implementation required: Infrastructure exists (Priority.SOS in tx_queue, app_priority() helper, APP_PRIORITY mapping) but integration not wired. app_priority() is defined but never called. Node.send() and CoAP transport do not inspect packet content for priority. Needs: (1) logic to identify SOS packets (CoT subtype 0x20, /sos URI path), (2) call app_priority() or assign Priority.SOS, (3) propagate priority through stack to link.send(). This is a feature task, not a bug fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.7.6.1",

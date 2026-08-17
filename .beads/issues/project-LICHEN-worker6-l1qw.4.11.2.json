@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.11.2",
   "title": "Rust: Human-Readable Node Address Format implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:02.722327Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.512666Z",
+  "updated_at": "2026-08-17T04:46:29.091183Z",
+  "closed_at": "2026-08-17T04:46:29.091183Z",
+  "close_reason": "Already fixed: human_address_from_pubkey() in rust/lichen-link/src/identity.rs passes test_node_address_vectors",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.11.2",

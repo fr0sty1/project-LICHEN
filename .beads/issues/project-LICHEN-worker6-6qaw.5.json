@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-6qaw.5",
+  "title": "Ipv6Header and UdpHeader missing PartialEq derive",
+  "description": "File: rust/lichen-ipv6/src/lib.rs\nLines: 302, 413\n\nIssue: Ipv6Header and UdpHeader derive Debug, Clone, Copy but not PartialEq, Eq. This makes testing awkward and prevents use in collections.\n\nFix: Add PartialEq, Eq to both structs.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:25:58.660061Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:25:58.660061Z",
+  "labels": [
+    "idiomatic-rust",
+    "type-design",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6qaw.5",
+      "depends_on_id": "project-LICHEN-worker6-6qaw",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:25:58.987243Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

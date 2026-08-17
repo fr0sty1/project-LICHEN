@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-worker6-8qs6",
+  "title": "Security Review: loadng.rs 2026-08-16",
+  "description": "Security Review: rust/lichen-core/src/loadng.rs\n\nFocus: injection, buffer overflow, crypto misuse, auth bypass, input validation gaps\n\n## Findings Summary\n- P2: 1 (input validation gap)  \n- P3: 1 (documentation)\n\n## Review Confidence\n- Confidence: 85% (15% chance of missed bug)\n- Least confident areas: RERR error_code validity, flags field semantics (need spec reference)\n- Would raise confidence if: Had spec document for valid error_code/flags values\n\n## What Is Actually Good\n- RREQ hop_limit clamped to MAX_HOP_LIMIT (flood amplification prevention)\n- RREP signature requirement prevents unauthenticated route injection\n- Sequence number freshness uses correct half-window semantics\n- All buffer access is bounds-checked before indexing\n- SECURITY: comments document trust boundaries clearly\n- Typestate pattern for RouteDiscovery prevents invalid state transitions at compile time",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:30:37.007181Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:34.229439Z",
+  "started_at": "2026-08-16T19:30:41.515706Z",
+  "lease_expires_at": "2026-08-16T19:35:41.515706Z",
+  "heartbeat_at": "2026-08-16T19:30:41.515706Z",
+  "labels": [
+    "review",
+    "security"
+  ]
+}

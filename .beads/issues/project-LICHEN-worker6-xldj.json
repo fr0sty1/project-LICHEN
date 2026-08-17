@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xldj",
+  "title": "[review] handoff.rs:258: Negative CBOR integers wr",
+  "description": "replay_index and replay_bitfield are parsed as i128 then cast to u64 (lines 258, 266). A negative CBOR integer (-1) becomes u64::MAX, corrupting the replay window state. An attacker could craft a handoff response that makes the receiving gateway accept replayed messages.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:47:58.409603Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:47:58.409603Z",
+  "labels": [
+    "review"
+  ]
+}

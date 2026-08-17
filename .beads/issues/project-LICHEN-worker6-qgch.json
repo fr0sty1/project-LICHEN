@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-qgch",
+  "title": "tx_queue/main.c: ASSERT_EQ macro double-evaluates on failure",
+  "description": "Lines 33-38: When assertion fails, the first argument is evaluated twice (once for comparison, once for printf). For side-effectful expressions like tx_queue_pop(), this could call the function twice and print a different value than what was compared.\n\nFile: /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/main.c\nLine: 33",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:27.40283Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:12:27.40283Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

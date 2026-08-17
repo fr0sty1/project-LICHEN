@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-9s94",
+  "title": "Review: lichen-schc/fragment.rs edge cases 2026-08-16",
+  "description": "Review confidence: 85% chance of missed bug.\nLeast confident areas: Ack bitmap encoding/decoding (complex bit manipulation), MIC computation edge cases.\nWould raise confidence if: Fuzz testing on Fragment::from_bytes and Ack::from_bytes_for with malformed inputs.\n\nSummary:\n- P0 (must fix): 0\n- P1 (should fix): 0  \n- P2 (worth fixing): 4\n- P3 (polish): 3\n\nLabels: correctness (2), edge-case (5), dead-code (1), bounds (1), overflow (1), error-handling (1)",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:12:35.238929Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:15:54.826662Z",
+  "started_at": "2026-08-16T18:14:06.520266Z",
+  "lease_expires_at": "2026-08-16T18:19:06.520266Z",
+  "heartbeat_at": "2026-08-16T18:14:06.520266Z",
+  "labels": [
+    "review"
+  ]
+}

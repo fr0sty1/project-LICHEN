@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-0oua",
+  "title": "fuzz_fragment: Add round-trip fragment verification",
+  "description": "Add invariant checking: fragments written by write_to() should parse back via from_bytes() with identical payload and MIC. This catches serialization/deserialization mismatches.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:38.541224Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:05:38.541224Z"
+}

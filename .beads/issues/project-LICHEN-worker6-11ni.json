@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-11ni",
+  "title": "[review] tx_queue.py:415: confirm_transmitted() doe",
+  "description": "_remove_first() called by confirm_transmitted() updates stats but never signals entry.reservation.set_result(True). Callers using peek()+confirm_transmitted() pattern with reservations will hang on reservation.wait().",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:28:25.650017Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:29:53.18454Z",
+  "closed_at": "2026-08-16T04:29:53.18454Z",
+  "close_reason": "Fixed: _remove_first() now signals entry.reservation.set_result(True) before updating stats, ensuring callers using peek()+confirm_transmitted() pattern with reservations do not hang.",
+  "labels": [
+    "review"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.2.1.1",
   "title": "Parse: Extract requirements from LCI /msg/sent",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:14.32146Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:14.32146Z",
+  "updated_at": "2026-08-17T15:55:37.689123Z",
+  "closed_at": "2026-08-17T15:55:37.689123Z",
+  "close_reason": "Complete: Extracted requirements from LCI /msg/sent spec (11-lci.md, 12-apps.md). Findings: (1) Entire messaging subsystem is OPTIONAL (MAY implement per 17.5.7), (2) rt=msg.sent, ct=60 (CBOR), NOT observable, (3) GET only per resource table, (4) POST /msg/inbox returns Location-Path: /msg/sent/{id}, (5) Single MUST: nodes MUST NOT log confessions to /msg/sent. No additional normative requirements found. Implementation exists as SentMessagesResource.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.2.1.1",

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-584y",
+  "title": "[review] appendix-schc.md: Duplicate section numbering",
+  "description": "Section 'A.3' appears twice (lines 42 and 46). The OSCORE section should be numbered 'A.4' and RPL section should be 'A.5'. This creates ambiguous references.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:58.381156Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:58.381156Z",
+  "labels": [
+    "review"
+  ]
+}

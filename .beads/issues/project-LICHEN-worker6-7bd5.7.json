@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-7bd5.7",
+  "title": "Hop limit clamping prevents flood amplification attacks",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 372-375\n\nThe RREQ parser clamps `hop_limit` to `MAX_HOP_LIMIT` (15):\n```rust\nlet hop_limit = data[1].min(MAX_HOP_LIMIT);\n```\n\nThis prevents an attacker from sending RREQ with `hop_limit=255` to cause excessive network-wide propagation beyond the intended expanding ring limits [4, 8, 15]. Good defensive coding with security comment.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:49.928718Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:49.928718Z",
+  "labels": [
+    "review",
+    "positive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7bd5.7",
+      "depends_on_id": "project-LICHEN-worker6-7bd5",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:50.262992Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

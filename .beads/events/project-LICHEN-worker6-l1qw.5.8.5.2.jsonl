@@ -1,1 +1,2 @@
 {"id":"019f9764-f6cb-7670-bd56-9d8969be5878","issue_id":"project-LICHEN-worker6-l1qw.5.8.5.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:50:04.235422Z"}
+{"id":"01a00e39-90f3-7923-858c-c258f193fb0b","issue_id":"project-LICHEN-worker6-l1qw.5.8.5.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already correct: LICHEN_LOADNG_RREQ_RETRIES=3U matches spec B2.1 requirement exactly","created_at":"2026-08-17T05:37:28.8196Z"}

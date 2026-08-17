@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.12.1.1",
   "title": "Parse: Extract requirements from CoAP Resources",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:40:55.739663Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:55.739663Z",
+  "updated_at": "2026-08-17T03:50:44.606991Z",
+  "closed_at": "2026-08-17T03:50:44.606991Z",
+  "close_reason": "Obsolete: Parent task (CoAP resource site integration) is already closed. Implementation is complete in python/src/lichen/coap/resources/ with 14+ resource modules and comprehensive tests. This planning subtask (extract requirements from spec) was superseded by direct implementation.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.12.1.1",

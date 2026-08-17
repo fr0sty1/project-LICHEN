@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-t54k",
+  "title": "[review] handoff.rs:210: u64 to i64 cast produces negative integers for large values",
+  "description": "sender_sequence, replay_index, and replay_bitfield are u64 but cast to i64 before CBOR encoding. Values \u003e= 2^63 wrap to negative, producing semantically incorrect negative integers. While two's complement may cause correct round-trips, this is fragile and could break with CBOR libraries that treat large negatives differently.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:47:47.795763Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:47:47.795763Z",
+  "labels": [
+    "review"
+  ]
+}

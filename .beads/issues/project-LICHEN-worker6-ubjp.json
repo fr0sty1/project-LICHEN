@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-ubjp",
+  "title": "Kconfig: Duplicate LICHEN_LINK_COORDINATION config definition",
+  "description": "Lines 103-111 and 125-133 both define config LICHEN_LINK_COORDINATION with identical content. This is a copy-paste error. Kconfig behavior with duplicates is undefined - typically the second silently overrides the first, but can cause build warnings, menuconfig display issues, or symbol resolution problems depending on toolchain version.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:26.199747Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:01:30.313852Z",
+  "closed_at": "2026-08-17T04:01:30.313852Z",
+  "close_reason": "Fixed: Removed duplicate config LICHEN_LINK_COORDINATION definition at lines 125-133, keeping the first definition at lines 103-111",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

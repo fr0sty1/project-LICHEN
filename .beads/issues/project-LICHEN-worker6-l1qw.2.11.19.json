@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.11.19",
   "title": "Vectors: state transition test cases",
   "description": "Create test vectors for desync state machine transitions. Include all valid transitions, invalid inputs. Acceptance: All implementations pass vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:02.282237Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:02.282237Z",
+  "updated_at": "2026-08-17T04:27:55.81658Z",
+  "closed_at": "2026-08-17T04:27:55.81658Z",
+  "close_reason": "Created comprehensive state transition test vectors in packets-timing.json. Added 25 new vectors covering: (1) DesyncFSM transitions (SYNCED/DESYNCED/RECOVERING) - all valid transitions plus invalid inputs and multi-step sequences; (2) CcpFSM transitions (UNJOINED/JOINED/DRIFT/RECOVER) - all valid transitions, no-op cases, and full cycle sequences. Updated test count assertion in test_packets_timing.py from 32 to 57. All 333 timing tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.11.19",

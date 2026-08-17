@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.2.1.1",
   "title": "Parse: Extract requirements from Discovery",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:39:00.159092Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:39:00.159092Z",
+  "updated_at": "2026-08-17T04:16:25.959054Z",
+  "closed_at": "2026-08-17T04:16:25.959054Z",
+  "close_reason": "Completed: GCP-4 Discovery (lines 63-73) contains no explicit MUST/SHALL/SHOULD normative requirements. The section is purely descriptive. Normative language is in other sections (GCP-3, GCP-6, GCP-10). No checklist items to extract.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.2.1.1",

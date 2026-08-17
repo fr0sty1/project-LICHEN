@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-kmts.1",
+  "title": "RetransmitIter is dead code with potential arithmetic underflow",
+  "description": "Line 1051-1075: `RetransmitIter` is defined but never constructed or used anywhere in the codebase.\n\nThe struct contains a potential arithmetic underflow at line 1067:\n```rust\nlet rel_pos = abs_pos - self.start;\n```\nIf `self.start \u003e abs_pos`, this would panic in debug or wrap in release.\n\nSince the code is unused, this is not currently exploitable, but it could surface if someone starts using it.\n\nSuggested fix: Either remove the dead code entirely, or add a bounds check:\n```rust\nlet rel_pos = abs_pos.checked_sub(self.start)?;\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:46:47.144141Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:46:47.144141Z",
+  "labels": [
+    "correctness",
+    "dead-code",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.1",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:46:47.464024Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

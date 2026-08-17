@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-5oop.5",
+  "title": "Good: LinkLayer::Debug impl redacts identity field",
+  "description": "Location: rust/lichen-link/src/link_layer.rs lines 333-341\n\nLinkLayer holds an Identity (containing private key). The Debug impl outputs '[REDACTED]' for the identity field. Same pattern as Identity::Debug - prevents key leakage.\n\nWorth defending against derive(Debug) simplification.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:50:08.121005Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:50:08.121005Z",
+  "labels": [
+    "review",
+    "crypto-security",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.5",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:50:08.479021Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

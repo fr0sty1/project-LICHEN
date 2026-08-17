@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-7724",
+  "title": "[review] messaging.py:93: sent_messages() returns mutabl",
+  "description": "Returns `[self._sent[msg_id] for ...]` which are direct references to internal dicts. Callers can mutate internal state. Compare with inbox() at line 97 which correctly returns `[dict(message) for message in self._inbox]`. Should be `[dict(self._sent[msg_id]) for msg_id in self._sent_order]` or use copy.deepcopy for nested structures.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:35.048853Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:35.048853Z",
+  "labels": [
+    "review"
+  ]
+}

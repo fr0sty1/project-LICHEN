@@ -1,0 +1,2 @@
+{"id":"01a00c07-a22e-7e3c-9179-d04854fa391b","issue_id":"project-LICHEN-worker6-j787","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:23:41.998934Z"}
+{"id":"01a00c22-06a1-7df2-8fd9-4e990948be20","issue_id":"project-LICHEN-worker6-j787","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added comprehensive fuzz tests for SCHC fragment parser: Fixed fuzz crate workspace configuration, updated Fragment/Ack/Receiver/Sender fuzzing, fixed broken imports","created_at":"2026-08-16T19:52:31.649915Z"}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-qcrl",
+  "title": "appendix-ccp12-hopping.md: Pseudocode produces out-of-bounds channel numbers",
+  "description": "Line 84-85: The pseudocode uses N = MAX(NChannels, 3) then 1 + (Hash MOD N), producing channels 1..N. But valid data channels are 1..(NChannels-1) since CH0 is reserved. When NChannels=8, pseudocode yields channels 1-8, but channel 8 does not exist (channels are 0-7). The note at lines 127-129 confirms implementations must use NChannels - 1 instead, which the pseudocode does not reflect. Any implementation following the pseudocode will fail test vectors and potentially attempt to use non-existent channels.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:20.273684Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:03:29.274062Z",
+  "closed_at": "2026-08-17T04:03:29.274062Z",
+  "close_reason": "Fixed: Updated pseudocode in appendix-ccp12-hopping.md to use NChannels-1 instead of NChannels for channel selection, matching the correct implementation. Changed both SelectChannel and SynchronizedHopChannel pseudocode, updated examples to show correct result (channel 2 not 5), and removed the discrepancy note since pseudocode now matches test vectors.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

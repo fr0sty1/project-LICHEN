@@ -1,0 +1,2 @@
+{"id":"01a00c2e-06fd-7bb0-80c0-f567eb9541f0","issue_id":"project-LICHEN-worker6-pl5e","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T20:05:38.173766Z"}
+{"id":"01a01064-02bd-7a35-a1d3-1325981b71ac","issue_id":"project-LICHEN-worker6-pl5e","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added CoapUdpGlobalProfile, RplDioProfile, and RplDaoProfile to fuzz_decompress.rs. All five profiles now have fuzz coverage. Tests pass.","created_at":"2026-08-17T15:43:04.893669Z"}

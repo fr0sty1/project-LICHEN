@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ouup",
+  "title": "[review] slot_claim.py:351: Unbounded memory allocati",
+  "description": "compute_interleaved_slots (line 351) and compute_contiguous_slots (line 387) convert range() to list() without limiting the resulting list size. With max_slots or slot_count set to very large values (e.g., 2**31), these functions could allocate gigabytes of memory causing denial of service. Fix: add a reasonable upper bound check (e.g., MAX_SLOTS_PER_CLAIM = 65536) before creating the list.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:38:17.927987Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:38:17.927987Z",
+  "labels": [
+    "review"
+  ]
+}

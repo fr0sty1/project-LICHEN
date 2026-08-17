@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-kmts.5",
+  "title": "Ack::from_bytes does not call check_rule",
+  "description": "Line 298-362: Similar to Fragment::from_bytes, `Ack::from_bytes` and `Ack::from_bytes_for` extract rule_id but never validate it:\n```rust\nlet rule_id = data[0];\n// ... no check_rule(rule_id)?\n```\n\nThis allows parsing ACKs with unsupported rule IDs (\u003e= 128).\n\nSame pattern as the Fragment::from_bytes issue - asymmetric validation between parse and serialize.\n\nSuggested fix: Add `check_rule(rule_id)?` early in both `from_bytes` and `from_bytes_for`.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:47:09.535133Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:04:34.849025Z",
+  "closed_at": "2026-08-16T21:04:34.849025Z",
+  "close_reason": "Fixed: added check_rule(data[0])? early in Ack::from_bytes_for to reject rule IDs \u003e= 128",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.5",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:47:09.866443Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,1 +1,2 @@
 {"id":"019fb9af-e408-7cc9-8e12-7c68a65c23a2","issue_id":"project-LICHEN-worker6-l1qw.8.16.10.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:38:59.976838Z"}
+{"id":"01a01087-c082-729f-9d57-c8637c2ce98d","issue_id":"project-LICHEN-worker6-l1qw.8.16.10.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already validated: tests/timing/test_sfn_wrap_vectors.py cross-checks oracle against vectors, all 124 tests pass","created_at":"2026-08-17T16:22:07.234173Z"}

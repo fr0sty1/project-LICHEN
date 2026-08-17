@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-eqfq",
+  "title": "Spec: Define version negotiation protocol",
+  "description": "Part of SCHC rule set versioning (schc)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:36.105369Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:01:33.23479Z",
+  "closed_at": "2026-08-15T19:01:33.23479Z",
+  "close_reason": "Implemented SCHC version negotiation protocol: Added spec for Version Query (0x03) and Version Response (0x04) messages under L2 dispatch 0x15 to enable active version negotiation on ad-hoc links. Added Python implementation with SchcVersionQuery/SchcVersionResponse classes, helper functions (create_version_query, handle_version_query, process_version_response), and comprehensive test coverage (34 new tests). Spec updated in 03-adaptation.md section 5.7 and appendix-schc.md.",
+  "labels": [
+    "schc"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-xxrc",
+  "title": "RERR messages can be spoofed to trigger route deletions",
+  "description": "Lines 439-457: RERR accepts any error_code/address with optional signature. Attacker can forge REERs to delete routes. Fix: document signature requirement, validate error_code.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:12:55.925397Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:36:23.122911Z",
+  "closed_at": "2026-08-16T19:36:23.122911Z",
+  "close_reason": "Fixed: Added RerrCode enum with valid codes (RouteNotFound=0, LinkFailure=1), validation in from_bytes rejects unknown codes, updated SECURITY comment to clarify signature requirements, added tests for error code validation"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-8k6k",
+  "title": "rust/lichen-core/src/loadng.rs: Off-by-one in hop limit forward check",
+  "description": "Line 606: `if rreq.hop_limit \u003e 1` should be `if rreq.hop_limit \u003e 0`. With the current check, packets with hop_limit=1 are NOT forwarded even though the destination may be exactly 1 hop away. Example: hop_limit=4 allows only 3 forwards (reaching hop 4), not 4 forwards (reaching hop 5). A node at hop_limit=1 that is not the destination will return HopLimitExhausted instead of forwarding with hop_limit=0, which would allow the next node to be the destination.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:25:17.337982Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:14:18.6536Z",
+  "closed_at": "2026-08-17T15:14:18.6536Z",
+  "close_reason": "Fixed off-by-one: changed 'hop_limit \u003e 1' to 'hop_limit \u003e 0' at line 623 in loadng.rs. hop_limit=1 now correctly forwards with hop_limit=0, allowing destination to be exactly 1 hop away. Updated test to use hop_limit=0 for exhaustion case, added new test for hop_limit=1 forwarding.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

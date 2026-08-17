@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-xsf3",
+  "title": "Missing SECURITY comment on signature delegation to link layer",
+  "description": "Lines 122-123, 376-378, 434-436: Comments say 'produced/verified by link layer' but no SECURITY: comment documents trust boundary or what happens with signature=None on authenticated channels. Fix: add SECURITY: comments per project standards.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:12:54.459624Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:29:09.409473Z",
+  "closed_at": "2026-08-16T19:29:09.409473Z",
+  "close_reason": "Fixed: Added SECURITY: comments to Rreq, Rrep, and Rerr signature fields documenting the link layer trust boundary and explaining what signature=None means for each message type"
+}

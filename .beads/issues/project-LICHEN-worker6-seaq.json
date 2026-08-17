@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-seaq",
+  "title": "[review] forwarding_buffer.py:130: Unused _clock attribute i",
+  "description": "The constructor accepts a clock parameter and stores it as self._clock, but the attribute is never used. All time-dependent methods (try_buffer, expire_old) require now_ms as an explicit parameter. Either remove the clock parameter or use it internally.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:13:38.279555Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:13:38.279555Z",
+  "labels": [
+    "review"
+  ]
+}

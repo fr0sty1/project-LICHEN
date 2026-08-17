@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-5s31",
+  "title": "[review] provisioning.py:354: Identity.from_seed called with",
+  "description": "session.provisioned_seed is typed as bytes | None and could be None if provision_node() was never called or failed. Passing None to Identity.from_seed() will cause a runtime error or produce invalid cryptographic output.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:46.41993Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:08:37.258809Z",
+  "closed_at": "2026-08-15T22:08:37.258809Z",
+  "close_reason": "Fixed: Added None check before calling Identity.from_seed(session.provisioned_seed) at line 354. The provisioned_seed field is bytes | None and could be None if provision_node() was never called or failed. Now the callback is only invoked when both the callback and seed are present.",
+  "labels": [
+    "review"
+  ]
+}

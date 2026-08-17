@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-redb",
+  "title": "channel.py:77,136: Out-of-bounds channel index when n_channels \u003c= 2",
+  "description": "The expression n = max(n_channels - 1, 2) followed by return 1 + (h % n) can return channel indices beyond n_channels when n_channels \u003c= 2. For n_channels=1, returns 1 or 2 (valid: 0). For n_channels=2, returns 1 or 2 (valid: 0-1). This violates the function contract and could cause array index out-of-bounds or undefined radio behavior. Same bug in synchronized_hop_channel (line 77) and select_channel hash-based path (line 136). Fix: Add validation if n_channels \u003c 3: return 0 or clamp the result.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:21.551697Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:27:58.852397Z",
+  "closed_at": "2026-08-17T15:27:58.852397Z",
+  "close_reason": "Fixed: Added edge case handling for n_channels \u003c= 2 in synchronized_hop_channel and select_channel hash-based path. Now returns 0 for n_channels=1 (only control channel exists) and 1 for n_channels=2 (only one data channel). Verified all channel indices stay within [0, n_channels-1] bounds. Tests pass.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

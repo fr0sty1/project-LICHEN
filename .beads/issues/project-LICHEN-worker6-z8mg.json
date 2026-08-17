@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-z8mg",
+  "title": "[review] messaging.py:130: _next_id never updated after m",
+  "description": "The candidate_next_id is calculated and incremented at lines 130-137, but self._next_id is never assigned the new value. Every POST without an explicit ID receives ID=1, causing sent messages to overwrite each other in self._sent. The second message with auto-ID replaces the first, third replaces second, etc. Fix: add 'self._next_id = candidate_next_id' before the return at line 152.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:40.205898Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:06:50.014815Z",
+  "closed_at": "2026-08-15T21:06:50.014815Z",
+  "close_reason": "Already fixed: line 150 already contains 'self._next_id = candidate_next_id' ensuring IDs increment correctly (verified by test: 3 consecutive POSTs get IDs 1,2,3)",
+  "labels": [
+    "review"
+  ]
+}

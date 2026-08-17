@@ -1,0 +1,4 @@
+{"id":"01a00bf7-1ec2-77c0-a54b-bd86b907b1e0","issue_id":"project-LICHEN-worker6-2rkp.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:05:39.778508Z"}
+{"id":"01a00bf7-1ec8-724d-a123-ad74c9bbb953","issue_id":"project-LICHEN-worker6-2rkp.4","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: security","created_at":"2026-08-16T19:05:39.784151Z"}
+{"id":"01a00bf7-1eca-7a6f-aace-fa9692561ceb","issue_id":"project-LICHEN-worker6-2rkp.4","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: defense-in-depth","created_at":"2026-08-16T19:05:39.786684Z"}
+{"id":"01a00bf7-1ecd-7027-ba7f-f9a015eabc0d","issue_id":"project-LICHEN-worker6-2rkp.4","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T19:05:39.78901Z"}

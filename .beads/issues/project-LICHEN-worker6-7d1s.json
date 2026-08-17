@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-7d1s",
+  "title": "[review] provisioning.py:491: ProvisioningSession.state",
+  "description": "The state field in ProvisioningSession is initialized to ProvisioningState.IDLE at line 491/534 but is never updated as the session progresses. The code checks the underlying crypto session's state (br_session.state, node_session.state) at lines 336, 395. The ProvisioningSession.state field is dead code that could confuse maintainers or cause bugs if used.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:02:09.373356Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:02:09.373356Z",
+  "labels": [
+    "review"
+  ]
+}

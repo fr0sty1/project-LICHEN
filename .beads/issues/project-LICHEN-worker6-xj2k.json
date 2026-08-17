@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-xj2k",
+  "title": "messaging.py: Receipts list grows unbounded",
+  "description": "Line 250 appends to `self._receipts` without any size limit. Unlike inbox (capped at _MESSAGES_MAX=100), receipts grow forever. Sustained POST traffic to /msg/ack exhausts memory.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:20.335146Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:20.335146Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

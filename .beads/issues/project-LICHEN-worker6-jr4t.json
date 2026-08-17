@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jr4t",
+  "title": "tx_queue.c: pthread_mutex_init return value ignored",
+  "description": "Line 217: pthread_mutex_init(\u0026queue-\u003elock, NULL) does not check the return value. If initialization fails (ENOMEM, EAGAIN), subsequent pthread_mutex_lock/unlock calls operate on an uninitialized mutex, which is undefined behavior per POSIX. This contrasts with line 462 where pthread_mutex_destroy return IS checked. Fix: check return and propagate error from tx_queue_init().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:23.491619Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:23.491619Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

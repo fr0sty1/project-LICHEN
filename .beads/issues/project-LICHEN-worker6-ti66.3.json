@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-ti66.3",
+  "title": "Missing trust boundary documentation in receive path",
+  "description": "**File:** rust/lichen-schc/src/fragment.rs\n**Lines:** 791-827, 829-884\n\n**Issue:** The `receive_bytes` and `receive` functions handle untrusted network input but lack `SECURITY:` comments documenting:\n1. What validation is performed\n2. What invariants are maintained\n3. What the caller is responsible for\n\n**Trigger:** A maintainer modifying the validation logic might not understand which checks are security-critical vs. protocol correctness.\n\n**Current state:** The input validation appears thorough:\n- Length checks before indexing\n- Rule ID validation\n- Window/FCN bounds validation\n- Padding bit verification\n- Tile length validation\n- Duplicate detection with content comparison\n\n**Suggested fix:** Add SECURITY comment block at function entry:\n```rust\n/// SECURITY: Handles untrusted network input. Validation ensures:\n/// - No panic from malformed input (all indexing bounds-checked)\n/// - Memory-bounded: fragments rejected if exceeding receiver limit\n/// - No state corruption: duplicate fragments verified against existing data\n/// - Protocol abort on invalid state transitions\n/// Authentication is NOT provided at this layer (see OSCORE).\npub fn receive_bytes(\u0026mut self, data: \u0026[u8]) -\u003e Result\u003cReceiverResult, FragmentError\u003e {\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:46:20.407057Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:46:20.407057Z",
+  "labels": [
+    "crypto-security",
+    "untrusted-input",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ti66.3",
+      "depends_on_id": "project-LICHEN-worker6-ti66",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:46:20.730014Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

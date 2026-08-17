@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-fqw7",
+  "title": "emergency.py: Falsy timestamp=0 silently uses fallback field",
+  "description": "Lines 124-125: Uses `body.get(\"t\") or body.get(\"ts\")` pattern. If t=0 (valid per line 141 which only rejects \u003c0), Python evaluates `0 or ts_value` as ts_value. Payload {\"from\": \"...\", \"t\": 0, \"ts\": 100} silently uses timestamp=100 instead of the explicitly provided 0.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:52:17.707152Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:52:17.707152Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

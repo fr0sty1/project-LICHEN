@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-2hss.2",
+  "title": "Sequence freshness function not exported - replay attack vector",
+  "description": "File: rust/lichen-core/src/loadng.rs:678-684\n\nThe ll_seq_is_fresher() function implementing RFC-compliant sequence number comparison is defined inside mod tests - it is test-only and not available to production code. Callers cannot perform replay protection without reimplementing this logic.\n\nFailure scenario: Caller has no library function for replay detection. They either skip it (replay vulnerable) or reimplement incorrectly (wrapping edge cases around 0x8000 boundary).\n\nFix: Move ll_seq_is_fresher to a public module function named seq_is_fresher(), document the half-window semantics, add doc tests.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:03:24.625016Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:53:35.136976Z",
+  "closed_at": "2026-08-16T20:53:35.136976Z",
+  "close_reason": "Already fixed: seq_is_fresher is exported at module scope (line 800) with full half-window semantics documentation and doc tests",
+  "labels": [
+    "security",
+    "replay-attack",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2hss.2",
+      "depends_on_id": "project-LICHEN-worker6-2hss",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:03:24.980345Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

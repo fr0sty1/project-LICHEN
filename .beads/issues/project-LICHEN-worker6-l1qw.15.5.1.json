@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.15.5.1",
   "title": "Python: Node Handoff oracle implementation",
-  "description": "Python oracle for GCP-7 Node Handoff: DAO to new gateway, POST /handoff protocol, state transfer (sequence numbers, security contexts), route update simulation.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "description": "Python oracle for GCP-7 Node Handoff: DAO to new gateway, POST /handoff protocol, state transfer (sequence numbers, security contexts), route update simulation.\n\n## MUST/SHALL Checklist (from spec/08-gateway-coordination.md)\n\n### GCP-7 Node Handoff Protocol (procedural requirements)\n- [ ] Node sends DAO to new Gateway B when moving (detected via better parent/RSSI)\n- [ ] Gateway B sends POST /handoff to Gateway A (via backbone) with node details\n- [ ] Gateway A releases node from its registry and sends confirmation\n- [ ] Gateway B confirms handoff to node via CoAP\n- [ ] Routes updated in RPL DODAG\n\n### State Transfer Requirements\n- [ ] Recent sequence numbers transferred (DAO, path sequence)\n- [ ] Security contexts transferred if applicable (OSCORE parameters)\n- [ ] Node IPv6 address included\n- [ ] Replay windows transferred\n\n### Security Requirements (GCP-9, applied to handoff)\n- [ ] Handoff messages MUST be authenticated via OSCORE (PSK for closed, signatures for open federation)\n- [ ] Handoff messages MUST be encrypted (OSCORE)\n- [ ] Replay protection via sequence numbers and timestamps\n- [ ] Rate limiting on CoAP endpoints to prevent DoS\n\n### Sequence Number Safety (derived from GCP-7 state transfer)\n- [ ] Sequence numbers MUST be transferred accurately\n- [ ] Receiving gateway MUST use sequence number strictly greater than transferred value (prevent replay of in-flight messages)\n- [ ] OSCORE sender sequence MUST be incremented on accept (prevent nonce reuse)\n\n### Federation Mode Support (GCP-3, GCP-10)\n- [ ] MUST support PSK mode (closed federation) for handoff\n- [ ] MUST support signature mode (open federation) for handoff\n\n### Error Cases (derived from protocol)\n- [ ] NODE_NOT_FOUND: node not in source gateway registry\n- [ ] NODE_BUSY: node in active communication (retry later)\n- [ ] AUTH_FAILED: OSCORE verification failed\n- [ ] MALFORMED_REQUEST: invalid CBOR or missing fields\n- [ ] RATE_LIMITED: too many handoff requests",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:39.738067Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:31.285346Z",
+  "updated_at": "2026-08-17T04:24:53.989996Z",
+  "closed_at": "2026-08-17T04:24:23.842743Z",
+  "close_reason": "Already implemented: Python oracle for Node Handoff (GCP-7) exists in python/src/lichen/gateway/handoff.py (574 lines) and python/src/lichen/coap/resources/handoff.py (117 lines). Covers DAO to new gateway, POST /handoff protocol, state transfer (sequence numbers, OSCORE security contexts, freshness), and route simulation via NodeRegistry. Full test coverage with 33 passing tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.5.1",

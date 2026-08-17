@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-1hyk",
+  "title": "rust/lichen-oscore/src/provisioning.rs: Silent failure in ProvisioningPayload::new when ciphertext exceeds capacity",
+  "description": "The extend_from_slice call result is discarded with `let _ =`. When ciphertext exceeds the 48-byte Vec capacity, heapless::Vec returns Err without modifying the vec (no partial fill). The resulting ProvisioningPayload has an empty ciphertext field instead of the provided data, causing confusing decryption failures later at line 347.\n\nFix suggestion: Change return type to Result\u003cSelf, ProvisioningError\u003e and propagate the extend_from_slice error: `ct.extend_from_slice(ciphertext).map_err(|_| ProvisioningError::BufferTooSmall)?`\n\nFile: rust/lichen-oscore/src/provisioning.rs\nLine: 165\nCategory: edge-case",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:52:56.542101Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:52:56.542101Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

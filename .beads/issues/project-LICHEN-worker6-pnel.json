@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-pnel",
+  "title": "lichen/subsys/lichen/link/Kconfig: BACKOFF_MIN/MAX ranges allow inverted configuration",
+  "description": "LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS (range 10-5000) and LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS (range 10-10000) overlap completely. A user can configure MIN=5000 and MAX=10, making min \u003e max. The help text states 'pick uniform random in [min_ms, max_ms)' - when min \u003e max, this causes undefined behavior (negative modulo, assertion failure, or wraparound to huge delay).\n\nFix suggestion: Kconfig cannot express cross-symbol constraints, so the consuming C code must validate min \u003c max and fail clearly. Alternatively, narrow MIN range to 10-4999 and MAX to 5000-10000 to prevent overlap (but this is restrictive).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:48.900159Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:12:48.900159Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

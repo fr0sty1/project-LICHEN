@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-oi87",
+  "title": "[review] messaging.py:80: Public deliver() method lacks validation",
+  "description": "The deliver() method is documented as public API for mesh-delivered messages ('used when a message arrives over the mesh rather than via CoAP POST') but performs no validation of the message structure. While render_post() validates input, external callers could inject malformed messages directly into the inbox. This is a defense-in-depth gap - if mesh-layer validation fails or is bypassed, malformed messages can enter the inbox without any checks on structure, types, or content.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:47.455631Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:47.455631Z",
+  "labels": [
+    "review"
+  ]
+}

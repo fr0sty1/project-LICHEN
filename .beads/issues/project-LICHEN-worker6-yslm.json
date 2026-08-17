@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-yslm",
+  "title": "python/src/lichen/channel_plan.py: Standalone select_channel has same out-of-bounds bug (lines 189-200)",
+  "description": "The standalone select_channel function (lines 189-200) has identical logic to the method and the same bug: for plans with num_channels \u003c= 2, it returns indices outside the valid range [0, num_channels-1].\n\nFix suggestion: Apply the same fix as to the method version, or have this function delegate to plan.select_channel() to avoid code duplication.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:14:09.323997Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:14:09.323997Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

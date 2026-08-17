@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-7bd5.6",
+  "title": "Typestate pattern prevents invalid state machine transitions at compile time",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 193-357\n\nThe `RouteDiscovery\u003cS\u003e` generic with marker types (Idle, Searching, Replied, Failed) makes illegal transitions unrepresentable at compile time:\n- `start()` only available on `RouteDiscovery\u003cIdle\u003e`\n- `advance_ring()` and `receive_rrep()` only on `RouteDiscovery\u003cSearching\u003e`\n- Terminal states (Replied, Failed) have no transition methods\n\nThis is a robust pattern that eliminates an entire class of runtime state machine bugs.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:46.924763Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:46.924763Z",
+  "labels": [
+    "review",
+    "positive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7bd5.6",
+      "depends_on_id": "project-LICHEN-worker6-7bd5",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:47.240917Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

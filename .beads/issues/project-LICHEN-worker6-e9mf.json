@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-e9mf",
+  "title": "[review] 03-adaptation.md: Ambiguous final tile emptiness handling",
+  "description": "The phrase 'except the non-empty final tile may be shorter' is ambiguous. It is unclear whether: (a) a final tile must always be non-empty, or (b) when the final tile happens to be non-empty, it may be shorter. The edge case of a packet whose compressed size is an exact multiple of 187 bytes (empty final tile) is not addressed.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:44.302906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:44.302906Z",
+  "labels": [
+    "review"
+  ]
+}

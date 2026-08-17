@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-v96h",
+  "title": "[review] provisioning.py:602: Session leak in provision",
+  "description": "After provision_node() successfully verifies the ACK (line 597), it returns the seed without calling _remove_session(). The session cleanup at line 599 only runs in the exception handler. This leaves the session in self._sessions indefinitely, causing: (1) memory leak, (2) cryptographic material (_prov_key, provisioned_seed) not wiped from memory, (3) potential DoS since max_sessions limit is not released.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:13:26.864825Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:15:07.821223Z",
+  "closed_at": "2026-08-16T04:15:07.821223Z",
+  "close_reason": "Fixed session leak: added _remove_session() call after successful ACK verification in provision_node(). All 83 provisioning tests pass.",
+  "labels": [
+    "review"
+  ]
+}

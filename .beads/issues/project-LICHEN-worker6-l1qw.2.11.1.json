@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.11.1",
   "title": "Python: state machine (UNJOINED/JOINED/DRIFT/RECOVER)",
   "description": "Implement 4-state desync recovery state machine. Acceptance: Correct transitions per spec.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:30.477778Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:30.477778Z",
+  "updated_at": "2026-08-17T04:26:37.34727Z",
+  "closed_at": "2026-08-17T04:26:37.34727Z",
+  "close_reason": "Implemented 4-state CCP desync recovery FSM (UNJOINED/JOINED/DRIFT/RECOVER) per spec 2a.6. Added CcpFSM class with correct transitions: UNJOINED-\u003eJOINED on join, JOINED-\u003eDRIFT on T_DRIFT_WARN, DRIFT-\u003eRECOVER on T_DRIFT_MAX, RECOVER-\u003eUNJOINED on T_GIVE_UP, and beacon-triggered recovery. Updated CcpState enum from 5 states to spec-compliant 4 states. Added 17 tests for state machine transitions.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.11.1",

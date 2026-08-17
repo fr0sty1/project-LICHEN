@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-gb5u",
+  "title": "[review] slot_claim.py:172: Slot values not validated",
+  "description": "from_cbor() accepts any values in the slots array and relies on implicit type errors during sorting. Negative slot indices pass validation (e.g., slots=(-1, 0, 1) is accepted) but are invalid per the spec since slots represent indices in [0, max_slots). Non-integer types like strings cause confusing errors during sorted() comparison rather than clear type validation errors.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:38:17.426289Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:38:17.426289Z",
+  "labels": [
+    "review"
+  ]
+}

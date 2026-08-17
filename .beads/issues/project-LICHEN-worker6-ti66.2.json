@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-ti66.2",
+  "title": "CRC-32 MIC lacks cryptographic integrity documentation",
+  "description": "**File:** rust/lichen-schc/src/fragment.rs\n**Lines:** 98-113\n\n**Issue:** The `compute_mic` function implements CRC-32/ISO-HDLC but the code lacks documentation explaining the threat model:\n```rust\n/// CRC-32/ISO-HDLC over the SCHC Packet followed by the All-1 zero pad bit,\n/// byte-extended as one zero octet.\npub fn compute_mic(data: \u0026[u8]) -\u003e [u8; MIC_LENGTH] {\n```\n\nCRC-32 provides error detection against random bit flips, NOT protection against malicious modification. An attacker can trivially compute valid CRCs for arbitrary payloads.\n\n**Trigger:** A reader might assume \"MIC\" implies cryptographic authentication when it does not.\n\n**Context:** Per RFC 8724, SCHC fragmentation relies on OSCORE for authentication. The CRC-32 MIC is for detecting transmission errors only.\n\n**Suggested fix:** Add security documentation:\n```rust\n/// CRC-32/ISO-HDLC over the SCHC Packet followed by the All-1 zero pad bit,\n/// byte-extended as one zero octet.\n///\n/// SECURITY: This CRC-32 checksum (\"MIC\" per RFC 8724) provides error detection\n/// against random bit corruption only. It provides NO protection against malicious\n/// modification - an attacker can trivially compute valid CRCs. Authentication\n/// is provided by OSCORE at a higher layer. Do not rely on this MIC for security.\npub fn compute_mic(data: \u0026[u8]) -\u003e [u8; MIC_LENGTH] {\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:46:13.515089Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:46:13.515089Z",
+  "labels": [
+    "crypto-security",
+    "algorithm",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ti66.2",
+      "depends_on_id": "project-LICHEN-worker6-ti66",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:46:13.85748Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

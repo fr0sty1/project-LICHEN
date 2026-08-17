@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xqje",
+  "title": "[review] provisioning.py:408: Potential AttributeError calli",
+  "description": "Line 408 calls `ack.encode()` on the return value of `node_session.create_ack()`. If `create_ack` returns raw bytes (which is typical for encrypted CBOR payloads), this will raise AttributeError since bytes objects have no `encode()` method. If `create_ack` returns a string, encoding it as UTF-8 for a CBOR content-format response would be incorrect. Verify the return type of `create_ack` and use `ack` directly if it returns bytes, or `ack.to_bytes()` if it's a dataclass.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:21.119415Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:37:21.119415Z",
+  "labels": [
+    "review"
+  ]
+}

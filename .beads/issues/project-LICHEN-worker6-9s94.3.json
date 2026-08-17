@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-9s94.3",
+  "title": "Fragment::from_bytes may underflow if validation order changes",
+  "description": "Location: rust/lichen-schc/src/fragment.rs:184\n\nIssue: The subtraction `let payload_len = content_len - content_offset;` relies on validation at line 186-189 to ensure `content_len \u003e= content_offset`. The safety invariant is implicit and not documented.\n\nEdge case: For ALL_1 fragments (fcn == ALL_1_FCN), content_offset = MIC_LENGTH (4). The check at line 186 ensures content_len is at least MIC_LENGTH + 1 (5), preventing underflow. However:\n\n1. The dependency between line 184 and line 186 is not obvious\n2. Future refactoring could reorder these lines\n3. No comment explains why this is safe\n\nImpact: Currently safe, but fragile. A refactoring mistake could cause underflow and panic in release mode or wrap-around.\n\nSuggested fix: Either:\n1. Add a comment above line 184 explaining the safety invariant\n2. Reorder to do the content_len validation BEFORE the subtraction\n3. Use saturating_sub with an explicit check afterward",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:15:08.116392Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:15:08.116392Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9s94.3",
+      "depends_on_id": "project-LICHEN-worker6-9s94",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:15:08.43793Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

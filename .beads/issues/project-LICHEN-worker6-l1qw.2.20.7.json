@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.20.7",
   "title": "Spec: 02a.7 AdaptiveSFSelect algorithm implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:17.610878Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:22:17.610878Z",
+  "updated_at": "2026-08-17T04:47:51.966585Z",
+  "closed_at": "2026-08-17T04:47:51.966585Z",
+  "close_reason": "Fixed: Python select_tx_sf() had a bug at spec step 5 - when utilization\u003e200 but ema_loss\u003c=0.25, it returned hardcoded (12, false) instead of applying SF+1 first. Fixed to match spec pseudocode and Rust implementation: (1) adaptive_sf.py now uses combined OR condition for loss/utilization, (2) ccp16_utilization.json vector utilization_high_with_sf7_baseline corrected from SF=12 to SF=10, (3) test_vectors.py test code aligned with spec.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.20.7",

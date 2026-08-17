@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-jt3c",
   "title": "schc: No rule set versioning",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-12T18:40:17.683033Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-12T18:40:17.683033Z",
+  "updated_at": "2026-08-17T03:46:21.547873Z",
+  "closed_at": "2026-08-17T03:46:21.547873Z",
+  "close_reason": "Fixed: Added rule set versioning to Rust SCHC implementation. Added RULE_SET_VERSION and SCHC_RULE_VERSION_TYPE constants to lichen-core, SchcRuleVersionOption struct, VersionMismatchError, versions_compatible() and check_version_compatibility() functions, and version field to SchcContext. Mirrors Python implementation.",
   "labels": [
     "spec-compliance"
   ]

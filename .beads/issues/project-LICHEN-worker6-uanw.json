@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-uanw",
+  "title": "[review] lib.rs:202: Epoch type mismatch betwe",
+  "description": "select_channel_with_gnss takes epoch as u8 while select_channel takes u32. If link-layer epochs exceed 255, callers cannot use select_channel_with_gnss correctly - the type prevents passing larger values. This creates an API inconsistency where the two channel selection functions have different epoch ranges, potentially causing interoperability issues between code paths that use each.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:10:21.39855Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:10:21.39855Z",
+  "labels": [
+    "review"
+  ]
+}

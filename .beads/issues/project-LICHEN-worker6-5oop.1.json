@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-5oop.1",
+  "title": "Signer IID bit check uses reserved bit 0x80 instead of actual SI bit",
+  "description": "Location: rust/lichen-link/src/schnorr.rs line 81\n\nIn build_signable(), the condition `llsec \u0026 0x80 != 0` checks bit 7 (reserved, must be 0 per spec 4.1) to determine whether to include signer_iid. Per lib.rs documentation, bit 7 is reserved and must always be 0, meaning this code path never executes.\n\nThe signer_iid parameter is passed through sign_frame() and verify_frame() but never actually included in the signed message because the reserved bit is never set. When SI (Signer IID) feature is properly specified and implemented, this dead code path could lead to signature malleability or verification failures if the wrong bit is used.\n\nTrigger: Currently no impact (dead code). Future SI feature implementation using wrong bit position would cause signature verification failures or allow unsigned signer_iid spoofing.\n\nSuggested fix: Either remove the signer_iid parameter until SI feature is properly specified, or document which LLSec bit will indicate SI presence and update the check accordingly.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:49:47.581807Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:49:47.581807Z",
+  "labels": [
+    "security",
+    "crypto-security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.1",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:49:47.948879Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

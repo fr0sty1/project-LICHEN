@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-23wi",
+  "title": "discovery.py: RREP hop_count overflow causes crash",
+  "description": "Line 178: `install_hops = rrep.hop_count + 1` can exceed 255 when rrep.hop_count=255 (max uint8 on wire). RouteEntry(hop_count=256) raises ValueError since __post_init__ validates hop_count \u003c= 255. RREP.from_bytes() does not validate hop_count range. Attacker can DoS the router with a crafted RREP.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:53.54798Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:14:26.538313Z",
+  "closed_at": "2026-08-17T15:14:26.538313Z",
+  "close_reason": "Fixed: Added hop_count/hop_limit validation to RREP.from_bytes() and RREQ.from_bytes() in messages.py. Attacker-crafted messages with values \u003e MAX_HOP_LIMIT (15) now raise LoadngError at parse time, preventing the overflow crash in process_rrep() where install_hops = hop_count + 1. Added two new tests to verify the validation.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

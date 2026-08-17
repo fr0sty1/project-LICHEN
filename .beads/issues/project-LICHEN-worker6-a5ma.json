@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-a5ma",
+  "title": "[review] slot_claim.py:445: sign_slot_claim does not ",
+  "description": "After signing a claim, sign_slot_claim returns a new SlotClaim with the signature populated but signature_valid=False. Users must manually recreate the claim with signature_valid=True to use it in resolve_slot_conflict without re-verification (as demonstrated in the test suite at lines 288-301). This is an API ergonomics issue rather than a correctness bug since the field can be set via the constructor.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:38:18.007725Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:38:18.007725Z",
+  "labels": [
+    "review"
+  ]
+}

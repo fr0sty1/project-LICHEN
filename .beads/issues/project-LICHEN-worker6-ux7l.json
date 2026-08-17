@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ux7l",
+  "title": "Root dethronement via version bump attack",
+  "description": "Filed as project-LICHEN-worker6-n9ik.1. Authentication bypass allowing malicious nodes to dethrone DODAG root.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:10.911452Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:17:23.97009Z",
+  "closed_at": "2026-08-16T20:17:23.97009Z",
+  "close_reason": "Fixed: Added early guard in process_dio() to reject all DIOs when node is Root. Prevents version-bump dethronement attack where malicious nodes could send DIO(version+1) to trigger adopt_version() and transition root to Unjoined. Added regression test root_rejects_version_bump_dethronement_attack."
+}

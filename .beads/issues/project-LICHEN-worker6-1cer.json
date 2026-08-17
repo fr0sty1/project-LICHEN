@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-1cer",
+  "title": "[review] provisioning.py:316: session.state is never up",
+  "description": "ProvisioningSession.state is set to IDLE at creation (lines 501, 546) but never updated as the protocol progresses. render_get() reports this stale state at line 316-320 rather than the inner session's actual state. The status endpoint always returns 'idle' for in-progress sessions.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:05:40.966609Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:05:40.966609Z",
+  "labels": [
+    "review"
+  ]
+}

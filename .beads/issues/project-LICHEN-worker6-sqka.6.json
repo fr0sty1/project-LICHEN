@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-sqka.6",
+  "title": "Missing lollipop version comparison helper",
+  "description": "DODAG version uses lollipop counter (RFC 6550 Section 7.2) with semantic regions 0-127 (linear) and 128-255 (circular). Code increments correctly but lacks a comparison helper for determining version ordering. Callers comparing versions naively could get wrong answers.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:38.350693Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:31:38.350693Z",
+  "labels": [
+    "edge-case",
+    "boundary",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqka.6",
+      "depends_on_id": "project-LICHEN-worker6-sqka",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:38.688671Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

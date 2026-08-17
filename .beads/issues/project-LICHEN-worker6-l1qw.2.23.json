@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.23",
   "title": "Spec: 02a 4 Drift Compensation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:30.555328Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:21:30.555328Z",
+  "updated_at": "2026-08-17T04:43:37.98641Z",
+  "closed_at": "2026-08-17T04:43:37.98641Z",
+  "close_reason": "Invalid: This is an EPIC (parent tracking issue), not a bug or task. EPICs cannot be fixed directly - they track completion of child issues. The 5 child beads (.1-.5) contain the actual implementation work.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.23",

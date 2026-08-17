@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.12.2",
   "title": "Rust: lichen-client library integration",
   "description": "Integrate application resources into lichen-client",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:55.229256Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:55.229256Z",
+  "updated_at": "2026-08-17T03:53:25.637908Z",
+  "closed_at": "2026-08-17T03:53:25.637908Z",
+  "close_reason": "Added missing resource path constants to paths.rs: /deaddrop, /confessions, /config, /config/radio, /config/identity, /handoff, /pos/cache. These cover firmware-implemented resources that were missing from the client library. Full domain types for additional application resources (waypoints, SOS, presence, groups, check-in, range testing) would require separate scoped tasks if needed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.12.2",

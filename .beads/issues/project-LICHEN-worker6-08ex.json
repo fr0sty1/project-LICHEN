@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-08ex",
+  "title": "messages.c: lichen_rpl_assigned_sf_parse expects full TLV but iterator provides data only",
+  "description": "Lines 516-536: This parse function expects data to include type+length+value (3 bytes minimum), checking data[0] against LICHEN_RPL_OPT_ASSIGNED_SF and data[1] against the length. However, the standard iterator (lichen_rpl_opt_iter_next) returns out-\u003edata pointing AFTER the type/length bytes with out-\u003edata_len=1. Calling assigned_sf_parse(out-\u003edata, out-\u003edata_len, \u0026sf) fails at line 522 with ERR_TOO_SHORT because 1 \u003c 3. All other option parse functions (dodag_config_parse, target_parse, transit_info_parse) correctly expect data AFTER type/length, making this an API inconsistency. The function is unusable with the standard iterator pattern.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:38:53.660061Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:38:53.660061Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

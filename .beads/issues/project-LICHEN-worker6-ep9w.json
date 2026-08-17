@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ep9w",
+  "title": "No validation of IPv6 address semantics in LOADng messages",
+  "description": "from_bytes methods accept any 16 bytes as IPv6 addresses without validating semantic validity. Unspecified (::), loopback (::1), and multicast addresses are accepted. Add validation or document that callers must validate.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:49:04.174197Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:14:22.859894Z",
+  "closed_at": "2026-08-16T20:14:22.859894Z",
+  "close_reason": "Fixed: Added IPv6 address validation to LOADng from_bytes methods. Rejects unspecified (::), loopback (::1), and multicast (ff00::/8) addresses. Added is_unspecified() to Addr type, InvalidAddress error variant, and validation tests."
+}

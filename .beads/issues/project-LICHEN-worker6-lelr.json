@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-lelr",
+  "title": "[review] messaging.py:220: Unbounded receipts list allows",
+  "description": "MessageReceiptsResource._receipts has no maximum size limit, unlike _inbox and _sent which are capped at max_messages. Repeated POST requests to /msg/ack will grow this list indefinitely, potentially exhausting memory on constrained LoRa/CoAP nodes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:53.935869Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:53.935869Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,13 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.11.3",
   "title": "Zephyr: Human-Readable Node Address Format implementation",
-  "status": "open",
+  "description": "Zephyr has lichen_pubkey_to_iid() in firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c but is missing the Crockford Base32 human address encoder (lichen_iid_to_human_address or similar). Need to add: 1) Crockford Base32 alphabet, 2) encode IID to 13 chars, 3) insert dashes at positions 4 and 8. Test against test/vectors/node_address.json",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:03.732597Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.512767Z",
+  "updated_at": "2026-08-17T16:31:21.799769Z",
+  "closed_at": "2026-08-17T16:31:21.799769Z",
+  "close_reason": "Already fixed: Implementation exists in lichen/subsys/lichen/l2/lichen_util.c (lichen_iid_to_human_address) and lichen/subsys/lichen/l2/ipv6_addr.c (lichen_pubkey_to_human_address). Tests exist in lichen/tests/util/main.c and lichen/tests/link_crypto/src/main.c with 10 vectors. The firmware/bridge-zephyr/ path in the issue is stale - the canonical subsystem is lichen/subsys/lichen/l2/.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.11.3",

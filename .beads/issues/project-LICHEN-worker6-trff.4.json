@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-trff.4",
+  "title": "RootCandidate comparison may behave unexpectedly with NaN RF metrics",
+  "description": "File: rust/lichen-rpl/src/multi_instance.rs\nLines: 762-768\n\nThe Ord implementation for RootCandidate compares combined_score() (f32) values:\n\n```rust\n.then_with(|| {\n    other\n        .combined_score()\n        .partial_cmp(\u0026self.combined_score())\n        .unwrap_or(Ordering::Equal)\n})\n```\n\nWhile unwrap_or(Equal) prevents panics on NaN comparison, it makes NaN-containing candidates compare Equal to all others, potentially selecting an invalid candidate if NaN propagates into rssi_ema or snr_ema.\n\nTrigger: A sensor or parsing bug sets rssi_ema to f32::NAN. This candidate compares Equal on the RF metric axis, falling through to IID tiebreaker.\n\nBad behavior: A candidate with corrupted RF metrics could be selected over better candidates, or cause non-deterministic ordering.\n\nFix: Filter out candidates with non-finite RF metrics before comparison, or treat NaN as worst-case value (-Infinity).",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:43.119788Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:39:43.119788Z",
+  "labels": [
+    "edge-case",
+    "robustness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-trff.4",
+      "depends_on_id": "project-LICHEN-worker6-trff",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:43.478786Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

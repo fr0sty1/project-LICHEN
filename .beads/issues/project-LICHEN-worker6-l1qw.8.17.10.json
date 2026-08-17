@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.8.17.10",
   "title": "Python: B.2.4 Explicit Backpressure",
-  "description": "Return QueueFull error for immediate sends, NACK for mesh-forwarded packets when queue full.\n\n---\nMUST/SHALL Checklist:\n(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "description": "Return QueueFull error for immediate sends, NACK for mesh-forwarded packets when queue full.\n\n--------\n\nMUST/SHALL Checklist (extracted from spec/appendix-bufferbloat.md B.2.4):\n\n1. [_] When TX queue is full and incoming packet has same/lower priority, MUST return ENOBUFS/QueueFull error to local sender\n2. [_] When forwarding buffer per-source limit is reached, MUST send NACK upstream to mesh source\n3. [_] Senders MUST handle queue-full errors by either: (a) backing off and retrying later, or (b) dropping the packet and notifying the application\n\nTest Validation (from spec Testing section):\n- Queue-full handling: Sender gets ENOBUFS when queue full\n\nSource: appendix-bufferbloat.md lines 84-92, 117-135, 177",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:26:25.622979Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:53.209314Z",
+  "updated_at": "2026-08-17T16:16:50.176735Z",
+  "closed_at": "2026-08-17T16:16:50.176735Z",
+  "close_reason": "Already fixed: All B.2.4 requirements implemented. (1) QueueFullError for local senders in tx_queue.py; (2) BufferResult.BACKPRESSURE + DropCallback for mesh NACK in forwarding_buffer.py; (3) mechanism allows callers to back off or drop. Test vectors at test/vectors/forwarding_buffer.json. 125 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.10",

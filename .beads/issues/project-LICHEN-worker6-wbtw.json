@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-wbtw",
+  "title": "[review] provisioning.py:354: Potential None dereference whe",
+  "description": "session.provisioned_seed can be None if the BR session was created via create_br_session() rather than provision_node(). Identity.from_seed(None) will raise TypeError, crashing the request handler. The provisioned_seed is only set in provision_node() (line 522), but _handle_br_post() can execute when sessions are created via the lower-level API.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:53.157105Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:27:07.628877Z",
+  "closed_at": "2026-08-15T22:27:07.628877Z",
+  "close_reason": "Verified: guard at line 351 already protects against None dereference. Added regression test test_br_post_handles_none_provisioned_seed_gracefully to ensure the edge case stays covered.",
+  "labels": [
+    "review"
+  ]
+}

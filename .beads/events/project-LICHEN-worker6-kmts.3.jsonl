@@ -1,0 +1,5 @@
+{"id":"01a00c1c-fc90-7353-9643-2b5e5cfaac14","issue_id":"project-LICHEN-worker6-kmts.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:47:01.392219Z"}
+{"id":"01a00c1c-fc96-787b-91fd-516b4777c0b1","issue_id":"project-LICHEN-worker6-kmts.3","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-16T19:47:01.398556Z"}
+{"id":"01a00c1c-fc9a-745d-9f20-563e1ea992f3","issue_id":"project-LICHEN-worker6-kmts.3","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: edge-case","created_at":"2026-08-16T19:47:01.402286Z"}
+{"id":"01a00c1c-fcb0-70e2-94a3-fd066fa2bcbd","issue_id":"project-LICHEN-worker6-kmts.3","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T19:47:01.424059Z"}
+{"id":"01a00c65-673b-7315-8503-5edbd05df8ca","issue_id":"project-LICHEN-worker6-kmts.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: moved assigned mask validation before canonical checks for defense in depth","created_at":"2026-08-16T21:06:07.291202Z"}

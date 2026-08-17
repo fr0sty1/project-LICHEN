@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-n9ik.1",
+  "title": "Root dethronement via version bump attack",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs lines 331-354, 399-409\n\n## Issue\nA malicious node can dethrone a DODAG root by sending a DIO with a higher version number. The root will call `adopt_version()` which transitions its role from Root to Unjoined and clears its state, allowing the attacker to become its \"parent\".\n\n## Attack sequence\n1. Root is at version 0, rank 256\n2. Attacker sends DIO with version=1, rank=256 (valid parent params)\n3. `version_is_newer(1, 0)` returns true\n4. `candidate_admissible()` passes (uses INFINITE_RANK for node/lowest rank during version check)\n5. `adopt_version(1)` is called unconditionally\n6. Root role transitions to Unjoined (allowed by state machine)\n7. Root clears parent table, sets rank to INFINITE\n8. Attacker DIO is accepted as parent candidate\n9. `select_parent()` runs, root joins under attacker\n\n## RFC 6550 violation\nThe DODAG root IS the version authority. Non-root nodes must not be able to force a version change on the root. RPL expects authenticated DIOs to prevent spoofing, but even with authentication, any joined node could claim a higher version.\n\n## Suggested fix\nAdd early return in `process_dio()` for root nodes:\n```rust\nif self.role == DodagRole::Root {\n    return DioOutcome::Rejected;\n}\n```\nOr: reject newer-version DIOs when role is Root, since roots define versions.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:41:17.526924Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:43:44.283635Z",
+  "closed_at": "2026-08-16T20:43:44.283635Z",
+  "close_reason": "Fixed: Root nodes now early-return DioOutcome::Rejected in process_dio() before any version/parent processing can occur. The SECURITY comment at lines 324-327 documents the attack vector this prevents.",
+  "labels": [
+    "correctness",
+    "security",
+    "auth-bypass",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n9ik.1",
+      "depends_on_id": "project-LICHEN-worker6-n9ik",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:41:17.851218Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

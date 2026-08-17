@@ -1,0 +1,2 @@
+{"id":"01a00c42-9fd9-7995-a519-c7653844e462","issue_id":"project-LICHEN-worker6-q3ye","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T20:28:08.025629Z"}
+{"id":"01a01064-c1f9-7e09-83c7-5642e4024d45","issue_id":"project-LICHEN-worker6-q3ye","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: moved state transition check before pinned.insert() so validation failure doesn't leave pinned map in inconsistent state","created_at":"2026-08-17T15:43:53.849922Z"}

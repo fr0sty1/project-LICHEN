@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-pmm2",
+  "title": "rust/lichen-core/src/loadng.rs: RREP seq_num mismatch causes route discovery validation failure",
+  "description": "Line 579: RREP is generated with `seq_num: own_seq` (destination's sequence number), but RouteDiscovery::receive_rrep at line 288 validates `rrep.seq_num != self.seq_num` (expects RREQ's sequence number). These are different values. When node A sends RREQ(seq=100) to find B, node B generates RREP(seq=50 using own_seq). Node A receives RREP and checks seq==100, but gets 50, causing InvalidDiscoveryReply error. Either line 579 should use `rreq.seq_num` for correlation, or line 288 should not compare seq_num.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:25:19.286709Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:11:57.073152Z",
+  "closed_at": "2026-08-17T15:11:57.073152Z",
+  "close_reason": "Fixed seq_num mismatch: removed incorrect seq_num validation from RouteDiscovery::receive_rrep. LOADng RREP carries destination's seq_num (route freshness), not RREQ's seq_num (duplicate detection). Correlation is via (originator, destination) addresses. Updated test to use different seq_nums, verifying correct protocol behavior.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

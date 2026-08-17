@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-svfd",
+  "title": "Fix NaN timestamp bypass in DAO backbone message validation",
+  "description": "In receive_from_peer (line 651), the timestamp freshness check `age \u003e DAO_TIMESTAMP_FRESHNESS_SECONDS || age \u003c 0.0` is bypassed when age is NaN (from NaN current_time or message.timestamp). Add explicit NaN rejection: `if age.is_nan() || age \u003e ... || age \u003c 0.0`. This is a P1 security issue that could allow replay attacks.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:12.622567Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:51:16.244927Z",
+  "closed_at": "2026-08-16T19:51:16.244927Z",
+  "close_reason": "Fixed: Added explicit NaN rejection to timestamp freshness check (age.is_nan()), plus comprehensive test covering both NaN timestamp and NaN current_time"
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.10.1",
   "title": "Parse: Extract requirements from B.2.4",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:37:42.825356Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:42.825356Z",
+  "updated_at": "2026-08-17T16:09:06.430153Z",
+  "closed_at": "2026-08-17T16:09:06.430153Z",
+  "close_reason": "Extracted requirements from spec/appendix-bufferbloat.md B.2.4: (1) ENOBUFS/QueueFull for full TX queue, (2) NACK upstream for forwarding buffer limit, (3) Senders must handle errors. Updated parent bead with MUST checklist.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.10.1",

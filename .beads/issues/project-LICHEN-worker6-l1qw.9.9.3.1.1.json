@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.9.3.1.1",
   "title": "Parse: Extract requirements from Access Levels",
-  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description\n\n## Requirements Extracted from Spec 17.6.3 (Access Control)\n\n### Core Access Control (SHOULD)\n- [ ] SHOULD: Support restricting local client access via three levels\n\n### Access Level Definitions\n- [ ] Read-only: GET on non-sensitive resources; excludes /diag/raw/*\n- [ ] Standard: GET, Observe, direct mesh CoAP reachability, optional /proxy; excludes /diag/raw/*\n- [ ] Admin: All operations including PUT /config, DELETE /keys, /diag/raw/*\n\n### Transport-to-Level Binding\n- [ ] USB transport = Admin level\n- [ ] BLE transport = Standard level (default)\n\n### Raw Diagnostics Requirements (Admin-only, from 17.5.4)\n- [ ] MUST: Raw RX disabled by default\n- [ ] MUST: Raw RX uses finite arming lifetime\n- [ ] MUST: Receiving raw frames does not divert from normal IPv6 stack\n- [ ] MUST: Rate-limit raw TX\n- [ ] MUST: Reject frames violating PHY/regulatory constraints\n- [ ] MUST: Require local administrative authorization for /diag/raw/*\n- [ ] MUST: BLE transports require LE Secure Connections for /diag/raw/*\n- [ ] MUST: Protect with OSCORE if exposing beyond local trusted link",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:42:11.095803Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:42:11.095803Z",
+  "updated_at": "2026-08-17T15:59:54.225695Z",
+  "closed_at": "2026-08-17T15:59:54.225695Z",
+  "close_reason": "Extracted 14 requirements from spec section 17.6.3 (Access Control) and 17.5.4 (Raw Diagnostics): 1 SHOULD for three-tier access control, 3 access level definitions (Read-only, Standard, Admin), 2 transport bindings (USB=Admin, BLE=Standard), and 8 MUST requirements for raw diagnostics authorization. Checklist added to task description for implementation tracking.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.3.1.1",

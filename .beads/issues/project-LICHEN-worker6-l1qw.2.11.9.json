@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.11.9",
   "title": "Zephyr: recovery countdown",
   "description": "Implement recovery countdown for Zephyr C. Acceptance: Works with hardware timers.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:43.292848Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:43.292848Z",
+  "updated_at": "2026-08-17T04:36:12.034831Z",
+  "closed_at": "2026-08-17T04:36:12.034831Z",
+  "close_reason": "Implemented recovery countdown for Zephyr C using k_timer hardware timers. Added: (1) lichen/subsys/lichen/link/include/lichen/recovery_countdown.h - API header with lichen_recovery_countdown struct and functions, (2) lichen/subsys/lichen/link/recovery_countdown.c - implementation using Zephyr k_timer for T_DRIFT_MAX and T_GIVE_UP countdown timers, (3) Added timer constants (LICHEN_T_DRIFT_MAX_SUPERFRAMES=6, LICHEN_T_GIVE_UP_SUPERFRAMES=10) to link.h. The implementation mirrors Python RecoveryCountdown class from timing/sfn.py and supports both hardware timer-based operation (production) and tick-based polling (testing).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.11.9",

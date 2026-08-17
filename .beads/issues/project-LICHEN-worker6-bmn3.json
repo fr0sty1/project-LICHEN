@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-bmn3",
+  "title": "[review] tx_queue.py:410: confirm_transmitted() does not",
+  "description": "_remove_first() (called by confirm_transmitted) removes the entry and updates transmission stats but never signals the reservation as successful. Since confirm_transmitted() is called after 'the radio confirms transmission' (per docstring), it should call entry.reservation.set_result(True) on success. This is inconsistent with complete(success=True) which correctly signals the reservation at line 496-497.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:46.147143Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:40:22.314761Z",
+  "closed_at": "2026-08-15T21:40:22.314761Z",
+  "close_reason": "Fixed: _remove_first() now signals entry.reservation.set_result(True) before updating stats, matching complete(success=True) behavior",
+  "labels": [
+    "review"
+  ]
+}

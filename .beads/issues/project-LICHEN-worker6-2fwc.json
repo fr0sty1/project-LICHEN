@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-2fwc",
+  "title": "[review] 03-adaptation.md: No receiver validation requirement",
+  "description": "Version Query and Response messages specify that Flags field MUST be zero, but no receiver validation behavior is specified. Implementations may not validate this, potentially allowing future extension attacks or parsing issues. The spec should require receivers to reject or ignore packets with non-zero reserved flags.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:55.229805Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:55.229805Z",
+  "labels": [
+    "review"
+  ]
+}

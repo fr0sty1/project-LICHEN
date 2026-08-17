@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-qghe",
+  "title": "spec/appendix-ccp12-hopping.md: Example calculation has incorrect modulo result",
+  "description": "The example states '926423932 MOD 7 = 1' but 926423932 is exactly divisible by 7 (926423932 = 7 * 132346276), so the remainder is 0, not 1. This means the calculated channel should be 1 + 0 = 1, not 2. Either the hash value, the channel result, or both are incorrect in this example.\n\nFix suggestion: Verify the actual FNV-1a32 hash of the input data and correct either the hash value or the channel result to match the true calculation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:53.31967Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:28:39.071906Z",
+  "closed_at": "2026-08-17T15:28:39.071906Z",
+  "close_reason": "Already fixed: spec/appendix-ccp12-hopping.md line 121 now correctly shows 926423932 MOD 7 = 0 (not 1), yielding channel 1 (not 2). Test vectors in ccp16.json also confirm channel 1. The modulo calculation and resulting channel are now mathematically correct.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

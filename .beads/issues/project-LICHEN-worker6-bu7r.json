@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-bu7r",
+  "title": "[review] provisioning.py:359: Callback skipped when usi",
+  "description": "If a caller uses create_br_session() directly and calls br_session.encrypt_seed() manually instead of using provision_node(), the wrapper's session.provisioned_seed remains None while the crypto layer's _provisioned_seed is set. When the ACK arrives, decrypt_ack() succeeds (crypto layer has the seed), but line 359's condition skips the callback because session.provisioned_seed is None. The function then returns CHANGED, marking provisioning as successful without invoking the configured callback. This causes the BR to believe provisioning succeeded while the callback (e.g., database registration) was never invoked.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T03:56:39.762894Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:59:17.228458Z",
+  "closed_at": "2026-08-16T03:59:17.228458Z",
+  "close_reason": "Fixed: callback now invoked when using create_br_session() directly by falling back to crypto layer's seed",
+  "labels": [
+    "review"
+  ]
+}

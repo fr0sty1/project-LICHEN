@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-zp6r",
+  "title": "[review] routing.py:246: routes() loses prefix rou",
+  "description": "The routes() method uses rt.prefix as the dict key but RouteTargets with different prefix_len can have identical canonical prefixes (e.g., 2001:db8::/32 and 2001:db8::/48 both canonicalize to 2001:db8::). When iterating, later entries overwrite earlier ones, causing silent data loss. The items() method exists as a workaround but callers of routes() may not expect this behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:05:40.965784Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:05:40.965784Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-t0l0",
+  "title": "[review] message.rs:233: DAO write_to can produce inval",
+  "description": "When dodag_id is None and rpl_instance_id \u003c 0x80 (global ID), write_to sets D=1 in the header (line 238) but only writes 4 bytes without DODAGID bytes. The validation at line 230-231 only rejects dodag_id=None for local instance IDs (0x80+). A parser receiving this malformed packet will expect 20 bytes (D=1) but only 4 are present, causing decode failures. Since the comment says 'D-flag always set (LICHEN/SCHC rule 4)', the fix should require dodag_id to always be Some, not just for local IDs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:33:49.453906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:36:15.040786Z",
+  "closed_at": "2026-08-15T20:36:15.040786Z",
+  "close_reason": "Fixed: require dodag_id to always be Some in DAO write_to since D-flag is always set per LICHEN/SCHC rule 4. Added test to verify global instance IDs (\u003c 0x80) with None dodag_id are rejected.",
+  "labels": [
+    "review"
+  ]
+}

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.2.2.1",
   "title": "Parse: Extract requirements from LCI /msg/sent",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "notes": "## Extracted Requirements from LCI Spec\n\n### From 11-lci.md (Section 17.5)\n\n**Discovery (17.5.1):**\n- MUST advertise `\u003c/msg/sent\u003e;rt=\"msg.sent\";ct=60`\n\n**Messaging Resources (17.5.7):**\n- Whole messaging feature is OPTIONAL: \"nodes MAY implement\"\n- POST /msg/inbox MUST return `Location-Path: /msg/sent/{id}` on 2.01 Created\n\n### From 12-apps.md (Section 18)\n\n**Message Format (18.1.1):**\n- id: MUST be uint (u64 range 0 to 2^64-1)\n- from: SHOULD be sender IPv6 string\n- to: SHOULD be recipient IPv6 or multicast string  \n- ts: SHOULD be Unix timestamp (uint)\n- body: SHOULD be message text (tstr)\n- ack, priority, reply_to, ttl: all OPTIONAL\n\n**Resource Summary (18.11):**\n- GET MUST be supported\n- MUST NOT be Observable\n\n### Derived Requirements\n\n**GET /msg/sent (collection):**\n- MUST return Content-Format: application/cbor (60)\n- SHOULD return `{\"messages\": [...]}` array\n\n**GET /msg/sent/{id} (detail):**\n- MUST return Content-Format: application/cbor (60)\n- MUST return 4.04 Not Found for unknown IDs\n- MUST validate ID is valid u64 decimal string\n- SHOULD return message fields (id, from, to, ts, body, etc.)\n\n### Noteworthy Gaps\n\nThe spec does not explicitly define:\n- Pagination for /msg/sent collection\n- Query parameters\n- TTL/expiry behavior for sent messages\n- Storage limits (only inbox limits in 18.1.4)",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:10.273736Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:10.273736Z",
+  "updated_at": "2026-08-17T15:56:26.927796Z",
+  "closed_at": "2026-08-17T15:56:26.927796Z",
+  "close_reason": "Extracted MUST/SHALL/SHOULD requirements from spec. Key findings: (1) Messaging is OPTIONAL per 17.5.7; (2) ct=60 (CBOR) required; (3) GET supported, not Observable; (4) ID must be u64; (5) Location-Path returned on POST. Requirements documented in bead notes. Spec is sparse on /msg/sent details - no explicit pagination, query params, or storage limits defined.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.2.2.1",

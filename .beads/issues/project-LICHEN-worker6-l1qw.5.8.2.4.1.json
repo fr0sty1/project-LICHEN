@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.8.2.4.1",
   "title": "Parse: Extract requirements from RREQ",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:36.617361Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:36.617361Z",
+  "updated_at": "2026-08-17T05:18:22.113283Z",
+  "closed_at": "2026-08-17T05:18:22.113283Z",
+  "close_reason": "Already fixed: RREQ requirements are embodied in discovery.py implementation with 24+ tests. Parent bead notes 'Already implemented in discovery.py'. The planning task (extract requirements) was superseded by direct implementation of spec 10.3 and B2.6.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.2.4.1",

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-hua4",
+  "title": "HAL tests: Add duty cycle init boundary tests for permille=0 and permille\u003e1000",
+  "description": "lichen_duty_cycle_init clamps invalid permille values (0 or \u003e1000) to the default of 10. These boundary conditions are untested. Add tests verifying the clamping behavior.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:17:42.659818Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:16:05.38479Z",
+  "closed_at": "2026-08-16T19:16:05.38479Z",
+  "close_reason": "Added test_duty_cycle_init_clamps_invalid_permille test to verify clamping behavior for permille=0, permille\u003e1000, and UINT16_MAX; also verifies boundary values permille=1 and permille=1000 are accepted."
+}

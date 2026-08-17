@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-lpjg",
+  "title": "messages.c:407: Transit Info parse rejects valid E=1 flag that write produces",
+  "description": "lichen_rpl_transit_info_parse rejects data[0] != 0, but lichen_rpl_transit_info_write sets buf[2] = 0x80 (E=1 per RFC 6550 6.7.8). Any Transit Info option written by this code cannot be parsed by this code. The header comment confirms 'LICHEN always uses E=1', so the parse check is incorrect. Round-trip serialization is completely broken. Fix: Change line 407 from if (data[0] != 0) to if (data[0] != 0x80) to require E=1 as the LICHEN contract specifies.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:47.053336Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:27:00.064717Z",
+  "closed_at": "2026-08-17T15:27:00.064717Z",
+  "close_reason": "Fixed: Changed line 407 check from 'data[0] != 0' to 'data[0] != 0x80' to require E=1 flag as the LICHEN contract specifies. Also moved the comment before the check for clarity.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

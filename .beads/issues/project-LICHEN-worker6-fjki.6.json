@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-fjki.6",
+  "title": "InvalidSignatureLength error message could be clearer for trailing garbage",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 340-343, 410-414, 472-476\n\nIssue: When from_bytes() receives a buffer with trailing bytes beyond the expected signature, it returns InvalidSignatureLength with the count of extra bytes. This is technically correct but the error message 'invalid signature length: 64, expected 0 or 48' does not clearly communicate that the issue is trailing garbage data.\n\nTrigger: Passing a buffer of 100 bytes to Rreq::from_bytes() returns InvalidSignatureLength(64) rather than a more descriptive 'trailing garbage' or 'unexpected data after message' error.\n\nImpact: Minor debugging difficulty. The current behavior is correct (rejecting malformed input), just with a less intuitive error message.\n\nSuggested fix: Either:\n1. Add a new error variant TrailingData { expected: usize, got: usize }\n2. Or update the Display impl to say 'unexpected trailing data' when len \u003e SIGNATURE_LENGTH",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:32:03.541595Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:27.173505Z",
+  "closed_at": "2026-08-17T03:49:27.173505Z",
+  "close_reason": "Invalid: InvalidSignatureLength error does not exist in loadng.rs - this finding references a different file.",
+  "labels": [
+    "edge-case",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.6",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:32:03.89658Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

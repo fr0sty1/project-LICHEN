@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-qefi",
+  "title": "sync_hop.c: Unsigned integer underflow in SFN calculation",
+  "description": "Line 42: When unix_time_ms \u003c EPOCH_BASE_MS (1704067200000, i.e., before 2024-01-01), the subtraction unix_time_ms - EPOCH_BASE_MS underflows since both are uint64_t. This wraps to a large positive value, producing a garbage SFN that causes incorrect channel hopping. Missing validation that timestamp is \u003e= epoch.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:46:55.065794Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:46:55.065794Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

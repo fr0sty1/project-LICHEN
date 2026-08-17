@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-7q1v",
+  "title": "ccp_select_channel_endianness.json:5: Incorrect output range documentation",
+  "description": "Line 5 states 'Output range is [1, n_channels-1] inclusive' but this is mathematically false when n_channels=2. The formula 'channel = 1 + (hash % max(n_channels - 1, 2))' with n_channels=2 gives n=max(1,2)=2, so channel is in [1,2]. But the claimed range [1, n_channels-1] = [1, 1] for n_channels=2. The test vector 'n_channels_clamped_to_2' (line 108-125) explicitly demonstrates output channel=2 with n_channels=2, violating the stated invariant. Fix: Change description to 'Output range is [1, max(n_channels - 1, 2)] inclusive'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:52.03818Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:25:33.013694Z",
+  "closed_at": "2026-08-17T15:25:33.013694Z",
+  "close_reason": "Fixed documentation: changed 'Output range is [1, n_channels-1] inclusive' to 'Output range is [1, max(n_channels - 1, 2)] inclusive' to correctly reflect the clamping formula",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

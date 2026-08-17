@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-4kmy",
+  "title": "emergency.py: Unbounded rollcall storage enables memory exhaustion DoS",
+  "description": "RollcallResource.render_post() (lines 192-199) adds entries to self._rollcalls without any limit on count or expiration. An attacker can POST unlimited unique rollcall IDs to exhaust server memory. Contrast with SosResource which maintains only a single active state.\n\nFile: /Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/coap/resources/emergency.py\nLine: 193",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:03.827605Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:40:58.107044Z",
+  "closed_at": "2026-08-17T15:40:58.107044Z",
+  "close_reason": "Fixed: Added MAX_ROLLCALLS=256 limit and _prune_expired() method. render_post() now prunes expired entries and returns SERVICE_UNAVAILABLE if at limit. update() also prunes and silently drops if at limit. Expiration uses existing timeout_s field.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

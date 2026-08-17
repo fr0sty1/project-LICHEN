@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-trff.3",
+  "title": "Integer overflow in total_aggregated_routes() sum",
+  "description": "File: rust/lichen-rpl/src/multi_instance.rs\nLines: 442-448\n\nThe routes_learned values are summed without overflow checking:\n\n```rust\nlet mut total: u32 = peers.values().map(|g| g.routes_learned).sum();\nif let Some(ref local) = self.local_gateway {\n    total += local.routes_learned;\n}\n```\n\nTrigger: Federation with many gateways where sum of routes_learned exceeds u32::MAX (4.2 billion). Example: 100 gateways each reporting 50 million routes.\n\nBad behavior:\n- Debug build: panics on overflow\n- Release build: silently wraps, returning wildly incorrect count (e.g., 0)\n\nFix: Use saturating_add() for the final addition and Iterator::try_fold() or checked arithmetic for the sum, or return u64.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:37.25095Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:39:37.25095Z",
+  "labels": [
+    "correctness",
+    "overflow",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-trff.3",
+      "depends_on_id": "project-LICHEN-worker6-trff",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:37.616281Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

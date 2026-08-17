@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-zah8",
+  "title": "test_vectors.py: _one_field uses assert for control flow (P1)",
+  "description": "**File:** python/tests/test_vectors.py\n**Line:** 665\n\n**Issue:** The `_one_field` helper function uses `assert` for control flow:\n```python\ndef _one_field(data: bytes, field: int, wire_type: int) -\u003e object:\n    matches = [value for f, wt, value in _read_fields(data) if f == field and wt == wire_type]\n    assert len(matches) == 1\n    return matches[0]\n```\n\n**Problem:** If Python is run with `-O` (optimize mode), assertions are disabled. This causes:\n- `IndexError` if `matches` is empty (panic path)\n- Silent wrong result if multiple matches exist (logic error)\n\n**Suggested fix:** Replace with explicit exception:\n```python\ndef _one_field(data: bytes, field: int, wire_type: int) -\u003e object:\n    matches = [value for f, wt, value in _read_fields(data) if f == field and wt == wire_type]\n    if len(matches) != 1:\n        raise ValueError(f\"Expected exactly 1 field {field} with wire_type {wire_type}, found {len(matches)}\")\n    return matches[0]\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:53:17.791246Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:42:36.231728Z",
+  "closed_at": "2026-08-17T15:42:36.231728Z",
+  "close_reason": "Fixed: Replaced assert with explicit ValueError in _one_field() helper. Now properly raises 'Expected exactly 1 field {field} with wire_type {wire_type}, found {n}' instead of relying on assert which would be stripped in optimized mode.",
+  "labels": [
+    "correctness",
+    "test-infra"
+  ]
+}

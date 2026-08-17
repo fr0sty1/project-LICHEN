@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.11.7",
   "title": "Python: recovery countdown (T_DRIFT_MAX, T_GIVE_UP)",
   "description": "Implement recovery countdown timers. Acceptance: Correct timeout behavior per spec.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:40.879981Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:40.879981Z",
+  "updated_at": "2026-08-17T04:34:45.502641Z",
+  "closed_at": "2026-08-17T04:34:45.502641Z",
+  "close_reason": "Implemented recovery countdown timers: Added T_DRIFT_MAX_SUPERFRAMES (6) and T_GIVE_UP_SUPERFRAMES (10) constants for DRIFT→RECOVER and RECOVER→UNJOINED transitions. Added RecoveryCountdown class to track these timeouts with enter_drift(), enter_recover(), tick_drift(), tick_recover(), and reset() methods. Added 17 new tests covering all countdown behaviors and FSM integration. All 100 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.11.7",

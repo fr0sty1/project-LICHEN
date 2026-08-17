@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.4",
   "title": "Python: B.2.2 Time-Based Expiry",
   "description": "Implement packet deadline enforcement: routing 5s, ACK/NACK 10s, app data configurable 60s default.\n\nMUST/SHALL Checklist:\n(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:26:11.38464Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:31.13774Z",
+  "updated_at": "2026-08-17T16:16:42.414297Z",
+  "closed_at": "2026-08-17T16:16:42.414297Z",
+  "close_reason": "Already fixed: Time-based expiry fully implemented in tx_queue.py with priority-based deadlines. Test vectors at test/vectors/tx_queue_expiry.json. 83 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.4",

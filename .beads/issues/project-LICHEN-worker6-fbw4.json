@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-fbw4",
+  "title": "[review] tx_queue.py:289: No validation that deadline_ms",
+  "description": "The deadline_ms parameter accepts any int without validation. A caller could pass deadline_ms=0 or a negative value, causing the packet to be immediately expired on the next expire_stale() call. While this may be intentional for re-queue scenarios, an explicit check (e.g., deadline_ms \u003e now or at minimum \u003e 0) would prevent subtle bugs from bad inputs.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:35.310344Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:35.310344Z",
+  "labels": [
+    "review"
+  ]
+}

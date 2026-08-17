@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-cf4r",
+  "title": "Expand fuzz_fragment coverage to full MAX_PACKET_SIZE",
+  "description": "The fuzz target uses a hardcoded 4096-byte buffer while MAX_PACKET_SIZE is 23562. This leaves 5x of the valid packet size range unfuzzed. Update the fuzzer to use a buffer sized to MAX_PACKET_SIZE (requires std feature for vec allocation) or add a separate large-buffer fuzzing configuration.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:31.711216Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:05:31.711216Z"
+}

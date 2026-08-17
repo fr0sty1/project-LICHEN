@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-nvod",
+  "title": "test_multihop_latency_bounds.py: Test silently passes with zero deliveries under congestion",
+  "description": "Line 216: test_latency_under_concurrent_transmissions has no minimum delivery assertion. When stats.count == 0 (all packets collide), the test passes without verifying any latency bounds. The comment says 'some packets may collide' implying some should succeed, but there is no assertion enforcing this. Should assert at least 1 delivery occurred.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T16:12:43.96522Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T16:12:43.96522Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

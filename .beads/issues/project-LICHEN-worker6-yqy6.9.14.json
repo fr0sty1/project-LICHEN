@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.9.14",
   "title": "NonVolatile storage consistency",
   "description": "Cross-validate NonVolatile storage API across internal flash, external flash, and host filesystem backends. Ensure atomic durable write semantics.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:15:36.919318Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:15:36.919318Z",
+  "updated_at": "2026-08-17T16:38:15.910423Z",
+  "closed_at": "2026-08-17T16:38:15.910423Z",
+  "close_reason": "Deferred pending flash backends: NonVolatile trait and test infrastructure are complete. MemStorage tests validate contract semantics (11 tests). FileStorage implements atomic writes via write-tmp-rename pattern. No internal/external flash backends exist in Rust yet - when embassy-storage or similar flash implementations are added, they should pass existing test suite. Cross-validation will be possible once HAL flash implementations exist.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.9.14",

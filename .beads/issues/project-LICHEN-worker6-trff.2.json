@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-trff.2",
+  "title": "receive_from_peer uses only first transit for all targets",
+  "description": "File: rust/lichen-rpl/src/multi_instance.rs\nLines: 553-561\n\nWhen processing a DAO backbone message with multiple targets and multiple transits, only the first transit is used for all targets:\n\n```rust\nfor target in message.targets {\n    let transit = message.transit.first().cloned().unwrap_or(DaoTransit {\n        path_sequence: message.dao_sequence,\n        path_lifetime: 60,\n        path_control: 0,\n        parent: None,\n    });\n    routes.push((target, transit));\n}\n```\n\nTrigger: A DAO message has targets=[A, B, C] and transits=[T1, T2, T3]. All three targets get T1 as their transit info. T2 and T3 are silently dropped.\n\nBad behavior: Route entries for targets B and C have incorrect transit metadata (wrong path_sequence, path_lifetime, parent). This could cause routing inconsistencies in the federation.\n\nFix: Either zip targets with transits (targets.into_iter().zip(transits)) or document that only one transit per message is supported.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:31.723191Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:39:31.723191Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-trff.2",
+      "depends_on_id": "project-LICHEN-worker6-trff",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:32.072353Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

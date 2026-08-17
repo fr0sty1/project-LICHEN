@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-aztb",
+  "title": "[review] messaging.py:137: self._next_id never updated af",
+  "description": "In render_post, candidate_next_id is computed (lines 130-137) but never written back to self._next_id. All messages posted without an explicit 'id' will receive id=1, causing collisions. Subsequent messages overwrite self._sent['1'] and self._sent_order never grows beyond one entry. Fix: add 'self._next_id = candidate_next_id' before returning the CREATED response (before line 150).",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:39.142493Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:05:20.27191Z",
+  "closed_at": "2026-08-15T21:05:20.27191Z",
+  "close_reason": "Fixed: Added self._next_id = candidate_next_id before return in render_post (line 150) to persist the computed next ID. Verified with integration test showing proper ID sequence (1, 2, ...) and explicit ID handling.",
+  "labels": [
+    "review"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.10.1.3",
   "title": "Vectors: Generate test vectors for Routing Integration",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:03.929844Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:03.929844Z",
+  "updated_at": "2026-08-17T04:52:45.73931Z",
+  "closed_at": "2026-08-17T04:52:45.73931Z",
+  "close_reason": "Invalid: Test coverage already exists - tests/routing/test_router.py and tests/link/ provide comprehensive coverage",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.10.1.3",

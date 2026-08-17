@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-thqy.5",
+  "title": "compare_ipv6_iids returns i32 instead of Ordering",
+  "description": "File: rust/lichen-gateway/src/discovery.rs\nLines: 308-320\n\nFunction returns i32 (-1/0/1) C-style comparison instead of std::cmp::Ordering. This forces callers to interpret magic numbers and prevents using .cmp() idioms.\n\nCurrent:\n```rust\npub fn compare_ipv6_iids(a: \u0026[u8; 16], b: \u0026[u8; 16]) -\u003e i32 {\n    // ... returns -1, 0, or 1\n}\n```\n\nFix:\n```rust\npub fn compare_ipv6_iids(a: \u0026[u8; 16], b: \u0026[u8; 16]) -\u003e std::cmp::Ordering {\n    let a_val = iid_to_u64(\u0026a[8..16].try_into().unwrap());\n    let b_val = iid_to_u64(\u0026b[8..16].try_into().unwrap());\n    a_val.cmp(\u0026b_val)\n}\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:37.483129Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:47:37.483129Z",
+  "labels": [
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-thqy.5",
+      "depends_on_id": "project-LICHEN-worker6-thqy",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:37.80439Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

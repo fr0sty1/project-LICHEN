@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.14.2.1",
   "title": "Parse: Extract requirements from RD Lookup",
-  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "description": "Parse: RD Lookup (RFC 9176 §6, spec §10.6)\n\nMUST/SHALL/SHOULD/MAY extracted from RFC 9176:\n\n**MUST (Blocking for compliance):**\n- MUST support query filtering for the rt parameter (RFC 6690 style) [§4.3.5, §6.2]\n- MUST support matching with multiple search criteria (AND logic - all must match) [§6.2.3]\n- MUST NOT show links with link-local base URIs unless lookup is from same link [§6.1.4]\n- MUST NOT include zone identifiers in resolved URIs [§6.1.3]\n- MUST support application/link-format content format [§4.2]\n- MUST resolve target references fully (base + href) [§6.1.1]\n\n**SHOULD:**\n- SHOULD present links in path-absolute form [§6.4.3]\n\n**MAY (Optional enhancements):**\n- MAY support pagination via page and count parameters [§6.2]\n- MAY support additional content formats beyond link-format [§4.2]\n- MAY replace registration base URIs with configured intermediate proxy [§6.1.1]\n\n**Response codes:**\n- 2.05 Content with application/link-format (or CBOR variant) payload [§6.2]\n- Empty payload if no matches (still 2.05)\n\n**Query parameters:**\n- rt: resource type filter (MUST support)\n- ep: endpoint name filter\n- d: sector/domain filter\n- page: pagination page number (0-indexed)\n- count: results per page\n\n**Test vectors:** See test/vectors/coap_rd.json (rd_lookup_res_by_rt)\n\nAmbiguities: LICHEN uses CBOR (Content-Format 60) rather than link-format; verify CBOR encoding matches semantics. Link-local filtering may not apply if all addresses are Yggdrasil 0200::/8.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:45.231264Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:45.231264Z",
+  "updated_at": "2026-08-17T15:56:54.132792Z",
+  "closed_at": "2026-08-17T15:56:54.132792Z",
+  "close_reason": "Parse complete - checklist extracted from RFC 9176 §4.2-4.3, §6.1-6.4. 6 MUST, 1 SHOULD, 3 MAY requirements identified for /rd-lookup/res endpoint.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.2.1",

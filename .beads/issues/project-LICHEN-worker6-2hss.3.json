@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-2hss.3",
+  "title": "Missing SECURITY comment on signature delegation to link layer",
+  "description": "File: rust/lichen-core/src/loadng.rs lines 122-123, 376-378, 434-436\n\nDoc comments say 'produced/verified by link layer' but there is no SECURITY: comment explaining:\n1. What happens if link layer fails to verify (undefined behavior? caller's problem?)\n2. Whether unsigned messages (signature=None) are valid on authenticated channels\n3. The trust boundary between this codec and the link layer\n\nPer project standards, security-critical code paths must have SECURITY: prefix comments.\n\nFix: Add SECURITY: comments documenting the signature verification contract. Example:\n// SECURITY: This codec only serializes signatures. Callers MUST verify\n// signatures at the link layer before acting on message contents. Accepting\n// signature=None on an authenticated channel is a vulnerability.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:03:29.753676Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:53:35.693787Z",
+  "closed_at": "2026-08-16T20:53:35.693787Z",
+  "close_reason": "Added SECURITY comment block to module doc explaining signature verification contract, trust boundary, caller obligations, and failure behavior",
+  "labels": [
+    "security",
+    "documentation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2hss.3",
+      "depends_on_id": "project-LICHEN-worker6-2hss",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:03:30.088726Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

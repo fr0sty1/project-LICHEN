@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-h19j.3",
+  "title": "ParentCandidate public fields allow invalid invariants",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs:150-157\n\n## Issue\n`ParentCandidate` has all public fields:\n\n```rust\npub struct ParentCandidate {\n    pub addr: [u8; 16],\n    pub rank: u16,\n    pub link_etx: f32,\n}\n```\n\nExternal code can construct candidates with:\n- `link_etx \u003c 1.0` (invalid per line 331 check)\n- `link_etx` as NaN or negative\n- `rank \u003c min_hop_rank_increase` (invalid per RFC 6550)\n\nWhile `path_cost()` handles some cases by returning `u16::MAX`, and `process_dio()` validates before construction, the struct itself does not enforce invariants.\n\n## Trigger\nDirect construction of `ParentCandidate { addr: ..., rank: 0, link_etx: -1.0 }` followed by use in a HashMap or comparison.\n\n## Impact\nIf the `std` feature exposes this type in a library API (currently feature-gated), callers could create invalid candidates. Lower severity since the type is behind `#[cfg(feature = \"std\")]` and primarily used internally.\n\n## Suggested fix\nEither:\n1. Make fields `pub(crate)` and add a validating constructor\n2. Add a `new()` method that validates and returns `Option\u003cSelf\u003e` or `Result`\n3. Document the valid ranges clearly if public construction is intentional",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:27:07.936587Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:27:07.936587Z",
+  "labels": [
+    "api-contract",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-h19j.3",
+      "depends_on_id": "project-LICHEN-worker6-h19j",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:27:08.253327Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

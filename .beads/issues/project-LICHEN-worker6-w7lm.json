@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-w7lm",
+  "title": "receive_from_peer uses only first transit for all targets",
+  "description": "Filed as project-LICHEN-worker6-trff.2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:13.532882Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:28:02.912007Z",
+  "closed_at": "2026-08-16T19:28:02.912007Z",
+  "close_reason": "False positive: code correctly uses .get(i) to pair targets with transits by index. Test bridge_receive_pairs_targets_with_transits_by_index passes, verifying each target gets its own transit (path_sequences 10,20,30)."
+}

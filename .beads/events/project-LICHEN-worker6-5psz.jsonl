@@ -1,0 +1,2 @@
+{"id":"01a00bec-a4ce-7a7f-84e7-cb4c65f10fc0","issue_id":"project-LICHEN-worker6-5psz","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:54:13.198689Z"}
+{"id":"01a00c0a-27b9-7e11-8ffa-c3dee6d6e211","issue_id":"project-LICHEN-worker6-5psz","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Replaced .sum() with saturating_add fold and += with saturating_add to prevent integer overflow in total_aggregated_routes()","created_at":"2026-08-16T19:26:27.257922Z"}

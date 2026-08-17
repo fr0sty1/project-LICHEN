@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-a74v",
+  "title": "[review] rules.rs:380: MQTT_SN rule won't match link-",
+  "description": "Comment says 'use global (Ignore) to support both link-local and global addresses in one rule' but FD_IPV6_SRC_GLOBAL and FD_IPV6_DST_GLOBAL use Mo::Msb matching which requires the top 64 bits to equal fd00:0000:0000:0000. Link-local addresses (fe80::/10) will fail this match because fe80 != fd00. Either the code should use Mo::Ignore for the address fields, or the comment is documenting incorrect behavior.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:55.022752Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:57:27.8183Z",
+  "closed_at": "2026-08-15T21:57:27.8183Z",
+  "close_reason": "Fixed: Added FD_IPV6_SRC_ANY and FD_IPV6_DST_ANY field descriptors using Mo::Ignore with Cda::ValueSent, and updated MQTT_SN_FIELDS to use them. This allows the MQTT_SN rule to match both link-local (fe80::/10) and global addresses.",
+  "labels": [
+    "review"
+  ]
+}

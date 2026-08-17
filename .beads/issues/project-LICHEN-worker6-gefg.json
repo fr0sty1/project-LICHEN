@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gefg",
+  "title": "messaging.py: _next_id never updated after POST",
+  "description": "Lines 137-162: The method uses `candidate_next_id` as a local variable initialized from `self._next_id`, increments it after assigning an auto-generated ID, but never writes it back to `self._next_id`. Result: every message POSTed without an explicit `id` field receives ID 1, overwriting any previous message with that ID in `_sent`. Second POST without id will silently replace the first message.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:09.607148Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:09.607148Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

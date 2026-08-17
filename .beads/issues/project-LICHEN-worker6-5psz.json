@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-5psz",
+  "title": "Integer overflow in total_aggregated_routes() sum",
+  "description": "Filed as project-LICHEN-worker6-trff.3",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:13.192762Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:26:27.211946Z",
+  "closed_at": "2026-08-16T19:26:27.211946Z",
+  "close_reason": "Fixed: Replaced .sum() with saturating_add fold and += with saturating_add to prevent integer overflow in total_aggregated_routes()"
+}

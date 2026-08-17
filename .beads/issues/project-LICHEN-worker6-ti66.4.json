@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-ti66.4",
+  "title": "Receiver accepts duplicate tiles with different content silently after initial validation",
+  "description": "**File:** rust/lichen-schc/src/fragment.rs\n**Lines:** 875-880\n\n**Issue:** The receiver aborts on content mismatch for duplicate tiles, but the comparison happens AFTER the fragment passes validation. The code is:\n\n```rust\nif *bitmap \u0026 bit != 0 {\n    if destination != fragment.payload {\n        return self.abort(fragment.rule_id);  // Correct: abort on mismatch\n    }\n    return ReceiverResult::default();  // Silent ignore on exact match\n}\n```\n\n**Concern:** This comparison uses non-constant-time `!=` on potentially sensitive payload data. An attacker could send duplicate fragments with varying payloads and measure timing to deduce the original payload content.\n\n**Trigger:** Attacker measures time between sending duplicate fragment and receiving response. Different timing reveals whether bytes matched.\n\n**Severity assessment:** Lower priority because:\n1. SCHC fragmentation typically operates on already-encrypted OSCORE payloads\n2. The attacker would need precise timing on a lossy LoRa channel\n\n**Suggested fix:** If payloads may contain pre-encryption secrets, use constant-time comparison:\n```rust\nuse subtle::ConstantTimeEq;\nif destination.ct_ne(fragment.payload).into() {\n    return self.abort(fragment.rule_id);\n}\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:46:51.23177Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:09:44.695536Z",
+  "closed_at": "2026-08-16T21:09:44.695536Z",
+  "close_reason": "Fixed: replaced non-constant-time payload comparison with subtle::ConstantTimeEq to prevent timing side-channel attacks on duplicate tile detection",
+  "labels": [
+    "correctness",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ti66.4",
+      "depends_on_id": "project-LICHEN-worker6-ti66",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:46:51.564416Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

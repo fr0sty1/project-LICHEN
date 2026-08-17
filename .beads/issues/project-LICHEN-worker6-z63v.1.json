@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-z63v.1",
+  "title": "Integer overflow in total_aggregated_routes()",
+  "description": "**File:** rust/lichen-rpl/src/multi_instance.rs\n**Line:** 443\n\n**Issue:** The `total_aggregated_routes()` method sums `routes_learned` (u32) values using `.sum()` which will panic on overflow in debug builds or silently wrap in release builds.\n\n```rust\nlet mut total: u32 = peers.values().map(|g| g.routes_learned).sum();\nif let Some(ref local) = self.local_gateway {\n    total += local.routes_learned;\n}\n```\n\n**Trigger:** If the sum of all `routes_learned` values exceeds u32::MAX (4,294,967,295), behavior depends on build mode.\n\n**Fix:** Use checked/saturating arithmetic:\n```rust\nlet mut total: u32 = peers.values()\n    .map(|g| g.routes_learned)\n    .fold(0u32, |acc, r| acc.saturating_add(r));\nif let Some(ref local) = self.local_gateway {\n    total = total.saturating_add(local.routes_learned);\n}\n```",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:20:43.230107Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:43:45.062408Z",
+  "closed_at": "2026-08-16T20:43:45.062408Z",
+  "close_reason": "Fixed: total_aggregated_routes() already uses saturating_add for both the fold operation and local gateway addition, preventing integer overflow",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-z63v.1",
+      "depends_on_id": "project-LICHEN-worker6-z63v",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:20:43.558331Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

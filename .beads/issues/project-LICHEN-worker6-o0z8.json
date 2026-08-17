@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-o0z8",
+  "title": "[review] messaging.py:85: deliver() stores reference to ",
+  "description": "The public deliver() method appends the passed message dict directly to _inbox without making a copy. If external callers mutate the dict after calling deliver(), the inbox contents are silently corrupted. Compare to inbox() at line 98 which defensively copies, and the deepcopy at line 150 for _sent storage. Mesh message handlers that reuse/mutate message dicts would corrupt inbox state.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:47.454226Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:47.454226Z",
+  "labels": [
+    "review"
+  ]
+}

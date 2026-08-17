@@ -1,0 +1,2 @@
+{"id":"01a00c2e-0c2f-7c21-a67e-631876c7dde6","issue_id":"project-LICHEN-worker6-yunu","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T20:05:39.503796Z"}
+{"id":"01a00c51-fa9a-7c29-bc6b-9863f02cc883","issue_id":"project-LICHEN-worker6-yunu","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added payload_length minimum validation to all 4 parse() functions in headers.rs before slicing","created_at":"2026-08-16T20:44:54.298798Z"}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-cg7a",
+  "title": "receiver_limit parameter ignored in FragmentSender::new",
+  "description": "FragmentSender::new takes receiver_limit parameter and validates it (line 455-456) but never uses it to constrain payload size. The check at line 461 uses SCHC_FRAG_MAX_PACKET_SIZE instead. This means packets exceeding the receiver's advertised reassembly limit can be fragmented and sent, causing reassembly failure at the receiver. The PacketTooLarge error variant exists but is never returned.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:17:43.472977Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:16:39.142759Z",
+  "closed_at": "2026-08-16T19:16:39.142759Z",
+  "close_reason": "Fixed: FragmentSender::new now uses receiver_limit parameter to reject payloads exceeding the receiver's advertised reassembly limit, returning PacketTooLarge error. Added test to verify the fix."
+}

@@ -1,0 +1,2 @@
+{"id":"01a00bcb-3b48-7547-b441-486a8f990598","issue_id":"project-LICHEN-worker6-9ox8","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:17:43.496346Z"}
+{"id":"01a00c01-0eff-760a-b705-9f5d66fb60ac","issue_id":"project-LICHEN-worker6-9ox8","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Extended padding validation to All-1 fragments in Fragment::from_bytes (line 197). Added test to verify corrupted All-1 padding returns NonZeroPadding error.","created_at":"2026-08-16T19:16:31.103397Z"}

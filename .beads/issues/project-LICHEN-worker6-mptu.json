@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-mptu",
+  "title": "Python: Add DAO state persistence to disk",
+  "description": "Part of DAO persistence crash safety (rpl)",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:43.486339Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:54:18.822738Z",
+  "closed_at": "2026-08-15T18:54:18.822738Z",
+  "close_reason": "Already implemented: TwoSlotFilePersistence in dao_persistence.py provides crash-safe disk persistence with two-slot alternation, generation numbers, checksums, and atomic writes. DaoManager is fully integrated - persists TX state before transmission and RX floors before accepting DAOs. 49 tests cover TX/RX survival across restarts, corruption recovery, concurrent writes, and require_crash_safety enforcement.",
+  "labels": [
+    "rpl"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.16.10",
   "title": "Python: 14.7 TDMA SFN oracle implementation",
   "description": "(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:42.628055Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:39:05.226443Z",
+  "updated_at": "2026-08-17T16:22:12.736489Z",
+  "closed_at": "2026-08-17T16:22:12.736489Z",
+  "close_reason": "All sub-tasks complete: SFN oracle in python/src/lichen/timing/sfn.py (hash_32, slot_for, sfn_delta, DesyncFSM, CcpFSM, DriftWatchdog, RecoveryCountdown), test vectors in test/vectors/ccp_sfn_wrap_slot_hash.json (20 vectors), validated via 124 passing tests",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.10",

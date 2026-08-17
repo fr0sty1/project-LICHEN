@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-quf0",
+  "title": "discovery.py: Unvalidated RREQ hop_limit causes crash",
+  "description": "Line 131: `actual_hops = INITIAL_HOP_LIMIT - rreq.hop_limit` produces negative value when rreq.hop_limit \u003e INITIAL_HOP_LIMIT (4). RREQ.from_bytes() accepts any uint8 hop_limit (0-255) without validation. A malformed RREQ with hop_limit=255 results in actual_hops=-251, and RouteEntry(hop_count=-251) raises ValueError from __post_init__. Attacker can DoS the router with a crafted RREQ.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:52.291653Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:14:41.509186Z",
+  "closed_at": "2026-08-17T15:14:41.509186Z",
+  "close_reason": "Fixed: Added hop_limit validation in RREQ.from_bytes() to reject values \u003e MAX_HOP_LIMIT (15). Crafted RREQ with hop_limit=255 now raises LoadngError at parse time instead of causing negative hop_count crash in process_rreq(). Added regression test test_rreq_from_bytes_rejects_invalid_hop_limit.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

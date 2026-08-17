@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-ti66.5",
+  "title": "Rule ID validation allows conflicting sessions",
+  "description": "File: rust/lichen-schc/src/fragment.rs\nLines: 847-853, 920-926\n\nIssue: The receiver accepts fragments from any rule ID on first contact, then locks to that rule ID. This creates a race condition where an attacker can send a fragment with rule_id=X before the legitimate sender, causing legitimate fragments with rule_id=Y to be rejected (abort).\n\nTrigger: On a shared channel, an attacker can race to claim the receiver state with any rule_id, causing legitimate fragmented transfers to fail.\n\nMitigation: Pre-configure expected rule_id at receiver construction, or document that callers must filter frames by rule_id before calling receive.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:47:08.342734Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:47:08.342734Z",
+  "labels": [
+    "correctness",
+    "untrusted-input",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ti66.5",
+      "depends_on_id": "project-LICHEN-worker6-ti66",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:47:08.672813Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

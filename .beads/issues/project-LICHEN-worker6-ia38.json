@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-ia38",
+  "title": "[review] 03-adaptation.md: Unknown Status value handling unspecified",
+  "description": "Status values 0x00-0x02 are defined, with 0x02 marked 'future'. The spec does not define how a receiver should handle Status values 0x03-0xFF. For robustness, behavior for unknown status codes should be specified (e.g., treat as INCOMPATIBLE).",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:41.751851Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:41.751851Z",
+  "labels": [
+    "review"
+  ]
+}

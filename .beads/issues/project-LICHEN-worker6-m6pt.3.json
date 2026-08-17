@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-m6pt.3",
+  "title": "Dead code: duplicate bounds check in _coap_oscore_status",
+  "description": "**File:** python/src/lichen/schc/headers.py\n**Lines:** 180-182\n\n**Issue:** Lines 180-182 check `if offset + length \u003e len(coap): return False` but this condition is already checked at lines 172-173 which returns `None`. The code at 180-182 is unreachable.\n\n**Evidence:** The loop body parses delta (lines 143-154) and length (lines 157-168), each incrementing `offset`. Then line 170 updates `option_number += delta`. Lines 172-173 check `if offset + length \u003e len(coap): return None`. If this passes, we reach 175-178. Then line 183 does `offset += length`. The check at 180-182 can never trigger because 172-173 already covers it.\n\n**Fix:** Remove lines 180-182 entirely.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:10:19.854637Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:10:19.854637Z",
+  "labels": [
+    "readability",
+    "dead-code",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-m6pt.3",
+      "depends_on_id": "project-LICHEN-worker6-m6pt",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:10:20.19063Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-gem7",
+  "title": "[review] provisioning.py:577: Seed provider return valu",
+  "description": "The seed from self._seed_provider.generate_seed() is used without validating its length. If a custom SeedProvider returns fewer or more than 32 bytes, the error will surface later in the crypto layer with a less clear error message. Adding an explicit length check would fail fast with a clear error.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:02:18.812137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:02:18.812137Z",
+  "labels": [
+    "review"
+  ]
+}

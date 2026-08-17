@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-595h",
+  "title": "loadng.rs: Missing hop_limit validation enables RREQ amplification attack",
+  "description": "process_rreq() at line 623 forwards any RREQ with hop_limit \u003e 0 without validating that hop_limit \u003c= MAX_HOP_LIMIT (15). An attacker can send an RREQ with hop_limit=255, causing it to be forwarded up to 255 times across the network instead of the protocol-intended maximum of 15 hops. This enables flooding/amplification attacks. Additionally, the hop_count calculation at lines 580-581 produces incorrect values (0 hops) for out-of-range hop_limit, allowing attackers to manipulate route metrics to make malicious routes appear more attractive.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:24:38.988191Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:24:38.988191Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

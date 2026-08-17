@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-o45y",
+  "title": "Kconfig: No MIN \u003c MAX constraint on CSMA backoff range",
+  "description": "LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS (range 10-5000) and LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS (range 10-10000) can be configured with MIN \u003e= MAX (e.g., MIN=5000, MAX=100). The help text says 'uniform random in [min_ms, max_ms)' - an invalid/empty range would cause undefined behavior in the random selection code (modulo by zero or negative, wraparound, or always selecting MIN).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:27.399567Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:47:27.399567Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

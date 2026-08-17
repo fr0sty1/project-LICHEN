@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-26l6.5",
+  "title": "prune_inadmissible_parents: allocates Vec unnecessarily",
+  "description": "**File:** rust/lichen-rpl/src/dodag.rs\n**Lines:** 420-430\n\n**Issue:** Collects addresses into a Vec, then iterates to remove. HashMap::retain would be more efficient.\n\n```rust\nfn prune_inadmissible_parents(\u0026mut self) {\n    let to_remove: Vec\u003c[u8; 16]\u003e = self\n        .parents\n        .iter()\n        .filter(|(_, candidate)| !self.admissible(candidate))\n        .map(|(addr, _)| *addr)\n        .collect();\n    for addr in to_remove {\n        self.parents.remove(\u0026addr);\n    }\n}\n```\n\n**Edge case:** On no_std embedded targets (which this crate supports via feature flags), unnecessary allocations matter.\n\n**Fix:**\n```rust\nfn prune_inadmissible_parents(\u0026mut self) {\n    self.parents.retain(|_, candidate| self.admissible(candidate));\n}\n```\n\nNote: This requires careful review of borrow patterns - `admissible` takes `\u0026self` so retain's `\u0026mut self` should work, but verify the admissible check doesn't need to reference parents.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:04:38.224914Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:04:38.224914Z",
+  "labels": [
+    "efficiency",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.5",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:04:38.543549Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

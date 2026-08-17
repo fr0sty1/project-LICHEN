@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.4.12.1",
   "title": "Python: Integration with IPv6, RPL, and Test Vectors oracle implementation",
   "description": "(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:11.397489Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:30.126111Z",
+  "updated_at": "2026-08-17T04:53:12.044218Z",
+  "closed_at": "2026-08-17T04:53:12.044218Z",
+  "close_reason": "Already fixed: Python oracle fully implemented in python/src/lichen/crypto/identity.py with _pubkey_to_iid(), iid_to_human_address(), yggdrasil_address(), Identity and PeerIdentity classes. Test vectors at test/vectors/node_address.json. All 32 tests pass in tests/crypto/test_identity.py including TestHumanAddressVectors covering all 10 canonical vectors. Children beads also complete: implementation done, vectors exist, validation passes.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.12.1",

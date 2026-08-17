@@ -1,0 +1,2 @@
+{"id":"01a00bfd-c0af-72da-bbf7-130dcd9c0898","issue_id":"project-LICHEN-worker6-yiyd","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:12:54.447188Z"}
+{"id":"01a00c0c-5d35-7f32-a72b-8a8a88ec77d0","issue_id":"project-LICHEN-worker6-yiyd","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: exported seq_is_fresher() as a public function with documented half-window semantics for replay detection","created_at":"2026-08-16T19:28:52.021997Z"}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-pddu",
+  "title": "loadng: with_incremented_hop_count overflow is silent",
+  "description": "The hop_count increment uses saturating_add which silently caps at 255. Inconsistent with with_decremented_hop_limit() which returns Option to signal boundary. Callers cannot detect metric saturation.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:12:54.337072Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:34:41.572781Z",
+  "closed_at": "2026-08-16T19:34:41.572781Z",
+  "close_reason": "Fixed: changed with_incremented_hop_count to return Option\u003cSelf\u003e, returning None at u8::MAX to signal saturation (consistent with with_decremented_hop_limit). Added 3 tests."
+}

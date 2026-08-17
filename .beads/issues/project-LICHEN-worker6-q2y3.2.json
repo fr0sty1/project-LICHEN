@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-q2y3.2",
+  "title": "unwrap_or fallback in finalize() masks state machine bugs",
+  "description": "Line 969: `let rule_id = self.rule_id.unwrap_or(RULE_ID_A_TO_B)` - In finalize(), rule_id should always be set since it's assigned when receiving the first fragment. Using unwrap_or with a fallback could mask bugs where finalize is called in an invalid state. Should use `.expect(\"finalize called without rule_id\")` or add explicit state validation before reaching this point.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:00:10.638933Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:00:10.638933Z",
+  "labels": [
+    "correctness",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-q2y3.2",
+      "depends_on_id": "project-LICHEN-worker6-q2y3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:00:10.981563Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

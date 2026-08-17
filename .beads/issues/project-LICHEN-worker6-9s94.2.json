@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-9s94.2",
+  "title": "Unreachable condition in Ack::from_bytes_for",
+  "description": "Location: rust/lichen-schc/src/fragment.rs:340-341\n\nIssue: The check `if n \u003e WINDOW_SIZE { return Err(FragmentError::MalformedAck); }` can never be true.\n\nReasoning: `n = WINDOW_SIZE - trailing` where `trailing = bitmap.trailing_ones()`. Since `trailing` is a count of ones (non-negative) and `WINDOW_SIZE = 63`, the maximum value of `n` is exactly `WINDOW_SIZE` (when `trailing = 0`). Thus `n \u003e WINDOW_SIZE` is mathematically impossible.\n\nImpact: Dead code that may confuse readers or suggest defensive coding against an impossible scenario.\n\nSuggested fix: Remove the check or add a comment explaining it as a safety assertion against future changes to the bitmap representation.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:15:01.022039Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:15:01.022039Z",
+  "labels": [
+    "correctness",
+    "dead-code",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9s94.2",
+      "depends_on_id": "project-LICHEN-worker6-9s94",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:15:01.361524Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

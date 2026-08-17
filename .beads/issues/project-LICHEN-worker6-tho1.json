@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-tho1",
+  "title": "hybrid.rs: MeshPrefix::contains() panics on prefix_len \u003e 128 (variant)",
+  "description": "Line 135: `full_bytes = (self.prefix_len / 8) as usize` can exceed 16 when prefix_len \u003e 128. Line 139 then accesses `addr[..full_bytes]` on a 16-byte array, causing a panic. No validation bounds-checks prefix_len to 0-128 in MeshPrefix::new() or add_mesh_prefix().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:42.677523Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:16:42.677523Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

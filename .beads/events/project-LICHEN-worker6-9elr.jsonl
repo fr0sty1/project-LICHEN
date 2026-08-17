@@ -1,0 +1,2 @@
+{"id":"01a00bcb-1df8-762e-8c83-a809686d29e2","issue_id":"project-LICHEN-worker6-9elr","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:17:35.992406Z"}
+{"id":"01a00bff-3507-7606-8785-74501aed854b","issue_id":"project-LICHEN-worker6-9elr","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added NULL input validation tests for display, serial, battery, pmic, and external_flash device getters in lichen/tests/hal/src/main.c","created_at":"2026-08-16T19:14:29.767395Z"}

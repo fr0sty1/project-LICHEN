@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gamm",
+  "title": "test_channel.py:129: Stale comment misrepresents implementation",
+  "description": "The comment at line 129-130 states 'channel.py uses max(n_channels - 1, 1)' but the actual implementation uses max(n_channels - 1, 2). This documentation drift could mislead developers analyzing the compatibility differences between channel.py and tdma.py. Fix: Update comment to: 'channel.py uses max(n_channels - 1, 2) while tdma.py uses max(num_channels, 3)'",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:35.752895Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:22:35.752895Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-svjt",
+  "title": "[review] provisioning.py:402: Silent exception suppression i",
+  "description": "Same issue as line 355 - new_identity_callback failures are silently suppressed. If the node fails to persist its new identity, it will return success to the BR but have no usable credentials.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:52.947007Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:06:52.947007Z",
+  "labels": [
+    "review"
+  ]
+}

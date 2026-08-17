@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-1lom",
+  "title": "[review] slot_claim.py:175: Incomplete type validatio",
+  "description": "The signature field is only explicitly handled for bytes and str types. If CBOR contains an unexpected type (e.g., integer or list), it passes through to the SlotClaim constructor where len() fails with a TypeError. The error is caught but produces a generic 'malformed claim' message rather than a specific 'signature must be bytes' error.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:38:17.734231Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:38:17.734231Z",
+  "labels": [
+    "review"
+  ]
+}

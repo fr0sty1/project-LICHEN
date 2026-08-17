@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-pgu6",
+  "title": "HAL test: Expand or remove unreadable test_duty_cycle_ccp13",
+  "description": "The test_duty_cycle_ccp13 function (lines 1339-1341) compresses an entire test into a single 500+ character line. It duplicates most of test_duty_cycle_tracker_matches_ccp13_vectors but is nearly impossible to review. Should be expanded with proper formatting or removed as duplicate.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:17:35.187346Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:14:39.285455Z",
+  "closed_at": "2026-08-16T19:14:39.285455Z",
+  "close_reason": "Removed duplicate unreadable test_duty_cycle_ccp13 (500+ char one-liner); well-formatted test_duty_cycle_tracker_matches_ccp13_vectors covers the same functionality"
+}

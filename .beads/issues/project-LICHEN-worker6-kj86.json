@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-kj86",
+  "title": "Missing SECURITY comment on non-cryptographic compute_mic",
+  "description": "Line 100: compute_mic uses CRC-32 which is NOT cryptographic. Add SECURITY comment explaining this provides error detection only, not authentication. Applications must use OSCORE.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:23:42.541045Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:50:18.895006Z",
+  "closed_at": "2026-08-16T19:50:18.895006Z",
+  "close_reason": "Fixed: Added SECURITY comment to compute_mic explaining CRC-32 is not cryptographic and provides error detection only, not authentication. Applications must use OSCORE."
+}

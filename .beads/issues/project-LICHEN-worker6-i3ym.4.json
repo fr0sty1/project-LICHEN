@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-i3ym.4",
+  "title": "[Positive] Fragment retransmission content check prevents injection",
+  "description": "File: rust/lichen-schc/src/fragment.rs\nLines: 873-876\n\nThe receiver correctly compares retransmitted fragment content against stored content and aborts if they differ:\n\n  if *bitmap \u0026 bit != 0 {\n      if destination != fragment.payload {\n          return self.abort(fragment.rule_id);\n      }\n\nThis prevents an attacker from injecting different content via retransmission attacks. Worth defending if anyone suggests removing this check.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:20:09.03665Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:20:09.03665Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-i3ym.4",
+      "depends_on_id": "project-LICHEN-worker6-i3ym",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:20:09.377276Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

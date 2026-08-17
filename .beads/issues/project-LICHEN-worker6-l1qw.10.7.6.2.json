@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.7.6.2",
   "title": "Python: beacon boost (30s interval during SOS)",
   "description": "Increase beacon rate during active SOS",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:25.143739Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:25.143739Z",
+  "updated_at": "2026-08-17T04:06:27.01181Z",
+  "closed_at": "2026-08-17T04:06:27.01181Z",
+  "close_reason": "Implemented beacon boost in SosResource: activating SOS now starts an async task that calls retrigger() every 30s; cancelling SOS stops the task. Added 3 tests verifying task lifecycle and periodic retriggering.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.7.6.2",

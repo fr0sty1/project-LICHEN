@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.16.10.3",
   "title": "Vectors: Generate test vectors for 14.7",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:58.884415Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:58.884415Z",
+  "updated_at": "2026-08-17T16:22:05.653331Z",
+  "closed_at": "2026-08-17T16:22:05.653331Z",
+  "close_reason": "Already implemented: test/vectors/ccp_sfn_wrap_slot_hash.json with 20 vectors covering hash, slot, delta, wrap continuity, edge cases",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.10.3",

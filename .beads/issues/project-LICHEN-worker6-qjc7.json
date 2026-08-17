@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-qjc7",
+  "title": "[review] provisioning.py:355: Silent exception suppression i",
+  "description": "contextlib.suppress(Exception) swallows ALL exceptions from provisioned_callback, including those indicating the provisioned identity failed to persist. The BR returns success (CHANGED) even if the callback failed, leaving the node believing it's provisioned while the BR has no record.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:06:46.418521Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:06:46.418521Z",
+  "labels": [
+    "review"
+  ]
+}

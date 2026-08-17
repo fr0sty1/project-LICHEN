@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.1.2",
   "title": "Implement: Python oracle for B.2.1",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:19.183772Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:19.183772Z",
+  "updated_at": "2026-08-17T16:16:09.244963Z",
+  "closed_at": "2026-08-17T16:16:09.244963Z",
+  "close_reason": "Already implemented: tx_queue.py (TX_QUEUE_CAPACITY=4, QueueFullError), forwarding_buffer.py (MAX_PACKETS_PER_SOURCE=2, MAX_FORWARDING_SOURCES=8, BACKPRESSURE), gatt.py (MAX_QUEUE_DEPTH=8, GattError). All 152 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.1.2",

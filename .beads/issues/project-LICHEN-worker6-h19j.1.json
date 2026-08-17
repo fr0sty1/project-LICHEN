@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-h19j.1",
+  "title": "process_dio returns Accepted when candidate silently rejected at capacity",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs:397-403\n\n## Issue\nWhen `parents.len() \u003e= MAX_PARENT_CANDIDATES` and a new (not existing) neighbor sends a valid DIO, the candidate is silently discarded but `DioOutcome::Accepted` is returned.\n\n```rust\n} else if self.parents.len() \u003c MAX_PARENT_CANDIDATES {\n    // Insert new parent only if under limit\n    self.parents.insert(neighbor_addr, candidate);\n}\n// else: at capacity with a new parent -\u003e reject silently\nself.select_parent();\nDioOutcome::Accepted  // \u003c-- misleading\n```\n\n## Trigger\n- Node has 16 parent candidates tracked\n- A 17th neighbor sends a valid DIO\n- Caller sees `Accepted` but parent is not tracked\n\n## Impact\nCallers cannot distinguish \"accepted and tracked\" from \"accepted but discarded\". A trickle timer or diagnostic code expecting the neighbor to be a known parent will find it missing with no indication of why.\n\n## Suggested fix\nReturn a new variant `DioOutcome::AtCapacity` or at minimum `DioOutcome::Rejected` when the parent table is full and the candidate is not already tracked.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:26:53.25525Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:04:17.771598Z",
+  "closed_at": "2026-08-16T21:04:17.771598Z",
+  "close_reason": "Fixed: process_dio now returns DioOutcome::AtCapacity when a valid candidate is rejected due to parent table capacity",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-h19j.1",
+      "depends_on_id": "project-LICHEN-worker6-h19j",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:26:53.57364Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

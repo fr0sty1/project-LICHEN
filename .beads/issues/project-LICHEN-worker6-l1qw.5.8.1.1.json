@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.8.1.1",
   "title": "Python: recent_local_evidence() check",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:46.07693Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:46.07693Z",
+  "updated_at": "2026-08-17T05:06:03.857781Z",
+  "closed_at": "2026-08-17T05:06:03.857781Z",
+  "close_reason": "Already fixed: Local evidence check is implemented via GradientTable (populated only by authenticated sources: Announce, RREP, RPL, DATA) and SimNode.heard_set. LOADng is only initiated when gradient.lookup() returns None/expired, and gradients only exist for authenticated senders. Child beads track oracle/vector validation work.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.1.1",

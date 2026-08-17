@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-n9ik.6",
+  "title": "Positive: Good input validation on link_etx and rank",
+  "description": "## Locations\n- Line 324-326: ETX validation (`is_finite()` and `\u003e= 1.0`)\n- Line 170-176: path_cost handles NaN/negative, saturates correctly\n- Line 99-101: candidate_admissible guards against division by zero\n- Line 413: admissible() rejects ranks below min_hop_rank_increase\n\n## Why this is worth defending\nThese validations prevent:\n- NaN/infinity propagation through rank calculations\n- Division by zero panics\n- Invalid RPL states from malformed DIOs\n\nInput validation is at the correct boundary (process_dio entry) and consistently applied.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:41:55.503438Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:41:55.503438Z",
+  "labels": [
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n9ik.6",
+      "depends_on_id": "project-LICHEN-worker6-n9ik",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:41:55.827326Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

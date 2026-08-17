@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-ckfg",
   "title": "Rust EDHOC KDF uses wrong info structure (4 elements instead of RFC 9528 3 elements)",
   "description": "## Bug\n\nRust `edhoc_kdf()` in `crates/oscore/src/edhoc/kdf.rs` builds info as `(length, TH, label, context)` - 4 elements.\n\nRFC 9528 Section 4.1.2 specifies `info = (label, context, length)` - 3 elements. TH should be passed AS context by the caller, not as a separate field.\n\n## File\n`/Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/kdf.rs` lines 20-90\n\n## Fix\nSame as Python fix in project-LICHEN-worker6-9xfw:\n1. Change signature to `edhoc_kdf(prk, label, context, length)`\n2. Change info encoding to `(label, context, length)`\n3. Use integer labels (0, 2, 3, 4, 6, 7, 10) per RFC\n4. Update all call sites to pass TH as context where needed\n\n## Blocked by\nMust coordinate with C fix and regenerate shared test vectors after all three implementations align.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T18:50:41.237428Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T18:50:41.237428Z",
+  "updated_at": "2026-08-17T03:48:07.670902Z",
+  "closed_at": "2026-08-17T03:48:07.670902Z",
+  "close_reason": "Already fixed: Current code in kdf.rs correctly implements RFC 9528 Section 4.1.2 with 3-element info structure (label, context, length). Function signature is edhoc_kdf(prk, label, context, length), integer labels match RFC Figure 6, and TH is passed as context by callers.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-ckfg",

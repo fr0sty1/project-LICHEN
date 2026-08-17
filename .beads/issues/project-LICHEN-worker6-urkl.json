@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-urkl",
+  "title": "hybrid.rs: Panic on invalid prefix_len \u003e 128 in MeshPrefix::contains",
+  "description": "MeshPrefix::new (line 129) accepts any u8 for prefix_len without validation. If prefix_len \u003e 128 (e.g., 200), then in contains() line 135, full_bytes = 200/8 = 25. Line 139 then accesses addr[..25] on a 16-byte array, causing an index-out-of-bounds panic. The check on line 144 (full_bytes \u003c 16) only guards the remaining-bits logic, not the initial comparison. Add validation: prefix_len \u003c= 128.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:40.172397Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:16:57.715793Z",
+  "closed_at": "2026-08-17T15:16:57.715793Z",
+  "close_reason": "Already fixed: MeshPrefix::new() clamps prefix_len to 128 via .min(128) at line 161, preventing out-of-bounds panic in contains(). Regression test mesh_prefix_invalid_len_clamped_to_128 verifies the fix.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

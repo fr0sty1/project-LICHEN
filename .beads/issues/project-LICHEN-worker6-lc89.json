@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-lc89",
+  "title": "Add minimum rank validation to admissible() method",
+  "description": "The admissible() method (line 409) does not check if candidate.rank \u003c min_hop_rank_increase, allowing RFC 6550-invalid ranks to slip through for same-version DIOs. The candidate_admissible() function has this check but is only called for newer versions. Add the check to admissible() to reject parents advertising invalid ranks.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:13:02.269313Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:34:50.597126Z",
+  "closed_at": "2026-08-16T19:34:50.597126Z",
+  "close_reason": "Fixed: Added minimum rank validation (candidate.rank \u003c min_hop_rank_increase) to admissible() method. This ensures same-version DIOs with RFC 6550-invalid ranks (below root rank) are properly rejected, matching the validation already done in candidate_admissible() for newer versions."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-4i0v",
+  "title": "test_multihop_latency_bounds.py: Edge case: zero min_us masks variance check",
+  "description": "Line 260: When stats.min_us equals 0, the ratio defaults to 1.0 regardless of max_us value. This causes the assertion `ratio \u003c= 2.0` to pass even when there is extreme latency variance (e.g., min=0, max=1000000 would yield ratio=1.0 instead of flagging the variance). Should either skip the assertion when min_us is 0, or use a different comparison method for this edge case.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T16:12:41.764333Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T16:12:41.764333Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

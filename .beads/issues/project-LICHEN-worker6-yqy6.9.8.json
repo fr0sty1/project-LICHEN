@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.9.8",
   "title": "Time source priority integration test",
   "description": "Integration test for time source priority across multiple boards. Submit samples from different source classes, verify highest-priority wins.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:15:28.017089Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:15:28.017089Z",
+  "updated_at": "2026-08-17T16:40:15.629051Z",
+  "closed_at": "2026-08-17T16:40:15.629051Z",
+  "close_reason": "Already fixed: Comprehensive time source priority integration tests exist in /lichen/tests/hal/src/main.c. Tests include: test_time_provider_precedence_stale_and_gnss_location_separation, test_time_provider_build_epoch_floor_and_diagnostics, and test_time_provider_provision_epoch_floor_and_recovery. These tests submit samples from different source classes (MANUAL_STATIC, LOCAL_CLIENT, NETWORK, GNSS, INTERNAL_RTC), verify priority ordering (manual \u003e network \u003e gnss), verify lower-trust rejection with -EALREADY, and verify stale-sample fallback. Tests run on multiple platforms (native_sim, native_sim/native/64, qemu_x86) via testcase.yaml.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.9.8",

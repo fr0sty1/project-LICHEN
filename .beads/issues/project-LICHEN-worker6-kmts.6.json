@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-kmts.6",
+  "title": "finalize() MIC failure bitmap logic may not request All-1 retransmit correctly",
+  "description": "Line 977-983:\n```rust\nlet full_window = bitmap == required \u0026\u0026 bitmap.count_ones() == regular_count as u32;\nlet ack_bitmap = if full_window \u0026\u0026 regular_count \u003e 1 {\n    bitmap\n} else {\n    bitmap | 1\n};\n```\n\nWhen `regular_count == 1` and MIC fails with all fragments present, the code sets bit 0 (marks All-1 as received) rather than requesting All-1 retransmission.\n\nScenario:\n1. Window has 1 regular fragment (FCN=62) + All-1\n2. Both received, MIC check fails\n3. `regular_count = 1`, `full_window = true`\n4. But `regular_count \u003e 1` is false, so `ack_bitmap = bitmap | 1`\n5. All-1 is marked received, only regular fragment retransmitted\n6. Retransmitting the regular fragment will not fix the MIC\n\nThe comment on lines 971-976 explains the intent but the `regular_count \u003e 1` condition may be too restrictive.\n\nSuggested fix: Review whether `regular_count \u003e 1` should be `regular_count \u003e= 1` or if single-fragment windows need different handling.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:47:17.947904Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:47:17.947904Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.6",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:47:18.282347Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

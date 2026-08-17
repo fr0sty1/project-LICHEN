@@ -1,1 +1,2 @@
 {"id":"019fb9ae-e098-7b71-85d0-8af0982677ee","issue_id":"project-LICHEN-worker6-l1qw.8.18.7.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:37:53.56075Z"}
+{"id":"01a01080-322f-7a3d-a8dd-40c94017fbed","issue_id":"project-LICHEN-worker6-l1qw.8.18.7.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Test vectors exist in test/vectors/ (tx_queue_bounded.json, tx_queue_expiry.json, tx_queue_implementation.json, tx_queue_priority.json)","created_at":"2026-08-17T16:13:52.047672Z"}

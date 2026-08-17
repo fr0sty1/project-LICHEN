@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-q2y3.4",
+  "title": "Missing doc comments on public API items",
+  "description": "Library crate with undocumented public surface. Missing docs on: constants (FRAGMENT_M/N/T, ALL_1_FCN, MIC_LENGTH, etc.), struct fields (Fragment, Ack, FragmentSender, FragmentReceiver), many public methods (compute_mic, write_to, from_bytes, etc.). As a library crate, documentation is part of the contract. Should add /// doc comments to all pub items.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:00:17.602336Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:00:17.602336Z",
+  "labels": [
+    "api-contract",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-q2y3.4",
+      "depends_on_id": "project-LICHEN-worker6-q2y3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:00:17.943357Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

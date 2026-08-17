@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-frjv.2",
+  "title": "Unreachable else branch in rank assignment",
+  "description": "File: python/src/lichen/rpl/dodag.py\nLine: 258\n\n```python\nself.rank = best_cost if best_cost \u003c INFINITE_RANK else INFINITE_RANK - 1\n```\n\n**Analysis:** The else branch (INFINITE_RANK - 1) is unreachable. The _admissible() function on line 229-230 already filters out candidates with path_cost \u003e= INFINITE_RANK:\n\n```python\ndef _admissible(self, candidate: ParentCandidate) -\u003e bool:\n    cost = candidate.path_cost(self.min_hop_rank_increase)\n    if cost \u003e= INFINITE_RANK:\n        return False  # Already filtered\n```\n\nSince select_parent() only considers admissible candidates (line 237), best_cost is guaranteed to be \u003c INFINITE_RANK.\n\n**Impact:** Dead code / logic confusion. The defensive fallback suggests the author was uncertain about the invariant, which could mask future bugs if _admissible() logic changes.\n\n**Fix:** Either:\n1. Assert the invariant: `assert best_cost \u003c INFINITE_RANK; self.rank = best_cost`\n2. Or simplify: `self.rank = best_cost` with a comment explaining the guarantee",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:44:08.142951Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:44:08.142951Z",
+  "labels": [
+    "correctness",
+    "dead-code",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-frjv.2",
+      "depends_on_id": "project-LICHEN-worker6-frjv",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:44:08.460929Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

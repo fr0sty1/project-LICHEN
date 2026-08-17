@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.13",
   "title": "Python: B.2.5 No Silent Drops",
   "description": "Return errors to senders, NACK to mesh source, log queue-full events for diagnostics.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:26:32.967857Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:52.212674Z",
+  "updated_at": "2026-08-17T16:14:27.755532Z",
+  "closed_at": "2026-08-17T16:14:27.755532Z",
+  "close_reason": "Complete: All 3 B.2.5 SHOULD-level requirements already implemented in tx_queue.py (QueueFullError backpressure, line 73-80) and forwarding_buffer.py (on_drop NACK callback, DropReason enum, lines 44-57). Full test coverage in test_tx_queue.py and test_forwarding_buffer.py. Implementation predates issue filing.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.13",

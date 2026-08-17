@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-thqy.2",
+  "title": "CoAP token length not validated (max 8 bytes)",
+  "description": "File: rust/lichen-gateway/src/discovery.rs\nLines: 87-92, 98-103\n\nBackboneDiscoveryRequest accepts arbitrary token length via token.to_vec() but CoAP spec (RFC 7252) limits tokens to 0-8 bytes. If CoapBuilder doesn't validate, oversized tokens silently produce malformed CoAP messages.\n\nEdge case trigger: Caller passes 9+ byte token to new() or with_observe(). The TKL field (4 bits) can only encode 0-8.\n\nFix: Validate token.len() \u003c= 8 in constructors. Either panic (caller bug per Rust conventions) or return Result\u003cSelf, TokenTooLong\u003e.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:47:24.2293Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:47:24.2293Z",
+  "labels": [
+    "correctness",
+    "boundary-condition",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-thqy.2",
+      "depends_on_id": "project-LICHEN-worker6-thqy",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:47:24.569879Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

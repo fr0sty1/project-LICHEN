@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.4.3",
   "title": "T1000-E: Serial local transport",
   "description": "Validate serial local-client transport on T1000-E via native USB CDC. Test USB enumeration and frame exchange.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:44.345396Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:44.345396Z",
+  "updated_at": "2026-08-17T16:42:46.32406Z",
+  "closed_at": "2026-08-17T16:42:46.32406Z",
+  "close_reason": "Already fixed: USB CDC serial transport validated through T1000-E bring-up. Evidence: (1) Board DTS has cdc_acm_uart0 with compatible=zephyr,cdc-acm-uart, defconfig enables CONFIG_USB_DEVICE_STACK=y and CONFIG_USB_CDC_ACM=y. (2) USB enumeration documented in AGENTS.md at /dev/serial/by-id/usb-Seeed_Studio_T1000-E_\u003cserial\u003e-if00. (3) Frame exchange validated per t1000e-techo-lora-bringup-notes.md: KISS transport over USB CDC works, beacons and native.c communication tested, known USB-CDC stall issues characterized and worked around with old USB stack. (4) flash-t1000e.sh uses serial DFU via USB CDC successfully. (5) KISS transport implementation (kiss_transport.c) is complete for UART/USB-CDC frame exchange.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.4.3",

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-hpgj",
+  "title": "tx_queue.c: Unchecked pthread_mutex_init return value",
+  "description": "Line 217-218: pthread_mutex_init() return value is not checked. If initialization fails (ENOMEM/EAGAIN), tx_queue_init returns 0 (success) but the mutex is in an undefined state. Subsequent lock_queue/unlock_queue calls will use an uninitialized mutex, leading to undefined behavior. While pthread_mutex_init rarely fails, this violates defensive programming for security-critical locking code.\n\nFile: /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/tx_queue.c\nLine: 217",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:22.319064Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:12:22.319064Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-fjki.10",
+  "title": "[GOOD] Signature requirement on RREP prevents route injection attacks",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 305-330, 773-788\n\nWhat's good: The receive_rrep method explicitly requires signatures on RREPs to prevent unauthenticated route injection attacks:\n1. SECURITY comment documents the threat (attacker claims to be destination)\n2. MissingSignature error variant for clear failure reporting\n3. Test coverage verifies unsigned RREPs are rejected even with valid fields\n4. Design separates parsing (allows unsigned for inspection) from acceptance (requires signature)\n\nWorth defending: The signature check is in the route acceptance logic, not parsing - this is the right layer. Parsing unsigned RREPs for logging/debugging should still work.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:32:24.184881Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:36.262612Z",
+  "closed_at": "2026-08-17T03:49:36.262612Z",
+  "close_reason": "Acknowledged: Positive observation about signature requirement on RREP preventing route injection attacks.",
+  "labels": [
+    "review",
+    "good"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.10",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:32:24.501338Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

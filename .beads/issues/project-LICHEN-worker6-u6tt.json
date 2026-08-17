@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-u6tt",
+  "title": "Fix NaN timestamp bypass in DAO backbone replay protection",
+  "description": "The receive_from_peer() function in multi_instance.rs has a security vulnerability where NaN timestamps bypass the freshness validation check. At line 651, the comparison 'age \u003e DAO_TIMESTAMP_FRESHNESS_SECONDS || age \u003c 0.0' silently passes when age is NaN because NaN comparisons always return false. An attacker could craft a DaoBackboneMessage with timestamp=f64::NAN to bypass replay protection. Fix by adding explicit NaN check: 'if age.is_nan() || age \u003e DAO_TIMESTAMP_FRESHNESS_SECONDS || age \u003c 0.0'",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:12.710622Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:51:41.394469Z",
+  "closed_at": "2026-08-16T19:51:41.394469Z",
+  "close_reason": "Fixed: Added explicit age.is_nan() check in receive_from_peer() timestamp validation to prevent NaN bypass of replay protection"
+}

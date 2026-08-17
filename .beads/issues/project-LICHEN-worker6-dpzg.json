@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-dpzg",
+  "title": "test/vectors/ccp_select_channel_endianness.json: Description incorrectly states output range for n_channels \u003c 3",
+  "description": "The description claims 'Output range is [1, n_channels-1] inclusive' but the actual formula with max() clamp produces range [1, max(n_channels-1, 2)]. For n_channels=2, the stated range is [1,1] but the formula produces [1,2]. The test vector n_channels_clamped_to_2 correctly expects channel=2, contradicting the description. Implementations validating against the stated bounds would incorrectly reject valid outputs.\n\nFix suggestion: Change the description to: 'Output range is [1, max(n_channels-1, 2)] inclusive, which equals [1, n_channels-1] for n_channels \u003e= 3.'",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:14:17.605935Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:14:17.605935Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -1,1 +1,2 @@
 {"id":"019fb9b2-6733-7995-aa95-1431bc1287f5","issue_id":"project-LICHEN-worker6-l1qw.5.8.3.4.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:41:44.627629Z"}
+{"id":"01a00e2f-5a7b-7465-afc8-66855a4f9da1","issue_id":"project-LICHEN-worker6-l1qw.5.8.3.4.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: Python RREP oracle implemented in LoadngRouter.process_rrep() at discovery.py:176-215","created_at":"2026-08-17T05:26:19.515288Z"}

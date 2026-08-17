@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-tqgd",
+  "title": "loadng: fix misleading hop_count clamping security comment",
+  "description": "Line 564-567 in loadng.rs has a security comment that states the hop_count clamping prevents 'hop_count=0' attacks, but the .min(MAX_HOP_LIMIT) operation only clamps HIGH values, not low ones. Update comment to accurately describe what the clamping protects against (artificially inflated hop counts, metric overflow).",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:04.930196Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:28:04.930196Z"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-4xi8",
+  "title": "[review] tx_queue.py:410: confirm_transmitted() does not",
+  "description": "confirm_transmitted() calls _remove_first() which updates stats but never signals the reservation as True. Even though transmission succeeded, any caller awaiting the reservation will hang indefinitely. The complete() method correctly signals reservations, but confirm_transmitted() does not.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:45.759762Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:40:46.565812Z",
+  "closed_at": "2026-08-15T21:40:46.565812Z",
+  "close_reason": "Fixed: confirm_transmitted() now signals reservation as True before calling _remove_first(). Added test_confirm_transmitted_signals_reservation to verify.",
+  "labels": [
+    "review"
+  ]
+}

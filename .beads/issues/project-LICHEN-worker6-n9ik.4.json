@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-n9ik.4",
+  "title": "Parent candidate table exhaustion allows DoS on new nodes",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs lines 390-394\n\n## Issue\nThe parent candidate table is capped at `MAX_PARENT_CANDIDATES = 16`. New candidates are silently rejected when at capacity:\n```rust\n} else if self.parents.len() \u003c MAX_PARENT_CANDIDATES {\n    self.parents.insert(neighbor_addr, candidate);\n}\n// else: at capacity with a new parent -\u003e reject silently\n```\n\n## Attack scenario\nAn attacker floods an unjoined node with 16 fake DIOs (different source addresses, valid params). The table fills with attacker-controlled entries. When the legitimate root or valid parents send DIOs, they are silently rejected.\n\n## Mitigating factors\n- Existing entries can be updated (line 388-389), so once a valid parent is in the table, it stays\n- Attacker would need to be first 16 DIOs a node receives\n- Link-layer authentication (Schnorr) may prevent spoofing\n\n## Suggested mitigations\n1. Consider eviction policy based on link quality (replace worst candidate)\n2. Or: rate-limit new candidate insertions\n3. Document this as a known limitation with operational guidance (ensure valid DIOs reach nodes before attackers)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:41:38.145255Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:41:38.145255Z",
+  "labels": [
+    "risk",
+    "security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n9ik.4",
+      "depends_on_id": "project-LICHEN-worker6-n9ik",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:41:38.468036Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

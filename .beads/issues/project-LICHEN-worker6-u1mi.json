@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-u1mi",
+  "title": "RREP hop_count unbounded - input validation gap",
+  "description": "Location: loadng.rs line 418. Unlike RREQ hop_limit which is clamped to MAX_HOP_LIMIT (15), RREP hop_count is read verbatim without validation. A misbehaving signed node could send hop_count=0 to manipulate route selection if routing prefers lower hop_count. Fix: hop_count = data[1].min(MAX_HOP_LIMIT)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:19.267185Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:13:11.421325Z",
+  "closed_at": "2026-08-16T20:13:11.421325Z",
+  "close_reason": "Fixed: Added hop_count clamping in RREP::from_bytes() with .min(MAX_HOP_LIMIT) to prevent route preference manipulation. Added 3 tests mirroring RREQ hop_limit pattern."
+}

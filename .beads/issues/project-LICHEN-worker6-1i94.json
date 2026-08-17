@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-1i94",
+  "title": "[review] provisioning.py:355: Callback exceptions silently s",
+  "description": "Using `contextlib.suppress(Exception)` for the provisioned_callback (line 355-360) means if the callback fails (e.g., database write fails), the BR marks provisioning as complete and wipes the session, but the node was never registered. The node believes it is provisioned; the BR has no record. This is an unrecoverable state. Same issue at line 402 for new_identity_callback - if identity storage fails, the node loses the identity forever.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:28.452954Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:53:47.467158Z",
+  "closed_at": "2026-08-16T03:53:47.467158Z",
+  "close_reason": "Fixed: Replaced contextlib.suppress(Exception) with explicit try/except that returns INTERNAL_SERVER_ERROR and preserves session for retry. Both BR (provisioned_callback) and NODE (new_identity_callback) handlers now propagate callback failures correctly instead of silently suppressing them.",
+  "labels": [
+    "review"
+  ]
+}

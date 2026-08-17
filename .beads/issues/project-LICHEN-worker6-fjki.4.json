@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-fjki.4",
+  "title": "RERR error_code field not validated against known codes",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLine: 480\n\nIssue: The error_code field in Rerr is parsed as raw u8 without validation against known error code values. If the spec defines specific error codes, unknown values should be handled explicitly.\n\nTrigger: Receiving RERR with an undefined error_code value - currently silently accepted.\n\nImpact: Similar to flags - unknown error codes may be valid in future protocol versions or may indicate a malformed/malicious message.\n\nSuggested fix:\n1. Define an enum for known error codes (similar to LoadngCode)\n2. Either validate in from_bytes() or provide an accessor that returns Option\u003cKnownErrorCode\u003e",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:31:54.010171Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:49:24.129137Z",
+  "closed_at": "2026-08-17T03:49:24.129137Z",
+  "close_reason": "Invalid: error_code not being validated is intentional for forward compatibility - allows receivers to handle unknown error codes gracefully.",
+  "labels": [
+    "edge-case",
+    "validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fjki.4",
+      "depends_on_id": "project-LICHEN-worker6-fjki",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:31:54.373073Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

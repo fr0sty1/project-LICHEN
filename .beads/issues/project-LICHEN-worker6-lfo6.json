@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-lfo6",
+  "title": "[review] messaging.py:145: Inconsistent max_messages limi",
+  "description": "Sent messages trimming uses the global constant `_MESSAGES_MAX` (100) instead of `self._max_messages`. If MessagesResource is created with max_messages=50, the inbox respects this limit but sent messages still uses 100. Line 86 correctly uses `self._max_messages` for inbox, but line 145 uses `_MESSAGES_MAX` directly.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:27.962519Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:17:11.66533Z",
+  "closed_at": "2026-08-15T21:17:11.66533Z",
+  "close_reason": "Fixed: Changed sent messages trimming to use self._max_messages instead of _MESSAGES_MAX constant. Also fixed docstring for deliver() method.",
+  "labels": [
+    "review"
+  ]
+}

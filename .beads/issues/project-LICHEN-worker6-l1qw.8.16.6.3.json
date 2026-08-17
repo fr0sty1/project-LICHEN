@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.16.6.3",
   "title": "Vectors: Generate test vectors for 14.6",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:57.643751Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:57.643751Z",
+  "updated_at": "2026-08-17T16:22:42.222923Z",
+  "closed_at": "2026-08-17T16:22:42.222923Z",
+  "close_reason": "Already fixed: Test vectors exist in test/vectors/packets-timing.json - time_sync_epoch_floor, time_sync_stratum, dio_time_option, time_adoption. All vector values verified against oracle implementation.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.6.3",

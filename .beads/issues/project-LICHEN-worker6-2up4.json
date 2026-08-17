@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-2up4",
+  "title": "[review] tx_queue.py:403: `pop()` does not update transm",
+  "description": "The `pop()` method signals success to the reservation but does not increment `stats.packets_transmitted` or update the latency EMA, unlike `_remove_first()` and `complete(success=True)`. This causes transmission metrics to underreport actual transmissions if code paths use `pop()` instead of the other dequeue methods.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:39.665242Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:01:39.665242Z",
+  "labels": [
+    "review"
+  ]
+}

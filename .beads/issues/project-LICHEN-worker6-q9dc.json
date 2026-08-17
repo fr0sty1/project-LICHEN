@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-q9dc",
+  "title": "HAL test: Add assertion or comment for NULL identity_get call",
+  "description": "Line 109 of lichen/tests/hal/src/main.c calls lichen_hal_identity_get(NULL) without any assertion or comment explaining the intent. Other HAL NULL-handling tests assert -EINVAL, but this void function silently returns. Either document the intent with a comment or consider removing the call since the API is marked _Nonnull.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:17:35.648154Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:14:01.425975Z",
+  "closed_at": "2026-08-16T19:14:01.425975Z",
+  "close_reason": "Already fixed: The lichen_hal_identity_get(NULL) call was removed from line 109 of lichen/tests/hal/src/main.c. The test function now ends without the undocumented NULL call."
+}

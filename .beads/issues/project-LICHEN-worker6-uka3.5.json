@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-uka3.5",
+  "title": "replay state updated before KeyChange validation completes",
+  "description": "**File:** rust/lichen-link/src/link_layer.rs\n**Lines:** 671-682, 689-703\n\n**Issue:** The replay window is updated at line 671-682 BEFORE the state transition validation at line 696. If KeyChange is returned, the replay window has already marked this (epoch, seqnum) as seen.\n\n**Trigger:** A valid signature from a peer whose IID is pinned to a different pubkey.\n\n**Bad behavior:** If KeyChange error is returned but the legitimate peer later retries with the same seqnum (after admin unpins), the frame will be rejected as replay even though it was never successfully processed.\n\n**Suggested fix:** Either: (1) move replay check to AFTER all validation, (2) rollback replay state on validation failure, or (3) document that KeyChange errors consume the seqnum slot.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:19:34.26499Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:05:24.10294Z",
+  "closed_at": "2026-08-16T21:05:24.10294Z",
+  "close_reason": "Fixed: moved replay window update after state transition validation to prevent seqnum slot consumption on KeyChange errors",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-uka3.5",
+      "depends_on_id": "project-LICHEN-worker6-uka3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:19:34.616113Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

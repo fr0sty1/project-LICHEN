@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-oua2.5",
+  "title": "Inconsistent slice syntax in export_context",
+  "description": "File: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/kdf.rs\nLines: 113, 118, 123, 127\n\nInconsistent slice usage when copying from Vec to array:\n- Line 113: `prk_out.copy_from_slice(\u0026prk_out_vec[0..32]);` - explicit range\n- Line 118: `prk_exporter.copy_from_slice(\u0026prk_exporter_vec);` - implicit full slice\n- Line 123: `master_secret.copy_from_slice(\u0026master_secret_vec);` - implicit\n- Line 127: `master_salt.copy_from_slice(\u0026master_salt_vec);` - implicit\n\nThe explicit [0..32] on line 113 is defensive but the others rely on Vec length matching array size exactly.\n\nFix: Use consistent style throughout. Either all explicit ranges or all implicit slices. Implicit is fine since edhoc_kdf guarantees Vec length equals requested length.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:38.732748Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:39:38.732748Z",
+  "labels": [
+    "readability",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-oua2.5",
+      "depends_on_id": "project-LICHEN-worker6-oua2",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:39.08498Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

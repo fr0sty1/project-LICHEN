@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-2rkp.4",
+  "title": "SECURITY: path_cost does not explicitly handle infinity",
+  "description": "Location: rust/lichen-rpl/src/dodag.rs lines 169-176 (path_cost)\n\nIssue: The path_cost function checks for NaN and negative values but not infinity:\n\nif link_cost.is_nan() || link_cost \u003c 0.0 {\n    return u16::MAX;\n}\n\nWhen link_etx is very large (e.g., f32::MAX), multiplying by mhri can produce f32::INFINITY. This works correctly because Rust 1.45+ saturates infinity-to-integer casts to the max value, but the behavior is implicit rather than explicit.\n\nThe comment says NaN or negative -\u003e saturate to max but infinity also needs this treatment.\n\nImpact: Low - works correctly due to Rust saturation semantics, but relies on language-version-specific behavior.\n\nFix: Make the infinity handling explicit for clarity and defense-in-depth:\n\nif link_cost.is_nan() || link_cost \u003c 0.0 || link_cost.is_infinite() {\n    return u16::MAX;\n}",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:39.772916Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:39.772916Z",
+  "labels": [
+    "security",
+    "defense-in-depth",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rkp.4",
+      "depends_on_id": "project-LICHEN-worker6-2rkp",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:40.103653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

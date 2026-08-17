@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-m6pt.5",
+  "title": "Missing validation: _payload_overhead exceeds IPv6 max payload",
+  "description": "**File:** python/src/lichen/schc/headers.py\n**Lines:** 607-613\n\n**Issue:** The calculation `max_tail = _IPV6_MAX_PAYLOAD - profile._payload_overhead` assumes `_payload_overhead \u003c _IPV6_MAX_PAYLOAD`. While current profiles have small overhead values (8-28 bytes), there is no assertion or guard. A future profile with malformed `_payload_overhead` could cause `max_tail` to be negative, leading to confusing error messages or accepting oversized data.\n\n**Current values (safe):**\n- `_IPV6_MAX_PAYLOAD = 0xFFFF` (65535)\n- `_payload_overhead` ranges 8-28\n\n**Fix:** Add a static or runtime assertion:\n```python\n# At module load or in decompress_packet:\nassert profile._payload_overhead \u003c= _IPV6_MAX_PAYLOAD\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:10:31.876306Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:10:31.876306Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-m6pt.5",
+      "depends_on_id": "project-LICHEN-worker6-m6pt",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:10:32.200009Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

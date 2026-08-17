@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-kmts.2",
+  "title": "Missing Default derive on FragmentSender when it has a natural initial state",
+  "description": "Line 431-438: `FragmentSender` could benefit from documenting why it cannot have Default (requires payload reference), but the missing doc comment leaves this implicit.\n\nMore importantly, line 725: `ReceiverResult` has `Default` but `SenderOutput` at line 414 does not, even though `SenderOutput::None` is a natural default.\n\nSuggested fix: Add `#[derive(Default)]` to `SenderOutput` with `#[default]` attribute on `None` variant:\n```rust\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]\npub enum SenderOutput {\n    #[default]\n    None,\n    ...\n}\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:46:52.951754Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:46:52.951754Z",
+  "labels": [
+    "idiomatic-rust",
+    "type-design",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.2",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:46:53.269624Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

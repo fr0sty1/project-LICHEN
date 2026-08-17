@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-nam0",
+  "title": "[review] messaging.py:102: sent_message() returns interna",
+  "description": "The sent_message() method returns self._sent.get(msg_id) directly, exposing internal state to mutation by callers. This is inconsistent with inbox() (line 98) which returns defensive copies. While SentMessageDetailsResource.render_get creates a copy before serializing (line 199), other callers could corrupt internal state.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:47:47.454233Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:47:47.454233Z",
+  "labels": [
+    "review"
+  ]
+}

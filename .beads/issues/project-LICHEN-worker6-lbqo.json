@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-lbqo",
+  "title": "[review] provisioning.py:402: Silent exception swallowing lo",
+  "description": "contextlib.suppress(Exception) swallows on_new_identity callback failures. If the node fails to persist its new identity (disk full, crash, etc.), the code still wipes the session (line 406) and returns success (line 408). The node's identity is permanently lost with no recovery path since the session and seed are wiped.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:21.1194Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T03:58:12.657949Z",
+  "closed_at": "2026-08-16T03:58:12.657949Z",
+  "close_reason": "Already fixed. Lines 416-421 and 359-371 in coap/resources/provisioning.py properly catch callback exceptions and return INTERNAL_SERVER_ERROR instead of using contextlib.suppress. Session is preserved on error to allow retry.",
+  "labels": [
+    "review"
+  ]
+}

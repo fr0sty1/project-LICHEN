@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-q2y3.1",
+  "title": "Dead code: RetransmitIter struct never constructed",
+  "description": "Lines 1082-1107 define RetransmitIter with fields start/end/bitmap/pos, but no code in the module creates this type. The struct is pub but appears vestigial from a previous implementation. Should either be removed, marked #[allow(dead_code)] with explanation, or completed with a constructor.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:00:07.443952Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:00:07.443952Z",
+  "labels": [
+    "correctness",
+    "dead-code",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-q2y3.1",
+      "depends_on_id": "project-LICHEN-worker6-q2y3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:00:07.785471Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

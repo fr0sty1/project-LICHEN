@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.4.8",
   "title": "T1000-E: Device identity",
   "description": "Validate lichen_hal_identity_get() on T1000-E. Verify board_name, capability flags for LR1110 radio model, and GNSS capability.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:51.621583Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:51.621583Z",
+  "updated_at": "2026-08-17T16:41:20.362098Z",
+  "closed_at": "2026-08-17T16:41:20.362098Z",
+  "close_reason": "Already fixed: code infrastructure complete. lichen_hal_identity_get() implemented (hal_caps.c:166-181), test_identity_reports_board_and_caps validates identity fields (tests/hal/src/main.c:71-94), T1000-E config enables LR1110 radio model and GNSS capability (apps/puck/boards/t1000_e_nrf52840.conf). When tests run on T1000-E target: board_name=t1000_e_nrf52840, caps.radio=LICHEN_HAL_RADIO_LR1110, caps.flags includes LICHEN_HAL_CAP_GNSS.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.4.8",

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-26l6.7",
+  "title": "lollipop_cmp: boundary at wrap distance exactly 16 may accept stale versions",
+  "description": "File: rust/lichen-rpl/src/dodag.rs Lines 48-72. The lollipop comparison accepts versions within wrap_distance \u003c= 16. Edge case: if wrap_distance is exactly 16, we treat it as newer, but this is at the boundary of what RFC 6550 Appendix A considers comparable. The spec says SEQUENCE_WINDOW is typically 16, but the comparison should arguably be \u003c 16 not \u003c= 16 to match stricter implementations. Review against test vectors from RFC 6550.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:04:53.790003Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:04:53.790003Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.7",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:04:54.107674Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

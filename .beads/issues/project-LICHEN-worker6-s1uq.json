@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-s1uq",
+  "title": "[review] generate_forwarding_buffer.py:511: Missing error handling for fil",
+  "description": "When running with --check, if the output file does not exist or contains malformed JSON, the code raises an unhandled FileNotFoundError or json.JSONDecodeError instead of a clear error message. This is a minor usability issue since it only affects developers running the check incorrectly, and Python tracebacks remain informative.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:20.534468Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:20.534468Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-m8xj",
   "title": "security: No BR provisioning channel encryption",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-12T18:40:16.253171Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-12T18:40:16.253171Z",
+  "updated_at": "2026-08-17T03:46:01.874364Z",
+  "closed_at": "2026-08-17T03:46:01.874364Z",
+  "close_reason": "Fixed: BR provisioning channel encryption was implemented in provisioning.rs but not exposed through lib.rs. Added module to public API with edhoc feature gate and added required crypto dependencies (aes, ccm, hkdf, sha2, zeroize, rand_core, ed25519-dalek). All 11 provisioning tests pass.",
   "labels": [
     "spec-compliance"
   ]

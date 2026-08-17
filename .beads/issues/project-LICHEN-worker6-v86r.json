@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-v86r",
+  "title": "[review] 03-adaptation.md: Error handling for oversized Rule 255 wi",
+  "description": "The spec states that if Rule 255 packet exceeds link MTU and fragmentation versions mismatch, 'the packet cannot be sent'. No guidance on error signaling to upper layers (ICMP Packet Too Big equivalent, silent drop, etc.) is provided.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:20:54.20962Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:20:54.20962Z",
+  "labels": [
+    "review"
+  ]
+}

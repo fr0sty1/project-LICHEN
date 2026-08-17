@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-aw0t",
+  "title": "[review] node_resources.py:92: Incomplete exception handling ",
+  "description": "The exception tuple (TypeError, ValueError, OverflowError) may not cover all exceptions that NodeInfo.set_config implementations could raise. The Protocol does not constrain what exceptions set_config can raise, so alternative implementations might raise KeyError, AttributeError, RuntimeError, or custom exceptions. These would propagate uncaught, causing 500 errors and potentially leaking stack traces. This is inconsistent with line 86 which catches all exceptions from CBOR decoding. Consider using a broader except clause or catching Exception like the CBOR decode path.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:13.957182Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:13.957182Z",
+  "labels": [
+    "review"
+  ]
+}

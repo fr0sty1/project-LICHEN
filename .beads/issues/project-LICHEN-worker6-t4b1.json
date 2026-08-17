@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-t4b1",
+  "title": "[review] messaging.py:244: Receipts list has no size limi",
+  "description": "`MessageReceiptsResource._receipts` grows unbounded on each POST. Unlike `_inbox` and `_sent` (both capped at `_max_messages`), receipts are never trimmed. Over time this could exhaust memory on constrained nodes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:39.506271Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:26:39.506271Z",
+  "labels": [
+    "review"
+  ]
+}

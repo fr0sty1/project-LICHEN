@@ -1,0 +1,2 @@
+{"id":"01a00c07-a454-70cb-8560-24ea63423645","issue_id":"project-LICHEN-worker6-kj86","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:23:42.548052Z"}
+{"id":"01a00c20-0032-71f0-b180-7866aec7ce5c","issue_id":"project-LICHEN-worker6-kj86","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added SECURITY comment to compute_mic explaining CRC-32 is not cryptographic and provides error detection only, not authentication. Applications must use OSCORE.","created_at":"2026-08-16T19:50:18.930128Z"}

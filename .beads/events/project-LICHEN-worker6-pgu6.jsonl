@@ -1,0 +1,2 @@
+{"id":"01a00bcb-1ad9-7119-8fb9-de3f37ef8b98","issue_id":"project-LICHEN-worker6-pgu6","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:17:35.193072Z"}
+{"id":"01a00bff-5a3d-7a35-af71-81eecb121518","issue_id":"project-LICHEN-worker6-pgu6","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Removed duplicate unreadable test_duty_cycle_ccp13 (500+ char one-liner); well-formatted test_duty_cycle_tracker_matches_ccp13_vectors covers the same functionality","created_at":"2026-08-16T19:14:39.29367Z"}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-2rkp.3",
+  "title": "SECURITY: Root node accepts fraudulent below-ROOT_RANK DIOs",
+  "description": "Location: rust/lichen-rpl/src/dodag.rs lines 380-396 (process_dio)\n\nIssue: For same-version DIOs, candidate_admissible() is not called, so the check candidate.rank \u003c min_hop_rank_increase (line 103) that rejects parents advertising ranks below ROOT_RANK is bypassed.\n\nA malicious node can send a same-version DIO with rank=100 (below ROOT_RANK=256). The rank check at line 370 (dio.rank \u003e= self.rank) passes because 100 \u003c 256. The candidate is inserted and select_parent() is called, which in release builds silently fails the role transition but still corrupts preferred_parent, rank, and potentially lowest_rank.\n\nAttack scenario:\n1. Root node at rank 256 receives DIO with rank=100, version=current, link_etx=1.0\n2. Candidate passes validation (line 370 check fails: 100 \u003e= 256 is false)\n3. Parent is inserted (line 392)\n4. select_parent() sets preferred_parent and corrupts root rank to 356\n5. Role transition to Joined fails silently in release (debug_assert at line 474)\n\nImpact: Root node state corruption; incorrect rank advertisement; potential routing instability.\n\nFix: Either:\n1. Add explicit root guard at start of process_dio\n2. Use candidate_admissible() validation for all DIOs, not just newer versions\n3. Add rank bound check: if dio.rank \u003c self.min_hop_rank_increase { return DioOutcome::Rejected; }",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:29.130391Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:54:52.883668Z",
+  "closed_at": "2026-08-16T20:54:52.883668Z",
+  "close_reason": "Fixed: root guard at process_dio() entry already rejects all DIOs; added regression test root_rejects_below_root_rank_dio_attack",
+  "labels": [
+    "security",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rkp.3",
+      "depends_on_id": "project-LICHEN-worker6-2rkp",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:29.44137Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{"id":"01a00dd4-d180-7b17-bf4a-5c1456872094","issue_id":"project-LICHEN-worker6-ubjp","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T03:47:26.208727Z"}
+{"id":"01a00dd4-d187-78dd-8c9e-ac3bdf49abf7","issue_id":"project-LICHEN-worker6-ubjp","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T03:47:26.215582Z"}
+{"id":"01a00dd4-d18b-7d2f-8bbc-e662dfaaa82e","issue_id":"project-LICHEN-worker6-ubjp","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T03:47:26.219864Z"}
+{"id":"01a00de1-b2d2-78f1-afd7-2219d6b9ff3d","issue_id":"project-LICHEN-worker6-ubjp","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Removed duplicate config LICHEN_LINK_COORDINATION definition at lines 125-133, keeping the first definition at lines 103-111","created_at":"2026-08-17T04:01:30.322587Z"}

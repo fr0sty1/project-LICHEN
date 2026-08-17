@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-ap8p",
+  "title": "site.py: Duplicate path registration overwrites SentMessagesResource",
+  "description": "Lines 192-193 register both SentMessagesResource and SentMessageDetailsResource at the same path [\"msg\", \"sent\"]. aiocoap's Site.add_resource replaces existing resources, so SentMessagesResource is overwritten. Since SentMessageDetailsResource.render_get() returns NOT_FOUND when uri_path is empty (line 186-187 of messaging.py), GET /msg/sent returns 404 instead of the sent messages list. The SentMessageDetailsResource should likely be registered at a sub-path or the routing logic needs restructuring.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:10.351764Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:31:07.105717Z",
+  "closed_at": "2026-08-17T15:31:07.105717Z",
+  "close_reason": "Fixed: Removed duplicate path registration in site.py. SentMessageDetailsResource now handles both collection (GET /msg/sent) and detail (GET /msg/sent/{id}) requests via PathCapable routing.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

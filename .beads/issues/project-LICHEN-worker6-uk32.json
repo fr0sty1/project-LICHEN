@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-uk32",
+  "title": "test_messages.py: Duplicate function name shadows security test (line 95)",
+  "description": "Lines 95 and 144 both define test_rreq_from_bytes_rejects_invalid_hop_limit. Python silently overwrites the first with the second, so the test at lines 95-106 (which has a SECURITY comment about a DoS vector) never runs. pytest reports success but the security test is skipped. Rename one function (e.g., test_rreq_from_bytes_rejects_invalid_hop_limit_patched).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:24:44.456144Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:24:44.456144Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

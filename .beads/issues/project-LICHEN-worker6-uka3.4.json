@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-uka3.4",
+  "title": "evict_if_needed has no bounds check for max_peers = 0",
+  "description": "**File:** rust/lichen-link/src/link_layer.rs\n**Lines:** 358-371 (ReplayProtector), 526-542 (LinkLayer)\n\n**Issue:** Both evict_if_needed implementations use 'while self.peers.len() \u003e self.max_peers'. If max_peers is set to 0, all peers are evicted immediately after any insert.\n\n**Trigger:** Constructing LinkLayer or ReplayProtector with max_peers = 0 (currently hardcoded to 64, but the field is not validated).\n\n**Bad behavior:** All peers evicted, link layer becomes non-functional.\n\n**Suggested fix:** Either: (1) make max_peers a NonZeroUsize, (2) add debug_assert!(max_peers \u003e 0) in constructor, or (3) document that max_peers = 0 means unlimited. If future API exposes max_peers configuration, this becomes exploitable.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:19:28.604472Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:19:28.604472Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-uka3.4",
+      "depends_on_id": "project-LICHEN-worker6-uka3",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:19:28.923398Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

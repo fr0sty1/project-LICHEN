@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-sqka",
+  "title": "Review: multi_instance.rs edge cases 2026-08-16",
+  "description": "Edge case review of rust/lichen-rpl/src/multi_instance.rs\n\nFocus areas: boundary conditions, error handling, resource cleanup, race conditions, overflow\n\n**Summary:**\n- P0 (Must fix): 0\n- P1 (Should fix): 1 \n- P2 (Worth fixing): 4\n- P3 (Polish): 5 (including 1 positive finding)\n\n**Review confidence:** 85% chance of missed bug.\n\n**Least confident areas:**\n- Interaction with external DODAG state machine (not reviewed)\n- Thread safety under high contention (static analysis only, no fuzzing)\n- Lollipop counter comparison semantics in caller code\n\n**Would raise confidence if:**\n- Fuzz testing with NaN/Infinity/extreme values\n- Concurrent access stress tests\n- Review of callers to understand actual usage patterns",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:30:48.807851Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:32:20.624452Z",
+  "started_at": "2026-08-16T19:30:49.553808Z",
+  "lease_expires_at": "2026-08-16T19:35:49.553808Z",
+  "heartbeat_at": "2026-08-16T19:30:49.553808Z",
+  "labels": [
+    "review"
+  ]
+}

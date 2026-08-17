@@ -1,0 +1,2 @@
+{"id":"01a00c10-6c4e-79d3-b851-2d3c0f1530d6","issue_id":"project-LICHEN-worker6-dlmd","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:33:18.030644Z"}
+{"id":"01a00c22-7b33-75df-80e4-0a7376f61fcb","issue_id":"project-LICHEN-worker6-dlmd","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added #[non_exhaustive] to GatewayRole, MultiInstanceError, and VersionChangeOutcome enums for semver safety","created_at":"2026-08-16T19:53:01.491386Z"}

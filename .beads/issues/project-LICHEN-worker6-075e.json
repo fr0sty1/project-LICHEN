@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-075e",
+  "title": "[review] tx_queue.py:400: pop() does not signal reservat",
+  "description": "When pop() removes an entry, it never signals the entry's TxReservation. If a caller used push(return_reservation=True) and awaits reservation.wait(), they will hang indefinitely because the reservation is never completed. The entry.reservation.set_result(True) call is missing before or after removing the entry.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:26:46.229971Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:40:57.257976Z",
+  "closed_at": "2026-08-15T21:40:57.257976Z",
+  "close_reason": "Fixed: pop() now signals entry.reservation.set_result(True) before returning data, preventing callers awaiting reservation.wait() from hanging indefinitely",
+  "labels": [
+    "review"
+  ]
+}

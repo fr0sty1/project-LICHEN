@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0dgd.1",
   "title": "Shared: Test vectors for synchronized hopping",
   "description": "Create authoritative test vectors for GNSS-synchronized frequency hopping.\n\n## File\ntest/vectors/sync_hop.json\n\n## Required Vector Coverage\n- **SFN derivation**: Various unix timestamps -\u003e expected SFN values\n- **Channel calculation**: (sfn, seed, n_channels) -\u003e expected channel\n- **Edge cases**: SFN wrap, boundary conditions, minimum channels\n- **Fallback scenarios**: GNSS unavailable -\u003e epoch-based fallback\n\n## Format\n```json\n{\n  \"sfn_derivation\": [\n    {\"unix_time_ms\": 1704067200000, \"superframe_ms\": 100, \"epoch_base_ms\": 1704067200000, \"expected_sfn\": 0},\n    ...\n  ],\n  \"channel_selection\": [\n    {\"sfn\": 0, \"seed\": 0, \"n_channels\": 8, \"expected_channel\": \u003cn\u003e},\n    ...\n  ]\n}\n```\n\n## Oracle Requirement\nVectors MUST be computed using independent FNV-1a32 implementation (not LICHEN code) as oracle.\n\n## Blocks\nAll implementation tasks depend on these vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:53:08.219412Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:53:08.219412Z",
+  "updated_at": "2026-08-17T03:40:31.671683Z",
+  "closed_at": "2026-08-17T03:40:31.671683Z",
+  "close_reason": "Created test/vectors/sync_hop.json with 22 test vectors covering: SFN derivation (8 vectors), channel selection (10 vectors), SFN wrap edge cases (3 vectors), sequence consistency (1 vector). Oracle: independent FNV-1a32 implementation, verified against LICHEN code. All vectors pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0dgd.1",

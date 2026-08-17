@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.18.1.3",
   "title": "Vectors: Generate test vectors for Beacon Conflict",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:40:23.520728Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:23.520728Z",
+  "updated_at": "2026-08-17T04:41:07.673292Z",
+  "closed_at": "2026-08-17T04:41:07.673292Z",
+  "close_reason": "Already fixed: Test vectors exist in test/vectors/ccp_beacon_sig_gate.json (signature gate), ccp_slot_map_validation.json (slot maps), ccp_sfn_wrap_slot_hash.json (SFN/slot hash). Tests in tests/link/test_slot_coordination.py validate against these vectors. 83 tests passing.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.18.1.3",

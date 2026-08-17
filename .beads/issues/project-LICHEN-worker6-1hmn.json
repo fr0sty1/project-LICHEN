@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-1hmn",
+  "title": "[review] tx_queue.py:405: pop() signals success before t",
+  "description": "pop() calls reservation.set_result(True) immediately upon removal, before actual radio transmission. The SECURITY comment at lines 513-515 in complete() states 'Signal success ONLY after confirming entry was at head and successfully removed. Signaling before verification caused duplicate transmissions.' This contradicts pop()'s premature signaling. If transmission fails after pop(), the caller incorrectly believes it succeeded.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:32.387792Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:01:32.387792Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-g2dm",
+  "title": "[review] messaging.py:241: Unbounded receipts collection ",
+  "description": "The _receipts list in MessageReceiptsResource grows without limit on each POST request. Unlike _inbox which is trimmed to max_messages in deliver(), receipts are never pruned. An attacker can exhaust memory by repeatedly POSTing valid receipts. The CBOR validation limits per-request size (4KB) but not total accumulation. Add trimming similar to _inbox: `if len(self._receipts) \u003e MAX: self._receipts = self._receipts[-MAX:]`",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:27.964423Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:27.964423Z",
+  "labels": [
+    "review"
+  ]
+}

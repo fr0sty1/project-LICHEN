@@ -1,0 +1,2 @@
+{"id":"01a00c10-7129-7023-9962-7f32a8bbf5a7","issue_id":"project-LICHEN-worker6-u1mi","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:33:19.27301Z"}
+{"id":"01a00c34-f188-7e29-9aa0-54eaf540f43f","issue_id":"project-LICHEN-worker6-u1mi","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Added hop_count clamping in RREP::from_bytes() with .min(MAX_HOP_LIMIT) to prevent route preference manipulation. Added 3 tests mirroring RREQ hop_limit pattern.","created_at":"2026-08-16T20:13:11.432929Z"}

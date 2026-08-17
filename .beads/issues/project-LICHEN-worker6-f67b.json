@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-f67b",
+  "title": "rust/lichen-core/src/loadng.rs: Incorrect hop count calculation for expanding ring (security)",
+  "description": "Line 564 calculates reverse route hop count as INITIAL_HOP_LIMIT(4) minus current hop_limit, but EXPANDING_RING uses [4, 8, 15]. For rings 2-3, when hop_limit \u003e 4, saturating_sub produces 0 instead of the actual hop count. An attacker can craft RREQs with high hop_limit values to produce artificially low hop counts in reverse routes, enabling distance spoofing to attract traffic through malicious nodes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:25:23.080681Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:14:20.99522Z",
+  "closed_at": "2026-08-17T15:14:20.99522Z",
+  "close_reason": "Already fixed: infer_original_hop_limit() function correctly maps hop_limit values to their original expanding ring [4, 8, 15], fixing the hop count calculation for all ring stages. Tests verify all scenarios including ring 2 (hop_limit=7 -\u003e original=8) and ring 3 (hop_limit=12 -\u003e original=15).",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

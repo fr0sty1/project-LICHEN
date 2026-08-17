@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-hyhp",
+  "title": "Python: Implement crash recovery for DAO routes",
+  "description": "Part of DAO persistence crash safety (rpl)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:44.282459Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:01:55.361965Z",
+  "closed_at": "2026-08-15T19:01:55.361965Z",
+  "close_reason": "Implemented crash recovery for DAO routes. Added RouteStateSnapshot with PersistedTarget and PersistedCandidate types for serialization. TwoSlotFilePersistence now persists route state using JSON with two-slot crash safety. DaoManager restores routes on root init via _restore_route_state() and persists after each DAO acceptance via _persist_route_state(). Routes are restored as freshly installed at recovery time. Added 12 new tests covering route survival across restart, path sequence restoration, stale DAO rejection after restart, corruption handling, and serialization round-trip.",
+  "labels": [
+    "rpl"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-lxa1",
+  "title": "[review] messaging.py:93: sent_messages returns direct r",
+  "description": "Unlike inbox() at line 97 which returns `[dict(message) for message in self._inbox]` (shallow copies), sent_messages() returns `[self._sent[msg_id] for msg_id in self._sent_order]` (direct references). Callers can mutate internal state by modifying returned dicts. Same issue exists in sent_message() at line 101.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:27.962137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T16:50:34.161158Z",
+  "closed_at": "2026-08-16T16:50:34.161158Z",
+  "close_reason": "Fixed: sent_messages() and sent_message() now return shallow copies (dict()) instead of direct references, consistent with inbox()",
+  "labels": [
+    "review"
+  ]
+}

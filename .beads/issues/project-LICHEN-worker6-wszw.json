@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-wszw",
+  "title": "lichen/subsys/lichen/rpl/messages.c:235: DAO-ACK D-flag bit position wrong in write",
+  "description": "Line 235 sets D-flag at bit 6 (0x40) but RFC 6550 section 6.4 specifies bit 7, and lichen_rpl_dao_ack_parse reads bit 7. A DAO-ACK with DODAGID present will be misinterpreted: parse sees D=0, zeros the dodag_id field instead of reading it, and interprets the 16-byte DODAGID as options starting at byte 4. Fix: change 0x40 to 0x80.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:00:52.483515Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:16:29.491236Z",
+  "closed_at": "2026-08-17T04:16:29.491236Z",
+  "close_reason": "Already fixed: D-flag bit position corrected from 0x40 (bit 6) to 0x80 (bit 7) in lichen_rpl_dao_ack_write(), mask updated to 0x7F. 252 RPL tests pass.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

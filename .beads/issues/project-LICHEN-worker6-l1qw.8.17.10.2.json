@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.10.2",
   "title": "Implement: Python oracle for B.2.4",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:37:44.009626Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:44.009626Z",
+  "updated_at": "2026-08-17T16:16:40.823405Z",
+  "closed_at": "2026-08-17T16:16:40.823405Z",
+  "close_reason": "Already implemented: QueueFullError in tx_queue.py (lines 73-80, 380-383) for local senders; BufferResult.BACKPRESSURE and DropCallback in forwarding_buffer.py (lines 191-201) for mesh NACK. All 125 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.10.2",

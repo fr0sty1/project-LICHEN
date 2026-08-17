@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-lrin",
+  "title": "Python: B.2.2 Time-Based Expiry oracle",
+  "description": "Part of TX Queue / Forwarding Buffer oracles (queue)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:57.840707Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:03:31.864389Z",
+  "closed_at": "2026-08-15T19:03:31.864389Z",
+  "close_reason": "Implemented B.2.2 Time-Based Expiry oracle:\n- Created test/vectors/tx_queue_expiry.json with 16 test vectors covering deadline defaults per priority, boundary conditions (now \u003e= deadline_ms), custom deadline override, nonzero enqueue time, multiple packet expiry, push room-making, stats tracking, and requeue deadline preservation\n- Added TestOracleTimeBasedExpiry class in python/tests/link/test_tx_queue.py with 16 tests validating against the oracle\n- All 109 tx_queue tests pass",
+  "labels": [
+    "queue"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-nfc3",
+  "title": "[review] messaging.py:137: _next_id can exceed u64 range ",
+  "description": "When a client provides id=_MESSAGE_ID_MAX (2^64-1), line 137 computes candidate_next_id = body['id'] + 1 = 2^64, which exceeds the u64 range defined by _MESSAGE_ID_MAX. This value is stored in _next_id on line 150. While subsequent auto-ID requests fail gracefully via the SERVICE_UNAVAILABLE guard on line 132-133, the internal state holds an out-of-range value. If _next_id is ever serialized or the code evolves, this could cause truncation or errors. Consider clamping: `candidate_next_id = min(body['id'] + 1, _MESSAGE_ID_MAX + 1)` or explicitly checking bounds before assignment.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:27.962135Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:27.962135Z",
+  "labels": [
+    "review"
+  ]
+}

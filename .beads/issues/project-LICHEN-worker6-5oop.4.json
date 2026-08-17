@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-5oop.4",
+  "title": "Good: Identity::Debug impl properly redacts seed and privkey",
+  "description": "Location: rust/lichen-link/src/identity.rs lines 56-66\n\nThe Identity struct holds Seed and PrivateKey (secret key material). The custom Debug impl properly outputs '[REDACTED]' for these fields instead of the raw bytes. This prevents accidental key leakage via debug logging or panic messages.\n\nThis is worth defending against 'simplification' suggestions to derive Debug - the manual impl is intentional and security-critical.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:50:06.066751Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:50:06.066751Z",
+  "labels": [
+    "review",
+    "crypto-security",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.4",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:50:06.428094Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

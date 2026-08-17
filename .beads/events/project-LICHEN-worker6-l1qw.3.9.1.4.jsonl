@@ -1,1 +1,2 @@
 {"id":"019fb9b0-6292-7305-8b5f-7b8666133cb1","issue_id":"project-LICHEN-worker6-l1qw.3.9.1.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:39:32.370199Z"}
+{"id":"01a00e09-a72b-7288-b7ec-6686d4f4437d","issue_id":"project-LICHEN-worker6-l1qw.3.9.1.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: 42 tests pass in test_context.py validating rule versioning oracle","created_at":"2026-08-17T04:45:08.779167Z"}

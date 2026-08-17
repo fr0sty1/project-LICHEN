@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-2rkp.2",
+  "title": "SECURITY: No explicit root guard in process_dio",
+  "description": "**Location:** rust/lichen-rpl/src/dodag.rs line 323 (process_dio entry)\n\n**Issue:** Root nodes should never process DIOs for parent selection (RFC 6550: root is the DODAG origin, has no parent). The current implementation relies on indirect guards (rank comparison at line 370) rather than explicit rejection.\n\nThe existing comment at line 369 describes the rank check as a loop-prevention mechanism, not a root guard. This creates defense-in-depth gaps where edge cases (e.g., fraudulent low ranks) can bypass the intended protection.\n\n**RFC 6550 Section 8.2.2:** \"A node that is the DODAG root has the smallest rank in the DODAG, and it is the root of the DODAG.\"\n\nA root should never select a parent because there is no valid parent with rank \u003c ROOT_RANK.\n\n**Fix:** Add explicit guard at the start of `process_dio`:\n```rust\npub fn process_dio(\u0026mut self, dio: \u0026Dio, neighbor_addr: [u8; 16], link_etx: f32) -\u003e DioOutcome {\n    // Root nodes never select parents - they are the DODAG origin\n    if self.role == DodagRole::Root {\n        return DioOutcome::Rejected;\n    }\n    // ... rest of function\n}\n```\n\nThis is defense-in-depth; the root never needs to evaluate parent candidates.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:15.125004Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:53:17.665056Z",
+  "closed_at": "2026-08-16T20:53:17.665056Z",
+  "close_reason": "Already fixed: explicit root guard exists at process_dio entry (lines 324-330) with SECURITY comment and tests",
+  "labels": [
+    "security",
+    "defense-in-depth",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rkp.2",
+      "depends_on_id": "project-LICHEN-worker6-2rkp",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:15.440506Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.2.10",
   "title": "Expanding ring (INITIAL_HOP_LIMIT=4)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:11.256673Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:11.256673Z",
+  "updated_at": "2026-08-17T05:19:00.787692Z",
+  "closed_at": "2026-08-17T05:19:00.787692Z",
+  "close_reason": "Added EXPANDING_RING = (4, 8, 15) constant to Python loadng module (messages.py), matching Rust and C implementations. Exported from __init__.py. The constant provides the spec B2.5 hop limits for progressive expanding ring route discovery: first attempt uses INITIAL_HOP_LIMIT=4, retries use 8 and 15 (MAX_HOP_LIMIT).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.2.10",

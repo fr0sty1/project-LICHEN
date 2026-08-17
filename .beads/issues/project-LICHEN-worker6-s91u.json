@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-s91u",
+  "title": "messaging.py: Message ID counter never incremented",
+  "description": "Line 137 reads `self._next_id` into local `candidate_next_id`, which is then incremented (line 142) or updated (line 144), but the result is never assigned back to `self._next_id`. Every auto-assigned message gets ID 1, overwriting previous messages in `_sent` dict. Missing line after 144: `self._next_id = candidate_next_id`",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:17.714469Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:17.714469Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

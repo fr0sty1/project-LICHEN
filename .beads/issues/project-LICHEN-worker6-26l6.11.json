@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-26l6.11",
+  "title": "demote() does not reset lowest_rank",
+  "description": "File: rust/lichen-rpl/src/dodag.rs Lines 301-308. The demote() function clears role, parent, rank, and parents map, but does NOT reset lowest_rank. If the node later rejoins (becomes non-root), the stale lowest_rank from its root tenure could affect MaxRankIncrease calculations. Edge case: Root at rank 256 demotes, lowest_rank stays 256. Node rejoins at rank 1024 via DIO. New parent with path_cost 1024 \u003e 256 + max_rank_increase(1024) = 1280 would be admissible, but path_cost 1281 would not - even though the node never achieved rank 1280 as a non-root. Consider resetting lowest_rank in demote().",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:17.597801Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:17.597801Z",
+  "labels": [
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.11",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:17.905662Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

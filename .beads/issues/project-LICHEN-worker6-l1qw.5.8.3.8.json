@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.3.8",
   "title": "Reverse path following",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:41.641062Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:41.641062Z",
+  "updated_at": "2026-08-17T05:27:44.423032Z",
+  "closed_at": "2026-08-17T05:27:44.423032Z",
+  "close_reason": "Already fixed: RREP reverse path following fully implemented in discovery.py lines 207-214 (cache.lookup for reverse route, forward with incremented hop_count, drop when no route). Tests test_rrep_forwarded_along_reverse_route and test_rrep_without_reverse_route_dropped verify the behavior.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.3.8",

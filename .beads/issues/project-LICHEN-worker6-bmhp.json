@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-bmhp",
+  "title": "[review] node_resources.py:92: Exception handler may be incom",
+  "description": "The exception handler catches only (TypeError, ValueError, OverflowError). While the documented implementations (StaticNodeInfo and Node) only raise ValueError, the NodeInfo protocol does not specify exception behavior. If a production implementation raises other exceptions (e.g., RuntimeError for concurrent modification, OSError for storage failures), those would propagate as unhandled errors, potentially causing information disclosure via stack traces. Consider catching Exception with logging for unexpected types, or documenting the exception contract in the Protocol.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:13.950772Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:13.950772Z",
+  "labels": [
+    "review"
+  ]
+}

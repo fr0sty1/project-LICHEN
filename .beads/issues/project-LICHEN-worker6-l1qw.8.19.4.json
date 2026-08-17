@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.19.4",
   "title": "Test: B.5.4 Multi-hop latency bounds",
   "description": "Test end-to-end delay remains bounded under congestion load across multi-hop mesh. Simulator test.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:27:17.755468Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:27:17.755468Z",
+  "updated_at": "2026-08-17T16:10:57.711613Z",
+  "closed_at": "2026-08-17T16:10:57.711613Z",
+  "close_reason": "Already fixed: Comprehensive test suite exists in python/tests/sim/test_multihop_latency_bounds.py with 8 test cases covering 3-node/5-node line topologies, concurrent transmissions, chaos injection, and stress scenarios. Added conditional import guards to fix CI collection.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.19.4",

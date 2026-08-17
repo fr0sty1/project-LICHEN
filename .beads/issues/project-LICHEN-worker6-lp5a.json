@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-lp5a",
+  "title": "channel.py: OverflowError if seed is negative or exceeds 32 bits",
+  "description": "Line 81: `seed.to_bytes(4, 'little')` raises OverflowError for negative seed or seed \u003e 0xFFFFFFFF. Unlike sfn which is masked with `\u0026 0xFFFFFFFF`, seed has no protection. GnssHopConfig.seed is typed as int with no bounds. Inconsistent with sfn handling on same line.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T15:39:04.493961Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:39:04.493961Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

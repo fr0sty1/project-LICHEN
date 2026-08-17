@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ij3k",
+  "title": "loadng: unwrap() calls lack infallibility documentation",
+  "description": "Several .unwrap() calls in from_bytes() methods (lines 479, 487, 488, 560, 569, 570, 671, 675) rely on implicit length guarantees without documenting why panics are unreachable. While logic is sound, security-critical parsing code should document infallibility reasoning to aid review and prevent regression.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:01.10336Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:28:01.10336Z"
+}

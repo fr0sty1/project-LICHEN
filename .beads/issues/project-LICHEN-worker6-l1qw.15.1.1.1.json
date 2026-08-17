@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.15.1.1.1",
   "title": "Parse: Extract requirements from Trust Models",
-  "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "description": "## Trust Model Requirements Extracted from spec/06-security.md\n\n### Section 8.7 Key Management - Key Derivation\n\n**MUST requirements:**\n- [ ] All nodes derive material from a single 32-byte seed (keypair, IID, 02xx addr, X25519)\n- [ ] Derivation MUST match test vectors exactly (test/vectors/yggdrasil-derivation.json)\n- [ ] IID = SHA-512(pubkey)[0:8] with U/L bit cleared; MUST be SHA-512, not SHA-256\n- [ ] 02xx Address lower 64 bits MUST equal IID (binds key to address, prevents substitution)\n- [ ] X25519 clamping per RFC 7748 section 5 REQUIRED for security\n\n### Section 8.7 Key Management - TOFU (Trust On First Use)\n\n- [ ] Implementations MUST support TOFU\n- [ ] Key MUST match the one that derives the observed IID/02xx address\n- [ ] Key change or IID mismatch -\u003e MUST reject and alert\n\n### Section 8.7 Key Management - BR-Provisioned (optional)\n\nSecurity Requirements:\n- [ ] Channel MUST be encrypted and authenticated\n- [ ] All derived addresses (02xx, IID) MUST match key\n\n### Section 8.7 Key Management - Key Rotation\n\n- [ ] Nodes SHOULD support key rotation announcements\n- [ ] Key change with valid signature from old key -\u003e accept new key\n- [ ] Key change without signature -\u003e MUST reject, require re-verification\n\n### Section 8.4 Signed vs Relay-Mutable Fields (Root validation)\n\n- [ ] Root MUST validate in this order: structural framing and active instance/DODAG context; pinned key, IID, transcript, and origin signature; per-key replay classification; semantic parsing; exact self /128 Target validation; persistence of a fresh replay floor; and atomic in-memory route mutation\n\n### Section 15.2 Key Storage\n\n- [ ] Private keys MUST be stored in: Hardware secure element (preferred) OR Flash with readout protection\n- [ ] Private keys MUST never be transmitted over the air",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:39:11.433429Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:39:11.433429Z",
+  "updated_at": "2026-08-17T04:15:36.448925Z",
+  "closed_at": "2026-08-17T04:15:36.448925Z",
+  "close_reason": "Extracted 15 MUST/SHALL/SHOULD/REQUIRED requirements from spec/06-security.md sections 8.4, 8.7, and 15.2 covering key derivation (5), TOFU (3), BR-provisioned security (2), key rotation (3), root validation order (1), and key storage (1). Checklist added to issue description.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.1.1.1",

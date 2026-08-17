@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-0jqa.4",
+  "title": "unwrap() calls on try_into lack SAFETY comments",
+  "description": "Location: rust/lichen-core/src/loadng.rs lines 369, 380, 381, 440, 448, 449, 517, 523\n\nIssue: Multiple .unwrap() calls on slice.try_into() conversions. While safe (slice lengths are validated beforehand), no comments explain why unwrap is justified.\n\nExample at line 369:\n    SIGNATURE_LENGTH =\u003e Some(sig_data.try_into().unwrap()),\n\nPer rust-review.md: .unwrap()/.expect() outside tests/examples without justification is flagged.\n\nSuggested fix: Add inline comments or use .expect() with explanation:\n    sig_data.try_into().expect(\"length checked above\")",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:32.733018Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:32.733018Z",
+  "labels": [
+    "readability",
+    "idiomatic-rust",
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0jqa.4",
+      "depends_on_id": "project-LICHEN-worker6-0jqa",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:33.053755Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

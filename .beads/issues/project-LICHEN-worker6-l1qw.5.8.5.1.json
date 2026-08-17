@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.5.1",
   "title": "RREQ_WAIT_TIME (5s)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:02.791498Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:02.791498Z",
+  "updated_at": "2026-08-17T05:37:38.707849Z",
+  "closed_at": "2026-08-17T05:37:38.707849Z",
+  "close_reason": "Already implemented: LICHEN_LOADNG_RREQ_WAIT_TIME_MS defined as 5000U (5s) at loadng.h:83 and correctly used in discovery_start and discovery_advance functions",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.5.1",

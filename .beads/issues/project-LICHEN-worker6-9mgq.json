@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-9mgq",
+  "title": "hybrid.rs: MeshPrefix::contains() panics on invalid prefix_len \u003e= 136",
+  "description": "Line 162: No validation that prefix_len \u003c= 128. When prefix_len \u003e= 136, full_bytes = prefix_len / 8 \u003e= 17, and addr[..full_bytes] panics with out-of-bounds access (addr is only 16 bytes). Attacker controlling add_mesh_prefix() can crash the node on next routing decision. Fix: validate prefix_len \u003c= 128 in MeshPrefix::new() or add_mesh_prefix().",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:36:34.422769Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:13:38.672215Z",
+  "closed_at": "2026-08-17T15:13:38.672215Z",
+  "close_reason": "Fixed: Added prefix_len validation in MeshPrefix::new() that clamps values \u003e 128 to 128, preventing out-of-bounds panic in contains(). Added regression test.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

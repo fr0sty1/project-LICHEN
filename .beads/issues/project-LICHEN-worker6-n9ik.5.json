@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-n9ik.5",
+  "title": "Version lollipop special case (0, 127) may not match RFC 6550 intent",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs lines 76-79\n\n## Issue\n```rust\nfn version_is_newer(new_ver: u8, old_ver: u8) -\u003e bool {\n    (new_ver, old_ver) == (0, 127)\n        || lollipop_cmp(new_ver, old_ver) == Some(core::cmp::Ordering::Greater)\n}\n```\n\nThe special case `(0, 127)` hardcodes acceptance of version 0 as \"newer\" than version 127. Per RFC 6550 lollipop semantics:\n- Linear region: 0-127 (sequential)\n- Circular region: 128-255 (wrapping)\n\nVersion 127→0 is NOT a normal increment (linear region does not wrap). This special case may be intentional for DODAG restart scenarios but:\n1. Not documented why this exception exists\n2. Could allow version downgrade attacks if attacker sends version 0\n\n## Test coverage\nLine 955-960 tests this case but does not explain the rationale.\n\n## Suggested action\nAdd comment explaining RFC basis for this special case, or verify against RFC 6550 section 7.2 whether this is correct behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:41:50.300075Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:41:50.300075Z",
+  "labels": [
+    "risk",
+    "security",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n9ik.5",
+      "depends_on_id": "project-LICHEN-worker6-n9ik",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:41:50.646035Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

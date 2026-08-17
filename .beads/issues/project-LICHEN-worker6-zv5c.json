@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-zv5c",
+  "title": "Replace debug_assert with proper error handling in DODAG state machine",
+  "description": "Role transition checks at lines 405, 446, and 473 use debug_assert! which is disabled in release builds. Failed transitions are silently ignored, potentially leaving inconsistent state. Replace with explicit error handling or unconditional assertions for these critical invariants.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:13:02.514838Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:34:52.724602Z",
+  "closed_at": "2026-08-16T19:34:52.724602Z",
+  "close_reason": "Replaced debug_assert! with unconditional assert! for role transition checks at lines 405, 457, and 484 in dodag.rs. These critical state machine invariants are now verified in all builds (debug and release), preventing silent state corruption."
+}

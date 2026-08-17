@@ -1,1 +1,2 @@
 {"id":"019fb99f-7be6-754b-b3bd-5d91ec35d58a","issue_id":"project-LICHEN-worker6-l1qw.4.11.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:21:04.742348Z"}
+{"id":"01a00e0a-cfb4-7111-b468-6acd6974ee86","issue_id":"project-LICHEN-worker6-l1qw.4.11.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: test/vectors/node_address.json exists with 10 vectors","created_at":"2026-08-17T04:46:24.69207Z"}

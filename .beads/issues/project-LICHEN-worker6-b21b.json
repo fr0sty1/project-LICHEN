@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-b21b",
+  "title": "[review] tx_queue.py:405: `pop()` signals reservation su",
+  "description": "The `pop()` method calls `entry.reservation.set_result(True)` immediately upon dequeue, before the packet is actually transmitted over radio. The `TxReservation.wait()` docstring promises 'Returns True if transmitted', but `pop()` signals True before transmission. If the caller subsequently fails to transmit the packet, callers awaiting the reservation will incorrectly believe transmission succeeded.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:01:32.387795Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:10:20.025572Z",
+  "closed_at": "2026-08-15T21:10:20.025572Z",
+  "close_reason": "Fixed: pop() no longer signals reservation.set_result(True) prematurely. The method now only dequeues the packet without signaling success. Callers must use reserve()/complete() pattern for proper transmission tracking with reservation support.",
+  "labels": [
+    "review"
+  ]
+}

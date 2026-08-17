@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-r0bu",
+  "title": "[review] 03-adaptation.md: No timeout specified for incomplete",
+  "description": "The spec limits active fragmented packets to one per signed link but does not specify a timeout for incomplete fragment reassembly. Without a mandatory cleanup timeout, an attacker could tie up fragment state indefinitely by sending initial fragments without completion.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T19:40:57.841545Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:40:57.841545Z",
+  "labels": [
+    "review"
+  ]
+}

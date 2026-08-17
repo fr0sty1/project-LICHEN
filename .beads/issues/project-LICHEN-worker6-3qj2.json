@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-3qj2",
+  "title": "test/vectors/ccp_select_channel_endianness.json: Incorrect hash_32_hex value in epoch_1_standard vector",
+  "description": "The hash_32_hex field contains \"0x373854fc\" (926438652) but should be \"0x37381b7c\" (926423932) to match the correct hash_32 decimal value. This mismatch would cause implementations validating against the hex representation to incorrectly fail, or worse, implement the wrong hash value.\n\nFix suggestion: Change line 43 from '\"hash_32_hex\": \"0x373854fc\"' to '\"hash_32_hex\": \"0x37381b7c\"'",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:14:13.748398Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:15:44.385345Z",
+  "closed_at": "2026-08-17T04:15:44.385345Z",
+  "close_reason": "Fixed: corrected hash_32_hex from 0x373854fc to 0x37381b7c to match hash_32 decimal value 926423932",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

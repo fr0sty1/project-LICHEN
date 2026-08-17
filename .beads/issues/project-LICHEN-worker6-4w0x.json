@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-4w0x",
+  "title": "sec: receive_from_peer() accepts unauthenticated DAO messages",
+  "description": "DaoBackboneBridge::receive_from_peer() at line 548 accepts any DaoBackboneMessage without validating origin matches OSCORE identity, checking RPL instance, or enforcing timestamp freshness. Add authentication validation before storing routes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:06.744317Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:27:45.233537Z",
+  "closed_at": "2026-08-16T19:27:45.233537Z",
+  "close_reason": "Fixed: Added authentication validation to receive_from_peer() - validates RPL instance ID, rejects self-origin, enforces timestamp freshness (300s), and requires OSCORE-authenticated sender to match claimed origin. Added 6 tests for security validation."
+}

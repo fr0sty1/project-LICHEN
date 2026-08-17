@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-re0j.2.4",
   "title": "Star topology generator",
   "description": "Test star() topology generator with central hub and configurable spoke count. Verify hub connectivity to all leaf nodes.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:19:12.984029Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:19:12.984029Z",
+  "updated_at": "2026-08-17T16:32:58.880757Z",
+  "closed_at": "2026-08-17T16:32:58.880757Z",
+  "close_reason": "Already implemented: star() generator in topology.py has tests verifying hub (gateway at origin), configurable spoke count (n parameter), and hub connectivity (all leaves at configured radius). All tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-re0j.2.4",

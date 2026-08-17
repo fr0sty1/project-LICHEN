@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-5oop.3",
+  "title": "receive_frame() does not validate destination address matches local node",
+  "description": "Location: rust/lichen-link/src/link_layer.rs line 515\n\nreceive_frame() parses the frame's dst_addr field but does not verify it matches the local node's IID or is a broadcast address. The frame is accepted if signature and replay checks pass, regardless of intended recipient.\n\nThis is likely intentional behavior (promiscuous mode, relaying, broadcast handling), but should be documented with a SECURITY comment explaining:\n1. Why destination filtering is not performed at link layer\n2. Where callers should filter if needed (upper layer)\n\nIf unintentional, frames intended for other nodes could be processed, wasting resources.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:49:57.215299Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:49:57.215299Z",
+  "labels": [
+    "security",
+    "documentation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5oop.3",
+      "depends_on_id": "project-LICHEN-worker6-5oop",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:49:57.647912Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

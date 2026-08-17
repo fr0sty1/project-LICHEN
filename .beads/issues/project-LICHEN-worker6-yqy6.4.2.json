@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.4.2",
   "title": "T1000-E: BLE local transport",
   "description": "Validate BLE local-client transport on T1000-E nRF52840. Same BLE-class MCU as RAK4631. Test peripheral mode and local client connection.",
-  "status": "open",
+  "notes": "Hardware validation task. BLE transport code infrastructure exists (CONFIG_LICHEN_BLE_TRANSPORT), but T1000-E lacks BLE board config (no CONFIG_BT in defconfig, no board overlay in ble_ipsp_transport/). Testing peripheral mode and local client connection requires physical T1000-E device with another BLE central device. Prerequisites: (1) add CONFIG_BT settings to t1000_e_nrf52840_defconfig, (2) add t1000_e board overlay to ble_ipsp_transport/boards/, (3) physical device testing.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:43.297186Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:43.297186Z",
+  "updated_at": "2026-08-17T16:43:04.355293Z",
+  "defer_until": "2026-09-16T09:43:04.035861-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.4.2",

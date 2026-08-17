@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-1dvz",
+  "title": "[review] site.py:192: PathCapable resource silently ignored",
+  "description": "SentMessageDetailsResource (PathCapable) is added to the same path as SentMessagesResource. Due to aiocoap behavior, when a PathCapable resource is added to an already-occupied path, the add is silently ignored. Confirmed via test: only SentMessagesResource is registered at ('msg', 'sent'). The detail endpoint GET /msg/sent/{id} is non-functional.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:13.955395Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:57:25.054628Z",
+  "closed_at": "2026-08-15T20:57:25.054628Z",
+  "close_reason": "Fixed: Register PathCapable resource (SentMessageDetailsResource) BEFORE non-PathCapable resource (SentMessagesResource) at the same path. aiocoap requires this ordering for both collection and sub-path routing to work correctly.",
+  "labels": [
+    "review"
+  ]
+}

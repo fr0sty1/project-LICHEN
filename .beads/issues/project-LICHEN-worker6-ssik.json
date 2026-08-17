@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ssik",
+  "title": "ROOT node demoted to UNJOINED by forged DIO version",
+  "description": "In dodag.py, when a ROOT node receives a DIO with a 'newer' version for its own DODAG (line 186-188), it calls _adopt_version() which unconditionally sets self.role = DodagRole.UNJOINED (line 226). This causes the root to lose its ROOT role.\n\nPer RFC 6550 Section 8.3, the ROOT is the authoritative source of DODAGVersionNumber. The root should not demote itself based on received DIOs.\n\nImpact: A malicious node can crash the DODAG by sending a DIO with a forged version number in the linear region (0-127), which is 'newer' than any circular version. The root demotes itself, then may rejoin as a regular node.\n\nFile: python/src/lichen/rpl/dodag.py\nLines: 185-188, 218-226\n\nFix: Either (a) do not call _adopt_version from ROOT context, only update self.version; or (b) preserve/restore ROOT role after version adoption by adding logic to _adopt_version that keeps ROOT status and ROOT_RANK.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T21:01:09.033234Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:41:47.966596Z",
+  "closed_at": "2026-08-17T15:41:47.966596Z",
+  "close_reason": "Fixed: ROOT now ignores all DIOs for its own DODAG per RFC 6550 Section 8.3, preventing malicious version forgery attacks. Removed the call to _adopt_version() from ROOT context and added SECURITY comment explaining the rationale. Added test_root_not_demoted_by_forged_newer_version to verify protection."
+}

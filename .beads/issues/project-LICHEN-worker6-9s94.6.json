@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-9s94.6",
+  "title": "RetransmitIter bitmap slice can panic on out-of-bounds",
+  "description": "Location: rust/lichen-schc/src/fragment.rs:1066-1067\n\nIssue: \n```rust\nlet rel_pos = abs_pos - self.start;\nlet received = rel_pos \u003c self.bitmap.len() \u0026\u0026 self.bitmap[rel_pos];\n```\n\nThe code correctly guards against out-of-bounds access with `rel_pos \u003c self.bitmap.len()`, but there's an implicit assumption that `abs_pos \u003e= self.start`. If `abs_pos \u003c self.start`, the subtraction would underflow (panic in debug, wrap in release).\n\nEdge case: If the iterator is constructed with `start \u003e pos` initially, or if the internal state becomes corrupted, this could panic.\n\nCurrent safety: The struct is private (pub(crate) via module visibility), and the only construction site presumably validates this. However, the invariant is not documented.\n\nSuggested fix: Add a debug_assert!(abs_pos \u003e= self.start) or document the construction invariant.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:15:27.40395Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:15:27.40395Z",
+  "labels": [
+    "edge-case",
+    "overflow",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9s94.6",
+      "depends_on_id": "project-LICHEN-worker6-9s94",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:15:27.72227Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-g77r",
+  "title": "Ack::from_bytes lacks documentation about bitmap validation requirement",
+  "description": "Line 296: Public API lacks documentation warning callers to validate bitmap against assigned fragments before acting on ACK.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:23:42.875084Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:50:27.000777Z",
+  "closed_at": "2026-08-16T19:50:27.000777Z",
+  "close_reason": "Added documentation to Ack::from_bytes warning callers to validate bitmap against assigned fragments, with reference to from_bytes_for as the validating alternative"
+}

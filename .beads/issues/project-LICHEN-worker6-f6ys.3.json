@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-f6ys.3",
+  "title": "decompress helpers assume data.len() \u003e= 2 without explicit check",
+  "description": "Lines 654, 727, 783, 840, 894: Internal decompress functions slice `data[1..]` without checking data.len() \u003e= 2. The public decompress() checks for empty data, so this is safe today.\n\nRisk: If these functions are ever made public or called from new paths, they could panic on 1-byte input.\n\nFix: Add explicit length check at start of each function, or document the precondition in a SAFETY comment.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:16:42.342141Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:16:42.342141Z",
+  "labels": [
+    "defensive-coding",
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-f6ys.3",
+      "depends_on_id": "project-LICHEN-worker6-f6ys",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:16:42.651705Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

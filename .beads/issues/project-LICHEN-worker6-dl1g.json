@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-dl1g",
+  "title": "python/src/lichen/ccp.py: ZeroDivisionError when num_slots=0",
+  "description": "The slot_hash function performs `h % num_slots` without validating that num_slots is non-zero. Calling slot_hash with num_slots=0 raises ZeroDivisionError.\n\nFix suggestion: Add validation at function entry: `if num_slots \u003c= 0: raise ValueError(\"num_slots must be positive\")` or return a default value.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:13:42.109188Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:13:42.109188Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

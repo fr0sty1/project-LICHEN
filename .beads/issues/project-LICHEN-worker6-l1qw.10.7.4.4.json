@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.7.4.4",
   "title": "Vectors: SOS relay chain test cases",
   "description": "Test vectors for multi-hop SOS relay",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:09.066487Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:09.066487Z",
+  "updated_at": "2026-08-17T04:05:31.135457Z",
+  "closed_at": "2026-08-17T04:05:31.135457Z",
+  "close_reason": "Invalid: This is a feature task to create test vectors, not a bug. Cannot be 'fixed' by a code change. Blocked by implementation tasks 10.7.4.1 (Python SOS rebroadcast) and 10.7.4.2 (Zephyr SOS relay) which are still open. Reopen when those are complete.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.7.4.4",

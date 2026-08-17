@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-zus8",
+  "title": "[review] provisioning.py:553: Docstring claims ACK veri",
+  "description": "The docstring for provision_node() states '4. Verifies the ACK' but the method returns at line 591 immediately after sending the encrypted seed. ACK verification actually happens later in _handle_br_post() when the node sends a separate POST. This documentation mismatch could mislead callers into thinking the returned seed is fully verified when it is not.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:02:09.409548Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:02:09.409548Z",
+  "labels": [
+    "review"
+  ]
+}

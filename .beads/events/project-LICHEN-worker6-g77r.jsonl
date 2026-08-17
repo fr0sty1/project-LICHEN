@@ -1,0 +1,2 @@
+{"id":"01a00c07-a5a4-7897-bda5-4e7ee2cb5ffd","issue_id":"project-LICHEN-worker6-g77r","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:23:42.884563Z"}
+{"id":"01a00c20-1feb-73bd-8200-6ec2bb974538","issue_id":"project-LICHEN-worker6-g77r","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added documentation to Ack::from_bytes warning callers to validate bitmap against assigned fragments, with reference to from_bytes_for as the validating alternative","created_at":"2026-08-16T19:50:27.051246Z"}

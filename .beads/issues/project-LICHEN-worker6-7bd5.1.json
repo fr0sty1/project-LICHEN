@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-7bd5.1",
+  "title": "Rerr.error_code stored as u8 instead of RerrCode enum",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLine: 487\n\nThe `Rerr` struct stores `error_code: u8` despite validating against `RerrCode` enum during parsing (line 511-513). This creates drift risk: if a new `RerrCode` variant is added, the struct field accepts any u8 value even though only validated variants pass parsing.\n\nBad outcome: Future maintainer adds `RerrCode::TemporaryFailure = 2`, updates `from_u8()`, but now `Rerr.error_code` can be 0, 1, or 2 while code elsewhere might only handle 0 and 1.\n\nFix: Change `error_code: u8` to `error_code: RerrCode` in the struct. This makes the type system enforce that only valid codes are stored.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:20.39507Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:20.39507Z",
+  "labels": [
+    "edge-case",
+    "type-design",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7bd5.1",
+      "depends_on_id": "project-LICHEN-worker6-7bd5",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:20.725687Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

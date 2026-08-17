@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-6qaw",
+  "title": "Review: lichen-ipv6 edge cases 2026-08-16",
+  "description": "Review of rust/lichen-ipv6/src/lib.rs focused on edge cases.\n\n## Summary\n- P0: 0 findings\n- P1: 1 finding (integer overflow on 32-bit)\n- P2: 3 findings (error handling, missing derives)\n- P3: 2 findings (dead code, documentation)\n\n## Review Confidence\nReview confidence: 15% chance of missed bug.\nLeast confident areas: checksum computation edge cases, heapless Vec capacity exhaustion paths.\nWould raise confidence if: fuzz testing with AFL/cargo-fuzz on parsing functions.\n\n## What Is Actually Good\n- ICMPv6 checksum verification before processing (lines 866-868) prevents amplification attacks\n- RFC 4861 validation for Neighbor Solicitation (multicast target, DAD source checks)\n- Explicit flow_label validation (20-bit limit enforcement)\n- No unsafe code (forbid(unsafe_code))\n- Proper use of heapless for no_std compatibility",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:25:05.271354Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:26:21.707825Z",
+  "started_at": "2026-08-16T20:25:08.71795Z",
+  "lease_expires_at": "2026-08-16T20:30:08.71795Z",
+  "heartbeat_at": "2026-08-16T20:25:08.71795Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.5.4",
   "title": "Suppress window (10s)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:07.988759Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:07.988759Z",
+  "updated_at": "2026-08-17T05:38:37.423141Z",
+  "closed_at": "2026-08-17T05:38:37.423141Z",
+  "close_reason": "Already fixed: SUPPRESS_WINDOW_MS (10s = 10000ms) is implemented in all three codebases: C (loadng.h line 80), Python (discovery.py line 37), Rust (loadng.rs line 466)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.5.4",

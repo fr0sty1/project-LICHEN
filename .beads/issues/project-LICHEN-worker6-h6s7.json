@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-h6s7",
+  "title": "[review] message.rs:363: Dead match arm for OPT_PAD1",
+  "description": "The match arm `OPT_PAD1 =\u003e {}` at line 363 in SignedDaoEnvelope::from_bytes is unreachable. PAD1 bytes are already handled by the while loop at lines 334-340 which calls `continue`, so execution never enters the else block (line 358) for PAD1. Remove the dead arm.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:34:00.448151Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:34:00.448151Z",
+  "labels": [
+    "review"
+  ]
+}

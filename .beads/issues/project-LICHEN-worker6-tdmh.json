@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-tdmh",
+  "title": "receive_rrep consumes state on error - prevents RREP retry",
+  "description": "RouteDiscovery\u003cSearching\u003e::receive_rrep takes self by value and returns Result\u003cReplied, LoadngError\u003e. On validation failure (mismatched fields or missing signature), the Searching state is consumed and lost. Callers cannot recover to continue waiting for a valid RREP or retry. Fix: Return (Self, LoadngError) tuple on error to give back state, or restructure API to validate externally before consuming.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:01.183902Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:42:50.931237Z",
+  "closed_at": "2026-08-17T15:42:50.931237Z",
+  "close_reason": "Fixed: Changed receive_rrep return type from Result\u003cRouteDiscovery\u003cReplied\u003e, LoadngError\u003e to Result\u003cRouteDiscovery\u003cReplied\u003e, (Self, LoadngError)\u003e so callers can recover the Searching state on validation failure and continue waiting for valid RREPs."
+}

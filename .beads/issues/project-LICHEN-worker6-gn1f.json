@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gn1f",
+  "title": "gradient.rs: Zero-capacity table panics on insert",
+  "description": "GradientTable::new(0) followed by update() causes panic at line 237. When max_entries=0, the condition at line 236 (self.entries.len() \u003e= self.max_entries) is true (0 \u003e= 0), triggering self.entries.remove(0) on an empty Vec, which panics with 'index out of bounds'. Fix: add early return when max_entries==0, or clamp min capacity to 1.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:24.20788Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:16:24.20788Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

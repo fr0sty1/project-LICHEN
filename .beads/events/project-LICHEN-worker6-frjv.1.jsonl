@@ -1,0 +1,5 @@
+{"id":"01a00be3-503f-732c-98fd-6a8c4a4f5021","issue_id":"project-LICHEN-worker6-frjv.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:44:01.727209Z"}
+{"id":"01a00be3-5045-71b5-8068-4b0297494b29","issue_id":"project-LICHEN-worker6-frjv.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-16T18:44:01.733113Z"}
+{"id":"01a00be3-5047-7cd9-931f-12b2efcb3f2c","issue_id":"project-LICHEN-worker6-frjv.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: edge-case","created_at":"2026-08-16T18:44:01.735842Z"}
+{"id":"01a00be3-504a-76c6-8c45-82a2d86a9b34","issue_id":"project-LICHEN-worker6-frjv.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T18:44:01.738444Z"}
+{"id":"01a00c5c-360e-7ac5-9f02-507ca989c52f","issue_id":"project-LICHEN-worker6-frjv.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: hysteresis now checks admissibility before keeping current parent","created_at":"2026-08-16T20:56:04.878706Z"}

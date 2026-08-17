@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ih1v",
+  "title": "lichen/tests/hal/src/main.c: Missing CONFIG guard on duty cycle test",
+  "description": "test_duty_cycle_ccp13 calls lichen_duty_cycle_* functions without #ifdef CONFIG_LICHEN_DUTY_CYCLE guard. The sibling test test_duty_cycle_tracker_matches_ccp13_vectors (line 1315) correctly guards these calls. When CONFIG_LICHEN_DUTY_CYCLE is disabled, this test will fail to compile or link.\n\nFix suggestion: Wrap the test body in #ifdef CONFIG_LICHEN_DUTY_CYCLE ... #else ztest_test_skip(); #endif like the test at line 1315\n\nLocation: line 1310",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:58:31.127587Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:58:31.127587Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

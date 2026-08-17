@@ -1,0 +1,4 @@
+{"id":"01a00c1c-db9e-707d-94e5-103f20db410d","issue_id":"project-LICHEN-worker6-kmts.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:46:52.958032Z"}
+{"id":"01a00c1c-dba4-73e0-b0af-8c394d8f4d75","issue_id":"project-LICHEN-worker6-kmts.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: idiomatic-rust","created_at":"2026-08-16T19:46:52.964254Z"}
+{"id":"01a00c1c-dba7-7a31-aaa7-11af2a4fd287","issue_id":"project-LICHEN-worker6-kmts.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: type-design","created_at":"2026-08-16T19:46:52.967668Z"}
+{"id":"01a00c1c-dbaa-7e09-99b2-d712d5aa4194","issue_id":"project-LICHEN-worker6-kmts.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T19:46:52.970921Z"}

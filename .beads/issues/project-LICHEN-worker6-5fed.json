@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-5fed",
+  "title": "[review] tx_queue.py:373: TOCTOU between expire_sta",
+  "description": "ensure_can_push() builds active_entries with a fresh clock() call, but push() then checks len(self._entries) which reflects the earlier expire_stale() call. If entries expire between calls, preemption logic may evict a non-expired entry when expired ones exist. Benign in practice due to microsecond timing window vs second-scale deadlines.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:28:26.049786Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:28:26.049786Z",
+  "labels": [
+    "review"
+  ]
+}

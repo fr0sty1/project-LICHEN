@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-5obl",
+  "title": "[review] message.rs:269: DaoOriginSignature asymmetric ",
+  "description": "from_bytes accepts origin_sequence=0 and returns Ok, but write_to explicitly rejects origin_sequence=0 with InvalidOption. This allows parsing a signature struct that cannot be re-serialized. SignedDaoEnvelope adds the check at line 354, but the raw API is inconsistent - callers using from_bytes directly may accept invalid zero-sequence signatures.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:33:49.453908Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:33:49.453908Z",
+  "labels": [
+    "review"
+  ]
+}

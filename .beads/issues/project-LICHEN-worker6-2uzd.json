@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-2uzd",
+  "title": "[review] provisioning.py:343: Error codes create oracle desp",
+  "description": "Lines 343-345 return UNAUTHORIZED for DecryptionFailedError, while lines 346-348 return BAD_REQUEST for other ProvisioningError. This contradicts the comment at line 296 about 'generic error to prevent oracle attacks'. An attacker can distinguish AEAD authentication failure (UNAUTHORIZED) from decode/validation errors (BAD_REQUEST). Same pattern at lines 383-389 for node POST handler. Both should return the same code.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T22:37:28.453506Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T22:37:28.453506Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -1,1 +1,2 @@
 {"id":"019fb9a3-893c-79c0-97ea-ad032e9a77f5","issue_id":"project-LICHEN-worker6-l1qw.10.16.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:25:30.30064Z"}
+{"id":"01a00de1-f5d2-735f-8778-a3a984255f42","issue_id":"project-LICHEN-worker6-l1qw.10.16.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate: Python waypoints work is tracked in project-LICHEN-worker6-l1qw.10.6.x functionality-based epics (CRUD, Sharing, Routes)","created_at":"2026-08-17T04:01:47.474222Z"}

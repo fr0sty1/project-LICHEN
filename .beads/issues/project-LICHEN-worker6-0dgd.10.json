@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0dgd.10",
   "title": "Zephyr: Add sync_hop.c/h",
   "description": "Add GNSS-synchronized hopping functions to Zephyr LICHEN subsystem.\n\n## Files\n- lichen/subsys/lichen/link/sync_hop.c\n- lichen/subsys/lichen/link/include/lichen/sync_hop.h\n\n## Header (sync_hop.h)\n```c\n#ifndef LICHEN_SYNC_HOP_H\n#define LICHEN_SYNC_HOP_H\n\n#include \u003cstdint.h\u003e\n\n/**\n * @brief Calculate hop channel from SFN using LICHEN hash.\n * @param sfn Superframe number\n * @param seed Hopping seed\n * @param n_channels Number of channels (minimum 3)\n * @return Channel in range [1, n_channels]\n */\nuint8_t lichen_sync_hop_channel(uint32_t sfn, uint32_t seed, uint8_t n_channels);\n\n/**\n * @brief Derive SFN from unix timestamp.\n * @param unix_time_ms Unix time in milliseconds\n * @return Superframe number\n */\nuint32_t lichen_sfn_from_unix_ms(uint64_t unix_time_ms);\n\n#endif /* LICHEN_SYNC_HOP_H */\n```\n\n## Implementation (sync_hop.c)\n```c\n#include \u003clichen/sync_hop.h\u003e\n#include \u003clichen/l2/lichen_util.h\u003e\n\n#define EPOCH_BASE_MS 1704067200000ULL  /* 2024-01-01 00:00:00 UTC */\n\nuint8_t lichen_sync_hop_channel(uint32_t sfn, uint32_t seed, uint8_t n_channels)\n{\n    uint8_t data[8];\n    uint32_t hash;\n    \n    /* Pack seed (LE) || sfn (LE) */\n    data[0] = (uint8_t)(seed);\n    data[1] = (uint8_t)(seed \u003e\u003e 8);\n    data[2] = (uint8_t)(seed \u003e\u003e 16);\n    data[3] = (uint8_t)(seed \u003e\u003e 24);\n    data[4] = (uint8_t)(sfn);\n    data[5] = (uint8_t)(sfn \u003e\u003e 8);\n    data[6] = (uint8_t)(sfn \u003e\u003e 16);\n    data[7] = (uint8_t)(sfn \u003e\u003e 24);\n    \n    hash = lichen_hash_32(data, sizeof(data));\n    \n    if (n_channels \u003c 3) {\n        n_channels = 3;\n    }\n    \n    return 1 + (hash % n_channels);\n}\n\nuint32_t lichen_sfn_from_unix_ms(uint64_t unix_time_ms)\n{\n    uint64_t superframe_ms = CONFIG_LICHEN_SYNC_HOP_SUPERFRAME_MS;\n    return (uint32_t)((unix_time_ms - EPOCH_BASE_MS) / superframe_ms);\n}\n```\n\n## Build Integration\n- Add to CMakeLists.txt with CONFIG_LICHEN_SYNC_HOP guard\n- Use canonical lichen_hash_32 from l2/lichen_util.h",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:53:59.489784Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:53:59.489784Z",
+  "updated_at": "2026-08-17T03:39:28.38702Z",
+  "closed_at": "2026-08-17T03:39:28.38702Z",
+  "close_reason": "Added sync_hop.c and sync_hop.h implementing GNSS-synchronized hopping per CCP-12. CMakeLists.txt updated with CONFIG_LICHEN_SYNC_HOP guard. Kconfig already had required config options.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-0dgd.10",

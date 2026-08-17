@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-7bd5.2",
+  "title": "No validation of special IPv6 addresses in routing messages",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 376-381, 443-449, 520-523\n\nThe parsers accept any 16-byte value as IPv6 addresses without validating against special addresses that are invalid for routing:\n- `::` (unspecified) \n- `::1` (loopback)\n- `ff00::/8` (multicast)\n- `fe80::/10` link-local (may be intentionally valid)\n\nBad outcome: Attacker sends RREQ with `destination=::` or RERR with `unreachable=ff02::1`, potentially causing route table corruption or unexpected behavior when the stack tries to route to/from these addresses.\n\nThis might be intentional if validation happens at a higher layer, but for defense in depth the codec layer should reject obviously invalid addresses.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:25.623463Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:25.623463Z",
+  "labels": [
+    "edge-case",
+    "untrusted-input",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7bd5.2",
+      "depends_on_id": "project-LICHEN-worker6-7bd5",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:25.949181Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

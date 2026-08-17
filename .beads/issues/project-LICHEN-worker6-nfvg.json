@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-nfvg",
+  "title": "test_channel.py:113: Test assertion incorrect for n_channels=1",
+  "description": "test_minimum_channel_count asserts ch == 1 for synchronized_hop_channel(42, seed=0, n_channels=1), but the function actually returns 2. With n_channels=1, the implementation computes n = max(1-1, 2) = 2, so return 1 + (h % 2) yields either 1 or 2. For the specific inputs sfn=42, seed=0, the hash produces a value where (h % 2) == 1, so the function returns 2. This test would fail if executed. The test validates out-of-bounds behavior rather than catching the underlying implementation bug.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:33.365177Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:27:44.836041Z",
+  "closed_at": "2026-08-17T15:27:44.836041Z",
+  "close_reason": "Updated test assertion: n_channels=1 should expect 0 (only control channel), not 1. Implementation was already fixed to return 0 for edge case where no data channels exist.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.9.15",
   "title": "HAL test suite on all targets",
   "description": "Run lichen/tests/hal/ test suite on all reference targets (native_sim, qemu_x86, R1 Neo, RAK4631, T1000-E, T-Echo, nRF52840 DK). CI coverage matrix.",
-  "status": "open",
+  "notes": "[2026-08-17] Analysis: Infrastructure task requiring multi-sprint work:\n\nCurrent state:\n- HAL test suite (lichen/tests/hal/) runs on native_sim + qemu_x86 only\n- R1 Neo overlay exists (r1_neo_nrf52840.conf) but not integrated into testcase.yaml\n- No overlays exist for RAK4631, T1000-E, T-Echo, nRF52840 DK\n\nRequired work:\n1. Board overlay files for each target\n2. Update testcase.yaml platform_allow for hardware targets\n3. CI infrastructure: self-hosted runners with hardware OR Renode emulation models\n4. Integration with twister test runs in CI workflow\n\nDeferring: requires infrastructure setup and is outside scope of bug fix.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:15:39.143202Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:15:39.143202Z",
+  "updated_at": "2026-08-17T16:36:00.974291Z",
+  "defer_until": "2026-09-07T09:36:00.575572-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.9.15",

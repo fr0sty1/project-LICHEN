@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.4.1.1",
   "title": "Parse: Extract requirements from Slot Coordination",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:21.960183Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:21.960183Z",
+  "updated_at": "2026-08-17T04:22:53.180722Z",
+  "closed_at": "2026-08-17T04:22:53.180722Z",
+  "close_reason": "Extracted 8 MUST requirements from GCP-6 Slot Coordination section (spec/08-gateway-coordination.md lines 83-119). Updated parent bead project-LICHEN-worker6-l1qw.15.4.1 with checklist covering: slot allocation modes, conflict resolution (lowest IID wins), signature verification, and invalid claim handling.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.4.1.1",

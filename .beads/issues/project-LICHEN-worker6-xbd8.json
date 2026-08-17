@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-xbd8",
+  "title": "Python: Reject non-LESC connections",
+  "description": "Part of BLE LESC security check (ble)",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:50.362166Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:54:36.864335Z",
+  "closed_at": "2026-08-15T18:54:36.864335Z",
+  "close_reason": "Implemented require_lesc parameter for BlePacketTransport: when True, connect() raises BleSecurityError if LESC is not established. Added property accessor and 6 new tests.",
+  "labels": [
+    "ble"
+  ]
+}

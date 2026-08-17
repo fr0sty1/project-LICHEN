@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.7.3",
   "title": "Zephyr: Type 0x01 coords encode/decode",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:35.498788Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:35.498788Z",
+  "updated_at": "2026-08-17T05:06:17.168719Z",
+  "closed_at": "2026-08-17T05:06:17.168719Z",
+  "close_reason": "Fixed: Added gateway_network_location_encode_announce_coords() function to network_location.c/h. The encode function mirrors the existing decode function: takes lat_e7/lon_e7 (int32_t) and writes 9-byte Type 0x01 app_data (type + lat_e7_be + lon_e7_be). Also added write_int32_be() helper to complement read_int32_be().",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.7.3",

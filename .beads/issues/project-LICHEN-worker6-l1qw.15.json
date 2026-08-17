@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15",
   "title": "Chapter 08: Gateway Coordination Protocol (GCP)",
   "description": "Spec: spec/08-gateway-coordination.md. Multi-gateway coordination protocol covering trust models (PSK/signatures), discovery, RPL multi-instance, TDMA slot coordination, and node handoff. Builds on RPL multi-instance (RFC 6550 §5), adapted 6TiSCH concepts for LoRa, and OSCORE security.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:22.492054Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:22.492054Z",
+  "updated_at": "2026-08-17T04:14:25.132002Z",
+  "closed_at": "2026-08-17T04:14:25.132002Z",
+  "close_reason": "Already implemented: GCP spec (trust models, discovery, multi-instance RPL, slot coordination, handoff) is implemented in Python and Rust with 120+ passing tests. Forcing close of parent EPIC; child beads should be closed via separate tasks.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15",

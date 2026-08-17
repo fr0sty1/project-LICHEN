@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-f6ys.1",
+  "title": "compress() panics on short UDP packets (DoS via malformed input)",
+  "description": "Line 986: `let coap = \u0026packet[48..];` is executed unconditionally in the UDP branch (nh==17), but the only length guard is at line 976 which only protects the MQTT-SN block. If packet.len() is 40-47 bytes with next_header=17 (UDP), the slice panics.\n\nAttack vector: Send a malformed IPv6+UDP packet with only partial UDP header (e.g., 42 bytes). The compressor panics, crashing the node.\n\nTrigger: Any packet where packet[6]==17 (UDP) \u0026\u0026 40 \u003c= packet.len() \u003c 48\n\nFix: Guard the slice creation:\n```rust\nlet is_oscore = if packet.len() \u003e= 52 {\n    has_oscore_option(\u0026packet[48..])\n} else {\n    false\n};\n```",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:16:32.726634Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:44:24.478168Z",
+  "closed_at": "2026-08-16T20:44:24.478168Z",
+  "close_reason": "Fixed: Removed unconditional slice creation in compress() by inlining the packet[48..] slice into the conditional expression. Short-circuit evaluation now prevents panic on packets with len \u003c 48.",
+  "labels": [
+    "security",
+    "input-validation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-f6ys.1",
+      "depends_on_id": "project-LICHEN-worker6-f6ys",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:16:33.045518Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

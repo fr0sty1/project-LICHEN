@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.1.1",
   "title": "Parse: Extract requirements from B.2.1",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:18.198896Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:18.198896Z",
+  "updated_at": "2026-08-17T16:08:23.228305Z",
+  "closed_at": "2026-08-17T16:08:23.228305Z",
+  "close_reason": "Extracted 8 MUST/SHALL requirements from spec/appendix-bufferbloat.md section 1 (Small, Bounded Queues): 4 queue bound requirements (TX=4, forwarding=2/src with 8 max sources, BLE=8), 4 backpressure behaviors (return error, NACK upstream, no silent drop, explicit signals). Updated parent bead checklist.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.1.1",

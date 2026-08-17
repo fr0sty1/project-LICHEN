@@ -1,0 +1,5 @@
+{"id":"01a00bdf-1b46-7868-acf6-06056845e576","issue_id":"project-LICHEN-worker6-trff.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:39:26.022552Z"}
+{"id":"01a00bdf-1b4f-71a9-aec8-62043654dd2a","issue_id":"project-LICHEN-worker6-trff.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-16T18:39:26.03111Z"}
+{"id":"01a00bdf-1b52-7bb4-9ee4-c21f94778320","issue_id":"project-LICHEN-worker6-trff.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: race-condition","created_at":"2026-08-16T18:39:26.034768Z"}
+{"id":"01a00bdf-1b56-7144-b081-2509c579e930","issue_id":"project-LICHEN-worker6-trff.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T18:39:26.038084Z"}
+{"id":"01a00c75-5e5d-711d-9ddf-873c59a07f23","issue_id":"project-LICHEN-worker6-trff.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: get_role() now holds peers lock for entire role determination and performs election inline","created_at":"2026-08-16T21:23:33.597074Z"}

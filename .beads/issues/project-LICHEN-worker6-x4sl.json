@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-x4sl",
+  "title": "Root node vulnerable to version-bump demotion attack",
+  "description": "In lichen-rpl/src/dodag.rs, process_dio() allows any peer to demote a DODAG root by sending a DIO with a higher version number. When a root receives a DIO with version \u003e current, it calls adopt_version() which transitions the root to Unjoined state and joins behind the attacker. Per RFC 6550, only the root should originate version increments. Fix: roots should either reject DIOs entirely or ignore version upgrades from peers. Impact: network routing takeover, traffic interception, DoS. Attack requires authenticated network access.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T21:16:00.104085Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:41:14.737424Z",
+  "closed_at": "2026-08-17T15:41:14.737424Z",
+  "close_reason": "Already fixed: process_dio() already rejects all DIOs when role==Root (lines 343-346), with SECURITY comment documenting the mitigation. Test root_ignores_newer_version_dio verifies the behavior."
+}

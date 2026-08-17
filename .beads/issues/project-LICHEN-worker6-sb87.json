@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-sb87",
+  "title": "presence.py: Negative age_s when time goes backwards",
+  "description": "Line 208: `int(now - entry[\"updated_at\"])` produces negative age values if time_source() returns a time earlier than the stored updated_at timestamp (e.g., after NTP clock adjustment). The field name `age_s` implies non-negative duration, but clients could receive values like `{\"age_s\": -50}`. Fix: use `max(0, int(now - entry[\"updated_at\"]))` or similar.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:22:09.911337Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:22:09.911337Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

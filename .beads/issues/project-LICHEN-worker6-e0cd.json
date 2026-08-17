@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-e0cd",
+  "title": "[review] provisioning.py:618: TOCTOU race in finally bl",
+  "description": "In provision_node(), the finally block looks up session by peer_host (`self._sessions.get(peer_host)`) rather than holding a reference to the session created at entry. If a concurrent provision_node() call for the same peer_host replaces the session during the EDHOC handshake (while awaiting receive_message/send_message), the finally block retrieves and wipes the NEW session, breaking the concurrent provisioning attempt. The _remove_session() identity check (`is session`) does not protect here because the lookup returns the new session object.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:05:50.130574Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:05:50.130574Z",
+  "labels": [
+    "review"
+  ]
+}

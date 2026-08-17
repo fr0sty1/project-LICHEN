@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-0vg0",
+  "title": "Root state corruption: select_parent modifies rank before role check",
+  "description": "In dodag.rs select_parent(), lines 471-472 modify preferred_parent and rank BEFORE checking if set_role(Joined) succeeds at line 473. For a Root node that receives a DIO with rank \u003c MIN_HOP_RANK_INCREASE (line 370 check passes since 255 \u003c 256 is true), the parent passes admissible() at line 441-442 (which lacks the rank \u003c MHRI check that candidate_admissible has), becomes best, and corrupts root state. In debug: panics at line 474 debug_assert. In release: silent corruption - root rank changes, preferred_parent set while role stays Root.\n\nFix: Add early return in select_parent() if role == Root, or add rank \u003c MHRI check to admissible() method.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T21:16:23.755171Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:16:23.755171Z"
+}

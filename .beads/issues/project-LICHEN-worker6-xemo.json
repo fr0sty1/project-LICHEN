@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xemo",
+  "title": "[review] provisioning.py:433: encode() failure after su",
+  "description": "At line 433, if ack.encode() raises (e.g., cbor2 serialization error) after on_new_identity callback succeeded at line 424, the callback side-effects (identity storage) persist but the response fails. The session is not wiped because the exception propagates before _remove_session(). A retry would call the callback again, potentially duplicating the stored identity if the callback is not idempotent.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:13:27.951593Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:13:27.951593Z",
+  "labels": [
+    "review"
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.8.2.3",
   "title": "Zephyr: /presence/cache with age_s tracking",
   "description": "Presence cache with age in seconds",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:05.571773Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:05.571773Z",
+  "updated_at": "2026-08-17T04:14:18.513657Z",
+  "closed_at": "2026-08-17T04:14:18.513657Z",
+  "close_reason": "Invalid: This is a new feature implementation task, not a bug to fix. The /presence/cache CoAP resource does not exist in Zephyr yet - it requires designing and implementing new code (types, CBOR encoding, CoAP handlers, callbacks, Kconfig) following the pattern of coap_status.c. Should be implemented as part of the Presence Cache epic once the Python reference implementation (sibling bead .2.1) is complete to provide an oracle.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.8.2.3",

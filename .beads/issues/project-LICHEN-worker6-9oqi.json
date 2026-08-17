@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-9oqi",
+  "title": "rust/lichen-core/src/lib.rs: Test assertions use wrong upper bound for channel range",
+  "description": "Multiple test assertions use `\u003c n_channels` instead of `\u003c= n_channels`. The channel formula `1 + (hash % N)` produces values 1 through N inclusive. Lines 279, 280, 288, 289, 345, 375, 376, 392, 393 would incorrectly reject valid maximum channel values. Tests pass only because current hash inputs happen to avoid the edge case.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:00:46.548858Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:00:46.548858Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

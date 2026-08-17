@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-wlsd",
+  "title": "discovery.py: Negative hop count from unchecked hop_limit",
+  "description": "Line 131: `actual_hops = INITIAL_HOP_LIMIT - rreq.hop_limit` can produce negative values if a received RREQ has `hop_limit \u003e INITIAL_HOP_LIMIT`. This negative value is stored as `hop_count` and `metric` in the RouteEntry (lines 136-137). A malicious node could forge RREQs with inflated hop_limit values, creating routes with negative metrics that would be preferentially selected over legitimate routes. Fix: validate `rreq.hop_limit \u003c= INITIAL_HOP_LIMIT` before computing `actual_hops`, or clamp to zero.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:49.100676Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T05:16:49.100676Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

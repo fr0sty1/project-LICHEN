@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-worker6-i3ym",
+  "title": "Review: fragment.rs security 2026-08-16",
+  "description": "Security review of rust/lichen-schc/src/fragment.rs\n\nFocus: injection, buffer overflow, crypto misuse, auth bypass, input validation gaps\n\nReview confidence: 15% chance of missed bug.\nLeast confident areas: ACK bitmap handling state machine, window boundary transitions\nWould raise confidence if: Formal verification of bitmap arithmetic, fuzz testing of from_bytes paths\n\nSummary:\n- No P0 critical security bugs found\n- 1 P2 documentation gap (missing SECURITY comment on non-crypto MIC)\n- 2 P3 minor issues (timing pattern, API documentation)\n- 3 positive findings worth defending\n\nThe code is well-written with proper input validation. Rust memory safety prevents buffer overflows. State machine handles edge cases correctly.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:19:26.88301Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:20:25.058104Z",
+  "started_at": "2026-08-16T19:19:27.586188Z",
+  "lease_expires_at": "2026-08-16T19:24:27.586188Z",
+  "heartbeat_at": "2026-08-16T19:19:27.586188Z",
+  "labels": [
+    "review",
+    "security"
+  ]
+}

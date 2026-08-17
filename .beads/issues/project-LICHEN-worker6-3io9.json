@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-3io9",
+  "title": "lollipop_cmp fails to handle circular-region wraparound",
+  "description": "In `lichen-rpl/src/dodag.rs`, the `lollipop_cmp` function (lines 41-73) uses `abs_diff` for same-region comparisons, which does not account for wraparound within the circular region (128-255).\n\nPer RFC 6550 Section 7.2, the circular region wraps from 255 to 128. When comparing two values both in the circular region that differ by more than 16 via `abs_diff` but are actually close via wrap, the function incorrectly returns `None` (incomparable) instead of the correct ordering.\n\n**Example:**\n- Current version: 255  \n- New DIO version: 130\n- Actual forward distance: 255 -\u003e 128 -\u003e 129 -\u003e 130 = 3 increments\n- Expected result: `Some(Ordering::Greater)` (130 is newer)\n- Actual result: `None` (abs_diff = 125 \u003e 16)\n\n**Impact:** Nodes may reject valid DODAG version updates when the version counter wraps within the circular region, causing network partitioning or failure to converge after version bump.\n\n**Fix:** For circular region (both a,b \u003e= 128), use modular arithmetic:\n```rust\nlet a_pos = a - 128;\nlet b_pos = b - 128;\nlet forward = a_pos.wrapping_sub(b_pos) \u0026 127;\nlet backward = b_pos.wrapping_sub(a_pos) \u0026 127;\nif forward \u003c= 16 {\n    Some(Ordering::Greater)\n} else if backward \u003c= 16 {\n    Some(Ordering::Less)\n} else {\n    None\n}\n```\n\n**Location:** `rust/lichen-rpl/src/dodag.rs:41-73`",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T21:01:06.435648Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:41:20.444905Z",
+  "closed_at": "2026-08-17T03:41:20.444905Z",
+  "close_reason": "Fixed: lollipop_cmp now uses modular arithmetic for circular region (128-255) wraparound per RFC 6550 Section 7.2. Added test cases for circular wraparound scenarios (e.g., 130 vs 255)."
+}

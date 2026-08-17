@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-0jqa.1",
+  "title": "RERR signature enforcement gap enables route deletion attacks",
+  "description": "## Location\nrust/lichen-core/src/loadng.rs lines 483-526\n\n## Issue\nUnlike RREP which has `receive_rrep` (line 338) enforcing signature presence at the API level, RERR parsing provides no equivalent validation helper. The doc comment at lines 490-494 states:\n\n\u003e Unsigned REERRs SHOULD be rejected by the receiving stack to prevent spoofed route deletions. `None` here means signature was absent in the wire format; callers MUST verify presence before acting on route invalidation.\n\nHowever, callers using `Rerr::from_bytes()` must remember to manually check `signature.is_some()` before processing. This is an API design gap that invites security bugs.\n\n## Attack scenario\nAn attacker sends an unsigned RERR claiming a valid route is unreachable. If the receiving stack forgets to check `signature.is_some()`, it deletes the route. This enables denial-of-service via route deletion without cryptographic authentication.\n\n## Suggested fix\nAdd a `validate_signature` method or a `receive_rerr` helper analogous to `receive_rrep`:\n\n```rust\nimpl Rerr {\n    /// Validate RERR has required signature for route invalidation.\n    /// Link layer performs cryptographic verification; this checks presence.\n    pub fn require_signature(\u0026self) -\u003e Result\u003c\u0026Self, LoadngError\u003e {\n        if self.signature.is_some() {\n            Ok(self)\n        } else {\n            Err(LoadngError::MissingSignature)\n        }\n    }\n}\n```\n\nOr parse into two types: `UnsignedRerr` and `SignedRerr`, making the trust boundary visible in the type system.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:07.086506Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:53:05.9237Z",
+  "closed_at": "2026-08-16T20:53:05.9237Z",
+  "close_reason": "Already fixed: Rerr::require_signature() method exists at lines 699-725 with tests at 1441-1495",
+  "labels": [
+    "security",
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0jqa.1",
+      "depends_on_id": "project-LICHEN-worker6-0jqa",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:07.432302Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

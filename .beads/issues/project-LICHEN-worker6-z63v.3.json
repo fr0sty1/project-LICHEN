@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-z63v.3",
+  "title": "process_beacon_window may return wrong candidate on duplicate eui64",
+  "description": "**File:** rust/lichen-rpl/src/multi_instance.rs\n**Lines:** 855-871\n\n**Issue:** `process_beacon_window()` searches the candidates list twice:\n1. Via `select_root(\u0026self.candidates)` - returns best candidate by Ord\n2. Via `self.candidates.iter().find(|c| c.eui64 == selected_eui64)` - returns first match\n\nIf candidates contains multiple entries with the same eui64 but different RF metrics/preferences (e.g., from multiple beacon receptions), the final `.find()` may return a different item than what `select_root` selected.\n\n```rust\npub fn process_beacon_window(\u0026mut self) -\u003e Option\u003c\u0026RootCandidate\u003e {\n    let selected = select_root(\u0026self.candidates)?;\n    let selected_eui64 = selected.eui64;\n    // ... holdoff logic using selected.clone() ...\n    \n    // This may return a DIFFERENT candidate with same eui64\n    self.candidates.iter().find(|c| c.eui64 == selected_eui64)\n}\n```\n\n**Trigger:** Add two candidates with same eui64 but different RSSI. The returned reference may have worse RF metrics than what was used for holdoff comparison.\n\n**Fix:** Return index from select_root, or store the selected candidate and return a reference to it instead of re-searching.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:20:56.091983Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:42:46.628292Z",
+  "closed_at": "2026-08-17T15:42:46.628292Z",
+  "close_reason": "Already fixed: process_beacon_window now uses select_root_index() and returns the exact selected candidate by index (lines 1063, 1080), avoiding the find()-by-eui64 pattern. Regression test process_beacon_window_returns_correct_candidate_on_duplicate_eui64 confirms the fix.",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-z63v.3",
+      "depends_on_id": "project-LICHEN-worker6-z63v",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:20:56.4194Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

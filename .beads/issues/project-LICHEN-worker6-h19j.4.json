@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-h19j.4",
+  "title": "path_cost relies on implicit float-to-int saturation for overflow",
+  "description": "## Location\nrust/lichen-rpl/src/dodag.rs:169-176\n\n## Issue\n```rust\npub fn path_cost(\u0026self, mhri: u16) -\u003e u16 {\n    let link_cost = (self.link_etx * mhri as f32).round();\n    if !link_cost.is_finite() || link_cost \u003c 0.0 {\n        return u16::MAX;\n    }\n    self.rank.saturating_add(link_cost as u16)\n}\n```\n\nWhen `link_cost` is finite and positive but \u003e 65535.0 (e.g., 70000.0), the cast `link_cost as u16` relies on Rust's implicit saturation behavior to produce 65535. While this is correct and guaranteed since Rust 1.45, the overflow handling is not explicit in the code.\n\n## Trigger\n`link_etx = 256.0`, `mhri = 256` -\u003e `link_cost = 65536.0` -\u003e `as u16` = 65535\n\n## Impact\nThe behavior is correct but implicit. A reader unfamiliar with Rust's float-to-int saturation semantics may not understand the overflow behavior. Future refactoring could accidentally break this if the saturation is not understood as intentional.\n\n## Suggested fix\nMake the saturation explicit:\n```rust\nlet link_cost_u16 = if link_cost \u003e u16::MAX as f32 {\n    u16::MAX\n} else {\n    link_cost as u16\n};\nself.rank.saturating_add(link_cost_u16)\n```\nOr add a comment explaining the implicit saturation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:27:15.048651Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:27:15.048651Z",
+  "labels": [
+    "readability",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-h19j.4",
+      "depends_on_id": "project-LICHEN-worker6-h19j",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:27:15.374572Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

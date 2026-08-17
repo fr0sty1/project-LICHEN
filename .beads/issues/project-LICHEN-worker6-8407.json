@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-8407",
+  "title": "Rust: Add DAO state persistence",
+  "description": "Part of DAO persistence crash safety (rpl)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:43.59763Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:02:22.262966Z",
+  "closed_at": "2026-08-15T19:02:22.262966Z",
+  "close_reason": "Implemented DaoRxState persistence with provision/open/update_floor methods. Updated DaoManager to use encapsulated DaoRxState API instead of direct persistence calls.",
+  "labels": [
+    "rpl"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jf6m",
+  "title": "lichen/subsys/lichen/link/Kconfig: SYNC_HOP_SUPERFRAME_MS missing range allows zero",
+  "description": "LICHEN_SYNC_HOP_SUPERFRAME_MS has no range constraint (line 246-252). A user can configure this to 0, which would cause division-by-zero in code calculating hop timing (e.g., superframe_index = time_ms / superframe_ms). Other time configs in this file have explicit ranges.\n\nFix suggestion: Add 'range 1 10000' or similar to prevent zero values. Example: range 10 60000 to match similar time configs in this file.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:12:43.069647Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T04:12:43.069647Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

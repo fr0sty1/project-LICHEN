@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-frjv",
+  "title": "Review: dodag.py edge cases 2026-08-16",
+  "description": "# Review: dodag.py edge cases 2026-08-16\n\n**File:** python/src/lichen/rpl/dodag.py\n**Focus:** Edge cases - boundary conditions, error handling, resource cleanup, race conditions, overflow\n\n## Summary by Priority\n\n| Priority | Count | Category |\n|----------|-------|----------|\n| P0 | 0 | - |\n| P1 | 1 | Correctness bug (hysteresis/admissibility) |\n| P2 | 6 | Validation, dead code, thread safety, state leaks |\n| P3 | 3 | Documentation, readability |\n\n## Confidence Calibration\n\nReview confidence: 15% chance of missed bug.\nLeast confident areas: \n- Lollipop counter edge cases (RFC 6550 Section 7.2 is subtle)\n- Interaction with callers - link_etx values, remove_parent() call timing\n\nWould raise confidence if:\n- Unit tests for version_is_newer boundary cases\n- Integration test with simulated parent churn\n- Spec review confirming _lowest_rank reset behavior",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:43:41.110343Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:45:23.979412Z",
+  "started_at": "2026-08-16T18:43:47.036196Z",
+  "lease_expires_at": "2026-08-16T18:48:47.036196Z",
+  "heartbeat_at": "2026-08-16T18:43:47.036196Z",
+  "labels": [
+    "review"
+  ]
+}

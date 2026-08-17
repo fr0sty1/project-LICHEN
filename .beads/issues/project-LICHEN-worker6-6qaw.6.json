@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-6qaw.6",
+  "title": "MAX_ECHO_DATA constant naming implies protocol limit",
+  "description": "File: rust/lichen-ipv6/src/lib.rs\nLine: 524\n\nIssue: MAX_ECHO_DATA is 120 bytes, derived from build buffer size (128-8), not a protocol limit. The name suggests it is a protocol maximum. For LICHEN LoRa context this is reasonable but could mislead readers.\n\nSuggestion: Rename to ECHO_BUILD_CAPACITY or add clarifying doc comment.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:26:00.6881Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:26:00.6881Z",
+  "labels": [
+    "edge-case",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6qaw.6",
+      "depends_on_id": "project-LICHEN-worker6-6qaw",
+      "type": "parent-child",
+      "created_at": "2026-08-16T20:26:01.003707Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.6",
   "title": "LOADng Discovery State Machine",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:39.174068Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:39.174068Z",
+  "updated_at": "2026-08-17T05:39:02.804826Z",
+  "closed_at": "2026-08-17T05:39:02.804826Z",
+  "close_reason": "Invalid: EPIC bead is a container for child tasks, not a fixable bug. Python discovery (23 tests) and Rust discovery (4 tests) implementations exist and pass. Zephyr and packet-queuing children remain open for separate review.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.6",

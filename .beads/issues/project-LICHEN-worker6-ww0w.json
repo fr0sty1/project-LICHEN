@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ww0w",
+  "title": "channel_plan.py: select_channel returns out-of-bounds index for small channel plans",
+  "description": "Lines 87-88 (method) and 311-312 (function): When num_channels \u003c 3, the formula `n = max(self.num_channels - 1, 2); return 1 + (h % n)` can return indices exceeding valid range. For num_channels=1, returns 1 or 2 (only index 0 valid). For num_channels=2, returns 1 or 2 (index 2 invalid). All predefined plans have 8+ channels so this only affects custom/future plans with fewer than 3 channels.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T16:06:16.349034Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T16:06:16.349034Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

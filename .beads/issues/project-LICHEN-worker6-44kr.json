@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-44kr",
+  "title": "schc: compression vectors failing for CoAP/OSCORE rules",
+  "description": "The test_schc_compression_vectors test is failing for 4 vectors:\n- coap_linklocal (rule 0): expected 30 bytes, got 33\n- coap_global (rule 1): expected 44 bytes, got 49\n- oscore_linklocal (rule 5): expected 33 bytes, got 36\n- oscore_global (rule 6): expected 47 bytes, got 52\n\nThe Rust implementation is producing larger compressed output than expected. Either the compression rules need updating or the test vectors are stale.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:17:15.667934Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:40:08.943908Z",
+  "closed_at": "2026-08-17T03:40:08.943908Z",
+  "close_reason": "Already fixed: commit 84a882f519 refactored SCHC to use external crate - all compression vectors now pass (coap_linklocal=30B, coap_global=44B, oscore_linklocal=33B, oscore_global=47B)",
+  "labels": [
+    "bug"
+  ]
+}

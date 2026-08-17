@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.7.6.1",
   "title": "Python: First-contact binding",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:14.248338Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:14.248338Z",
+  "updated_at": "2026-08-17T04:56:30.282191Z",
+  "closed_at": "2026-08-17T04:56:30.282191Z",
+  "close_reason": "Already fixed: TOFU first-contact binding implemented in TrustStore.verify_or_pin() (python/src/lichen/crypto/trust.py). On first contact with unknown IID, verifies pubkey-\u003eIID derivation then pins; on subsequent contacts, verifies key matches pinned value. 42 tests pass including test_auto_pin_on_first_contact.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.6.1",

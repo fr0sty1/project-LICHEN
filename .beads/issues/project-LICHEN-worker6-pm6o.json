@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-pm6o",
+  "title": "appendix-ccp12-hopping.md: Incorrect arithmetic in explanatory note",
+  "description": "Line 128 states 'yielding 1 + (926423932 % 7) = 2' but 926423932 mod 7 equals 0 (since 926423932 = 132346276 * 7 exactly), so the result would be 1, not 2. Either the hash value shown is wrong, or the arithmetic is wrong.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T03:47:12.959056Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T03:47:12.959056Z",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

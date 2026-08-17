@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-011z",
+  "title": "[review] messaging.py:101: sent_message() returns mutable",
+  "description": "Returns `self._sent.get(msg_id)` directly, exposing internal dict to mutation. A caller doing `resource.sent_message('1')['body'] = 'modified'` would corrupt internal state. Should return `dict(self._sent[msg_id])` if found, or copy.deepcopy for nested structures.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T21:13:34.887547Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T21:13:34.887547Z",
+  "labels": [
+    "review"
+  ]
+}

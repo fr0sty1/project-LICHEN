@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.9",
   "title": "Spec: 03 5.7 Rule Versioning and Interoperability",
   "description": "SCHC rule versioning: DIO Rule Version Option, Rule 255 uncompressed fallback, decompression failure handling, and version negotiation. See spec/03-adaptation.md lines 177-253.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:08.080758Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:22:08.080758Z",
+  "updated_at": "2026-08-17T04:44:56.979659Z",
+  "closed_at": "2026-08-17T04:44:56.979659Z",
+  "close_reason": "Already implemented: Rule Versioning is fully implemented - Python (SchcRuleVersionOption, RULE_SET_VERSION=2, 11 unit tests passing), Rust (SchcRuleVersionOption in context.rs, 4 tests passing), test vectors (37 vectors in rule_versioning.json), Zephyr constant defined (LICHEN_RPL_OPT_SCHC_RULE_VERSION=0x13). Child beads should be closed separately.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.9",

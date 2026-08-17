@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-ty6p",
+  "title": "lichen/subsys/lichen/rpl/messages.c:235: DAO-ACK write uses wrong bit for D-flag",
+  "description": "Line 235 sets D-flag in bit 6 (0x40) but parse at line 203 reads bit 7 (d_byte \u003e\u003e 7). Per RFC 6550, D is bit 7 (0x80). Roundtrip fails: D=1 messages are parsed as D=0, and the 16-byte DODAGID is ignored during parse while present in buffer, causing subsequent option data to be misinterpreted.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:00:47.425581Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:40:10.423791Z",
+  "closed_at": "2026-08-17T15:40:10.423791Z",
+  "close_reason": "Already fixed: D-flag write corrected from 0x40 (bit 6) to 0x80 (bit 7), and flags mask from 0x3F to 0x7F, aligning with RFC 6550 and the parse path at line 203",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

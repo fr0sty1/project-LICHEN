@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-svda",
+  "title": "[review] tx_queue.py:400: pop() bypasses transmission st",
+  "description": "pop() calls self._entries.pop(0).data directly instead of using _remove_first(). This skips packets_transmitted increment, max_latency_ms update, and avg_latency_ms EMA calculation. TxQueueStats will undercount transmissions and have inaccurate latency metrics if pop() is used in any code path.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:21.738531Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:49:21.738531Z",
+  "labels": [
+    "review"
+  ]
+}

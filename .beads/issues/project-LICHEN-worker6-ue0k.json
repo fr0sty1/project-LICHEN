@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-ue0k",
   "title": "lci: BLE transport missing LESC security check",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-12T18:40:16.797864Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-12T18:40:16.797864Z",
+  "updated_at": "2026-08-17T03:45:31.797593Z",
+  "closed_at": "2026-08-17T03:45:31.797593Z",
+  "close_reason": "Already fixed: LESC security check is implemented in PacketCoapResourceTransport.check_security_for_path() which calls BlePacketTransport.assert_lesc_for_diagnostics() for /diag/raw/* paths. All 149 tests pass, verifying LESC enforcement for BLE transports on raw diagnostic resources per spec 17.5.4.",
   "labels": [
     "spec-compliance"
   ]

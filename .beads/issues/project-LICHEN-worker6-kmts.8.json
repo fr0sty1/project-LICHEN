@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-kmts.8",
+  "title": "Public methods missing panic documentation",
+  "description": "Several public methods could panic but lack `## Panics` documentation:\n\n1. Line 506: `get_fragment` - cannot panic (returns Option), but undocumented\n2. Line 787-789: `packet()` uses `map` on Option which is safe\n3. Line 939-940: `finalize()` calls `self.rule_id.unwrap_or()` - private method, but could panic if called incorrectly\n\nMore importantly, line 940:\n```rust\nlet rule_id = self.rule_id.unwrap_or(RULE_ID_A_TO_B);\n```\nUses `unwrap_or` which never panics, but the fallback to `RULE_ID_A_TO_B` when `rule_id` is None seems like it could mask bugs. If `finalize()` is called without a rule_id set, using a default might produce unexpected behavior.\n\nSuggested fix: Document the design decision, or use `.expect(\"finalize called without rule_id\")` if this should never happen.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:47:28.709723Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:47:28.709723Z",
+  "labels": [
+    "rust-standards",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.8",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:47:29.02264Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-fzsf",
+  "title": "[review] tx_queue.py:400: pop() does not signal reservat",
+  "description": "When pop() is called on an entry that was pushed with return_reservation=True, the reservation is never signaled (set_result is never called). Callers awaiting reservation.wait() will hang indefinitely. The method does self._entries.pop(0).data directly without signaling the entry's reservation. Compare to _remove_first() and complete() which properly signal reservations.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T20:49:21.225498Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T20:51:59.61518Z",
+  "closed_at": "2026-08-15T20:51:59.61518Z",
+  "close_reason": "Fixed: pop() now signals reservation.set_result(True) before returning data. Added regression test test_pop_signals_reservation_true.",
+  "labels": [
+    "review"
+  ]
+}

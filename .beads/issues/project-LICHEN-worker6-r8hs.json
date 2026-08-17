@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-r8hs",
+  "title": "Rust: Add rule version to SCHC context",
+  "description": "Part of SCHC rule set versioning (schc)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:36.105375Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T19:00:19.16787Z",
+  "closed_at": "2026-08-15T19:00:19.16787Z",
+  "close_reason": "Implemented rule version in Rust SchcContext: added version field to SchcContext, VersionMismatchError, versions_compatible(), check_version_compatibility(), SchcRuleVersionOption with to_bytes/from_bytes/current, and create_rule_version_option(). All 26 context tests pass.",
+  "labels": [
+    "schc"
+  ]
+}

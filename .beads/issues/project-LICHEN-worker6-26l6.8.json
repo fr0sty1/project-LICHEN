@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-26l6.8",
+  "title": "ParentCandidate.link_etx public field allows invalid construction",
+  "description": "File: rust/lichen-rpl/src/dodag.rs Lines 150-157. The ParentCandidate struct has public fields including link_etx. While process_dio validates link_etx \u003e= 1.0 and is_finite(), external callers can construct ParentCandidate directly with invalid values (NaN, negative, \u003c 1.0) and call path_cost(). The path_cost method handles some invalid values (NaN, negative) but not link_etx \u003c 1.0 which would produce path_cost \u003c parent.rank, violating RPL invariants. Consider private fields with a constructor that validates, or document the invariant.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:04:58.649311Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:04:58.649311Z",
+  "labels": [
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.8",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:04:58.989837Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

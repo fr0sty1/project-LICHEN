@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-kmts.4",
+  "title": "Fragment::from_bytes does not call check_rule",
+  "description": "Line 175-220: `Fragment::from_bytes` extracts `rule_id` from wire data but never validates it:\n```rust\nlet rule_id = data[0];\n// ... no call to check_rule(rule_id)?\n```\n\nIn contrast, `Fragment::write_to` (line 134), `Ack::write_to` (line 243), and `Control::write_to` (line 380) all call `check_rule()`.\n\nThis creates an asymmetry: you can parse a fragment with rule_id \u003e= 128, but then fail when trying to re-serialize it.\n\nThe `FragmentReceiver::receive` method does call `check_rule` (line 830), but direct callers of `Fragment::from_bytes` bypass this check.\n\nSuggested fix: Add `check_rule(rule_id)?` after extracting rule_id in `from_bytes`:\n```rust\nlet rule_id = data[0];\ncheck_rule(rule_id)?;\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:47:06.452922Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T21:06:03.226855Z",
+  "closed_at": "2026-08-16T21:06:03.226855Z",
+  "close_reason": "Fixed: Added check_rule(rule_id)? to Fragment::from_bytes after extracting rule_id, matching validation in write_to. Added test.",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kmts.4",
+      "depends_on_id": "project-LICHEN-worker6-kmts",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:47:06.77692Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+{"id":"01a00bfd-c308-7055-ae43-85fc8710a0dc","issue_id":"project-LICHEN-worker6-67uz","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T19:12:55.048023Z"}
+{"id":"01a00c0d-0087-7991-80de-700256ff2f8f","issue_id":"project-LICHEN-worker6-67uz","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Clamp hop_limit to MAX_HOP_LIMIT (15) in Rreq::from_bytes to prevent flood amplification attacks. Added SECURITY comment and 3 tests.","created_at":"2026-08-16T19:29:33.831628Z"}

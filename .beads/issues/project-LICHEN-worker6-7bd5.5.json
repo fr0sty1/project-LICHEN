@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-7bd5.5",
+  "title": "Excellent sequence number wraparound handling with half-window semantics",
+  "description": "File: rust/lichen-core/src/loadng.rs\nLines: 582-622\n\nThe `seq_is_fresher` function correctly implements RFC 6621 half-window semantics using `wrapping_sub`. The test suite (lines 898-978) provides comprehensive coverage of:\n- Equal values\n- Simple increment/decrement\n- Half-range boundaries (0x7FFF, 0x8000)\n- Wraparound at 0xFFFF -\u003e 0x0000\n- Near-boundary cases\n\nThis is non-trivial to get right and the implementation is correct.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:40:43.14714Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:40:43.14714Z",
+  "labels": [
+    "review",
+    "positive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7bd5.5",
+      "depends_on_id": "project-LICHEN-worker6-7bd5",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:40:43.463892Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

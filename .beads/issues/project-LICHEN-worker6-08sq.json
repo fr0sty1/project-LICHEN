@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-08sq",
+  "title": "[review] provisioning.py:570: EDHOC failure in provisio",
+  "description": "If process_message_1() or process_message_3() raises an exception (lines 571-574), the session created by create_br_session() at line 567 is never removed. Unlike the ACK failure path (line 599) which calls _remove_session(), EDHOC failures propagate without cleanup. The session lingers until session_lifetime expiry, holding cryptographic material and consuming a slot toward max_sessions.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T04:13:26.726506Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T04:13:26.726506Z",
+  "labels": [
+    "review"
+  ]
+}

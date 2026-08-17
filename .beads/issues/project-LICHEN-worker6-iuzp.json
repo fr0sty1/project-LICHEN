@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-iuzp",
+  "title": "Python: Check BLE security level before trust",
+  "description": "Part of BLE LESC security check (ble)",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-15T18:52:50.390178Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-15T18:55:29.136144Z",
+  "closed_at": "2026-08-15T18:55:29.136144Z",
+  "close_reason": "Implemented: BLE security level check before trust via require_lesc parameter. The BlePacketTransport now accepts require_lesc=True to reject non-LESC connections at connect time. Includes security level detection via _detect_security_level(), BleSecurityError for security failures, and tests covering all scenarios.",
+  "labels": [
+    "ble"
+  ]
+}

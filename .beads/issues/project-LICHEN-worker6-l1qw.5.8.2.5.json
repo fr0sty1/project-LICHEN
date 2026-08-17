@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.2.5",
   "title": "Rust: RREQ receive handler",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:03.142411Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:03.142411Z",
+  "updated_at": "2026-08-17T05:21:32.134913Z",
+  "closed_at": "2026-08-17T05:21:32.134913Z",
+  "close_reason": "Implemented RREQ/RREP receive handlers in rust/lichen-core/src/loadng.rs: RreqResult enum with Suppressed/Reply/IntermediateReply/Forward/HopLimitExhausted variants, RrepResult enum with Delivered/Forward/Dropped variants, process_rreq() and process_rrep() pure functions per spec 10.3-10.5. Includes ReverseRoute and GradientInstall types for caller route installation. 13 tests added.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.2.5",

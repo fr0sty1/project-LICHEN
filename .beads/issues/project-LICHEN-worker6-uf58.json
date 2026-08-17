@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-uf58",
+  "title": "sec: RootCandidate default signature_valid=true is fail-open",
+  "description": "In multi_instance.rs line 710, RootCandidate::new() defaults signature_valid to true. This fail-open design means forgotten or failed verification passes untrusted candidates through the filter at line 829. Change default to false; require explicit .with_signature_valid(true) only after verification.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:06.744305Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:26:59.018101Z",
+  "closed_at": "2026-08-16T19:26:59.018101Z",
+  "close_reason": "Fixed: Changed RootCandidate::new() default signature_valid from true to false (fail-closed). Updated all tests to explicitly call .with_signature_valid(true) after verification."
+}

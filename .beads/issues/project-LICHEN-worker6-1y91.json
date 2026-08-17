@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-1y91",
+  "title": "[review] provisioning.py:367: Access to private _provis",
+  "description": "The fallback `br_session._provisioned_seed` accesses an internal attribute of BRProvisioningSession. The comment claims the crypto layer guarantees this is set after decrypt_ack(), but this relies on undocumented internal behavior. If BRProvisioningSession changes its internal structure (renames field, uses a different state representation), this code breaks silently. Consider exposing a public accessor or passing the seed explicitly through the session wrapper.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T17:05:49.891596Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T17:05:49.891596Z",
+  "labels": [
+    "review"
+  ]
+}

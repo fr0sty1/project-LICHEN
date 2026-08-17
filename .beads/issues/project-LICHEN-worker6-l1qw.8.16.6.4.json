@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.16.6.4",
   "title": "Validate: Cross-check 14.6 oracle",
   "description": "Run oracle against existing vectors if any. Compare with RFC examples. Verify all MUST statements covered.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:38:58.909591Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:38:58.909591Z",
+  "updated_at": "2026-08-17T16:22:43.86597Z",
+  "closed_at": "2026-08-17T16:22:43.86597Z",
+  "close_reason": "Already fixed: Cross-validation complete. Oracle output matches test vectors exactly: epoch_floor(1700000000,None)=1700000000, DioTimeOption encodes to 000603006553f100, should_adopt_time() rules verified. Tests pass in test_packets_timing.py.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.6.4",

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-85h0",
+  "title": "LOADng parsers allow self-loop (originator == destination)",
+  "description": "Rreq::from_bytes and Rrep::from_bytes validate addresses for unspecified/loopback/multicast but do not reject messages where originator == destination. Self-loop RREQs are semantically invalid and waste network bandwidth. Add validation: `if originator == destination { return Err(LoadngError::SelfLoop) }`",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:28:00.60975Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:28:00.60975Z"
+}

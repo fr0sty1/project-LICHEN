@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.3.6.3",
   "title": "Zephyr: SF Assignment and gateway DIO option",
   "description": "Implement ASSIGNED_SF RPL DIO option, per-SF node tracking, gateway load balancing",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:19.085261Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.496491Z",
+  "updated_at": "2026-08-17T03:56:12.767263Z",
+  "closed_at": "2026-08-17T03:56:12.767263Z",
+  "close_reason": "Implemented Zephyr SF Assignment: Added LICHEN_RPL_OPT_ASSIGNED_SF (0x14) option type and build/parse functions to rpl_messages.h/c. Added lichen_sf_tracker struct with per-SF node tracking and load-balancing (sf_tracker_assign/least_loaded). Modified rpl_root.c to include ASSIGNED_SF option in DIO broadcasts. Aligns with Rust/Python implementations and spec 02-physical-link.md section 3.4.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.3.6.3",

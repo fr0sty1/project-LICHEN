@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-muws",
+  "title": "sec: unbounded collections allow memory exhaustion DoS",
+  "description": "add_peer() (line 283), add_candidate() (line 829), and receive_from_peer() (line 548) have no size limits. Add MAX_PEERS, MAX_CANDIDATES constants and enforce them to prevent resource exhaustion attacks.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:54:06.017787Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:26:46.584543Z",
+  "closed_at": "2026-08-16T19:26:46.584543Z",
+  "close_reason": "Fixed: added MAX_PEERS (64), MAX_CANDIDATES (32), MAX_RECEIVED_ROUTE_PEERS (64) constants and enforced size limits in add_peer(), add_candidate(), and receive_from_peer() to prevent memory exhaustion DoS attacks"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-u3wq",
+  "title": "adaptive_sf.py: utilization \u003e 200 returns wrong SF instead of unconditional 12",
+  "description": "Spec pseudocode states 'if utilization \u003e 200: return 12, false' unconditionally. Implementation at lines 142-145 returns sf+adjustments instead. When baseline SF is low (7-9) and utilization \u003e 200, the function returns SF \u003c 12. Example: assigned_sf=7, utilization=201 returns (10, False) but spec requires (12, False).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T04:50:37.938865Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:29:02.57218Z",
+  "closed_at": "2026-08-17T15:29:02.57218Z",
+  "close_reason": "Fixed test_vectors.py test oracle (lines 2985-2990): changed from combined 'loss OR utilization\u003e200' check that incremented SF before checking utilization\u003e200, to separate checks matching spec pseudocode - loss increments SF first, then utilization\u003e200 returns unconditional (12, False). The implementation in adaptive_sf.py was already fixed. Test suite passes for all 10 utilization vectors including utilization_high_with_sf7_baseline which now correctly expects SF=12.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

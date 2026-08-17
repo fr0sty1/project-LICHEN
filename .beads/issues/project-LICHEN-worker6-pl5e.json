@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-pl5e",
+  "title": "fuzz: add missing profiles to fuzz_decompress",
+  "description": "The fuzz_decompress.rs target only tests CoapUdpLinkLocalProfile and Icmpv6EchoProfile. Add CoapUdpGlobalProfile, RplDioProfile, and RplDaoProfile to ensure complete fuzz coverage of all packet parsing code paths.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T20:05:38.166876Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:43:04.858968Z",
+  "closed_at": "2026-08-17T15:43:04.858968Z",
+  "close_reason": "Added CoapUdpGlobalProfile, RplDioProfile, and RplDaoProfile to fuzz_decompress.rs. All five profiles now have fuzz coverage. Tests pass."
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.4.11.1",
   "title": "Python: Human-Readable Node Address Format oracle implementation",
   "description": "(no MUST/SHALL extracted - manual review needed)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:01.724199Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:40:35.346129Z",
+  "updated_at": "2026-08-17T04:46:23.231369Z",
+  "closed_at": "2026-08-17T04:46:23.231369Z",
+  "close_reason": "Already fixed: Python oracle complete in identity.py with _pubkey_to_iid(), iid_to_human_address(), PeerIdentity.human_address. Test vectors at test/vectors/node_address.json. All 3 validation tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.11.1",

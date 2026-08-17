@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.9.2.1.1",
   "title": "Parse: Extract requirements from Root Signature",
   "description": "Read spec section, extract MUST/SHALL/SHOULD statements, create checklist in task description",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:16.085729Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:16.085729Z",
+  "updated_at": "2026-08-17T15:57:49.393683Z",
+  "closed_at": "2026-08-17T15:57:49.393683Z",
+  "close_reason": "Parsed requirements - Root signature verification is achieved via: (1) Link-layer Schnorr sigs on all RPL msgs - MUST per draft-lichen-rpl-lora-00.md:8.2; (2) Receiver MUST reject unsigned RPL frames; (3) Nodes SHOULD verify root legitimacy per Section 8.4; (4) Root pubkey TOFU-pinned or pre-provisioned; (5) DODAGID == AddrForKey(root_pubkey) provides cryptographic binding. No separate DIO Root Authorization Option wire format is defined - verification uses existing link-layer signature + DODAGID/pubkey binding. For TDMA beacons (CCP), spec/02a-coordinated-capacity.md:2a.5.1 defines MUST requirements for Schnorr48 signature verification.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.9.2.1.1",

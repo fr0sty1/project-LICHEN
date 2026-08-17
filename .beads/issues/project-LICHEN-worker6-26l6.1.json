@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-26l6.1",
+  "title": "path_cost: infinity/overflow not explicitly handled before float-to-int cast",
+  "description": "**File:** rust/lichen-rpl/src/dodag.rs\n**Lines:** 172-176\n\n**Issue:** `path_cost()` checks for NaN and negative values but not infinity or values \u003e u16::MAX before casting to u16.\n\n```rust\nlet link_cost = (self.link_etx * mhri as f32).round();\nif link_cost.is_nan() || link_cost \u003c 0.0 {\n    return u16::MAX;\n}\nself.rank.saturating_add(link_cost as u16)\n```\n\n**Edge case:** If `link_etx * mhri` produces `f32::INFINITY` or a value \u003e 65535.0, the `as u16` cast behavior depends on Rust edition:\n- Rust 2021+: saturates to u16::MAX (correct by accident)\n- Earlier editions: undefined behavior\n\n**Trigger:** `link_etx = f32::MAX, mhri = 256` or `link_etx = 257.0, mhri = 256` (product \u003e 65535)\n\n**Fix:** Add explicit check: `if !link_cost.is_finite() || link_cost \u003e f32::from(u16::MAX)` before the cast, or use `.clamp(0.0, f32::from(u16::MAX)) as u16`.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:04:09.616734Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T20:53:39.309062Z",
+  "closed_at": "2026-08-16T20:53:39.309062Z",
+  "close_reason": "Fixed: added explicit bounds check for link_cost \u003e u16::MAX before float-to-int cast",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.1",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:04:09.936406Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

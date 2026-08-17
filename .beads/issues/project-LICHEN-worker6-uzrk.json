@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-uzrk",
+  "title": "NaN timestamp bypasses freshness validation",
+  "description": "Line 651: If current_time or message.timestamp is NaN, DAO timestamp validation passes incorrectly. Add age.is_nan() check.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:33:12.622572Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:52:21.342095Z",
+  "closed_at": "2026-08-16T19:52:21.342095Z",
+  "close_reason": "Already fixed: Line 652 has age.is_nan() check with security comment at line 650 explaining the guard. Test bridge_rejects_nan_timestamp (line 1682) covers both NaN timestamp and NaN current_time cases. All 135 tests pass."
+}

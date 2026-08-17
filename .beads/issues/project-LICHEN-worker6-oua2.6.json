@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-oua2.6",
+  "title": "Missing doc comments on pub(crate) functions",
+  "description": "File: /Volumes/Attic/Desktop/Projects/crates/oscore/src/edhoc/kdf.rs\nLines: 30, 43, 104\n\nFunctions lack comprehensive doc comments:\n- hkdf_extract (line 30): Has one-liner but no param docs\n- edhoc_kdf (lines 43-48): Has brief doc but missing:\n  - `# Errors` section documenting error conditions\n  - Length limits (max 128 bytes output, max 255 bytes context)\n- export_context (line 104): No doc comment at all\n\nPer Rust standards, pub(crate) items should document:\n- Parameters and return value\n- Error conditions\n- Panic conditions (none here)\n- Any size/length limits",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T18:39:42.913558Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T18:39:42.913558Z",
+  "labels": [
+    "rust-standards",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-oua2.6",
+      "depends_on_id": "project-LICHEN-worker6-oua2",
+      "type": "parent-child",
+      "created_at": "2026-08-16T18:39:43.28523Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

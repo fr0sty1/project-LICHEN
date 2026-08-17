@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-z5m9",
+  "title": "discovery.py: Missing hop_limit upper bound validation allows negative hop counts",
+  "description": "Line 131: actual_hops = INITIAL_HOP_LIMIT - rreq.hop_limit computes hop count from untrusted RREQ. If attacker sends RREQ with hop_limit \u003e INITIAL_HOP_LIMIT, actual_hops becomes negative. This negative value is stored as hop_count and metric in RouteEntry (lines 137-138), corrupting route cache and breaking route selection that assumes non-negative hop counts.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T05:16:50.354045Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T15:15:47.560401Z",
+  "closed_at": "2026-08-17T15:15:47.560401Z",
+  "close_reason": "Fixed: Added max(0, ...) clamp to actual_hops calculation at line 134 of discovery.py to prevent negative hop counts when hop_limit exceeds INITIAL_HOP_LIMIT (e.g., expanding ring RREQs or malicious packets). Tests pass.",
+  "labels": [
+    "bug",
+    "codereview"
+  ]
+}

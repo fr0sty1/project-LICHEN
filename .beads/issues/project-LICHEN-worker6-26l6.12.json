@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-26l6.12",
+  "title": "process_dio: newer version with inadmissible candidate still clears parent state",
+  "description": "File: rust/lichen-rpl/src/dodag.rs Lines 341-354. When a newer version DIO arrives, the code checks if the candidate is admissible BEFORE calling adopt_version(). If inadmissible, it returns Rejected. However, this means a node could receive multiple newer-version DIOs from inadmissible candidates and never adopt the new version. Edge case: All neighbors advertising version N+1 have inadmissible ranks. Node stays on version N indefinitely while network moves forward. Fix: Consider adopting version regardless of individual candidate admissibility, then wait for an admissible candidate at the new version.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:05:26.534782Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:05:26.534782Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.12",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:05:26.857255Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

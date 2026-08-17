@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.16.3",
   "title": "Zephyr: Waypoints implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:32.503484Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.522748Z",
+  "updated_at": "2026-08-17T04:01:59.829926Z",
+  "closed_at": "2026-08-17T04:01:59.829926Z",
+  "close_reason": "Duplicate: Zephyr waypoints work is tracked in project-LICHEN-worker6-l1qw.10.6.x functionality-based epics (CRUD, Sharing, Routes)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.16.3",

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-26l6.4",
+  "title": "select_parent: double prune may mask bugs or waste cycles",
+  "description": "**File:** rust/lichen-rpl/src/dodag.rs\n**Lines:** 434, 481\n\n**Issue:** `select_parent()` calls `prune_inadmissible_parents()` twice - once at the start and once at the end.\n\n```rust\npub fn select_parent(\u0026mut self) {\n    self.prune_inadmissible_parents();  // Line 434\n    // ... parent selection logic ...\n    self.prune_inadmissible_parents();  // Line 481\n}\n```\n\n**Edge cases:**\n1. If the first prune is sufficient, the second is wasted work\n2. If the second is necessary (lowest_rank changed at line 479), why isn't there a comment explaining this?\n3. If parents become inadmissible between the two prunes, there's a window where stale data is used\n\n**Analysis:** The second prune appears necessary because:\n- Line 479 updates `lowest_rank` which affects `admissible()` \n- Parents that were admissible before could now violate MaxRankIncrease\n\nHowever, this is a subtle invariant that should be documented.\n\n**Fix:** Add comment before second prune: `// Re-prune: lowest_rank update may make previously-admissible parents violate MaxRankIncrease`",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-16T19:04:32.455854Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-16T19:04:32.455854Z",
+  "labels": [
+    "correctness",
+    "edge-case",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-26l6.4",
+      "depends_on_id": "project-LICHEN-worker6-26l6",
+      "type": "parent-child",
+      "created_at": "2026-08-16T19:04:32.778331Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
