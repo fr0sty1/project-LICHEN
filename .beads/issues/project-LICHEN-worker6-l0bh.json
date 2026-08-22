@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-l0bh",
+  "title": "Self-oracle: hash_32 assertion defaults to computed value if missing",
+  "description": "At line 222-223, expected_hash = out.get('hash_32', h) uses the computed hash h as the default if the vector lacks a hash_32 field. The assertion h == expected_hash then becomes h == h, always passing. This masks bugs when vectors are incomplete.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:51.325263Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:12:51.325263Z",
+  "labels": [
+    "file:python/tests/test_channel_plan.py",
+    "line:222"
+  ]
+}

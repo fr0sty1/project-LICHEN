@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.3.6",
   "title": "Admin principal full access",
   "description": "Acceptance: admin has full access",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:04.028375Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:04.028375Z",
+  "updated_at": "2026-08-17T22:59:36.040609Z",
+  "closed_at": "2026-08-17T22:59:36.040609Z",
+  "close_reason": "Already fixed - AccessLevel::Admin in rust/lichen-core/src/access_level.rs has full access: can_read, can_observe, can_access_mesh, can_access_raw_diag, can_write all return true. Tests verify this at test_admin_permissions.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.3.6",

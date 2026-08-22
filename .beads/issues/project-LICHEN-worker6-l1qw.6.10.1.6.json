@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.1.6",
   "title": "Zephyr: 64-entry sliding window",
-  "status": "open",
+  "notes": "Blocked on design decision and dependencies:\n1. Spec section 5.1 defines 32-frame window, but task requests 64-entry - needs design decision\n2. Python oracle (l1qw.6.10.1.4.2) not yet implemented\n3. Test vectors (l1qw.6.10.1.4.3) not yet generated\nImplementation is straightforward (change uint32_t-\u003euint64_t, 32-\u003e64) but cannot validate without oracle and vectors.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:01.739946Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:01.739946Z",
+  "updated_at": "2026-08-17T21:39:43.588767Z",
+  "defer_until": "2026-08-24T14:39:43.275159-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.1.6",

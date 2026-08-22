@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.1.7",
   "title": "Zephyr: Observe /msg/inbox",
   "description": "Acceptance: Zephyr supports Observe on inbox",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:20.301666Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:20.301666Z",
+  "updated_at": "2026-08-17T22:53:10.492619Z",
+  "closed_at": "2026-08-17T22:53:10.492619Z",
+  "close_reason": "Already fixed: Observe on /msg/inbox fully implemented in coap_msg.c - resource has .notify callback (line 878), notify callback at line 714, trigger API lichen_msg_inbox_notify() at line 321",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.1.7",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.12.5",
   "title": "EDHOC ↔ OSCORE context handoff",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:47.930604Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:47.930604Z",
+  "updated_at": "2026-08-17T21:47:19.821889Z",
+  "closed_at": "2026-08-17T21:47:19.821889Z",
+  "close_reason": "Already fixed - EDHOC exports OscoreContext via export_oscore(), OSCORE creates context via MemorySecurityContext.from_edhoc(), SecureDatagramChannel._establish_context() chains both. All tests pass (57 EDHOC, 11 OSCORE, 32 secure channel tests).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.12.5",

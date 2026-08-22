@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-prjm",
+  "title": "tx_queue_stats_get documentation falsely claims thread-safety",
+  "description": "File: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 207\n\nLine 207 documents 'Thread-safe atomic copy under lock' but the implementation does NOT acquire the queue lock - it performs an unlocked struct copy with an explicit comment saying the read is NOT atomic. Callers relying on the documented guarantee could get torn reads of the 24-byte stats struct during concurrent updates to packet counters.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:30.735503Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T19:17:30.735503Z"
+}

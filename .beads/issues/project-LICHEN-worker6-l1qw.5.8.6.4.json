@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.8.6.4",
   "title": "Packet queuing during discovery",
-  "status": "open",
+  "notes": "Needs design decision: Packet queuing during discovery requires design choices for queue structure, limits, timeout behavior, and failure handling. Not a code bug fix.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:18.920387Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:18.920387Z",
+  "updated_at": "2026-08-17T21:27:16.271046Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.6.4",

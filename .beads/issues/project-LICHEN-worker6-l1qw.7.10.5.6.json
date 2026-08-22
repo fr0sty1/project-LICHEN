@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.5.6",
   "title": "Priority queue: P0-P4 traffic types",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:59.18172Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:59.18172Z",
+  "updated_at": "2026-08-17T22:17:20.866787Z",
+  "closed_at": "2026-08-17T22:17:20.866787Z",
+  "close_reason": "Already implemented: Priority enum (P0-P4: SOS, ROUTING, URGENT, NORMAL, BULK) in python/src/lichen/link/tx_queue.py with full preemption, deadline expiry, and backpressure. 83 tests passing.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.5.6",

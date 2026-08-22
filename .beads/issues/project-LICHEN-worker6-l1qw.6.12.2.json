@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.12.2",
   "title": "Rust: Security ↔ link layer integration",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:41.611502Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:41.611502Z",
+  "updated_at": "2026-08-17T21:47:26.886855Z",
+  "closed_at": "2026-08-17T21:47:26.886855Z",
+  "close_reason": "Already complete: Rust lichen-link crate has full Schnorr48 security integration (sign/verify frames, replay protection, key pinning). All 68+ tests pass. Matches Python implementation.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.12.2",

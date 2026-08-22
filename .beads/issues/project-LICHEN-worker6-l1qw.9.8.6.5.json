@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.6.5",
   "title": "Zephyr: forward proxy resource",
   "description": "Acceptance: Zephyr forward proxy works",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:54.53647Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:54.53647Z",
+  "updated_at": "2026-08-17T22:49:50.344319Z",
+  "closed_at": "2026-08-17T22:49:50.344319Z",
+  "close_reason": "Deferred: Feature implementation task requiring design decisions - needs CoAP proxy resource design, Zephyr integration approach, and testing strategy. Not a bug fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.5",

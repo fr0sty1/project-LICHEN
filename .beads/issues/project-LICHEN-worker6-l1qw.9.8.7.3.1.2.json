@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.3.1.2",
   "title": "Implement: Python oracle for LCI /msg/ack",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:11.405996Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:11.405996Z",
+  "updated_at": "2026-08-17T22:55:32.432649Z",
+  "closed_at": "2026-08-17T22:55:32.432649Z",
+  "close_reason": "Already fixed - Python oracle for /msg/ack fully implemented: MessageReceiptsResource (messaging.py), MessageReceipt model (model.py), client post_receipt() (lci.py), with comprehensive tests in test_messages_resource.py",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.3.1.2",

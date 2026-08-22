@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.1.12",
   "title": "Rust TimeProvider trait alignment",
   "description": "Ensure Rust TimeProvider trait (unix_time_us, has_gnss_fix, stratum) matches Zephyr time provider semantics. NoTimeProvider returns None/false/255.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:12:38.441606Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:12:38.441606Z",
+  "updated_at": "2026-08-17T23:04:28.049131Z",
+  "closed_at": "2026-08-17T23:04:28.049131Z",
+  "close_reason": "Already fixed - Rust TimeProvider trait correctly implements: unix_time_us() returns Option\u003cu64\u003e (None when unavailable), has_gnss_fix() returns bool (false when no fix), stratum() returns u8 with 0=best/255=unsynchronized (matching spec/02a-coordinated-capacity.md). NoTimeProvider returns None/false/255 as expected.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.1.12",

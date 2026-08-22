@@ -2,14 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.10.2",
   "title": "Python: transport protocol trait",
   "description": "Acceptance: ResourceTransport abstraction",
-  "notes": "Already implemented as ResourceTransport",
-  "status": "open",
+  "notes": "Already implemented as ResourceTransport\nDeferred: Epic with 3 open children for oracle implementation and test vectors. Core ResourceTransport abstraction is already implemented in lci.py.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:14.167374Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:14.167374Z",
+  "updated_at": "2026-08-17T22:45:40.79369Z",
+  "defer_until": "2026-08-18T15:45:40.477116-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.10.2",

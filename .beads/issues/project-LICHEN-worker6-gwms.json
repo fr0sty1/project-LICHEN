@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-gwms",
+  "title": "pthread_mutex_init return value unchecked",
+  "description": "File: lichen/subsys/lichen/link/tx_queue.c\nLine: 215\n\npthread_mutex_init() can fail with ENOMEM or EAGAIN on POSIX systems. The return value is ignored and tx_queue_init() returns 0 unconditionally. If initialization fails, subsequent lock_queue()/unlock_queue() calls invoke undefined behavior. Zephyr path (k_mutex_init) is void and cannot fail.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:23.155046Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T19:17:23.155046Z"
+}

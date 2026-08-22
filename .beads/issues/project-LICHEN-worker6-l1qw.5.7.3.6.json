@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.3.6",
   "title": "TOFU trust store pinning",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:35.122019Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:35.122019Z",
+  "updated_at": "2026-08-17T21:31:11.634101Z",
+  "closed_at": "2026-08-17T21:31:11.634101Z",
+  "close_reason": "Fixed: TOFU trust store pinning was already implemented in both Python (TrustStore class in crypto/trust.py, integrated with AnnounceProcessor) and Rust (TrustStore in lichen-gateway/src/trust.rs, integrated with announce processor). Fixed test bugs and module integration issues to enable tests to run. All 46 Python trust tests and 26 Rust trust tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.3.6",

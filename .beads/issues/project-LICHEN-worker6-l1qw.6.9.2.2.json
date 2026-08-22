@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.9.2.2",
   "title": "Rust: Root signature in DIO",
-  "status": "open",
+  "notes": "Needs feature implementation: requires creating root_signature.rs module with verify_root_signature() and verify_dodagid_binding() functions, plus integration with DIO processing in dodag.rs. Not a bug fix - mirrors Python root_signature.py",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:26.105145Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:26.105145Z",
+  "updated_at": "2026-08-17T22:08:40.517016Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.9.2.2",

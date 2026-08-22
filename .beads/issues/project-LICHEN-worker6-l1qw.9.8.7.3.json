@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.3",
   "title": "/msg/ack",
   "description": "Message receipts resource",
-  "status": "open",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:07.057323Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:07.057323Z",
+  "updated_at": "2026-08-17T22:54:59.480753Z",
+  "defer_until": "2026-09-16T15:54:59.090177-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.3",

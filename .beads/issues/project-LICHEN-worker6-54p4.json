@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-54p4",
+  "title": "max_latency_ms stat field is never populated",
+  "description": "File: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 97\n\nLine 97 documents max_latency_ms as 'Worst-case queue time observed' but the implementation never updates this field - it remains 0 from initialization. The field is dead/misleading.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:27.560374Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T19:17:27.560374Z"
+}

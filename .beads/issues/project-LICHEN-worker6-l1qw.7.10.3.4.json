@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.3.4",
   "title": "Resource handler registration",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:29.345731Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:29.345731Z",
+  "updated_at": "2026-08-17T22:11:42.312294Z",
+  "closed_at": "2026-08-17T22:11:42.312294Z",
+  "close_reason": "Already fixed - Resource handler registration implemented in Python (site.add_resource) and Rust (Resource::new builder pattern with Dispatcher). All tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.3.4",

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fd1z",
+  "title": "Channel index out of bounds for n_channels \u003c 3",
+  "description": "File: rust/lichen-core/src/lib.rs\nLine: 102\n\nsynchronized_hop_channel clamps n_channels to minimum 3, then returns 1 + (h % 2) which can be channel 2. When n_channels=2, only channels 0 and 1 exist, so returning 2 is invalid. Same issue exists at line 165 in select_channel_with_gnss hash-based path.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:34.418443Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T19:17:34.418443Z"
+}

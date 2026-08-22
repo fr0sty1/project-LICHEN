@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.10.2.2",
   "title": "Implement: Python oracle for Transport Protocol",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:35.239739Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:35.239739Z",
+  "updated_at": "2026-08-17T22:46:33.9012Z",
+  "closed_at": "2026-08-17T22:46:33.9012Z",
+  "close_reason": "Already implemented. Python oracle for Transport Protocol exists across: (1) lichen/coap/params.py - CongestionLevel enum, congestion_level(), check_congestion_allows(), congestion_service_unavailable() for duty cycle and 5.03 responses; (2) lichen/coap/transport.py - DatagramChannel with congestion checking; (3) lichen/schc/fragment.py - MAX_SCHC_PACKET=1281. All MUST requirements from spec 07 sections 9-10 are covered with comprehensive tests in tests/coap/test_congestion.py.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.10.2.2",

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-be2z",
+  "title": "No type validation for timeout_s in RollcallResource",
+  "description": "Line 154 uses data.get('timeout_s', 60) without validating the type or range. An attacker could submit negative values, non-numeric types, or extremely large numbers. This could cause logic errors in timeout handling or resource exhaustion if timeout is used in sleep/scheduling. Add validation that timeout_s is a positive integer within reasonable bounds.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:39.978399Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:12:39.978399Z",
+  "labels": [
+    "file:python/src/lichen/coap/resources/emergency.py",
+    "line:154"
+  ]
+}

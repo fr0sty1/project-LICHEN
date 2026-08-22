@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-xcja",
+  "title": "Falsy timestamp value (0) incorrectly rejected (duplicate)",
+  "description": "The `or` pattern `body.get(\"t\") or body.get(\"ts\")` treats timestamp=0 as falsy, causing it to fall through to the alternate key. If only \"t\" is provided with value 0, timestamp becomes None and the request is rejected at line 83. This contradicts lines 91-97 which explicitly validate `timestamp \u003e= 0`, indicating 0 should be accepted. Fix: use `body.get(\"t\") if \"t\" in body else body.get(\"ts\")`.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:43.131326Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:12:43.131326Z",
+  "labels": [
+    "file:python/src/lichen/coap/resources/emergency.py",
+    "line:80"
+  ]
+}

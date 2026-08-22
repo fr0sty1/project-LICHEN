@@ -1,0 +1,2 @@
+{"id":"01a01128-405c-75d4-bb93-ae40965cdb5e","issue_id":"project-LICHEN-worker6-ld3k","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T19:17:25.724382Z"}
+{"id":"01a011f4-740e-7b56-88f1-17a6761e8edb","issue_id":"project-LICHEN-worker6-ld3k","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: tx_queue_stats_get now acquires lock before copying stats, matching the header's thread-safety documentation. Pattern matches tx_queue_count and tx_queue_empty.","created_at":"2026-08-17T23:00:28.302744Z"}

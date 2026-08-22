@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.3.2",
   "title": "Rust: access level types",
   "description": "Acceptance: access level types defined",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:58.235005Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:58.235005Z",
+  "updated_at": "2026-08-17T22:59:33.431245Z",
+  "closed_at": "2026-08-17T22:59:33.431245Z",
+  "close_reason": "Added AccessLevel enum to lichen-core with ReadOnly, Standard, Admin variants and permission helper methods",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.3.2",

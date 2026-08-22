@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.1",
   "title": "Link-layer replay window",
-  "status": "open",
+  "notes": "Epic with 7 children - needs sub-issue tracking rather than direct fix",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:44.023682Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:44.023682Z",
+  "updated_at": "2026-08-17T21:37:41.307274Z",
+  "defer_until": "2026-08-24T14:37:40.995254-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.1",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.5.1",
   "title": "Python: duty cycle tracking",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:51.192382Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:51.192382Z",
+  "updated_at": "2026-08-17T22:17:08.30242Z",
+  "closed_at": "2026-08-17T22:17:08.30242Z",
+  "close_reason": "Already fixed: Python duty cycle tracking fully implemented - lichen.timing.duty_cycle provides calculation helpers, lora_medium.DutyCycleTracker provides stateful tracking with window expiration and observability APIs. All 80 duty cycle tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.5.1",

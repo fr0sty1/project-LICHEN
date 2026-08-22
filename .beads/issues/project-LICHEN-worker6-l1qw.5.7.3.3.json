@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.3.3",
   "title": "Zephyr: Announce processor",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:28.437459Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:28.437459Z",
+  "updated_at": "2026-08-17T21:24:33.386146Z",
+  "closed_at": "2026-08-17T21:24:33.386146Z",
+  "close_reason": "Fixed duplicate function definitions in announce.c - removed duplicate dodag_loss_resume_handler and lichen_announce_sched_set_dodag_state (lines 774-826 were exact copies of 720-772)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.3.3",

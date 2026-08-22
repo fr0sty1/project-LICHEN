@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-qal2",
+  "title": "slot_hash uses wrong algorithm (XOR vs ADD)",
+  "description": "File: python/src/lichen/ccp.py:284\n\nslot_hash uses XOR formula but spec section 14.7 and test vectors require ADD formula: (hash_32(EUI64) + SFN) % num_slots.\n\n**Failure scenario:** For EUI64=0x0102030405060708, SFN=4294967295, num_slots=16: code returns slot 1, but ccp_sfn_wrap_slot_hash.json expects slot 12. Causes TDMA slot misassignment breaking network synchronization.\n\n**Verdict:** CONFIRMED",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T23:30:41.494078Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T23:30:41.494078Z",
+  "labels": [
+    "correctness",
+    "ccp",
+    "spec-violation"
+  ]
+}

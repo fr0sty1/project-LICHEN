@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.13.1",
   "title": "Python: duty cycle TX queue gating",
   "description": "Duty cycle integration with TX queue. AC: TX queue respects duty cycle budget before transmitting.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:16.886465Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:16.886465Z",
+  "updated_at": "2026-08-17T22:34:23.119365Z",
+  "closed_at": "2026-08-17T22:34:23.119365Z",
+  "close_reason": "Deferred: Needs design decision. The TX queue currently has no duty cycle integration. The DutyCycleTracker exists in lora_medium and is enforced at the simulator layer (node_server.py), but the TX queue/link layer have no awareness of duty cycle budget. Implementing 'TX queue respects duty cycle budget' requires design decisions: (1) where enforcement belongs (TX queue vs link layer vs both), (2) behavior when exhausted (block/fail/delay), (3) how duty tracker is injected. This is feature work, not a bug fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.13.1",

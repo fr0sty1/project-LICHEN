@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.13.1",
   "title": "Documentation: SCHC preferred over CoAP Block-wise",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:12.512853Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:12.512853Z",
+  "updated_at": "2026-08-17T22:26:52.335329Z",
+  "closed_at": "2026-08-17T22:26:52.335329Z",
+  "close_reason": "Already fixed - spec/07-transport-app.md section 10.5 explicitly documents that SCHC fragmentation is preferred over CoAP Block-wise, with a comparison table explaining why",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.13.1",

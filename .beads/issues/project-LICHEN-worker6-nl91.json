@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-nl91",
+  "title": "Stale parent entry when parent rank increases above node rank",
+  "description": "When a DIO arrives from an existing parent whose rank has increased to \u003e= the node's rank, the code returns early (line 211) without removing the stale parent entry from self.parents. The old entry with the lower rank remains, causing the node to use incorrect rank information and advertise wrong rank to downstream nodes. Compare to lines 201-205 which correctly remove poisoned parents. Fix: add self.parents.pop(neighbor_id, None) and self.select_parent() before returning.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:13:18.061302Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:17:15.29227Z",
+  "closed_at": "2026-08-17T18:17:15.29227Z",
+  "close_reason": "Fixed: added self.parents.pop(neighbor_id, None) and self.select_parent() before the early return when DIO rank \u003e= node rank, mirroring the poisoned-DIO handling. This removes stale parent entries when a neighbor's rank increases above ours.",
+  "labels": [
+    "file:python/src/lichen/rpl/dodag.py",
+    "line:210"
+  ]
+}

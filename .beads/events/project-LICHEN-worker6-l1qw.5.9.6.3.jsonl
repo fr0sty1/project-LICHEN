@@ -1,1 +1,2 @@
 {"id":"019f9766-7b72-73b9-a177-957a1e748665","issue_id":"project-LICHEN-worker6-l1qw.5.9.6.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:51:43.730245Z"}
+{"id":"01a011a8-f480-7b6d-89a6-77c199dee984","issue_id":"project-LICHEN-worker6-l1qw.5.9.6.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - gradient.c has find_lru() for LRU eviction, last_used_ms tracking on lookup/insert, bounded by CONFIG_LICHEN_ROUTING_GRADIENT_MAX_ENTRIES","created_at":"2026-08-17T21:38:00.448749Z"}

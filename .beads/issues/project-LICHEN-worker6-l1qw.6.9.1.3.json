@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.9.1.3",
   "title": "Zephyr: DIO/DAO/DIS carry link signatures",
-  "status": "open",
+  "notes": "Feature implementation - requires Zephyr RPL integration design and signature plumbing, not a minimal fix",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:20.941278Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:20.941278Z",
+  "updated_at": "2026-08-17T22:07:38.363488Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.9.1.3",

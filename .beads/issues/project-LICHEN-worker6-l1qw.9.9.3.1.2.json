@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.3.1.2",
   "title": "Implement: Python oracle for Access Levels",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:42:12.19504Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:42:12.19504Z",
+  "updated_at": "2026-08-17T22:58:27.46945Z",
+  "closed_at": "2026-08-17T22:58:27.46945Z",
+  "close_reason": "Feature implementation - not a bug fix. Requires creating AccessLevel enum, transport binding logic, and raw diagnostics constraints. Parent notes 'Already implemented in ConfigResource auth' but current implementation is only a boolean allow_writes flag - the spec requires three-tier access levels with transport bindings.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.3.1.2",

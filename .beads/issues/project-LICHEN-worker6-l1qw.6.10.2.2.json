@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.2.2",
   "title": "Python: Epoch increment on wrap/reboot",
-  "status": "open",
+  "notes": "Deferred: Epic - needs sub-issue tracking. This is a parent task with 4 child issues (parse, implement, vectors, validate). Work on the children first.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:05.810865Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:05.810865Z",
+  "updated_at": "2026-08-17T21:39:05.159906Z",
+  "defer_until": "2026-08-24T14:39:04.82764-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.2.2",

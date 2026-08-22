@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.3.2.3",
   "title": "Rust: GET /status/neighbors client",
   "description": "Acceptance: Rust client fetches neighbors",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:23.907868Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:23.907868Z",
+  "updated_at": "2026-08-17T22:47:04.541496Z",
+  "closed_at": "2026-08-17T22:47:04.541496Z",
+  "close_reason": "Already implemented: Neighbors/Neighbor types with from_cbor() in lichen-client/src/status.rs, STATUS_NEIGHBORS path constant in paths.rs, and neighbors() CLI command in lichen-cli that fetches /status/neighbors endpoint",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.3.2.3",

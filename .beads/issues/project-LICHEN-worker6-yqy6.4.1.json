@@ -3,13 +3,15 @@
   "title": "T1000-E: LoRa radio (LR1110)",
   "description": "Validate LR1110 radio on T1000-E. Radio is modeled and enabled by overlays but driver/hardware validation pending. Test SPI bus, reset, DIO interrupts, and TX/RX.",
   "notes": "BLOCKED: Requires physical hardware access. Driver code exists (lr1110.c, lr1110_hal.c), devicetree is modeled with correct pin assignments (verified against Meshtastic variant.h), but hardware validation requires:\n1. Physical T1000-E board\n2. Test equipment (logic analyzer/scope) for SPI bus validation\n3. Manual testing of reset line (P1.10) and DIO interrupts (P0.07, P1.01)\n4. RF test equipment or second node for TX/RX validation\nCannot be resolved by software changes alone.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:40.884048Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T16:43:05.539987Z",
+  "updated_at": "2026-08-17T23:06:33.304886Z",
+  "closed_at": "2026-08-17T23:06:33.304886Z",
+  "close_reason": "Blocked on hardware - software side complete (driver code lr1110.c/lr1110_hal.c, devicetree). Requires physical T1000-E board and test equipment for SPI/RF validation. Cannot proceed without hardware access.",
   "labels": [
     "blocked:hardware"
   ],

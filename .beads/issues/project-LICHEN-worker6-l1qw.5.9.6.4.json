@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.6.4",
   "title": "MAX_ENTRIES (64)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:44.797504Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:44.797504Z",
+  "updated_at": "2026-08-17T21:37:53.905692Z",
+  "closed_at": "2026-08-17T21:37:53.905692Z",
+  "close_reason": "Aligned C gradient table max entries with Python: changed CONFIG_LICHEN_ROUTING_GRADIENT_MAX_ENTRIES from 32 to 64 in gradient.h",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.6.4",

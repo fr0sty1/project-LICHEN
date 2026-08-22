@@ -1,0 +1,2 @@
+{"id":"01a01128-2c8a-7b1f-b6e2-650cedf8e36e","issue_id":"project-LICHEN-worker6-hypm","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T19:17:20.650729Z"}
+{"id":"01a0118b-0ff7-7a21-b490-b7b9657d2e45","issue_id":"project-LICHEN-worker6-hypm","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - implementation at lines 426-428 correctly uses lock_queue()/unlock_queue() for thread-safe stats copy","created_at":"2026-08-17T21:05:21.399669Z"}

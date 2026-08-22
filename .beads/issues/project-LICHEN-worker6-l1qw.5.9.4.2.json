@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.9.4.2",
   "title": "Rust: Priority-based replacement",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:20.036557Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:20.036557Z",
+  "updated_at": "2026-08-17T21:33:02.585721Z",
+  "closed_at": "2026-08-17T21:33:02.585721Z",
+  "close_reason": "Already implemented: MRHOF priority-based parent selection with path_cost ranking, hysteresis, and capacity limits in rust/lichen-rpl/src/dodag.rs",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.4.2",

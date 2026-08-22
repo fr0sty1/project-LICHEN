@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.3.1",
   "title": "Python: CoAP server",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:22.173965Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:22.173965Z",
+  "updated_at": "2026-08-17T22:10:01.274151Z",
+  "closed_at": "2026-08-17T22:10:01.274151Z",
+  "close_reason": "Already implemented - Python CoAP server complete in lichen/coap/ with transport.py, udp_server.py, and full resources package",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.3.1",

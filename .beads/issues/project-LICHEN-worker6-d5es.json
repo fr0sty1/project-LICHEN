@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-d5es",
+  "title": "latency_ms output always returns 0",
+  "description": "File: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 175\n\nLine 175 documents latency_ms as 'time packet spent in queue' but the implementation (tx_queue.c:354-366) always sets *latency_ms = 0 with a comment admitting it's a placeholder. The documented functionality does not work.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:29.491471Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T19:17:29.491471Z"
+}

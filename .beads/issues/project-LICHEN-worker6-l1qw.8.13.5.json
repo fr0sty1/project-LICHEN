@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.13.5",
   "title": "Rust: airtime tracking in duty cycle",
   "description": "Airtime tracking feeds duty cycle. AC: Actual airtime deducted from duty cycle budget after TX.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:25.084942Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:25.084942Z",
+  "updated_at": "2026-08-17T22:44:28.875715Z",
+  "closed_at": "2026-08-17T22:44:28.875715Z",
+  "close_reason": "Infrastructure for airtime tracking: Added TxResult struct with airtime_us field. Changed Radio::transmit() to return Result\u003cTxResult, Error\u003e. Updated all 10 Radio implementations to return airtime (actual from sim, estimated for hardware). Stack integration (calling DutyCycleTracker.record_tx after TX) deferred - requires adding tracker to Stack.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.13.5",

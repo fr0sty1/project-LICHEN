@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.14.6",
   "title": "Zephyr: RD lookup endpoint",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:28.975322Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:28.975322Z",
+  "updated_at": "2026-08-17T22:31:58.50005Z",
+  "closed_at": "2026-08-17T22:31:58.50005Z",
+  "close_reason": "Needs design decision - depends on registration endpoint (l1qw.7.14.5) which is also deferred for design decisions",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.6",

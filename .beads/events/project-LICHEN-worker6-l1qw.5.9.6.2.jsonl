@@ -1,1 +1,2 @@
 {"id":"019f9766-772f-71b1-93c5-9143cef05985","issue_id":"project-LICHEN-worker6-l1qw.5.9.6.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:51:42.639112Z"}
+{"id":"01a011a8-23ee-73b5-be98-3773e286d8db","issue_id":"project-LICHEN-worker6-l1qw.5.9.6.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already implemented: GradientTable (gradient.rs) and AnnounceProcessor (announce.rs) both have bounded LRU eviction with tests","created_at":"2026-08-17T21:37:07.054243Z"}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gvgi",
+  "title": "select_channel can return index == num_channels (off-by-one)",
+  "description": "File: python/src/lichen/channel_plan.py:89\n\nselect_channel returns out-of-bounds index: formula `1 + (h % num_channels)` can return `num_channels`, which exceeds valid array bounds [0, num_channels-1].\n\n**Failure scenario:** With EU868 (8 channels), epoch=2, eui64=0x0011223344556677, select_channel returns 8. Calling frequency(8) raises ValueError because valid indices are 0-7. Probability: 1/num_channels (12.5% for EU868).\n\n**Verdict:** CONFIRMED",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T23:31:12.341829Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T23:31:12.341829Z",
+  "labels": [
+    "correctness",
+    "channel-plan"
+  ]
+}

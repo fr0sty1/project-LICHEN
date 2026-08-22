@@ -1,14 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.1.2",
   "title": "Rust: X25519 from Ed25519 seed",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "NOTE CORRECTION: 'Already implemented' is INCORRECT. X25519 derivation NOT implemented in Rust Identity struct.\n\nREQUIRED WORK:\n1. Add x25519-dalek or curve25519-dalek dependency\n2. Implement x25519_private() and x25519_public() methods on Identity\n3. Match Python pattern: clamp(SHA-512(seed)[0:32]) for private, scalarmult_base for public\n4. Add test vectors for cross-implementation consistency\n\nDeferred - needs design decision on crypto dependency choice.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:08.381334Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:08.381334Z",
+  "updated_at": "2026-08-17T21:47:54.975199Z",
+  "defer_until": "2026-08-24T14:47:54.669616-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.1.2",

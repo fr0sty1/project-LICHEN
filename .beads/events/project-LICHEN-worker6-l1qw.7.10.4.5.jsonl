@@ -1,1 +1,2 @@
 {"id":"019f9761-ec59-7ee0-a429-5c52d9bb6c3e","issue_id":"project-LICHEN-worker6-l1qw.7.10.4.5","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:46:44.953975Z"}
+{"id":"01a011ce-6f4c-7d17-8a4d-9eb6cef369c4","issue_id":"project-LICHEN-worker6-l1qw.7.10.4.5","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - timeout/retry scenario vectors exist in coap_transport.json loRa_params (retry_schedule, give_up_after, LICHEN params)","created_at":"2026-08-17T22:18:56.716859Z"}

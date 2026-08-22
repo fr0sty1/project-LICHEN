@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.4.4",
   "title": "Prefer NON over CON guidance",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:43.668952Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:43.668952Z",
+  "updated_at": "2026-08-17T22:16:34.710924Z",
+  "closed_at": "2026-08-17T22:16:34.710924Z",
+  "close_reason": "Already fixed - spec/07-transport-app.md section 10.2.2 (lines 383-393) contains complete 'Prefer NON Messages' guidance with rationale and use cases for NON vs CON",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.4.4",

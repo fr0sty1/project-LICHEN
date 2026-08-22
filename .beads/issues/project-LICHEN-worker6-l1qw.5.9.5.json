@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.5",
   "title": "Table Operations",
-  "status": "open",
+  "notes": "Epic - needs sub-issue tracking",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:31.12623Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:31.12623Z",
+  "updated_at": "2026-08-17T21:36:30.233695Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.5",

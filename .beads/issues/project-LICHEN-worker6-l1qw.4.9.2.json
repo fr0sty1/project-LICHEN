@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.9.2",
   "title": "Rust: IPv6 \u003c-\u003e SCHC layer integration",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:31.734182Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:31.734182Z",
+  "updated_at": "2026-08-17T21:22:06.426725Z",
+  "closed_at": "2026-08-17T21:22:06.426725Z",
+  "close_reason": "Needs design decision - This task requires architectural decisions about how to integrate lichen-ipv6 types with SCHC PacketProfile trait, how to bridge field-dict model with structured types, and API compatibility for no_std builds. Not a bug fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.9.2",

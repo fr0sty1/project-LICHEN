@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.11.2",
   "title": "Rust: Observe subscribe/notify",
-  "status": "open",
+  "notes": "Needs design decision: CoAP Observe (RFC 7641) subscribe/notify requires new server-side observer registry, notification dispatch mechanism, and client subscription API. Not a minimal code fix - requires architectural decisions about observer storage, notification triggers, sequence number tracking, and deregistration handling.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:30.182109Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:30.182109Z",
+  "updated_at": "2026-08-17T22:27:31.353121Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.11.2",

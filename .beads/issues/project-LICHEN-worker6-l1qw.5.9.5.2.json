@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.5.2",
   "title": "Update (with priority check)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:30.413531Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:30.413531Z",
+  "updated_at": "2026-08-17T21:37:27.437272Z",
+  "closed_at": "2026-08-17T21:37:27.437272Z",
+  "close_reason": "Already implemented - Python gradient.py has update() with _rank() priority check; Rust gradient.rs has update() with should_replace() priority check. Both have tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.5.2",

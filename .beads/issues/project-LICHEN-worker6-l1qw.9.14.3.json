@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.3",
   "title": "Spec: 11 17.5.3 Status Resources",
+  "notes": "Epic - needs sub-issue tracking. Work should be done on children: l1qw.9.14.3.1 (Python oracle), l1qw.9.14.3.2 (Rust), l1qw.9.14.3.3 (Zephyr), l1qw.9.14.3.4 (Vectors), l1qw.9.14.3.5 (Review).",
   "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:14.080694Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:14.080694Z",
+  "updated_at": "2026-08-17T22:45:48.595475Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.3",

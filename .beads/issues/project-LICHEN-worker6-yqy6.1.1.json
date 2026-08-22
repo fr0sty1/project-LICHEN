@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.1.1",
   "title": "Capability discovery API",
   "description": "Implement and validate lichen_hal_capabilities_get(), lichen_hal_has_capability(), and lichen_hal_identity_get() APIs. Ensure all 10 capability flags (LORA, BLE_LOCAL, SERIAL_LOCAL, GNSS, BATTERY, PMIC, BUTTONS, LEDS, DISPLAY, EXTERNAL_FLASH) work correctly with Kconfig/devicetree binding.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:12:11.774899Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:12:11.774899Z",
+  "updated_at": "2026-08-17T23:01:43.81118Z",
+  "closed_at": "2026-08-17T23:01:43.81118Z",
+  "close_reason": "Already fixed - all three APIs (lichen_hal_capabilities_get, lichen_hal_has_capability, lichen_hal_identity_get) are fully implemented in hal_caps.c with BUILD_ASSERTs enforcing Kconfig/devicetree binding, and comprehensive tests exist in tests/hal/src/main.c",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.1.1",

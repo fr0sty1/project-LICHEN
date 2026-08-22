@@ -1,1 +1,2 @@
 {"id":"019f9766-1eeb-75b4-9c26-61b2f1b294c0","issue_id":"project-LICHEN-worker6-l1qw.5.9.4.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:51:20.043374Z"}
+{"id":"01a011a4-690e-7255-ab05-5d43b130b819","issue_id":"project-LICHEN-worker6-l1qw.5.9.4.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already implemented: MRHOF priority-based parent selection with path_cost ranking, hysteresis, and capacity limits in rust/lichen-rpl/src/dodag.rs","created_at":"2026-08-17T21:33:02.606153Z"}

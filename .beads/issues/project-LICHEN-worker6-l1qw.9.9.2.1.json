@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.2.1",
   "title": "Python: OSCORE over local link",
   "description": "Acceptance: OSCORE protects local CoAP",
-  "status": "open",
+  "notes": "Blocked: 3 of 4 child tasks remain open (Implement, Vectors, Validate). Close children first.",
+  "status": "blocked",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:50.628799Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:50.628799Z",
+  "updated_at": "2026-08-17T22:56:02.547137Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.2.1",

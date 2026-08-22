@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.1.4",
   "title": "Location provider with source priority",
   "description": "Implement lichen_hal_location_submit() and lichen_hal_location_time_snapshot_get() with source-class priority (manual \u003e local_client \u003e network \u003e external \u003e onboard). Include freshness tracking via CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:12:17.025423Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:12:17.025423Z",
+  "updated_at": "2026-08-17T23:03:44.429437Z",
+  "closed_at": "2026-08-17T23:03:44.429437Z",
+  "close_reason": "Already fixed - lichen_hal_location_submit() and lichen_hal_location_time_snapshot_get() are fully implemented in hal_location.c with source-class priority (manual \u003e local_client \u003e network \u003e external \u003e onboard) via select_location_sample() and freshness tracking via CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.1.4",

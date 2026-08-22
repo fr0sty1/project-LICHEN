@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.4.3",
   "title": "Zephyr: process_message_2 + create_message_3",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:30.739836Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:30.739836Z",
+  "updated_at": "2026-08-17T21:56:15.041831Z",
+  "closed_at": "2026-08-17T21:56:15.041831Z",
+  "close_reason": "Already implemented - edhoc_initiator_process_msg2() in lichen/subsys/lichen/edhoc/edhoc_initiator.c handles both processing message_2 and creating message_3 per RFC 9528",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.4.3",

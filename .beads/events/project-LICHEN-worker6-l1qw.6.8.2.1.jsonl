@@ -1,1 +1,2 @@
 {"id":"019f9762-59a1-7553-a9e9-eeed43db8873","issue_id":"project-LICHEN-worker6-l1qw.6.8.2.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:47:12.92935Z"}
+{"id":"01a011b1-d65b-741e-87ce-2f09138d5bf7","issue_id":"project-LICHEN-worker6-l1qw.6.8.2.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: create_message_1 exists in edhoc.py:390 and provisioning.py:558","created_at":"2026-08-17T21:47:42.55527Z"}

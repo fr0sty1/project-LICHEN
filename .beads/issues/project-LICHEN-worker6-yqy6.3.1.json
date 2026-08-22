@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.3.1",
   "title": "RAK4631: LoRa radio (SX1262)",
   "description": "Validate SX1262 radio on RAK4631. Primary validated reference for SX126X model. Verify SPI bus, reset GPIO, DIO1 interrupt, RF switch control. Test TX/RX at all operating classes.",
-  "status": "open",
+  "notes": "Deferred: Hardware validation task requiring physical RAK4631 board testing (SPI bus, GPIO, DIO1 interrupt, RF switch, TX/RX). Cannot be resolved through code changes alone.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:20.146845Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:20.146845Z",
+  "updated_at": "2026-08-17T23:05:50.80371Z",
+  "defer_until": "2026-08-31T16:05:50.483159-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.3.1",

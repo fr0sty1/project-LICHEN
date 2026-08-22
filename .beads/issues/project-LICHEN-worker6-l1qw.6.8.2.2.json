@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.8.2.2",
   "title": "Rust: create_message_1",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:14.280495Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:14.280495Z",
+  "updated_at": "2026-08-17T21:47:49.170816Z",
+  "closed_at": "2026-08-17T21:47:49.170816Z",
+  "close_reason": "Already implemented - create_message_1 exists in provisioning.rs:786 and is tested",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.2.2",

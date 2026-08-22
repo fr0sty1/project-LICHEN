@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.18.1.2",
   "title": "Implement: Python oracle for B.3.1",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:37:43.73855Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:37:43.73855Z",
+  "updated_at": "2026-08-17T22:36:30.238422Z",
+  "closed_at": "2026-08-17T22:36:30.238422Z",
+  "close_reason": "Already complete: Python TX Queue oracle implemented at python/src/lichen/link/tx_queue.py. Implementation is 553 lines with comprehensive docstrings, comments, and coverage of all B.3.1 MUST requirements: (1) bounded size=4, (2) TxQueueEntry struct with data/dst_addr/priority/deadline_ms, (3) deadline check via expire_stale() before push/pop, (4) priority preemption when full, (5) QueueFullError exception for explicit backpressure, (6) reservation signaling for no silent drops.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.18.1.2",

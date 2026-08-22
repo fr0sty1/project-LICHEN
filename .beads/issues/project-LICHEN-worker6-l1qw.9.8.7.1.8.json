@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.1.8",
   "title": "Vectors: messaging CBOR payloads",
   "description": "Acceptance: shared test vectors for messages",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:22.245218Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:22.245218Z",
+  "updated_at": "2026-08-17T22:51:51.816319Z",
+  "closed_at": "2026-08-17T22:51:51.816319Z",
+  "close_reason": "Needs design decision - this is a feature request to create test vectors, not a bug fix. Requires decisions on: (1) which CBOR message structures to vectorize (inbox GET, POST, receipts), (2) what edge cases to cover, (3) cross-implementation test requirements. Not a minimal code fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.1.8",

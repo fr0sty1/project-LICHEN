@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.11.5",
   "title": "Review: Human-Readable Node Address Format cross-validation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:05.871063Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.513990Z",
+  "updated_at": "2026-08-17T21:22:04.983414Z",
+  "closed_at": "2026-08-17T21:22:04.983414Z",
+  "close_reason": "Added cross-validation vectors from test/vectors/node_address.json to Zephyr tests (lichen/tests/util/main.c). Python, Rust, and Zephyr implementations now all validate against the same shared vectors.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.11.5",

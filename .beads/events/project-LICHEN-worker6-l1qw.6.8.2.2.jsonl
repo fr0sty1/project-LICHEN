@@ -1,1 +1,2 @@
 {"id":"019f9762-5eef-7639-b696-5169860cec8c","issue_id":"project-LICHEN-worker6-l1qw.6.8.2.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:47:14.287409Z"}
+{"id":"01a011b1-f04a-7966-a970-3c5db81629a1","issue_id":"project-LICHEN-worker6-l1qw.6.8.2.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already implemented - create_message_1 exists in provisioning.rs:786 and is tested","created_at":"2026-08-17T21:47:49.194617Z"}

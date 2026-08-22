@@ -1,1 +1,2 @@
 {"id":"019f9761-c01d-759d-82f4-e6343e73b1bc","issue_id":"project-LICHEN-worker6-l1qw.4.9.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:46:33.629369Z"}
+{"id":"01a0119b-abe8-73ff-b29d-41a5ff9bb150","issue_id":"project-LICHEN-worker6-l1qw.4.9.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already implemented: Zephyr C has full IPv6 \u003c-\u003e SCHC integration in link layer (lichen_link_tx/rx call lichen_schc_compress/decompress)","created_at":"2026-08-17T21:23:29.896263Z"}

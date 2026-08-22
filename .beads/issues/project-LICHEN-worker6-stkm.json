@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-stkm",
+  "title": "pthread_mutex_init() return value not checked",
+  "description": "On POSIX (line 215), pthread_mutex_init() return value is ignored. This can fail with ENOMEM or EAGAIN under resource exhaustion. If initialization fails silently, the mutex is left in an undefined state and subsequent lock/unlock operations have undefined behavior.\n\nFile: lichen/subsys/lichen/link/tx_queue.c\nLine: 215",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:38.33513Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:31:38.33513Z",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

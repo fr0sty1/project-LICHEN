@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.1.11",
   "title": "Rust Radio trait alignment",
   "description": "Ensure Rust Radio trait (transmit, cca, receive, configure, configure_channels) matches Zephyr HAL capabilities. Validate RadioConfig::from_operating_class() for all regions (US/CA, EU, AU/NZ).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:12:35.565362Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:12:35.565362Z",
+  "updated_at": "2026-08-17T23:03:20.326247Z",
+  "closed_at": "2026-08-17T23:03:20.326247Z",
+  "close_reason": "Added comprehensive test validating RadioConfig::from_operating_class() for all regions (US/CA, EU, AU/NZ). Radio trait alignment with Zephyr HAL verified: transmit/cca/receive/configure/configure_channels methods properly match Zephyr lora_send/lora_recv/lora_config capabilities. All 19 lichen-hal tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.1.11",

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-mud7",
+  "title": "select_channel formula mismatch with spec",
+  "description": "Line 59 uses `1 + (h % (n - 1))` but test vectors (ccp16.json, ccp_select_channel_endianness.json) expect `1 + (h % n)`. Test 'synchronized_hop_channel_consistency' returns 1 but expects 2. Same bug on line 202 in standalone function.\n\nFile: python/src/lichen/channel_plan.py\nLine: 59",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:41.650238Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T21:03:28.709323Z",
+  "closed_at": "2026-08-17T21:03:28.709323Z",
+  "close_reason": "Fixed select_channel formula in ccp.py (line 97-98) and channel_plan.py (lines 59, 202): changed 'n = max(n_channels - 1, 2); return 1 + (h % n)' to 'n = max(n_channels, 3); return 1 + (h % n)' per spec. All 58 test_ccp.py tests now pass.",
+  "labels": [
+    "code-review",
+    "channel_plan"
+  ]
+}

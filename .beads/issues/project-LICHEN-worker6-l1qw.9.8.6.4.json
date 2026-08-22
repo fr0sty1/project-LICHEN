@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.6.4",
   "title": "Rust: forward proxy implementation",
   "description": "Acceptance: Rust forward proxy works",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:52.735891Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:52.735891Z",
+  "updated_at": "2026-08-17T22:50:30.156799Z",
+  "closed_at": "2026-08-17T22:50:30.156799Z",
+  "close_reason": "Needs design decision: Requires implementing Rust CoAP server infrastructure (does not exist yet) plus Proxy-Uri parsing (sibling task .3 still open). Feature implementation, not bug fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.4",

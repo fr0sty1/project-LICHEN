@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.2.4",
   "title": "Zephyr: GET /msg/sent",
   "description": "Acceptance: Zephyr serves sent messages",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:28.102276Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:28.102276Z",
+  "updated_at": "2026-08-17T22:55:48.90267Z",
+  "closed_at": "2026-08-17T22:55:48.90267Z",
+  "close_reason": "Implemented GET /msg/sent endpoint: added encode_sent_cbor() helper, lichen_msg_sent_get_handler() CoAP handler, and .get registration on msg_sent resource",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.2.4",

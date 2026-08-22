@@ -3,13 +3,15 @@
   "title": "Rust: Proxy-Uri option parsing",
   "description": "Acceptance: parse Proxy-Uri option",
   "notes": "Already implemented in lichen-coap/option.rs",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:50.941676Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:50.941676Z",
+  "updated_at": "2026-08-17T22:50:43.672047Z",
+  "closed_at": "2026-08-17T22:50:43.672047Z",
+  "close_reason": "Added is_proxy_uri() helper to CoapOption in codec.rs for consistent option type checking (matches is_uri_path/is_content_format pattern)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.3",

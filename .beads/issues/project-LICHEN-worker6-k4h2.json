@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-k4h2",
+  "title": "RollcallResource lacks OSCORE authentication check",
+  "description": "RollcallResource.render_post (line 140) does not verify OSCORE protection. Unlike HandoffResource which rejects unprotected requests with 401 Unauthorized, this resource accepts any request. An attacker could flood the rollcall registry with fake entries or interfere with legitimate conference tracking. Add OSCORE verification at line 142 following the HandoffResource pattern.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:33.021038Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:18:57.22511Z",
+  "closed_at": "2026-08-17T18:18:57.22511Z",
+  "close_reason": "Added OSCORE authentication check to RollcallResource.render_post following HandoffResource pattern: returns 401 UNAUTHORIZED for unauthenticated requests (require_oscore=True by default, override for testing)",
+  "labels": [
+    "file:python/src/lichen/coap/resources/emergency.py",
+    "line:140"
+  ]
+}

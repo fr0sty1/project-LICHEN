@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.4.4",
   "title": "Vectors: Message 3 format test cases",
-  "status": "open",
+  "notes": "Needs design decision: Requires choosing test vector format (JSON vs CBOR), deciding which intermediate values (TH_3, MAC_3, PLAINTEXT_3, etc.) to include, and coordinating structure with Rust/Zephyr sibling tasks. Not a bug fix - this is new test infrastructure.",
+  "status": "blocked",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:32.561241Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:32.561241Z",
+  "updated_at": "2026-08-17T21:56:46.32065Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.4.4",

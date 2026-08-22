@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.11.5.6",
   "title": "Zephyr: DIO Time Option encoding/decoding",
   "description": "DIO Time Option encoding/decoding. AC: Encodes/decodes stratum and timestamp in DIO option.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:23.640518Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:23.640518Z",
+  "updated_at": "2026-08-17T22:36:09.901171Z",
+  "closed_at": "2026-08-17T22:36:09.901171Z",
+  "close_reason": "Implemented DIO Time Option encoding/decoding in rpl_messages.h and messages.c: struct lichen_rpl_dio_time with stratum and timestamp fields, lichen_rpl_dio_time_parse() and lichen_rpl_dio_time_write() functions. Wire format: Type(1)+Len(1)+Stratum(1)+Reserved(1)+Timestamp(4) = 8 bytes total.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.11.5.6",

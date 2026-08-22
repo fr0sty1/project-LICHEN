@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.7.14.2.3",
   "title": "Vectors: Generate test vectors for RD Lookup",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "notes": "Blocked on dependency project-LICHEN-worker6-l1qw.7.14.2.2 (Python oracle for RD Lookup) which is still OPEN. Test vectors must be generated from the oracle per README (Python prototype is source of truth).",
+  "status": "blocked",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:47.361572Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:47.361572Z",
+  "updated_at": "2026-08-17T22:30:08.546013Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.2.3",

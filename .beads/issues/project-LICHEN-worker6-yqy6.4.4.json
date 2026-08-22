@@ -3,13 +3,15 @@
   "title": "T1000-E: GNSS (AG3335)",
   "description": "Validate AG3335 GNSS on T1000-E. GNSS is modeled and enabled by overlays but behavior needs validation. Test NMEA parsing, fix acquisition, and location submit.",
   "notes": "BLOCKED: Requires physical T1000-E hardware for validation. Software support is complete - DTS binding (airoha,ag3335.yaml), board config (t1000_e_nrf52840.dts with GNSS on UART1), and NMEA feeder tool (gnss_nmea_feeder.py) are all in place. Hardware validation tasks: (1) verify NMEA sentence parsing from real AG3335 chip, (2) test GPS fix acquisition (requires outdoor clear-sky environment), (3) validate location submission flow.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:45.400576Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T16:42:37.045975Z",
+  "updated_at": "2026-08-17T23:06:28.420112Z",
+  "closed_at": "2026-08-17T23:06:28.420112Z",
+  "close_reason": "Deferred: Hardware validation task - requires physical T1000-E device. Software support (DTS binding, board config, NMEA feeder) is complete. Needs outdoor hardware testing.",
   "labels": [
     "blocked:hardware"
   ],

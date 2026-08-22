@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-hulp",
+  "title": "tx_queue_stats_get non-atomic read on multi-word struct",
+  "description": "Header tx_queue.h line 207-208 claims 'Thread-safe atomic copy under lock (no longer non-atomic)' but implementation at lines 424-429 does NOT take the lock and explicitly comments 'This read is not atomic'. On architectures where struct tx_queue_stats (6x uint32_t = 24 bytes) is not atomically copyable, concurrent writes during stats collection could produce inconsistent diagnostic data.\n\nFile: lichen/subsys/lichen/link/tx_queue.c\nLine: 424",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:37.061181Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:31:37.061181Z",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

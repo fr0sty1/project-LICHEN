@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-muph",
+  "title": "pthread_mutex_init return value ignored",
+  "description": "Line 215: pthread_mutex_init(\u0026queue-\u003elock, NULL) discards return value. pthread_mutex_init can fail with EAGAIN (system limit), ENOMEM, or EPERM. On failure, the mutex is in an undefined state and all subsequent lock_queue/unlock_queue calls invoke undefined behavior. Should return -errno on failure.\n\nFile: lichen/subsys/lichen/link/tx_queue.c\nLine: 215",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:35.811337Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T23:00:19.512858Z",
+  "closed_at": "2026-08-17T23:00:19.512858Z",
+  "close_reason": "Fixed: pthread_mutex_init now checks return value and returns -err on failure",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

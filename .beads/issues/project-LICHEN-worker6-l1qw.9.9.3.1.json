@@ -2,14 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.3.1",
   "title": "Python: access level enforcement",
   "description": "Acceptance: ConfigResource enforces access",
-  "notes": "Already implemented in ConfigResource auth",
-  "status": "open",
+  "notes": "Core access enforcement implemented in ConfigResource (allow_writes), but has 3 open children for oracle/vectors work that need completion first",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:56.618501Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:56.618501Z",
+  "updated_at": "2026-08-17T22:58:16.570236Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.3.1",

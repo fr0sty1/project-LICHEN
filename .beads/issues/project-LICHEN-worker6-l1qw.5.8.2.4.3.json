@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.8.2.4.3",
   "title": "Vectors: Generate test vectors for RREQ",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:39.050618Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:39.050618Z",
+  "updated_at": "2026-08-17T21:26:29.105574Z",
+  "closed_at": "2026-08-17T21:26:29.105574Z",
+  "close_reason": "Already fixed: RREQ test vectors exist in test/vectors/loadng_messages.json with 7 vectors covering normal cases (basic unsigned, nonzero flags, with signature, global addresses) and edge cases (max hop_limit=15, zero hop_limit=0, max seq_num=65535). Format follows README.md spec. All test_loadng_messages_vector tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.8.2.4.3",

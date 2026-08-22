@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.8.6",
   "title": "Vectors: short address derivation + collision",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:22.112613Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:22.112613Z",
+  "updated_at": "2026-08-17T21:22:13.520913Z",
+  "closed_at": "2026-08-17T21:22:13.520913Z",
+  "close_reason": "Already complete: test vectors exist in test/vectors/short_addr_dad.json covering derivation (6 EUI-64 cases), seed mixing, DAD retry scenarios, collision detection, reserved address handling, and coordinator allocation. All 30 Python tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.8.6",

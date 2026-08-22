@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-j3rf",
+  "title": "Duplicate select_channel implementations",
+  "description": "select_channel exists as both a ChannelPlan method (lines 52-59) and a standalone function (lines 190-202). Both have identical logic, creating maintenance drift risk. One should call the other.\n\nFile: python/src/lichen/channel_plan.py\nLine: 190",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:42.084499Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:31:42.084499Z",
+  "labels": [
+    "code-review",
+    "channel_plan"
+  ]
+}

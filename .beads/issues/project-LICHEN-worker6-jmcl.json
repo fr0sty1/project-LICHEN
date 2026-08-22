@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jmcl",
+  "title": "Falsy timestamp value 0 incorrectly rejected",
+  "description": "Line 80 uses `body.get(\"t\") or body.get(\"ts\")` which treats timestamp=0 as falsy, causing fallback to \"ts\" or None. A POST with {\"t\": 0, ...} is rejected with BAD_REQUEST even though line 95 explicitly allows timestamp \u003e= 0. Fix: use `body.get(\"t\") if \"t\" in body else body.get(\"ts\")` to check key presence rather than truthiness.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:27.582333Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:12:27.582333Z",
+  "labels": [
+    "file:python/src/lichen/coap/resources/emergency.py",
+    "line:80"
+  ]
+}

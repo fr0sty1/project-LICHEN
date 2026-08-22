@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-kbdv",
+  "title": "Missing tx_queue_destroy() causes linker error",
+  "description": "Function tx_queue_destroy() is declared in tx_queue.h (line 231) and called in production code (lora_l2.c:603) and tests (tests/tx_queue/main.c:488), but no implementation exists in tx_queue.c. This causes a linker error: 'Undefined symbols for architecture arm64: _tx_queue_destroy'. The test suite cannot build.\n\nFile: lichen/subsys/lichen/link/tx_queue.c\nLine: 447",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:37.473314Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:35:16.519786Z",
+  "closed_at": "2026-08-17T18:35:16.519786Z",
+  "close_reason": "Added tx_queue_destroy() implementation that destroys pthread mutex on POSIX and is no-op on Zephyr. Build and all 19 tests pass.",
+  "labels": [
+    "code-review",
+    "tx_queue",
+    "build-failure"
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.9.2.4",
   "title": "Verify DODAGID == AddrForKey(root_pubkey)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:28.263926Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:28.263926Z",
+  "updated_at": "2026-08-17T22:11:37.190703Z",
+  "closed_at": "2026-08-17T22:11:37.190703Z",
+  "close_reason": "Added verify_dodagid_binding function to Rust (lichen-gateway/src/trust.rs) matching Python implementation. Verifies DODAGID == AddrForKey(root_pubkey) with constant-time comparison. Added 4 tests for valid binding, mismatch detection, wrong prefix, and all-zeros cases. Both Python and Rust implementations now have equivalent DODAGID binding verification functions.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.9.2.4",

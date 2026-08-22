@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-w3n9",
+  "title": "_Nonnull annotation contradicts documented NULL behavior in tx_queue_count",
+  "description": "Line 191 documents '-EINVAL if queue is NULL' but line 192 declares the parameter as _Nonnull. Same class of bug as tx_queue_empty - the annotation and documentation express contradictory contracts.\n\nFile: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 192",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:40.819994Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T23:01:56.707916Z",
+  "closed_at": "2026-08-17T23:01:56.707916Z",
+  "close_reason": "Fixed: changed _Nonnull to _Nullable on tx_queue_count parameter to match documented NULL handling behavior (returns -EINVAL if NULL)",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

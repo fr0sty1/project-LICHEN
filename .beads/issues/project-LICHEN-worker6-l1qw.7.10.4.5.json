@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.4.5",
   "title": "Vectors: timeout/retry scenarios",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:44.946261Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:44.946261Z",
+  "updated_at": "2026-08-17T22:18:56.682605Z",
+  "closed_at": "2026-08-17T22:18:56.682605Z",
+  "close_reason": "Already fixed - timeout/retry scenario vectors exist in coap_transport.json loRa_params (retry_schedule, give_up_after, LICHEN params)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.4.5",

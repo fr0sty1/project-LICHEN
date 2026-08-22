@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.8.1.1",
   "title": "Python: X25519 from Ed25519 seed",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:06.900628Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:06.900628Z",
+  "updated_at": "2026-08-17T21:45:57.540921Z",
+  "closed_at": "2026-08-17T21:45:57.540921Z",
+  "close_reason": "Already fixed - X25519 from Ed25519 seed implemented in identity.py (x25519_private/x25519_public properties) and edhoc.py (_ed25519_to_x25519_private/public functions)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.1.1",

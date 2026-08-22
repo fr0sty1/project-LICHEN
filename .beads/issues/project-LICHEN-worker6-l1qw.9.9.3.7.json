@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.3.7",
   "title": "Vectors: access control test matrix",
   "description": "Acceptance: test matrix for access control",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:05.451047Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:05.451047Z",
+  "updated_at": "2026-08-17T22:59:39.942824Z",
+  "closed_at": "2026-08-17T22:59:39.942824Z",
+  "close_reason": "Already fixed - comprehensive access control test matrix exists in test/vectors/coap_lci_auth.json (14 vectors) and python/tests/coap/test_lci_auth.py (18+ tests)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.3.7",

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-6pmj",
+  "title": "tx_queue_count uses const qualifier but casts it away to lock",
+  "description": "Signature uses 'const struct tx_queue*' but implementation casts to non-const (line 383 in .c) to acquire mutex. Technically UB if original object was const-qualified. Inconsistent with tx_queue_empty and tx_queue_stats_get which correctly use non-const.\n\nFile: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 192",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:39.989171Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:31:39.989171Z",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

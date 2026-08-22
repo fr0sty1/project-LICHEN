@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-eq84",
+  "title": "Missing upper bound check allows out-of-bounds channel",
+  "description": "Line 181 asserts `ch \u003e= 1` but never verifies `ch \u003c num_channels`. The implementation returns `1 + (h % n)` which can be 8 for EU868 (8 channels indexed 0-7). Verified: epoch=2 with the test EUI64 produces channel=8, which is out of bounds. The test passes despite this implementation bug.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:13:04.228222Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:22:53.265485Z",
+  "closed_at": "2026-08-17T18:22:53.265485Z",
+  "close_reason": "Fixed: Changed select_channel formula from '1 + (h % n)' to '1 + (h % (n-1))' in Python, Rust, and spec. Added upper bound assertion to test. This ensures channels are always in valid range [1, n-1] for 0-indexed arrays.",
+  "labels": [
+    "file:python/tests/test_channel_plan.py",
+    "line:181"
+  ]
+}

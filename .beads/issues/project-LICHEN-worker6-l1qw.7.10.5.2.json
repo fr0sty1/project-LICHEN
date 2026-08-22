@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.5.2",
   "title": "Rust: duty cycle tracking",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:52.450641Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:52.450641Z",
+  "updated_at": "2026-08-17T22:16:44.936152Z",
+  "closed_at": "2026-08-17T22:16:44.936152Z",
+  "close_reason": "Already implemented: lichen-core/src/duty_cycle.rs provides DutyCycleTracker with ring buffer, congestion levels (Normal/Elevated/Critical/Exhausted per spec 07 s10.2.3), budget tracking, load shedding via TxPriority, and 33 passing tests",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.5.2",

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-s5zy",
+  "title": "tx_queue_stats_get reads stats without lock despite header claiming thread-safety",
+  "description": "File: lichen/subsys/lichen/link/tx_queue.c\nLine: 424\n\nHeader line 207-208 states 'Thread-safe atomic copy under lock (no longer non-atomic)' but implementation at line 424 reads queue-\u003estats without holding the lock. The stats struct is 24 bytes which cannot be atomically read, causing potential torn reads. The implementation comment acknowledges this is acceptable for diagnostics. Fix: either add lock_queue/unlock_queue around the read, or update header documentation to match implementation.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:18.231817Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T19:17:18.231817Z"
+}

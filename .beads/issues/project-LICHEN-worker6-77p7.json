@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-77p7",
+  "title": "tx_queue_stats_get lacks locking despite header claiming thread-safety",
+  "description": "File: lichen/subsys/lichen/link/tx_queue.c\nLine: 427\n\nHeader claims 'Thread-safe atomic copy under lock (no longer non-atomic)' but implementation performs `*stats = queue-\u003estats;` without holding the lock. The 24-byte struct copy is not atomic; concurrent push/pop can cause torn reads. Either add lock_queue/unlock_queue calls, or correct the header documentation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:15.511336Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T21:03:52.256052Z",
+  "closed_at": "2026-08-17T21:03:52.256052Z",
+  "close_reason": "Added lock_queue/unlock_queue calls around stats copy in tx_queue_stats_get to match header's thread-safety claim. Tests pass."
+}

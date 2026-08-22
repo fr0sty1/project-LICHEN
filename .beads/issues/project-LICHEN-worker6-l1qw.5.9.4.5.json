@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.4.5",
   "title": "Hop count tiebreaker",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:23.18471Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:23.18471Z",
+  "updated_at": "2026-08-17T21:34:13.801076Z",
+  "closed_at": "2026-08-17T21:34:13.801076Z",
+  "close_reason": "Already implemented: hop count tiebreaker in GradientEntry rank() - Python gradient.py:106-108 returns (priority, SeqNum, -hop_count); Rust gradient.rs:108-115 returns (priority, seq_num, -(hop_count as i16)); test coverage in Rust test fewer_hops_replaces_at_same_priority_and_seq",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.4.5",

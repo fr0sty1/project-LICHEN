@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.13",
   "title": "Spec: 11 17.4 Client IPv6 Address",
+  "notes": "Epic - tracks through 5 child issues; no direct action needed on this bead",
   "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:40.235627Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:40.235627Z",
+  "updated_at": "2026-08-17T22:45:13.641593Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.13",

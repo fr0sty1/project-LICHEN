@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.4",
   "title": "11.3 Entry Priority + Replacement",
-  "status": "open",
+  "notes": "Epic - work should proceed through child issues (project-LICHEN-worker6-l1qw.5.9.4.2 through .5)",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:30.081547Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:30.081547Z",
+  "updated_at": "2026-08-17T21:32:43.912778Z",
+  "defer_until": "2026-08-18T14:32:43.577902-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.4",

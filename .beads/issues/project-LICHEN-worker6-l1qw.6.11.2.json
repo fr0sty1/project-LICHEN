@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.11.2",
   "title": "Rust: Zeroize on drop (verify)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:23.354529Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:23.354529Z",
+  "updated_at": "2026-08-17T21:43:09.691458Z",
+  "closed_at": "2026-08-17T21:43:09.691458Z",
+  "close_reason": "Fixed: Added ZeroizeOnDrop to OscoreState in lichen-gateway/src/handoff.rs which holds master_secret. Verified provisioning sessions already implement zeroize on drop correctly.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.11.2",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.1.5",
   "title": "Rust: 64-entry sliding window",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:00.181894Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:00.181894Z",
+  "updated_at": "2026-08-17T21:39:42.208416Z",
+  "closed_at": "2026-08-17T21:39:42.208416Z",
+  "close_reason": "Spec-compliant: spec section 5.1 specifies 32-frame window, Rust implementation uses 32-slot u32 bitmask per spec. Bead title says 64-entry but contradicts spec. If 64-entry is needed, requires spec change first (design decision).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.1.5",

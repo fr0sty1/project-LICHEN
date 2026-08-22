@@ -3,13 +3,15 @@
   "title": "Python: ProxyResource",
   "description": "Acceptance: CoAP forward proxy works",
   "notes": "Already implemented in resources.py ProxyResource",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:47.859098Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:47.859098Z",
+  "updated_at": "2026-08-17T22:46:42.293036Z",
+  "closed_at": "2026-08-17T22:46:42.293036Z",
+  "close_reason": "Already fixed: ProxyResource fully implemented in python/src/lichen/coap/resources/proxy.py with SSRF protection and RFC 7252 compliance",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.1",

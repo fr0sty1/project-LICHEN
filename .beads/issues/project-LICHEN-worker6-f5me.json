@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-f5me",
+  "title": "Function signature mismatch: tx_queue_empty const vs non-const",
+  "description": "Implementation at line 407 declares 'bool tx_queue_empty(const struct tx_queue *queue)' but header tx_queue.h:202 declares 'bool tx_queue_empty(struct tx_queue *_Nonnull queue)' without const. Compiler error: 'conflicting types for tx_queue_empty'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:13:33.722028Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:17:59.756523Z",
+  "closed_at": "2026-08-17T18:17:59.756523Z",
+  "close_reason": "Fixed tx_queue_empty and tx_queue_stats_get signature mismatch - removed const from implementations to match header declarations (non-const due to internal locking). tx_queue_count correctly keeps const per its 'logically const' API design.",
+  "labels": [
+    "file:lichen/subsys/lichen/link/tx_queue.c",
+    "line:407"
+  ]
+}

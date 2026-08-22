@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.12.3",
   "title": "Zephyr: Security ↔ link layer integration",
-  "status": "open",
+  "notes": "Needs design decision: requires architectural decisions about security/link layer API interfaces and callbacks for Zephyr RTOS implementation",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:43.745723Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:43.745723Z",
+  "updated_at": "2026-08-17T21:45:58.454305Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.12.3",

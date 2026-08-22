@@ -3,13 +3,15 @@
   "title": "Python: Observe /msg/inbox",
   "description": "Acceptance: inbox changes trigger notifications",
   "notes": "Already implemented via ObservableResource",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:14.991964Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:14.991964Z",
+  "updated_at": "2026-08-17T22:51:10.433975Z",
+  "closed_at": "2026-08-17T22:51:10.433975Z",
+  "close_reason": "Already implemented: MessagesResource extends ObservableResource and deliver() calls updated_state() to notify observers. Children are testing/validation concerns tracked separately.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.1.3",

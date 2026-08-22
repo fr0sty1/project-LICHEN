@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.2.4",
   "title": "Vectors: OSCORE-protected LCI exchanges",
   "description": "Acceptance: test vectors for OSCORE LCI",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:55.210585Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:55.210585Z",
+  "updated_at": "2026-08-17T22:58:49.18677Z",
+  "closed_at": "2026-08-17T22:58:49.18677Z",
+  "close_reason": "Needs design decision: Creating new OSCORE-protected LCI exchange test vectors requires designing: (1) which LCI resources need coverage, (2) vector format combining OSCORE protection with LCI CoAP operations, (3) coordination with sibling implementation beads (Python/Rust/Zephyr OSCORE over local link). This is feature work, not a bug fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.2.4",

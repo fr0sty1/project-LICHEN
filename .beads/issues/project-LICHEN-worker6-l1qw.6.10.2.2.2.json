@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.10.2.2.2",
   "title": "Implement: Python oracle for Epoch Increment",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:42.266563Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:42.266563Z",
+  "updated_at": "2026-08-17T21:40:04.358387Z",
+  "closed_at": "2026-08-17T21:40:04.358387Z",
+  "close_reason": "Already implemented: sender-side oracle in link_layer.py (random epoch init [128,255], increment on seqnum wrap, exhaustion handling, persistence), receiver-side oracle in replay.py (ReplayWindow/ReplayProtector with epoch-aware acceptance rules). Verified by test_replay.py with epoch increment tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.2.2.2",

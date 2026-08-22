@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.6",
   "title": "Cross-validate: OSCORE roundtrip all impls",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:36.138965Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:36.138965Z",
+  "updated_at": "2026-08-17T21:55:30.042391Z",
+  "closed_at": "2026-08-17T21:55:30.042391Z",
+  "close_reason": "Added cross-validation tests for OSCORE request/response protection. Python now tests RFC 8613 Appendix C.4-C.8 vectors alongside Rust. Both implementations produce identical ciphertext for the same inputs, verifying interoperability.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.6",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.6.3",
   "title": "Zephyr: export_oscore after handshake",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:43.750366Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:43.750366Z",
+  "updated_at": "2026-08-17T21:58:23.699812Z",
+  "closed_at": "2026-08-17T21:58:23.699812Z",
+  "close_reason": "Already fixed - export_oscore fully implemented for both initiator and responder in edhoc_initiator.c and edhoc_responder.c with edhoc_kdf_int helper",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.6.3",

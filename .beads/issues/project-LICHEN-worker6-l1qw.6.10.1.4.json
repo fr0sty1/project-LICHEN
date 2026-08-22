@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.1.4",
   "title": "Python: 64-entry sliding window",
-  "status": "open",
+  "notes": "Epic - needs sub-issue tracking. Work tracked in children: .4.1 (closed), .4.2, .4.3, .4.4 (open)",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:58.484557Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:58.484557Z",
+  "updated_at": "2026-08-17T21:38:24.073699Z",
+  "defer_until": "2026-08-24T14:38:23.76944-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.1.4",

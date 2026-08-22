@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.11.5",
   "title": "Per-registration OSCORE Observe",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:35.532519Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:35.532519Z",
+  "updated_at": "2026-08-17T22:27:56.418044Z",
+  "closed_at": "2026-08-17T22:27:56.418044Z",
+  "close_reason": "Needs design decision: Task has no description. Existing secure channel has basic OSCORE observe tracking infrastructure (_RequestCorrelation with request_id and observe flag in channel.py). Specific requirements for per-registration OSCORE Observe need to be defined (e.g., separate OSCORE contexts per registration, B.1.2 Echo recovery per RFC 8613, or id_context per observe token).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.11.5",

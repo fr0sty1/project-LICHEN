@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.13.2",
   "title": "Rust: duty cycle TX queue gating",
   "description": "Duty cycle integration with TX queue. AC: TX queue respects duty cycle budget before transmitting.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:18.589044Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:18.589044Z",
+  "updated_at": "2026-08-17T22:35:17.012827Z",
+  "closed_at": "2026-08-17T22:35:17.012827Z",
+  "close_reason": "Added pop_if_allowed() and has_allowed() methods to TxQueue that integrate duty cycle congestion levels. TX queue now respects duty cycle budget: NORMAL allows all priorities, ELEVATED blocks NORMAL/BULK, CRITICAL allows only SOS/ROUTING, EXHAUSTED blocks all. 12 new tests verify behavior.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.13.2",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.2.3",
   "title": "Rust: Epoch increment on wrap/reboot",
-  "status": "open",
+  "notes": "Needs design decision: Stack lacks storage access for runtime epoch persistence.\n\nCurrent state:\n- Boot-time persistence: Done in lichend.rs (load, increment +1, save)\n- Seqnum wrap: Stack::try_next_link_tuple() increments epoch but does NOT persist\n\nMissing: When seqnum wraps 65535-\u003e0, epoch increments in memory but isn't saved. Reboot before next boot-time save would restore old epoch causing replay rejection.\n\nDesign options:\n1. Add generic NonVolatile storage param to Stack\n2. Add callback closure for epoch change notification  \n3. Return epoch-changed flag from try_next_link_tuple(), caller persists\n\nSee DaoTxState in lichen-rpl/src/persistence.rs for pattern reference.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:07.508383Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:07.508383Z",
+  "updated_at": "2026-08-17T21:42:23.836046Z",
+  "defer_until": "2026-08-24T14:42:18.811739-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.2.3",

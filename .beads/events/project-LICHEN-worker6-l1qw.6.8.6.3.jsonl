@@ -1,1 +1,2 @@
 {"id":"019f9762-d20c-7338-886f-d6ec1edfe89c","issue_id":"project-LICHEN-worker6-l1qw.6.8.6.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:47:43.756211Z"}
+{"id":"01a011bb-9edd-7259-8a25-248c848a0f0e","issue_id":"project-LICHEN-worker6-l1qw.6.8.6.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - export_oscore fully implemented for both initiator and responder in edhoc_initiator.c and edhoc_responder.c with edhoc_kdf_int helper","created_at":"2026-08-17T21:58:23.709155Z"}

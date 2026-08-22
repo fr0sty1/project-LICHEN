@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.2.3",
   "title": "Zephyr: create_message_1",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:15.706535Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:15.706535Z",
+  "updated_at": "2026-08-17T21:48:45.759347Z",
+  "closed_at": "2026-08-17T21:48:45.759347Z",
+  "close_reason": "Already fixed - edhoc_initiator_create_msg1() implemented in lichen/subsys/lichen/edhoc/edhoc_initiator.c:80-138",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.2.3",

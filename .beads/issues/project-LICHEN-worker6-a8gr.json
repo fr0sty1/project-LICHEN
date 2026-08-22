@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-a8gr",
+  "title": "tx_queue_stats_get claims thread-safety but lacks lock",
+  "description": "Header (line 207-208) documents: 'Thread-safe atomic copy under lock'. Implementation (lines 416-430) does NOT acquire queue-\u003elock before copying stats. The implementation comment acknowledges this: 'This read is not atomic with respect to concurrent writes.' Either fix the implementation to take the lock, or correct the header documentation.\n\nFile: lichen/subsys/lichen/link/tx_queue.c\nLine: 416",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:36.230456Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:31:36.230456Z",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-tu92",
+  "title": "tx_queue_stats_get() locking mismatch with documentation",
+  "description": "Header line 207 claims 'Thread-safe atomic copy under lock (no longer non-atomic)' but implementation (lines 416-430) does NOT acquire the lock before copying stats. The implementation comment explicitly says 'This read is not atomic with respect to concurrent writes.' Under concurrent push/pop operations, callers could observe torn reads of the stats struct. Either the header documentation is wrong or the code needs locking added.\n\nFile: lichen/subsys/lichen/link/tx_queue.c\nLine: 416",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:37.92132Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T23:01:44.952007Z",
+  "closed_at": "2026-08-17T23:01:44.952007Z",
+  "close_reason": "False positive: tx_queue_stats_get() at lines 420-432 DOES acquire lock (line 428: lock_queue), copy stats (line 429), then release (line 430: unlock_queue). Documentation matches implementation. Bead line reference (416) was in wrong function (tx_queue_empty).",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

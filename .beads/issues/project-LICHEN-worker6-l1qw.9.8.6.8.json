@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.6.8",
   "title": "Vectors: proxy request/response test cases",
   "description": "Acceptance: shared test vectors for proxy",
-  "status": "open",
+  "notes": "Needs design decision: sibling implementation issues (.3-.6 for Rust and Zephyr) are still open; shared test vectors require a cross-implementation contract that should be designed after at least one additional implementation exists.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:59.361973Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:59.361973Z",
+  "updated_at": "2026-08-17T22:50:15.771208Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.8",

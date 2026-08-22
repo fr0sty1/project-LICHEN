@@ -3,13 +3,15 @@
   "title": "Zephyr: OSCORE context for local link",
   "description": "Acceptance: OSCORE context for LCI",
   "notes": "Already implemented in coap_oscore.c",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:54.076246Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:54.076246Z",
+  "updated_at": "2026-08-17T22:57:44.210572Z",
+  "closed_at": "2026-08-17T22:57:44.210572Z",
+  "close_reason": "Already fixed - OSCORE context for local link fully implemented in lichen/subsys/lichen/oscore/coap_oscore.c with context lookup, request unprotection, and response protection",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.2.3",

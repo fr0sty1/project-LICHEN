@@ -1,0 +1,2 @@
+{"id":"01a01128-590d-71f0-a48a-7d92cf9154bc","issue_id":"project-LICHEN-worker6-hafx","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T19:17:32.045127Z"}
+{"id":"01a0118a-33cb-70a0-af67-6df04141003f","issue_id":"project-LICHEN-worker6-hafx","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: current code uses 'if n_channels \u003c 2 { return 0; }' guard instead of .max(3) clamp, tests verify correct edge case handling","created_at":"2026-08-17T21:04:25.035042Z"}

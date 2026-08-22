@@ -3,13 +3,15 @@
   "title": "Python: POST /msg/ack",
   "description": "Acceptance: MessageReceiptsResource works",
   "notes": "Already implemented as MessageReceiptsResource",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:30.224609Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:30.224609Z",
+  "updated_at": "2026-08-17T22:55:29.352222Z",
+  "closed_at": "2026-08-17T22:55:29.352222Z",
+  "close_reason": "Already fixed: MessageReceiptsResource is fully implemented in python/src/lichen/coap/resources/messaging.py with complete POST /msg/ack handling. All 26 receipt tests pass. Child issues for oracle/vectors are separate work.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.3.1",

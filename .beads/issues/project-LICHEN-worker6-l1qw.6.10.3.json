@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.3",
   "title": "Cross-validate: Replay window semantics parity",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:11.233102Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:11.233102Z",
+  "updated_at": "2026-08-17T21:45:24.130065Z",
+  "closed_at": "2026-08-17T21:45:24.130065Z",
+  "close_reason": "Added cross-validation tests for replay window semantics parity: Python test_vectors.py and Rust shared_vectors.rs both now validate against shared test/vectors/replay_window.json. Fixed one incorrect test vector (out_of_order_progressive_window_slide step 9: seqnum 0 at offset 30 should be accepted within 32-slot window). Both implementations produce identical accept/reject decisions for all sequence vectors.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.3",

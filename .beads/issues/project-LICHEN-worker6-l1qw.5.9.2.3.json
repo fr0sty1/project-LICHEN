@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.2.3",
   "title": "Source: rpl",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:54.209675Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:54.209675Z",
+  "updated_at": "2026-08-17T21:34:32.360304Z",
+  "closed_at": "2026-08-17T21:34:32.360304Z",
+  "close_reason": "Needs design decision: GradientSource.RPL exists in enum (gradient.py:80) and priority system works, but no implementation populates gradient table from RPL. RPL uses separate RoutingTable for source routes (non-storing mode). Design needed: when should RPL populate gradient entries (on DAO at root? on DIO process?), what values to use for seq_num/hop_count/expires, and whether this integration is actually needed given RPL's source-routing model vs gradient's hop-by-hop model.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.2.3",

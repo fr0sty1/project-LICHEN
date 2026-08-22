@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-x9mb",
+  "title": "Root demotion via forged DIO version spoofing",
+  "description": "A ROOT node accepts any DIO with a 'newer' lollipop version for its DODAG and calls _adopt_version(), which sets role to UNJOINED (line 231). An attacker can demote the root by sending a DIO with version in the linear region (0-127), which is always considered newer than circular values (128-255). This disrupts the entire routing domain. The code assumes link-layer authentication but does not verify it before state transitions.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:13:14.319615Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:18:10.427952Z",
+  "closed_at": "2026-08-17T18:18:10.427952Z",
+  "close_reason": "Already fixed: Root now ignores all DIOs (lines 184-188). The vulnerable _adopt_version() call was removed - roots are the authoritative source for DODAG version and cannot be demoted by forged DIOs.",
+  "labels": [
+    "file:python/src/lichen/rpl/dodag.py",
+    "line:185"
+  ]
+}

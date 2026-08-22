@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-5qtr",
+  "title": "epoch.to_bytes raises OverflowError for negative or large values",
+  "description": "epoch.to_bytes(4, 'little') raises OverflowError if epoch \u003c 0 or epoch \u003e= 2^32. No validation or documentation of valid range. Same issue at line 198. Unlikely in practice since epochs are typically unix timestamps within u32 range, but unhandled exception is unexpected behavior.\n\nFile: python/src/lichen/channel_plan.py\nLine: 55",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:43.335133Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:31:43.335133Z",
+  "labels": [
+    "code-review",
+    "channel_plan"
+  ]
+}

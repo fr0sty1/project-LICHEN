@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.5.5",
   "title": "5.03 Service Unavailable response generation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:57.426844Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:57.426844Z",
+  "updated_at": "2026-08-17T22:17:33.355369Z",
+  "closed_at": "2026-08-17T22:17:33.355369Z",
+  "close_reason": "Already implemented: congestion_service_unavailable() in params.py builds 5.03 responses with CBOR payload (reason, retry_after, level) and Max-Age option. Used in CongestionAwareSite and resources. All 12 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.5.5",

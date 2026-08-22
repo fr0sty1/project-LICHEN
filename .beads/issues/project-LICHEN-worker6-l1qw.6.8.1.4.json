@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.1.4",
   "title": "Vectors: Key derivation consistency",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:11.617705Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:11.617705Z",
+  "updated_at": "2026-08-17T21:51:04.819695Z",
+  "closed_at": "2026-08-17T21:51:04.819695Z",
+  "close_reason": "Added test_x25519_key_derivation_vector test in test_vectors.py that validates Python implementation against test/vectors/x25519.json. Tests verify clamped_scalar, private_key, and Ed25519 public_key derivation. All 3 vectors pass. This establishes the cross-implementation consistency pattern for Rust/Zephyr to follow.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.1.4",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.2.5",
   "title": "R1 Neo: Battery ADC telemetry",
   "description": "Add battery0 telemetry node for R1 Neo ADC voltage-divider sensor. Currently missing from DTS. Implement and validate lichen_hal_power_snapshot_get() battery_percent and battery_voltage_mv.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:01.567976Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:01.567976Z",
+  "updated_at": "2026-08-17T23:06:26.442327Z",
+  "closed_at": "2026-08-17T23:06:26.442327Z",
+  "close_reason": "Already implemented: R1 Neo DTS has battery0 alias (line 56), vbatt voltage-divider node (lines 60-66), and ADC channel@7 (lines 104-111). Board configs enable CONFIG_SENSOR=y and CONFIG_LICHEN_HAS_BATTERY=y. HAL read_voltage_divider_battery() provides battery_voltage_mv. battery_percent is N/A for voltage-dividers (requires fuel gauge). Verified in lichen/boards/muzi/r1_neo/r1_neo_nrf52840.dts and lichen/apps/*/boards/r1_neo_nrf52840.conf.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.2.5",

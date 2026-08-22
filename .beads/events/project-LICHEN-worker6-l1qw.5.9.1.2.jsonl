@@ -1,1 +1,2 @@
 {"id":"019f9765-865f-7870-afb8-1e091197f067","issue_id":"project-LICHEN-worker6-l1qw.5.9.1.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:50:40.991554Z"}
+{"id":"01a011a3-2c07-7956-aeb7-cf2f00d8be50","issue_id":"project-LICHEN-worker6-l1qw.5.9.1.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - GradientTable is fully implemented in rust/lichen-node/src/gradient.rs with struct, impl, Default trait, and tests","created_at":"2026-08-17T21:31:41.447613Z"}

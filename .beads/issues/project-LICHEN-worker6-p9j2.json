@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-p9j2",
+  "title": "tx_queue_destroy declared but not implemented in header",
+  "description": "Function declared at line 231 but no implementation exists in tx_queue.c. Any caller will fail at link time with undefined reference error.\n\nFile: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 231",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:38.748243Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T23:00:54.813094Z",
+  "closed_at": "2026-08-17T23:00:54.813094Z",
+  "close_reason": "Implemented tx_queue_destroy function at line 451 in tx_queue.c. Also fixed pre-existing corrupted code (duplicate function body) at lines 52-71 that was blocking compilation.",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

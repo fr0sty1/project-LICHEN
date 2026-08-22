@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ayad",
+  "title": "Unbounded rollcall memory growth - no cleanup mechanism",
+  "description": "File: python/src/lichen/coap/resources/emergency.py:114\n\nRollcallResource._rollcalls grows unbounded with no expiration or DELETE handler.\n\n**Failure scenario:** Long-running node receives many POST /rollcall requests; memory exhaustion over time as entries are never removed.\n\n**Verdict:** CONFIRMED",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T23:31:17.686502Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T23:31:17.686502Z",
+  "labels": [
+    "efficiency",
+    "coap",
+    "emergency"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-a2yi",
+  "title": "SosResource lacks OSCORE authentication check",
+  "description": "SosResource.render_post (line 70) and render_delete (line 101) do not verify OSCORE protection via request.opt.object_security, unlike HandoffResource (line 81) which follows the codebase pattern for security-sensitive resources. Unauthenticated POST allows attackers to trigger false SOS alerts causing DoS. Unauthenticated DELETE allows attackers to cancel legitimate emergency alerts, a safety hazard in real emergencies. Add require_oscore parameter and check at lines 71 and 102.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:29.857595Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:19:24.36697Z",
+  "closed_at": "2026-08-17T18:19:24.36697Z",
+  "close_reason": "Fixed: Added require_oscore parameter to SosResource.__init__ (defaults True), and added OSCORE authentication checks at the start of render_post and render_delete methods. Unauthenticated requests now return 4.01 Unauthorized, matching HandoffResource and RollcallResource patterns.",
+  "labels": [
+    "file:python/src/lichen/coap/resources/emergency.py",
+    "line:70"
+  ]
+}

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.2.5",
   "title": "Source priority ranking",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:56.508709Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:56.508709Z",
+  "updated_at": "2026-08-17T21:33:44.481255Z",
+  "closed_at": "2026-08-17T21:33:44.481255Z",
+  "close_reason": "Already implemented: GradientSource.priority returns 0 (Low) for DATA and 1 (High) for ANNOUNCE/RREP/RPL per spec 11.3. Ranking is used in GradientEntry._rank() for replacement decisions. Tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.2.5",

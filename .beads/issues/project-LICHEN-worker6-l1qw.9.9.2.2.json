@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.9.2.2",
   "title": "Rust: OSCORE over local link",
   "description": "Acceptance: OSCORE protects local CoAP",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:51.680061Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:51.680061Z",
+  "updated_at": "2026-08-17T22:58:38.334245Z",
+  "closed_at": "2026-08-17T22:58:38.334245Z",
+  "close_reason": "Already implemented and tested: SecureStack in lichen-node/src/secure.rs provides OSCORE-protected CoAP over local link. 12 unit tests pass including secure_stack_oscore_roundtrip which verifies end-to-end encryption.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.9.2.2",

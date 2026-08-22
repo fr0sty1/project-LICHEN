@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.3.4",
   "title": "Vectors: receipt CBOR payloads",
   "description": "Acceptance: shared test vectors for receipts",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:34.745837Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:34.745837Z",
+  "updated_at": "2026-08-17T22:57:13.293768Z",
+  "closed_at": "2026-08-17T22:57:13.293768Z",
+  "close_reason": "Created test/vectors/receipt_cbor.json with 16 test vectors covering valid receipts (delivered/read/failed status), edge cases (min/max values), and invalid payloads (missing fields, wrong types, invalid status)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.3.4",

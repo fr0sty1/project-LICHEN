@@ -1,1 +1,2 @@
 {"id":"019f9765-96d5-7324-94d0-e1ad94d1175b","issue_id":"project-LICHEN-worker6-l1qw.5.9.1.5","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:50:45.205207Z"}
+{"id":"01a011a3-8b2c-7b17-a9f4-81fc3943eead","issue_id":"project-LICHEN-worker6-l1qw.5.9.1.5","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - coords field exists in both Python (GradientEntry.coords tuple) and Rust (GeoCoords struct with from_app_data parser)","created_at":"2026-08-17T21:32:05.804727Z"}

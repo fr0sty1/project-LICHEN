@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.3.2",
   "title": "Rust: receipts client",
   "description": "Acceptance: Rust client for receipts",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:31.974083Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:31.974083Z",
+  "updated_at": "2026-08-17T22:55:44.115682Z",
+  "closed_at": "2026-08-17T22:55:44.115682Z",
+  "close_reason": "Feature implementation task - requires adding new receipt client types and CBOR codecs, not a minimal code fix",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.3.2",

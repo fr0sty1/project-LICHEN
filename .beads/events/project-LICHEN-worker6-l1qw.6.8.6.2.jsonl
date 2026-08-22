@@ -1,1 +1,2 @@
 {"id":"019f9762-cd73-7795-baac-83dca4da2a7a","issue_id":"project-LICHEN-worker6-l1qw.6.8.6.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:47:42.579505Z"}
+{"id":"01a011ba-78be-7ce8-bc0f-713019d15a0b","issue_id":"project-LICHEN-worker6-l1qw.6.8.6.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - export_oscore() is called on both initiator and responder after handshake completion in provisioning.rs (lines 636, 815)","created_at":"2026-08-17T21:57:08.414846Z"}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.6.7",
   "title": "Authorization: method + target filtering",
   "description": "Acceptance: filter by method and target",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:57.89533Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:57.89533Z",
+  "updated_at": "2026-08-17T22:50:11.354207Z",
+  "closed_at": "2026-08-17T22:50:11.354207Z",
+  "close_reason": "Needs design decision: No spec defines method+target filtering policy. Current proxy validates mesh URIs (SSRF protection) but no spec specifies which methods/paths to restrict. Requires design decisions: 1) Which methods allowed (GET-only? PUT?), 2) Which target paths filtered, 3) Authorization model (ACL, whitelist, role-based), 4) Configuration mechanism. Reopen with design spec.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.6.7",

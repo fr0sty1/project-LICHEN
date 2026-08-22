@@ -3,13 +3,15 @@
   "title": "Python: GET /msg/inbox",
   "description": "Acceptance: MessagesResource serves inbox",
   "notes": "Already implemented as MessagesResource",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:12.816017Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:12.816017Z",
+  "updated_at": "2026-08-17T22:50:26.315925Z",
+  "closed_at": "2026-08-17T22:50:26.315925Z",
+  "close_reason": "Already fixed - MessagesResource exists in messaging.py and is registered at /msg/inbox in site.py with comprehensive test coverage in test_messages_resource.py",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.1.1",

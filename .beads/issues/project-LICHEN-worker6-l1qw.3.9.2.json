@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.9.2",
   "title": "Rust: Rule Versioning implementation",
   "description": "Implement DIO Rule Version Option, Rule 255 fallback, decompression failure handling in Rust",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:14.497757Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.497255Z",
+  "updated_at": "2026-08-17T21:22:12.382426Z",
+  "closed_at": "2026-08-17T21:22:12.382426Z",
+  "close_reason": "Implemented Rule Versioning in Rust: RULE_SET_VERSION=2, SCHC_RULE_VERSION_TYPE=0x13, SchcRuleVersionOption struct with to_bytes/from_bytes/current/is_current methods. Added 8 unit tests, all passing.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.9.2",

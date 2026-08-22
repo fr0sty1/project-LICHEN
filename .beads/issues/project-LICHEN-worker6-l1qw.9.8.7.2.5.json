@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.2.5",
   "title": "Vectors: sent messages CBOR payloads",
   "description": "Acceptance: shared test vectors for sent",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:29.123567Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:29.123567Z",
+  "updated_at": "2026-08-17T22:54:51.017054Z",
+  "closed_at": "2026-08-17T22:54:51.017054Z",
+  "close_reason": "Needs design decision: This is a content creation task requiring design of test cases for sent messages CBOR payloads (similar to presence_cbor.json pattern). Not a code bug to fix.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.2.5",

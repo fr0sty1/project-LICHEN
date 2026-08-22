@@ -1,1 +1,2 @@
 {"id":"019f9763-5647-7db7-984c-bb11c7661365","issue_id":"project-LICHEN-worker6-l1qw.9.8.7.1.5","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:48:17.6079Z"}
+{"id":"01a011eb-d82d-720f-a712-cf796ac2b244","issue_id":"project-LICHEN-worker6-l1qw.9.8.7.1.5","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed: GET /msg/inbox fully implemented in coap_msg.c (handler at line 697, CoAP resource at line 876)","created_at":"2026-08-17T22:51:04.109141Z"}

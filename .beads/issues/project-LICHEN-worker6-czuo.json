@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-czuo",
+  "title": "Missing tx_queue_destroy implementation",
+  "description": "tx_queue_destroy is declared in tx_queue.h (line 231) but not defined in tx_queue.c. It is called by production code in lora_l2.c and tests in main.c. This will cause a linker error: undefined reference to tx_queue_destroy. The function should call pthread_mutex_destroy on POSIX and be a no-op on Zephyr.\n\nFile: lichen/subsys/lichen/link/tx_queue.c\nLine: 448",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:35.389126Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:35:21.963833Z",
+  "closed_at": "2026-08-17T18:35:21.963833Z",
+  "close_reason": "Added missing tx_queue_destroy implementation: pthread_mutex_destroy on POSIX, no-op on Zephyr. Build succeeds, all 19 tx_queue tests pass.",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

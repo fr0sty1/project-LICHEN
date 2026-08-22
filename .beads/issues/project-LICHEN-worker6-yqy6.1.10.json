@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.1.10",
   "title": "Synthetic device identity",
   "description": "Validate lichen_hal_synthetic_device_identity_allowed() and lichen_hal_synthetic_device_identity_get() for native_sim and test builds. Ensure production builds reject synthetic identity.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:12:32.952802Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:12:32.952802Z",
+  "updated_at": "2026-08-17T23:02:51.351733Z",
+  "closed_at": "2026-08-17T23:02:51.351733Z",
+  "close_reason": "Added 5 unit tests to lichen/tests/hal/src/main.c validating synthetic device identity functions: allowed check returns true on native_sim/false on production, get returns valid non-zero ID, null pointer rejection, small buffer rejection, production build rejection",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.1.10",

@@ -1,0 +1,2 @@
+{"id":"01a01128-1880-753b-a0db-3dc6a5eed1bb","issue_id":"project-LICHEN-worker6-77p7","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T19:17:15.520343Z"}
+{"id":"01a01189-b3cf-71b1-abfc-187bf12ec65a","issue_id":"project-LICHEN-worker6-77p7","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added lock_queue/unlock_queue calls around stats copy in tx_queue_stats_get to match header's thread-safety claim. Tests pass.","created_at":"2026-08-17T21:03:52.271112Z"}

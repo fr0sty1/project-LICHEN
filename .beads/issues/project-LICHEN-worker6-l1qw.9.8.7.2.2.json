@@ -3,13 +3,15 @@
   "title": "Python: GET /msg/sent/{id}",
   "description": "Acceptance: get specific sent message",
   "notes": "Already implemented as SentMessageDetailResource",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:25.944967Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:25.944967Z",
+  "updated_at": "2026-08-17T22:54:31.21444Z",
+  "closed_at": "2026-08-17T22:54:31.21444Z",
+  "close_reason": "Fixed bug: sent message eviction used hardcoded _MESSAGES_MAX (100) instead of self._max_messages. GET /msg/sent/{id} working with SentMessageDetailsResource class. 60/60 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.2.2",

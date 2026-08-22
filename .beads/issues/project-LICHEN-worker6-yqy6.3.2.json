@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-yqy6.3.2",
   "title": "RAK4631: BLE local transport",
   "description": "Validate BLE local-client transport on RAK4631 nRF52840. This is the BLE-class MCU reference. Test peripheral mode, GATT services, local client framing.",
-  "status": "open",
+  "notes": "Hardware validation task - requires physical RAK4631 nRF52840 board to test BLE peripheral mode, GATT services, and local client framing",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:22.303953Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:22.303953Z",
+  "updated_at": "2026-08-17T23:05:53.02447Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.3.2",

@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.11.3",
   "title": "Zephyr: Secure element / flash readout protection",
-  "status": "open",
+  "notes": "Needs design decision: requires hardware secure element selection and flash readout protection architecture decisions before implementation",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:26.888207Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:26.888207Z",
+  "updated_at": "2026-08-17T21:40:43.433541Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.11.3",

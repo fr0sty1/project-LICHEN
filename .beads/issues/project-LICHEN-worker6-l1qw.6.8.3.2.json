@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.8.3.2",
   "title": "Rust: process_message_1 + create_message_2",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:21.134677Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:21.134677Z",
+  "updated_at": "2026-08-17T21:49:16.97362Z",
+  "closed_at": "2026-08-17T21:49:16.97362Z",
+  "close_reason": "Already fixed - process_message_1 (which creates Message 2) is implemented at provisioning.rs:609-620 with test coverage at line 1036",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.3.2",

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jmua",
+  "title": "Missing upper bound check for select_channel result",
+  "description": "At line 181, the test only asserts ch \u003e= 1 ('Never returns CH0'). It does not verify the channel is within the plan's valid range. For EU868 with 8 channels (indices 0-7), if select_channel returns 8 (which it can: 1+(h%8) where h%8=7), that would be out of bounds for frequency() calls.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:57.244394Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:12:57.244394Z",
+  "labels": [
+    "file:python/tests/test_channel_plan.py",
+    "line:181"
+  ]
+}

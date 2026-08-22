@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.9.1.2",
   "title": "Rust: DIO/DAO/DIS carry link signatures",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:19.271023Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:19.271023Z",
+  "updated_at": "2026-08-17T21:59:55.008293Z",
+  "closed_at": "2026-08-17T21:59:55.008293Z",
+  "close_reason": "Already implemented - all LICHEN frames carry link-layer Schnorr signatures (lichen-link), which protects DIO/DAO/DIS messages by design. Signature verification gates RPL processing. Tests pass: ccp_beacon_sig_gate.rs (11 tests), dao_origin_vectors.rs (2 tests), lichen-link (29 tests).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.9.1.2",

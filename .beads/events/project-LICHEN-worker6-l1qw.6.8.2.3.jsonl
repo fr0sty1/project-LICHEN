@@ -1,1 +1,2 @@
 {"id":"019f9762-6481-763d-99cc-4a3a88bdfd02","issue_id":"project-LICHEN-worker6-l1qw.6.8.2.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:47:15.713409Z"}
+{"id":"01a011b2-cd4b-7311-a910-4e9f1e9231c4","issue_id":"project-LICHEN-worker6-l1qw.6.8.2.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already fixed - edhoc_initiator_create_msg1() implemented in lichen/subsys/lichen/edhoc/edhoc_initiator.c:80-138","created_at":"2026-08-17T21:48:45.771201Z"}

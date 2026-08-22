@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-az4x",
+  "title": "Hysteresis bypasses MaxRankIncrease protection",
+  "description": "The hysteresis logic fetches 'current' from self.parents (line 258), not from the 'admissible' list (line 243). If the current preferred parent becomes non-admissible (path cost exceeds _lowest_rank + max_rank_increase), the hysteresis check on lines 262-264 can still select them when improvement \u003c threshold. This violates RFC 6550 MaxRankIncrease constraint, risking routing loops. Fix: check 'if current is not None and self._admissible(current) and current.neighbor_id != best.neighbor_id'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:13:22.467888Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:17:12.792386Z",
+  "closed_at": "2026-08-17T18:17:12.792386Z",
+  "close_reason": "Fixed: Added _admissible(current) check to hysteresis condition (line 259). This ensures a non-admissible current parent cannot be retained via hysteresis, enforcing RFC 6550 MaxRankIncrease constraint.",
+  "labels": [
+    "file:python/src/lichen/rpl/dodag.py",
+    "line:258"
+  ]
+}

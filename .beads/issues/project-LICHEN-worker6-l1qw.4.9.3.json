@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.9.3",
   "title": "Zephyr: IPv6 \u003c-\u003e SCHC layer integration",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:33.621792Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:33.621792Z",
+  "updated_at": "2026-08-17T21:23:29.872679Z",
+  "closed_at": "2026-08-17T21:23:29.872679Z",
+  "close_reason": "Already implemented: Zephyr C has full IPv6 \u003c-\u003e SCHC integration in link layer (lichen_link_tx/rx call lichen_schc_compress/decompress)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.9.3",

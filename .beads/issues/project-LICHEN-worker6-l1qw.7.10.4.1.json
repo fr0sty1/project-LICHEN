@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.4.1",
   "title": "Python: ACK_TIMEOUT=15s, MAX_RETRANSMIT=2",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:36.702413Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:36.702413Z",
+  "updated_at": "2026-08-17T22:11:10.988759Z",
+  "closed_at": "2026-08-17T22:11:10.988759Z",
+  "close_reason": "Already fixed: LICHEN_ACK_TIMEOUT=15.0 and LICHEN_MAX_RETRANSMIT=2 correctly set in python/src/lichen/coap/params.py",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.4.1",

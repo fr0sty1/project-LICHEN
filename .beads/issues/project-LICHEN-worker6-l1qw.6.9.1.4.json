@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.9.1.4",
   "title": "Vectors: RPL message signature verification",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:22.734125Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:22.734125Z",
+  "updated_at": "2026-08-17T22:10:38.750628Z",
+  "closed_at": "2026-08-17T22:10:38.750628Z",
+  "close_reason": "Already covered. dao_origin_signature.json (50+ vectors) tests DAO origin signatures, schnorr48.json tests the crypto algorithm, link_frame.json tests signed frames, ccp_beacon_sig_gate.json tests L2 signature gating. Link-layer signatures protect all frames including RPL messages by design - same rationale as closed sibling (Rust).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.9.1.4",

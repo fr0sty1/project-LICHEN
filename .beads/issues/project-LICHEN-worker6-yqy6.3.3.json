@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.3.3",
   "title": "RAK4631: Serial local transport",
   "description": "Validate serial local-client transport on RAK4631 via native USB. Used for serial-to-LoRa bridge development. Test USB CDC ACM and UART paths.",
-  "status": "open",
+  "notes": "Hardware validation task - requires physical RAK4631 hardware to test USB CDC ACM and UART serial paths. Cannot be resolved via code changes alone.",
+  "status": "deferred",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:23.567203Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:23.567203Z",
+  "updated_at": "2026-08-17T23:06:07.779482Z",
+  "defer_until": "2026-08-24T16:06:07.466668-07:00",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.3.3",

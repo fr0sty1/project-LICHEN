@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.3.3",
   "title": "Zephyr: process_message_1 + create_message_2",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:23.432865Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:23.432865Z",
+  "updated_at": "2026-08-17T21:56:22.076963Z",
+  "closed_at": "2026-08-17T21:56:22.076963Z",
+  "close_reason": "Already implemented: edhoc_responder_process_msg1() at line 78 in edhoc_responder.c both processes Message 1 and creates Message 2",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.3.3",

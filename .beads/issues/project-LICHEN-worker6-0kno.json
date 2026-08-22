@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-0kno",
+  "title": "Duplicate out-of-bounds bug in hash-based channel selection",
+  "description": "File: rust/lichen-core/src/lib.rs\nLine: 166\n\nselect_channel_with_gnss hash-based path (priority 2) contains identical flawed logic: let n = n_channels.max(3); return 1 + (h % (n-1) as u32) as u8. Same out-of-bounds behavior when n_channels \u003c 3. This is code duplication of the bug at line 103.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T19:17:33.290347Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T21:03:37.656611Z",
+  "closed_at": "2026-08-17T21:03:37.656611Z",
+  "close_reason": "Fixed duplicate out-of-bounds bug in hash-based channel selection (line 166). Removed faulty n_channels.max(3) clamping that returned invalid channel indices when n_channels \u003c 3. Now returns channel 0 when n_channels \u003c 2 (no data channels available), otherwise correctly computes 1 + (h % (n_channels - 1)) for valid range [1, n_channels-1]. Same fix applied to synchronized_hop_channel (line 103). Updated test to verify correct behavior."
+}

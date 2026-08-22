@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.2.12",
   "title": "R1 Neo: Bootloader and UF2 flashing",
   "description": "Validate UF2 bootloader on R1 Neo. Test USB mass storage flashing, MCUboot compatibility, and SMP DFU path.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:12.504412Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:12.504412Z",
+  "updated_at": "2026-08-17T23:04:43.397276Z",
+  "closed_at": "2026-08-17T23:04:43.397276Z",
+  "close_reason": "Deferred - hardware validation task requiring physical R1 Neo board access",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.2.12",

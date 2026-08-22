@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.4.3",
   "title": "Zephyr: Priority-based replacement",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:21.093233Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:21.093233Z",
+  "updated_at": "2026-08-17T21:33:29.015078Z",
+  "closed_at": "2026-08-17T21:33:29.015078Z",
+  "close_reason": "Already implemented: entry_better() at gradient.c:39-60 compares (source, seq_num via lichen_seq_newer, hop_count); used in lichen_gradient_update() line 155",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.4.3",

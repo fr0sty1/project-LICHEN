@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-79ui",
+  "title": "No type validation for ts timestamp in RollcallResource",
+  "description": "Line 153 uses data.get('ts', int(time.time())) without validating that ts is a numeric type. An attacker could POST {\"id\": \"x\", \"ts\": \"malicious\"} and the string would be stored as 'started'. Contrast with SosResource (lines 92-97) which properly validates timestamps are finite positive numbers. Add type and range validation before storing.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:12:36.801428Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:12:36.801428Z",
+  "labels": [
+    "file:python/src/lichen/coap/resources/emergency.py",
+    "line:153"
+  ]
+}

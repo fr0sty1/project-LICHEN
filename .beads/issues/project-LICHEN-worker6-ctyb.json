@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ctyb",
+  "title": "tx_queue_empty _Nonnull annotation contradicts documented NULL handling",
+  "description": "Parameter marked _Nonnull but doc says 'NULL returns true'. Implementation confirms NULL is handled (returns true). Annotation should be _Nullable; current state misleads static analyzers and callers about the contract.\n\nFile: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 202",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:31:39.568027Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:31:39.568027Z",
+  "labels": [
+    "code-review",
+    "tx_queue"
+  ]
+}

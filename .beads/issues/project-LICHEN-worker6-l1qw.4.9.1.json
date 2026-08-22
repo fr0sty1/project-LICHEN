@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.9.1",
   "title": "Python: IPv6 \u003c-\u003e SCHC layer integration",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:29.27334Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:29.27334Z",
+  "updated_at": "2026-08-17T21:22:30.470273Z",
+  "closed_at": "2026-08-17T21:22:30.470273Z",
+  "close_reason": "Already fixed - Python IPv6 \u003c-\u003e SCHC integration is complete. The schc/headers.py module imports from lichen.ipv6 (packet, icmpv6, udp) and provides compression profiles for IPv6+UDP+CoAP, IPv6+ICMPv6 Echo, and IPv6+RPL messages. All 174 SCHC tests and 71 IPv6 tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.9.1",

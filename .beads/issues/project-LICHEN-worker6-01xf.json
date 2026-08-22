@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-01xf",
+  "title": "Function signature mismatch: tx_queue_count const vs non-const",
+  "description": "Implementation at line 387 declares 'int tx_queue_count(const struct tx_queue *queue)' but header tx_queue.h:192 declares 'int tx_queue_count(struct tx_queue *_Nonnull queue)' without const. Compiler error: 'conflicting types for tx_queue_count'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:13:32.690466Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:17:21.073913Z",
+  "closed_at": "2026-08-17T18:17:21.073913Z",
+  "close_reason": "Fixed: added const to header declaration (line 192) to match implementation. Updated doc comment from 'non-const due to internal locking' to 'logically const; locking cast internal'.",
+  "labels": [
+    "file:lichen/subsys/lichen/link/tx_queue.c",
+    "line:387"
+  ]
+}

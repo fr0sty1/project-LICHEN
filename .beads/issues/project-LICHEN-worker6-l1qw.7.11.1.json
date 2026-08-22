@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.11.1",
   "title": "Python: Observe subscribe/notify",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:28.6025Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:28.6025Z",
+  "updated_at": "2026-08-17T22:26:15.58759Z",
+  "closed_at": "2026-08-17T22:26:15.58759Z",
+  "close_reason": "Fixed: MessagesResource.render_post now calls deliver() to add POSTed messages to inbox and notify observers. Also fixed _next_id not being updated after POST. All 5 observe tests now pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.11.1",

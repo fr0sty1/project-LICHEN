@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.7.2.3",
   "title": "Rust: sent messages client",
   "description": "Acceptance: Rust client for sent messages",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:27.03792Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:27.03792Z",
+  "updated_at": "2026-08-17T22:55:15.070082Z",
+  "closed_at": "2026-08-17T22:55:15.070082Z",
+  "close_reason": "Implemented Rust client for sent messages: added Sent envelope struct to lichen-client/src/msg.rs, sent() function to lichen-cli/src/commands.rs, Sent command to CLI. GET /msg/sent now accessible via 'lichen sent' command.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.7.2.3",

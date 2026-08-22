@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-omgv",
+  "title": "Root demotes to UNJOINED on newer version DIO",
+  "description": "When a root receives a DIO with a newer version from the same DODAG, _adopt_version() is called which sets role=UNJOINED (line 231). A DODAG root is the authoritative version source per RFC 6550 and must never demote itself. This could cause network collapse if a reflected DIO reaches the root.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-17T18:13:10.414906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-17T18:18:01.890048Z",
+  "closed_at": "2026-08-17T18:18:01.890048Z",
+  "close_reason": "Fixed: Root now ignores all received DIOs. Previously, a root receiving a DIO with a newer version would call _adopt_version() which set role=UNJOINED, violating RFC 6550 (root is the version authority). Added SECURITY comment explaining the rationale.",
+  "labels": [
+    "file:python/src/lichen/rpl/dodag.py",
+    "line:186"
+  ]
+}
