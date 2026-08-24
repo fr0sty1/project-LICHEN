@@ -14,6 +14,9 @@
   "close_reason": "Verified incorrect",
   "lease_expires_at": "2026-07-25T03:01:57.752679172Z",
   "heartbeat_at": "2026-07-25T02:56:57.752679172Z",
+  "labels": [
+    "zephyr"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-5uhj",

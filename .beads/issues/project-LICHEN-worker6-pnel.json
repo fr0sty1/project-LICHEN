@@ -11,6 +11,7 @@
   "updated_at": "2026-08-17T04:12:48.900159Z",
   "labels": [
     "bug",
-    "codereview"
+    "codereview",
+    "zephyr"
   ]
 }

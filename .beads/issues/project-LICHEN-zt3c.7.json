@@ -17,7 +17,8 @@
   "labels": [
     "gateway",
     "global",
-    "networking"
+    "networking",
+    "zephyr"
   ],
   "dependencies": [
     {

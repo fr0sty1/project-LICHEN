@@ -13,5 +13,8 @@
   "closed_at": "2026-07-25T02:33:06.214862941Z",
   "close_reason": "Already fixed",
   "lease_expires_at": "2026-07-25T03:02:29.487387505Z",
-  "heartbeat_at": "2026-07-25T02:57:29.487387505Z"
+  "heartbeat_at": "2026-07-25T02:57:29.487387505Z",
+  "labels": [
+    "zephyr"
+  ]
 }

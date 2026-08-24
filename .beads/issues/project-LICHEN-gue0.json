@@ -14,7 +14,8 @@
   "lease_expires_at": "2026-07-24T21:46:12.390789844Z",
   "heartbeat_at": "2026-07-24T21:41:12.390789844Z",
   "labels": [
-    "codereview"
+    "codereview",
+    "zephyr"
   ],
   "dependencies": [
     {

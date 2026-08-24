@@ -12,7 +12,8 @@
   "started_at": "2026-07-22T20:25:43.906409651Z",
   "labels": [
     "defer-external",
-    "blocked:hardware"
+    "blocked:hardware",
+    "zephyr"
   ],
   "dependencies": [
     {

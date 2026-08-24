@@ -13,6 +13,9 @@
   "started_at": "2026-07-24T16:14:58.771049155Z",
   "lease_expires_at": "2026-07-24T21:59:56.604745896Z",
   "heartbeat_at": "2026-07-24T21:54:56.604745896Z",
+  "labels": [
+    "zephyr"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-1vel",

@@ -17,7 +17,8 @@
   "lease_expires_at": "2026-07-24T21:47:47.436235255Z",
   "heartbeat_at": "2026-07-24T21:42:47.436235255Z",
   "labels": [
-    "evidence-needed"
+    "evidence-needed",
+    "zephyr"
   ],
   "dependencies": [
     {

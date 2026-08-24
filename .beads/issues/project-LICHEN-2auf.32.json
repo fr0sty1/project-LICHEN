@@ -15,7 +15,8 @@
   "heartbeat_at": "2026-07-22T14:18:51.37063824Z",
   "labels": [
     "defer-external",
-    "renode"
+    "renode",
+    "zephyr"
   ],
   "dependencies": [
     {

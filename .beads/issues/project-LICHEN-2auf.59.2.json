@@ -20,7 +20,8 @@
   "labels": [
     "aws",
     "validation",
-    "human"
+    "human",
+    "zephyr"
   ],
   "dependencies": [
     {

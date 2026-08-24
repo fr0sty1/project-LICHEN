@@ -10,7 +10,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-29T18:14:14.945982Z",
   "labels": [
-    "blocked:hardware"
+    "blocked:hardware",
+    "zephyr"
   ],
   "dependencies": [
     {

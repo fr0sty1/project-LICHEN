@@ -11,7 +11,8 @@
   "updated_at": "2026-07-24T19:14:31.849256366Z",
   "started_at": "2026-07-24T16:15:32.75950182Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "zephyr"
   ],
   "dependencies": [
     {

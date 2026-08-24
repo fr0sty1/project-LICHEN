@@ -12,7 +12,8 @@
   "labels": [
     "simulation",
     "blocked:hardware",
-    "renode"
+    "renode",
+    "zephyr"
   ],
   "dependencies": [
     {

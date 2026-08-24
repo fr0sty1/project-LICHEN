@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T18:20:08.804739Z",
   "created_by": "Mark Atwood",
@@ -16,7 +15,8 @@
     "maintainer-burden",
     "owner-reserved",
     "review",
-    "risk"
+    "risk",
+    "zephyr"
   ],
   "dependencies": [
     {

@@ -13,6 +13,9 @@
   "updated_at": "2026-07-12T05:31:17.912309Z",
   "closed_at": "2026-07-12T05:31:17.912309Z",
   "close_reason": "Framework complete, all handler dependencies closed",
+  "labels": [
+    "zephyr"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-86j5",
