@@ -13,7 +13,8 @@
   "labels": [
     "demo",
     "milestone",
-    "scalability"
+    "scalability",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
