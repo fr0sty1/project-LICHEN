@@ -13,5 +13,8 @@
   "closed_at": "2026-07-22T14:50:39.904349911Z",
   "close_reason": "3 independent codereview passes (spec, accuracy, completeness) completed with no findings on procurement.md HTS update to 8517.62.0090. Clean passes verified via webfetch CBP data.",
   "lease_expires_at": "2026-07-25T03:01:57.919309252Z",
-  "heartbeat_at": "2026-07-25T02:56:57.919309252Z"
+  "heartbeat_at": "2026-07-25T02:56:57.919309252Z",
+  "labels": [
+    "blocked:hardware"
+  ]
 }
