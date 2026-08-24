@@ -16,6 +16,9 @@
   "close_reason": "Already fixed",
   "lease_expires_at": "2026-07-25T03:08:51.406806232Z",
   "heartbeat_at": "2026-07-25T03:03:51.406806232Z",
+  "labels": [
+    "blocked:hardware"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-oqv7.5",

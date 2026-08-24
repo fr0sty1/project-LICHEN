@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qeyr",
+  "title": "spinbead never claims before editing",
+  "description": "scripts/spinbead.py (and ~/scripts/spinbead.py used by OpenCode /spinbead) inventories `bd ready` once, then edits and `bd close`s without `bd update --claim`.\n\nFailure:\n- Parallel agents (Grok, other OpenCode sessions) still see the same issues in `bd ready` and edit the same files.\n- Observed 2026-08-23: live /spinbead subagents were editing loadng.rs / link_layer.rs / channel_plan.py while those beads remained open/ready (e.g. 9un7, 1leg, uosr).\n- Same-user claim is idempotent (`bd update --claim` succeeds if already claimed by you). Spinbead must use a distinct `--actor` (e.g. spinbead) so another agent as Mark Atwood cannot steal or double-claim.\n\nFix:\n1. `bd update \u003cid\u003e --claim --actor spinbead` before any file I/O\n2. Skip if claim fails (not claimable / already held)\n3. `bd unclaim` if the fix cannot be applied\n4. Re-inventory `bd ready` each wave instead of a stale snapshot\n5. OpenCode /spinbead command must run the script, or if it orchestrates itself, claim with the same actor",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T02:31:26.086918Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T02:31:26.086918Z"
+}
