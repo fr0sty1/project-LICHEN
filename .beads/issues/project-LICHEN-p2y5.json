@@ -19,7 +19,8 @@
   "labels": [
     "gateway",
     "networking",
-    "core"
+    "core",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
