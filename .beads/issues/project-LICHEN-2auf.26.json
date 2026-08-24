@@ -6,7 +6,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T13:49:46.956346Z",
   "created_by": "Mark Atwood",
@@ -14,6 +13,10 @@
   "started_at": "2026-07-19T04:44:23.823291Z",
   "closed_at": "2026-07-22T02:01:09.301721306Z",
   "close_reason": "Fixed puck CoAP linker section; resolved conflicts by mirroring gateway; native_sim build and _coap_resource verification passed; clean no-comment code; conventional commit done.",
+  "labels": [
+    "owner-reserved",
+    "zephyr"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.26",
@@ -29,8 +32,5 @@
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }
