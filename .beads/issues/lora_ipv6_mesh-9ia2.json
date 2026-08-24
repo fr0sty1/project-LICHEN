@@ -10,7 +10,8 @@
   "created_by": "Mark Frost",
   "updated_at": "2026-07-14T22:33:12Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
