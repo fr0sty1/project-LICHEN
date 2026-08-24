@@ -10,7 +10,8 @@
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T05:16:24.382482468Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
