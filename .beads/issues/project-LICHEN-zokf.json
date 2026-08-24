@@ -13,7 +13,8 @@
   "labels": [
     "defer-boardconfig",
     "renode",
-    "extraction"
+    "extraction",
+    "blocked:hardware"
   ],
   "dependencies": [
     {

@@ -23,7 +23,8 @@
     "bringup",
     "firmware",
     "hal",
-    "partner-handoff"
+    "partner-handoff",
+    "blocked:hardware"
   ],
   "dependencies": [
     {

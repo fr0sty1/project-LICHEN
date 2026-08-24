@@ -24,7 +24,8 @@
     "board-support",
     "bringup",
     "firmware",
-    "hal"
+    "hal",
+    "blocked:hardware"
   ],
   "dependencies": [
     {

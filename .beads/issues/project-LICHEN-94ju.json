@@ -15,7 +15,8 @@
   "heartbeat_at": "2026-07-25T02:26:39.551885174Z",
   "labels": [
     "renode",
-    "extraction"
+    "extraction",
+    "blocked:hardware"
   ],
   "dependencies": [
     {

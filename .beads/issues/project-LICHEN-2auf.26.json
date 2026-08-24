@@ -15,7 +15,8 @@
   "close_reason": "Fixed puck CoAP linker section; resolved conflicts by mirroring gateway; native_sim build and _coap_resource verification passed; clean no-comment code; conventional commit done.",
   "labels": [
     "owner-reserved",
-    "zephyr"
+    "zephyr",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
