@@ -15,6 +15,9 @@
   "close_reason": "Board/build root cause fixed \u0026 confirmed green in b65e5078. renode-firmware.yml 'Build Zephyr Firmware' + single/multi-node jobs: SUCCESS (was building phantom -b nrf52840_lichen; now t_echo/nrf52840 + renode_console overlay/conf + new lora_ping t_echo zephyr,lora overlay + SOURCE_DATE_EPOCH). renode.yml 'Renode Platform Validation': success. renode.yml 'Renode nRF52840 Boot + TX' now builds+boots (test_mesh_boots PASSES) after fixing the west-update-on-cache-hit module drop. The remaining test_mesh_tx failure (0 LoRa transmissions into lichen-sim) is a DISTINCT emulation-layer issue in the SX1262 Renode model/bridge, refiled as yot8 — not a board problem. Neither job references the non-existent board anymore.",
   "lease_expires_at": "2026-07-25T02:31:39.874550406Z",
   "heartbeat_at": "2026-07-25T02:26:39.874550406Z",
+  "labels": [
+    "blocked:hardware"
+  ],
   "dependencies": [
     {
       "issue_id": "lora_ipv6_mesh-3iwp",
