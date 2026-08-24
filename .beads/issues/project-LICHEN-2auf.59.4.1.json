@@ -17,7 +17,8 @@
   "heartbeat_at": "2026-07-24T21:41:29.665746188Z",
   "labels": [
     "aws",
-    "validation"
+    "validation",
+    "zephyr"
   ],
   "dependencies": [
     {
