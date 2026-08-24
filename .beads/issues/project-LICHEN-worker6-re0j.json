@@ -8,5 +8,8 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:18:23.294571Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:18:23.294571Z"
+  "updated_at": "2026-07-29T18:18:23.294571Z",
+  "labels": [
+    "blocked:hardware"
+  ]
 }
