@@ -1,1 +1,2 @@
 {"id":"019f975e-9f8e-75a9-96ab-8e8aaa5dd31f","issue_id":"project-LICHEN-worker6-l1qw.9.6.2.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:43:08.686371Z"}
+{"id":"01a032dc-65c7-72b7-8b2b-2b0514c13268","issue_id":"project-LICHEN-worker6-l1qw.9.6.2.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: interface/kiss/gatt.py line 33 KissGattService class","created_at":"2026-08-24T08:21:39.911178Z"}

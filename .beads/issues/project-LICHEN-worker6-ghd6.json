@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ghd6",
+  "title": "Replay counter APIs accept booleans and inconsistently reject non-integers",
+  "description": "Correctness review: replay logical_counter validates only numeric ranges, so bool is accepted as epoch/sequence and floats or other types can fail later with inconsistent shift/type errors. Enforce exact-int (excluding bool) validation before range checks and apply it consistently through ReplayWindow and ReplayProtector public methods. Add boundary tests for zero, maxima, bool, float, and string inputs across logical_counter, check, commit, and check_and_update.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:42:56.251342Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:43:00.24287Z",
+  "started_at": "2026-08-24T06:43:00.24287Z",
+  "lease_expires_at": "2026-08-24T06:48:00.24287Z",
+  "heartbeat_at": "2026-08-24T06:43:00.24287Z"
+}

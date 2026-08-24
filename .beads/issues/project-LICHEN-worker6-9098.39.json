@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.39",
+  "title": "radio.py: GE apply at stash walks every neighbor on a per-tx chain",
+  "description": "## Problem\n\n9098.28 cached Gilbert-Elliott survival per `(rx_node_id, tx_id)` so a single receiver's 1 ms poll loop does not re-enter `GilbertElliottRule.apply`. That cache does not stop radio.py from calling `apply()` once per neighbor on a machine that is not per-link.\n\n`GilbertElliottRule` documents per-link (sender, receiver) burst state. `apply()` has no dest id, so it keys `_link_states` by `(source_node_id, tx.id)` — one Markov chain per transmission, shared by every listener.\n\n`RadioMixin._stash_delayed_rx_candidates` (`python/src/lichen/sim/simulation/radio.py`) runs on every TX whenever `_chaos_engine` is set, not only when a LatencyRule will stash. It iterates `self._nodes` and calls `_apply_live_chaos` for each connected non-TX neighbor. `_apply_live_chaos` on a GE cache miss does `rule.apply(...)`. Insertion order therefore becomes extra transitions:\n\n- Neighbor 0: start Good, maybe Good→Bad, then roll `loss_prob_*`. Cache `(rx0, tx)`.\n- Neighbor 1: continues that same `(source, tx.id)` state. If neighbor 0 already entered Bad, neighbor 1 rolls `loss_prob_bad` instead of its own independent Good-state draw.\n- Neighbor k: k extra transitions before its first (and cached) decision.\n\nWith default-ish GE (`p_good_to_bad=0.5`, `loss_prob_good=0`, `loss_prob_bad=1`), P(rx0 survives)≈0.5 and P(rx1 survives)=P(rx0 stayed Good)×0.5≈0.25. Later-added nodes drop more. Seeded replay disagrees if `add_node` order changes even when `Simulation(seed=)` and the GE rng seed match.\n\nLive `get_rx_result` on a node skipped at stash (it was in `_active_transmissions`) is a cache miss and applies again, advancing the same shared chain after the others already drew.\n\n9098.28 tests are all 2-node (`tx`+`rx`), so only one apply runs and this is invisible. `test_chaos.py` GE unit tests call `apply()` on one candidate at a time and do not go through radio.py.\n\nThis is not 9098.28 (per-receiver poll re-roll). The per-(rx, tx) cache is working; the first draw per receiver still mutates a per-tx chain.\n\n## Why this is security (fault-injection oracle)\n\nGE is the burst-RF model for mesh security and capacity tests. A 500-node / city-mesh run with GE must treat each link independently (docstring: \"link A→B can be in a fading burst while A→C operates normally\"). Radio.py makes delivery a function of `_nodes` insertion order. `delivery_rate` and per-node `rx_count` then measure dict order, not the protocol or the documented channel model. Seeded A/B (`compare_metrics`) of hopping/OSCORE-under-loss is not bit-stable across node-add order.\n\n## Files\n\n- `python/src/lichen/sim/simulation/radio.py` (`_stash_delayed_rx_candidates` loops every neighbor; `_apply_live_chaos` GE miss → `rule.apply`)\n- `python/tests/sim/test_radio.py` (all GE tests are 1 TX + 1 RX; no multi-receiver order oracle)\n- `python/src/lichen/sim/metrics.py` (delivery_rate / compare_metrics consume the biased counts)\n",
+  "design": "GE decisions must be independent per (source, dest) for a given tx.id, matching the GilbertElliottRule docstring.\n\nOptions: (1) pass dest into apply, or wrap GE in radio so the radio-layer cache is the only GE draw and the rule's (source, tx.id) machine is not advanced N times — e.g. snapshot/copy link state per dest, or call apply against a per-(rx, tx) shim; (2) change GE to key by (source, dest, tx.id) / (source, dest) and have apply learn dest (radio has `rx_node_id`; a thin wrapper can set it before apply). Do not \"fix\" this by evaluating GE once per TX and sharing the bit across receivers (that is the same shared-chain bug). Do not re-open 9098.28 poll re-roll: extra applies must not happen on later get_rx_result polls for the same (rx, tx).\n\nAdd a test: three nodes (tx, rx_a added first, rx_b added second), GE with p_good_to_bad=1.0, p_bad_to_good=0.0, loss_prob_good=0.0, loss_prob_bad=1.0. Per-link, each receiver independently Good→Bad then 100% drop, so both drop (or both would have the same per-link first-packet behavior). More discriminating: p_good_to_bad=0.0, loss_prob_good=0.5, two receivers, seeded: swap add_node order and assert each named receiver's delivery identity is unchanged (depends only on (rx, tx) and rng, not on who was iterated first). Alternatively wrap apply and assert two receivers produce two independent link keys, not two transitions of one key.\n",
+  "acceptance_criteria": "Two receivers of one TX with a transition-capable GE do not have neighbor-k survival depending on `_nodes` insertion order. Swapping add_node order of rx_a/rx_b with the same seeds yields the same per-node delivered/dropped identity. GilbertElliottRule.apply is not invoked N extra times on the same (source, tx.id) chain during `_stash_delayed_rx_candidates`. 9098.28 still holds: N polls at one receiver still one GE.apply. test_radio.py covers ≥2 receivers, not only tx+rx.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:54:24.4345Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:13:13.614936Z",
+  "started_at": "2026-08-24T06:56:22.307806Z",
+  "closed_at": "2026-08-24T07:13:13.614936Z",
+  "close_reason": "GE apply uses a fresh per-receiver _link_states dict; stash iterates sorted node ids so add_node order cannot chain one (source, tx.id) machine.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.39",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:54:24.842768Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.39",
+      "depends_on_id": "project-LICHEN-worker6-9098.28",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:54:25.264181Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

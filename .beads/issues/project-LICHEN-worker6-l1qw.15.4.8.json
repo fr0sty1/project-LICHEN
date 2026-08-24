@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.4.8",
   "title": "Rust: 6.3 Conflict Resolution",
   "description": "GCP-6.3: Lowest IID wins conflicts, loser selects next slot and re-claims, Schnorr signature verification on claims (invalid claims silently discarded).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:00.831167Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:00.831167Z",
+  "updated_at": "2026-08-24T05:58:06.471887Z",
+  "closed_at": "2026-08-24T05:58:06.471887Z",
+  "close_reason": "Already done: resolve_conflict() in rust/lichen-gateway/src/slot.rs:321 and rust/lichen-rpl/src/multi_instance.rs:808",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.4.8",

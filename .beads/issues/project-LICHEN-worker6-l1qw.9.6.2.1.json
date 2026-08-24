@@ -3,13 +3,15 @@
   "title": "Python: GATT service stub",
   "description": "Acceptance: GATT service skeleton",
   "notes": "Already implemented in interface/kiss/gatt.py",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:08.674213Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:08.674213Z",
+  "updated_at": "2026-08-24T08:21:39.904767Z",
+  "closed_at": "2026-08-24T08:21:39.904767Z",
+  "close_reason": "Verified: interface/kiss/gatt.py line 33 KissGattService class",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.6.2.1",

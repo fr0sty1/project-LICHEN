@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.6.2.4",
   "title": "Python: DIO receive handler",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:22.82393Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:22.82393Z",
+  "updated_at": "2026-08-24T08:21:16.745481Z",
+  "closed_at": "2026-08-24T08:21:16.745481Z",
+  "close_reason": "Verified: rpl/dodag.py line 222 process_dio(), line 292 process_authenticated_dio()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.2.4",

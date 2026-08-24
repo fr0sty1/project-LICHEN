@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.5.2",
   "title": "Python: Sequence exhaustion handling",
-  "status": "open",
+  "notes": "Already implemented. Python sequence exhaustion handling is complete:\n\n1. OSCORE (crypto/oscore.py): Raises OverflowError at 40-bit limit. Constants: MAX_OSCORE_SEQUENCE_NUMBER, OSCORE_SEQUENCE_EXHAUSTED.\n\n2. Link-layer TX (link/link_layer.py): Raises OverflowError when 24-bit tuple (255, 65535) exhausted.\n\n3. Link-layer RX replay (link/replay.py): Issues warning at WRAPAROUND_WARNING_THRESHOLD. Rejects epoch rollover from 255 to 0.\n\n4. OSCORE Context Store: Has GenerationOverflowError at u32 generation max, SequenceReservationError for sender sequence exhaustion.\n\nAll exhaustion tests pass. Mirrors Rust SeqExhausted using Python OverflowError.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:29.599892Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:29.599892Z",
+  "updated_at": "2026-08-24T06:49:43.015034Z",
+  "started_at": "2026-08-24T06:44:58.338739Z",
+  "closed_at": "2026-08-24T06:49:43.015034Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.5.2",

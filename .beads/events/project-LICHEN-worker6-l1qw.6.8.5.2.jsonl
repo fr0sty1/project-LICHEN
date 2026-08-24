@@ -1,1 +1,2 @@
 {"id":"019f9762-b68e-70a0-a139-4eff12714f00","issue_id":"project-LICHEN-worker6-l1qw.6.8.5.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:47:36.718041Z"}
+{"id":"01a0326e-5139-7a8f-964a-69cf32456f60","issue_id":"project-LICHEN-worker6-l1qw.6.8.5.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: rust/lichen-oscore/src/provisioning.rs:623-644 BrProvisioningSession.process_message_3 delegates to external oscore crate EdhocResponder","created_at":"2026-08-24T06:21:25.689693Z"}

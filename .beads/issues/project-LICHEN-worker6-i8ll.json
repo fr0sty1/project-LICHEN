@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-i8ll",
+  "title": "Mutable MonotonicClock callback preserves domain identity and bypasses timing bindings",
+  "description": "Timing security review: MonotonicClock is frozen only by dataclass convention. A holder can replace callback via object.__setattr__ after providers, LinkLayer, verifier, and tracker bind it. All bindings snapshot only clock object and domain token identities, not callback identity or an immutable clock snapshot, so the substituted clock remains trusted and can forge freshness, expiry, correction elapsed time, and receipt timing within the same apparent domain. Make the clock capability structurally immutable or bind and revalidate callback identity at every authority and tracker boundary. Add post-construction callback replacement tests before receipt, verification, adoption, status, expiry, and correction.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:21:18.7319Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:21:24.848606Z",
+  "started_at": "2026-08-24T08:21:24.848606Z",
+  "lease_expires_at": "2026-08-24T08:26:24.848606Z",
+  "heartbeat_at": "2026-08-24T08:21:24.848606Z"
+}

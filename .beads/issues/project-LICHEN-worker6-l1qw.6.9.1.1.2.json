@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.9.1.1.2",
   "title": "Implement: Python oracle for Link Signatures",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:49.114227Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:49.114227Z",
+  "updated_at": "2026-08-24T05:50:06.027873Z",
+  "closed_at": "2026-08-24T05:50:06.027873Z",
+  "close_reason": "Already done: schnorr48.py (sign/verify/derive_keypair with low-order rejection, zero challenge rejection), link_layer.py integration (send() signs, receive() verifies), comprehensive tests (test_schnorr48.py, test_link_tx.py, test_link_rx.py), and spec vectors (schnorr48.json, 11+ vectors).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.9.1.1.2",

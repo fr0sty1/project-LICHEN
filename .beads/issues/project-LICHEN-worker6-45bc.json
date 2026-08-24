@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-45bc",
+  "title": "Python SCHC receiver remains unauthenticated and absent from production Node",
+  "description": "python/schc/reassembly.py accepts raw caller-keyed bytes with no Link RxFrame evidence, signer/local-identity/generation/replay binding, terminal tombstone/hold-down, or authenticated idempotent response. It can allocate/mutate state and emit aborts from unauthenticated input, contradicting the strengthened fragmentation spec. Node routes Rule 0x78/0x79 through generic decompression failure, so production cannot receive fragmented SCHC. Integrate Link-owned authenticated receiver sessions into Node with bounded state, replay/rekey/reboot/abort behavior and shared interop vectors; unauthenticated input must be silent.",
+  "notes": "Independent correctness rereview findings: version transitions invalidated senders but retained receiver partials/tombstones; stale/unsolicited ACKs fell into receiver parsing and emitted aborts; capacity rejection could emit repeated aborts without bounded hold-down. Fixed with exact regressions; retain in final review scope.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:51:06.694409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:54:56.177754Z",
+  "started_at": "2026-08-24T09:51:12.422692Z",
+  "lease_expires_at": "2026-08-24T09:56:12.422692Z",
+  "heartbeat_at": "2026-08-24T09:51:12.422692Z"
+}

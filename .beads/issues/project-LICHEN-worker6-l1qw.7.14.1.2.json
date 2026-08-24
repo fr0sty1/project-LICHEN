@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.7.14.1.2",
   "title": "Implement: Python oracle for RD Registration",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:57.498027Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:57.498027Z",
+  "updated_at": "2026-08-24T05:49:33.620601Z",
+  "closed_at": "2026-08-24T05:49:33.620601Z",
+  "close_reason": "Already done: ResourceDirectoryResource class at python/src/lichen/coap/resources/resource_directory.py (194 lines) with POST registration, GET lookup, DELETE removal. Test vectors in coap_rd.json (15 vectors). Full test suite in test_resource_directory.py (459 lines, 22 tests).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.1.2",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.3.2",
   "title": "Rust: RPL Multi-Instance Coordination implementation",
   "description": "Rust mesh-gateway implementation of GCP-5: shared RPLInstanceID, DODAG root with backbone-aware DAO handling, route aggregation.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:15.495928Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:15.495928Z",
+  "updated_at": "2026-08-24T05:50:59.057235Z",
+  "closed_at": "2026-08-24T05:50:59.057235Z",
+  "close_reason": "Already done: rust/lichen-rpl/src/multi_instance.rs (2369 lines) implements GCP-5 with DaoBackboneBridge, MultiRootCoordinator, MultiRootState, DaoTarget/Transit structs, version lollipop handling, root selection algorithm, IID comparison, slot conflict resolution.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.3.2",

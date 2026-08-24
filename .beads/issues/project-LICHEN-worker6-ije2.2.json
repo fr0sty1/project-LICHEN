@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-ije2.2",
+  "title": "codec.rs: use .expect() instead of .unwrap() for infallible try_into",
+  "description": "Multiple locations use `.try_into().unwrap()` on slice-to-array conversions that are known to be infallible (the slice lengths are guaranteed). Use `.expect(\"message\")` to document the invariant and improve debuggability.\n\nExample at line 405-406:\n```rust\nlet src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());\nlet dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());\n```\n\nShould be:\n```rust\nlet src_iid = u64::from_be_bytes(src[8..16].try_into().expect(\"src IID slice is 8 bytes\"));\n```\n\nAffected lines: 405, 406, 415, 416, 474, 475, 511, 521, 522, 558, 567, 568, 569, 632, 633, 639, 640\n\nFile: `rust/lichen-schc/src/codec.rs`",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:59:17.462435Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:09:29.841752Z",
+  "started_at": "2026-08-24T05:07:48.614651Z",
+  "closed_at": "2026-08-24T05:09:29.841752Z",
+  "close_reason": "Applied fixes: buf.fill(0), .expect() on infallible try_into, renamed finalize to ones_complement_sum. cargo check and cargo test pass.",
+  "labels": [
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ije2.2",
+      "depends_on_id": "project-LICHEN-worker6-ije2",
+      "type": "parent-child",
+      "created_at": "2026-08-24T04:59:17.91641Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

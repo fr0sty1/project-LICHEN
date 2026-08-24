@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.7.4.1",
   "title": "Python: OSCORE replay window",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:17.86861Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:17.86861Z",
+  "updated_at": "2026-08-24T08:21:02.078281Z",
+  "closed_at": "2026-08-24T08:21:02.078281Z",
+  "close_reason": "Verified: oscore.py lines 208-209, 309-319 ReplayWindow",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.4.1",

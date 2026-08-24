@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.32",
+  "title": "radio.py: start_tx None (duty cycle) crashes; node stuck TX",
+  "description": "## Problem\n\n`SimulationBase` constructs `Medium()` with the library default `enforce_duty_cycle=True` (EU868 1% / 36 s per hour). `Medium.start_tx` returns `None` when a new TX would exceed that budget (`lora_medium/medium.py`).\n\n`RadioMixin._do_start_transmission` never checks for None. It mutates node/radio state *before* `start_tx`, then dereferences `tx.id`:\n\n```python\nself._medium.end_tx(previous_tx_id)          # previous airtime aborted\nself._pending_rx_timeouts.pop(node_id, None)\nself._cancel_rx_timeout_events(node_id)\nself._drop_delayed_rx_for_receiver(node_id)\nnode.state = NodeState.TX\nnode.rx_callbacks = None\ntx = self._medium.start_tx(...)              # None at 1%\nself._active_transmissions[node_id] = tx.id  # AttributeError\n```\n\nConsequences once a node has used ~36 s of SF10 airtime in a 1-hour window (city-mesh, soak, 500-node demo):\n\n1. **Crash.** `AttributeError: 'NoneType' object has no attribute 'id'` aborts the sim/HIL loop.\n2. **Stuck TX.** The exception happens after `node.state = TX` and after RX teardown. No `TxEndEvent` is queued, `_active_transmissions` is not updated, so the node never returns to IDLE.\n3. **Half-duplex abort is not rolled back.** A replacement TX that is duty-cycle rejected has already `end_tx`'d the previous in-flight frame and dropped this receiver's delayed-RX stash.\n\nThis is not 9098.25 (RX during own airtime). It is not TDMA `is_tx_allowed` (that path returns `\"\"` *before* mutating RX). Duty-cycle rejection is the only `start_tx` None path and is unhandled.\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (`_do_start_transmission` pre-TX teardown + `tx.id` with no None check)\n- python/src/lichen/sim/simulation/base.py (`self._medium = Medium()` default enforce=True)\n- python/.venv/.../lora_medium/medium.py (`start_tx` returns None; `enforce_duty_cycle=True`)\n\n## Why this is robustness\n\nRegulatory duty-cycle enforcement is on by default. Long runs are supposed to stay up and report duty-cycle pressure (`Metrics.set_duty_cycle`, dashboard). Instead they crash and leave a node in TX with no way to recover except `remove_node`.\n",
+  "design": "Check `tx is None` immediately after `start_tx`. On reject: do not set NodeState.TX, do not abort a previous in-flight TX, do not tear down RX/stash, do not queue TxEndEvent, return \"\" (same as TDMA deny). Prefer calling start_tx *before* half-duplex teardown so a reject cannot destroy a live RX window or a previous TX. Tests: with Medium(enforce_duty_cycle=True), fill the 1% window, then start_transmission must return \"\" and leave state IDLE (or previous TX running) with no exception; a subsequent TX after the window slides must succeed.\n",
+  "acceptance_criteria": "Filling a node's EU868 1% window then calling start_transmission does not raise. Node is not left in TX without a TxEndEvent. Previous in-flight TX (if any) still gets its TxEndEvent. An RX_WAIT node that is duty-cycle rejected stays in RX_WAIT with callbacks intact. After the sliding window has budget again, start_transmission returns a real tx id. Existing TDMA-deny empty-string behavior is unchanged.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:50:44.392714Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:54:08.990373Z",
+  "started_at": "2026-08-24T06:52:32.648214Z",
+  "closed_at": "2026-08-24T06:54:08.990373Z",
+  "close_reason": "Closed",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.32",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:50:44.958542Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.32",
+      "depends_on_id": "project-LICHEN-worker6-9098.24",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:50:45.37926Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

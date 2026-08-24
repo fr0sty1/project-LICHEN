@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-nnyv",
+  "title": "Time tracker does not expire stale authoritative state without a valid replacement",
+  "description": "StratumTracker exposes stale stratum/timestamp indefinitely; expiry runs only after a new candidate passes earlier validation. Add authoritative status/current_time(now) that expires independently, and expire before candidate-specific early returns while retaining anti-ratchet anchor. Test idle expiry and invalid/replayed candidate after expiry.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:24:11.564528Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:24:18.910607Z",
+  "started_at": "2026-08-24T06:24:18.910607Z",
+  "lease_expires_at": "2026-08-24T06:29:18.910607Z",
+  "heartbeat_at": "2026-08-24T06:24:18.910607Z"
+}

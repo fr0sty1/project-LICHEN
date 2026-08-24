@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-d7z5",
+  "title": "DesyncFSM cannot execute normative recovery timeout transition",
+  "description": "python/src/lichen/timing/sfn.py implements DESYNCED-\u003eRECOVERING and the three-valid-beacon transition, but has no timeout API/timer transition for the normative RECOVERING + timeout -\u003e DESYNCED rule in spec/09-packets-timing.md section 14.7. TDMA_BEACON_TIMEOUT_SUPERFRAMES is defined but unused. Add an explicit bounded timeout/missed-superframe transition that resets consecutive_valid, and vector-driven tests for timeout at each recovery count.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:19:13.961085Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:19:33.502444Z",
+  "started_at": "2026-08-24T14:19:33.502444Z",
+  "lease_expires_at": "2026-08-24T14:24:33.502444Z",
+  "heartbeat_at": "2026-08-24T14:19:33.502444Z"
+}

@@ -1,1 +1,2 @@
 {"id":"019f9761-59e1-7bc7-96bd-e209a16eb24a","issue_id":"project-LICHEN-worker6-l1qw.10.7.6","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:46:07.457772Z"}
+{"id":"01a0327a-7f03-7098-9635-dc39d4988871","issue_id":"project-LICHEN-worker6-l1qw.10.7.6","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All 5 children complete: priority routing, beacon boost, TX queue priority, 4-hour timeout, and test vectors","created_at":"2026-08-24T06:34:43.843039Z"}

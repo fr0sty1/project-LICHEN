@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-09jd",
+  "title": "Mutable EpochFloorAuthority can lower a bound trackers firmware floor",
+  "description": "Timing security review: StratumTracker retains a live EpochFloorAuthority but does not snapshot or validate its immutable build epoch, provision verifier binding, or maximum lead. A caller can use object.__setattr__ to lower the private build field or swap verifier/lead after tracker construction, then admit timestamps below the configured firmware floor. Add an immutable floor-authority binding snapshot that preserves live provision updates while rejecting mutation of build, verifier identity, and lead. Test lower/higher build mutation, verifier swap, lead change, and valid provision advancement on adopt, current_time, and status.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:21:19.254022Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:21:25.76369Z",
+  "started_at": "2026-08-24T08:21:25.76369Z",
+  "lease_expires_at": "2026-08-24T08:26:25.76369Z",
+  "heartbeat_at": "2026-08-24T08:21:25.76369Z"
+}

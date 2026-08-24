@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-993e",
+  "title": "rust/lichen-core loadng.rs must mirror python discovery.py behavior changes (hop-limit reject, proxy-hint downgrade, RREP forward gates)",
+  "description": "FIX-A changed python/src/lichen/loadng/discovery.py: hop_limit\u003e4 typed reject, proxy-flagged RREPs are non-installing hints (bootstrap-only), RREP seen-window + freshness-gated forwarding. rust/lichen-core/src/loadng.rs mirrors this logic per original design; without mirroring, interop vectors will drift across implementations. Derive expected behaviors from spec/appendix-loadng.md + updated python module docstring; extend shared vectors where behavior is now pinned.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:15:15.240903Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:15:15.240903Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-sebh",
+  "title": "RPL messages module fails strict host compilation on conversions and nullability",
+  "description": "Activating a focused messages.c test exposes -Werror failures: DIO gmop and DAO kd expressions implicitly narrow int to uint8_t, and iterator data pointers lack explicit nullable/non-null annotations. Make conversions explicit and annotate iterator/raw option pointer contracts consistently; update the host shim cast and remove the old test warning suppression if applicable.",
+  "notes": "Returned open/unclaimed because the user explicitly excluded C/Zephyr/AWS work from this session; no C changes from this finding remain.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:30:16.165565Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:35:29.868783Z",
+  "started_at": "2026-08-24T06:30:20.705149Z"
+}

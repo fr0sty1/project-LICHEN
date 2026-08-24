@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-cshj",
+  "title": "Detect deleted authenticated DAO TX slots after bootstrap",
+  "description": "P1 security/correctness review: explicit allow_tx_bootstrap authorizes a fresh authenticated origin, but TwoSlotFilePersistence retains no durable initialization marker. If both TX slots are later deleted and bootstrap remains configured, the store is indistinguishable from first use and can reuse Origin Sequence 1. Persist and validate a durable TX-initialized marker so slot deletion fails closed, including when bootstrap authorization is still true.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:28:24.013468Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:28:33.18385Z",
+  "started_at": "2026-08-24T17:28:33.18385Z",
+  "lease_expires_at": "2026-08-24T17:33:33.18385Z",
+  "heartbeat_at": "2026-08-24T17:28:33.18385Z"
+}

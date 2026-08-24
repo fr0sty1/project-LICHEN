@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.3",
   "title": "9.3 Announce Processing",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:22.923723Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:22.923723Z",
+  "updated_at": "2026-08-24T06:35:24.743146Z",
+  "closed_at": "2026-08-24T06:35:24.743146Z",
+  "close_reason": "All 9 children complete: Python/Rust/Zephyr announce processors, signature verification, key token validation, TOFU pinning, duplicate detection (RFC 1982), gradient table update, hop limit enforcement",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.3",

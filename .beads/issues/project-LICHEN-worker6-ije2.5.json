@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-ije2.5",
+  "title": "Duplicate tail-handling pattern in 5 compress functions",
+  "description": "## Location\n`rust/lichen-schc/src/codec.rs` lines 440-447, 482-489, 530-538, 575-583, 649-656\n\n## Issue\nThe same 5-line tail-copy pattern appears in compress_coap, compress_icmpv6_echo, compress_rpl_dio, compress_rpl_dao, compress_mqtt_sn:\n\n```rust\nlet residue_len = w.byte_len();\nlet tail_start = 1 + residue_len;\nlet needed = tail_start + tail.len();\nif needed \u003e out.len() { return Err(BufferTooSmall::new(needed, out.len()).into()); }\nout[tail_start..needed].copy_from_slice(tail);\nOk(needed)\n```\n\n## Suggested fix\nAdd a method to BitWriter that finalizes with a tail copy:\n\n```rust\nimpl\u003c'a\u003e BitWriter\u003c'a\u003e {\n    fn finalize_with_tail(\u0026mut self, out: \u0026mut [u8], tail: \u0026[u8]) -\u003e Result\u003cusize, SchcError\u003e {\n        let residue_len = self.byte_len();\n        let tail_start = 1 + residue_len;\n        let needed = tail_start + tail.len();\n        if needed \u003e out.len() {\n            return Err(BufferTooSmall::new(needed, out.len()).into());\n        }\n        out[tail_start..needed].copy_from_slice(tail);\n        Ok(needed)\n    }\n}\n```\n\n## Impact\nReduces duplication, makes the compress functions more uniform, and centralizes buffer-overflow checking.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:59:27.112129Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:59:27.112129Z",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ije2.5",
+      "depends_on_id": "project-LICHEN-worker6-ije2",
+      "type": "parent-child",
+      "created_at": "2026-08-24T04:59:27.688022Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

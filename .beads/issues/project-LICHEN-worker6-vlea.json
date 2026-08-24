@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-vlea",
+  "title": "Malformed fragmented DIO can skip durable reassembly commit",
+  "description": "In LinkLayer._accept_authenticated_schc_fragment, reassembly manager state is mutated before reassembled DIO parsing/evidence issuance. If the completed payload is DIO-shaped but fails checksum/scope/role/option parsing, issuance raises before _save_persisted_state(), so a reboot can restore the pre-completion session and repeat responses/admission work. Preserve the DIO rejection while durably committing the authenticated reassembly transition, with a regression test.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:42:17.53775Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:42:22.202284Z",
+  "started_at": "2026-08-24T14:42:22.202284Z",
+  "lease_expires_at": "2026-08-24T14:47:22.202284Z",
+  "heartbeat_at": "2026-08-24T14:42:22.202284Z"
+}

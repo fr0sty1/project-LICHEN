@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-m6ka",
+  "title": "Rust SCHC peer revocation leaves neighbor and Trickle state stale",
+  "description": "rust/lichen-node/src/routing/router.rs revoke_schc_peer removes matching DODAG parents on DIO parse/version/link-evidence rejection but does not update/remove NeighborTable state or reset Trickle when rank, join, or preferred parent changes. A malformed/mismatched authenticated DIO from the preferred parent can unjoin/reparent while control-plane suppression remains stale. Route revocation through one invariant-preserving parent/neighbor transition that recomputes state and signals inconsistency, with preferred/nonpreferred/root and repeated-rejection tests.",
+  "notes": "Final correctness review: revoke_schc_peer unconditionally resets Trickle for every rejected authenticated DIO, even when the signer is not a parent/neighbor and routing state did not change. A pinned non-parent can force repeated Trickle resets. Reset only when parent/neighbor/rank/join/preferred state actually changes, matching the bead acceptance criteria.\nRobustness review found revoke_schc_peer derives parent removals only from matching NeighborTable entries. If neighbor pruning/eviction already removed the entry, a DODAG parent with that signer IID survives. Remove parents directly by authenticated signer IID, then reset Trickle only if topology changed.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:51:27.159849Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:32:41.925209Z",
+  "started_at": "2026-08-24T09:51:30.52132Z",
+  "lease_expires_at": "2026-08-24T09:56:30.52132Z",
+  "heartbeat_at": "2026-08-24T09:51:30.52132Z"
+}

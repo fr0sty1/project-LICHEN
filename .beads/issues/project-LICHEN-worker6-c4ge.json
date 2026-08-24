@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-c4ge",
+  "title": "Scoped vector test module fails Ruff after replay-vector edits",
+  "description": "ruff check python/tests/test_vectors.py reports relevant post-edit failures: unused last_counter near line 2563, unused logical_counter import near 4013, and E501 near 4036. The same module also has B905 near 2499 and undefined GradientEntry near 2676 in concurrent work. Coordinate with current owners, resolve all lint failures without hiding them, and rerun Ruff plus the complete vector test module.",
+  "notes": "Fixed all five current Ruff defects in python/tests/test_vectors.py without suppressions or semantic changes: zip(strict=True) after existing length equality assertion; removed unused last_counter; added TYPE_CHECKING GradientEntry import while preserving lazy runtime import; removed unused receiver-state logical_counter import; split overlong assertion string identically. Ruff clean. pytest test_vectors.py -k 'not schema': 498 passed, 74 deselected, one expected replay warning. git diff --check clean. schema.json remained untouched by this work and is concurrently modified. Leave open for independent convergence.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:54:04.528506Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:05:02.48104Z",
+  "started_at": "2026-08-24T09:54:09.61608Z",
+  "lease_expires_at": "2026-08-24T09:59:09.61608Z",
+  "heartbeat_at": "2026-08-24T09:54:09.61608Z"
+}

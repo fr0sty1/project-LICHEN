@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.7.4.1",
   "title": "Python: Relay decision + hop increment",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:49.772498Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:49.772498Z",
+  "updated_at": "2026-08-24T06:27:05.860339Z",
+  "closed_at": "2026-08-24T06:27:05.860339Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.4.1",

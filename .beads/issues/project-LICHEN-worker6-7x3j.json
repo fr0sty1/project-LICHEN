@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-7x3j",
+  "title": "SCHC fragmentation retry vector no longer matches canonical schema",
+  "description": "test/vectors/schc_fragmentation.json sender retry exhaustion now uses attempts_before=4, new timing/bitmap/trigger_event/pre_exhaustion fields, and no legacy trigger, while schema.json keeps additionalProperties=false, attempts_before const 2, lacks new fields, and requires trigger. Update the schema with correct sender/receiver conditionals after the concurrent schema syntax/coverage work lands, then run full Draft7 validation and all Python/Rust vector consumers.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:52:33.620712Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T09:52:33.620712Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7x3j",
+      "depends_on_id": "project-LICHEN-worker6-jo3q",
+      "type": "blocks",
+      "created_at": "2026-08-24T09:52:48.023668Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-7x3j",
+      "depends_on_id": "project-LICHEN-worker6-hik5",
+      "type": "blocks",
+      "created_at": "2026-08-24T09:52:49.252819Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-boh5",
+  "title": "test_multihop_latency_bounds.py: min_us assertion conflicts with relay-only LatencyRule",
+  "description": "P1 CORRECTNESS: In test_latency_bounded_with_added_delay, line 372 asserts 'stats.min_us \u003e= 50_000' but the LatencyRule only applies delay to the relay node. The relay-\u003edst hop (line 344) has no delay and polls at 1ms into airtime. Since metrics aggregate all hops, min_us will include the non-delayed dst reception (~1ms), causing this assertion to fail.\n\nFix options:\n- Remove this assertion since the chaos delay is already validated by the max_expected bound on line 366\n- Or filter stats to relay-only receptions (requires API change)\n\nDiscovered by: 3x codereview (correctness pass)\nFile: python/tests/sim/test_multihop_latency_bounds.py\nLine: 372",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:14:38.835018Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:17:39.745754Z",
+  "started_at": "2026-08-24T05:17:04.977674Z",
+  "closed_at": "2026-08-24T05:17:39.745754Z",
+  "close_reason": "Fixed: removed incorrect min_us \u003e= 50_000 assertion since LatencyRule only applies to relay node. Added comment explaining the max_expected bound is sufficient."
+}

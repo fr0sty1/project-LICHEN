@@ -3,13 +3,15 @@
   "title": "Python: SLIP stream reader (incremental)",
   "description": "Acceptance: KissReader handles partial frames",
   "notes": "Already implemented as KissReader class",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:48.691204Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:48.691204Z",
+  "updated_at": "2026-08-24T08:21:38.454882Z",
+  "closed_at": "2026-08-24T08:21:38.454882Z",
+  "close_reason": "Verified: slip/codec.py line 95 StreamDecoder class, line 123 feed()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.6.1.2",

@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.2",
+  "title": "Latency bound tests poll at TX-start so min_us==0",
+  "description": "CORRECTNESS review of python/tests/sim/test_multihop_latency_bounds.py (min_us==0). Distinct from 4i0v, which only fixed the variance-ratio path in test_latency_consistent_across_hops.\n\nMetrics.record_reception records latency as poll_time_us - tx_start_us. BARRIER_SYNC get_rx_result at t=TX-start therefore stores 0us. The consistency test documents this (lines 251-256) and advances 1ms before polling so min_us is a real hop sample.\n\nEvery other test still calls get_rx_result immediately after start_transmission with no airtime offset:\n- test_three_node_line lines 105-107\n- test_five_node_line lines 155-160\n- test_latency_under_concurrent_transmissions lines 200-205\n- test_latency_bounded_with_added_delay lines 307-308\n- test_latency_bounded_with_degraded_signal lines 348-349\n- test_sustained_load_latency_bounded lines 381-385\n- test_bursty_traffic_latency_bounded lines 431-432\n\nWhen those tests get deliveries, min_us == max_us == p99_us == 0. Upper-bound asserts (max_us \u003c= HOP_LATENCY_BUDGET_US, p99_us \u003c= MAX_P99_LATENCY_US, max_us \u003c= CATASTROPHIC_LATENCY_US) are then tautologies: they cannot fail even if hop latency were unbounded. 4i0v's min_us \u003e 0 assert is not applied outside the consistency test.\n\nFix: poll after a positive airtime offset (same pattern as the consistency test) and assert min_us \u003e 0 wherever an upper bound is claimed.\n",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:08:53.864517Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:25:05.6566Z",
+  "started_at": "2026-08-24T05:11:55.358577Z",
+  "closed_at": "2026-08-24T05:25:05.6566Z",
+  "close_reason": "Hops poll get_rx_result after spec airtime (airtime-1 us, last in-flight us) not at TX-start. Harness elapsed == recorded latency; min_us \u003e 0. Bounds can fail if airtime or injected delay exceeds budget.",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.2",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:08:54.298251Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.2",
+      "depends_on_id": "project-LICHEN-worker6-nvod",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:08:54.642908Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

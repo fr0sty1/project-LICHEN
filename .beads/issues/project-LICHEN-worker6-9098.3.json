@@ -1,0 +1,40 @@
+{
+  "id": "project-LICHEN-worker6-9098.3",
+  "title": "test_multihop_latency_bounds.py: chaos tests silently pass with zero deliveries",
+  "description": "SECURITY false-confidence: TestMultiHopLatencyWithChaos claims latency stays bounded under adversarial delay and signal degradation, but both tests skip every bound check when there are no latency samples.\n\npython/tests/sim/test_multihop_latency_bounds.py:\n\n- test_latency_bounded_with_added_delay (approx lines 319-324):\n  `if stats.count \u003e 0 and stats.max_us is not None:` then assert max \u003c= HOP_LATENCY_BUDGET_US + 50_000.\n  Zero deliveries =\u003e the test PASSES.\n\n- test_latency_bounded_with_degraded_signal (approx lines 354-358):\n  same `if stats.count \u003e 0 and stats.max_us is not None:` guard around the only latency assertion.\n\nThis is the same class of bug as project-LICHEN-worker6-ffrp (bursty test used `if count \u003e= MIN_DELIVERIES` instead of assert). The bursty test was fixed; these chaos tests were not.\n\nWhy the delay test is especially vacuous:\n\nLatencyRule eligibility in python/src/lichen/sim/simulation/radio.py _get_rx_result_internal drops candidates until `current_time_us \u003e= transmission.end_time_us + added_latency_us`. The test polls `get_rx_result(\"relay\")` immediately after `start_transmission` (t=TX-start, added_us=50_000), then advances 400ms WITHOUT polling again. The delayed packet is never observed, relay never fires, stats.count stays 0, and the bound assert is skipped. A broken or no-op ChaosEngine produces the same green result.\n\nDegradeRule -20 dB can also drop every packet below sensitivity; the test then passes without proving latency did not grow under interference.\n\nSecurity impact: these are the only tests that claim latency remains bounded under injected delay and degraded RSSI (congestion/interference/DoS stand-ins). Green CI currently does not evidence those claims. Latency SLAs feed replay windows, TDMA slot timing, and duty-cycle/DoS assumptions.\n\nFix: assert a minimum delivery count (MIN_DELIVERIES_FOR_STATS, or at least \u003e= 1 with p99/max not None, matching test_bursty_traffic_latency_bounded / test_latency_under_concurrent_transmissions). For LatencyRule, poll after TX-end + added delay (or poll, advance past eligibility, poll again) so the injected delay is actually observed. Prefer also asserting max_us is not below the injected delay so a no-op LatencyRule cannot pass.",
+  "acceptance_criteria": "- test_latency_bounded_with_added_delay and test_latency_bounded_with_degraded_signal fail (not skip) when stats.count is 0 or below the statistical floor.\n- LatencyRule test actually observes delayed delivery: poll after end_time + added_us, or equivalent.\n- Bound assertions are unconditional once count is proven; no `if stats.count \u003e 0` around the only checks.\n- A no-op ChaosEngine (or polling only at TX-start) does not yield a green delay test.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:09:02.829489Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:12:48.948456Z",
+  "started_at": "2026-08-24T05:10:24.563238Z",
+  "closed_at": "2026-08-24T05:12:48.948456Z",
+  "close_reason": "Fixed: chaos tests now require MIN_DELIVERIES_FOR_STATS, poll 1ms into airtime (not at TX-start), assert min_us \u003e 0, assertions unconditional. LatencyRule test polls after delay eligibility and verifies injected delay was applied.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.3",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:09:03.355312Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.3",
+      "depends_on_id": "project-LICHEN-worker6-ffrp",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:09:03.771751Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

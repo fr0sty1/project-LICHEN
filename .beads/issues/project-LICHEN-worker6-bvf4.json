@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-bvf4",
+  "title": "Generic SCHC compressed rules accept nonzero unused residue padding",
+  "description": "Correctness review: Python and Rust rounded residue readers accept noncanonical nonzero padding bits and reconstruct canonical packets. Reject nonzero unused bits for Rules0-6 and building blocks, with malformed shared vectors covering every residue-width class.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:59:36.596032Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:59:48.972436Z",
+  "started_at": "2026-08-24T06:59:48.972436Z",
+  "lease_expires_at": "2026-08-24T07:04:48.972436Z",
+  "heartbeat_at": "2026-08-24T06:59:48.972436Z"
+}

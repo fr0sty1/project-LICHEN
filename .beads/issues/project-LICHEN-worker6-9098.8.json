@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.8",
+  "title": "test_messages.py: from_icmpv6 negatives use empty bodies so type/code checks are unenforced",
+  "description": "SECURITY review of python/tests/loadng/test_messages.py (after 4a8y independent-oracle parse fix).\n\nfrom_icmpv6 is the only gate that distinguishes LOADng (ICMPv6 type 158) from RPL (type 155) and that refuses RACK (code 3). Both negative tests feed an empty body, so LoadngError from cls.from_bytes(\"too short\") is indistinguishable from the type/code checks the tests claim to lock.\n\nCurrent tests:\n\n- test_from_icmpv6_rejects_non_loadng (line 206): Icmpv6Message(type=155, code=0, body=b\"\"). Type 155 is RPL — the right confusion class — but body=b\"\" means deleting the `msg.type != 158` check in from_icmpv6 still raises via RREQ.from_bytes on a truncated body. The test passes either way.\n- test_from_icmpv6_rejects_rack_code (line 211): Icmpv6Message(type=158, code=3, body=b\"\"). Mapping LoadngCode.RACK onto RREQ/RREP/RERR in _CLASS_BY_CODE still raises \"too short\". The test does not prove RACK is an unsupported code.\n\nSuccess path is also unsigned-only:\n\n- test_from_icmpv6_parses_hand_built_bodies (line 339) and test_icmpv6_wrap_and_dispatch (line 194) never pass a 48-byte Schnorr tail through to_icmpv6/from_icmpv6. A wrapper that slices body[:36] / body[:18] would strip signatures, leave unsigned parse tests green, and still satisfy the direct from_bytes signed tests (test_rreq_from_bytes_parses_signed_wire et al.).\n\nBugs that would not fail this file today:\n\n1. Remove the type==158 check — RPL type-155 with a valid RREQ body is accepted as a route request.\n2. _CLASS_BY_CODE[LoadngCode.RACK] = RREQ — a code-3 message with a 36-byte body is parsed as RREQ.\n3. from_icmpv6(cls.from_bytes(msg.body[:36])) — signatures silently dropped at the ICMPv6 boundary (parser differential vs spec 10.3/10.4 48-byte SIG).\n\nFix: give every from_icmpv6 rejection a body that would parse if dispatch were wrong — a hand-built 36-byte RREQ (and 18-byte RERR) — and match \"not a LOADng message\" / \"unsupported LOADng code\". Cover type 155 and codes 3, 4, 255. Add from_icmpv6 of type-158 + signed 84-byte / 66-byte bodies asserting signature == SIG, and a type-158 + prefix+32/prefix+1 body that must still raise. Keep unsigned success tests.\n\nDo not re-file 4a8y (independent from_bytes oracles) or worker6-esp1 (to_bytes signature-length).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:22:18.439901Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:30:25.601814Z",
+  "started_at": "2026-08-24T05:26:10.389916Z",
+  "closed_at": "2026-08-24T05:30:25.601814Z",
+  "close_reason": "from_icmpv6 negatives now use parseable 36/18-byte bodies and match type/code errors; codes 3/4/255 covered; signed 84/66-byte ICMPv6 bodies plus prefix+1/32 rejection. pytest tests/loadng/test_messages.py: 62 passed.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.8",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:22:18.848653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.8",
+      "depends_on_id": "project-LICHEN-worker6-4a8y",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:22:19.191733Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

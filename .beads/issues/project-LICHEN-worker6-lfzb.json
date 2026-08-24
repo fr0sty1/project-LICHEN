@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-lfzb",
+  "title": "SCHC authenticated peer version state is forgeable and unwired from DIO processing",
+  "description": "Correctness review: Python/Rust constructors accept an ordinary parsed version option plus arbitrary identity, tests forge this state, and no production RPL DIO path advertises or consumes it. Only a capability issued by authenticated replay-accepted DIO processing may construct peer version state; roots emit exactly one current option and admission fails closed for absent/duplicate/malformed/unauthenticated/reserved/unsupported/mismatch.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:59:33.464856Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:59:43.301475Z",
+  "started_at": "2026-08-24T06:59:43.301475Z",
+  "lease_expires_at": "2026-08-24T07:04:43.301475Z",
+  "heartbeat_at": "2026-08-24T06:59:43.301475Z"
+}

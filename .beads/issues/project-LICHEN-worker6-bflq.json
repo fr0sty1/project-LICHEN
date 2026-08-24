@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-bflq",
+  "title": "C lollipop comments/macro names invert RFC 6550 §7.2 regions (behavior correct)",
+  "description": "Comments say '0-127 linear restart; 128-255 circular', LOLLIPOP_CIRCULAR_BIT=128; RFC defines opposite (128+ linear, ≤127 circular). Code verified functionally correct (region-agnostic same-region branch; cross-region arithmetic matches RFC examples 240vs5, 250vs5; increment implements rule 2 exactly). Hazard: maintainer 'fixing' to match comments breaks interop. Rename LOLLIPOP_CIRCULAR_BIT→LOLLIPOP_LINEAR_BASE + correct comments; behavior untouched.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:21.813994Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:47:20.099812Z",
+  "started_at": "2026-08-24T06:47:20.099812Z",
+  "lease_expires_at": "2026-08-24T06:52:20.099812Z",
+  "heartbeat_at": "2026-08-24T06:47:20.099812Z"
+}

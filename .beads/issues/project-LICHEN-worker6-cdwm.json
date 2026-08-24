@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-cdwm",
+  "title": "Reject zero TDMA slot counts instead of panicking",
+  "description": "P2 correctness/API invariant: rust/lichen-node/src/tdma_scheduler.rs TdmaScheduler::slot_for computes modulo num_slots as u32 without validating num_slots. The public API accepts u16, so slot_for(..., 0) panics from division by zero in production/no_std callers. Change the API to return a validation error (or enforce a NonZeroU16/validated configuration), update all callers, and add zero/boundary/vector tests. Also replace stale integration helpers in ccp_beacon_format.rs and sfn_wrap_vectors.rs with calls to the production TdmaScheduler so canonical FNV1a32(EUI64)+u32(SFN) modulo N vectors actually test the implementation.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:59:48.008675Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:03:22.286861Z",
+  "started_at": "2026-08-24T15:03:22.286861Z",
+  "lease_expires_at": "2026-08-24T15:08:22.286861Z",
+  "heartbeat_at": "2026-08-24T15:03:22.286861Z"
+}

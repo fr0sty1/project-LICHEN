@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-h3qe",
+  "title": "Python and signed vector families violate mandatory Signer IID framing",
+  "description": "draft-lichen-link-01 §§3.2-4.1 requires S=1 iff SI=1 and an 8-byte signer EUI-64 covered by the signature. Python LichenFrame still treats bit7 as reserved and every signed link_frame/authenticated_schc_dio/packets-timing generator emits LLSec 0x20 without SIID. Implement mandatory SIID parsing/serialization and link signing/verification in Python, derive the wire signer EUI-64 from the authenticated signer identity, regenerate all signed vector families independently, and make independent/Python/Rust consumers reject S/SI mismatches. C is explicitly out of scope this session.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:11:44.920728Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:11:51.989016Z",
+  "started_at": "2026-08-24T12:11:51.989016Z",
+  "lease_expires_at": "2026-08-24T12:16:51.989016Z",
+  "heartbeat_at": "2026-08-24T12:11:51.989016Z"
+}

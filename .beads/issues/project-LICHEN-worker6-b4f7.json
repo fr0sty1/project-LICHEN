@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-b4f7",
+  "title": "Rust re-adding an unchanged peer resets its replay window",
+  "description": "rust/lichen-link LinkLayer.add_peer always replaces the tracked entry and calls replay.reset_peer on the replaced public key, even when IID and public key are unchanged. Production announcement handling calls add_peer for accepted peers, so a signed announcement/data frame can advance replay state, trigger same-key re-add, erase that state, and then be replay-accepted. Preserve generation/replay/pin state for idempotent same-key refresh; only atomic authenticated key replacement may retire/reset state. Add exact replay-after-reannounce and retained-evidence liveness tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T10:26:43.705534Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:26:49.697826Z",
+  "started_at": "2026-08-24T10:26:49.697826Z",
+  "lease_expires_at": "2026-08-24T10:31:49.697826Z",
+  "heartbeat_at": "2026-08-24T10:26:49.697826Z"
+}

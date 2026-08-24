@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-iruy",
+  "title": "Dropping Rust LinkLayer does not revoke retained authenticated evidence",
+  "description": "AuthenticatedFrame liveness includes a receiving-link AtomicBool, but LinkLayer has no Drop implementation that sets it. Dropping/reprovisioning a receiver leaves retained AuthenticatedPeerSchcContext values current through frame.is_current(), so compress/decompress remain usable indefinitely without an owning LinkLayer. Revoke the receiver generation on Drop and test drop/recreate/address reuse plus all retained context/session operations.",
+  "notes": "Robustness review independently confirmed no LinkLayer Drop sets the receiver retirement flag; retained contexts survive exact receiver destruction.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T10:32:03.561847Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:32:43.483866Z",
+  "started_at": "2026-08-24T10:32:19.484466Z",
+  "lease_expires_at": "2026-08-24T10:37:19.484466Z",
+  "heartbeat_at": "2026-08-24T10:32:19.484466Z"
+}

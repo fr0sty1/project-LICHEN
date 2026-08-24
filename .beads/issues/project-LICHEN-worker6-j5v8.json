@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-j5v8",
+  "title": "Legacy SCHC codec tests conflict with canonical v3 Rule semantics",
+  "description": "The broad scoped Python suite has 11 failures in SCHC codec tests that still assert legacy Rule255 rejection, helper Rule IDs 64-66 registry behavior, lax excess residue, or nonzero-padding acceptance, while modified v3 source implements the canonical marker/registry/decoder rules. Resolve the source/spec/test contract, update all stale tests or source as required, and make the full relevant SCHC suite green without weakening canonical validation.",
+  "notes": "Updated stale codec tests to canonical v3: Rule255 valid, operational registry 0..6+255, helpers 64-66 explicit-only, exact residue and zero padding required; removed duplicate dead test definitions. Canonical codec/context/header gate 151 passed. Leave open for independent convergence.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:47:40.982004Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:02:42.234011Z",
+  "started_at": "2026-08-24T09:47:51.739731Z",
+  "lease_expires_at": "2026-08-24T09:52:51.739731Z",
+  "heartbeat_at": "2026-08-24T09:47:51.739731Z"
+}

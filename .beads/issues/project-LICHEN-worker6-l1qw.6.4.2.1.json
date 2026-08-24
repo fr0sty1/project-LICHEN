@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.4.2.1",
   "title": "Python: Schnorr48 verify",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:07.803192Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:07.803192Z",
+  "updated_at": "2026-08-24T08:20:51.905319Z",
+  "closed_at": "2026-08-24T08:20:51.905319Z",
+  "close_reason": "Verified: schnorr48.py line 149 verify()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.4.2.1",

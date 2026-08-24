@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.4.9",
   "title": "Rust: 6.4 CoAP Resources implementation",
   "description": "GCP-6.4: Implement /.well-known/lichen-gw/* resources: GET /info (SenML/CBOR), GET/POST /slots (CBOR), GET /channels, POST /handoff, GET /nodes. All with OSCORE.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:01.849566Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:01.849566Z",
+  "updated_at": "2026-08-24T05:58:04.200324Z",
+  "closed_at": "2026-08-24T05:58:04.200324Z",
+  "close_reason": "Already done: rust/lichen-gateway/src/resources.rs (1592 lines, 54 functions) implements CoAP resources for slot coordination",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.4.9",

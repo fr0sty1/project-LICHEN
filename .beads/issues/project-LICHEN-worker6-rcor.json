@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-rcor",
+  "title": "Time correction anchor has no authenticated administrative recovery path",
+  "description": "clear/expiry correctly retain the anti-ratchet anchor, but no authenticated admin capability can reset a poisoned initial anchor as the spec requires. Add auditable capability-bound recovery; ordinary clear/reselection retain anchor, unauthorized reset fails, authorized recovery resets and permits re-establishment.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:24:13.983902Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:24:22.303578Z",
+  "started_at": "2026-08-24T06:24:22.303578Z",
+  "lease_expires_at": "2026-08-24T06:29:22.303578Z",
+  "heartbeat_at": "2026-08-24T06:24:22.303578Z"
+}

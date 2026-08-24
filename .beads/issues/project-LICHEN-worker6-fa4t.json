@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-fa4t",
+  "title": "test_channel_plan.py: empty vectors array passes silently; missing hash_32.json skips",
+  "description": "Vector-driven loops lack non-empty assertion; pytest.skip on missing oracle file = silent pass on lost authoritative data — the exact failure mode these gates prevent. Assert non-empty in each loader; replace skip with hard requirement.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:26.002918Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:47:26.555625Z",
+  "started_at": "2026-08-24T06:47:26.555625Z",
+  "lease_expires_at": "2026-08-24T06:52:26.555625Z",
+  "heartbeat_at": "2026-08-24T06:47:26.555625Z"
+}

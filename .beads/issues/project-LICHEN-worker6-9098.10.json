@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.10",
+  "title": "RREQ independent hex parse uses dataclass defaults for hop/flags/sig",
+  "description": "CORRECTNESS review of independent wire-hex parse tests in python/tests/loadng/test_messages.py (after worker6-4a8y).\n\ntest_rreq_from_bytes_parses_unsigned_hex_wire (lines 217-233) is the advertised independent 36-byte RREQ oracle, but the chosen wire is flags=0x00, hop_limit=4, signature=b\"\". Those are exactly RREQ dataclass defaults (flags=0, hop_limit=INITIAL_HOP_LIMIT=4, signature=field(default=b\"\")). seq_num is required and addresses are non-default, so only those three fields are actually proven parsed from the hex.\n\nA from_bytes that unpacked only seq/originator/destination and left hop_limit/flags/signature at defaults would still pass this test. test_rreq_known_vector parse (hop=4, flags=0, empty sig) has the same gap. test_from_icmpv6_parses_hand_built_bodies RREQ uses the same body and does not even assert flags or signature.\n\nContrast: RREP unsigned hex uses flags=0x01 and hop_count=3 (defaults are 0, 0). RERR unsigned hex uses flags=0x80 and error_code=2 (defaults are 0, 0). Signed RREQ uses hop=8/flags=0x02, and hop-bounds uses 0 and 15, so the suite as a whole is not blind — this specific independent-hex RREQ vector is.\n\nRelated coincidence in the same from_icmpv6 test: RREP body flags=0x01 equals LoadngCode.RREP (1), so asserting flags==1 does not distinguish body flags from the ICMPv6 code. RERR body flags=0x00 (default) and flags is not asserted, while the ICMP code is 2.\n\nDo not re-file 4a8y (to_bytes as oracle; signed/truncated/sig-tail coverage is present) or e3r3 (hop\u003e15 parse).\n\nFix: give the RREQ unsigned hex (and from_icmpv6 RREQ body) non-default flags and hop_limit, e.g. flags=0x02 hop_limit=8 seq=0x012c, and assert them. For from_icmpv6, pick flags that are not equal to the ICMPv6 code (RREP flags != 1, RERR flags != 0 and != 2) and assert flags and empty signature on every success path.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:25:37.052259Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:30:28.450289Z",
+  "started_at": "2026-08-24T05:26:12.055688Z",
+  "closed_at": "2026-08-24T05:30:28.450289Z",
+  "close_reason": "unsigned RREQ hex and from_icmpv6 RREQ use flags=0x02 hop=8 seq=0x012c; from_icmpv6 flags != ICMPv6 codes; flags and empty sig asserted. pytest tests/loadng/test_messages.py: 62 passed.",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.10",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:25:37.514017Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.10",
+      "depends_on_id": "project-LICHEN-worker6-4a8y",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:25:37.886575Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

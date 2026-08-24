@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-worker6-9098.47",
+  "title": "radio.py: parked polling RX blinds later frames in the same wait",
+  "description": "## Problem\n\n9098.40 parked a polling RX result so a same-tick RxTimeout cannot drop the only eligible delayed microsecond. The park is broader than that, and it is never consumed.\n\nRadioMixin._handle_event(DelayedRxReadyEvent) always calls _capture_polling_rx. That parks the first success in _pending_poll_rx and then:\n\n1. get_rx_result returns the parked 3-tuple without popping and without calling _get_rx_result_internal.\n2. _capture_polling_rx returns immediately if node_id is already in the map.\n\nSo the first DelayedRxReady in an RX_WAIT window freezes the polling API on that frame until start_receive / enter_rx_mode / exit_rx_mode / TX start pops the map.\n\nLive (no-latency) polling in one start_receive window can see sequential TXs: after TX1 leaves the medium, the next get_rx_result resolves TX2. With LatencyRule (or any DelayedRxReady), TX1 is parked at expire_us; TX2's later DelayedRxReady is skipped; TX2's stash is pruned when now_us \u003e expire_us. metrics.receptions stays 1.\n\nThe 1 ms poll loop described in metrics.py (poll while the node waits; do not re-arm until timeout) hits this for any listen longer than one delayed airtime. test_same_tick_timeout_delivers_polling_rx polls once and never starts a second delayed TX. Park is not limited to \"timeout is also at this tick.\"\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (_handle_event DelayedRxReadyEvent, _capture_polling_rx, get_rx_result)\n- python/src/lichen/sim/events.py (DelayedRxReadyEvent)\n- python/tests/sim/test_radio.py (test_same_tick_timeout_delivers_polling_rx)\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:24:45.704633Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:25:30.589359Z",
+  "closed_at": "2026-08-24T07:25:30.589359Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-9098.43 (parked polling RX latch; parallel review).",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.47",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T07:24:46.202812Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.47",
+      "depends_on_id": "project-LICHEN-worker6-9098.42",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T07:24:46.626083Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

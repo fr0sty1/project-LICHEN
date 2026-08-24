@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-sczc",
+  "title": "Rust secure_rpl_public fixtures use link-local address as native RPL origin",
+  "description": "lichen-node/tests/secure_rpl_public.rs constructs RplStack::provision_leaf with SecureStack::local_addr(), which is the fe80:: control address. Production validate_origin correctly requires ygg_addr_from_pubkey as the native RPL/DAO origin, so both public integration tests fail InvalidOrigin. Update fixtures to derive the canonical native address from the identity public key while retaining link-local for control traffic, then run the full lichen-node suite.",
+  "notes": "Fixed public Secure RPL tests to use key-derived native address for RPL origin/DODAG and retain fe80 control destination. Focused and full lichen-node suites pass.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:18:22.311655Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:48:46.812607Z",
+  "started_at": "2026-08-24T14:18:26.430849Z",
+  "lease_expires_at": "2026-08-24T14:23:26.430849Z",
+  "heartbeat_at": "2026-08-24T14:18:26.430849Z"
+}

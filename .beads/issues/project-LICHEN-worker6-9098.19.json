@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.19",
+  "title": "radio.py: RxTimeout/exit_rx drops other nodes' delayed copies of this TX",
+  "description": "## Problem\n\n`_drop_delayed_rx_for_node(node_id)` deletes every stash key where `key[0] == node_id` (this node as receiver) **or** `key[1] == _active_transmissions[node_id]` (this node's in-flight TX, as heard by **other** receivers).\n\nIt is called from:\n\n- `_handle_rx_timeout` — unconditionally, before `EventHandlersMixin._handle_rx_timeout`, and without checking `node.state == RX_WAIT` or that this event is the current `_pending_rx_timeouts` entry\n- `exit_rx_mode`\n- `remove_node` (outbound drop is correct here)\n\n`_do_start_transmission` sets `NodeState.TX` but does not cancel a pending `RxTimeoutEvent`. Half-duplex TX while an old RX timeout is still queued is the normal path.\n\nTimeline:\n\n1. Node A `start_receive` / `enter_rx_mode` (timeout during A's later airtime)\n2. A `start_transmission`; `_stash_delayed_rx_candidates` stores `(B, txA)` with expire = end+added\n3. A's `RxTimeoutEvent` fires while `_active_transmissions[A] == txA`\n4. `_drop_delayed_rx_for_node(\"A\")` pops `(B, txA)`\n5. B's delayed frame of A's packet is gone even though B's RX window is still open\n\n`remove_node` should keep the outbound clause. Timeout and `exit_rx_mode` must only drop keys for this node as **receiver**. 9098.11 asked to prune the timing-out receiver's stash, not other nodes' copies of that node's TX.\n\nStale second `RxTimeoutEvent` (re-enter RX without removing the first event) also hits this path while the node is still `RX_WAIT`.\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (`_drop_delayed_rx_for_node` ~L372-378, `_handle_rx_timeout` ~L483-486, `exit_rx_mode` ~L311, `_do_start_transmission` does not cancel RX timeout)\n- python/src/lichen/sim/simulation/event_handlers.py (`_handle_rx_timeout`)\n- python/tests/sim/test_radio.py (`test_rx_timeout_drops_stash` only covers the receiver's own stash)\n\n## Why this is correctness\n\nTimeout is supposed to end **this** node's receive window. Using the same helper as `remove_node` makes a transmitter's RX timeout (or exit_rx) fail-closed-drop every delayed copy of the in-flight frame, which is a silent loss, not an RX-window close.\n",
+  "design": "Split the helper: receiver-only drop for RxTimeout and exit_rx_mode; keep tx_id fan-out only for remove_node and superseded `_drop_delayed_rx_for_tx`. Gate `_handle_rx_timeout` on `node.state == RX_WAIT` and on this event matching `_pending_rx_timeouts[node_id]`. Cancel pending RxTimeout when starting TX (half-duplex).\n",
+  "acceptance_criteria": "A node that enters RX, then starts TX, then has its RxTimeout fire during airtime, does not prevent another node from receiving the delayed frame at expire. exit_rx_mode on the transmitter does not drop other receivers' stash for that TX. remove_node still drops both inbound and outbound stash. test_rx_timeout_drops_stash still passes for the timing-out receiver.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:58:02.99434Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:13:35.252363Z",
+  "started_at": "2026-08-24T06:02:38.486748Z",
+  "closed_at": "2026-08-24T06:13:35.252363Z",
+  "close_reason": "RxTimeout and exit_rx_mode drop only this node's inbound delayed-RX stash. remove_node still drops inbound and outbound. Starting TX cancels this node's RxTimeout without touching other receivers. Transmitter timeout/exit no longer evicts delayed copies of the in-flight TX.",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.19",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:58:03.421827Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.19",
+      "depends_on_id": "project-LICHEN-worker6-9098.11",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:58:03.823793Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

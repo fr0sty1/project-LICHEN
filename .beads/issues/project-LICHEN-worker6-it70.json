@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-it70",
+  "title": "Add independent literals for production-derived timing vectors",
+  "description": "Correctness review found generate_packets_timing.py builds many canonical cross-language expected values directly from lichen.timing production (Trickle constants/FSM, DAO delays, CSMA constants/state, generic airtime rows, FNV slot/hash, startup and desync FSM), while test_packets_timing mostly compares the artifact to the same generator/production and only checks positivity/ranges for several categories. Independent arithmetic currently covers duty-cycle and TDMA max-airtime but not the rest. Add spec-derived literal/second-implementation checks for every production-derived category (or make the generator independent) so a Python regression cannot rewrite the shared Rust/Python oracle and pass its own consumer.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:03:55.761123Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:04:03.278923Z",
+  "started_at": "2026-08-24T13:04:03.278923Z",
+  "lease_expires_at": "2026-08-24T13:09:03.278923Z",
+  "heartbeat_at": "2026-08-24T13:04:03.278923Z"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-hf2f",
+  "title": "SCHC sender retransmits All-1 instead of aborting unrecoverable C=0 ACK",
+  "description": "Correctness review: when an authenticated C=0 ACK reports every assigned regular bitmap bit received but RCS validation failed, handle_ack_frame() returns an ACK REQ and can treat All-1 as bitmap-retransmittable. All-1 is not a regular bitmap tile; with no repairable regular tile the sender must emit Sender-Abort and enter a terminal state. Add exact regression coverage.",
+  "notes": "Review clarification: draft section 5.2 step 4 permits retransmitting All-1 when the ACK marks it missing, but that retransmission batch MUST omit the trailing ACK REQ. If all assigned bitmap bits are 1 while C=0/RCS failed, there is no repairable fragment and the sender MUST abort. Cover both branches.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:40:30.26674Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:42:08.202259Z",
+  "started_at": "2026-08-24T06:40:39.906712Z",
+  "lease_expires_at": "2026-08-24T06:45:39.906712Z",
+  "heartbeat_at": "2026-08-24T06:40:39.906712Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-nwfm",
+  "title": "Execute every DAO Origin canonical vector against the production validator and manager",
+  "description": "P2 test correctness: python/tests/test_vectors.py still says no production DAO-origin codec exists and evaluates all 51 dao_origin_signature.json cases only through a second handwritten parser. The production DaoOriginValidator is exercised for just five source-binding cases, so stage/reason divergences such as E=1 being rejected structurally instead of semantically remain green. Build a production-vector harness covering malformed parse outcomes, identity, signature, replay ordering, semantic rejection, persistence, reconciliation, and accepted route state for every canonical case while retaining the independent oracle checks.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:09:30.230939Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:09:35.224988Z",
+  "started_at": "2026-08-24T17:09:35.224988Z",
+  "lease_expires_at": "2026-08-24T17:14:35.224988Z",
+  "heartbeat_at": "2026-08-24T17:09:35.224988Z"
+}

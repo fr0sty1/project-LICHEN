@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.40",
+  "title": "radio.py: DelayedRxReadyEvent is a no-op for polling RX",
+  "description": "## Problem\n\n9098.18 queued DelayedRxReadyEvent at expire_us so BARRIER_SYNC lands on the 1 us TTL. 9098.23 pops it before RxTimeoutEvent and has _handle_rx_timeout call deliver_pending_packets before dropping stash.\n\nBoth paths only deliver callback RX (node.rx_callbacks is not None). RadioMixin._handle_event for DelayedRxReadyEvent is:\n\n    self.deliver_pending_packets()\n    return\n\ndeliver_pending_packets skips nodes with rx_callbacks is None. Polling get_rx_result (metrics.py module docstring: the production ~1 ms poll while a node waits; start_receive / tests / examples) is not invoked.\n\nSame-tick timeout for a polling node:\n\n1. DelayedRxReadyEvent runs, delivers nothing, stash still at expire_us.\n2. RxTimeoutEvent: _handle_rx_timeout sees rx_callbacks is None, skips deliver, then _drop_delayed_rx_for_receiver and super() sets IDLE.\n3. Later get_rx_result is None. The only eligible microsecond is gone (now \u003e expire_us prunes).\n\ntest_same_tick_timeout_does_not_drop_delayed_callback / test_callback_delivery_with_latency_rule use enter_rx_mode. TestDelayedRxStash polling tests advance_to(expire) then get_rx_result with no RxTimeout at that tick (start_receive is either unused or times out at 1 ms, well before expire).\n\nThis is not 9098.18 (callback/HIL never waking at expire) and not 9098.23 (timeout sorted before DelayedRx). Event order is fixed; the wake still does not serve the polling API, and timeout teardown still consumes the TTL.\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (_handle_event DelayedRxReadyEvent, _handle_rx_timeout, _reinject_delayed_candidates equality TTL)\n- python/src/lichen/sim/events.py (DelayedRxReadyEvent docstring claims the handler delivers for the node)\n- python/tests/sim/test_radio.py (callback-only same-tick tests)\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:55:32.981616Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:13:15.021511Z",
+  "started_at": "2026-08-24T06:56:23.414901Z",
+  "closed_at": "2026-08-24T07:13:15.021511Z",
+  "close_reason": "DelayedRxReadyEvent captures polling RX_WAIT results before same-tick RxTimeout drops the stash.",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.40",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:55:33.65509Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.40",
+      "depends_on_id": "project-LICHEN-worker6-9098.31",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:55:34.155509Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

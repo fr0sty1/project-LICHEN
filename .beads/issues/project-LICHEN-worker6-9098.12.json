@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.12",
+  "title": "latency bounds tests: elapsed is poll wait; airtime oracle is lora_medium",
+  "description": "## Problem\n\n`project-LICHEN-worker6-9098.7` asked for an independent latency oracle: harness `sim.current_time_us` plus spec airtime (`lichen.timing.airtime.airtime_us`), not CUT `Metrics.latency_stats()`. The follow-up still does not have an independent floor or an independent first-delivery time.\n\n1. **Harness \"elapsed\" is the test's sleep, not RX time.** `_poll_after_hop_airtime` (~L115-142) does `advance_to(tx_start + airtime [- 1 | + extra_delay])` then `elapsed = sim.current_time_us - tx_start`. `advance_to` always lands on that target, so `elapsed` is identically the wait. Every test then `assert elapsed == airtime - 1` (or `airtime + CHAOS_ADDED_US`) and appends that constant. `_assert_harness_oracles` therefore checks that SF10 airtime of tiny payloads is under 300ms/500ms/1s — a property of the wait, not of the radio. Instant delivery, mid-airtime delivery, or LatencyRule no-op all still record the scheduled poll time.\n\n2. **\"Spec\" airtime is the CUT airtime function.** Import is `from lora_medium import airtime_us as spec_airtime_us` (~L41). Docstring (~L20-21) claims `lichen.timing.airtime.airtime_us`, which itself wraps `lora_medium.airtime_us` when the native module is present (`python/src/lichen/timing/airtime.py` L57-62). These tests `skipif not HAS_SIMULATOR`, so the wrapper never takes the pure-Python fallback. Medium `TxEndEvent.time_us` is the same `lora_medium.airtime_us`. Wait duration, expected elapsed, and TX duration share one function. A too-small `airtime_us` still satisfies `elapsed == airtime - 1` and the hop budget.\n\n3. **Helper floor is 1µs, not spec airtime.** `_assert_harness_oracles(..., min_floor_us: int = 1)` (~L153). Original acceptance required floor = spec airtime. Individual equalities use CUT airtime-1, so they cannot substitute.\n\n4. **LatencyRule eligibility is untested.** `test_latency_bounded_with_added_delay` only polls at `end + CHAOS_ADDED_US`. It never polls at `airtime - 1` (should be None if the stash filter works) then later. If `_delayed_rx` were returned without the time check, the extra wait would still succeed and `elapsed == airtime + added` would still hold because elapsed is the wait.\n\n5. **CUT vs harness equality is poll-time vs poll-time.** `stats.min_us == harness.min` (~L184-188) is useful against a broken Metrics clock, but both values are `current_time_us` at the scheduled poll (`metrics.record_reception(..., self._current_time_us)`). It does not prove first-delivery \u003e= spec airtime.\n\n## Independent oracle that exists in-tree\n\n`lichen.timing.airtime._airtime_us_fallback` / `airtime_us_with_params` (Semtech formula, spec 09-packets-timing.md). That path is not used here.\n\n## Files\n\n- `python/tests/sim/test_multihop_latency_bounds.py` (`spec_airtime_us`, `_poll_after_hop_airtime`, `_assert_harness_oracles`, chaos delay test)\n- `python/src/lichen/timing/airtime.py` (`airtime_us` wraps lora_medium)\n- `python/src/lichen/sim/simulation/radio.py` (delivery time is poll time)\n",
+  "design": "Independent floor is lichen.timing.airtime._airtime_us_fallback / airtime_us_with_params (not lora_medium.airtime_us). Measure first-delivery: poll at t=0 and t=airtime/2 must miss; earliest success at or after spec airtime-1 (non-delay) or end+added (LatencyRule). Chaos delay test must poll once before eligibility (None) then at eligibility (hit). Helper min_floor_us is spec fallback airtime, not 1. Keep CUT stats as a cross-check only.",
+  "acceptance_criteria": "Bound asserts use first successful RX time, not the scheduled advance_to target. Floor is the pure-Python spec formula, not lora_medium.airtime_us. LatencyRule test fails if the packet is already readable at airtime-1. A too-small lora_medium.airtime_us cannot make the suite green while violating spec airtime.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:31:45.508231Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:49:48.063826Z",
+  "started_at": "2026-08-24T05:38:54.507304Z",
+  "closed_at": "2026-08-24T05:49:48.063826Z",
+  "close_reason": "Floor is lichen.timing.airtime.airtime_us_with_params (not lora_medium). Dual-probe LatencyRule; None after CATASTROPHIC is a bound failure.",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.12",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:31:45.979511Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.12",
+      "depends_on_id": "project-LICHEN-worker6-9098.7",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:31:46.364386Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

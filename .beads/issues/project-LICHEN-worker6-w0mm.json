@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-w0mm",
+  "title": "Older authenticated DIO capability can roll back peer SCHC policy",
+  "description": "Security codereview finding in python/src/lichen/link/link_layer.py accept_authenticated_schc_dio(): LinkLayer retains multiple exact AuthenticatedDio issuances, records admitted_counter on the resulting peer context, but never requires a newly selected DIO counter to be greater than the current context's admitted_counter. A delayed caller can accept an older already-replay-accepted DIO after a newer one and replace the current remote_version/key policy; in particular, an old compatible Version 3 capability can undo a later incompatible-version policy and reopen SCHC processing. Reject non-increasing DIO policy admission per signer (and/or revoke superseded issuances) atomically under _security_lock, without invalidating current state on rejection; add out-of-order and exact-reuse regressions across same/different rule versions.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:07:42.605478Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:11:22.811499Z",
+  "started_at": "2026-08-24T13:11:22.811499Z",
+  "lease_expires_at": "2026-08-24T13:16:22.811499Z",
+  "heartbeat_at": "2026-08-24T13:11:22.811499Z"
+}

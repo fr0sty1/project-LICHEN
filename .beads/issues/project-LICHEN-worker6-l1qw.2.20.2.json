@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.20.2",
   "title": "Rust: Channel Agility and Adaptive SF implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:05.723618Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.499880Z",
+  "updated_at": "2026-08-24T06:10:02.843014Z",
+  "closed_at": "2026-08-24T06:10:02.843014Z",
+  "close_reason": "Already done: rf_health.rs has adaptive_sf/adaptive_sf_select implementing spec 02a-coordinated-capacity with density/SNR/load/EMA thresholds. sf_assignment.rs has hash-based SF assignment, gateway-assigned SF via DIO. Tests pass against ccp15/ccp16/ccp_load_balancing vectors.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.20.2",

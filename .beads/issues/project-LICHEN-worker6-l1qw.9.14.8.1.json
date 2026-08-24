@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.8.1",
   "title": "Python: Dead Drop oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:15.864402Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:15.864402Z",
+  "updated_at": "2026-08-24T06:35:00.675648Z",
+  "started_at": "2026-08-24T06:31:09.733034Z",
+  "closed_at": "2026-08-24T06:35:00.675648Z",
+  "close_reason": "Implemented Dead Drop resource per spec 18.9",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.8.1",

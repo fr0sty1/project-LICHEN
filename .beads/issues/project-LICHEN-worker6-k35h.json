@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-k35h",
+  "title": "C lichen_rpl_dodag_process_dio_bytes does not compile",
+  "description": "lichen/subsys/lichen/rpl/dodag.c lichen_rpl_dodag_process_dio_bytes (not in rpl_dodag.h) writes d-\u003eis_gateway_centric, which is not a member of struct lichen_rpl_dodag (the field is gateway_centric). It also calls lichen_rpl_dodag_process_dio with 6 arguments; the declaration requires 8 (config and authenticated are missing). Host compile of the full TU fails with those 3 errors. Discovered while adding a LICHEN_RPL_TEST-only lollipop host test that therefore compiles only the comparison helpers. Out of scope for worker6-y4yy (version_is_newer only).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:23:49.534431Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:35:58.031751Z",
+  "started_at": "2026-08-24T04:30:17.963879Z",
+  "closed_at": "2026-08-24T04:35:58.031751Z",
+  "close_reason": "Fixed C compile of lichen_rpl_dodag_process_dio_bytes: write gateway_centric via process_dio (not is_gateway_centric), pass config+authenticated (8-arg), declare in rpl_dodag.h. Host cc -c of full TU succeeded; rpl_dodag lollipop test passed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-k35h",
+      "depends_on_id": "project-LICHEN-worker6-y4yy",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T04:23:49.932169Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

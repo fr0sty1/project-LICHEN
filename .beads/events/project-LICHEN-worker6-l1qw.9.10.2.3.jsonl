@@ -1,1 +1,2 @@
 {"id":"019fb9b2-467f-703e-b5eb-2b0ec3301f09","issue_id":"project-LICHEN-worker6-l1qw.9.10.2.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:41:36.255017Z"}
+{"id":"01a03236-7d8f-7121-ac2b-595f9031be28","issue_id":"project-LICHEN-worker6-l1qw.9.10.2.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: coap_transport.json exists with transport binding vectors","created_at":"2026-08-24T05:20:27.023074Z"}

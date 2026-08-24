@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-f7y6",
+  "title": "ACK RxFrame verifier provenance is forgeable through importable bearer token",
+  "description": "python/src/lichen/link/link_layer.py and schc/fragment.py expose an importable verifier token, callable trusted factory, and shared default binding. In-process callers/tests can mint an RxFrame accepted by production ACK handling. Remove importable bearer token/public trusted factory and require a LinkLayer-owned unforgeable provenance path; public/package APIs must not mint accepted envelopes.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:11:35.632665Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:11:46.232203Z",
+  "started_at": "2026-08-24T06:11:46.232203Z",
+  "lease_expires_at": "2026-08-24T06:16:46.232203Z",
+  "heartbeat_at": "2026-08-24T06:11:46.232203Z"
+}

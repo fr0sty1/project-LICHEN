@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kqug",
+  "title": "SCHC session baseline reservation races LinkLayer replay acceptance",
+  "description": "python/src/lichen/schc/fragment.py captures the replay baseline under a different lock from link_layer.py receive acceptance. A delayed prior-session ACK can cross the boundary and be delivered into the new session. Serialize replay acceptance/envelope creation with tuple reservation/baseline capture or add a genuine generation discriminator; add barrier-driven race coverage.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:11:38.031398Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:11:49.824542Z",
+  "started_at": "2026-08-24T06:11:49.824542Z",
+  "lease_expires_at": "2026-08-24T06:16:49.824542Z",
+  "heartbeat_at": "2026-08-24T06:11:49.824542Z"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-byej",
+  "title": "Cleared direct-source TimeSample can be replayed to restore wall-clock validity",
+  "description": "Timing correctness review: clear removes the current sample but establishes no issuance or adoption barrier for direct providers. Stale or duplicate checks run only while a current sample exists, and replay high-water exists only for network evidence. The exact previously adopted direct TimeSample can be submitted after clear and accepted again. Add one-use provider issuance or per-authority adoption and invalidation high-water semantics so pre-clear and previously accepted samples cannot re-establish time while a newly issued post-clear sample can.",
+  "notes": "Security extension: define one-use semantics for all issued samples, not only successful direct-source adoptions. A network sample rejected before high-water advancement or a direct sample issued before clear/policy change can currently be resubmitted later while fresh. Decide and specify whether consideration consumes issuance; recovery after expiry should require a newly issued sample if replay rejection is normative.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:24:12.670432Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:26:50.201635Z",
+  "started_at": "2026-08-24T08:24:20.744734Z",
+  "lease_expires_at": "2026-08-24T08:29:20.744734Z",
+  "heartbeat_at": "2026-08-24T08:24:20.744734Z"
+}

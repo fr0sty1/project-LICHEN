@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.6.1.1",
   "title": "Python: MRHOF objective function",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:54.625273Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:54.625273Z",
+  "updated_at": "2026-08-24T08:21:15.326422Z",
+  "closed_at": "2026-08-24T08:21:15.326422Z",
+  "close_reason": "Verified: rpl/dodag.py line 128 path_cost(), line 349 select_parent()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.1.1",

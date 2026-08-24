@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jiri",
+  "title": "rule_versioning.json lacks executable Python and Rust consumers",
+  "description": "test/vectors/rule_versioning.json is not loaded by tests, allowing stale malformed cases. It contains ambiguous truncated Rule 66 behavior and Version 2 DODAG examples after Version 3. Add explicit Python and Rust consumers and identify the exact API for every decompression case.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:14:18.395295Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:14:27.26604Z",
+  "started_at": "2026-08-24T06:14:27.26604Z",
+  "lease_expires_at": "2026-08-24T06:19:27.26604Z",
+  "heartbeat_at": "2026-08-24T06:14:27.26604Z"
+}

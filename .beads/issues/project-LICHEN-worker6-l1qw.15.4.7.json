@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.4.7",
   "title": "Rust: 6.2 Slot Allocation algorithms",
   "description": "GCP-6.2: Implement both slot allocation modes - interleaved (gateway N owns slots N, N+G, N+2G...) and contiguous blocks. POST /.well-known/lichen-gw/slots for claiming.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:59.815103Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:59.815103Z",
+  "updated_at": "2026-08-24T05:58:08.420762Z",
+  "closed_at": "2026-08-24T05:58:08.420762Z",
+  "close_reason": "Already done: slot allocation in rust/lichen-gateway/src/slot.rs",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.4.7",

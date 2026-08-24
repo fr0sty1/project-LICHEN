@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-n200",
+  "title": "DAO vectors falsely identify production Schnorr as their signature oracle",
+  "description": "generate_dao_origin_signature.py now correctly imports test/vectors/reference_schnorr48.py, but emitted oracle_provenance.signature_generation still says python/src/lichen/crypto/schnorr48.py. This false metadata defeats the purpose of the independent-oracle audit and misleads cross-implementation consumers. Point provenance to the independent PyNaCl-backed reference module, regenerate deterministically, and coordinate the metadata-only hash change.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:39:35.236048Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:39:45.386519Z",
+  "started_at": "2026-08-24T15:39:45.386519Z",
+  "lease_expires_at": "2026-08-24T15:44:45.386519Z",
+  "heartbeat_at": "2026-08-24T15:39:45.386519Z"
+}

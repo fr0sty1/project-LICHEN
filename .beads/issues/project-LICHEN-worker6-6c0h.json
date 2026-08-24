@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-6c0h",
+  "title": "Unsigned LichenFrame parser exposes entire body as MIC",
+  "description": "Security/correctness codereview finding in python/src/lichen/link/frame.py from_bytes(): mic_len is zero for unsigned frames, but mic = body[len(body) - mic_len:] becomes body[0:] because -0 == 0. Every successfully parsed unsigned frame therefore reports the complete LLSec/Epoch/Seq/Dst/Payload body as its MIC, contradicting the wire profile and LichenFrame._validate. LinkLayer rejects unsigned ingress today, but parser/vector/debug consumers can mistake unauthenticated bytes for integrity evidence. Special-case zero to return b\"\" (while preserving the full payload slice), assert parse/serialize round trips for every unsigned address/MIC selector, and coordinate with existing consumer-coverage bead c5s7 without duplicating it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:10:11.044363Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:10:38.979356Z",
+  "closed_at": "2026-08-24T13:10:38.979356Z",
+  "close_reason": "Closed as review false positive: the slice starts at len(body) - 0, which is len(body), so unsigned mic is correctly b''; existing unsigned round-trip tests pass."
+}

@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-worker6-ttfo.9",
+  "title": "process_dio keeps stale parent when _admissible rejects a DAGRank-inadmissible update",
+  "description": "## Location\n\npython/src/lichen/rpl/dodag.py DodagState.process_dio — after the poison and raw dio.rank \u003e= self.rank eviction branches, the new _admissible gate:\n\n    candidate = ParentCandidate(neighbor_id, dio.rank, link_etx)\n    if not self._admissible(candidate):\n        return\n    self.parents[neighbor_id] = candidate\n\nContrast the raw-inflation branch just above it (ttfo.3), which pops an existing parent and calls select_parent().\n\n## What goes wrong\n\nThe DAGRank/floor port (ttfo.8) correctly refuses first-join of below-root ranks and of candidates whose DAGRank does not strictly increase. For an already-installed parent, _admissible False is treated as \"do not insert\" rather than \"this advertisement makes the parent unusable.\" The cached lower rank stays; select_parent is not run.\n\nRFC 6550 8.2.2.4 requires DAGRank(node) \u003e DAGRank(parent) against the advertised Rank. Keeping the stale advertisement violates that once the parent's new DAGRank has caught up to ours.\n\nNot a refile of ttfo.3 (that path is dio.rank \u003e= self.rank raw, and it now evicts) or ttfo.8 (first-join below-root / missing DAGRank predicate — those predicates are in _admissible and first-join is rejected).\n\n## Trigger (reproduced)\n\nlink_etx=1.5 is already used by test_does_not_switch_without_meaningful_improvement. With MinHopRankIncrease 256:\n\n1. process_dio(rank=256, P1, etx=1.5) -\u003e JOINED, own rank 640 (DAGRank 2), cached P1.rank=256 (DAGRank 1).\n2. process_dio(rank=600, P1, etx=1.5) -\u003e 600 \u003c 640 so the raw ttfo.3 eviction does not fire; _admissible fails because 600//256 == 640//256 == 2; return without pop.\n3. Actual: still JOINED at 640, parents[P1].rank still 256.\n4. Expected: P1 removed, re-select (UNJOINED if no backup).\n\nWhen own rank is a multiple of mhri (the etx=1.0 / parent-rank-256 happy path), DAGRank equality coincides with dio.rank \u003e= self.rank and ttfo.3 covers it. The hole is exactly the non-aligned ranks the DAGRank port exists to handle.\n\nSame return also retains a legal cached parent after a later below-root advertisement (rank=100 following a rank-256 join).\n\nNew neighbors at the same DAGRank are correctly not inserted (P2 rank 600 while own rank 640 stays out of parents).\n\n## Fix\n\nWhen _admissible is False and neighbor_id is already in self.parents, pop and select_parent(), matching the poison / raw-inflation branches. Optionally use DAGRank for that eviction test rather than only the insert gate. Add a process_dio test with independently computed ranks (256 + round(1.5*256)=640, then 600) — do not use node._admissible(...) as the oracle.\n\nnode_address coerce in __post_init__ is clean (mixed textual forms of the same IID now compare equal after to_ipv6).\n",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:06:47.644915Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:11:29.388129Z",
+  "started_at": "2026-08-24T04:11:13.809127Z",
+  "closed_at": "2026-08-24T04:11:29.388129Z",
+  "close_reason": "Inadmissible updates to a cached parent now pop and re-select. test_inadmissible_update_evicts_cached_parent (etx 1.5 then rank 600).",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.9",
+      "depends_on_id": "project-LICHEN-worker6-ttfo",
+      "type": "parent-child",
+      "created_at": "2026-08-24T04:06:48.056936Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.9",
+      "depends_on_id": "project-LICHEN-worker6-rw5e",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T04:06:48.474968Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

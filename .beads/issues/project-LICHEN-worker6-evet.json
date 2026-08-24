@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-evet",
+  "title": "FragmentSender attempts documentation excludes ACK-REQ attempts",
+  "description": "Final ACK correctness review: python/src/lichen/schc/fragment.py:744-748 describes attempts as the number of All-1 transmissions, but the state machine also increments it for ACK REQ emissions in timeout and missing-regular-fragment paths. Update the public contract to describe total All-1/ACK-REQ request attempts and distinguish generated output from confirmed radio transmission. Add assertions covering both increment paths so documentation and semantics cannot drift.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:47:53.428165Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:47:58.384482Z",
+  "started_at": "2026-08-24T08:47:58.384482Z",
+  "lease_expires_at": "2026-08-24T08:52:58.384482Z",
+  "heartbeat_at": "2026-08-24T08:47:58.384482Z"
+}

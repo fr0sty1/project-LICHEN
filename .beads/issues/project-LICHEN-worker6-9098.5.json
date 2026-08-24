@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.5",
+  "title": "test_multihop_latency_bounds.py: hop latency sampled at TX-start (~0 µs), bound asserts cannot fail",
+  "description": "## Problem\n\n`python/tests/sim/test_multihop_latency_bounds.py` claims per-hop latency stays under HOP_LATENCY_BUDGET_US (300ms), p99 under MAX_P99_LATENCY_US (500ms), and no sample exceeds CATASTROPHIC_LATENCY_US (1s).\n\n`Simulation.get_rx_result` records latency at poll time (`radio.py` `_get_rx_result_internal` → `metrics.record_reception(node_id, tx.id, self._current_time_us)`). Latency is `time_us - tx_start` (`metrics.py` `record_reception`).\n\nMost tests poll **during** the TX at t=TX-start, then advance:\n\n- `test_three_node_line_latency_bounded` (~L105-118): `start_transmission` then immediate `get_rx_result`, then `advance_to(+300_000)`\n- `test_five_node_line_latency_bounded` (~L155-167): same\n- `test_latency_under_concurrent_transmissions` (~L200-208): same\n- `test_latency_bounded_with_added_delay` (~L307-314): same\n- `test_latency_bounded_with_degraded_signal` (~L347-350): same\n- `test_sustained_load_latency_bounded` (~L381-389): same\n- `test_bursty_traffic_latency_bounded` (~L431-438): same\n\nRecorded hop latency is therefore ~0 µs. `0 \u003c= 300_000` / `500_000` / `1_000_000` cannot fail. A node that took 10s per hop would still pass.\n\n`test_latency_consistent_across_hops` (~L251-257) is the only test that advances first (+1_000 µs) and even documents the bug: \"polling at t=TX-start records min_us=0 and hides variance\". After that fix, every hop is sampled at a fixed +1ms, so max/min ratio is identically 1.0. It does not compare hop-1 vs hop-4.\n\nContrast the independent-oracle pattern already used in `python/tests/sim/test_metrics.py` `test_successful_reception_and_latency`: advance_to(1000), then poll, then `assert stats.min_us == 1000`.\n\n## Why this is robustness (not style)\n\nThe file is the B.5.4 / 8.19.4 latency-bound suite. With this sampling, it cannot detect unbounded or catastrophic hop delay under congestion, which is the property under test.\n\n## Not a duplicate of 4i0v\n\n4i0v only forced min_us\u003e0 on the consistency test via a 1ms poll offset. The other seven tests still poll at TX-start.",
+  "design": "Latency is recorded in Metrics.record_reception as (poll current_time_us - tx_start). BARRIER_SYNC tests must advance into airtime before the poll, then assert against spec airtime (lichen.timing.airtime.airtime_us) as a floor and the existing budget constants as a ceiling.",
+  "acceptance_criteria": "Each hop polls get_rx_result only after an independent time advance (airtime or a harness-chosen offset, not 0). Bound asserts use that elapsed sim time (or match test_metrics.py: min_us == advance). A hypothetical 10s hop would fail HOP_LATENCY_BUDGET_US / CATASTROPHIC_LATENCY_US. test_latency_consistent_across_hops records per-hop samples at distinct poll times, not a global max/min ratio of identical +1ms samples.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:10:41.037411Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:25:07.048633Z",
+  "started_at": "2026-08-24T05:11:57.61233Z",
+  "closed_at": "2026-08-24T05:25:07.048633Z",
+  "close_reason": "All hops wait spec airtime before polling so recorded latency is hop airtime (~248ms), not ~0us. Independent harness timestamps asserted against HOP_LATENCY_BUDGET_US / MAX_P99 / CATASTROPHIC.",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.5",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:10:41.531031Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.5",
+      "depends_on_id": "project-LICHEN-worker6-4i0v",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:10:41.910569Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

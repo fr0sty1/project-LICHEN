@@ -1,1 +1,2 @@
 {"id":"019fb9a2-fdca-76fd-90fc-1a7cb8b55481","issue_id":"project-LICHEN-worker6-l1qw.15.4.6","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:24:54.602459Z"}
+{"id":"01a03259-0684-7dd6-b881-8c1c5d6afcdf","issue_id":"project-LICHEN-worker6-l1qw.15.4.6","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: rust/lichen-core/src/superframe.rs implements superframe synchronization","created_at":"2026-08-24T05:58:10.308908Z"}

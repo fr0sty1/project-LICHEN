@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-h65m",
+  "title": "SCHC draft omits required terminal tombstone and late-fragment semantics",
+  "description": "Correctness review: spec/03-adaptation.md:313-330 normatively requires a 60-second terminal/expiry tombstone retaining replay high-water, outcome, and cached final ACK where applicable, and restricts session restart. draft-lichen-schc-lora-00.md:369-371 instead says inactivity sends Receiver-Abort and releases state; lines 500-505 say abort releases retained packet/reassembly state, but the draft never defines tombstones/high-water/restart gates despite referring to terminal hold-down at line 360. An implementer following the I-D can free all key state and let late authenticated fragments create a new T=0 session. Mirror or normatively reference the complete tombstone rules in the draft and distinguish active-buffer release from tombstone retention.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:17:03.499475Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:20:35.810867Z",
+  "started_at": "2026-08-24T12:20:35.810867Z",
+  "lease_expires_at": "2026-08-24T12:25:35.810867Z",
+  "heartbeat_at": "2026-08-24T12:20:35.810867Z"
+}

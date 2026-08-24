@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ypbm",
+  "title": "Reject secure request payload length overflow before OSCORE reservation",
+  "description": "Robustness review of SecureStack::send_secure_request found the new protected length expression 1 + class_e_len + payload.len() + TAG_LEN can overflow usize for an adversarially large caller slice before bounded frame preflight. Compute the length with checked arithmetic and return CoapEncode before reserving sender state; add a regression test if practical.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:46:20.700255Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:46:24.451648Z",
+  "started_at": "2026-08-24T15:46:24.451648Z",
+  "lease_expires_at": "2026-08-24T15:51:24.451648Z",
+  "heartbeat_at": "2026-08-24T15:46:24.451648Z"
+}

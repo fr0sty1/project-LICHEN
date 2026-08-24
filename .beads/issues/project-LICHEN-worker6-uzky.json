@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-uzky",
+  "title": "LinkLayer fragmentation accepts structurally invalid SCHC payloads",
+  "description": "Python LinkLayer.create_fragment_sender checks only the first Rule ID byte and authenticated peer version, not canonical decompression/structure through the peer context. A compatible caller can fragment truncated or noncanonical Rule0-7 payloads or Rule255 garbage. Validate the entire SCHC packet against the exact current authenticated peer context before session allocation and ensure Rule255 carries canonical full IPv6. Add malformed/truncation/padding/Rule255 and no-state-consumption tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:50:07.889713Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T09:50:15.665875Z",
+  "started_at": "2026-08-24T09:50:15.665875Z",
+  "lease_expires_at": "2026-08-24T09:55:15.665875Z",
+  "heartbeat_at": "2026-08-24T09:50:15.665875Z"
+}

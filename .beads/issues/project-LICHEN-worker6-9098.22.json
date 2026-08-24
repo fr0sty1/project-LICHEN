@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.22",
+  "title": "radio.py: exit_rx/deliver remove_events_for_node cancels TxEnd and delayed TX",
+  "description": "## Problem\n\n`exit_rx_mode` and `deliver_pending_packets` cancel RX by calling `EventQueue.remove_events_for_node(node_id)`. That helper deletes **every** event whose `node_id` matches, not only `RxTimeoutEvent`:\n\n- `TxEndEvent` for an in-flight TX\n- `TxStartDelayedEvent` for jitter / density-aware startup\n\nThe comment at `exit_rx_mode` says \"Remove pending RxTimeoutEvent for this node.\" The call does more than that.\n\n`remove_node` in `nodes.py` is the correct user of the broad helper (node is gone). RX cleanup is not.\n\nConcrete failure modes:\n\n1. **Jitter + RX.** `start_transmission` with `delay_us \u003e 0` queues `TxStartDelayedEvent` and does **not** change node state (still `RX_WAIT`). `exit_rx_mode` or a successful `deliver_pending_packets` then drops the delayed start. TX never happens. `start_transmission` already returned `\"\"`, which callers treat as \"will TX later.\"\n2. **Immediate TX then enter_rx / deliver.** `_do_start_transmission` sets `TX` and queues `TxEndEvent`. `enter_rx_mode` overwrites state to `RX_WAIT` without ending the medium TX. If `deliver_pending_packets` then delivers (or `exit_rx_mode` is called), `TxEndEvent` is removed. `_active_transmissions` and `Medium` still hold the TX with no end event — stuck airtime, later RX can keep seeing it, `_handle_tx_end` never runs.\n3. **HIL.** `serial_server` keeps the node in `enter_rx_mode` and injects hardware RX via `start_transmission`. With jitter enabled, (1) fires on the next `deliver_pending_packets`. Renode `RX_ENTER` while a TX is in flight hits (2).\n\n`test_radio.py` `test_exit_rx_mode_cancels_timeout` only asserts the queue is empty when the sole event was the timeout. It would fail to catch preserved `TxEndEvent`/`TxStartDelayedEvent` because none exist in that test.\n\nThis is not 9098.19 (stash fan-out on timeout). 19 is about `_drop_delayed_rx_for_node` deleting other receivers' delayed copies. This is the event queue hammer cancelling this node's own TX lifecycle.\n\n## Why this is robustness\n\nRX window teardown must not abort or leak the node's transmitter. A half-duplex radio still needs `TxEndEvent` so the medium and `_active_transmissions` retire. Jitter is the documented way to desynchronize boots; combining it with callback RX (the HIL/Renode path) silently drops those transmissions.\n\n## Files\n\n- `python/src/lichen/sim/simulation/radio.py` (`exit_rx_mode` ~L311-313, `deliver_pending_packets` ~L347, `start_transmission` delayed return ~L91-108)\n- `python/src/lichen/sim/events.py` (`remove_events_for_node` ~L141-160)\n- `python/tests/sim/test_radio.py` (`test_exit_rx_mode_cancels_timeout`)\n- `python/src/lichen/sim/serial_server.py` / `renode_server.py` (consumers)\n",
+  "design": "Cancel only RxTimeoutEvent for this node (filter by type and node_id, or match _pending_rx_timeouts[node_id] time_us). Do not call remove_events_for_node from exit_rx_mode or deliver_pending_packets. remove_node may keep the broad helper. Optionally abort RX (timeout+callbacks) when starting TX, without deleting TxEnd/TxStartDelayed.",
+  "acceptance_criteria": "exit_rx_mode with a queued TxStartDelayedEvent still fires the delayed TX. deliver_pending_packets on a node that is also transmitting does not remove its TxEndEvent; medium TX ends at airtime. test_exit_rx_mode_cancels_timeout still leaves the queue without that node's RxTimeoutEvent. A test covers jitter-delay TX surviving exit_rx_mode.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:01:51.328783Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:13:39.552575Z",
+  "started_at": "2026-08-24T06:02:41.369435Z",
+  "closed_at": "2026-08-24T06:13:39.552575Z",
+  "close_reason": "exit_rx_mode and deliver_pending_packets cancel only RxTimeoutEvent for that node via EventQueue.remove_events_for_node_of_type. TxEndEvent and TxStartDelayedEvent survive; jitter-delayed TX still fires after exit_rx_mode.",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.22",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:01:51.724919Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.22",
+      "depends_on_id": "project-LICHEN-worker6-9098.13",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:01:52.073063Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

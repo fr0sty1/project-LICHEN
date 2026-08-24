@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-60yp.2",
+  "title": "C process_dio treats incomparable DODAG versions as equal",
+  "description": "Security review of lichen/subsys/lichen/rpl/dodag.c version compare (post-y4yy RFC 7.2 lollipop_cmp). Not a re-file of y4yy/k35h/s0wq: lollipop_cmp itself now matches RFC SEQUENCE_WINDOW=16; the DIO call site ignores incomparable.\n\n## Bug\n\nlichen_rpl_dodag_process_dio (dodag.c ~354-365) only branches on version_is_newer(dio, local) or version_is_newer(local, dio). RFC 6550 7.2 same-region |a-b| \u003e 16 is incomparable (lollipop_cmp returns 2). Then both version_is_newer calls are false (except the documented 0 vs 127 special case), and the function falls through and processes the DIO as if the versions were equal: DTSN update, parent insert, select_parent. adopt_version is not called, so d-\u003eversion is unchanged.\n\nUnjoined nodes always adopt (second if is true whenever !joined), including older and incomparable versions for the same DODAGID.\n\n## Attacker model\n\nDIO version is an attacker-controlled uint8_t. process_dio requires authenticated=true (valid link signature / TOFU peer). A signed neighbor can:\n\n1. After the victim joined at version V, send a DIO with version V+/-17 (same region) so |diff| \u003e 16.\n2. Become a parent in the victim's table while the victim keeps version V.\n3. Optionally bump DTSN (ret=1) and mix poisoned topology into a desynchronized DODAG.\n\nPython (dodag.py process_dio + versions_incomparable) and rust/lichen-rpl (version_is_older_or_incomparable -\u003e Rejected) drop incomparable DIOs. python/tests/rpl/test_dodag.py test_incomparable_version_is_ignored_not_mixed and test_joined_node_ignores_incomparable_version_parent encode that oracle. C host test lichen/tests/rpl_dodag only exercises the helpers, not this call site.\n\n## Acceptance\n\n- JOINED + incomparable incoming version: no parent insert, no DTSN change, version unchanged.\n- UNJOINED + same (instance, DODAGID) + older or incomparable: do not adopt_version.\n- Add C tests with the Python/Rust incomparable vectors as independent expected values (not derived from dodag.c).\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:33:11.553101Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:48:52.023313Z",
+  "started_at": "2026-08-24T04:38:13.438999Z",
+  "closed_at": "2026-08-24T04:48:52.023313Z",
+  "close_reason": "lichen_rpl_dodag_process_dio now ignores incomparable lollipop versions (neither version_is_newer, versions not equal): no parent insert, no DTSN update, version unchanged. UNJOINED + same (instance, DODAGID) + older/incomparable does not adopt_version. Host tests: joined incomparable (18 vs 1, RFC |diff|\u003e16), unjoined incomparable (17 vs 0), unjoined older (0 vs 5). Verify: cmake -S lichen/tests/rpl_dodag -B lichen/tests/rpl_dodag/build \u0026\u0026 cmake --build lichen/tests/rpl_dodag/build \u0026\u0026 ./lichen/tests/rpl_dodag/build/rpl_dodag_test → 13/13; ctest 1/1.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-60yp.2",
+      "depends_on_id": "project-LICHEN-worker6-60yp",
+      "type": "parent-child",
+      "created_at": "2026-08-24T04:33:11.954319Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-60yp.2",
+      "depends_on_id": "project-LICHEN-worker6-y4yy",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T04:33:12.342325Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

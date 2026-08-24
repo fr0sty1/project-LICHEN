@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-ttfo",
+  "title": "Review: python rpl dodag.py lollipop+demote 2026-08-23",
+  "notes": "CORRECTNESS review (RFC 6550 7.2 lollipop + demote/_lowest_rank):\n\nFiled this pass: 2\n- project-LICHEN-worker6-ttfo.5 (P1): unjoined process_dio compares versions across DODAGIDs\n- project-LICHEN-worker6-ttfo.6 (P2): _admissible max_rank_increase=0 means unlimited per RFC 6.7.6\n\nNot re-filed (already on this epic):\n- ttfo.1 root dethroned by newer-version DIO\n- ttfo.2 / ttfo.4 incomparable versions treated as same-version ads\n- ttfo.3 stale parent rank inflation (adjacent process_dio, not lollipop)\n\nlollipop_cmp itself matches rust/lichen-rpl and RFC 6550 7.2 rules 3.1/3.2 (SEQUENCE_WINDOW=16 inclusive; same-region |diff|\u003e16 incomparable; cross-region wrap\u003c=16 wrapped-newer). version_is_newer matches that plus the rust (0,127) adjacent-wrap special case. demote() now resets _lowest_rank; the new test covers the 256+2048 leftover-root-bound rejoin.\n\nReview confidence: 25% chance of a missed lollipop_cmp arithmetic bug (table-checked against RFC worked examples 240 vs 5 and 250 vs 5, and rust oracle). Least confident: whether unjoined-foreign-DODAG adopt is intended policy vs rust (rust rejects all foreign DODAGs). Would raise confidence if: exhaustive 256x256 lollipop_cmp vs a spec-derived oracle; process_dio tests for incomparable and unjoined-foreign versions.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T03:32:12.157204Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:11:32.669489Z",
+  "started_at": "2026-08-24T03:32:36.836397Z",
+  "closed_at": "2026-08-24T04:11:32.669489Z",
+  "close_reason": "Three-perspective review of python rpl dodag.py: filed ttfo.1-10, all closed. C divergence remains y4yy.",
+  "labels": [
+    "review"
+  ]
+}

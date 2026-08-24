@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-0oql",
+  "title": "Decouple link-frame oracle from production address/MIC enums",
+  "description": "Correctness review found generate.py labels _oracle_encode_frame independent but frame_vectors imports production AddrMode and MicLength and uses their integer values to construct the canonical fields/wire. If those enum discriminants drift from spec bits, regeneration and the main consumer test drift together, especially unsigned Extended/Elided and selector-1 cases. Use literal spec-defined oracle constants (or an independent local enum) for all canonical inputs and add direct bit-position assertions in the independent consumer.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:03:28.75908Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:03:36.784705Z",
+  "started_at": "2026-08-24T13:03:36.784705Z",
+  "lease_expires_at": "2026-08-24T13:08:36.784705Z",
+  "heartbeat_at": "2026-08-24T13:03:36.784705Z"
+}

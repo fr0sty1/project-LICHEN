@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jhfm",
+  "title": "CCP beacon-format vector encodes obsolete reserved layout and endianness",
+  "description": "While aligning the canonical TDMA slot formula, test/vectors/ccp_beacon_format.json was found to define the 24-byte beacon header as epoch/num_slots/SFN/timestamp/flags plus 10 reserved bytes, label the multibyte example fields little-endian, truncate a microsecond timestamp to zeros, and say the codec is unimplemented. Normative spec/02a-coordinated-capacity.md section 2a.2 instead defines unsigned big-endian epoch, SFN, and timestamp followed by rx_chains, setup_window, occupied_time, 50 ms guard, and channel_mask; current implementations/vectors should use that contract. Replace the placeholder metadata and example with an exact independently decoded 24-byte header and add executable Python field/byte assertions.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:06:27.534012Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:06:40.575546Z",
+  "started_at": "2026-08-24T15:06:40.575546Z",
+  "lease_expires_at": "2026-08-24T15:11:40.575546Z",
+  "heartbeat_at": "2026-08-24T15:06:40.575546Z"
+}

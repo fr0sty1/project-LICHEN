@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-do8z",
+  "title": "SCHC timer guards allow post-construction clock substitution",
+  "description": "python/src/lichen/schc/fragment.py:SchcSessionManager and python/src/lichen/schc/reassembly.py:_AuthenticatedReassemblyManager wrap lambda: self._clock() in _ValidatedSchcClock, so the guarded callback identity stays constant while the actual self._clock field remains freely replaceable. Replacing _clock with a non-regressing attacker-controlled callable is undetected: a large jump can prematurely expire active sessions/hold-downs and retire wire capabilities; a frozen value can retain them indefinitely. This undercuts the fail-stop clock design and differs from LinkLayer's immutable MonotonicClock binding. Bind an exact immutable clock capability/callback snapshot directly (and ideally share the LinkLayer clock), fail closed on reference/domain mutation, and add forward-jump/freeze/substitution tests for both managers.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:57:33.407256Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:59:22.283899Z",
+  "started_at": "2026-08-24T14:59:22.283899Z",
+  "lease_expires_at": "2026-08-24T15:04:22.283899Z",
+  "heartbeat_at": "2026-08-24T14:59:22.283899Z"
+}

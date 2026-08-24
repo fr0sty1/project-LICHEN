@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-2hcq",
+  "title": "sfn_delta silently treats booleans as protocol counters",
+  "description": "python/src/lichen/timing/sfn.py documents sfn_delta(curr, last) as unsigned 32-bit counter arithmetic but performs no exact-integer validation. Because bool is an int subclass, sfn_delta(True, False) silently returns 1 and can turn malformed decoded state into a valid-looking SFN delta, while sibling slot_for already rejects booleans and non-integers explicitly. Require exact integers for both operands (continuing to normalize arbitrary integer values modulo 2^32 if that is the intended counter contract) and add bool/float/string/None edge tests.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:15:42.417917Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:15:50.428551Z",
+  "started_at": "2026-08-24T14:15:50.428551Z",
+  "lease_expires_at": "2026-08-24T14:20:50.428551Z",
+  "heartbeat_at": "2026-08-24T14:15:50.428551Z"
+}

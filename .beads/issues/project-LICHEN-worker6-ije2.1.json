@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-ije2.1",
+  "title": "codec.rs: use buf.fill(0) instead of manual loop",
+  "description": "In `BitWriter::new` (line 88-90), replace the manual zeroing loop with the idiomatic `buf.fill(0)`:\n\nCurrent:\n```rust\nfor b in buf.iter_mut() {\n    *b = 0;\n}\n```\n\nShould be:\n```rust\nbuf.fill(0);\n```\n\nFile: `rust/lichen-schc/src/codec.rs`\nLines: 88-90",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:59:12.898103Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:09:29.06644Z",
+  "started_at": "2026-08-24T05:07:47.292052Z",
+  "closed_at": "2026-08-24T05:09:29.06644Z",
+  "close_reason": "Applied fixes: buf.fill(0), .expect() on infallible try_into, renamed finalize to ones_complement_sum. cargo check and cargo test pass.",
+  "labels": [
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ije2.1",
+      "depends_on_id": "project-LICHEN-worker6-ije2",
+      "type": "parent-child",
+      "created_at": "2026-08-24T04:59:13.311325Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

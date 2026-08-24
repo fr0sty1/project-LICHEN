@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-0w29",
+  "title": "test_ccp_beacon_sig_gate.py::test_nan_etx_path_cost stale vs dodag.py WIP NaN handling (127-line uncommitted diff)",
+  "description": "Reconcile test expectations with new NaN ETX cost semantics; determine which side is spec-correct before touching either.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:31.041923Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:46:31.041923Z"
+}

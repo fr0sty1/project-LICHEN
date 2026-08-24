@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ffnz",
+  "title": "Make trust-store persistence durable, private, and concurrency-safe",
+  "description": "SECURITY/ROBUSTNESS: TrustStorePersistence.save writes a predictable shared .tmp without locking or O_EXCL, does not set the directory/file to 0700/0600, and renames without fsyncing the directory. Concurrent writers can interleave/replace each other's temporary file or lose updates, process umask may expose peer metadata, and a reported successful save can disappear after crash. Use a locked single-writer or generation/CAS protocol, unique same-directory temp with restrictive mode at creation, fsync file and directory, and tests for concurrent saves, symlink/temp collisions, permissions, and crash recovery.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:44:28.081604Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:58:07.657051Z",
+  "started_at": "2026-08-24T15:58:07.657051Z",
+  "lease_expires_at": "2026-08-24T16:03:07.657051Z",
+  "heartbeat_at": "2026-08-24T15:58:07.657051Z"
+}

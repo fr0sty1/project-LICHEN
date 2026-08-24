@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-3xut",
+  "title": "Own T=0 SCHC sender sessions in an atomic link-bound registry",
+  "description": "ACK redesign correctness review found per-FragmentSender value contexts do not enforce one active T=0 session per ordered local signer, remote signer, and directional Rule ID. Two senders can overlap and accept the same verified ACK; delayed prior-session C=1 can terminate a new transfer. Add a link/session-owned atomic registry that captures authoritative replay baseline, rejects overlap, retains terminal tombstones/hold-down, handles counter exhaustion/rekey, and tests simultaneous senders plus late prior-session controls.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:48:24.613187Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:48:41.338741Z",
+  "started_at": "2026-08-24T05:48:41.338741Z",
+  "lease_expires_at": "2026-08-24T05:53:41.338741Z",
+  "heartbeat_at": "2026-08-24T05:48:41.338741Z",
+  "labels": [
+    "codereview",
+    "python",
+    "schc",
+    "security",
+    "session"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3xut",
+      "depends_on_id": "project-LICHEN-worker6-ueza",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:48:25.027662Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

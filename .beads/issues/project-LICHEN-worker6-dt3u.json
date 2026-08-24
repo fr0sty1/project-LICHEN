@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-dt3u",
+  "title": "Define a canonical SCHC encoding for multicast RPL DIOs",
+  "description": "Security/interoperability review found that spec/09-packets-timing.md §13.3 and the packet-format artifact call the canonical ff02::1a RPL DIO 'SCHC Rule 3', while spec/03-adaptation.md, appendix-schc, and both current Rule 3 codecs require both IPv6 endpoints to be fe80::/64 and encode the destination as a 64-bit IID. The authenticated_schc_dio generator therefore emits Rule 255 (consumer security tests explicitly assert link payload 14 ff || IPv6) for ff02::1a. These two purported security oracles describe different signed bytes and size/admission paths for the same parent-selection DIO. Specify whether Rule 3 has a canonical multicast-destination mode/constant or whether multicast DIOs MUST use validated Rule 255, then align the spec walkthrough, byte counts, generator provenance, Python/Rust codecs, and independent signed admission vectors. Ensure the chosen compressed form cannot reconstruct fe80::1a in place of ff02::1a and that destination/scope checks happen before routing-state mutation.",
+  "notes": "Rust complete: ff02::1a authenticated DIO admission requires SCHC Rule255 and validates destination before DIO/routing admission; Rule3 remains link-local only. Authenticated DIO and shared-vector suites pass.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:29:05.202353Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:48:27.373764Z",
+  "started_at": "2026-08-24T13:29:16.859461Z",
+  "lease_expires_at": "2026-08-24T13:34:16.859461Z",
+  "heartbeat_at": "2026-08-24T13:29:16.859461Z"
+}

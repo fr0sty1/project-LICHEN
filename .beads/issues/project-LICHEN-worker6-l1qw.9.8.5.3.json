@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.5.3",
   "title": "Python: PUT /keys/{addr}/{key-id} (trust update)",
   "description": "Acceptance: update key trust level",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:28.566898Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:28.566898Z",
+  "updated_at": "2026-08-24T06:26:47.411211Z",
+  "closed_at": "2026-08-24T06:26:47.411211Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.5.3",

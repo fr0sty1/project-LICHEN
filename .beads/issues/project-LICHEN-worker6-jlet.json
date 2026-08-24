@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-jlet",
+  "title": "Mandatory Signer IID reduces SCHC authenticated tile ceiling from 187 to 179 bytes",
+  "description": "The SCHC profile derives TILE_SIZE=187 from a 255-byte signed Extended-unicast frame while omitting the mandatory 8-byte SIID field. With LENGTH max254, fixed body is LLSec/EPO/SEQ 4 + DST8 + SIID8 + Schnorr48 =68, leaving 186 L2 payload bytes; dispatch leaves a 185-byte fragment envelope. Final header15 + RCS32 + one padding bit consumes 6 bytes, so the fixed tile maximum is 179, and the two-window packet ceiling is 126*179=22,554 bytes. Update specs, Python/Rust constants/code/tests/vectors and all max-frame arithmetic; keep C/Zephyr untouched this session.",
+  "notes": "Correctness reviewer found Rule255 vector limits also stale. Exact signed Extended+SIID budget: L2 payload 186, dispatch 1, Rule255 ID 1, so raw IPv6 max is 184 and SCHC packet limit is 185. Update rule255_fallback_max_single_frame and rule255_no_fragmentation plus consumers.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:12:34.789568Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:15:46.241564Z",
+  "started_at": "2026-08-24T12:12:38.06843Z",
+  "lease_expires_at": "2026-08-24T12:17:38.06843Z",
+  "heartbeat_at": "2026-08-24T12:12:38.06843Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ows5",
+  "title": "Frame gateway outbound mesh traffic with signed link-layer wire format",
+  "description": "rust/lichen-gateway/src/gateway.rs upstream_to_mesh and mesh_to_mesh return bare [L2_DISPATCH_SCHC || SCHC] payloads. lichend queues these bytes directly to sim/serial/HAT transmit paths, while the receiving production RplStack expects a complete LichenFrame and authenticates it before SCHC. Thus TUN-to-mesh and forwarded mesh traffic are not interoperable and are rejected as malformed/unsigned. Route outbound IPv6 through the owned Stack/RplStack link TX path and return/drain complete signed wire frames; add an end-to-end two-stack acceptance test.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:57:43.236086Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:58:57.088537Z",
+  "started_at": "2026-08-24T14:58:57.088537Z",
+  "lease_expires_at": "2026-08-24T15:03:57.088537Z",
+  "heartbeat_at": "2026-08-24T14:58:57.088537Z"
+}

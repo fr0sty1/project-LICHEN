@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.2.2",
   "title": "Rust: Discovery implementation",
   "description": "Rust mesh-gateway implementation of GCP-4 Discovery: CoAP multicast GET on backbone, CoAP Observe for announcements, GATEWAY flag in LoRa frames.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:01.769688Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:01.769688Z",
+  "updated_at": "2026-08-24T05:52:10.369818Z",
+  "closed_at": "2026-08-24T05:52:10.369818Z",
+  "close_reason": "Already done: rust/lichen-gateway/src/discovery.rs (650 lines) implements GCP-4.1 backbone discovery + GCP-4.2 LoRa fallback with BackboneDiscoveryRequest, LoraGatewayAnnounce, 10-byte wire format.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.2.2",

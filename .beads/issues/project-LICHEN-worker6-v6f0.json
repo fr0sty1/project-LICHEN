@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-v6f0",
+  "title": "LinkLayer receipt clock can self-assert and retain a forged trusted timing domain",
+  "description": "Fresh final timing security review: LinkLayer.__post_init__ accepts an arbitrary receipt_clock callable plus caller-supplied receipt_clock_domain, so an attacker can pair lambda:0 with a trusted MonotonicClock.domain_identity and pass DioTimeVerifier domain checks. LinkLayer is also a mutable dataclass: object.__setattr__(link, _receipt_clock, attacker_callable) rebinds timestamps while _clock_domain remains trusted, and newly authenticated DIO time samples use attacker-selected observation times. Require an exact immutable MonotonicClock-like capability owned as one binding, derive domain only from it, reject self-asserted overrides/bare mismatched callables, and detect/fail closed on rebinding. Add construction, post-construction, active tracker, mutation race, and legitimate fake-clock tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:21:32.621929Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T09:21:39.352791Z",
+  "started_at": "2026-08-24T09:21:39.352791Z",
+  "lease_expires_at": "2026-08-24T09:26:39.352791Z",
+  "heartbeat_at": "2026-08-24T09:21:39.352791Z"
+}

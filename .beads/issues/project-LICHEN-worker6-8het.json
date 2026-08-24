@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8het",
+  "title": "Timing wrong-signer vector expects BAD_SIGNATURE for a valid signature",
+  "description": "Correctness review: generate_packets_timing.py builds signed-wrong-signer by signing canonical_payload with wrong_identity and publishes that identity as signer_pubkey_hex (around lines 388-397); packets-timing.json:488-494 nevertheless expects link_receive/BAD_SIGNATURE. python/tests/test_protocol_vector_security.py:114-132 independently verifies every timing wire against its published signer key, so this signature is demonstrably valid. Because the IPv6 source IID belongs to remote_identity, the proper failure is source_signer_mismatch after cryptographic authentication if wrong_identity is trusted, or an unknown/untrusted-signer error if it is not. Regenerate with the intended trust setup and assert the exact valid rejection stage/cause.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:17:02.20475Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:20:32.533603Z",
+  "started_at": "2026-08-24T12:20:32.533603Z",
+  "lease_expires_at": "2026-08-24T12:25:32.533603Z",
+  "heartbeat_at": "2026-08-24T12:20:32.533603Z"
+}

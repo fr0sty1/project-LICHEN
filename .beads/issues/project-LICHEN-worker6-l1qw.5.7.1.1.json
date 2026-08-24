@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.7.1.1",
   "title": "Python: Announce encode/decode",
   "notes": "Already implemented in messages.py",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:49.161008Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:49.161008Z",
+  "updated_at": "2026-08-24T08:21:21.230685Z",
+  "closed_at": "2026-08-24T08:21:21.230685Z",
+  "close_reason": "Verified: announce/messages.py line 18 AnnounceMessage, to_bytes line 70, from_bytes line 86",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.1.1",

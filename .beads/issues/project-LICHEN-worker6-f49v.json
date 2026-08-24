@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-f49v",
+  "title": "Fail-closed persistence disable leaves cached SCHC and time capabilities live",
+  "description": "Python LinkLayer fatal persistence failure clears receipts, authenticated DIO issuances, and the SCHC session manager, but leaves _schc_peer_contexts, _schc_peer_context_issuances, and _key_generations live. _validated_authenticated_peer_schc_context(), accepts_time_generation(), and elevate_time_generation() do not enforce persistence health. A previously issued peer SCHC context or time-generation capability can remain usable after the LinkLayer marks itself permanently disabled. Fix all cached authority revocation paths and add regression tests covering SCHC compression/decompression/session creation and time-generation acceptance/elevation after a persistence write failure.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:44:20.471722Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T09:44:25.227133Z",
+  "started_at": "2026-08-24T09:44:25.227133Z",
+  "lease_expires_at": "2026-08-24T09:49:25.227133Z",
+  "heartbeat_at": "2026-08-24T09:44:25.227133Z"
+}

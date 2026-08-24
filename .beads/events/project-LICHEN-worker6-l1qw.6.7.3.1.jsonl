@@ -1,1 +1,2 @@
 {"id":"019f9761-4d57-7265-b2d5-2b2a3dc6cdd2","issue_id":"project-LICHEN-worker6-l1qw.6.7.3.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:46:04.247159Z"}
+{"id":"01a032db-c6a5-75df-9367-a1a3336f7f50","issue_id":"project-LICHEN-worker6-l1qw.6.7.3.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: oscore.py inherits aiocoap CanProtect (handles response AAD)","created_at":"2026-08-24T08:20:59.173385Z"}

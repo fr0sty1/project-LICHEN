@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-1qo9",
+  "title": "LinkLayer.send hangs forever when CAD leaves frame queued",
+  "description": "LinkLayer._send_locked awaits its reservation after drain_tx_queue returns false on repeated busy CAD, but drain_tx_queue never resolves queued reservations on that path. The existing test test_set_sequence_rejects_queued_frame therefore hangs instead of returning false. Resolve the per-send reservation false without removing the queued frame, preserve later drain behavior, and add focused completion/queue-state coverage.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:41:07.1138Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:41:11.761138Z",
+  "started_at": "2026-08-24T06:41:11.761138Z",
+  "lease_expires_at": "2026-08-24T06:46:11.761138Z",
+  "heartbeat_at": "2026-08-24T06:41:11.761138Z"
+}

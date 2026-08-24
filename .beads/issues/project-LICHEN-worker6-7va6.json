@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-7va6",
+  "title": "Rust CCP beacon vector consumer assumes hash fields on every slot-selection case",
+  "description": "rust/lichen-node/tests/ccp_beacon_format.rs iterates every type=slot_selection vector and unwraps output.hash_32, but canonical EMA/timing slot-selection cases legitimately omit EUI/hash metadata. This panics after vector regeneration. Filter production slot-hash assertions to cases with the required eui64/slot fields and only assert hash_32 when the vector supplies that oracle; require at least one consumed canonical case.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:52:17.103415Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:52:22.001584Z",
+  "started_at": "2026-08-24T15:52:22.001584Z",
+  "lease_expires_at": "2026-08-24T15:57:22.001584Z",
+  "heartbeat_at": "2026-08-24T15:52:22.001584Z"
+}

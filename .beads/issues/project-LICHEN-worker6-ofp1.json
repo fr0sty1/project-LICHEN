@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ofp1",
+  "title": "Restored link sequence journal remains resettable through public setter",
+  "description": "Post-fix correctness review: after a signed sequence journal is restored, `_sequence_started` remains false, so public `set_sequence()` can reset the transmit tuple below the durable high-water and reuse signed counters. A restored journal must irrevocably mark counter state initialized, or the setter must be removed or restricted. Lower, equal, and higher post-restore resets must fail without mutation, and the next send must use the restored tuple. Add restart-plus-setter persistence tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:06:21.575824Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:06:36.657149Z",
+  "started_at": "2026-08-24T08:06:36.637588Z",
+  "lease_expires_at": "2026-08-24T08:11:36.637588Z",
+  "heartbeat_at": "2026-08-24T08:06:36.637588Z"
+}

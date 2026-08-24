@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-2ijk",
+  "title": "RPL option registry cross-references remain stale after time option allocation",
+  "description": "spec/03-adaptation.md still labels SCHC Rule Version as Type TBD although the project registry assigns 0x13, and the Assigned-SF defining spec lacks the central registry/wire-value cross-reference for 0x14. Update both normative references and test searches so option values 0x12-0x15 cannot drift.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:12:34.040769Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:24:48.797392Z",
+  "started_at": "2026-08-24T06:12:38.305928Z",
+  "closed_at": "2026-08-24T06:24:48.797392Z",
+  "close_reason": "Replaced SCHC Type TBD with provisional 0x13 and cross-referenced Assigned SF 0x14 to the central 0x12-0x15 registry. Independent time correctness review found registry/source ordering clean; searches and diff-check pass."
+}

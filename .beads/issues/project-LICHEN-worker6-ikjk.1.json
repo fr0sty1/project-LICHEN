@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-ikjk.1",
+  "title": "key_persistence.py: TrustStorePersistence.save() missing file permission restriction",
+  "description": "TrustStorePersistence.save() uses atomic write but doesn't set restrictive permissions on trust_store.json. FileKeyStore._write_slot() properly sets 0600 via os.chmod() before rename, but TrustStorePersistence doesn't. Trust entries may contain sensitive peer pubkeys and trust levels. Add os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR) before os.replace() in save().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:56:28.428259Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:56:28.428259Z",
+  "labels": [
+    "crypto-security",
+    "storage",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ikjk.1",
+      "depends_on_id": "project-LICHEN-worker6-ikjk",
+      "type": "parent-child",
+      "created_at": "2026-08-24T15:56:29.149482Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

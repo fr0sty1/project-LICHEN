@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8urr",
+  "title": "SCHC ACK transition discards detached receipt snapshot and parses caller-mutated RxFrame",
+  "description": "Security review: LinkLayer.consume_verified_receipt returns a detached immutable snapshot, but the SCHC receipt callback discards it and FragmentSender parses signer/counter/payload from the caller-visible exact RxFrame. object.__setattr__ can mutate that object while retaining its registered receipt, causing authenticated semantic substitution. Return/use the detached snapshot under the same security lock for every ACK field and add payload/signer/epoch/seqnum mutation regressions.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:10:17.557566Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:10:24.582542Z",
+  "started_at": "2026-08-24T07:10:24.582542Z",
+  "lease_expires_at": "2026-08-24T07:15:24.582542Z",
+  "heartbeat_at": "2026-08-24T07:10:24.582542Z"
+}

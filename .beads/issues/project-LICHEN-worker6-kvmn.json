@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kvmn",
+  "title": "Python Node delivers signed frames addressed to other nodes",
+  "description": "LinkLayer.receive authenticates and returns any known peer's signed frame without destination filtering. Node._process_received immediately delivers non-SCHC/non-fragment payloads to on_receive, so an Extended unicast addressed to another node is accepted locally; SCHC single-frame and other paths also rely on later partial checks. Rust filters wire_is_for_local before admission. Add one canonical local-target gate covering NONE broadcast, Extended EUI-64, configured SHORT, and ELIDED IPv6 destination before application/routing mutation; wrong-target frames must not deliver, allocate protocol state, or emit responses. Add multi-node overhearing tests for raw, single-frame SCHC, RPL, and fragments.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T11:53:32.548898Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T11:53:35.945443Z",
+  "started_at": "2026-08-24T11:53:35.945443Z",
+  "lease_expires_at": "2026-08-24T11:58:35.945443Z",
+  "heartbeat_at": "2026-08-24T11:53:35.945443Z"
+}

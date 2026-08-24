@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ydqn",
+  "title": "KISS receive loop imports ReceiveError only under TYPE_CHECKING",
+  "description": "python/src/lichen/interface/kiss/bridge.py uses ReceiveError at runtime in _rx_loop, but imports it only beneath TYPE_CHECKING. Error paths raise NameError and two KISS loop tests fail. Import the exception at runtime, add/retain regression coverage, run focused tests and 3x module review.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:05:22.347478Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:16:05.052342Z",
+  "started_at": "2026-08-24T06:05:26.536361Z",
+  "closed_at": "2026-08-24T06:16:05.052342Z",
+  "close_reason": "Fixed runtime ReceiveError import; 41 focused KISS tests pass. Correctness, security, and robustness reviews are dry; import-cycle smoke test passes."
+}

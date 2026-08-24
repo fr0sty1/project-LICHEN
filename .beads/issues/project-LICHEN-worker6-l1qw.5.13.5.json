@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.13.5",
   "title": "Rust: DAO Origin Signature Option (8.6)",
-  "status": "open",
+  "notes": "Implementation complete. All 172 tests pass including dao_origin_vectors.rs tests against test/vectors/dao_origin_signature.json. Cannot formally close due to open upstream vector issues (l1qw.5.13.7, l1qw.5.13.8) which appear to be already implemented.",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:29.514409Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.488730Z",
+  "updated_at": "2026-08-24T06:32:05.13206Z",
+  "started_at": "2026-08-24T06:28:56.972253Z",
+  "lease_expires_at": "2026-08-24T06:33:56.972253Z",
+  "heartbeat_at": "2026-08-24T06:28:56.972253Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.13.5",

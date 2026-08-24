@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.19.3",
   "title": "Zephyr: Regional Channel Plans implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:57.056443Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.503373Z",
+  "updated_at": "2026-08-24T06:30:40.204348Z",
+  "closed_at": "2026-08-24T06:30:40.204348Z",
+  "close_reason": "Already done: lichen/subsys/lichen/hal/include/lichen/op_class.h has LICHEN_OP_CLASS_* defines, lichen_op_class_params struct, lichen_op_class_table[], and lichen_op_class_lookup() implementing CCP-3/CCP-4 regional channel plans. Structure and values match Rust lichen-hal implementation exactly. Used by lora_l2_tx.c for channel frequency configuration and duty region lookup.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.19.3",

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-3cq6",
+  "title": "Correct AnnounceMessage originator IID documentation to key-derived identity",
+  "description": "P4 protocol documentation correctness: python/src/lichen/announce/messages.py still documents originator_iid as EUI-64-derived, while the implemented and normative identity profile derives the IID from SHA-512(Ed25519 pubkey) with the U/L bit cleared and explicitly quarantines EUI helpers to link interoperability. Update the source API documentation so callers are not directed toward a noncanonical identity model.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:07:59.398131Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:08:03.83218Z",
+  "started_at": "2026-08-24T17:08:03.83218Z",
+  "lease_expires_at": "2026-08-24T17:13:03.83218Z",
+  "heartbeat_at": "2026-08-24T17:08:03.83218Z"
+}

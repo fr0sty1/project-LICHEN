@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-f360",
+  "title": "Rust generic SCHC rules ignore descriptor matches and normalize packet fields",
+  "description": "Correctness review: Rust Rules0/1/5/6 do not enforce zero TC/Flow Label or CoAP Version=1 before eliding them, then reconstruct canonical values and corrupt valid non-matches; Python selection diverges. Enforce every Equal/MSB field in RULE_SET_V3, fallback valid non-matches to Rule255 unchanged, and add shared TC/Flow/CoAP-version/TKL/token vectors.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:59:35.009899Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:59:46.136264Z",
+  "started_at": "2026-08-24T06:59:46.136264Z",
+  "lease_expires_at": "2026-08-24T07:04:46.136264Z",
+  "heartbeat_at": "2026-08-24T06:59:46.136264Z"
+}

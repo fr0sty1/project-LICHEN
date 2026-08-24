@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.16.9",
   "title": "Vectors: Gradient Table test vectors",
-  "status": "open",
+  "notes": "Work complete: Created test/vectors/gradient_table.json (345 lines) covering passive learning (11.2), congestion encoding (11.4), table operations (LRU, expiration, wrap detection), and path selection. Ready for review once blocking dependencies are closed.",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:43.725981Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.546384Z",
+  "updated_at": "2026-08-24T06:31:57.07764Z",
+  "started_at": "2026-08-24T06:28:54.817329Z",
+  "lease_expires_at": "2026-08-24T06:33:54.817329Z",
+  "heartbeat_at": "2026-08-24T06:28:54.817329Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.16.9",

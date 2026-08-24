@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-mknn",
+  "title": "Rust authenticated DIO path lets any link peer advance the root-owned DODAG version",
+  "description": "Security review P1. rust/lichen-rpl/src/dodag.rs process_authenticated_dio authenticates only the immediate link signer. For non-root rank it deliberately selects ExpectedDioRole::Peer, then process_dio adopts any lollipop-newer version and clears parents/rank. No retained root authorization or root-originated version proof is carried/checked, although spec/03-adaptation.md requires the root to originate the version and non-roots to propagate that authenticated value unchanged. A pinned non-root peer can advertise a newer version and force neighbors to reset/partition; adoption even occurs before an unusable candidate is rejected. Bind accepted version transitions to root-issued evidence preserved end-to-end, prevent peers from minting versions, and test malicious signed non-root version advances including unusable ranks.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:19:33.770689Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:25:36.564337Z",
+  "started_at": "2026-08-24T12:25:36.564337Z",
+  "lease_expires_at": "2026-08-24T12:30:36.564337Z",
+  "heartbeat_at": "2026-08-24T12:25:36.564337Z"
+}

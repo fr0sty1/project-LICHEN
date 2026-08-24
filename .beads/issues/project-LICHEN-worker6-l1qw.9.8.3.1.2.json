@@ -2,14 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.3.1.2",
   "title": "Python: Observe /status",
   "description": "Acceptance: status changes trigger notifications",
-  "notes": "Already implemented via ObservableResource",
+  "notes": "NOT implemented: StatusResource extends _ReadResource, not ObservableResource",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:02.454769Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:02.454769Z",
+  "updated_at": "2026-08-24T08:22:14.341057Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.3.1.2",

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-34g9",
+  "title": "Python DIO serializer validates mutable options before re-reading them",
+  "description": "python/src/lichen/rpl/messages.py validates DIO Rule-Version cardinality over live mutable DIO/RplOption objects, then iterates/re-reads the same caller-owned options again during encoding. Stateful iterables or concurrent mutation can pass one valid 0x13 option during validation and serialize duplicates/malformed data or changed scalar role/rank afterward. Snapshot every scalar and deep-copy exact option primitives once, validate and encode only the immutable snapshot, rejecting alias tricks. Add stateful-iterator and mutation-barrier tests with unchanged canonical vectors.",
+  "notes": "Implemented exact DIO scalar/option snapshot serialization in rpl/messages.py with stateful-list, mutable encoder, alias, mutable-data, and mutated-scalar tests. Focused RPL tests green; leave open for independent convergence.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:50:07.436739Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:02:42.234012Z",
+  "started_at": "2026-08-24T09:50:14.719995Z",
+  "lease_expires_at": "2026-08-24T09:55:14.719995Z",
+  "heartbeat_at": "2026-08-24T09:50:14.719995Z"
+}

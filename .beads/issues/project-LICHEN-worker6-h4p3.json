@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-h4p3",
+  "title": "Update Rust link wire documentation and signed-frame length regression test",
+  "description": "rust/lichen-link/src/lib.rs still documents bit 7 as reserved and omits the mandatory 8-byte signer EUI-64 from the wire layout; LinkLayer docs also claim frames lack a sender hint and require O(n) verification although SI now provides indexed lookup. In rust/lichen-link/src/schnorr.rs si_frame_serialises_and_verifies computes signed LENGTH without signer_eui64.len(), so it signs a length different from the serialized wire and never verifies the parsed wire transcript. Update source docs and make the regression test derive/verify the exact serialized LENGTH.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:57:44.727683Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:58:59.541405Z",
+  "started_at": "2026-08-24T14:58:59.541405Z",
+  "lease_expires_at": "2026-08-24T15:03:59.541405Z",
+  "heartbeat_at": "2026-08-24T14:58:59.541405Z"
+}

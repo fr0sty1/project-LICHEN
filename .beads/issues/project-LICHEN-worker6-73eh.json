@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-73eh",
+  "title": "DioTimeVerifier accepts forgeable duck-typed link receipt providers",
+  "description": "Correctness/security review: DioTimeVerifier accepts any object with a consume_verified_receipt attribute. A fake object can return a SimpleNamespace for arbitrary input and issue a TimeSample that StratumTracker accepts, bypassing exact LinkLayer ownership and one-use receipt verification. Bind to an actual LinkLayer-owned nonforgeable verifier capability/interface and reject fake links/receipts in tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:49:47.594262Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:49:59.471543Z",
+  "started_at": "2026-08-24T06:49:59.471543Z",
+  "lease_expires_at": "2026-08-24T06:54:59.471543Z",
+  "heartbeat_at": "2026-08-24T06:49:59.471543Z"
+}

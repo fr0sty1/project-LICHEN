@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-nupk",
+  "title": "RPL DODAG NaN ETX test and implementation disagree",
+  "description": "The broad scoped Python suite has a remaining RPL DODAG failure: a test expects NaN link ETX/path_cost to raise ValueError while the modified source saturates it. Reconcile the robustness contract in source/spec/tests, ensure non-finite routing metrics fail closed or are handled canonically, and make the full RPL suite green.",
+  "notes": "Reconciled corrupted NaN ParentCandidate.path_cost contract to fail-closed INFINITE_RANK saturation while public constructors/process_dio reject non-finite ETX. Full python/tests/rpl: 440 passed. Leave open for independent convergence.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:47:41.455127Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:02:42.234018Z",
+  "started_at": "2026-08-24T09:47:52.522118Z",
+  "lease_expires_at": "2026-08-24T09:52:52.522118Z",
+  "heartbeat_at": "2026-08-24T09:47:52.522118Z"
+}

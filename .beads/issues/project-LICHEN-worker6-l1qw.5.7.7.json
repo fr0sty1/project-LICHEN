@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.7",
   "title": "9.7 Geographic Coordinates in App Data",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:31.082107Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:31.082107Z",
+  "updated_at": "2026-08-24T06:35:30.326641Z",
+  "closed_at": "2026-08-24T06:35:30.326641Z",
+  "close_reason": "All 5 children complete: Python/Rust/Zephyr Type 0x01 coords encode/decode, LatE7/LonE7 signed 32-bit encoding, coordinate encoding vectors",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.7",

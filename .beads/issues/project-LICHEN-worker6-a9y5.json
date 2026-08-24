@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-a9y5",
+  "title": "SCHC draft weakens reassembly context identity from full signer key to EUI-64",
+  "description": "spec/drafts/draft-lichen-schc-lora-00.md Section 8.1 says the peer key is the ordered pair of local and peer EUI-64 identities, while normative spec/03-adaptation.md keys by local link-signing identity plus the remote full signer identity and Rule ID. EUI-64-only wording weakens key-rotation/collision isolation and conflicts with Python/Rust production authority. Align the draft with the full authenticated signer identity tuple; clarify that EUI-64 is only the exact link address derived from/selected by the verified trust record and cannot substitute for the full signer key in state ownership.",
+  "notes": "Final security review independently confirmed the EUI-64/full-signer context conflict and lack of vectors for key-generation separation, authentication-before-allocation, tombstones, replay high-water, and rotation.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T11:25:12.740404Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T11:30:04.243507Z",
+  "started_at": "2026-08-24T11:25:16.083973Z",
+  "lease_expires_at": "2026-08-24T11:30:16.083973Z",
+  "heartbeat_at": "2026-08-24T11:25:16.083973Z"
+}

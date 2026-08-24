@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.37",
+  "title": "metrics.py: compare_metrics treats rate 0→0.9 as insignificant",
+  "description": "## Problem\n\n`_is_significant` (`python/src/lichen/sim/metrics.py`):\n\n```python\nif baseline == 0:\n    return abs(variant) \u003e= 1\n```\n\nThat floor is intended for counts (\\\"absolute change to be \u003e= 1\\\"). `compare_metrics` also applies it to `delivery_rate` and `collision_rate` (0.0–1.0+). Going from no deliveries (`delivery_rate=0.0`) to 90% (`0.9`) is **not** significant. Going from 0 collisions to collision_rate 0.5 is not significant. Count metrics (`receptions=90`) are flagged, so the A/B verdict can say \\\"better\\\" from counts while the rate row that operators read is `significant=False`.\n\n`test_compare_zero_baseline` comment: \\\"Non-zero from zero should be significant.\\\" It only asserts `transmissions` (100 \u003e= 1). It does not check `delivery_rate` 0.9.\n\n`_rate_direction` still marks the rate \\\"improved\\\", so a human summary can list it under significant changes only if some other path flags it — it will not.\n\n## Files\n\n- `python/src/lichen/sim/metrics.py` (`_is_significant`, `compare_metrics` scalar_keys)\n- `python/tests/sim/test_metrics.py` (`test_compare_zero_baseline`)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:54:05.120515Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:13:10.802442Z",
+  "started_at": "2026-08-24T06:56:20.141011Z",
+  "closed_at": "2026-08-24T07:13:10.802442Z",
+  "close_reason": "compare_metrics treats delivery_rate/collision_rate as rates: 0 to 0.9 is significant (threshold), not the count floor of |variant|\u003e=1.",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.37",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:54:06.049177Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.37",
+      "depends_on_id": "project-LICHEN-worker6-9098.31",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:54:06.985217Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

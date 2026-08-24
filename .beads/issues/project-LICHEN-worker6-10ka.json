@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-10ka",
+  "title": "Rust FragmentSender accepts unauthenticated ACK and abort controls",
+  "description": "rust/lichen-schc FragmentSender.handle_ack_bytes accepts raw bytes with no AuthenticatedFrame/Link evidence and can mark an authenticated transfer succeeded/aborted or trigger retransmission. Policy-at-construction does not authenticate ongoing controls. Require exact current Link-owned signer/local-target/generation/replay evidence for ACK/Receiver-Abort, bind it to the active session/window, and reject raw/foreign/replayed/stale controls without mutation. Add authenticated production integration and shared vectors.",
+  "notes": "Final correctness review: handle_ack_bytes() and handle_ack(Ack) remain public and mutate authenticated sender state without Link evidence. Production wrappers do not prevent callers from bypassing them. Make raw parser/state transition private or separate an unprivileged codec type that cannot own an authenticated session.\nIndependent security review confirms public handle_ack_bytes/handle_ack can terminate or retransmit an authenticated session from unauthenticated bytes; raw state ownership must be unreachable from production callers.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:53:16.461109Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:32:02.189179Z",
+  "started_at": "2026-08-24T09:53:20.048931Z",
+  "lease_expires_at": "2026-08-24T09:58:20.048931Z",
+  "heartbeat_at": "2026-08-24T09:53:20.048931Z"
+}

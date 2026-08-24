@@ -3,13 +3,15 @@
   "title": "Python: WKC resource + link format",
   "description": "Acceptance: WKCResource serves link format",
   "notes": "Already implemented via aiocoap WKCResource",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:48.726215Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:48.726215Z",
+  "updated_at": "2026-08-24T08:22:06.683296Z",
+  "closed_at": "2026-08-24T08:22:06.683296Z",
+  "close_reason": "Verified: coap/resources/site.py line 180-182 uses aiocoap WKCResource",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.1.1",

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ymfl",
+  "title": "Gate Rust peer-generation allocator to its production owner features",
+  "description": "lichen-link no-default build emits dead_code warnings because NEXT_PEER_KEY_GENERATION and PeerKeyGeneration::allocate exist without the schnorr+std-gated LinkLayer that owns generation allocation. Gate allocator state/method to the same features so no-default remains warning-free while the opaque token type remains available to no_std upper layers.",
+  "notes": "Feature-gated runtime/durable generation allocators and replay persistence helpers to their std+schnorr owner; no-default build is warning-free and all-target clippy passes.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:19:39.66562Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:48:47.652276Z",
+  "started_at": "2026-08-24T14:19:43.955707Z",
+  "lease_expires_at": "2026-08-24T14:24:43.955707Z",
+  "heartbeat_at": "2026-08-24T14:19:43.955707Z"
+}

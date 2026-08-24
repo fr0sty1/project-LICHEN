@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-b1xc",
+  "title": "DIO time vectors omit the canonical signed L2/RPL envelope",
+  "description": "Correctness review: the DIO envelope vector/generator contains only a bare DIO payload and omits the L2 dispatch/RPL envelope, signer key, replay counter, signature, and expected receipt behavior. It cannot validate cross-implementation link-to-time verification and reinforces acceptance of noncanonical frames. Add independent literal full signed-wire positive, missing, duplicate, wrong-dispatch, wrong-signer, and replay cases.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:53:30.144493Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:53:36.532051Z",
+  "started_at": "2026-08-24T06:53:36.532051Z",
+  "lease_expires_at": "2026-08-24T06:58:36.532051Z",
+  "heartbeat_at": "2026-08-24T06:53:36.532051Z"
+}

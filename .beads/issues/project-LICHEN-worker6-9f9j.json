@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-9f9j",
+  "title": "Rust fragmentation timeout hold-down starts from stale DIO receipt time",
+  "description": "FragmentSender timeout_current/timeout_with_authority release an aborted session using peer.receipt_ticks(), which is the DIO policy receipt timestamp, not the current timeout/terminal time. For a long-running sender the 60k-tick tombstone can already be expired when installed, allowing delayed prior-session controls into immediate tuple reuse. Require current authenticated/local monotonic time at terminal timeout and test long session, exact boundary, regression, std/no_std parity.",
+  "notes": "Hold-down/reservation comparisons also use the old peer DIO receipt time at construction and receiver allocation; both start/end timing must use a current monotonic sample in a defined unit.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T10:26:45.394876Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:32:41.171964Z",
+  "started_at": "2026-08-24T10:26:51.255657Z",
+  "lease_expires_at": "2026-08-24T10:31:51.255657Z",
+  "heartbeat_at": "2026-08-24T10:26:51.255657Z"
+}

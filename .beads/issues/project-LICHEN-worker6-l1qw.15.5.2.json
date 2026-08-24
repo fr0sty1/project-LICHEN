@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.5.2",
   "title": "Rust: Node Handoff implementation",
   "description": "Rust mesh-gateway implementation of GCP-7 Node Handoff: DAO handling, POST /handoff endpoint, node registry release/acquire, RPL DODAG route updates.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:41.495587Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:41.495587Z",
+  "updated_at": "2026-08-24T05:58:12.337324Z",
+  "closed_at": "2026-08-24T05:58:12.337324Z",
+  "close_reason": "Already done: rust/lichen-gateway/src/handoff.rs implements node handoff",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.5.2",

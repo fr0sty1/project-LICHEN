@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ypqr",
+  "title": "Enforce immutable exact primitive types in AnnounceMessage",
+  "description": "P3 security/robustness: frozen AnnounceMessage validates only len/ranges, so bool sequences/channels, str values of matching length, and mutable bytearray/memoryview identity, signature, or app_data can pass construction (including from_bytes on non-bytes input) and later fail inconsistently or mutate after a trust check. Enforce exact int (not bool) and immutable bytes for every wire/security field, bound app data to the link-profile maximum, and add constructor/parser mutation/type tests.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:55:24.152743Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:58:25.116804Z",
+  "started_at": "2026-08-24T15:58:25.116804Z",
+  "lease_expires_at": "2026-08-24T16:03:25.116804Z",
+  "heartbeat_at": "2026-08-24T15:58:25.116804Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-k2m5",
+  "title": "Gateway PoP type does not enforce challenge issuance or one-time freshness",
+  "description": "Security review finding: VerifiedGatewayIdentity::verify accepts both presented_challenge and expected_challenge as caller-provided byte arrays and only checks equality/nonzero. There is no gateway challenge issuer, outstanding-challenge registry, expiry, peer binding, or one-use consumption; tests simply pass the same static array for both. A captured proof can therefore be reconstructed into a fresh VerifiedGatewayIdentity indefinitely by any caller and fed to admit_gateway, despite the type/documentation claiming a verifier-issued fresh proof. Replace the raw expected argument with an opaque challenge capability issued by a bounded nonce manager, bind it to the enrollment/session and expiry, and consume it exactly once before producing VerifiedGatewayIdentity; add replay/expiry/cross-session negatives.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T16:42:58.886405Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T16:44:33.408241Z",
+  "started_at": "2026-08-24T16:44:33.408241Z",
+  "lease_expires_at": "2026-08-24T16:49:33.408241Z",
+  "heartbeat_at": "2026-08-24T16:44:33.408241Z"
+}

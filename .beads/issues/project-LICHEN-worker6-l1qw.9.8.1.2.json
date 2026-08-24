@@ -3,13 +3,15 @@
   "title": "Python: link format parsing",
   "description": "Acceptance: parse_link_format works",
   "notes": "Already implemented in lci.py parse_link_format",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:51.273345Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:51.273345Z",
+  "updated_at": "2026-08-24T08:22:08.355997Z",
+  "closed_at": "2026-08-24T08:22:08.355997Z",
+  "close_reason": "Verified: client/lci.py line 563-588, 816-855 parse_link_format()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.1.2",

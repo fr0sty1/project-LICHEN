@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.6.1",
   "title": "Python: Mesh Reachability oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:02.174023Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:02.174023Z",
+  "updated_at": "2026-08-24T06:38:03.327997Z",
+  "closed_at": "2026-08-24T06:38:03.327997Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.6.1",

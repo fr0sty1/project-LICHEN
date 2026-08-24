@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-b284",
+  "title": "Python fixed-profile SCHC sender accepts non-profile tile and window geometry",
+  "description": "The public fixed-profile FragmentSender accepts any positive tile_size and any window_size from 1 through 63, then schedules fragments using those values. Fragment.to_bytes nevertheless requires every regular tile to be exactly 187 bytes and the ACK codec is fixed to a 63-position bitmap. Accepted configurations such as tile_size=1 or 188 can therefore build fragment objects that cannot serialize or interoperate. Existing scheduling tests use tile_size=1/window_size=4 but never serialize the result, hiding the inconsistency.",
+  "acceptance_criteria": "The production FragmentSender accepts only the normative TILE_SIZE=187 and WINDOW_SIZE=63, or variable geometry is moved behind a private test-only scheduler paired with codecs that explicitly support it. Every configuration accepted by the public sender must allow every generated fragment and ACK to serialize, parse, and round-trip. Replace synthetic geometry tests with fixed-profile boundary/schedule tests or a clearly isolated scheduler unit test. Add rejection tests for tile sizes 0, 1, 186, 188 and window sizes 0, 1, 62, 64 as appropriate to the chosen API.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:24:21.437627Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:25:34.355816Z",
+  "started_at": "2026-08-24T05:25:34.355816Z",
+  "lease_expires_at": "2026-08-24T05:30:34.355816Z",
+  "heartbeat_at": "2026-08-24T05:25:34.355816Z",
+  "labels": [
+    "codereview",
+    "schc",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-b284",
+      "depends_on_id": "project-LICHEN-worker6-ja8z",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:24:21.806156Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

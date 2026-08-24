@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-2owc",
+  "title": "SCHC session expiry leaves FragmentSender active and cancellation incoherent",
+  "description": "Correctness review: manager expiry removes the session, but FragmentSender.status remains active. timeout() then raises and cancel() calls finish() and raises, leaving state and cleanup incoherent. Synchronize expiry into a terminal sender state and make cancellation idempotent after expiry; cover concurrent/boundary behavior.",
+  "notes": "Additional correctness detail: FragmentSessionManager.finish() does not run expiry. Calling cancel directly after the deadline marks aborted, while timeout-then-cancel leaves active and both calls error. Expiry and terminal transition must be order-independent.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:40:31.684017Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:42:14.265446Z",
+  "started_at": "2026-08-24T06:40:41.704736Z",
+  "lease_expires_at": "2026-08-24T06:45:41.704736Z",
+  "heartbeat_at": "2026-08-24T06:40:41.704736Z"
+}

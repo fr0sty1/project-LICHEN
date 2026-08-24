@@ -3,13 +3,15 @@
   "title": "Python: SLIP frame encode/decode",
   "description": "Acceptance: encode() and decode() pass test vectors",
   "notes": "Already implemented in interface/kiss/framing.py",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:46.189903Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:46.189903Z",
+  "updated_at": "2026-08-24T08:21:36.972524Z",
+  "closed_at": "2026-08-24T08:21:36.972524Z",
+  "close_reason": "Verified: slip/codec.py line 35 encode(), line 56 decode()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.6.1.1",

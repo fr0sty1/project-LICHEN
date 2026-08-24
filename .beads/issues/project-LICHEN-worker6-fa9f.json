@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-fa9f",
+  "title": "Tombstone expiry plus ReplayProtector eviction forgets ACK counter floor",
+  "description": "python/src/lichen/schc/fragment.py deletes expired tombstones while link/replay.py LRU may evict the peer window. After both, an old captured signed ACK can terminate a new session. Retain/persist per-key floor, pin active/tombstoned replay state or fail closed, and test forced eviction plus hold-down expiry.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:11:37.469748Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:11:48.944042Z",
+  "started_at": "2026-08-24T06:11:48.944042Z",
+  "lease_expires_at": "2026-08-24T06:16:48.944042Z",
+  "heartbeat_at": "2026-08-24T06:11:48.944042Z"
+}

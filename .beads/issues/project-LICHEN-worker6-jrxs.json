@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-jrxs",
+  "title": "Rust no_std SCHC authority can mint caller-asserted trust",
+  "description": "Public PeerContextAuthority::issue_verified accepts arbitrary signer/counter/version/receipt facts, while public LinkVerifiedFragment exposes freely constructible fields. Any downstream can construct its own authority, mint an authenticated peer, and drive authenticated sender/receiver APIs without signature, source, root, destination, or clock verification. Under std such contexts can also panic via authenticated_frame(). Replace caller-asserted facts with an owner-issued no_std Link evidence capability/trait sealed to the Link TCB, prevent std misuse, and add compile-fail/forgery tests.",
+  "notes": "In std builds issue_verified creates a public context with evidence=None; authenticated_frame() then panics via expect. Besides trust minting, make evidence-less states unrepresentable or return Result/Option and remove cfg(test) bypasses.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T10:32:03.105441Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:32:42.682765Z",
+  "started_at": "2026-08-24T10:32:18.726854Z",
+  "lease_expires_at": "2026-08-24T10:37:18.726854Z",
+  "heartbeat_at": "2026-08-24T10:32:18.726854Z"
+}

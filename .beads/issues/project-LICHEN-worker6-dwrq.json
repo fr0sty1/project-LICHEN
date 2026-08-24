@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-dwrq",
+  "title": "DAO vector generator can truncate its canonical JSON on interruption",
+  "description": "test/vectors/generate_dao_origin_signature.py still writes dao_origin_signature.json with Path.write_text(), unlike the other modified vector generators' same-directory fsync-and-replace helper. A process interruption, disk-full error, or serializer/write failure after truncation can leave the checked-in canonical DAO vector empty or partial; --check then only reports a parse failure and cannot recover it. Serialize first and use the shared atomic JSON writer while preserving the existing deterministic --check behavior; add injected write/replace failure coverage proving the prior destination survives.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:14:05.128418Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:14:25.442593Z",
+  "started_at": "2026-08-24T14:14:25.442593Z",
+  "lease_expires_at": "2026-08-24T14:19:25.442593Z",
+  "heartbeat_at": "2026-08-24T14:14:25.442593Z"
+}

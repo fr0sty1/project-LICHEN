@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-25hs",
+  "title": "Packet-format oracle helpers accept non-canonical scalar types",
+  "description": "The modified public helpers in python/src/lichen/packets/formats.py do not enforce their annotated protocol scalar types: link_frame_overhead(signed='false') treats the non-empty string as signed, total_packet_size_range(routing_overhead=3.5) returns float byte counts and accepts bool, and dio_packet_bytes accepts bool for one-byte/u16 fields because bool subclasses int. These helpers feed canonical size/vector oracles, so malformed test inputs can silently produce plausible but non-canonical expected values. Require exact bool for signed and exact integers for byte-count/DIO numeric fields, retaining current range checks, with bool/float/string/None regression tests.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:16:00.108957Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:16:08.392288Z",
+  "started_at": "2026-08-24T14:16:08.392288Z",
+  "lease_expires_at": "2026-08-24T14:21:08.392288Z",
+  "heartbeat_at": "2026-08-24T14:16:08.392288Z"
+}

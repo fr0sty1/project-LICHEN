@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-dqdb",
+  "title": "Invalidate SCHC sessions across Rule-Version compatibility transitions",
+  "description": "Rust FragmentationPolicy refreshes a same-key-generation peer in place. If a DIO changes compatibility from v3 to incompatible and later back to v3, preserving the policy generation and session arrays can make pre-transition fragmentation handles valid again. Rotate the policy generation and clear active/prepared/tombstone state whenever compatibility changes, while preserving live sessions for ordinary compatible same-generation DIO refreshes.",
+  "notes": "Fixed compatibility flip handle revival: policy generation advances and all active/prepared/tombstone state is invalidated across incompatible/compatible transitions; stale permits remain invalid. SCHC full suite and clippy pass.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:06:00.34968Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:48:45.163287Z",
+  "started_at": "2026-08-24T14:06:04.721917Z",
+  "lease_expires_at": "2026-08-24T14:11:04.721917Z",
+  "heartbeat_at": "2026-08-24T14:06:04.721917Z"
+}

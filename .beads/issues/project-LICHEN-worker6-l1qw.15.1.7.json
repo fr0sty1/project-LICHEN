@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.1.7",
   "title": "Rust: 3.2 Open Federation (Signatures)",
   "description": "GCP-3.2: Ed25519 identity keys with truncated Schnorr signatures, TOFU key pinning on first contact, optional PKI/DANE verification.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:09.8586Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:09.8586Z",
+  "updated_at": "2026-08-24T05:53:00.270766Z",
+  "closed_at": "2026-08-24T05:53:00.270766Z",
+  "close_reason": "Already done: verify_slot_claim() with schnorr48::verify(), SLOT_CLAIM domain separation, TrustLevel enum, verify_key_rotation() in rust/lichen-link/src/trust.rs",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.1.7",

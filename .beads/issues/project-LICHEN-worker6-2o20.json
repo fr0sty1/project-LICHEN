@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-2o20",
+  "title": "Require authenticated SCHC context before FragmentSender starts",
+  "description": "Correctness review found FragmentSender.session_context remains optional and start() transmits/enters active before discovering it cannot securely process ACKs. Require a link-bound session/registry before stateful start, or separate a pure encoder from the authenticated sender. Expose/migrate the production creation and delivery API and test unbound senders cannot enter active state.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:48:25.493549Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:48:42.352513Z",
+  "started_at": "2026-08-24T05:48:42.352513Z",
+  "lease_expires_at": "2026-08-24T05:53:42.352513Z",
+  "heartbeat_at": "2026-08-24T05:48:42.352513Z",
+  "labels": [
+    "codereview",
+    "python",
+    "schc",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2o20",
+      "depends_on_id": "project-LICHEN-worker6-jh2r",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:48:25.928864Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

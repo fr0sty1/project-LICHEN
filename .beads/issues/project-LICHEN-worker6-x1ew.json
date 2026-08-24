@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-x1ew",
+  "title": "Python DAO origin validator accepts noncanonical same-IID source aliases",
+  "description": "DaoOriginValidator.validate() looks up the pinned key by source IID and checks only _pubkey_to_iid(pubkey) == source[8:16]. A signed DAO using fe80::/64 or another prefix with the same IID therefore passes key binding, contrary to the canonical 02xx source contract now enforced by dao_origin_signature vectors and Rust. Require source_address == yggdrasil_address(pubkey) before signature/replay/route mutation, retain IID_MISMATCH as the fail-closed reason, and add exact link-local/cross-prefix negative tests plus vector-to-production coverage.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:01:51.984919Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:02:02.285058Z",
+  "started_at": "2026-08-24T14:02:02.285058Z",
+  "lease_expires_at": "2026-08-24T14:07:02.285058Z",
+  "heartbeat_at": "2026-08-24T14:02:02.285058Z"
+}

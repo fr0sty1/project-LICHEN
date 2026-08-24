@@ -1,0 +1,40 @@
+{
+  "id": "project-LICHEN-worker6-g5a5",
+  "title": "Fail closed on untrusted DIO and invalid source samples",
+  "description": "Security/correctness review finding. StratumTracker.consider in python/src/lichen/timing/time_sync.py:170-198 and should_adopt_time at 235-259 accept any higher-stratum DioTimeOption using only enum order and an epoch lower bound. They carry no signature/authentication result, peer identity, source class/name, source policy decision, observed monotonic time, freshness, or quality/validity metadata. can_establish_wall_clock at 208-232 likewise accepts GNSS and RTC from class plus timestamp alone, although spec/09-packets-timing.md:173-185 requires trusted sources and docs/firmware-time-provider.md:68-100 requires valid GNSS time, RTC/source metadata, provenance, freshness, and trust. An unauthenticated neighbor can therefore establish wall time merely by advertising a higher stratum. The same structured contract must cover GNSS validity and epoch-valid/aged RTC state, so those are consolidated here.",
+  "acceptance_criteria": "Introduce a structured time-sample/adoption input that preserves source class and name, peer identity where applicable, authentication or integrity verification status, explicit policy acceptance, source-specific validity such as GNSS time-valid separate from position and RTC initialization/age, Unix time, monotonic observation time, freshness/age, and quality/accuracy. DIO/network adoption MUST require verified link/root authenticity or an explicit permitted policy path and MUST fail closed when required metadata is missing, false, stale, or malformed. Route StratumTracker and can_establish_wall_clock through the same policy boundary. Tests must cover unsigned/unverified DIO, policy-denied and policy-accepted network time, GNSS position-valid but time-invalid, uninitialized/stale RTC, missing metadata, valid authenticated samples, and preservation/exposure of rejection reasons and provenance. Align spec and vectors if the data contract changes; run focused tests and three code-review passes per modified source module.",
+  "notes": "Post-fix reviews: _EVIDENCE_SEAL, TimeSample._from_provider, TimeEvidence constructor, ProvisionEpochMetadata._from_verified_record, and from_verified_network remain callable/importable; underscores do not create unforgeable evidence. RxFrame provenance is tracked by f7y6. Local provider evidence is only caller-supplied provider_validated and lacks GNSS time-valid vs position-valid and RTC initialized/age state. StratumTracker can be directly constructed or publicly mutated into a synced state without evidence. Replace self-asserted factories/state with production capability-bound provider/verifier transitions and negative package-API tests; retain structured validity/quality/policy decision diagnostics after accept/reject/status.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:16:06.864962Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:23:53.789511Z",
+  "started_at": "2026-08-24T05:16:35.898576Z",
+  "lease_expires_at": "2026-08-24T05:21:35.898576Z",
+  "heartbeat_at": "2026-08-24T05:16:35.898576Z",
+  "labels": [
+    "codereview",
+    "time-sync"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-g5a5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.5.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:16:07.264699Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-g5a5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.4.4",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:16:07.599628Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

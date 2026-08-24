@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gz3g",
+  "title": "Security-critical authenticated vectors use production code as their claimed independent oracle",
+  "description": "The SCHC draft claims canonical vectors are not derived from code under test, but authenticated/timing generators import production identity, Schnorr, IPv6, link, SCHC, RPL, and timing modules; root_signature.json names production root_signature.py and root_authorization.json calls lichen.crypto independent. Replace expected-value generation with independent primitives/reference construction or relabel provenance and add a truly independent verifier. Hidden signature-preimage drift demonstrates the present tautology.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T11:29:49.988493Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T11:30:01.326121Z",
+  "started_at": "2026-08-24T11:30:01.326121Z",
+  "lease_expires_at": "2026-08-24T11:35:01.326121Z",
+  "heartbeat_at": "2026-08-24T11:30:01.326121Z"
+}

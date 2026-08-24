@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-worker6-h0ma",
+  "title": "Preserve GNSS versus gpsd provenance at stratum 4",
+  "description": "Correctness/spec-compliance review finding. Stratum.GNSS_GPSD in python/src/lichen/timing/time_sync.py:91-109 is normatively GNSS or Local-client, but STRATUM_SOURCE_CLASS maps it unconditionally to SourceClass.GNSS. python/tests/timing/test_time_sync.py:96-103 asserts the collapsed mapping. spec/09-packets-timing.md:176-209 classifies gpsd as Local-client and makes that class policy-gated, while direct GNSS is a distinct default-trusted class. Treating gpsd as GNSS bypasses provenance and policy distinctions and can grant local-client data unintended authority.",
+  "acceptance_criteria": "Replace the one-to-one stratum mapping with a representation that preserves the actual source class and source name/provenance, or explicitly represents every allowed class for a stratum without inferring which supplied a sample. A gpsd/local-client stratum-4 sample MUST remain Local-client and require its policy; on-device GNSS MUST remain GNSS and require GNSS time validity. Tests must cover both sources at stratum 4, distinct default policy outcomes, serialization/adoption without provenance loss, and status/diagnostic exposure. Align spec/vector wording if needed and run focused tests plus three code-review passes per modified source module.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:16:08.959637Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:16:36.594495Z",
+  "started_at": "2026-08-24T05:16:36.594495Z",
+  "lease_expires_at": "2026-08-24T05:21:36.594495Z",
+  "heartbeat_at": "2026-08-24T05:16:36.594495Z",
+  "labels": [
+    "codereview",
+    "time-sync"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-h0ma",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.11.4.4",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:16:09.437279Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

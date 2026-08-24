@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-bv2o",
+  "title": "Apple clang -Werror: rpl_messages.h opt_iter pointers lack nullability",
+  "description": "Host compile of any TU that includes lichen/rpl_messages.h with Apple clang 21 (clang-2100) -Wall -Wextra -Werror fails on -Wnullability-completeness for struct lichen_rpl_opt_iter.data and struct lichen_rpl_raw_opt.data (rpl_messages.h around lines 397 and 407). Triggered because rpl_dodag.h/rpl_messages.h use real _Nonnull/_Nullable when __has_feature(nullability). Out of scope for project-LICHEN-worker6-k35h (stay off messages.c). Fix: annotate those two fields _Nullable (opt_iter.data may be NULL after init with NULL data; raw_opt.data is only valid after a successful next). Do not change codec behavior.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:35:50.060577Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:35:50.060577Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-bv2o",
+      "depends_on_id": "project-LICHEN-worker6-k35h",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T04:35:50.421653Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

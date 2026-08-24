@@ -3,13 +3,15 @@
   "title": "Python: KISS command dispatch",
   "description": "Acceptance: KissHandler dispatches commands",
   "notes": "Already implemented as KissHandler",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:48.502905Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:48.502905Z",
+  "updated_at": "2026-08-24T08:21:41.392965Z",
+  "closed_at": "2026-08-24T08:21:41.392965Z",
+  "close_reason": "Verified: interface/kiss/handler.py line 81 KissHandler, line 102 handle()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.6.5.1",

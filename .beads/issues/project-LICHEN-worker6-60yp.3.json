@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-60yp.3",
+  "title": "C process_dio version-compares across DODAGID/instance",
+  "description": "Security review of lichen/subsys/lichen/rpl/dodag.c version compare (post-y4yy). Not a re-file of y4yy/k35h/s0wq. DODAGVersionNumber is per (RPLInstanceID, DODAGID); comparing attacker-controlled version bytes across those namespaces is a hijack.\n\n## Bug\n\nlichen_rpl_dodag_process_dio (dodag.c ~354-365):\n\n- Rejects a JOINED node only when dodag_id differs AND the incoming version is not newer.\n- Never compares dio-\u003erpl_instance_id to d-\u003erpl_instance_id.\n- If version_is_newer(dio-\u003eversion, d-\u003eversion), calls adopt_version, which memcpy's dio-\u003edodag_id and overwrites rpl_instance_id, then wipes parents / rank / role.\n\nSo a JOINED node will leave its DODAG when a DIO carries a different DODAGID (or a different instance, even with the same DODAGID) and a lollipop-newer version byte. Version numbers from two DODAGs are not the same counter.\n\n## Attacker model\n\nAuthenticated (S=1 / TOFU) neighbor sends a grounded MOP=1 DIO with:\n\n- dodag_id = attacker-chosen\n- version = victim.version + 1 (or any RFC-newer value within SEQUENCE_WINDOW)\n- rank low enough to win parent selection\n\nVictim adopt_version's onto the attacker's DODAG (global-repair-shaped wipe). SEQUENCE_WINDOW does not stop +1. Rust process_dio rejects instance or DODAGID mismatch with no version compare. Python joined+foreign returns before version_is_newer. rust test foreign_and_incomparable_dios_do_not_change_state is the oracle.\n\n## Acceptance\n\n- JOINED: foreign RPLInstanceID or DODAGID is ignored; do not version-compare or adopt_version.\n- UNJOINED first-join to a foreign DODAG may still adopt (Python), but must not use the previous DODAG's version as the comparison key.\n- C tests covering foreign instance, foreign DODAGID, and version+1 must not change joined state (Rust/Python expected values).\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:33:13.149037Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:48:54.822271Z",
+  "started_at": "2026-08-24T04:38:14.352576Z",
+  "closed_at": "2026-08-24T04:48:54.822271Z",
+  "close_reason": "DODAGVersionNumber is scoped to (RPLInstanceID, DODAGID). JOINED + foreign instance or DODAGID returns without version compare or adopt_version (including version+1). UNJOINED first-join to a foreign DODAG adopts without using leftover version bytes. ROOT still ignores all DIOs. Host tests: joined foreign instance/DODAGID with version+1 leave state unchanged; unjoined leftover version 5 adopts foreign version 0; root ignores newer/foreign. Same binary 13/13.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-60yp.3",
+      "depends_on_id": "project-LICHEN-worker6-60yp",
+      "type": "parent-child",
+      "created_at": "2026-08-24T04:33:13.544811Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-60yp.3",
+      "depends_on_id": "project-LICHEN-worker6-y4yy",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T04:33:13.887729Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

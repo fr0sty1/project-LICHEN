@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-ije2.4",
+  "title": "BitWriter/BitReader operate bit-by-bit on 128-bit values",
+  "description": "## Location\n`rust/lichen-schc/src/codec.rs` lines 95-109 (BitWriter::write) and 127-144 (BitReader::read)\n\n## Issue\nBoth BitWriter::write() and BitReader::read() iterate one bit at a time through the value. For 128-bit addresses and DODAGIDs, this means 128 loop iterations per field.\n\n## Current code (BitWriter::write)\n```rust\nfor i in (0..nbits).rev() {\n    let bit = ((value \u003e\u003e i) \u0026 1) as u8;\n    let byte_pos = self.nbits / 8;\n    let bit_pos = 7 - (self.nbits % 8);\n    // ...\n    self.nbits += 1;\n}\n```\n\n## Suggested fix\nWhen byte-aligned, write/read whole bytes at a time. Only use bit-by-bit for unaligned portions. This reduces O(nbits) to O(nbits/8) for the bulk of the data.\n\n## Impact\nFor a typical CoAP compress with two 128-bit addresses + ports + CoAP fields, this is ~300+ loop iterations reduced to ~40.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:59:21.442755Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:59:21.442755Z",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ije2.4",
+      "depends_on_id": "project-LICHEN-worker6-ije2",
+      "type": "parent-child",
+      "created_at": "2026-08-24T04:59:21.938111Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.43",
+  "title": "radio.py: parked polling RX is a latch; later TXs in the window are shadowed",
+  "description": "## Problem\n\n9098.40 parked a polling RX result in `_pending_poll_rx` so a same-tick RxTimeout cannot consume the only eligible LatencyRule microsecond. `get_rx_result` reads that map with `.get`, never `.pop`. `_capture_polling_rx` refuses to overwrite if the key is already present.\n\n```python\nparked = self._pending_poll_rx_map().get(node_id)\nif parked is not None:\n    payload, rssi, snr, _, _ = parked\n    return payload, rssi, snr\n```\n\nThe park is cleared only by `start_receive` / `enter_rx_mode` / `exit_rx_mode` / TX-start / `remove_node`. It is not consumed on read, not dropped on TxEnd, and not dropped when `_handle_rx_timeout` sets IDLE.\n\nTwo failure modes for the documented ~1 ms `get_rx_result` poll while a node waits (`metrics.py` module docstring; `start_receive` path):\n\n1. **Later frames in the same RX window are shadowed.** `start_receive(timeout_ms=10000)` → LatencyRule DelayedRxReady parks frame A and records metrics → TX B starts before timeout → every poll still returns A. Live (no-LatencyRule) polling does not do this: after A's airtime, `get_rx_result` returns None and then B. Parking turns a multi-frame RX_WAIT window into a latch on the first delayed delivery.\n\n2. **The latch outlives the RX window.** After timeout, the node is IDLE but the park remains. A 1 ms loop that does not re-arm `start_receive` keeps observing A forever. Live polling returns None once the medium TX is gone.\n\n`test_same_tick_timeout_delivers_polling_rx` polls once and stops. `test_delayed_collision_does_not_permanently_silence` never parks (collision result is None). No test starts a second TX inside a still-open `start_receive` window after a DelayedRxReady capture.\n\nThis is not 9098.40 (polling RX never saw the delayed frame). The park is the 40 fix; it has no TTL and is not a one-shot.\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (`_pending_poll_rx_map`, `_capture_polling_rx`, `get_rx_result` `.get`, `_handle_rx_timeout` / `_handle_event` DelayedRxReady)\n- python/src/lichen/sim/metrics.py (documents ~1 ms poll)\n- python/tests/sim/test_radio.py (`test_same_tick_timeout_delivers_polling_rx` — single poll)\n\n## Why this is robustness\n\nProduction polling stays in one RX_WAIT until timeout. LatencyRule + a long `start_receive` window is the 9098.18/40 path. A latch that hides every later frame (and keeps returning a payload after IDLE) makes soak / HIL-style poll loops and sequential-burst tests measure the first delayed packet, not the radio.\n",
+  "design": "Pop _pending_poll_rx on the first get_rx_result that returns it, or drop it when the RX window ends (RxTimeout → IDLE) after that first pull. Do not let DelayedRxReady capture block a later in-window TX. Keep same-tick timeout delivery: advance_to(expire==timeout) then one get_rx_result still returns the delayed frame. After that pull, a subsequent TX in the same or a new window must be visible.",
+  "acceptance_criteria": "1) start_receive long timeout + LatencyRule: after DelayedRxReady, first get_rx_result is frame A; a later TX B in the same window is returned once A has been pulled (or after A's park is consumed). 2) After RxTimeout, a second get_rx_result without start_receive is None (no infinite A). 3) test_same_tick_timeout_delivers_polling_rx stays green. 4) A regression test does a second TX inside the original start_receive window after the delayed capture.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:21:41.089136Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:26:04.222533Z",
+  "started_at": "2026-08-24T07:26:04.222533Z",
+  "lease_expires_at": "2026-08-24T07:31:04.222533Z",
+  "heartbeat_at": "2026-08-24T07:26:04.222533Z",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.43",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T07:21:41.484489Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.43",
+      "depends_on_id": "project-LICHEN-worker6-9098.41",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T07:21:41.857628Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

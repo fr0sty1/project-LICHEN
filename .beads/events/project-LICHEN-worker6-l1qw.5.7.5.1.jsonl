@@ -1,1 +1,2 @@
 {"id":"019f9762-23c2-7edc-9b18-d41402c6f8b6","issue_id":"project-LICHEN-worker6-l1qw.5.7.5.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:46:59.138976Z"}
+{"id":"01a03264-235b-7ecd-8a5c-8db802b3a490","issue_id":"project-LICHEN-worker6-l1qw.5.7.5.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: python/src/lichen/announce/scheduler.py implements periodic announce scheduling","created_at":"2026-08-24T06:10:18.58797Z"}

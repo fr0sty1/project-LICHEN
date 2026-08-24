@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.4.6",
   "title": "Rust: 6.1 Superframe Synchronization",
   "description": "GCP-6.1: GPS-based absolute time sync, time master election (lowest IID), backbone CoAP time sync for non-GPS gateways, configurable superframe duration.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:54.591279Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:54.591279Z",
+  "updated_at": "2026-08-24T05:58:10.2998Z",
+  "closed_at": "2026-08-24T05:58:10.2998Z",
+  "close_reason": "Already done: rust/lichen-core/src/superframe.rs implements superframe synchronization",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.4.6",

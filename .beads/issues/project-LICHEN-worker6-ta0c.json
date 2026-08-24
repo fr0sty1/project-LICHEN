@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ta0c",
+  "title": "Persist Announce TOFU pins and replay floors across Node restarts",
+  "description": "P1 security: Node constructs AnnounceProcessor with fresh in-memory _pinned_keys and _seen tables and never includes them in LinkLayer or other crash-safe persistence. After restart a different first-seen key can replace the trust decision for an IID collision, and any old origin-signed Announce can be replayed through a currently authenticated relay because its fresh link counter does not protect the origin's 16-bit Announce sequence. This also leaves DaoOriginValidator without durable pre-pinned origin identities. Add fail-closed, rollback-resistant persistence for exact pubkey/IID pins and per-origin sequence floors, integrate it atomically with Node admission, and add reboot/corruption/relayed-stale tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:51:10.263603Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:55:03.927741Z",
+  "started_at": "2026-08-24T15:55:03.927741Z",
+  "lease_expires_at": "2026-08-24T16:00:03.927741Z",
+  "heartbeat_at": "2026-08-24T15:55:03.927741Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-aaak",
+  "title": "Time tracker does not invalidate clock when dynamic epoch floor rises",
+  "description": "Post-fix correctness review: authoritative current_time/status never revalidate the projected adopted clock against EpochFloorAuthority.current(). A newly accepted provision can raise the floor above current Unix time while status remains valid. Atomically re-evaluate the current projection against the live floor on reads/transitions, invalidate diagnostically, and add provision-raise/concurrency regressions.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:34:53.919824Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:35:09.233309Z",
+  "started_at": "2026-08-24T07:35:09.233309Z",
+  "lease_expires_at": "2026-08-24T07:40:09.233309Z",
+  "heartbeat_at": "2026-08-24T07:35:09.233309Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-8lrh",
+  "title": "Node fragment-control path calls LinkLayer.send twice",
+  "description": "Security/correctness review finding in python/src/lichen/node.py: _process_received handles authenticated SCHC sender control with . The inner send returns bool, which is then passed as payload to a second send with missing required routing arguments. Any sender control response triggers TypeError after one attempted transmission, causing the receive loop to log and continue and breaking ACK/abort handling. Remove the nested send so each outgoing control is transmitted exactly once and add a regression proving one call with the intended payload/destination/priority.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:12:51.861984Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:12:58.698676Z",
+  "closed_at": "2026-08-24T13:12:58.698676Z",
+  "close_reason": "Invalidated during verification: current shared-worktree source has a single LinkLayer.send call; apparent nested call came from truncated/interleaved command output."
+}

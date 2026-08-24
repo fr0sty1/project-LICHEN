@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-od7h",
+  "title": "Packets/timing examples use obsolete SCHC and impossible layer sizes",
+  "description": "Correctness review: spec/09-packets-timing.md:29-42 says Rule 0 is only RuleID+ports+two CoAP bytes and totals 21 bytes including a 17-byte payload, contradicting the canonical 23-byte fixed Rule-0 header before token/options/payload in spec/03-adaptation.md:54-55 and appendix-schc.md:12. Lines 45-54 build a 77-byte link frame, then lines 57-62 call its LoRa PHY payload 60 bytes. Section 13.3 lines 87-89 also labels an RPL DIO as SCHC Rule 2 even though canonical DIO is Rule 3. Rewrite the worked example with bit-exact current bytes and reconcile all layer totals.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:17:01.7819Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:20:31.431566Z",
+  "started_at": "2026-08-24T12:20:31.431566Z",
+  "lease_expires_at": "2026-08-24T12:25:31.431566Z",
+  "heartbeat_at": "2026-08-24T12:20:31.431566Z"
+}

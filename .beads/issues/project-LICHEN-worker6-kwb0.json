@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kwb0",
+  "title": "Authenticated DIO structural rejection requirements lack executable vectors",
+  "description": "Timing correctness review: normative rejection requires bare DIO, malformed SCHC, wrong IPv6 Next Header, wrong ICMPv6 type or code, bad checksum, and scope or role mismatch. Current generator and unit cases omit bare or malformed SCHC, Next Header, ICMPv6 type and code, with role absent from vectors. Add independent signed literal vectors for every required path and execute each through production LinkLayer to authenticated-DIO verification, asserting no issued evidence or state mutation.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:24:14.721307Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:24:20.653949Z",
+  "started_at": "2026-08-24T08:24:20.653949Z",
+  "lease_expires_at": "2026-08-24T08:29:20.653949Z",
+  "heartbeat_at": "2026-08-24T08:24:20.653949Z"
+}

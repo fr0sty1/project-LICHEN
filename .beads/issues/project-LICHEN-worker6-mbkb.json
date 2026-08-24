@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-mbkb",
+  "title": "SCHC sender retry exhaustion vector does not execute its declared trigger",
+  "description": "Post-fix correctness review: `sender_retry_exhaustion` only compares its declared trigger bytes to an ACK Request and then invokes parameterless `sender.timeout()`, so the represented parser or session transition is never exercised. Define unambiguous trigger semantics and execute the actual production ingress or timeout action represented by the vector. Assert exact output, status, and one-shot terminal behavior.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:06:22.680283Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:06:38.299761Z",
+  "started_at": "2026-08-24T08:06:38.282909Z",
+  "lease_expires_at": "2026-08-24T08:11:38.282909Z",
+  "heartbeat_at": "2026-08-24T08:06:38.282909Z"
+}

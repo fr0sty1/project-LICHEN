@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-tnnq",
+  "title": "Authenticated DIO admission omits canonical IPv6 envelope checks",
+  "description": "spec/09-packets-timing.md §13.3 requires a canonical multicast DIO to use validated Rule 255, IPv6 destination ff02::1a, correct link-local scope, and Hop Limit 255 before routing mutation. python/src/lichen/rpl/authenticated_dio.py checks only Next Header, ICMP type/code/checksum and DIO scope fields; it accepts signed DIOs encoded under another SCHC rule or carried to arbitrary unicast/global destinations and with arbitrary Hop Limit. This also affects fragmented-DIO issuance. Reject non-Rule-255/non-ff02::1a/non-255 envelopes (or precisely document and implement any separately authorized unicast profile) and add direct and fragmented admission regressions.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:55:05.363973Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:57:11.854413Z",
+  "started_at": "2026-08-24T14:57:11.854413Z",
+  "lease_expires_at": "2026-08-24T15:02:11.854413Z",
+  "heartbeat_at": "2026-08-24T14:57:11.854413Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-s828",
+  "title": "rust/lichen-gateway/src/slot.rs orphaned - not declared in lib.rs",
+  "description": "Code review finding: slot.rs (908 lines) with complete SlotAllocator, conflict resolution (GCP-6.3), superframe timing (GCP-6.1), and 27 tests exists but is NOT declared in lib.rs. Module is orphaned and not compiled into the crate. discovery.rs and resources.rs that use it are also orphaned. Fix: add 'mod slot;' to lib.rs and wire up exports.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:12:18.145071Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:28:10.763096Z",
+  "closed_at": "2026-08-24T06:28:10.763096Z",
+  "close_reason": "Wired slot.rs into lib.rs: added pub use exports for SlotAllocator and AllocationMode. cargo check passes."
+}

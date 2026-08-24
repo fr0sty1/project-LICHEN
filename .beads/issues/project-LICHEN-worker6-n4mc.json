@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-n4mc",
+  "title": "slot_coordination.RootCandidate.signature_valid defaults True — diverges from Rust fail-closed guard",
+  "description": "python/src/lichen/link/slot_coordination.py:143,153-154,188 defaults True; Rust multi_instance.rs:894-905 defaults False with explicit SECURITY contract (set true only after Schnorr48 verify). Caller forgetting verification → attacker beacon params become selectable root. Fix: default False, explicit opt-in.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:16.46849Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:47:08.903309Z",
+  "started_at": "2026-08-24T06:47:08.903309Z",
+  "lease_expires_at": "2026-08-24T06:52:08.903309Z",
+  "heartbeat_at": "2026-08-24T06:47:08.903309Z"
+}

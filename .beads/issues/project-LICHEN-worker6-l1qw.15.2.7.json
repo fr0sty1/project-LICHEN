@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.15.2.7",
   "title": "Rust: 4.2 LoRa Discovery (Fallback)",
   "description": "GCP-4.2: GATEWAY flag in link-layer announce frames for radio-path awareness. Fallback when backbone unavailable.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:13.882249Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:13.882249Z",
+  "updated_at": "2026-08-24T05:52:55.680439Z",
+  "closed_at": "2026-08-24T05:52:55.680439Z",
+  "close_reason": "Already done: LoraGatewayAnnounce struct with encode/decode, GATEWAY_FLAG=0x80, 10-byte wire format, tests in rust/lichen-gateway/src/discovery.rs",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.15.2.7",

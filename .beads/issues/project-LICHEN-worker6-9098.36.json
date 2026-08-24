@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.36",
+  "title": "metrics.py: export_csv drops zero latency via truthiness",
+  "description": "## Problem\n\n`Metrics.export_csv` writes summary latency with Python truthiness:\n\n```python\nwriter.writerow([\\\"latency_min_us\\\", stats.min_us or \\\"\\\"])\nwriter.writerow([\\\"latency_max_us\\\", stats.max_us or \\\"\\\"])\nwriter.writerow([\\\"latency_mean_us\\\", f\\\"{stats.mean_us:.2f}\\\" if stats.mean_us else \\\"\\\"])\nwriter.writerow([\\\"latency_p50_us\\\", stats.p50_us or \\\"\\\"])\n# p95 / p99 same\n```\n\n`0` and `0.0` are falsy, so a real zero (same-µs delivery, or a reservoir/min of 0 after the TX-start poll bugs) is exported as an empty cell, indistinguishable from \\\"no samples\\\". `None` (no data) and `0` (data) collapse. `test_csv_export_basic` uses latency 100; `test_csv_export_empty_metrics` has no latency rows to check.\n\nSame pattern will blank p50 if the median sample is 0.\n\n## Files\n\n- `python/src/lichen/sim/metrics.py` (`export_csv`)\n- `python/tests/sim/test_metrics.py` (`test_csv_export_basic`)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:54:04.974831Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:13:09.358493Z",
+  "started_at": "2026-08-24T06:56:19.134726Z",
+  "closed_at": "2026-08-24T07:13:09.358493Z",
+  "close_reason": "export_csv serializes latency with None-vs-0, so 0 us is written as 0 not an empty cell.",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.36",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:54:06.120098Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.36",
+      "depends_on_id": "project-LICHEN-worker6-9098.31",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:54:07.085928Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

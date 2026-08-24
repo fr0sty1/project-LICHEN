@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.7.3.4",
   "title": "Python: unprotect_response",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:09.35041Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:09.35041Z",
+  "updated_at": "2026-08-24T08:21:00.61377Z",
+  "closed_at": "2026-08-24T08:21:00.61377Z",
+  "close_reason": "Verified: oscore.py inherits aiocoap CanUnprotect",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.3.4",

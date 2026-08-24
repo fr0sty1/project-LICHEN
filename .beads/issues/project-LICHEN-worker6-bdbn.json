@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-bdbn",
+  "title": "Timing barrier test exceeds bounded authenticated-DIO issuance capacity",
+  "description": "python/tests/timing/test_time_sync.py::test_network_clear_and_option_mismatch_advance_replay_barriers authenticates three DIO facades before elevating the first. The bounded LinkLayer authenticated-DIO issuance registry evicts authenticated1, so verifier.verify(authenticated1) deterministically raises 'authenticated DIO is not a live LinkLayer issuance'. Sequence the authenticate/elevate operations or explicitly configure/assert capacity without weakening the production bound.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:48:27.431526Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:48:36.060875Z",
+  "started_at": "2026-08-24T13:48:36.060875Z",
+  "lease_expires_at": "2026-08-24T13:53:36.060875Z",
+  "heartbeat_at": "2026-08-24T13:48:36.060875Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-6hr2",
+  "title": "Rust route lookup aliases any IPv6 prefix by IID and rewrites authenticated paths",
+  "description": "Security review P2. The convergence change adds RoutingTable::lookup_host_by_iid and makes Router::lookup_route fall back to it whenever exact/prefix lookup fails. rust/lichen-gateway/src/gateway.rs then accepts a route whose last hop shares only dst[8..], overwrites that authenticated final hop with the caller-supplied full destination, and forwards it. Any noncanonical 02xx alias sharing a node IID is therefore treated as the node's route even though LICHEN has one exact key-derived primary address and the upper bytes are part of identity/routing authority. Remove prefix-agnostic IID fallback from routable address lookup; explicitly translate only between validated canonical link-local control and exact ygg_addr_from_pubkey identities; add negative alias/shadow-route tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:22:21.305614Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:25:48.63606Z",
+  "started_at": "2026-08-24T12:25:48.63606Z",
+  "lease_expires_at": "2026-08-24T12:30:48.63606Z",
+  "heartbeat_at": "2026-08-24T12:25:48.63606Z"
+}

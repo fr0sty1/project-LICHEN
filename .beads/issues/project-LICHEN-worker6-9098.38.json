@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.38",
+  "title": "test_radio.py: 9098.28 GE poll-rate tests stay green without the cache",
+  "description": "## Problem\n\n9098.28 closed on caching Gilbert-Elliott per `(rx, tx)` so live `apply_all` does not re-roll the Markov chain on every 1 ms `get_rx_result` poll. The tests added as that issue's oracle do not fail if the cache (`_ge_survived` in `python/src/lichen/sim/simulation/radio.py`) is deleted.\n\n`python/tests/sim/test_radio.py`:\n\n1. `test_ge_zero_loss_survives_many_polls` — `p_good_to_bad=0.0`, `loss_prob_good=0.0`. Always-good GE never drops on a re-roll. Last-poll `result is not None` and `receptions==1` hold with or without the cache.\n\n2. `test_ge_full_loss_stays_dropped_across_polls` — `loss_prob_good=1.0`, `p_good_to_bad=0.0`. Always-loss GE drops every independent `apply()`. Poll 1 and poll N are None with or without the cache. This is the same 100% loss hole 9098.28 already called out on `test_gilbert_elliott_live_drop_does_not_resurrect`.\n\n3. `test_ge_poll_count_does_not_change_receptions` — again always-good (`p_good_to_bad=0`, `loss_prob_good=0`). Two seeded runs with 2 vs 20 polls both get `receptions==1`. After 9098.21, `record_reception` is idempotent, so poll count cannot change `Metrics.receptions` even if later polls re-roll into a drop. The acceptance \"same receptions at 2 vs 20 polls\" is 9098.21, not GE stickiness.\n\n4. `test_gilbert_elliott_cache_prevents_reroll_on_poll` — the only case with `p_good_to_bad=0.5` (transitions can happen). It records 20 poll results and asserts `delivered_count \u003e 0`. One surviving poll is enough. Without the cache, poll 1 can deliver (good state, `loss_prob_good=0`) and later polls can drop; the assert still passes.\n\n`_stash_delayed_rx_candidates` already calls `_apply_live_chaos` once per neighbor at TX start, so the first GE draw happens before any of these polls. The tests never assert that GE.apply call count stays at 1, that every poll returns the same payload-or-None, or that a transition-capable GE produces identical `receptions`/`collisions` when poll counts differ.\n\n## Why this is security (replay / metric inflation)\n\nGilbert-Elliott is the burst-RF oracle for mesh security and capacity tests. 9098.28's threat was poll-rate compounding: survival becomes `0.99^N`, seeded replay disagrees unless the poll cadence is bit-identical, and `delivery_rate` measures the harness. The cache is the fix. Tests that stay green after deleting the cache are the same false-confidence class as 9098.3/9098.14 (asserts that cannot fire). A later refactor can re-introduce per-poll `rule.apply()` and every 9098.28 test remains green.\n\n## Files\n\n- `python/tests/sim/test_radio.py` (`test_ge_zero_loss_survives_many_polls`, `test_ge_full_loss_stays_dropped_across_polls`, `test_ge_poll_count_does_not_change_receptions`, `test_gilbert_elliott_cache_prevents_reroll_on_poll`)\n- `python/src/lichen/sim/simulation/radio.py` (`_apply_live_chaos` `_ge_survived`; `_stash_delayed_rx_candidates` already draws GE at TX start)\n- `python/src/lichen/sim/metrics.py` (1 ms poll; idempotent `record_reception` makes receptions-only compares poll-blind)\n",
+  "design": "Replace the tautological GE oracles with a transition-capable, independent-of-9098.21 check.\n\n- Use a GE that can actually change across extra apply() calls, e.g. `p_good_to_bad=1.0`, `p_bad_to_good=0.0`, `loss_prob_good=0.0`, `loss_prob_bad=1.0` (first apply may survive in good; every subsequent apply is in bad and drops), or wrap GilbertElliottRule.apply and count calls.\n- Assert GE.apply is invoked once per (rx, tx) across N get_rx_result polls (call count == 1 after TX-start stash plus polls).\n- Assert every poll in that airtime returns the same outcome (all payload or all None), not `delivered_count \u003e 0`.\n- Keep the 2-vs-20 seeded compare, but on a GE that is not always-good; also compare the last poll payload identity, not only Metrics.receptions (9098.21 already locks that).\n- Do not use loss_prob_good in {0,1} combined with p_good_to_bad=0 as the only poll-rate tests.\n",
+  "acceptance_criteria": "Deleting `_ge_survived` / skipping the GE cache branch in `_apply_live_chaos` makes at least one test_radio.py test fail. A GE with p_good_to_bad\u003e0 (or an apply-counter wrapper) polled 20 times during one airtime: GilbertElliottRule.apply is called once for that (rx, tx), every get_rx_result returns the same payload-or-None, and two seeded runs with 2 vs 20 polls agree on that last-poll outcome not only on Metrics.receptions. Always-good and always-loss cases may remain as sanity tests but are not the sole 9098.28 oracle.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:54:22.5307Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:13:12.221315Z",
+  "started_at": "2026-08-24T06:56:21.18556Z",
+  "closed_at": "2026-08-24T07:13:12.221315Z",
+  "close_reason": "GE poll tests wrap GilbertElliottRule.apply and assert one call plus identical last-poll identity; deleting _ge_survived fails the oracle.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.38",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:54:23.042636Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.38",
+      "depends_on_id": "project-LICHEN-worker6-9098.28",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:54:23.439662Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

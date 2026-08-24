@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-tfol",
+  "title": "Trust tests use redundant nested context managers",
+  "description": "Ruff SIM117 reports three redundant nested with-statements in python/tests/crypto/test_trust.py around lines 583, 603, and 624. Combine each adjacent context manager without changing the tested exception/callback semantics, then rerun the focused trust tests and Ruff.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:22:49.003485Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:24:20.86897Z",
+  "started_at": "2026-08-24T15:24:20.86897Z",
+  "lease_expires_at": "2026-08-24T15:29:20.86897Z",
+  "heartbeat_at": "2026-08-24T15:24:20.86897Z"
+}

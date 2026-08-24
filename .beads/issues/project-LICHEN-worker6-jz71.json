@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jz71",
+  "title": "Broaden link-draft payload terminology to both dispatch namespaces",
+  "description": "Correctness review found draft-lichen-link-01 §2 defines Payload solely as a SCHC-compressed IPv6 datagram, but §3.1/main spec also defines dispatch 0x15 for raw LICHEN routing/control bodies alongside dispatch 0x14 SCHC. Update terminology so PLD is the authenticated dispatch octet plus its selected body; do not imply all payloads are SCHC/IPv6.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:08:29.540779Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:08:36.749213Z",
+  "started_at": "2026-08-24T13:08:36.749213Z",
+  "lease_expires_at": "2026-08-24T13:13:36.749213Z",
+  "heartbeat_at": "2026-08-24T13:08:36.749213Z"
+}

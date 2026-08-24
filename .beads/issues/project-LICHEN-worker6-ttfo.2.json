@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-worker6-ttfo.2",
+  "title": "process_dio treats incomparable DODAG versions as current-version ads",
+  "description": "## Location\n\npython/src/lichen/rpl/dodag.py process_dio version gate (~210-216). lollipop_cmp returns None for same-region |a-b| \u003e SEQUENCE_WINDOW (16); version_is_newer is True only when lollipop_cmp == 1.\n\n## What goes wrong\n\nWhen a DIO version is incomparable to the node's version, both version_is_newer(dio, self) and version_is_newer(self, dio) are False. process_dio then falls through and installs the sender as a parent candidate of the current version. The stored self.version is unchanged, so the node is desynchronized: it still believes it is in version N while using a parent that advertised an incomparable version.\n\nTrigger:\n1. Joined node at version 1, parent P1, rank 512.\n2. Attacker sends DIO version=18, rank=10 (both linear, |18-1|=17 \u003e 16, incomparable).\n3. Python does not adopt 18 and does not drop the DIO as stale.\n4. Path cost 266 improves on 512 by 246 (greater than hysteresis 192), so the node switches to the attacker and keeps version=1.\n\nLegitimate later DIOs at version 1 still look current, so the poisoned parent stays mixed into the real DODAG parent set. Circular-region example: node at 255, attacker version 238 (|255-238|=17).\n\nRust rejects this path: version_is_older_or_incomparable returns DioOutcome::Rejected, covered by foreign_and_incomparable_dios_do_not_change_state. Python test_dodag.py only asserts lollipop_cmp tables; process_dio never drops None.\n\nRFC 6550 section 7.2 incomparable counters mean desynchronization, not equality. Mixing those advertisements into the current parent set is a version-desync / parent-injection attack.\n\n## Fix\n\nIf lollipop_cmp(dio.version, self.version) is None, return without mutating parents/version (same as stale). Do not process incomparable DIOs as same-version.\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T03:39:26.6195Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T03:44:16.553815Z",
+  "started_at": "2026-08-24T03:43:33.577191Z",
+  "closed_at": "2026-08-24T03:44:16.553815Z",
+  "close_reason": "incomparable versions (neither newer) are ignored. versions_incomparable helper. test_incomparable_version_is_ignored_not_mixed + joined-node variant.",
+  "labels": [
+    "security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.2",
+      "depends_on_id": "project-LICHEN-worker6-ttfo",
+      "type": "parent-child",
+      "created_at": "2026-08-24T03:39:26.972065Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.2",
+      "depends_on_id": "project-LICHEN-worker6-c5rf",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T03:39:27.297315Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

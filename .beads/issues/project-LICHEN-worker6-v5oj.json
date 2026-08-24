@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-v5oj",
+  "title": "Fail closed on broken symlink persistence slots",
+  "description": "FileKeyStore and TwoSlotFilePersistence use Path.exists() to decide whether invalid slots exist. A broken symlink returns false, while the nofollow reader rejects it, so fail_closed=True can treat hostile/corrupt slot paths as a fresh empty store. Use lstat/is_symlink-aware existence checks and add regressions for broken symlinks in key TX and DAO TX/RX slots.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T16:45:58.957167Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T16:46:02.958984Z",
+  "started_at": "2026-08-24T16:46:02.958984Z",
+  "lease_expires_at": "2026-08-24T16:51:02.958984Z",
+  "heartbeat_at": "2026-08-24T16:46:02.958984Z"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-worker6-ttfo.7",
+  "title": "DodagState.__post_init__ does not coerce node_address; string form bypasses RFC 6550 self-parent rejection",
+  "description": "## Location\n\n`python/src/lichen/rpl/dodag.py` `DodagState.__post_init__` (coerces `dodag_id` and copies `parents`, not `node_address`) and `process_dio` self-parent check (`neighbor_id == self.node_address` after `to_ipv6(neighbor_id)`).\n\n## What goes wrong\n\n`as_root()` and `process_dio(neighbor_id=...)` both accept `IPv6Address | str` and coerce via `to_ipv6`. The dataclass constructor does not. `node_address` is typed `IPv6Address | None` but is stored as-is.\n\n`ipaddress.IPv6Address('fe80::1234') == 'fe80::1234'` is False. A node constructed with a string `node_address` therefore fails the RFC 6550 Section 8.2.2.5 self-parent check and will install itself as preferred parent.\n\nTrigger (public API, same string style as `dodag_id=DODAG_ID` and `process_dio(..., \\\"fe80::1234\\\")`):\n\n```\nown = \\\"fe80::1234\\\"\nnode = DodagState(rpl_instance_id=0, dodag_id=\\\"fd00::1\\\", version=1, node_address=own)\nnode.process_dio(DIO(..., rank=256), own, link_etx=1.0)\n```\n\nExpected: ignored, stays UNJOINED (what `test_process_dio_rejects_self_as_parent_string_form` asserts for IPv6Address `node_address`).\nActual: JOINED, `preferred_parent == IPv6Address('fe80::1234')`, rank 512.\n\n`test_process_dio_rejects_self_as_parent_string_form` only passes a string *neighbor_id* with an IPv6Address *node_address*, so this path is untested.\n\n## Fix\n\nCoerce `node_address` in `__post_init__` the same way as `dodag_id` (skip when None). Compare after both sides are `IPv6Address`.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T03:56:32.098098Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T03:59:38.535254Z",
+  "started_at": "2026-08-24T03:57:48.715097Z",
+  "closed_at": "2026-08-24T03:59:38.535254Z",
+  "close_reason": "DodagState.__post_init__ now to_ipv6() node_address. test_string_node_address_rejects_self_parent.",
+  "labels": [
+    "robustness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.7",
+      "depends_on_id": "project-LICHEN-worker6-ttfo",
+      "type": "parent-child",
+      "created_at": "2026-08-24T03:56:32.457033Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.7",
+      "depends_on_id": "project-LICHEN-worker6-rw5e",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T03:56:32.771075Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

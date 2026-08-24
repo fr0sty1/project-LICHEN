@@ -1,1 +1,2 @@
 {"id":"019f9761-875b-7a5c-802c-3995988fc382","issue_id":"project-LICHEN-worker6-l1qw.10.7.1.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:46:19.099679Z"}
+{"id":"01a03264-ff29-72de-8897-ff6167303339","issue_id":"project-LICHEN-worker6-l1qw.10.7.1.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: sign_sos_origin() in python/src/lichen/coap/sos_origin.py lines 118-151","created_at":"2026-08-24T06:11:14.857189Z"}

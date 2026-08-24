@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-rrrw",
+  "title": "gateway_centric accepted from any authenticated neighbor's DIO config option — mode flapping",
+  "description": "dodag.c:368-371: any joined peer's DODAG Configuration option flips d-\u003egateway_centric which drives announce scheduling (announce.c:738-753); no validation against root authoritative config; single malicious joined node toggles neighbors' announce mode per-DIO. Accept config only from adopted root DIO (compare dodag_id/root key); persist last-known-good.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:22.981257Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:47:21.721908Z",
+  "started_at": "2026-08-24T06:47:21.721908Z",
+  "lease_expires_at": "2026-08-24T06:52:21.721908Z",
+  "heartbeat_at": "2026-08-24T06:47:21.721908Z"
+}

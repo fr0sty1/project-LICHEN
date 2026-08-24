@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-waj8",
+  "title": "Host-test TU copy-declares enum lichen_rpl_sequence_relation instead of including header",
+  "description": "rpl_dao_build.c:15-22 duplicates enum decl (deliberate: avoids zephyr/kernel.h) → silent desync between test expectations and shipped binary possible. Include real header in test build or compile-time consistency check.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:24.10204Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:47:23.532092Z",
+  "started_at": "2026-08-24T06:47:23.532092Z",
+  "lease_expires_at": "2026-08-24T06:52:23.532092Z",
+  "heartbeat_at": "2026-08-24T06:47:23.532092Z"
+}

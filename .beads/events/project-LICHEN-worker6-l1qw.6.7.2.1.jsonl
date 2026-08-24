@@ -1,1 +1,2 @@
 {"id":"019f9761-21ac-7674-bcbc-f354ffe5f72c","issue_id":"project-LICHEN-worker6-l1qw.6.7.2.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:45:53.068423Z"}
+{"id":"01a032db-bb22-739d-bc42-7c2f3e9a17f0","issue_id":"project-LICHEN-worker6-l1qw.6.7.2.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: oscore.py inherits aiocoap CanProtect mixin","created_at":"2026-08-24T08:20:56.226238Z"}

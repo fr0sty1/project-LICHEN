@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-r4zs",
+  "title": "Canonicalize and validate DIS as link-local control traffic",
+  "description": "rust/lichen-node/src/rpl_stack/transmit.rs send_dis emits the caller-provided unicast IPv6 destination unchanged, unlike send_dio, so a native or arbitrary same-IID prefix goes on wire despite the profile requiring link-local RPL control. receive-side dio_dis_destination_is_allowed accepts any non-multicast prefix sharing the local IID, and the raw DIS parser checks only the source IID suffix rather than canonical fe80::/64. Normalize unicast DIS destinations to canonical link-local, require canonical link-local source/destination (or ff02::1a where allowed), and add negative arbitrary-prefix tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:57:41.230067Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:58:53.956055Z",
+  "started_at": "2026-08-24T14:58:53.956055Z",
+  "lease_expires_at": "2026-08-24T15:03:53.956055Z",
+  "heartbeat_at": "2026-08-24T14:58:53.956055Z"
+}

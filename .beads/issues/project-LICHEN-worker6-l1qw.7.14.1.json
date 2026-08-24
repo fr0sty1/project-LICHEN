@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.14.1",
   "title": "Python: RD registration endpoint (/rd)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:22.192024Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:22.192024Z",
+  "updated_at": "2026-08-24T06:47:32.1345Z",
+  "started_at": "2026-08-24T06:43:09.721879Z",
+  "closed_at": "2026-08-24T06:47:32.1345Z",
+  "close_reason": "RD registration endpoint complete. All 41 tests pass. Implements POST /rd (registration), GET /rd (lookup with ep filter), DELETE /rd/\u003cid\u003e (removal). RFC 9176 compliant.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.1",

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-q8mj",
+  "title": "Async persistence revision anchors leak awaitables and fail opaquely",
+  "description": "PersistenceRevisionAnchor is checked only for callable read/advance. LinkLayer._read_persistence_revision_anchor treats an awaitable result as an invalid revision without cancelling/closing it, while _advance_persistence_revision_anchor ignores an awaitable return entirely. Accidentally async anchors leak never-awaited coroutines and may report success after only scheduling side effects. Require synchronous functions/results using the shared awaitable rejection helper, with coroutine-function, hidden-awaitable, Task/Future, and cleanup-failure tests for read and advance.",
+  "notes": "Security review broadened this boundary: anchor read/advance execute under LinkLayer._security_lock with no transition/reentry guard. Same-thread recursive save, a spawned thread joining on the Link lock, or callback state mutation can deadlock or split serialized/runtime state. Fix must move hooks outside internal locks under guarded snapshot/CAS semantics, reject reentry, and fail closed after ambiguous writes; add cross-thread join and mutation tests.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:54:04.078077Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T09:54:33.083347Z",
+  "started_at": "2026-08-24T09:54:08.810838Z",
+  "lease_expires_at": "2026-08-24T09:59:08.810838Z",
+  "heartbeat_at": "2026-08-24T09:54:08.810838Z"
+}

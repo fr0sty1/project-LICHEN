@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-u6a7",
+  "title": "Atomic vector writer permits non-standard NaN and Infinity JSON",
+  "description": "atomic_write_json uses json.dumps defaults, where allow_nan=True emits NaN/Infinity tokens that are not valid RFC JSON and are rejected by strict/Rust consumers. Canonical cross-language vectors must reject non-finite values during pre-serialization before creating/replacing any output, with a preservation regression.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:55:56.534492Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:55:59.772637Z",
+  "started_at": "2026-08-24T12:55:59.772637Z",
+  "lease_expires_at": "2026-08-24T13:00:59.772637Z",
+  "heartbeat_at": "2026-08-24T12:55:59.772637Z"
+}

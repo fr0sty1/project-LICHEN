@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-vy7x",
+  "title": "Resolve contradictory current DAO Target Descriptor requirements",
+  "description": "spec/05-routing.md §8.7 normatively restricts current .44.7 to exactly one self /128 Target and says implementations MUST NOT infer Target Descriptor support, while §8.8 normatively says one-or-more Targets with optional Target Descriptors and receivers MUST allow them. Python authenticated validation/vectors reject descriptors. Make current-profile requirements unambiguous and move multi-target/descriptor grouping wholly into the future generalized profile, preserving exact vector behavior.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T16:55:31.03214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T16:55:34.401998Z",
+  "started_at": "2026-08-24T16:55:34.401998Z",
+  "lease_expires_at": "2026-08-24T17:00:34.401998Z",
+  "heartbeat_at": "2026-08-24T16:55:34.401998Z"
+}

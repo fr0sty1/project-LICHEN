@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-dd15",
+  "title": "Authenticated SCHC DIO provenance claims independent checksum and identity checks that are absent",
+  "description": "authenticated_schc_dio.json provenance says independent consumers revalidate exact checksums, source/signer binding, root AddrForKey binding, and construction bytes. python/tests/test_protocol_vector_security.py currently checks only outer signatures for this family; production-backed tests cannot serve as the independent oracle. Add a no-production-import check that parses the stored IPv6/ICMP/DIO envelope, validates lengths and ICMPv6 checksum, verifies SCHC dispatch + Rule255 exact payload wrapping, checks source IID against signer (including mismatch case), and checks root key/DODAG binding cases.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:03:42.606487Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:03:45.411579Z",
+  "started_at": "2026-08-24T12:03:45.411579Z",
+  "lease_expires_at": "2026-08-24T12:08:45.411579Z",
+  "heartbeat_at": "2026-08-24T12:03:45.411579Z"
+}

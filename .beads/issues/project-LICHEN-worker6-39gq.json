@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-39gq",
+  "title": "Bound and constrain atomic-vector recovery journals",
+  "description": "test/vectors/atomic_json.py reads the recovery journal without a byte/entry bound and accepts arbitrary same-directory basenames for target, temporary, and backup. A corrupt/tampered prepared journal can consume unbounded resources or copy an arbitrary repository file over another target during rollback. Cap journal bytes/entries, require module-owned preparation names (and target-correlated names) for temp/backup, reject symlink/nonregular journal/artifacts, and add malicious-journal regressions.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T16:47:57.536146Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T16:48:00.730029Z",
+  "started_at": "2026-08-24T16:48:00.730029Z",
+  "lease_expires_at": "2026-08-24T16:53:00.730029Z",
+  "heartbeat_at": "2026-08-24T16:48:00.730029Z"
+}

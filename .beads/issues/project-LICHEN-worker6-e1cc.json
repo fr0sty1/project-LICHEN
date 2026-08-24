@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-e1cc",
+  "title": "C DIO Time codec tests omit null buffer and malformed iterator boundaries",
+  "description": "Robustness review of the new rpl_messages host test found missing acceptance cases for NULL inputs, short output buffer, canonical NO_SYNC, an option header without length, and a TLV whose declared length overruns the option list. Add exact error assertions and verify failed serialization does not modify the output buffer.",
+  "notes": "Returned open/unclaimed because the user explicitly excluded C/Zephyr/AWS work from this session; no C changes from this finding remain.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:31:21.862306Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:35:32.310062Z",
+  "started_at": "2026-08-24T06:31:26.698602Z"
+}

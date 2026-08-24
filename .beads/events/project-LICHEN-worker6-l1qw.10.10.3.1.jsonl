@@ -1,1 +1,2 @@
 {"id":"019f9764-4eb0-7290-871d-91c975014824","issue_id":"project-LICHEN-worker6-l1qw.10.10.3.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:49:21.200168Z"}
+{"id":"01a03280-6bb0-7ba8-819c-f5abbe817d3b","issue_id":"project-LICHEN-worker6-l1qw.10.10.3.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"RangeTestResource GET handler supports Observe with interval_ms parameter","created_at":"2026-08-24T06:41:12.112765Z"}

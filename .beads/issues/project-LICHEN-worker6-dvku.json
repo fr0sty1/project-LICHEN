@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-dvku",
+  "title": "Gateway slot APIs allow invalid dimensions and ordinals to panic or exhaust CPU",
+  "description": "P2 security review finding. The newly exported rust/lichen-gateway/src/slot.rs exposes unchecked coordination/config dimensions. SuperframeConfig has public duration_s and slots_per_superframe fields; superframe_id()/current_slot() divide or modulo by them and panic when either is zero. The free timestamp helpers have the same divide/modulo-by-zero behavior. SlotAllocator::allocate_for_ordinal() documents ordinal \u003c gateway_count but never enforces it; contiguous allocation loops 0..ordinal and performs unchecked u32 additions/range endpoints, so an untrusted very large ordinal can cause CPU exhaustion or overflow/panic. validate_interleaved_pattern likewise performs unchecked u32 multiplication/addition. Replace panicking constructors/raw public fields with validated fallible construction or explicit Result errors, reject zero dimensions and ordinal \u003e= gateway_count, use checked arithmetic, and add hostile boundary tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:26:06.665377Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:30:30.452576Z",
+  "started_at": "2026-08-24T12:30:30.452576Z",
+  "lease_expires_at": "2026-08-24T12:35:30.452576Z",
+  "heartbeat_at": "2026-08-24T12:30:30.452576Z"
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.10.2.3",
   "title": "Vectors: Generate test vectors for Transport Protocol",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:36.245794Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:36.245794Z",
+  "updated_at": "2026-08-24T05:20:27.012866Z",
+  "closed_at": "2026-08-24T05:20:27.012866Z",
+  "close_reason": "Already done: coap_transport.json exists with transport binding vectors",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.10.2.3",

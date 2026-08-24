@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.6.1.2",
   "title": "Python: /waypoints/{id} GET/PUT/DELETE",
   "description": "Individual waypoint operations",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:24.171886Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:24.171886Z",
+  "updated_at": "2026-08-24T06:33:28.487687Z",
+  "closed_at": "2026-08-24T06:33:28.487687Z",
+  "close_reason": "Implementation complete: WaypointDetailsResource in waypoints.py implements render_get, render_put, and render_delete for /waypoints/{id} endpoint. Full test coverage in test_waypoints_resource.py.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.6.1.2",

@@ -1,1 +1,2 @@
 {"id":"019fb9a3-1231-7311-98ec-1e12ffe1c537","issue_id":"project-LICHEN-worker6-l1qw.15.4.7","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:24:59.825202Z"}
+{"id":"01a03258-ff32-702e-9c3c-a1b8136d5808","issue_id":"project-LICHEN-worker6-l1qw.15.4.7","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: slot allocation in rust/lichen-gateway/src/slot.rs","created_at":"2026-08-24T05:58:08.434012Z"}

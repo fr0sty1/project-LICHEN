@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-kyoh",
+  "title": "Link receive comments and vector constant still misdescribe SIID as a signer IID",
+  "description": "Final correctness/documentation review: python/src/lichen/link/link_layer.py receive() still says the frame does not contain a sender hint, has a TODO to try multiple senders, and describes exhaustive lookup as the current workaround, although mandatory SIID is now a canonical signer EUI-64 used for bounded indexed lookup with exhaustive fallback. test/vectors/generate.py also retains _ORACLE_SIGNER_IID_BIT even though the surrounding spec explicitly says SIID is never an IPv6 IID. Update these source comments/names to Signer Identifier / signer EUI-64 so future maintenance does not reintroduce the IID/EUI conversion bug.",
+  "acceptance_criteria": "Modified source and generator use SIID only as Signer Identifier/canonical EUI-64 terminology and accurately describe indexed plus bounded fallback lookup.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:53:08.539663Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:53:25.851511Z",
+  "started_at": "2026-08-24T14:53:25.851511Z",
+  "lease_expires_at": "2026-08-24T14:58:25.851511Z",
+  "heartbeat_at": "2026-08-24T14:53:25.851511Z"
+}

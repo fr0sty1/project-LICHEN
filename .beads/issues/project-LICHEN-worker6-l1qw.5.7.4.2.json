@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.4.2",
   "title": "Rust: Relay decision + hop increment",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "Already implemented\nAdded for_relay() method that combines relay decision + hop increment per spec 9.3. Returns Option\u003cAnnounceBuilder\u003e with hop_count+1 if relayable, None otherwise. Added 4 tests covering increment, boundary, max, and field preservation.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:50.968536Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:50.968536Z",
+  "updated_at": "2026-08-24T06:29:37.598866Z",
+  "started_at": "2026-08-24T06:26:34.273436Z",
+  "closed_at": "2026-08-24T06:29:32.773161Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.4.2",

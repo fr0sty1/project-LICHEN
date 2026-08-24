@@ -1,1 +1,2 @@
 {"id":"019f975e-d6cf-720b-8c8b-7f40b704f337","issue_id":"project-LICHEN-worker6-l1qw.5.6.2.4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:43:22.831136Z"}
+{"id":"01a032dc-0b50-74d2-bad8-93d72ace9ea6","issue_id":"project-LICHEN-worker6-l1qw.5.6.2.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: rpl/dodag.py line 222 process_dio(), line 292 process_authenticated_dio()","created_at":"2026-08-24T08:21:16.752316Z"}

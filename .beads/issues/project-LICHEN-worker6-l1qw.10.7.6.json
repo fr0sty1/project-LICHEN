@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.7.6",
   "title": "SOS Network Behavior",
   "description": "Priority routing, beacon boost, TX queue priority",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:07.445621Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:07.445621Z",
+  "updated_at": "2026-08-24T06:34:43.812085Z",
+  "closed_at": "2026-08-24T06:34:43.812085Z",
+  "close_reason": "All 5 children complete: priority routing, beacon boost, TX queue priority, 4-hour timeout, and test vectors",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.7.6",

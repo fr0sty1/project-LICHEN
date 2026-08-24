@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.19.2",
   "title": "Rust: Regional Channel Plans implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:21:55.856112Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.503267Z",
+  "updated_at": "2026-08-24T06:21:23.411051Z",
+  "closed_at": "2026-08-24T06:21:23.411051Z",
+  "close_reason": "Already done: rust/lichen-hal/src/lib.rs has OperatingClass enum, OperatingClassParams struct, OPERATING_CLASS_TABLE, lookup_operating_class() implementing CCP-3/CCP-4 regional channel plans",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.19.2",

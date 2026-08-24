@@ -1,1 +1,2 @@
 {"id":"019f9760-cbd2-7b75-a4ab-814ea807b37e","issue_id":"project-LICHEN-worker6-l1qw.5.7.7","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:45:31.090752Z"}
+{"id":"01a0327b-34d8-768b-a5e5-cb89a5fe0405","issue_id":"project-LICHEN-worker6-l1qw.5.7.7","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All 5 children complete: Python/Rust/Zephyr Type 0x01 coords encode/decode, LatE7/LonE7 signed 32-bit encoding, coordinate encoding vectors","created_at":"2026-08-24T06:35:30.392429Z"}

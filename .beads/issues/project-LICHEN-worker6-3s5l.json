@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-3s5l",
+  "title": "Gateway codec tests contain needless double references",
+  "description": "Two gateway.rs round-trip tests pass \u0026schc where schc is already a slice, failing the required clippy -D warnings all-target gate. Pass the slice directly.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T16:18:20.366867Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T16:18:25.998904Z",
+  "started_at": "2026-08-24T16:18:25.998904Z",
+  "lease_expires_at": "2026-08-24T16:23:25.998904Z",
+  "heartbeat_at": "2026-08-24T16:18:25.998904Z"
+}

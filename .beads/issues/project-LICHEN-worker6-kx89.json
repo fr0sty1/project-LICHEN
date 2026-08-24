@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kx89",
+  "title": "SCHC retry vector provenance mislabels timeout ACK-REQ as fifth All-1",
+  "description": "Final ACK correctness review: test/vectors/schc_fragmentation.json sender_retry_exhaustion provenance says timeout replaces a fifth All-1 attempt, but trigger_event is timeout and pre_exhaustion_message 7800 is an ACK REQ. All-1 is emitted only for initial or missing-final-tile batches. Correct provenance to fifth request / timeout ACK REQ, align draft step wording, and keep Python/Rust executable assertions on the exact sequence.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:48:03.360772Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:48:06.675802Z",
+  "started_at": "2026-08-24T08:48:06.675802Z",
+  "lease_expires_at": "2026-08-24T08:53:06.675802Z",
+  "heartbeat_at": "2026-08-24T08:48:06.675802Z"
+}

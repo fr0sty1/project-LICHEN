@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-q1h9",
+  "title": "Align version_is_newer in rust/dodag.rs + python/dodag.py with routing.rs serial-arithmetic lollipop (C now matches routing.rs)",
+  "description": "C comparators were ported verbatim from rust/lichen-rpl/src/routing.rs:63-89 (mod-128 directional diff same-region, RFC 7.2 rule-3 cross-region) with exhaustive 65536-pair sweep proving C==Rust-routing. But rust/dodag.rs and python/src/lichen/rpl/dodag.py version_is_newer still use the old |diff|\u003c=WINDOW formulation and their unit tests assert it — they now diverge from both C and routing.rs on multi-step wraps (e.g. incoming=5 vs current=120). Repo rule: identical output across implementations. Align both to routing.rs formulation, recompute affected unit-test expectations from routing.rs (not from current dodag code), extend shared wrap-boundary vectors (127-\u003e0 multi-step, 255-\u003e0, +-17 past wrap).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:15:15.788687Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:15:15.788687Z"
+}

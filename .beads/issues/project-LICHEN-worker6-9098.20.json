@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.20",
+  "title": "radio.py: live apply_all None does not pop stash; GE re-apply can resurrect",
+  "description": "## Problem\n\n9098.13 closed on re-running `ChaosEngine.apply_all` at re-inject so post-TxEnd Drop/Jam/Partition work. Two remaining holes in that re-apply:\n\n1. **Live drop does not pop the stash.** In `_get_rx_result_internal`, `apply_all` returning None is `continue` with no `delayed_map.pop`. If the TX is still in-flight, that txid is then absent from `present_ids`, so `_reinject_delayed_candidates` runs `apply_all` again on the pre-chaos original.\n\n2. **GilbertElliottRule is not idempotent.** Unlike `LossRule` (cached per tx_id), `GilbertElliottRule.apply` transitions the per-link Markov chain and rolls loss on every call (`lora_medium/chaos.py`). Stash-time `apply_all` already transitioned once. Every later live poll transitions again. If live drops, re-inject transitions a third time and may return the candidate. If `current \u003c expire_us`, re-inject then `continue` **without popping**, so a live drop is undone for the delayed path. At expire, `apply_all` runs yet again.\n\nDeterministic Drop/Jammer/Partition still drop on the second apply (13's tests). LossRule's cache makes the second draw match the first. Gilbert-Elliott (and any future stateful rule) can resurrect a dropped delayed frame or see 2N extra transitions vs one decision at first hearing.\n\n13's design said: \"or be dropped if a later live apply_all returned None for that txid. If apply_all returns None, pop the stash entry.\" Only the re-inject None path pops today.\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (`_get_rx_result_internal` live `if result is None: continue` ~L529-530; `_reinject_delayed_candidates` re-apply ~L461-472)\n- lora_medium GilbertElliottRule.apply (stateful; LossRule is cached)\n- python/tests/sim/test_radio.py (Drop/Jam/Partition after TxEnd only; no GE, no live-drop-during-airtime)\n\n## Why this is correctness\n\nChaos composition with LatencyRule is supposed to be one decision per hearing, then delay. Re-apply is required so rules added after TxEnd still bite (13). It is not required to re-sample a stateful loss model or to keep a stash after a live drop already returned None.\n",
+  "design": "On live apply_all None, pop `(node_id, tx.id)` immediately (13's fail-closed). Treat the stash as a pre-chaos original for *later-added* deterministic rules, not as a second independent draw. Do not call GilbertElliottRule.apply again on re-inject for a tx_id already evaluated (cache like LossRule, or skip stateful rules on the delayed path). A live drop must not be reversible at expire.\n",
+  "acceptance_criteria": "If apply_all returns None on an in-flight poll, get_rx_result at expire is None (stash gone), including GilbertElliottRule. LatencyRule+DropRule after TxEnd still drops (13). LossRule probability is not compounded by stash-time plus re-inject draws. A test covers live drop during airtime and GE+LatencyRule.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:58:04.774283Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:13:36.71758Z",
+  "started_at": "2026-08-24T06:02:39.337288Z",
+  "closed_at": "2026-08-24T06:13:36.71758Z",
+  "close_reason": "Live apply_all None pops the delayed-RX stash so Gilbert-Elliott cannot resurrect a dropped frame at expire. Re-inject skips GE (already drawn at first hearing) and still re-applies Drop/Jam/Partition added after TxEnd.",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.20",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:58:05.278145Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.20",
+      "depends_on_id": "project-LICHEN-worker6-9098.11",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:58:05.72742Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

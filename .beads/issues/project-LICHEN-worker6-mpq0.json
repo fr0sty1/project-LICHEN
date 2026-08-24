@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-mpq0",
+  "title": "Provision persistence and integrity hooks can reenter verifier and regress rollback state",
+  "description": "Fresh final timing robustness/security review: ProvisionVerifier.install and clear invoke external verify_integrity, persist_rollback_state, and persist_clear callbacks while holding a threading.RLock, which explicitly permits same-thread reentry. A one-shot persist hook can recursively install a higher version; after the inner commit returns, the outer lower-version install resumes and overwrites __rollback/__current, regressing the in-memory floor. Clear/install cross-reentry can likewise violate generation/current/cleared atomicity. Add an explicit non-reentrant transition guard covering verify/persist/commit/clear (or a transaction design with post-callback generation revalidation), fail closed on callback reentry without partial state mutation, and test v2 outer→v3 inner, install→clear, clear→install, callback exceptions, and concurrent non-reentrant callers.",
+  "notes": "Also cover awaitable hooks: async persist_marker/persist_rollback_state/persist_clear return coroutine objects that are never awaited, yet current code treats them as durable success and issues/commits virgin, rollback, or cleared state. Reject coroutine functions and any awaitable return (closing coroutine objects), with no state mutation; add each hook case.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:53:15.899334Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:54:09.521913Z",
+  "started_at": "2026-08-24T08:53:19.347577Z",
+  "lease_expires_at": "2026-08-24T08:58:19.347577Z",
+  "heartbeat_at": "2026-08-24T08:53:19.347577Z"
+}

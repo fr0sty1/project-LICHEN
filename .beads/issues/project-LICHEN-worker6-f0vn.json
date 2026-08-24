@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-f0vn",
+  "title": "Relayed announce stores origin RX channel under immediate sender",
+  "description": "In Node._process_announce(), announce.rx_channel is signed by and describes announce.originator_iid, but line 1186 stores it as _peer_rx_channel[sender.iid]. For a relayed announce, sender is the immediate relay and differs from the originator, so origin-controlled data is misbound to the relay. _peer_has_live_state then treats that stale/misbound entry as permanent eviction protection, and entries have no expiry. Store rendezvous channel under the authenticated identity it actually describes (or do not use relayed origin data for immediate-hop channel selection) and expire/remove it consistently; test direct vs relayed announces.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:19:13.440987Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:19:32.775564Z",
+  "started_at": "2026-08-24T14:19:32.775564Z",
+  "lease_expires_at": "2026-08-24T14:24:32.775564Z",
+  "heartbeat_at": "2026-08-24T14:19:32.775564Z"
+}

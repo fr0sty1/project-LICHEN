@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-taf3",
+  "title": "First-boot trust recovery can re-anchor noninitial mutable state after floor loss",
+  "description": "Security review of so3l/0919 integration: when manifest stage is before TRUST and gateway-trust.bin exists but the external trust floor is missing, lichend loads the sealed store with minimum_generation=0 and recreates the floor from whatever signed generation/entries are present. The legitimate crash boundary can only produce the initial empty generation-1 store; accepting any nonempty/higher store lets a rolled-back stage-0 manifest plus missing floor re-anchor mutable trust state. Require exactly generation 1 and zero entries before recovering a store-only first-boot partial; add positive initial-partial and negative noninitial-partial tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:20:50.164545Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:20:54.737727Z",
+  "started_at": "2026-08-24T17:20:54.737727Z",
+  "lease_expires_at": "2026-08-24T17:25:54.737727Z",
+  "heartbeat_at": "2026-08-24T17:20:54.737727Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-h7mi",
+  "title": "Gateway PSK config is retained in plaintext and exposed by Debug",
+  "description": "Security review finding: Config::from_file reads the complete TOML, including gateway_coordination.psk_hex, into an ordinary String that is freed without zeroization after deserialization. Config and GatewayCoordinationConfig also derive Debug, so any diagnostic of the parsed config prints the federation PSK verbatim. The later decode_secret_hex wipe only clears the deserialized field, not the original TOML buffer or Debug exposure, and no Unix permission check rejects group/world-readable secret-bearing config files. Use a redacted manual Debug implementation, parse/read secret-bearing configuration through Zeroizing storage (or a separate credential file/provider), and reject insecure file ownership/mode in production; add tests for redaction and permission failures.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T16:45:15.199553Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T16:51:42.54931Z",
+  "started_at": "2026-08-24T16:51:42.54931Z",
+  "lease_expires_at": "2026-08-24T16:56:42.54931Z",
+  "heartbeat_at": "2026-08-24T16:51:42.54931Z"
+}

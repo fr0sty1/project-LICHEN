@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-0bpu",
+  "title": "EDHOC M1 retransmission returns BAD_REQUEST instead of cached M2",
+  "description": "test_exact_m1_retransmission_returns_cached_m2_and_timer failing. Responder should return cached M2 on M1 retransmit but returns 4.00 Bad Request. Regression in EDHOC caching logic.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:30:13.595902Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:33:33.413936Z",
+  "started_at": "2026-08-24T06:30:32.820873Z",
+  "closed_at": "2026-08-24T06:33:33.413936Z",
+  "close_reason": "fixed"
+}

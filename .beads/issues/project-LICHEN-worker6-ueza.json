@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-ueza",
+  "title": "Define authenticated T=0 fragmentation context and safe sequential session reuse",
+  "description": "Security review finding combining the T=0 session-identity observations. With no DTag, the reassembly/sender context must be bound to precise authenticated link identities and the directional fragmentation Rule ID, and state must not be allocated or mutated before link signature verification. The current summary wording does not fully define ordered local/remote identity components or safe reuse after completion/abort. A delayed, previously unseen but valid signed fragment from packet N can otherwise enter packet N+1 under the identical peer/rule key; RCS prevents silent delivery but can force abort/retry as a targeted denial of service. Define authentication-before-allocation, exact context components, resource limits, terminal cleanup/tombstones, and a reuse/late-fragment policy compatible with the link replay window and maximum fragment lifetime.",
+  "acceptance_criteria": "The normative fragmentation profile defines the context key as an ordered local authenticated identity, remote signer identity obtained from successful link verification rather than an address field, and directional data Rule ID; invalid/unsigned fragments cannot allocate, reset, abort, or mutate state. It defines when a T=0 key may be reused after success, Sender-Abort, Receiver-Abort, or timeout, plus how late fragments and control messages from the prior packet are handled (or adopts a nonzero DTag). Bounded-context exhaustion behavior is specified. Cross-implementation vectors cover unauthenticated allocation attempts, peer/address spoofing, simultaneous opposite directions, delayed packet-N fragments before and during packet N+1, abort/timeout reuse, and successful uncontaminated packet-N+1 completion. Terminal state retains the prior outcome and responds idempotently to a newer authenticated ACK REQ or late All-1 when the final C=1 was lost; a new session has an unambiguous start condition that cannot be confused with such retries. Counter comparison uses ordinary unsigned 24-bit ordering within the authenticated link-key replay domain, with explicit behavior at epoch transition, terminal counter/key rotation, and concrete time or counter-distance definitions for hold-down/tombstone expiry. The canonical spec and draft agree whether context exhaustion causes silent drop or authenticated Receiver-Abort, and vectors cover per-signer/global exhaustion without active-context eviction.",
+  "notes": "Additional security-review acceptance: do not tombstone only the replay counter carried by the terminal All-1/Abort. Out-of-order delivery can make that terminal counter lower than a fragment already accepted into the same session, allowing a delayed old-session fragment with the higher counter to pass a simple greater-than-terminal reuse gate. Receiver and sender lifecycle state must retain the highest authenticated replay serial accepted anywhere in the session, using the link layer's defined wrap-safe serial arithmetic; a new session under the same T=0 context key must begin strictly after that high-water mark. Define exact maximum-fragment-lifetime, replay-window-lifetime, quiet-period, and tombstone-duration values plus counter-wrap behavior rather than leaving implementation-chosen timing. Add vectors/tests where a higher-counter data fragment arrives before a lower-counter terminal fragment, then is replayed during sequential reuse, and boundary tests for expiry and counter wrap.\nCorrectness pass detail: a terminal replay-counter tombstone alone does not distinguish a legitimate new T=0 session from late authenticated traffic carrying a newer link counter. Concrete failure: receiver completes reassembly and sends C=1; C=1 is lost; sender later transmits ACK REQ with a newer replay counter. That control passes replay/tombstone freshness but must receive the prior terminal C=1 rather than allocate a new context. A retransmitted All-1 or regular fragment emitted after the terminal frame has the same ambiguity. The current draft also says freshness follows serial-number rules although the link spec mandates ordinary unsigned 24-bit ordering, and refers to undefined maximum-fragment and replay-window lifetimes even though the replay window is a 32-frame count. Define key-rotation/replay-domain behavior. Resource behavior also conflicts: spec/03 says over-limit fragments are dropped without eviction, while draft-lichen-schc-lora requires Receiver-Abort on buffer/context exhaustion.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:15:00.733332Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:25:01.062165Z",
+  "started_at": "2026-08-24T05:15:25.24428Z",
+  "lease_expires_at": "2026-08-24T05:20:25.24428Z",
+  "heartbeat_at": "2026-08-24T05:15:25.24428Z",
+  "labels": [
+    "codereview",
+    "schc",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ueza",
+      "depends_on_id": "project-LICHEN-worker6-gmge",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:15:01.10403Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

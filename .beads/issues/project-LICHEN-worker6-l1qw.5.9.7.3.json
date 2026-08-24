@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.9.7.3",
   "title": "Python: Congestion parsing",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:51:54.206326Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:51:54.206326Z",
+  "updated_at": "2026-08-24T08:21:22.766265Z",
+  "closed_at": "2026-08-24T08:21:22.766265Z",
+  "close_reason": "Verified: announce/coords.py line 100 encode_congestion(), line 117 decode_congestion()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.7.3",

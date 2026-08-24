@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.34",
+  "title": "metrics.py: _tx_latency_recorded unbounded after 9098.24 caps",
+  "description": "## Problem\n\n9098.24 capped `_delivered` (OrderedDict LRU 10k), `_collision_keys` (same), and `_time_series` (deque maxlen 10k), and stopped pruning undelivered `_tx_start_times` before 180 s so LatencyRule/90 s hops still record latency.\n\nIt did **not** cap or TTL `_tx_latency_recorded: set[str]`. That set is written on every first latency sample (`record_reception`) and is only cleared in `reset()`. The start-time prune *uses* it to choose the 60 s vs 180 s cutoff:\n\n```python\nif k in self._tx_latency_recorded:\n    if v \u003c delivered_cutoff:      # 60s\n        old_keys.append(k)\nelif v \u003c undelivered_cutoff:      # 180s\n    old_keys.append(k)\nfor k in old_keys:\n    del self._tx_start_times[k]\n# _tx_latency_recorded is not pruned\n```\n\nAfter a tx_id is deleted from `_tx_start_times`, its entry in `_tx_latency_recorded` is dead weight. Long runs therefore keep one string per historically delivered TX forever — the same class of leak 9098.24 closed for `_delivered`.\n\n`test_delivered_and_time_series_are_capped` asserts `_delivered` and `_time_series` bounds only. Reservoir sampling (`_latency_samples`) is already capped. This set is the remaining unbounded companion of `_tx_start_times`.\n\nThis is not 9098.24 (those three collections + 60 s prune dropping delayed latency). It is not 9098.27/30 (RNG). After the 24 fix, the latency-recorded set is the prune oracle and is never aged.\n\n## Files\n\n- python/src/lichen/sim/metrics.py (`_tx_latency_recorded` add in `record_reception`; prune in `record_transmission_start`; `reset`)\n- python/tests/sim/test_metrics.py (`test_delivered_and_time_series_are_capped`, `test_delayed_reception_keeps_latency_after_threshold`)\n\n## Why this is robustness\n\n9098.24's design was \"do not grow without bound.\" City-mesh / soak / 500-node demo will record far more than 10k distinct tx_ids. The prune already forgets start times; leaving the classification set behind reintroduces unbounded growth on the metrics object that radio.py hits on every TX/RX.\n",
+  "design": "When `record_transmission_start` deletes a tx_id from `_tx_start_times`, also discard it from `_tx_latency_recorded`. Optionally cap the set (same 10k LRU as `_delivered`) so a path that records latency without a later prune cannot leak. Do not drop an in-window start time (90 s delayed RX must still compute latency). Keep independent Metrics RNG (9098.27/30).\n",
+  "acceptance_criteria": "After \u003e1000 TX starts and many deliveries, `_tx_latency_recorded` does not grow without bound (entries whose start times were pruned are gone, and/or a cap holds). test_delayed_reception_keeps_latency_after_threshold still records latency \u003e= 90 s. test_delivered_and_time_series_are_capped stays green. reset() still clears the set.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:50:48.292743Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:13:06.49432Z",
+  "started_at": "2026-08-24T06:56:17.249712Z",
+  "closed_at": "2026-08-24T07:13:06.49432Z",
+  "close_reason": "Prune _tx_latency_recorded (and companion _delivered/_collision_keys) when start times are dropped; live identities are not LRU-evicted.",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.34",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:50:48.782963Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.34",
+      "depends_on_id": "project-LICHEN-worker6-9098.24",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:50:49.177925Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

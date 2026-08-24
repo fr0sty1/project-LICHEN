@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-icn7",
+  "title": "Process and persist the detached verified DAO snapshot",
+  "description": "P1 security/correctness: DaoOriginValidator.validate() authenticates a detached reparse of _exact_received_dao_wire(), but DaoManager._apply_dao_at_unlocked() then performs semantic parsing, target checks, route mutation, and replay-floor digesting on the caller-owned original DAO. The manager lock does not protect that object, so another thread/callback holding it can mutate fields/options after provenance validation and before _extract_updates()/dao.to_bytes(); unsigned semantics can then be installed and the persisted digest need not describe the verified wire. process_dao_at() also builds an ACK from the mutable original after releasing the manager lock. Make successful validation return/retain the immutable exact signed bytes plus a detached parsed DAO, and use only that snapshot for all semantics, digest commit (origin_result.dao_digest), and ACK fields. Add a deterministic mutation-race regression proving no unsigned route/ACK state is accepted.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:48:47.31293Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:12:35.021257Z",
+  "started_at": "2026-08-24T15:50:41.991249Z",
+  "closed_at": "2026-08-24T17:12:35.021257Z",
+  "close_reason": "Already fixed in current codebase. The code uses provenance-based TOCTOU protection: (1) _exact_received_dao_wire() validates structural state unchanged (2) validate_and_process_dao_at creates snapshot from provenance bytes (3) _apply_dao_at_unlocked rebinds dao=DAO.from_bytes(origin_result.signed_dao_bytes) after validation. Added regression tests: test_mutation_invalidates_provenance (verifies mutation fails safely) and test_unmutated_dao_uses_provenance (verifies happy path). All 66 dao_origin tests pass."
+}

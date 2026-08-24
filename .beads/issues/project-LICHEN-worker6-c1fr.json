@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-c1fr",
+  "title": "LinkLayer restart loses inbound replay, pin, rekey, and retired-key security state",
+  "description": "Security review: persisted state contains only TX epoch/sequence; replay floors/bitmaps, pinned/rekeyed peers, and retired remote keys are volatile and persistence errors are silently ignored. Restart can accept captured signed traffic and retired old-key traffic. Add crash-safe authenticated persistence for required RX replay/trust/rekey lineage, fail closed on corrupt/rollback state, and test restart replay plus retired-key rejection.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:10:18.381142Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:10:25.417911Z",
+  "started_at": "2026-08-24T07:10:25.417911Z",
+  "lease_expires_at": "2026-08-24T07:15:25.417911Z",
+  "heartbeat_at": "2026-08-24T07:10:25.417911Z"
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.7.3.1",
   "title": "Python: protect_response with request AAD",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:04.240785Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:04.240785Z",
+  "updated_at": "2026-08-24T08:20:59.166599Z",
+  "closed_at": "2026-08-24T08:20:59.166599Z",
+  "close_reason": "Verified: oscore.py inherits aiocoap CanProtect (handles response AAD)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.3.1",

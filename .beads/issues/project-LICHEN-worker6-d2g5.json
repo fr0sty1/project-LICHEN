@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-d2g5",
+  "title": "Inconsistent NULL contract: process_dio returns 0 for NULL args; process_dio_bytes returns LICHEN_RPL_ERR_INVALID; header annotates _Nonnull",
+  "description": "Caller bugs indistinguishable from benignly-ignored DIO at call sites checking only \u003c0. Align on ERR_INVALID or document deliberate 0-return.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:25.149346Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:47:25.509894Z",
+  "started_at": "2026-08-24T06:47:25.509894Z",
+  "lease_expires_at": "2026-08-24T06:52:25.509894Z",
+  "heartbeat_at": "2026-08-24T06:47:25.509894Z"
+}

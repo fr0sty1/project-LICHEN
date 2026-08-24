@@ -1,1 +1,2 @@
 {"id":"019fb9a2-caa2-73a5-8d57-0f2191dd752e","issue_id":"project-LICHEN-worker6-l1qw.15.5.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:24:41.50624Z"}
+{"id":"01a03259-0e7a-71d0-8a3d-4687c51e6906","issue_id":"project-LICHEN-worker6-l1qw.15.5.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: rust/lichen-gateway/src/handoff.rs implements node handoff","created_at":"2026-08-24T05:58:12.34612Z"}

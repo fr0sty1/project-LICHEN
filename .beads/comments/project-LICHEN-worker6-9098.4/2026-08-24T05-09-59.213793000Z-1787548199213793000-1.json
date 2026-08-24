@@ -1,0 +1,7 @@
+{
+  "id": "1787548199213793000-1",
+  "issue_id": "project-LICHEN-worker6-9098.4",
+  "author": "Mark Atwood",
+  "text": "SECURITY pass of the same poll-at-TX-start tautology as project-LICHEN-worker6-9098.2 (correctness). Keep this bead for security/review + discovered-from:ffrp; fixer should close both after one change.",
+  "created_at": "2026-08-24T05:09:59.213793Z"
+}

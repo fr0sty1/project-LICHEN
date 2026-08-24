@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-iowe",
+  "title": "Reject oversized SCHC floor records before persistence hashing",
+  "description": "Security/robustness review of wm48 found restore_receiver_floor only checks record.len()\u003e48 and calls the link commitment hash before exact record decoding. A corrupt local store can force unbounded hashing of an oversized record. Define the canonical fixed record length and reject all non-exact lengths before hashing/signature work; test oversized/truncated non-mutation.",
+  "notes": "Defined canonical fixed SCHC floor-record length and rejects truncated/oversized records before commitment hashing or signature work; non-mutation cases covered. SCHC tests/clippy pass.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:46:01.692151Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:48:51.002537Z",
+  "started_at": "2026-08-24T14:46:06.141372Z",
+  "lease_expires_at": "2026-08-24T14:51:06.141372Z",
+  "heartbeat_at": "2026-08-24T14:46:06.141372Z"
+}

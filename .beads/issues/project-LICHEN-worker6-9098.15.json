@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.15",
+  "title": "radio.py _delayed_rx has no TTL; collision losers and unpolled nodes replay stale frames",
+  "description": "## Problem\n\nSECURITY false-confidence in the LatencyRule path added to `python/src/lichen/sim/simulation/radio.py` for the 9098.6 fix.\n\n`_stash_delayed_rx_candidates` / `_get_rx_result_internal` cache chaos-applied candidates in `_delayed_rx` keyed by `(rx_node_id, tx_id)` so packets remain visible after `TxEndEvent` removes the TX from the medium. Removal happens only on **successful** resolve of that exact pair:\n\n```\ndelayed_map.pop((node_id, tx.id), None)\n```\n\nThere is no TTL, no expiry at `end_time_us + added_latency_us + slack`, and the collision / capture-loser path does not pop. Eligibility is only a lower bound:\n\n```\ncurrent_time_us \u003e= transmission.end_time_us + added_latency_us\n```\n\nOnce that fires, the candidate is eligible on **every later poll** of that node, indefinitely.\n\n## Replay / unbounded delay\n\n1. **Unpolled nodes keep every matching TX.** `LatencyRule(node_id=\"relay\")` matches sender **or** receiver (`python/tests/sim/test_chaos.py`). Relay's TX is therefore stashed at **every other node**, including `src`, which the latency tests never poll. Those entries accumulate for the life of the Simulation.\n2. **A missed poll leaves a live replay.** If `get_rx_result` returns None (too early, collision, or `if not result: continue`), the stash entry remains. The next poll of that node re-injects the old candidate even if a new TX is in flight.\n3. **Collision / capture losers stay.** `resolve_reception` with ≥2 candidates records a collision and returns None **without popping**. Equal-RSSI delayed frames then collide on every subsequent poll (permanent RX DoS). If capture delivers a winner, only the winner is popped; the loser is delivered on a later poll as a stale frame.\n4. **Hop-channel is not re-checked.** Stash injects the original candidate regardless of the node's current `get_hop_channel()`. CCP-12 hopping cannot isolate a delayed frame to the rendezvous channel.\n\n`Metrics.record_reception` latency is `poll_time - tx_start` for the **stale tx_id**. The latency tests compute harness elapsed from the **current iteration's** `tx_start` and do not assert payload identity (`result[0] == payload`). A stale frame can be counted as an in-budget hop for the new TX. `_assert_harness_oracles` `stats.max_us == harness.max_latency_us` would catch a metrics mismatch **if** CUT records the stale tx_id — but if capture delivers the new TX and leaves the old one for a node that is not polled again, CUT stays in-budget while the sim still holds a replayable frame.\n\n## Why this is security (false confidence)\n\nThe chaos delay test claims to observe a bounded +50 ms injection. `radio.py` actually implements store-and-forward with no upper bound. That hides replay-window and timeout behavior the mesh security model depends on: a \"delayed\" frame can appear seconds later on any later RX poll, on the wrong hop channel, and can DoS the receiver by colliding with every future candidate.\n\nThe B.5.4 suite going green does not show delayed packets expire; it only shows that when the test polls once at `end + 50 ms` and gets a hit, the stash is popped for that pair.\n\n## Not a duplicate of 9098.6\n\n9098.6 was that LatencyRule candidates were dropped at TxEnd so the test never observed the 50 ms delay (vacuous pass). The stash was the fix. This is the stash's missing **upper** bound, missing collision eviction, and sender-match fan-out to unpolled nodes.\n\n## Files\n\n- `python/src/lichen/sim/simulation/radio.py` (`_delayed_rx`, `_stash_delayed_rx_candidates`, `_get_rx_result_internal` filter + pop-on-success-only)\n- `python/tests/sim/test_multihop_latency_bounds.py` `test_latency_bounded_with_added_delay` (relies on the stash; no TTL/replay/payload oracle)\n",
+  "design": "TTL-drop stash entries after end_time_us+added_latency_us (and on hop-channel mismatch). Pop every candidate involved in a collision, not only a successful winner. Do not stash at nodes that are not in RX. Tests: missed poll must not deliver that tx_id later; two equal-RSSI delayed frames must not permanently silence the node; LatencyRule sender-match must not accumulate unbounded entries on unpolled nodes.",
+  "acceptance_criteria": "After eligibility, a candidate not delivered is dropped by a finite TTL and is not returned on a later get_rx_result. Collision among delayed candidates evicts those keys. Simulation with LatencyRule(node_id=relay) and N src-\u003erelay-\u003edst packets does not grow _delayed_rx without bound on src. Stale payload cannot be returned as the next hop's RX.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:32:55.009302Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:48:35.220348Z",
+  "started_at": "2026-08-24T05:38:57.112981Z",
+  "closed_at": "2026-08-24T05:48:35.220348Z",
+  "close_reason": "Finite TTL plus first-eligible-poll consume: missed poll does not replay; equal-RSSI delayed collisions evict both keys so the node is not permanently silenced; LatencyRule sender-match no longer grows unbounded on unpolled nodes; stale payload cannot be returned as the next hop RX.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.15",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:32:55.410236Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.15",
+      "depends_on_id": "project-LICHEN-worker6-9098.6",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:32:55.808187Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-o0sq",
+  "title": "Post-adoption TimeSample mutation can prevent source expiry",
+  "description": "Post-fix correctness review: tracker retains the caller-visible TimeSample and expiry rereads observed_monotonic. object.__setattr__ after adoption can continually move the observation time and prevent idle expiry; issuer snapshot is checked only at adoption. Store detached trusted authoritative state or revalidate the issuer snapshot on every read/transition. Mutation after adoption must not change validity/status.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:34:56.075242Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:35:12.361877Z",
+  "started_at": "2026-08-24T07:35:12.361877Z",
+  "lease_expires_at": "2026-08-24T07:40:12.361877Z",
+  "heartbeat_at": "2026-08-24T07:35:12.361877Z"
+}

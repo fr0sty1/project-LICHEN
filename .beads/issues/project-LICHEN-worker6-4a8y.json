@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-worker6-4a8y",
+  "title": "loadng test_messages.py parse tests still use to_bytes as oracle",
+  "description": "ROBUSTNESS review of python/tests/loadng/test_messages.py (after worker6-e3r3 hop parse fix).\n\nParse tests for valid RREQ/RREP/RERR still use the encoder as the decoder oracle:\n\n- test_rreq_round_trip (line 42): RREQ.from_bytes(rreq.to_bytes())\n- test_rrep_round_trip (line 53): RREP.from_bytes(rrep.to_bytes())\n- test_rerr_round_trip (line 65): RERR.from_bytes(rerr.to_bytes())\n- test_signature_carried_opaquely (lines 71-74): builds wire via to_bytes, then from_bytes\n- test_icmpv6_wrap_and_dispatch (lines 145-148): from_icmpv6(to_icmpv6(message))\n\nknown_vector tests only assert to_bytes() == hand-built bytes; they never parse those bytes. test_from_bytes_accepts_hop_field_bounds parses hand-built wire but only asserts the hop field, not originator/destination/seq/flags/signature.\n\nConsequence: a consistent encode/decode bug in an unvectorized field (especially signature placement: prefix+sig vs sig+prefix) round-trips while still disagreeing with spec 10.3/10.4. Signature coverage has no independent wire at all.\n\nMalformed-parse coverage is also too weak to lock the checks in messages.py:\n\n1. Invalid signature tails are untested. from_bytes rejects len not in {0, 48} (messages.py RREQ 92-96, RREP 136-140, RERR 175-179) but no test builds prefix+N for N in {1, 47, 49} (or any non-0/48). Deleting those checks would not fail the suite.\n2. test_from_bytes_rejects_truncated uses bytes(10) for RREQ and bytes(5) for RERR, and never calls RREP.from_bytes. Those lengths are rejected by any check weaker than the real prefix (36 / 18), so a copy-paste of the RERR 18-byte guard into RREQ/RREP still passes. Need prefix-1 (35 and 17) plus RREP.\n3. from_icmpv6 is not given a hand-built body for a valid type-158 message; dispatch of a correct body is only proven through to_icmpv6.\n\nFix: for every from_bytes / from_icmpv6 success and rejection case, construct the ICMPv6 body from spec layout literals (flags, hop, seq, packed addrs, optional 48-byte tail) — never from to_bytes. Keep to_bytes() == expected as the encode oracle. Cover: full-field parse of unsigned and signed RREQ/RREP/RERR; sig tail lengths 1/47/49; truncated 35 and 17; RREP truncated; from_icmpv6(Icmpv6Message(158, code, hand_built_body)).\n\nDo not re-file hop\u003e15 parse (fixed in e3r3) or to_bytes signature-length (already open as worker6-esp1).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:11:20.28383Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:14:43.943322Z",
+  "started_at": "2026-08-24T05:11:59.987914Z",
+  "closed_at": "2026-08-24T05:14:43.943322Z",
+  "close_reason": "Independent-oracle parse tests for RREQ/RREP/RERR: hex/literal wire for unsigned+signed bodies, prefix-1 (35/17) plus RREP, signature tails 1/47/49, from_icmpv6 hand-built type-158 bodies. Existing encode/round-trip tests kept. pytest tests/loadng/test_messages.py: 38 passed. No codec change.",
+  "labels": [
+    "robustness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-4a8y",
+      "depends_on_id": "project-LICHEN-worker6-e3r3",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:11:20.643331Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-4a8y",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:11:21.007646Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

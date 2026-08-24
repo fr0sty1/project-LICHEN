@@ -3,13 +3,15 @@
   "title": "Python: PUT /config",
   "description": "Acceptance: ConfigResource accepts config updates with auth",
   "notes": "Already implemented in ConfigResource with auth",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:05.138914Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:05.138914Z",
+  "updated_at": "2026-08-24T08:21:49.110514Z",
+  "closed_at": "2026-08-24T08:21:49.110514Z",
+  "close_reason": "Verified: coap/resources/node_resources.py line 100-117 ConfigResource.render_put",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.2.1.2",

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-xyei",
+  "title": "Rust fragmentation policy never reclaims retired peer slots",
+  "description": "FragmentationPolicy installs only into an existing signer or empty slot and exposes no retire/remove lifecycle. After MAX_PEERS distinct signers have ever been accepted, later authenticated peers fail PolicyFull forever even if Link/PeerContextAuthority retired all old peers. Wire atomic peer retirement/eviction into policy, invalidate sessions/tombstones safely, and add churn/current-session/slot-reuse tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T10:33:01.493687Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:33:09.222121Z",
+  "started_at": "2026-08-24T10:33:09.222121Z",
+  "lease_expires_at": "2026-08-24T10:38:09.222121Z",
+  "heartbeat_at": "2026-08-24T10:33:09.222121Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jqvl",
+  "title": "Rust SCHC authenticated-DIO capability issuance omits local destination binding",
+  "description": "Security review P2. PeerContextAuthority::issue_from_authenticated_dio and AuthenticatedPeerSchcContext::from_authenticated_dio_frame in rust/lichen-schc/src/codec.rs validate current link evidence, signer/source, checksum, DIO scope/role, and version, but never require the authenticated L2 destination to be this receiver nor validate the IPv6 destination as allowed local/multicast. These public capability constructors can therefore elevate a valid signed DIO addressed to a different node when used outside the node wrapper, and downstream fragmentation policy trusts the issued capability. Bind issuance to the authority/link receiver's local destination policy (and allowed RPL multicast), or make the unsafe constructor crate-private behind a destination-checked integration API; add cross-destination rejection tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:19:35.617001Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:25:45.327018Z",
+  "started_at": "2026-08-24T12:25:45.327018Z",
+  "lease_expires_at": "2026-08-24T12:30:45.327018Z",
+  "heartbeat_at": "2026-08-24T12:25:45.327018Z"
+}

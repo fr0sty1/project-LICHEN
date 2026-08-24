@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.24",
+  "title": "metrics.py: start-time prune drops delayed latency; dedup/CSV sets unbounded",
+  "description": "## Problem\n\n`Metrics` memory handling is incomplete in both directions, and the one prune it has destroys the latency samples that LatencyRule / SLA checks need.\n\n### 1. `_tx_start_times` prune drops in-flight and delayed latency\n\n`record_transmission_start` deletes start times older than `_TX_START_TIMES_MAX_AGE_US` (60s) once the dict exceeds `_TX_START_TIMES_PRUNE_THRESHOLD` (1000). Prune is by start-time age, not \"already delivered.\"\n\n`record_reception` then hits `start is None` and **silently skips latency** (same path as `test_reception_without_known_tx_has_no_latency`). Reception still counts. `latency_stats().count` lags `receptions`. Long-tail / LatencyRule / store-and-forward delays are exactly the samples that age past 60s.\n\nSF10 ~4 TX/s/node; 10 nodes exceed 1000 TX inside 60s. City-mesh and chaos runs will prune. A 90s hop is counted as a success with no latency — `CATASTROPHIC_LATENCY_US` never sees it. This is the metrics-side hole 9098.14 found in the harness: catastrophic delay is sampled as \"no latency,\" not a bound violation.\n\n### 2. Dedup and CSV series are uncapped\n\nThe class already caps packet hashes (10k), latency samples (10k, reservoir), and dashboard series (300). It does **not** cap:\n\n- `_delivered: set[tuple[str,str]]` — one entry per successful (rx, tx) forever (idempotency)\n- `_collision_keys: set[tuple[str, frozenset[str]]]` — same for collisions\n- `_time_series: list[...]` — every reception (and collision-with-time_us) forever for `export_csv`\n\nLong-running sims grow without bound. Dashboard series was capped for this reason; the recording path used by `radio.py` was not.\n\n## Files\n\n- python/src/lichen/sim/metrics.py (`record_transmission_start` prune, `record_reception` missing-start, `_delivered` / `_collision_keys` / `_time_series`)\n- python/src/lichen/sim/simulation/radio.py (only production caller)\n- python/tests/sim/test_metrics.py (`test_tx_start_times_pruned_after_threshold` asserts old keys vanish; does not then `record_reception` on a pruned id)\n\n## Why this is robustness\n\nResource cleanup is the stated reason for the 60s prune, but that cleanup invalidates latency under load — the failure mode the prune was supposed to keep the process alive to measure. Unbounded dedup/CSV sets will OOM the same long runs. Operators sizing OSCORE/EDHOC timeouts from `latency_stats()` get a truncated distribution that hides the tail.",
+  "design": "Do not prune a tx_id from _tx_start_times until its deliveries have been recorded or a fail-closed TTL after end_time+added has passed. Age _delivered / _collision_keys with the same TTL so polling idempotency survives the RX window without keeping keys forever. Cap _time_series like MetricsTimeSeries (deque maxlen) or drop events older than the dashboard window. A reception whose start time is gone must not look like a 0-latency success: either keep the start time or record latency as missing *and* surface it (do not increment receptions without a diagnostic).",
+  "acceptance_criteria": "After \u003e1000 TX starts, a reception 90s after tx start still records latency \u003e= 90s (not a silent skip). latency_stats().count matches receptions for those deliveries. A long run of N deliveries does not grow _delivered / _time_series without bound (cap or TTL). test_tx_start_times_pruned_after_threshold still limits memory but no longer implies pruned ids lose later latency.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:24:10.357087Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:41:54.852877Z",
+  "started_at": "2026-08-24T06:25:58.292518Z",
+  "closed_at": "2026-08-24T06:41:54.852877Z",
+  "close_reason": "Keep undelivered TX start times for 180s so 90s delayed RX still records latency; cap _delivered/_collision_keys/_time_series; receptions use a counter so caps do not shrink totals.",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.24",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:24:10.746053Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.24",
+      "depends_on_id": "project-LICHEN-worker6-9098.22",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:24:11.116996Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

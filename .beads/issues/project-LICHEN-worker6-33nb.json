@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-33nb",
+  "title": "Gateway slot claims and allocation maps have no resource bounds",
+  "description": "P3 security review finding. The newly exported slot coordination types accept caller-controlled Vec sizes without protocol caps: SlotClaim::new accepts arbitrary slots, overlap_with/resolve_conflict perform O(n*m) contains scans and allocate an overlap Vec, find_next_available performs repeated linear contains, SlotAllocationMap accepts unlimited gateways and arbitrary per-gateway slot vectors, and assign_ordinals clones/sorts an unbounded slice. When wired to coordination messages this permits memory/CPU exhaustion by an authenticated or newly-TOFU peer. Define hard maxima from slots_per_superframe/federation policy, reject duplicates and out-of-range slots at decode/admission, bound peer/map counts, and use bounded/linear-time set representations. Add maximum+1 and large-overlap rejection tests.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:26:06.665377Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:30:31.123365Z",
+  "started_at": "2026-08-24T12:30:31.123365Z",
+  "lease_expires_at": "2026-08-24T12:35:31.123365Z",
+  "heartbeat_at": "2026-08-24T12:30:31.123365Z"
+}

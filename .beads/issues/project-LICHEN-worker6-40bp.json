@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-40bp",
+  "title": "Node peer removal bypasses live-state and cleanup invariants",
+  "description": "Node.remove_peer() (python/src/lichen/node.py lines 548-550) blindly deletes peer_db while add_peer eviction deliberately protects LinkLayer TOFU pins, announce pins, active fragmentation, RX-channel state, and live routes. Removing an active peer can strand fragment sessions, channel entries, gradients/DODAG references, and LinkLayer trust while making signature lookup fail. Define a coherent remove/forget operation that either refuses live peers or retires all dependent state through public layer APIs; also prevent direct peer_db mutation from bypassing canonicality/capacity. Add tests for pinned, routing-live, and active-fragment peers.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:19:12.947515Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:19:32.073877Z",
+  "started_at": "2026-08-24T14:19:32.073877Z",
+  "lease_expires_at": "2026-08-24T14:24:32.073877Z",
+  "heartbeat_at": "2026-08-24T14:19:32.073877Z"
+}

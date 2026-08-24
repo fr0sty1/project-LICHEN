@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-895b",
+  "title": "Mutable Rust AuthenticatedFrame permits post-verification DIO and signer forgery",
+  "description": "Rule 7 and versioning correctness rereview: rust lichen-link AuthenticatedFrame is non-exhaustive but exposes public mutable payload and sender fields. Any caller holding one legitimately verified frame can replace its SCHC payload with an unsigned DIO or change sender identity before AuthenticatedPeerSchcContext and RPL admission reparse it, bypassing the signature and replay binding. Make authenticated evidence structurally immutable and owner-issued, or validate an unforgeable detached snapshot against the receiving LinkLayer before every elevation. Add post-receive payload, version-option, sender, scope, and replay-tuple mutation tests plus valid fan-out tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:11:17.506993Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:11:21.446456Z",
+  "started_at": "2026-08-24T08:11:21.446456Z",
+  "lease_expires_at": "2026-08-24T08:16:21.446456Z",
+  "heartbeat_at": "2026-08-24T08:11:21.446456Z"
+}

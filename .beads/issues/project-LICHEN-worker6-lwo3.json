@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-lwo3",
   "title": "rpl/dodag: NaN/inf link_etx crashes path_cost",
   "description": "In dodag.py, the link_etx validation (lines 84-86, 178-179) uses 'if link_etx \u003c 0' which does not catch NaN or positive infinity. Both float('nan') \u003c 0 and float('inf') \u003c 0 return False, so these values pass validation. When path_cost() calls round(self.link_etx * min_hop_rank_increase) at line 94, NaN raises ValueError and inf raises OverflowError, crashing the DODAG state machine. Fix: add 'if math.isnan(link_etx) or math.isinf(link_etx): raise ValueError(...)' in both validation locations.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T21:00:37.077891Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T21:00:37.077891Z"
+  "updated_at": "2026-08-24T04:17:21.520015Z",
+  "started_at": "2026-08-24T04:14:00.373989Z",
+  "closed_at": "2026-08-24T04:17:21.520015Z",
+  "close_reason": "Duplicate of dfv6: finite-ETX validation in ParentCandidate.__post_init__ and process_dio using math.isnan/math.isinf. Files: python/src/lichen/rpl/dodag.py, python/tests/rpl/test_dodag.py. Verified: uv run pytest tests/rpl/test_dodag.py tests/rpl/test_dao.py — 110 passed with ccp_beacon_sig_gate."
 }

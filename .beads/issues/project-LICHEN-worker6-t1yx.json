@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-t1yx",
+  "title": "timing package import breaks on missing StratumTracker",
+  "description": "python/src/lichen/timing/__init__.py re-exports time_sync names at package import time. Importing StratumTracker when that name is absent (EpochFloorAuthority is the real floor type) raises ImportError and breaks submodule imports such as from lichen.timing.airtime import airtime_us_with_params, which tests/sim/test_multihop_latency_bounds.py uses. Surgical fix: stop importing/exporting the dead StratumTracker name from the package init; export EpochFloorAuthority if that was the intended public name. Do not rewrite time_sync.py.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:17:15.447054Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-24T07:17:54.64469Z",
+  "started_at": "2026-08-24T07:17:31.080914Z",
+  "closed_at": "2026-08-24T07:17:54.64469Z",
+  "close_reason": "Removed dead StratumTracker re-export from lichen.timing package init; EpochFloorAuthority remains the public floor type. airtime_us_with_params imports and python/tests/sim/test_multihop_latency_bounds.py pass. Did not rewrite time_sync.py."
+}

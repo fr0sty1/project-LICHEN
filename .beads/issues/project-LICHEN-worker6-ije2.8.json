@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-ije2.8",
+  "title": "Integer overflow in has_oscore_option CoAP parsing",
+  "description": "In `rust/lichen-schc/src/codec.rs`, the `has_oscore_option` function has potential integer overflows:\n\n**Location**: Lines 194 and 220\n\n**Line 194**: `ext + 269` where ext is u16\n- When delta_nibble == 14, ext is read as u16 from bytes\n- If ext \u003e 65266, adding 269 overflows u16\n- Debug builds: panic\n- Release builds: silent wrap\n\n**Line 220**: `opt_num += delta`\n- opt_num is u16, delta can be up to 65535 (after potential wrap)\n- Accumulation can overflow\n\n**Trigger**: Malformed CoAP packet with option delta extension bytes near u16::MAX (e.g., delta_nibble=14 with ext=0xFFFF).\n\n**Consequence**:\n- Debug: panic on malformed input (denial of service)\n- Release: incorrect OSCORE detection causing wrong SCHC rule selection\n\n**Severity**: Low - requires malformed input, and compression still works (rules 0/5 and 1/6 have identical formats).\n\n**Fix**: Use saturating or checked arithmetic:\n```rust\nlet delta = match delta_nibble {\n    14 =\u003e ext.saturating_add(269),\n    ...\n};\nopt_num = opt_num.saturating_add(delta);\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:02:14.412441Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:02:14.412441Z",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ije2.8",
+      "depends_on_id": "project-LICHEN-worker6-ije2",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:02:14.793913Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

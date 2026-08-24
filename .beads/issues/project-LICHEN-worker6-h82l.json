@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-h82l",
+  "title": "Ignored rust test runtime_expires_idle_dao_at_exact_literal_boundary blocked on DAO-admission integration with Router::new_root",
+  "description": "Un-ignore and complete once DAO admission lands; tracked so it is not forgotten.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:29.613595Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:46:29.613595Z"
+}

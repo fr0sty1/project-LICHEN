@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ma2p",
+  "title": "Time provision verifier exposes mutable rollback and board-identity trust anchors",
+  "description": "Security review: ProvisionVerifier.expected_board_identity and minimum_record_version are public writable attributes, and public persist_version(version) can be called directly with a lower version. Any caller holding the verifier can retarget the board identity or lower/persist the rollback floor without authenticated metadata evaluation. Make trust anchors immutable/private; expose only monotonic internal advancement after successful validation; reject non-increasing/direct downgrade attempts and add tampering regressions.",
+  "notes": "Independent correctness probe: minimum_record_version=2; calling persist_version(0) succeeds, then verifier-issued version-0 metadata is accepted. Acceptance must cover lower/equal/higher versions and persistence callback failure.\nConcurrency finding: evaluate_epoch_floor reads the mutable floor, persists, then assigns without a lock. Concurrent version-2/version-3 records can persist/commit 3 and then regress in-memory minimum to 2. Lock verify-persist-commit-clear as one transaction and concurrency-test out-of-order callbacks.\nSame-version rollback also exists: after accepting version 2 at epoch F+100, a different version-2 record at F+50 is accepted because only version\u003cminimum is checked. Persist (version, canonical record digest/epoch); equal version is valid only for the identical record, and changed content requires a strictly newer version.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:49:33.771806Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:53:46.18746Z",
+  "started_at": "2026-08-24T06:49:55.199617Z",
+  "lease_expires_at": "2026-08-24T06:54:55.199617Z",
+  "heartbeat_at": "2026-08-24T06:49:55.199617Z"
+}

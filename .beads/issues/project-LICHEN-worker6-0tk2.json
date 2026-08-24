@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-0tk2",
+  "title": "loadng discovery: RREQ hop_limit\u003e4 → negative actual_hops → ValueError crash (remote DoS)",
+  "description": "discovery.py:115 assumes origin flooded at INITIAL_HOP_LIMIT=4; wire accepts 0..15 (messages.py). hop_limit=5..15 gives actual_hops\u003c0; RouteEntry.__post_init__ (cache.py:53) raises uncaught ValueError inside process_rreq. Spec-legal input kills routing loop. Fix: reject/clamp hop_limit\u003eINITIAL_HOP_LIMIT as malformed; regression test at boundary.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:46:14.217924Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:47:05.341388Z",
+  "started_at": "2026-08-24T06:47:05.341388Z",
+  "lease_expires_at": "2026-08-24T06:52:05.341388Z",
+  "heartbeat_at": "2026-08-24T06:47:05.341388Z"
+}

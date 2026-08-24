@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-worker6-9098.50",
+  "title": "metrics.py: compare_metrics treats missing latency as 0 us",
+  "description": "## Problem\n\nMetrics.snapshot() always emits latency_us with min/max/mean/p50/p95/p99. When _latency_count == 0 those fields are None.\n\ncompare_metrics, for each latency key:\n\n  if b_val is None and v_val is None: continue\n  b_val = float(b_val) if b_val is not None else 0.0\n  v_val = float(v_val) if v_val is not None else 0.0\n\nA baseline with no deliveries (None) vs a variant that delivers at 100 µs becomes 0 → 100. _is_significant(0, 100) is True for counts, _rate_direction marks every latency_* as degraded (lower-is-better). Six degraded latency metrics outweigh transmissions/receptions/delivery_rate improvements, so overall_verdict is \"worse\".\n\nA/B oracles then prefer a silent run over a run that actually delivers. 9098.37 fixed rate 0→0.9 significance; it did not change this None→0 mapping. test_compare_zero_baseline and test_compare_missing_latency use hand-built dicts without latency_us, so they never see snapshot() output.\n\n## Files\n\n- python/src/lichen/sim/metrics.py (compare_metrics latency block, snapshot, latency_stats)\n- python/tests/sim/test_metrics.py (test_compare_zero_baseline, test_compare_missing_latency)\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:24:51.044465Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:25:32.188011Z",
+  "closed_at": "2026-08-24T07:25:32.188011Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-9098.45 (compare_metrics None latency → 0; same root cause, opposite A/B direction already covered by skip-either-None design).",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.50",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T07:24:51.447981Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.50",
+      "depends_on_id": "project-LICHEN-worker6-9098.42",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T07:24:51.813204Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

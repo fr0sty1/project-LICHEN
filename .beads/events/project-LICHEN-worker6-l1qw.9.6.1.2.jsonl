@@ -1,1 +1,2 @@
 {"id":"019f975e-518b-7914-8ad4-3fa5fca48f14","issue_id":"project-LICHEN-worker6-l1qw.9.6.1.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:42:48.715596Z"}
+{"id":"01a032dc-601e-7f1b-8778-7fdb08a19c87","issue_id":"project-LICHEN-worker6-l1qw.9.6.1.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: slip/codec.py line 95 StreamDecoder class, line 123 feed()","created_at":"2026-08-24T08:21:38.462991Z"}

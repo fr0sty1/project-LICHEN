@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-xf82",
+  "title": "Rust no_std peer authority accepts regressed or foreign receipt clocks",
+  "description": "PeerContextAuthority entries track only signer/counter/generation; issue_verified accepts arbitrary receipt_clock_domain and receipt_ticks and does not enforce a stable domain or nondecreasing ticks for a signer. FragmentationPolicy uses those ticks to create/expire T=0 hold-down tombstones, so a higher replay counter with regressed/foreign time can shorten or bypass hold-down in no_std while std Link clocks reject it. Bind authority issuance to a ReceiptClock domain/high-water and reject regression/domain substitution; add std/no_std parity tests.",
+  "notes": "ReceiptEvidence tick units are receiver-defined and receive_frame() advances one logical tick per frame, yet fragmentation hardcodes FRAGMENT_TOMBSTONE_TICKS=60000 as if ticks were milliseconds. No_std authority must bind a defined time unit/clock and convert the normative 60 seconds correctly.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T10:26:44.928051Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:32:40.420222Z",
+  "started_at": "2026-08-24T10:26:50.497422Z",
+  "lease_expires_at": "2026-08-24T10:31:50.497422Z",
+  "heartbeat_at": "2026-08-24T10:26:50.497422Z"
+}

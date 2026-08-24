@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ne8q",
+  "title": "multi_instance.rs: Eq reflexivity not enforced for NaN in RootCandidate",
+  "description": "P3 ROBUSTNESS: RootCandidate has public fields rssi_ema/snr_ema (f32) and implements Eq. Direct struct construction can set NaN values, violating Eq reflexivity (NaN != NaN). The builder methods sanitize NaN to defaults, but direct initialization allows:\n```rust\nRootCandidate { rssi_ema: f32::NAN, snr_ema: f32::NAN, ... }\n```\nThis could cause subtle bugs in HashSet/HashMap operations.\n\nOptions:\n- Make fields private (requires API change)\n- Add debug_assert in struct methods\n- Document as known limitation (already documented at line 908-909)\n\nFile: rust/lichen-rpl/src/multi_instance.rs\nLine: 974\n\nDiscovered by: 3x codereview (edge-cases pass)",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:18:43.136214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:18:43.136214Z"
+}

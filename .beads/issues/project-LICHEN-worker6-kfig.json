@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-kfig",
+  "title": "Rejected replay traffic mutates replay LRU and evicts unrelated windows",
+  "description": "Security review: ReplayProtector moves existing senders to MRU or reconstructs/evicts a window before freshness is known. Rejected captured frames can keep their stale window hot or resurrect an evicted floor and evict another peer, degrading legitimate out-of-order traffic. Perform lookup/check without LRU/admission mutation; only accepted fresh commit may touch/admit/evict after capacity preflight. Add invariant and eviction-victim regressions.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:12:05.078432Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:12:11.942627Z",
+  "started_at": "2026-08-24T07:12:11.942627Z",
+  "lease_expires_at": "2026-08-24T07:17:11.942627Z",
+  "heartbeat_at": "2026-08-24T07:12:11.942627Z"
+}

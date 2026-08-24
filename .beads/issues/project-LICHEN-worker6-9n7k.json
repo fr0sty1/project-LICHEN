@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-9n7k",
+  "title": "codec.rs: panic on short UDP packet (line 993)",
+  "description": "P1 SECURITY: In compress(), when nh==17 (UDP) and packet length is 40-47 bytes, line 993 slices `packet[48..]` unconditionally causing a panic. The length check at line 983 (`packet.len() \u003e= 40 + 8`) only gates the MQTT-SN block; line 993 executes after that block regardless of length.\n\nA malformed/truncated UDP packet causes index-out-of-bounds panic instead of falling back to rule 255 (uncompressed). This violates the function's documented fallback behavior and could be triggered by malformed network input.\n\nFix: Move line 993-1016 inside the length check block, or add explicit `if packet.len() \u003c 48 { /* fallthrough */ }` before line 993.\n\nDiscovered by: 3x codereview (correctness, security, edge-cases passes)\nFile: rust/lichen-schc/src/codec.rs\nLine: 993",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:12:54.882027Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:14:07.863055Z",
+  "started_at": "2026-08-24T05:13:16.416017Z",
+  "closed_at": "2026-08-24T05:14:07.863055Z",
+  "close_reason": "Fixed: moved UDP CoAP/OSCORE handling inside 'packet.len() \u003e= 48' check. Short UDP packets now fall through to uncompressed fallback instead of panicking. cargo check and cargo test pass."
+}

@@ -1,0 +1,2 @@
+{"id":"01a033e6-ffa0-76a7-bd22-1ee5a1165a8e","issue_id":"project-LICHEN-worker6-8lrh","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-24T13:12:51.872437Z"}
+{"id":"01a033e7-1a56-7c21-9939-9c62891f1985","issue_id":"project-LICHEN-worker6-8lrh","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Invalidated during verification: current shared-worktree source has a single LinkLayer.send call; apparent nested call came from truncated/interleaved command output.","created_at":"2026-08-24T13:12:58.710795Z"}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-gdj3",
+  "title": "Python reassembly rotation removes the same tombstone twice",
+  "description": "_AuthenticatedReassemblyManager.rotate_remote calls self._tombstones.pop(key, None) twice consecutively before removing rejection state. The duplicate is harmless but obscures the exact atomic retirement set in security-sensitive cleanup and can hide an omitted registry in future edits. Remove the duplicate and keep an explicit test that rotation clears contexts, tombstones, and rejections for both old/new signers.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T11:56:37.924786Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T11:56:41.43694Z",
+  "started_at": "2026-08-24T11:56:41.43694Z",
+  "lease_expires_at": "2026-08-24T12:01:41.43694Z",
+  "heartbeat_at": "2026-08-24T11:56:41.43694Z"
+}

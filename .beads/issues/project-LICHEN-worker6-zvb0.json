@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-zvb0",
+  "title": "SCHC spec and rule-version vectors describe contradictory Rule7/helper semantics",
+  "description": "spec/03-adaptation.md states canonical rules including Rule7 are implemented in python/schc/rules.py, but specialized Rule7 exists only in headers.py and is absent from RULES. Rule-version vectors call operational Rule7/64-66 absent while rejection text calls 64-66 defined wire building blocks and labels truncated Rule66 rather than unknown. Reconcile exact implementation/spec/oracle semantics and descriptions so cross-implementation consumers test one unambiguous contract.",
+  "notes": "Clarified spec/03-adaptation.md: generic descriptor registry Rules 0-6/255, canonical specialized wire Rule7 in Python headers.py/Rust codec.rs, and Python helper descriptors 64-66 are non-wire. Reconciled rule_versioning.json descriptions and changed stale Rule66 truncated expectation to unknown_rule_id; added explicit specialized/helper metadata. Relevant vector/SCHC/RPL tests, Ruff, mypy, diff-check pass. Leave open for independent convergence.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:50:08.338209Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:16:41.162625Z",
+  "started_at": "2026-08-24T09:50:16.50892Z",
+  "lease_expires_at": "2026-08-24T09:55:16.50892Z",
+  "heartbeat_at": "2026-08-24T09:50:16.50892Z"
+}

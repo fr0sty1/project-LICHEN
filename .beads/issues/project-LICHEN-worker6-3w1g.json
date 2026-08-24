@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-3w1g",
+  "title": "Cross-interop test executes stale hard-coded Rust frame parser",
+  "description": "python/tests/sim/test_cross_impl_interop.py executes rust/target/release/frame-parser whenever that path merely exists. In the merged tree the checked build artifact predates SIID support and returns ReservedBitSet for every valid new signed vector, so the Python full gate fails even though rebuilt Rust source may be correct; the test also ignores CARGO_TARGET_DIR used by isolated gates. Make the harness build/use the current locked workspace artifact (or verify source/artifact freshness and skip with a precise reason), and cover the SIID vectors against that current binary.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:51:49.282333Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:55:07.844444Z",
+  "started_at": "2026-08-24T15:55:07.844444Z",
+  "lease_expires_at": "2026-08-24T16:00:07.844444Z",
+  "heartbeat_at": "2026-08-24T15:55:07.844444Z"
+}

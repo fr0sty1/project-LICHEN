@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-h1q4",
+  "title": "Align scheduled-send exception logging regression test",
+  "description": "python/tests/loadng/test_rreq_jitter.py::test_link_send_exception_is_logged_and_re_raised fails because Node.scheduled_send now logs the more general 'scheduled send failed (delay=...)' while still preserving the exception and traceback; the test requires the obsolete literal 'scheduled_send: link.send failed'. Choose and document the public diagnostic contract, then update the implementation/test consistently without weakening the checks that the error is logged and re-raised.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:51:55.814756Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:55:09.837121Z",
+  "started_at": "2026-08-24T15:55:09.837121Z",
+  "lease_expires_at": "2026-08-24T16:00:09.837121Z",
+  "heartbeat_at": "2026-08-24T15:55:09.837121Z"
+}

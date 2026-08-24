@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-xrbs",
+  "title": "Rule 7 fe80::/64 mode conflicts with Rust fe80::/10 predicate and corrupts addresses",
+  "description": "Security/interoperability review finding: spec/03-adaptation.md requires Rule 7 AddressMode=0 only when both addresses have the exact canonical fe80::/64 prefix, sending only their 64-bit IIDs; otherwise it requires full 128-bit addresses. rust/lichen-schc/src/codec.rs currently uses is_link_local(), which recognizes all fe80::/10 addresses, for both compression selection and decompression canonicality. For a valid link-local address with nonzero bits 10..63, compression discards those bits and reconstructs a different source or destination. Full-mode encoding of the same address can also be rejected. This can misroute traffic or change endpoint identity across a SCHC hop.",
+  "acceptance_criteria": "Rule 7 mode selection uses an exact canonical fe80::/64 predicate for IID-only compression. Addresses within fe80::/10 but outside that /64 either use full-address mode and round-trip unchanged or normatively fall back to Rule 255; all implementations choose the same behavior. Tests/vectors include source and destination addresses with nonzero bits 10..63 and prove that no address bits are lost, no endpoint changes, and the canonical fe80::/64 case still uses AddressMode=0.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:14:58.850249Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:15:24.519497Z",
+  "started_at": "2026-08-24T05:15:24.519497Z",
+  "lease_expires_at": "2026-08-24T05:20:24.519497Z",
+  "heartbeat_at": "2026-08-24T05:15:24.519497Z",
+  "labels": [
+    "codereview",
+    "schc",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xrbs",
+      "depends_on_id": "project-LICHEN-worker6-hhs8",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:14:59.281685Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

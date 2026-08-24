@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ywtj",
+  "title": "Rust FragmentReceiver accepts unauthenticated bytes outside Link policy",
+  "description": "rust/lichen-schc/src/fragment.rs FragmentReceiver remains a bare byte/Fragment state machine with no LinkLayer AuthenticatedFrame evidence, current authenticated peer permit, (local identity, remote signer, Rule ID) session key, replay counter binding, or tombstone. Unauthenticated bytes can allocate/reset/abort receive state and produce responses, contradicting the authenticated fragmentation requirements in spec/03-adaptation.md. Gate all production receiver transitions on exact current Link-owned evidence and bounded session ownership, with replay/rekey/reboot/foreign-signer/wrong-target tests and shared vectors.",
+  "notes": "Final robustness review confirms public FragmentReceiver::new/receive_bytes/receive still offers an unauthenticated state-mutating/response-producing network-facing path beside AuthenticatedFragmentReceiver. Seal or feature-gate the raw receiver API.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:48:00.224847Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:32:39.665019Z",
+  "started_at": "2026-08-24T09:48:05.204713Z",
+  "lease_expires_at": "2026-08-24T09:53:05.204713Z",
+  "heartbeat_at": "2026-08-24T09:48:05.204713Z"
+}

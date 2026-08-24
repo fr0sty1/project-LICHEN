@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-9098",
+  "title": "Ultracode: messaging receipts + latency tests + loadng parse",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:00:03.794256Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-24T05:00:04.560764Z",
+  "started_at": "2026-08-24T05:00:04.560764Z",
+  "lease_expires_at": "2026-08-24T05:05:04.560764Z",
+  "heartbeat_at": "2026-08-24T05:00:04.560764Z",
+  "labels": [
+    "ultracode"
+  ]
+}

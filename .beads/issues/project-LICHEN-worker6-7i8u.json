@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-7i8u",
+  "title": "SCHC draft names generic legacy vectors as canonical and profile vector says Version 2",
+  "description": "test/vectors/schc_fragmentation.json is the fixed-profile Rule 0x78/0x79 dataset but its description still says Rule Set Version 2. The SCHC draft instead names schc_fragment.json alone as the canonical ACK-on-Error oracle, although that legacy/generic dataset includes non-profile Rule 0x2a and toy tile/window parameters. Update the profile vector metadata to Version 3 and make draft/README references distinguish the generic codec vectors from the normative LICHEN fixed-profile fragmentation vectors; do not claim all implementations must accept non-profile parameters in production.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T11:28:33.106143Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T11:28:37.03473Z",
+  "started_at": "2026-08-24T11:28:37.03473Z",
+  "lease_expires_at": "2026-08-24T11:33:37.03473Z",
+  "heartbeat_at": "2026-08-24T11:28:37.03473Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ukyn",
+  "title": "Gateway OSCORE ID derivation permits empty and collision-prone truncated identities",
+  "description": "P2 security review. PskFederation::derive_context accepts zero-length sender/recipient IDs and does not reject equal IDs. iid_to_sender_id/derive_gateway_ids publicly allow len=0 and arbitrary 1..7 byte prefix truncation; tests even promote 2-byte IDs. Different gateways with the same truncated prefix can therefore receive identical OSCORE identity labels/KIDs, causing context lookup ambiguity and nonce/key identity confusion in a shared-PSK federation. Enforce the federation's unique full 8-byte IID IDs (or maintain a collision-checked allocation registry), reject empty/equal/colliding pairs before Context creation, and add collision/zero-length tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:22:33.845413Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:25:54.055599Z",
+  "started_at": "2026-08-24T12:25:54.055599Z",
+  "lease_expires_at": "2026-08-24T12:30:54.055599Z",
+  "heartbeat_at": "2026-08-24T12:25:54.055599Z"
+}

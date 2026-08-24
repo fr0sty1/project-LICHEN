@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-514j",
+  "title": "DelayedRxReadyEvent orphans when stash pruned",
+  "description": "Code review finding (9098.18 fix): when _prune_delayed_rx() removes entries from _delayed_rx dict, corresponding DelayedRxReadyEvent remains in queue until processed. The handler is a no-op, so events are harmless but consume peak memory during simulation. Improvement: remove_events_for_node-style cleanup for delayed RX, or track event IDs in _DelayedRx tuple for targeted removal.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:06:25.485288Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:06:25.485288Z"
+}

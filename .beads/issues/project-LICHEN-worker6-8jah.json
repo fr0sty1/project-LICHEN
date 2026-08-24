@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8jah",
+  "title": "Reject incomplete and non-finite persisted trust-store schemas",
+  "description": "P1 security (current post-520b state): TrustStorePersistence.load() still accepts an existing '{}' as a valid empty auto_pin=True store because root keys default, so truncation/partial semantic corruption silently erases every pin and re-enables TOFU. It also ignores unknown root/entry keys, accepts bool and NaN/Infinity timestamps via isinstance(int,float), leaves metadata key lengths/unbounded total JSON unchecked, and TrustEntry itself does not rederive/validate exact primitive types. Require exact versioned root/entry key sets with explicit auto_pin+entries, finite exact numeric timestamps, bounded keys/file size, and reject every incomplete/extra field before constructing any store.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:56:26.833562Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:58:03.552326Z",
+  "started_at": "2026-08-24T15:58:03.552326Z",
+  "lease_expires_at": "2026-08-24T16:03:03.552326Z",
+  "heartbeat_at": "2026-08-24T15:58:03.552326Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ecnt",
+  "title": "Fail closed for unrecognized simulator TDMA vectors",
+  "description": "python/src/lichen/sim/tdma.py::validate_vector returns True for unknown/empty vector shapes and defaults missing expected fields to computed values, so malformed or newly renamed vector cases can pass without asserting an oracle. Return False for unsupported shapes and require explicit expected outputs for each recognized branch; add negative tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T15:26:10.888815Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T15:26:14.587674Z",
+  "started_at": "2026-08-24T15:26:14.587674Z",
+  "lease_expires_at": "2026-08-24T15:31:14.587674Z",
+  "heartbeat_at": "2026-08-24T15:26:14.587674Z"
+}

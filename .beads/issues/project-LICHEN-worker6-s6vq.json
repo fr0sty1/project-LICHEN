@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-s6vq",
+  "title": "Rejected local GCP ciphertext is forwarded upstream after decrypt failure",
+  "description": "Security review of gateway runtime replay persistence: dispatch_runtime_gcp returns false when a structurally valid, peer-context-selected OSCORE datagram fails unprotect (including an in-memory replay after a persistence failure). ingest_mesh_frame_at_superframe interprets false as non-GCP and forwards the original encrypted IPv6 packet upstream, turning rejected local control traffic into an unintended forwarding path. Once a packet selects an installed local GCP context, consume/drop all authentication/decryption failures; return non-GCP only after successful decryption proves a different resource path. Add a regression assertion.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:10:43.515726Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:10:51.974297Z",
+  "started_at": "2026-08-24T17:10:51.974297Z",
+  "lease_expires_at": "2026-08-24T17:15:51.974297Z",
+  "heartbeat_at": "2026-08-24T17:10:51.974297Z"
+}

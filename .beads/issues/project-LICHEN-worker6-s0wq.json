@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-s0wq",
+  "title": "C lichen_rpl_sequence_compare still uses pre-RFC-7.2 lollipop rules",
+  "description": "lichen/subsys/lichen/rpl/rpl_dao_build.c lichen_rpl_sequence_compare still treats mixed linear/circular as linear-always-newer and circular diffs as (a-b)\u00260x7F in (0,16], plus same-region linear as plain numeric compare with no SEQUENCE_WINDOW incomparability. That is the same RFC 6550 Section 7.2 divergence that worker6-y4yy fixed for static version_is_newer in dodag.c. DAO Path Sequence / DAOSequence should use the same lollipop_cmp (SEQUENCE_WINDOW=16, wrap distance, incomparable). Do not silently share a private static; extract or duplicate the corrected rules. Out of scope for y4yy (dodag.c version_is_newer only).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:23:50.38574Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:37:27.003962Z",
+  "started_at": "2026-08-24T04:30:18.753057Z",
+  "closed_at": "2026-08-24T04:37:27.003962Z",
+  "close_reason": "Aligned lichen_rpl_sequence_compare in lichen/subsys/lichen/rpl/rpl_dao_build.c with RFC 6550 Section 7.2 SEQUENCE_WINDOW=16 (duplicated dodag.c dao_lollipop_cmp: same-region |diff|\u003e16 incomparable, cross-region wrap distance). Path Sequence / DAOSequence are 8-bit lollipops (RFC 6550 7.1-7.2), not RFC 1982 serial numbers; increment_lollipop 127-\u003e0 is newer and 0-\u003e127 is stale (same version-like wrap as version_is_newer, both directions for the 4-way API). Signature unchanged. Host test: cmake -S lichen/tests/rpl_dao_sequence -B lichen/tests/rpl_dao_sequence/build \u0026\u0026 cmake --build ... \u0026\u0026 ./.../rpl_dao_sequence_test → 4/4 passed (ctest 1/1). clang-tidy TEST TU clean.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-s0wq",
+      "depends_on_id": "project-LICHEN-worker6-y4yy",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T04:23:50.814652Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

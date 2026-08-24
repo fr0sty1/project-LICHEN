@@ -3,13 +3,15 @@
   "title": "Review: multi_instance.rs 2026-08-16",
   "description": "Review: multi_instance.rs 2026-08-16\n\nFocus: EDGE CASES (boundary conditions, error handling, resource cleanup, race conditions, overflow)\n\nLanguage: Rust\nMode: my-oss  \nSupplements: review-crypto.md (sha2 dependency detected, but this file does not handle crypto directly)\n\n---\n\nReview confidence: 15% chance of missed bug.\nLeast confident areas: \n- Interaction between MultiRootState and external callers (holdoff/beacon window lifecycle)\n- Mutex poison handling policy (intentional panics vs recovery)\nWould raise confidence if: Integration test coverage for concurrent peer add/remove during role election\n\n---\n\nSummary: 5 findings filed\n- P0: 1 (integer overflow)\n- P1: 2 (TOCTOU race, duplicate eui64 handling)  \n- P2: 2 (defensive coding improvements)\n- P3: 0",
   "notes": "Epic - needs sub-issue tracking. 3/5 children complete. Open: z63v.4 (advance_holdoff underflow), z63v.5 (receive_from_peer silent fallback)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T19:20:29.27077Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T23:06:51.164674Z",
+  "updated_at": "2026-08-24T05:16:41.956848Z",
+  "closed_at": "2026-08-24T05:16:41.956848Z",
+  "close_reason": "All 5 review findings addressed: P0 integer overflow (z63v.1), P1 TOCTOU race (z63v.2), P1 duplicate eui64 (z63v.3), P2 underflow defense (z63v.4), P2 silent fallback docs (z63v.5).",
   "labels": [
     "review"
   ]

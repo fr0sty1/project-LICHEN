@@ -1,1 +1,2 @@
 {"id":"019fb9b0-1ebf-7870-94a9-d4bcf37f6a24","issue_id":"project-LICHEN-worker6-l1qw.15.1.1.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-31T19:39:15.007553Z"}
+{"id":"01a03236-1f83-7845-b150-c5eb0c8ebc55","issue_id":"project-LICHEN-worker6-l1qw.15.1.1.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Already done: gcp3_trust_models.json exists with PSK/pubkey/hybrid trust model vectors","created_at":"2026-08-24T05:20:02.947543Z"}

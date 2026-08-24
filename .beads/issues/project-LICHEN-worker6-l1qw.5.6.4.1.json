@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.5.6.4.1",
   "title": "Python: DAO encode/decode",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:53.342852Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:53.342852Z",
+  "updated_at": "2026-08-24T08:21:12.411925Z",
+  "closed_at": "2026-08-24T08:21:12.411925Z",
+  "close_reason": "Verified: rpl/messages.py line 222 DAO class with to_bytes/from_bytes",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.4.1",

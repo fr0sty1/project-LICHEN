@@ -1,1 +1,2 @@
 {"id":"019f975f-3b1e-75b4-a600-c6a8e9cb4afa","issue_id":"project-LICHEN-worker6-l1qw.9.6.5.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:43:48.510374Z"}
+{"id":"01a032dc-6b97-76b6-9877-0af25976a9c2","issue_id":"project-LICHEN-worker6-l1qw.9.6.5.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: interface/kiss/handler.py line 81 KissHandler, line 102 handle()","created_at":"2026-08-24T08:21:41.39944Z"}

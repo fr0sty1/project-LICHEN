@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8c09",
+  "title": "Mutable authenticated peer SCHC context can bypass version mismatch policy",
+  "description": "Rule 7 and versioning correctness rereview: AuthenticatedPeerSchcContext is a frozen dataclass but callers can mutate remote_version with object.__setattr__. A context issued for incompatible version 2 can be changed to 3 and its public compress_packet or decompress_packet methods then enable compressed and fragmented-compatible behavior outside the owning LinkLayer policy. Bind operational use to an unforgeable LinkLayer-issued immutable snapshot or make the context an opaque policy handle validated by its owner on every use. Add version-flip, signer-flip, exact forgery, stale replacement, and valid-context tests proving mismatches remain Rule-255-only.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T08:10:19.258917Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T08:10:23.451204Z",
+  "started_at": "2026-08-24T08:10:23.451204Z",
+  "lease_expires_at": "2026-08-24T08:15:23.451204Z",
+  "heartbeat_at": "2026-08-24T08:10:23.451204Z"
+}

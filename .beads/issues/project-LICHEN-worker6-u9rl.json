@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-u9rl",
+  "title": "Include mandatory Rule-Version option in RPL DIO packet artifacts",
+  "description": "Security review of the modified packet-format artifacts found that spec/09-packets-timing.md §13.3, python/src/lichen/packets/formats.py RPL_DIO_FIELDS, test/vectors/packets-formats.json, and generate_packets_timing.py list only DODAG Configuration and Prefix Information options. They omit the exactly-one authenticated Rule-Version option (Type 0x13, Length 1, Version 3) that spec/03-adaptation.md §5.7 requires before a DIO may be used for parent selection or DODAG admission. The helper dio_packet_bytes() also emits a versionless illustrative DIO skeleton, so the current security oracle normalizes a form that production must reject. Update the packet walkthrough/skeleton and independent tests to include or explicitly mark the mandatory 13 01 03 option and assert that the example is parent-selection admissible only with it; keep malformed/absent cases fail-closed.",
+  "notes": "Rust complete: production DIO parsing/serialization enforces exactly one well-formed Rule-Version option 13 01 03 on canonical 24-byte base; missing/duplicate/malformed/incompatible paths fail before routing mutation. Full RPL/SCHC/node tests pass.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:27:39.188913Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:48:28.202072Z",
+  "started_at": "2026-08-24T13:28:22.029502Z",
+  "lease_expires_at": "2026-08-24T13:33:22.029502Z",
+  "heartbeat_at": "2026-08-24T13:28:22.029502Z"
+}

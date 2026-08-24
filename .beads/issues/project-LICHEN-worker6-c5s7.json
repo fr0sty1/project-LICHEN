@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-c5s7",
+  "title": "MIC selector vector consumer ignores expected MIC byte counts",
+  "description": "Correctness review finding (P4): test/vectors/mic_length_selector.json gives expected.mic_bytes for every valid vector and exists specifically to distinguish compatibility-selector wire semantics, but python/tests/test_vectors.py:4301-4324 never asserts len(frame.mic), payload boundaries, or a round trip. The separate security consumer verifies the two signed signatures/SIID values only; it does not execute the unsigned mic_bytes=0 oracle. A regression that slices selector-1 payload bytes as an unsigned MIC can evade this shared-vector consumer even though the artifact expectation changes. Execute expected.mic_bytes (and preferably exact input round-trip/payload boundary) for every valid vector.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:47:54.595324Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:50:46.569313Z",
+  "started_at": "2026-08-24T12:50:46.569313Z",
+  "lease_expires_at": "2026-08-24T12:55:46.569313Z",
+  "heartbeat_at": "2026-08-24T12:50:46.569313Z"
+}

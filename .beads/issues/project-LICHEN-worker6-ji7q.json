@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-ji7q",
+  "title": "Require canonical full signer keys in SCHC authenticated sessions",
+  "description": "Security codereview found AuthenticatedSessionContext accepts any nonempty identity bytes, allowing callers to bind IID/truncated/inconsistent identity representations instead of the verified full signer public key. Use the canonical verifier identity representation (fixed 32-byte Ed25519 signer public key, with one canonical local representation), reject alternate lengths/encodings, and test aliases cannot satisfy a pubkey-bound session.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:37:31.875571Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:37:38.535294Z",
+  "started_at": "2026-08-24T05:37:38.535294Z",
+  "lease_expires_at": "2026-08-24T05:42:38.535294Z",
+  "heartbeat_at": "2026-08-24T05:37:38.535294Z",
+  "labels": [
+    "codereview",
+    "python",
+    "schc",
+    "security",
+    "identity"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ji7q",
+      "depends_on_id": "project-LICHEN-worker6-jh2r",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:37:32.264298Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-ije2",
+  "title": "Review: codec.rs 2026-08-23",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:58:09.574643Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:58:10.409557Z",
+  "started_at": "2026-08-24T04:58:10.409557Z",
+  "lease_expires_at": "2026-08-24T05:03:10.409557Z",
+  "heartbeat_at": "2026-08-24T04:58:10.409557Z",
+  "labels": [
+    "review"
+  ]
+}

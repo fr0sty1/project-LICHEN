@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-4r6x",
+  "title": "Node receive timeout accepts values that defeat timer progress or spin the receive loop",
+  "description": "Security review of python/src/lichen/node.py found Node.__post_init__ does not validate NodeConfig.receive_timeout_ms, while set_config coerces bool/float/string values with int() and imposes no upper bound. A zero/negative constructor value or a radio rejecting such a timeout makes _receive_loop catch and immediately retry forever, causing CPU/log DoS; an arbitrarily large value delays _send_expired_reassembly_aborts far beyond the 60-second SCHC inactivity transition. Enforce one exact positive bounded-integer contract both at construction and update, choose a maximum consistent with proactive reassembly expiry, reject bool/coercive values, and add receive-loop/expiry regressions.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:00:05.86125Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:01:44.359417Z",
+  "started_at": "2026-08-24T14:01:44.359417Z",
+  "lease_expires_at": "2026-08-24T14:06:44.359417Z",
+  "heartbeat_at": "2026-08-24T14:01:44.359417Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-qctx",
+  "title": "Rekey replacement can resurrect a previously retired compromised identity",
+  "description": "Security review: replacement preflight ignores retired identities and rotation explicitly removes the replacement from retired history. After A→B, B→A or absent-old→A can restore a retired key once live tables are gone. Retired/history identities must remain ineligible without an explicit higher-assurance recovery protocol; persist monotonic lineage and test A→B→A/absent-old rejection with no mutation.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:13:27.146721Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:13:32.2147Z",
+  "started_at": "2026-08-24T07:13:32.2147Z",
+  "lease_expires_at": "2026-08-24T07:18:32.2147Z",
+  "heartbeat_at": "2026-08-24T07:13:32.2147Z"
+}

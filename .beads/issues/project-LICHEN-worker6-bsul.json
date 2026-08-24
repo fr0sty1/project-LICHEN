@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-bsul",
+  "title": "Python malformed first fragment emits abort without terminal hold-down",
+  "description": "_AuthenticatedReassemblyManager.receive returns Receiver-Abort when a context-free authenticated payload under Rule 0x78/0x79 fails Fragment.from_bytes, but it records no rejection/tombstone/high-water. The same pinned signer can send each fresh malformed frame and force an unbounded abort response, contrary to the spec's unrecoverable-error terminal hold-down and bounded response behavior. Record a bounded rejected/aborted tombstone before responding, advance high-water on later terminal requests as specified, suppress non-terminal repeats, persist it, and add malformed/churn/reboot tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T11:54:58.25964Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T11:55:01.989951Z",
+  "started_at": "2026-08-24T11:55:01.989951Z",
+  "lease_expires_at": "2026-08-24T12:00:01.989951Z",
+  "heartbeat_at": "2026-08-24T11:55:01.989951Z"
+}

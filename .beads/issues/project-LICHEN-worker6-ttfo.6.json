@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-worker6-ttfo.6",
+  "title": "_admissible treats max_rank_increase=0 as zero increase, not RFC unlimited",
+  "description": "## Location\n\npython/src/lichen/rpl/dodag.py DodagState._admissible (lines 244-250).\n\nRFC 6550 Section 6.7.6 MaxRankIncrease: \"If this is set to 0, then there is no limit.\" rust/lichen-rpl candidate_admissible implements that with `max_rank_increase == 0 || lowest_rank == INFINITE_RANK || cost \u003c= lowest.saturating_add(max_rank_increase)`.\n\n## What goes wrong\n\nPython:\n\n    if self._lowest_rank \u003e= INFINITE_RANK:\n        return True\n    return cost \u003c= self._lowest_rank + self.max_rank_increase\n\nWhen max_rank_increase is 0 and _lowest_rank is finite, this is `cost \u003c= _lowest_rank`: any worse (or even slightly worse after parent loss) candidate is inadmissible. That is the opposite of the RFC meaning of 0.\n\nTrigger:\n1. DodagState(..., max_rank_increase=0) — RFC default / a caller copying DEFAULT_MAX_RANK_INCREASE=0.\n2. Node joins via P1, rank 512, _lowest_rank=512.\n3. P1 fails. Backup P2 would cost 768 (still a valid local-repair parent).\n4. _admissible rejects P2; select_parent unjoins. The node has no route instead of failing over.\n\nAfter demote(), _lowest_rank is INFINITE so the first rejoin still works; the bound only bites once a finite lowest rank is recorded. Dual-impl: the same max_rank_increase=0 on the Rust side allows the failover (test zero_max_rank_increase_disables_the_bound).\n\n## Fix\n\nTreat max_rank_increase == 0 as unlimited, matching RFC 6550 6.7.6 and rust/lichen-rpl. Keep the existing finite-bound path for the LICHEN default (2048).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T03:42:02.292278Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T03:44:22.077718Z",
+  "started_at": "2026-08-24T03:43:36.459246Z",
+  "closed_at": "2026-08-24T03:44:22.077718Z",
+  "close_reason": "_admissible: max_rank_increase==0 is unlimited per RFC 6550 6.7.6. test_max_rank_increase_zero_is_unlimited.",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.6",
+      "depends_on_id": "project-LICHEN-worker6-ttfo",
+      "type": "parent-child",
+      "created_at": "2026-08-24T03:42:02.650527Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.6",
+      "depends_on_id": "project-LICHEN-worker6-rw5e",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T03:42:03.049115Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

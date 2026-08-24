@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.7.14.2.2",
   "title": "Implement: Python oracle for RD Lookup",
   "description": "Write reference implementation in python/src/lichen/. Must be clear, readable, well-commented. Cover all MUST requirements.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:46.228959Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:43:46.228959Z",
+  "updated_at": "2026-08-24T05:49:53.01045Z",
+  "closed_at": "2026-08-24T05:49:53.01045Z",
+  "close_reason": "Already done: ResourceDirectoryResource._lookup() and render_get() implement RD lookup per RFC 9176. Returns registrations filtered by ?ep= query param. CBOR-encoded response with id, ep, lt, base, links fields.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.2.2",

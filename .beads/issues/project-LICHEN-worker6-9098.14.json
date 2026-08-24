@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.14",
+  "title": "test_multihop_latency_bounds.py: chosen poll wait is the latency sample; CATASTROPHIC cannot fire",
+  "description": "## Problem\n\nSECURITY false-confidence in the B.5.4 / 8.19.4 latency-bound suite after the 9098.5/9098.6 poll-after-airtime rewrite.\n\n`python/tests/sim/test_multihop_latency_bounds.py` `_poll_after_hop_airtime` chooses `poll_at = tx_start + airtime - 1` (or `+ extra_delay_us` for LatencyRule), advances to that instant, then treats `sim.current_time_us - tx_start` as the measured hop latency. Every successful sample is therefore **the harness wait**, not an independently observed delivery time. Tests then lock that identity:\n\n- non-chaos hops: `assert elapsed == airtime - 1` before `samples.append(elapsed)`\n- LatencyRule hops: `assert elapsed == airtime + CHAOS_ADDED_US` (50 ms)\n\n`_assert_harness_oracles` then applies `HOP_LATENCY_BUDGET_US` (300 ms), `MAX_P99_LATENCY_US` (500 ms), and `CATASTROPHIC_LATENCY_US` (1 s) to those samples.\n\nSF10/125 kHz/CR4-5 airtime for these payloads is ~247.8 ms (`python/src/lichen/timing/airtime.py` fallback: 5–9 byte `pkt-*` / `chaos-*` / `stress-*` all yield `n_payload = 10` → 247808 µs). So:\n\n- `airtime - 1` ≈ 247807 µs, always ≤ 300/500/1000 ms\n- chaos: `airtime + 50_000` ≈ 297808 µs, always ≤ `HOP_LATENCY_BUDGET_US + CHAOS_ADDED_US`\n\nThe upper-bound asserts cannot fail unless PHY airtime itself exceeds the budget. Congestion (concurrent, bursty, sustained) does not add delay in this radio model: collisions drop, capture survivors are still sampled at `airtime - 1`.\n\n## Catastrophic delay is sampled as loss, not a bound violation\n\nIf `radio.py` held a candidate for 10 s, `get_rx_result` at `airtime - 1` returns None. Callers skip (`if result:` / `if not result: continue` / `break`). The 10 s value is never appended. `CATASTROPHIC_LATENCY_US` / `HOP_LATENCY_BUDGET_US` never see it. Total miss fails only `MIN_DELIVERIES_FOR_STATS` (a delivery-rate check). Loss and unbounded delay are indistinguishable.\n\nClosed `project-LICHEN-worker6-9098.5` acceptance required: \"A hypothetical 10s hop would fail HOP_LATENCY_BUDGET_US / CATASTROPHIC_LATENCY_US.\" The rewrite does not meet that. It only made the chosen wait non-zero.\n\n## LatencyRule lower bound is also by construction\n\n`test_latency_bounded_with_added_delay` never polls during the injected window. There is no assertion that `get_rx_result(\"relay\")` is None at `end_time_us` / `airtime - 1` and only becomes Some at `end_time_us + CHAOS_ADDED_US`.\n\nIf `_stash_delayed_rx_candidates` re-injected immediately after TxEnd and the eligibility filter were a no-op, the test would still wait until `airtime + 50 ms`, receive, and pass `elapsed == airtime + CHAOS_ADDED_US` and `min(relay_samples) \u003e= CHAOS_ADDED_US`. Those asserts prove the wait length, not that ChaosEngine delayed delivery.\n\n## Variance / consistency / max vs p99 are tautological\n\n`test_latency_consistent_across_hops` still forces every hop to `airtime - 1`, then asserts hop-1 vs hop-3 mean ratio ≤ 2 and global max/min ≤ 2. All samples are the same PHY constant; ratio is identically 1.0. `test_sustained_load_latency_bounded` `max \u003c= 2 * p99` is the same identity. 9098.5 asked for distinct per-hop poll times; that is not done.\n\nDocstring still claims \"end-to-end delay remains bounded under congestion load\". Samples are per-hop PHY airtime only; a 4-hop path at ~248 ms/hop is ~1 s E2E and would still look in-budget.\n\n## Why this is security (false confidence), not style\n\nGreen B.5.4 results currently certify hop-latency SLAs, chaos-delay injection, and \"no catastrophic spikes\" under load. Replay windows, OSCORE/EDHOC timeouts, and TDMA slot sizing (spec/02a) care about elapsed time. Operators could size those from vacuous evidence: the suite cannot falsify unbounded delay, cannot distinguish delay from drop, and cannot show LatencyRule was the reason a packet was late.\n\n## Not a duplicate of 9098.4 / .5 / .6 / .7\n\n- 9098.4 / .5: samples were ~0 µs from TX-start polls. Now samples are ~airtime, but still the **chosen poll offset**, and a 10 s hop still does not fail the budget asserts.\n- 9098.6: chaos tests passed with `count == 0` / LatencyRule never waited. Now they wait and require `MIN_DELIVERIES_FOR_STATS`; they still do not probe unavailability during the delay or record late delivery as high latency.\n- 9098.7: CUT metrics were the only oracle. Harness elapsed is now recorded and cross-checked; the harness clock is the wait the test scheduled.\n\n## Files\n\n- `python/tests/sim/test_multihop_latency_bounds.py` (`_poll_after_hop_airtime`, `_assert_harness_oracles`, chaos delay test, consistency/stress tests)\n- `python/src/lichen/sim/simulation/radio.py` (`_get_rx_result_internal` latency filter + stash; delivery time is poll time)\n",
+  "design": "Probe twice per hop: (1) poll at airtime-1 / end_time (must be None under LatencyRule, Some otherwise) (2) if modeling delay, poll again at a later bound. Record latency only from an actual RX; treat None-after-budget as a bound failure, not a skip. Assert payload identity against the TX. Keep CATASTROPHIC_LATENCY_US as a real ceiling on observed elapsed, not only on the scheduled wait. Consistency test must use distinct per-hop delays or an independent processing-time source, not airtime-1 vs airtime-1.",
+  "acceptance_criteria": "A radio.py hold of 10s on every candidate fails HOP_LATENCY_BUDGET_US or CATASTROPHIC_LATENCY_US (not only MIN_DELIVERIES). LatencyRule test fails if get_rx_result succeeds at airtime-1 / end_time before added_us. Bound asserts are not implied by assert elapsed == scheduled_wait. test_latency_consistent_across_hops can fail when hop-1 and hop-3 delays differ by more than 2x.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:32:53.212771Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:49:48.795322Z",
+  "started_at": "2026-08-24T05:38:56.148552Z",
+  "closed_at": "2026-08-24T05:49:48.795322Z",
+  "close_reason": "Dedicated LatencyRule injection \u003e1s makes CATASTROPHIC fire on observed elapsed. 10s hold fails bound not MIN_DELIVERIES. Consistency uses distinct per-hop delays; \u003e2x ratio fails.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.14",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:32:53.77253Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.14",
+      "depends_on_id": "project-LICHEN-worker6-9098.6",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:32:54.163072Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

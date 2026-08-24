@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-hd4b",
+  "title": "Rust authenticated frames omit required receipt clock evidence",
+  "description": "rust/lichen-link AuthenticatedFrame seals payload/signer/counter/receiver/key generation but carries no immutable receive-monotonic timestamp or clock-domain identity, and receive_frame has no clock input. Modified spec/09-packets-timing requires authenticated DIO evidence to retain both values captured immediately after radio reception for freshness and time derivation. Add a no_std-capable exact clock-domain/timestamp evidence interface, bind it into owner-issued frames and DIO elevation, and add mutation/foreign-domain/regression/vector tests.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:51:06.241744Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T09:51:11.660539Z",
+  "started_at": "2026-08-24T09:51:11.660539Z",
+  "lease_expires_at": "2026-08-24T09:56:11.660539Z",
+  "heartbeat_at": "2026-08-24T09:51:11.660539Z"
+}

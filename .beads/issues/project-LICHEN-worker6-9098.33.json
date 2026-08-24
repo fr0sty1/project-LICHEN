@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-worker6-9098.33",
+  "title": "radio.py: remove_node drops TxEnd without medium.end_tx; TX list leaks",
+  "description": "## Problem\n\n`RadioMixin.remove_node` drops delayed-RX stash then calls `NodeManagementMixin.remove_node`, which pops `_active_transmissions` and `EventQueue.remove_events_for_node` (including `TxEndEvent`) **without** `self._medium.end_tx`.\n\n`Medium.get_active_transmissions` filters by `start_time_us \u003c= t \u003c end_time_us`, so the frame still occupies the medium until airtime ends — then the `Transmission` and `_tx_positions` entry stay in `Medium._active_transmissions` forever. Every later `get_rx_candidates` walks the whole list.\n\n`get_active_transmissions` is O(n) over that list on every RX poll (~1 ms, metrics.py docstring; HIL `deliver_pending_packets`). Node churn (failure injection, mobility, `test_remove_node_drops_stash`) therefore leaks medium entries and slows RX.\n\nRelated but distinct from closed work:\n\n- 9098.11/15: `_delayed_rx` ghosts (stash TTL). RadioMixin now drops stash on remove; the *medium* list is untouched.\n- 9098.22: RX teardown deleting TxEnd/TxStartDelayed. That fixed `remove_events_for_node_of_type`. Full `remove_events_for_node` on node removal still deletes TxEnd, which was correct *if* `end_tx` ran first. It does not.\n\n`_do_start_transmission` already `end_tx`s a superseded TX. The remove path is the missing symmetric cleanup.\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (`remove_node` / `_drop_delayed_rx_for_node`)\n- python/src/lichen/sim/simulation/nodes.py (`remove_node` pops active TX + events, no end_tx)\n- python/src/lichen/sim/events.py (`remove_events_for_node` deletes TxEndEvent)\n\n## Why this is robustness\n\nLong-running sims that add/remove nodes (failure, join/leave, re-flash) grow an unbounded in-memory TX list. RX polling cost and RSSI/collision work scale with historical removed transmitters, not with in-air frames. The 9098.24 metrics caps assumed the radio layer would not leak the same way.\n",
+  "design": "In RadioMixin.remove_node (before super): if `_active_transmissions[node_id]` is set, `medium.end_tx(tx_id)` and `_drop_delayed_rx_for_tx(tx_id)` (already done via `_drop_delayed_rx_for_node`). Then super can drop the TxEndEvent. Do not leave a Transmission in Medium._active_transmissions after the node is gone. Test: start_transmission, remove_node(tx) during airtime, assert tx.id not in medium.get_active_transmissions at any later time and that len(medium._active_transmissions) does not grow across N add/tx/remove cycles. Receivers must not decode a removed node's frame after end_tx (fail-closed: radio is gone). Keep 9098.22: exit_rx_mode must still not delete TxEnd.\n",
+  "acceptance_criteria": "remove_node on a node with an in-flight TX calls medium.end_tx so the Transmission is gone from Medium._active_transmissions and _tx_positions. N add → TX → remove cycles leave the medium list empty (or only other nodes' live TXs). test_remove_node_drops_stash still returns None for a re-added rx id. test_deliver_pending_preserves_tx_end still keeps TxEnd when RX is torn down without remove_node. get_rx_result on a neighbor after remove_node(tx) during that airtime does not deliver the removed node's payload.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:50:46.328056Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:53:45.053342Z",
+  "started_at": "2026-08-24T06:52:33.871258Z",
+  "closed_at": "2026-08-24T06:53:45.053342Z",
+  "close_reason": "Closed",
+  "labels": [
+    "robustness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.33",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T06:50:46.919362Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.33",
+      "depends_on_id": "project-LICHEN-worker6-9098.24",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T06:50:47.337681Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

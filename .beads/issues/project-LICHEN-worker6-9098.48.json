@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.48",
+  "title": "radio.py: polling capture still fires on_rx_timeout after success",
+  "description": "## Problem\n\nCallback RX at timeout is fail-closed: RadioMixin._handle_rx_timeout calls deliver_pending_packets, and if the node leaves RX_WAIT it returns without super()._handle_rx_timeout. Observers see on_rx_success only.\n\nPolling RX (start_receive / RX_WAIT with rx_callbacks is None) does not. After _capture_polling_rx records the frame (on_rx_success + metrics.record_reception), state is still RX_WAIT, so the method falls through to _drop_delayed_rx_for_receiver and EventHandlersMixin._handle_rx_timeout, which sets IDLE and notifies on_rx_timeout.\n\nSame-tick DelayedRxReady + RxTimeout (the 9098.40 path) therefore emits both events for one window. Dashboard / RecordingObserver / any client that treats on_rx_timeout as \"nothing arrived\" will drop or mis-account a packet that get_rx_result still returns from _pending_poll_rx.\n\ntest_same_tick_timeout_does_not_drop_delayed_callback asserts timed_out == [] for the callback API. test_same_tick_timeout_delivers_polling_rx does not install an observer.\n\n## Files\n\n- python/src/lichen/sim/simulation/radio.py (_handle_rx_timeout, _capture_polling_rx)\n- python/src/lichen/sim/events.py (SimulationObserver.on_rx_timeout vs on_rx_success)\n- python/tests/sim/test_radio.py\n- python/tests/sim/test_observer.py (test_rx_timeout_event has no overlapping success)\n",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T07:24:47.61064Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T07:26:08.249027Z",
+  "started_at": "2026-08-24T07:26:08.249027Z",
+  "lease_expires_at": "2026-08-24T07:31:08.249027Z",
+  "heartbeat_at": "2026-08-24T07:26:08.249027Z",
+  "labels": [
+    "correctness",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.48",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T07:24:48.074387Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.48",
+      "depends_on_id": "project-LICHEN-worker6-9098.42",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T07:24:48.45441Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

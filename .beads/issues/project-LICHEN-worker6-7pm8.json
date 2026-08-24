@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-7pm8",
+  "title": "Non-root RPL vector silently inserts local SCHC version",
+  "description": "Correctness review: test/vectors/rpl_messages.json:26-31 describes a non-root parent DIO propagating the root version unchanged, but sets schc_version_mode=insert_current with options_hex empty. Its generator repeats that at test/vectors/generate.py:2507-2513. spec/03-adaptation.md:359-369 requires a non-root parent-selectable serializer to require the authenticated root-originated value and MUST NOT silently substitute current local version. rule_versioning.json admission_policy_vectors independently encodes that requirement. Make this vector provide explicit root provenance/propagation input and assert no-current-substitution; python/tests/test_protocol_vector_security.py currently checks only its DODAGID.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:17:00.940469Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:20:29.25647Z",
+  "started_at": "2026-08-24T12:20:29.25647Z",
+  "lease_expires_at": "2026-08-24T12:25:29.25647Z",
+  "heartbeat_at": "2026-08-24T12:20:29.25647Z"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-xqbo",
+  "title": "Rust fragmentation tombstones omit terminal replay state and cached response",
+  "description": "FragmentationPolicy terminal tombstones store only one rule/deadline per direction. They omit session high-water counter, terminal outcome, and cached final ACK/abort; repeated newer terminal traffic cannot receive idempotent response, post-hold-down allocation does not require counter above prior session, and alternating rule IDs overwrite live tombstones. Persist bounded per-rule terminal state/outcome/response/high-water and enforce replay-safe hold-down/reuse with shared vectors.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T10:33:00.590622Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:33:07.712916Z",
+  "started_at": "2026-08-24T10:33:07.712916Z",
+  "lease_expires_at": "2026-08-24T10:38:07.712916Z",
+  "heartbeat_at": "2026-08-24T10:33:07.712916Z"
+}

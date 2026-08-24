@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-v4h5",
+  "title": "Production Python Node bypasses authenticated SCHC Rule-version policy",
+  "description": "python/src/lichen/node.py ingress uses global decompress_packet() and records success without a LinkLayer-owned AuthenticatedPeerSchcContext; egress compresses before resolving next hop and discards _next_hop, so no peer version can be enforced. A signed peer with no version DIO or an incompatible v2 policy can deliver Rule 0/7, and the Node emits Rule 0/7 to incompatible/unadvertised peers. Require atomic current-generation per-signer policy for production ingress and resolved-next-hop egress; allow only bounded canonical Rule255 mismatch signaling. Add tests for missing DIO, v2 mismatch Rule0/7, Rule255, v3, rekey/stale races, and executable shared vectors.",
+  "notes": "Independent rereview found originated/forwarded packets above the single-frame limit were dropped instead of using Link-issued fragmentation. Fixed with production helper regression.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T09:44:48.230077Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T10:54:57.759572Z",
+  "started_at": "2026-08-24T09:44:52.148662Z",
+  "lease_expires_at": "2026-08-24T09:49:52.148662Z",
+  "heartbeat_at": "2026-08-24T09:44:52.148662Z"
+}

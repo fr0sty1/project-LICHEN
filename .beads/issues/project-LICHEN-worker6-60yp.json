@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-60yp",
+  "title": "Ultracode: python dodag leftovers + C lollipop",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T04:13:57.980563Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:55:04.212212Z",
+  "started_at": "2026-08-24T04:13:58.770392Z",
+  "closed_at": "2026-08-24T04:55:04.212212Z",
+  "close_reason": "Ultracode wave: python dodag nan/inf/mhri/MRI tests + path_cost saturate; C RFC 7.2 lollipop, process_dio version/identity gates, process_dio_bytes compile, DAO sequence compare. 3x review dry on python path_cost, C lollipop, C process_dio gates, C DAO sequence. pytest 96; rpl_dodag 13/13; rpl_dao_sequence 4/4.",
+  "labels": [
+    "ultracode"
+  ]
+}

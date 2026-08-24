@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-eb98",
+  "title": "Python dropped fragmentation senders retain prepared reservations until TTL",
+  "description": "Security review: SchcSessionManager.create_sender stores a strong reference to each FragmentSender in _prepared, so dropping the returned handle cannot trigger the global weakref cleanup and does not call discard_prepared. Repeating create-and-drop fills MAX_PREPARED_SENDERS and blocks valid transfers for PREPARED_SENDER_TTL_SECONDS. Provide deterministic handle-drop/cancellation cleanup (or a lease API that cannot be abandoned), without unsafe destructor exceptions, and test capacity recovery after dropped never-started handles.",
+  "notes": "The same ownership model retains active records after the caller drops its only handle; include active-session drop cleanup/terminal hold-down semantics in the fix and tests.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:33:36.385534Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:33:46.525006Z",
+  "started_at": "2026-08-24T12:33:39.763907Z",
+  "lease_expires_at": "2026-08-24T12:38:39.763907Z",
+  "heartbeat_at": "2026-08-24T12:33:39.763907Z"
+}

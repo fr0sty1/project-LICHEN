@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-worker6-9098.16",
+  "title": "loadng test_messages.py from_icmpv6 leftover-tail tests still miss 47/49/96",
+  "description": "SECURITY review of python/tests/loadng/test_messages.py (after 9098.9 leftover-length fix).\n\n9098.9 parametrized from_bytes leftover tails to {1, 32, 47, 49, 96} so a parser that accepts {0, 32, 48}, `len % 48 == 0`, or “take first 48 of leftover” cannot stay green. The ICMPv6 dispatch test was not updated.\n\ntest_from_icmpv6_rejects_invalid_signature_tail (line 483) still parametrizes tail_len = 1, 32 only:\n\n    @pytest.mark.parametrize(\"tail_len\", [1, 32])\n\nThose two values lock “do not slice body[:36]/[:18]” (the 9098.8 threat). They do not lock the 9098.9 set at the wrapper:\n\n- tail_len=32 is already present (old truncated Ed25519 MIC).\n- tail_len=47 is untested. Cap-to-(prefix+48) still rejects 47, so this is the odd-length complement of 49.\n- tail_len=49 is untested. A from_icmpv6 that caps RREQ/RREP at 84 bytes (RERR at 66) before calling from_bytes accepts a 49-byte tail as a valid 48-byte SIG. from_bytes tests would fail; this dispatch test would still pass.\n- tail_len=96 is untested. Same cap accepts a concatenated second Schnorr-48 as a signed RREQ/RREP/RERR (first 48 bytes). rust/lichen-core/src/loadng.rs from_bytes already ignores bytes past the 36/18 prefix and has no SIG field, so a 96-byte body can be signed to Python from_icmpv6 (if capped) and unsigned to Rust — the parser-differential class 9098.9 called out, now only locked on the from_bytes entry point.\n\nfrom_icmpv6 is the on-wire entry: Icmpv6Message.body is the full ICMPv6 payload after type/code/checksum. A wrapper that “defensively” truncates to the documented signed size (spec 10.3/10.4: 36+48, RERR 18+48) is a realistic change that 1/32 would not catch.\n\nDo not re-file 9098.9 (from_bytes {1,32,47,49,96} already present), 9098.8 (type/code negatives and signed wrap), 4a8y (independent hex oracles), or worker6-esp1 (encode-side length).\n\nFix: use the same leftover set {1, 32, 47, 49, 96} on test_from_icmpv6_rejects_invalid_signature_tail for RREQ/RREP/RERR.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T05:36:41.71626Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T05:49:49.67409Z",
+  "started_at": "2026-08-24T05:38:57.96369Z",
+  "closed_at": "2026-08-24T05:49:49.67409Z",
+  "close_reason": "from_icmpv6 leftover-tail tests now parametrize {1,32,47,49,96} like from_bytes so a prefix+48 cap cannot stay green.",
+  "labels": [
+    "security",
+    "review",
+    "ultracode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9098.16",
+      "depends_on_id": "project-LICHEN-worker6-9098",
+      "type": "parent-child",
+      "created_at": "2026-08-24T05:36:42.262793Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-9098.16",
+      "depends_on_id": "project-LICHEN-worker6-9098.9",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T05:36:42.758856Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

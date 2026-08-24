@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-worker6-ttfo.1",
+  "title": "process_dio dethrones a DODAG root on a newer-version DIO",
+  "description": "## Location\n\n`python/src/lichen/rpl/dodag.py` `DodagState.process_dio` (root branch, ~199-202) and `_adopt_version` (~234-242).\n\n## What goes wrong\n\nA ROOT that hears a same-DODAG DIO whose `version` is lollipop-newer calls `_adopt_version` and returns. `_adopt_version` sets `role=UNJOINED`, `rank=INFINITE_RANK`, `_lowest_rank=INFINITE_RANK`, and copies the attacker's `rpl_instance_id` / `version`. The DIO is not used as a parent in that call, so the former root is isolated. The next same-version DIO then joins the attacker as preferred parent because MaxRankIncrease is unbounded after the reset.\n\nTrigger (hostile mesh, two signed DIOs is enough under TOFU):\n1. Root at version N, DODAG ID D, rank 256.\n2. Attacker sends DIO `{dodag_id=D, version=N+1, rank=256}`.\n3. Root is now UNJOINED at version N+1 with no parent.\n4. Attacker sends the same version again (or any finite-rank DIO at N+1).\n5. Former root installs the attacker as parent; upward traffic is captured.\n\n`test_root_ignores_dio` only sends the current version, so this path is untested.\n\nRust `lichen-rpl` rejects every DIO on a root (`DodagRole::Root` → `DioOutcome::Rejected`; `adopt_version` refuses roots). C `lichen_rpl_dodag_process_dio` returns immediately when `d-\u003erole == LICHEN_RPL_ROOT`. RFC 6550 treats the root as DODAGVersionNumber authority; a neighbor advertising version+1 must not self-demote the root.\n\n## Fix\n\nKeep the root's \"ignore DIOs\" invariant: do not call `_adopt_version` from the ROOT branch. Version bumps are local to the root (or a higher-level merge policy), not a function of untrusted neighbor advertisements.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T03:38:44.844111Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T03:44:15.204507Z",
+  "started_at": "2026-08-24T03:43:32.857808Z",
+  "closed_at": "2026-08-24T03:44:15.204507Z",
+  "close_reason": "ROOT process_dio now ignores all DIOs (matches docstring); no longer calls _adopt_version. test_root_ignores_newer_version_dio.",
+  "labels": [
+    "security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.1",
+      "depends_on_id": "project-LICHEN-worker6-ttfo",
+      "type": "parent-child",
+      "created_at": "2026-08-24T03:38:45.213246Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.1",
+      "depends_on_id": "project-LICHEN-worker6-c5rf",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T03:38:45.542593Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

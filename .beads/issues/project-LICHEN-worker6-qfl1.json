@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-qfl1",
+  "title": "TimeEvidence quality metadata is only shallowly immutable",
+  "description": "Correctness review: MappingProxyType(dict(quality)) protects only the top-level mapping and retains mutable nested lists/dicts/objects. Mutating a nested value after issuance changes accepted evidence despite spec requiring immutable provenance. Recursively freeze/copy an explicitly allowed immutable metadata schema and add post-issuance nested-mutation regressions.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T06:57:58.428307Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T06:58:03.404205Z",
+  "started_at": "2026-08-24T06:58:03.404205Z",
+  "lease_expires_at": "2026-08-24T07:03:03.404205Z",
+  "heartbeat_at": "2026-08-24T06:58:03.404205Z"
+}

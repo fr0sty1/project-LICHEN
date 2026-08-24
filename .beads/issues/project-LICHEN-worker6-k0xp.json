@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-k0xp",
+  "title": "lichend persists a replay epoch but Gateway ignores it and always starts at epoch 128",
+  "description": "P1 security review. rust/lichen-gateway/src/bin/lichend.rs loads/increments/saves safe_epoch, but never passes it to Gateway. Gateway::new in gateway.rs hardcodes SecureStack::from_radio(..., 128, 0). Every daemon restart therefore reuses epoch 128 and sequence numbers from zero despite the persisted counter, enabling link tuple/signature replay and causing peers to reject legitimate restarted traffic. Accept the reserved persisted epoch in the production Gateway constructor, fail closed at epoch 255 instead of continuing/reusing it, and add restart tests proving emitted tuples advance and can never repeat.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T12:23:43.498757Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T12:25:46.406512Z",
+  "started_at": "2026-08-24T12:25:46.406512Z",
+  "lease_expires_at": "2026-08-24T12:30:46.406512Z",
+  "heartbeat_at": "2026-08-24T12:25:46.406512Z"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-y4yy",
+  "title": "C version_is_newer disagrees with RFC 6550 7.2",
+  "description": "lichen/subsys/lichen/rpl/dodag.c treats mixed linear/circular as linear-always-newer and circular diffs as (a-b)\u00260x7F in (0,16]. RFC 6550 7.2 / rust lollipop_cmp / Python rw5e: same-region |diff|\u003e16 is incomparable; cross-region wrap distance \u003c=16 makes wrapped newer (240 vs 5 -\u003e 240 newer; 250 vs 5 -\u003e 5 newer). Align C and add the shared RFC table.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T03:32:02.828597Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T04:24:04.517459Z",
+  "started_at": "2026-08-24T04:14:02.830453Z",
+  "closed_at": "2026-08-24T04:24:04.517459Z",
+  "close_reason": "Aligned C static version_is_newer/lollipop_cmp in lichen/subsys/lichen/rpl/dodag.c with RFC 6550 Section 7.2 SEQUENCE_WINDOW=16 (same-region incomparable, cross-region wrap distance, 0 vs 127 special case). Exported LICHEN_RPL_TEST hooks lichen_rpl_lollipop_cmp + lichen_rpl_version_is_newer; declared in rpl_dodag.h under #ifdef LICHEN_RPL_TEST. Host test lichen/tests/rpl_dodag copies rust/RFC table as independent expected values. Verify: cmake -S lichen/tests/rpl_dodag -B lichen/tests/rpl_dodag/build \u0026\u0026 cmake --build lichen/tests/rpl_dodag/build \u0026\u0026 ./lichen/tests/rpl_dodag/build/rpl_dodag_test → 5/5 passed (ctest 1/1). clang-tidy TEST TU clean. Header changed: yes (test-hook decls only).",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-y4yy",
+      "depends_on_id": "project-LICHEN-worker6-rw5e",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T03:32:03.172433Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,1 +1,2 @@
 {"id":"019f975e-b315-7392-87ac-937dc56dd7b7","issue_id":"project-LICHEN-worker6-l1qw.5.6.2.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:43:13.685237Z"}
+{"id":"01a032db-ef57-78ba-b570-bd0fd42e5196","issue_id":"project-LICHEN-worker6-l1qw.5.6.2.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: rpl/messages.py line 140 DIO class with to_bytes/from_bytes","created_at":"2026-08-24T08:21:09.591573Z"}

@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-worker6-ttfo.5",
+  "title": "process_dio compares DODAGVersionNumber across different DODAGIDs when unjoined",
+  "description": "## Location\n\npython/src/lichen/rpl/dodag.py DodagState.process_dio version gate (lines 210-216).\n\nRFC 6550 Section 3.1.2 / 7.2: DODAGVersionNumber scope is a single DODAG (the tuple (RPLInstanceID, DODAGID, DODAGVersionNumber)). Comparing versions of two different DODAGs is undefined.\n\n## What goes wrong\n\nFor a joined node, foreign instance/DODAG DIOs return early (lines 205-208). For an UNJOINED node those filters do not run. The next thing process_dio does is lollipop-compare dio.version against the leftover local version. If the local placeholder is lollipop-newer, the DIO is dropped as stale and the unjoined-foreign adopt branch (lines 214-216) never runs.\n\nTrigger:\n1. Node joined DODAG fd00::1 at version 10, then lost every parent (select_parent sets role=UNJOINED but leaves version=10).\n2. The only remaining advertisement is DODAG fd00::2 version 4 (or any version lollipop-older than 10), same RPLInstanceID.\n3. version_is_newer(4, 10) is False; version_is_newer(10, 4) is True; process_dio returns.\n4. The node stays UNJOINED forever even though lines 214-216 exist specifically to let unjoined nodes adopt a different DODAG.\n\nA never-joined node constructed with version=10 vs a foreign DODAG at version 1 has the same outcome. The reverse accident also happens: foreign DODAG version 11 is adopted because 11\u003e10, not because DODAG selection chose it.\n\nC lichen_rpl_dodag_process_dio adopts whenever !is_joined, without a stale-version veto. Python intends the same (the unjoined ID-mismatch adopt exists) but the stale check runs first and is keyed on a counter that is not comparable across DODAGIDs.\n\nThis is distinct from project-LICHEN-worker6-ttfo.2 / .4 (incomparable SAME-DODAG versions falling through as equal).\n\n## Fix\n\nDo not apply version_is_newer / stale rejection until the DIO is known to be the same (rpl_instance_id, dodag_id). For an unjoined node hearing a different DODAG, either adopt without a version comparison or ignore the DIO by policy — do not mix the two by comparing leftover versions.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T03:42:00.796672Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T03:44:20.650368Z",
+  "started_at": "2026-08-24T03:43:35.740424Z",
+  "closed_at": "2026-08-24T03:44:20.650368Z",
+  "close_reason": "Unjoined foreign (instance,DODAGID) adopts without version-comparing leftover placeholder. test_unjoined_foreign_dodag_is_not_version_compared.",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.5",
+      "depends_on_id": "project-LICHEN-worker6-ttfo",
+      "type": "parent-child",
+      "created_at": "2026-08-24T03:42:01.197061Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-ttfo.5",
+      "depends_on_id": "project-LICHEN-worker6-rw5e",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T03:42:01.522584Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

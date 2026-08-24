@@ -1,1 +1,2 @@
 {"id":"019f9761-4076-7a0e-a72d-91a28367eaa3","issue_id":"project-LICHEN-worker6-l1qw.9.8.3.1.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:46:00.95066Z"}
+{"id":"01a032dc-9add-7d98-9c53-bef4d6e07732","issue_id":"project-LICHEN-worker6-l1qw.9.8.3.1.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Verified: coap/resources/node_resources.py line 20-21 StatusResource.render_get","created_at":"2026-08-24T08:21:53.501891Z"}

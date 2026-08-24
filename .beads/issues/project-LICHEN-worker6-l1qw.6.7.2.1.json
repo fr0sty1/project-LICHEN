@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.7.2.1",
   "title": "Python: protect_request (encrypt)",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:53.061654Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:53.061654Z",
+  "updated_at": "2026-08-24T08:20:56.216627Z",
+  "closed_at": "2026-08-24T08:20:56.216627Z",
+  "close_reason": "Verified: oscore.py inherits aiocoap CanProtect mixin",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.2.1",

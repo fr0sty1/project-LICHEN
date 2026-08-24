@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-i8kl",
+  "title": "One peer can evict every authenticated DIO issuance",
+  "description": "Security codereview finding in python/src/lichen/link/link_layer.py: accept_authenticated_dio stores opaque fan-out capabilities in one global OrderedDict capped at MAX_AUTHENTICATED_DIO_ISSUANCES, then evicts oldest entries without a per-signer quota. Unlike verified receipts, a single authenticated peer can sequentially send and have 64 fresh DIOs admitted, consuming each receipt and evicting all still-live DIO evidence from other peers before routing/time/SCHC consumers elevate it. Add a bounded per-signer issuance quota/fair eviction (or supersede only that signer's older equivalent evidence) and regress that one-peer flooding cannot invalidate another peer's live issuance.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T13:08:17.492874Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T13:11:24.917523Z",
+  "started_at": "2026-08-24T13:11:24.917523Z",
+  "lease_expires_at": "2026-08-24T13:16:24.917523Z",
+  "heartbeat_at": "2026-08-24T13:11:24.917523Z"
+}

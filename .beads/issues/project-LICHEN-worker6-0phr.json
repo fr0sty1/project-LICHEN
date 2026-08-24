@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-0phr",
+  "title": "Authenticated forwarded data can poison passive gradients for spoofed IPv6 sources",
+  "description": "Security review of python/src/lichen/node.py found the FORWARD path installs a DATA gradient for packet.header.src_addr via rx.sender without any source-identity or route-origin evidence. Link authentication proves only the immediate sender, so an admitted peer can send a packet claiming an arbitrary absent victim 02xx source and install a 60-second route toward itself; the update occurs even before next-hop identity/compression/transmission succeeds. This enables blackholing/interception until an explicit higher-priority route arrives. Define the authorization/evidence required for passive learning (or keep it quarantined from forwarding decisions), bind learning to successful forwarding and authenticated provenance, and add spoofed-source/non-forwarded-packet regressions.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T14:01:14.841605Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T14:01:47.9179Z",
+  "started_at": "2026-08-24T14:01:47.9179Z",
+  "lease_expires_at": "2026-08-24T14:06:47.9179Z",
+  "heartbeat_at": "2026-08-24T14:01:47.9179Z"
+}
