@@ -23,7 +23,8 @@
     "board-support",
     "bringup",
     "hal",
-    "partner-handoff"
+    "partner-handoff",
+    "ec2"
   ],
   "dependencies": [
     {

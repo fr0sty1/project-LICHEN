@@ -11,7 +11,8 @@
   "updated_at": "2026-07-25T00:47:04.134015501Z",
   "started_at": "2026-07-22T20:24:34.148980407Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "ec2"
   ],
   "dependencies": [
     {

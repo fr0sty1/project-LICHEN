@@ -14,7 +14,8 @@
   "updated_at": "2026-07-17T21:36:18.60938Z",
   "labels": [
     "defer-external",
-    "renode"
+    "renode",
+    "ec2"
   ],
   "dependencies": [
     {

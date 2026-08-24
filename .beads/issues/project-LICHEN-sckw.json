@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "chore",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T02:27:52.744364Z",
   "created_by": "Mark Atwood",
@@ -17,6 +16,7 @@
     "beads",
     "docs",
     "owner-reserved",
-    "workflow"
+    "workflow",
+    "ec2"
   ]
 }

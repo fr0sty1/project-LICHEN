@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-20T03:30:18.22275Z",
   "created_by": "Mark Atwood",
@@ -13,6 +12,10 @@
   "started_at": "2026-07-20T03:30:38.095355Z",
   "closed_at": "2026-07-20T03:35:33.879135Z",
   "close_reason": "Launched tagged c8g.4xlarge i-0d14dd9fb53dae004 in us-west-2c, restricted SSH to the client /32, installed the confirmed public key, and attached/mounted vol-0a95eee8d1d8461eb.",
+  "labels": [
+    "owner-reserved",
+    "ec2"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-3ook.1",
@@ -22,8 +25,5 @@
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }
