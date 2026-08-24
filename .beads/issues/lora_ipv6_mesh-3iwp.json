@@ -16,7 +16,8 @@
   "lease_expires_at": "2026-07-25T02:31:39.874550406Z",
   "heartbeat_at": "2026-07-25T02:26:39.874550406Z",
   "labels": [
-    "blocked:hardware"
+    "blocked:hardware",
+    "zephyr"
   ],
   "dependencies": [
     {
