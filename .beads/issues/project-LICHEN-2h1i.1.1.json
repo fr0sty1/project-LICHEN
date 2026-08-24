@@ -12,7 +12,8 @@
   "closed_at": "2026-07-25T01:09:42.965150122Z",
   "close_reason": "Verified incorrect",
   "labels": [
-    "too-hard"
+    "too-hard",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
