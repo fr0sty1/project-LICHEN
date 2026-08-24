@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-w03d",
+  "title": "Require exact persistence policy booleans",
+  "description": "P3 security/API review: AnnounceStatePersistence.allow_bootstrap, TwoSlotFilePersistence.fail_closed, and DaoManager.require_crash_safety are policy controls but accept coercive integers/objects at runtime. Truthy non-booleans can authorize bootstrap or claim fail-closed operation, while falsey non-booleans disable enforcement. Require exact bool values at construction and add coercive configuration tests.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:45:23.055966Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:45:30.968987Z",
+  "started_at": "2026-08-24T17:45:30.968987Z",
+  "lease_expires_at": "2026-08-24T17:50:30.968987Z",
+  "heartbeat_at": "2026-08-24T17:45:30.968987Z"
+}

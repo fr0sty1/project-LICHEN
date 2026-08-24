@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-eh0y",
+  "title": "Detect complete deletion of authenticated DAO TX state",
+  "description": "python/src/lichen/rpl/dao_persistence.py uses .dao_tx_initialized to detect slot deletion, but the marker lives beside the slots and is itself unauthenticated/unanchored. Deleting both dao_tx slots and the marker makes load_tx_state return None as if first boot; DaoManager with allow_tx_bootstrap=True can then reuse Origin Sequence 1 for the same key, contrary spec/05-routing.md lines 249-257. Store the initialized/high-water fact in an independent monotonic anchor or provisioned per-key floor that cannot disappear with the slots, and add a restart test deleting marker plus both slots.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:01:04.142909Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:01:13.520704Z",
+  "started_at": "2026-08-24T18:01:13.520704Z",
+  "lease_expires_at": "2026-08-24T18:06:13.520704Z",
+  "heartbeat_at": "2026-08-24T18:01:13.520704Z"
+}

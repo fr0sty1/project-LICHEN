@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-q4yb",
+  "title": "TrustStore accepts a no-op same-key rotation as a new key generation",
+  "description": "CORRECTNESS: TrustStore._rotate_key validates the signed transcript and destination collision only when new_iid differs, but never requires new_pubkey != old_pubkey. A caller can sign a rotation from a key to itself, receive success, advance the persisted rotation sequence, and replace the entry/timestamps even though spec 06 defines this as a key change that accepts a new key. Downstream rotation consumers may also treat success as authority to create fresh replay state. Align with the link rotation invariant by rejecting identical old/new keys before mutation; cover durable and semantic APIs.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:59:52.466075Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:59:56.651327Z",
+  "started_at": "2026-08-24T17:59:56.651327Z",
+  "lease_expires_at": "2026-08-24T18:04:56.651327Z",
+  "heartbeat_at": "2026-08-24T17:59:56.651327Z"
+}

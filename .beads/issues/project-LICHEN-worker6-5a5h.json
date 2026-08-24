@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-5a5h",
+  "title": "Make fresh simulator identity consistent with advertised node ID",
+  "description": "rust/lichen-gateway/src/bin/lichend.rs creates a new random identity seed in a fresh ephemeral simulator state root, but Args::node_id defaults to fixed 0200000000000001 and startup aborts when the derived IID differs. Because the seed is created internally after argument parsing and discarded with the temp root, a normal fresh --sim invocation cannot know or reuse the required IID; the default invocation fails deterministically except with negligible random coincidence. Derive the simulator node ID from its generated identity by default, or expose deterministic seed/identity provisioning while preserving validation for explicitly supplied IDs.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:36:02.593524Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:36:16.799851Z",
+  "started_at": "2026-08-24T17:36:16.799851Z",
+  "lease_expires_at": "2026-08-24T17:41:16.799851Z",
+  "heartbeat_at": "2026-08-24T17:36:16.799851Z"
+}

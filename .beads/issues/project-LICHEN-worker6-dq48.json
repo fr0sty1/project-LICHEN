@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-dq48",
+  "title": "Remove unnecessary constant-time/zeroization from keys.py",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:45:31.227433Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:45:31.227433Z",
+  "labels": [
+    "cleanup",
+    "python"
+  ]
+}

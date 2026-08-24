@@ -2,3 +2,4 @@
 {"id":"01a0347c-c99f-7e11-ad58-582a0f0540a2","issue_id":"project-LICHEN-worker6-ikjk.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: crypto-security","created_at":"2026-08-24T15:56:28.447924Z"}
 {"id":"01a0347c-c9a5-73ad-b5cd-190b4902231f","issue_id":"project-LICHEN-worker6-ikjk.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: storage","created_at":"2026-08-24T15:56:28.453243Z"}
 {"id":"01a0347c-c9ab-7cd9-8095-159c3ba1f3bc","issue_id":"project-LICHEN-worker6-ikjk.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-24T15:56:28.459844Z"}
+{"id":"01a034dc-27ae-769b-971e-8359b75aa4ed","issue_id":"project-LICHEN-worker6-ikjk.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"wontfix","created_at":"2026-08-24T17:40:38.446435Z"}

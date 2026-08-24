@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-d1bn",
+  "title": "Remove unnecessary constant-time/zeroization from trust.py",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:45:23.055842Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:45:23.055842Z",
+  "labels": [
+    "cleanup",
+    "python"
+  ]
+}

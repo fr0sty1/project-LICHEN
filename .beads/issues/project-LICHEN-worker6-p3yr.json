@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-p3yr",
+  "title": "Remove custom constant-time/zeroization from oscore_ctx.c",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:23:18.104199Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:23:18.104199Z",
+  "labels": [
+    "cleanup",
+    "rust"
+  ]
+}

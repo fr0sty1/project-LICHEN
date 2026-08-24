@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ii61",
+  "title": "Replace hand-rolled constant_time_eq with subtle crate in provisioning.rs",
+  "description": "rust/lichen-oscore/src/provisioning.rs:906 has a hand-rolled XOR accumulator constant_time_eq(). Replace with subtle::ConstantTimeEq::ct_eq() or subtle::ConstantTimeEq trait.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:24:17.162914Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:24:17.162914Z",
+  "labels": [
+    "cleanup",
+    "rust"
+  ]
+}

@@ -3,3 +3,4 @@
 {"id":"01a0347c-e983-7abe-8e93-fdce1dc3eeef","issue_id":"project-LICHEN-worker6-ikjk.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: side-channel","created_at":"2026-08-24T15:56:36.611704Z"}
 {"id":"01a0347c-e987-76f5-876e-4869e2a2edb2","issue_id":"project-LICHEN-worker6-ikjk.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: opinion","created_at":"2026-08-24T15:56:36.615456Z"}
 {"id":"01a0347c-e98a-75d0-a48e-2e8f543eed01","issue_id":"project-LICHEN-worker6-ikjk.2","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-24T15:56:36.618381Z"}
+{"id":"01a034dc-33ac-72c6-a5c9-37b15a1694d7","issue_id":"project-LICHEN-worker6-ikjk.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"wontfix","created_at":"2026-08-24T17:40:41.516183Z"}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-bidu",
+  "title": "Make per-origin DAO RX replay floors deletion-resistant",
+  "description": "python/src/lichen/rpl/dao_persistence.py load_rx_floor treats absence of both per-key slot files as a normal first DAO even after a floor was committed. Deleting both dao_rx_\u003cpubkey\u003e slots therefore resets that pinned key replay floor and permits an old signed DAO to be accepted as fresh, violating spec/05-routing.md lines 259-266 that missing receive state fails closed. Persist an authenticated/anchored catalog or per-key initialization floor tied to the Announce pin so previously initialized keys cannot become unseen through deletion or stale restore; test full deletion and rollback of both slots across root restart.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:01:04.125657Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:01:13.801128Z",
+  "started_at": "2026-08-24T18:01:13.801128Z",
+  "lease_expires_at": "2026-08-24T18:06:13.801128Z",
+  "heartbeat_at": "2026-08-24T18:01:13.801128Z"
+}

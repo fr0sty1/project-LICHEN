@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-agef",
+  "title": "Preserve persistence body failures across lock context managers",
+  "description": "P3 robustness review: AnnounceStatePersistence._lock and TwoSlotFilePersistence._process_lock catch OSError around the contextmanager yield, so disk/fsync/write failures from the protected operation are mislabeled as lock failures and their public error semantics change. Isolate lock acquisition/setup exception handling from the yielded body and add injected body-OSError coverage for both modules.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:42:42.206221Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:42:59.095569Z",
+  "started_at": "2026-08-24T17:42:59.095569Z",
+  "lease_expires_at": "2026-08-24T17:47:59.095569Z",
+  "heartbeat_at": "2026-08-24T17:42:59.095569Z"
+}

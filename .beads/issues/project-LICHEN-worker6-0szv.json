@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-0szv",
+  "title": "Remove custom constant-time/zeroization from link_ctx.c",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:23:17.72829Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:23:17.72829Z",
+  "labels": [
+    "cleanup"
+  ]
+}

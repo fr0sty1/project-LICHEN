@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ijq5",
+  "title": "Preserve key and trust persistence body errors through locking",
+  "description": "python/src/lichen/crypto/key_persistence.py _exclusive_file_lock wraps the yield inside its OSError handler, so OSError raised by FileKeyStore or TrustStorePersistence reads, writes, fsync, replace, or directory operations is relabeled as cannot lock persistence state. This destroys the promised distinction between lock acquisition and storage failure and can mask the actionable cause during fail-closed recovery. Restrict lock-error translation to open/fstat/flock acquisition, let body exceptions propagate unchanged, make unlock/close unable to mask them, and add injected body-OSError tests for key and trust operations.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:02:22.780616Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:02:31.018108Z",
+  "started_at": "2026-08-24T18:02:31.018108Z",
+  "lease_expires_at": "2026-08-24T18:07:31.018108Z",
+  "heartbeat_at": "2026-08-24T18:02:31.018108Z"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-uh9m",
+  "title": "Remove custom constant-time/zeroization from lichen_util.h",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:23:18.127866Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:23:18.127866Z",
+  "labels": [
+    "cleanup",
+    "rust"
+  ]
+}

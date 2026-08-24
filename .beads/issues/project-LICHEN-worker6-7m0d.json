@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-7m0d",
+  "title": "Remove unnecessary constant-time/zeroization from edhoc.py",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:46:17.40294Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:46:17.40294Z",
+  "labels": [
+    "cleanup",
+    "python"
+  ]
+}

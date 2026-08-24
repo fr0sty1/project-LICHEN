@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-9uj1",
+  "title": "Remove unnecessary constant-time/zeroization from schnorr48.py",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T17:45:32.126752Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T17:45:32.126752Z",
+  "labels": [
+    "cleanup",
+    "python"
+  ]
+}
