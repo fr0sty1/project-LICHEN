@@ -14,5 +14,8 @@
   "closed_at": "2026-07-18T03:56:59Z",
   "close_reason": "HARDWARE VALIDATED 2026-07-17. Re-pinned two peers on the T-Echo (gateway ee45..f281 first as the CoAP destination, then the sibling T1000-E 8a1a..2cab), rebuilt + reflashed. With the dev-mode early-exit fix the round trip now sustains 6/9 (67%) over a 2-min window — versus 0/24 (0%) measured with two peers BEFORE the fix. The verify-cost starvation is resolved: matched frames (gateway responses) exit the peer loop after the first Schnorr verify instead of always running all N with the radio un-armed. Ordering gateway-first means its responses exit on iteration 1. The remaining ~33% loss is the separate 3-node SF10 airtime contention (deaf T1000-E free-running + retransmits), a known limitation noted in this bead, not verify cost. link_crypto + ping_l2 unchanged; secure (non-dev) builds keep the constant-time all-peers scan.",
   "lease_expires_at": "2026-07-25T02:31:37.445798591Z",
-  "heartbeat_at": "2026-07-25T02:26:37.445798591Z"
+  "heartbeat_at": "2026-07-25T02:26:37.445798591Z",
+  "labels": [
+    "blocked:hardware"
+  ]
 }
