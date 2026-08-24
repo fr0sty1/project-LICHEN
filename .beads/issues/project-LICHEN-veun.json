@@ -13,6 +13,9 @@
   "started_at": "2026-07-23T05:09:04.402155607Z",
   "lease_expires_at": "2026-07-24T21:46:59.354280801Z",
   "heartbeat_at": "2026-07-24T21:41:59.354280801Z",
+  "labels": [
+    "zephyr"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-veun",
