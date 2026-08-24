@@ -9,7 +9,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[4]
 PINNED_PORTNUMS = ROOT / "rust" / "lichen-meshtastic" / "proto" / "meshtastic" / "portnums.proto"
 ZEPHYR_ADAPTER_TEST = ROOT / "lichen" / "tests" / "meshtastic_adapter" / "src" / "main.c"
-ZEPHYR_ADAPTER = ROOT / "lichen" / "subsys" / "lichen" / "meshtastic" / "adapter.c"
+ZEPHYR_ADAPTER_CATALOG = ROOT / "lichen" / "subsys" / "lichen" / "meshtastic" / "adapter_nodedb.c"
+ZEPHYR_ADAPTER_PORTNUM_DEFINES = (
+    ROOT / "lichen" / "subsys" / "lichen" / "meshtastic" / "adapter_internal.h"
+)
 TEXT_MESSAGE_APP_PORTNUM = 1
 POSITION_APP_PORTNUM = 3
 ADMIN_APP_PORTNUM = 6
@@ -35,7 +38,7 @@ def _parse_zephyr_unsupported_portnums() -> set[int]:
 
 
 def _parse_adapter_portnum_defines() -> dict[str, int]:
-    text = ZEPHYR_ADAPTER.read_text(encoding="utf-8")
+    text = ZEPHYR_ADAPTER_PORTNUM_DEFINES.read_text(encoding="utf-8")
     return {
         name: int(value)
         for name, value in re.findall(
@@ -47,7 +50,7 @@ def _parse_adapter_portnum_defines() -> dict[str, int]:
 
 
 def _parse_adapter_catalog_portnums() -> set[int]:
-    text = ZEPHYR_ADAPTER.read_text(encoding="utf-8")
+    text = ZEPHYR_ADAPTER_CATALOG.read_text(encoding="utf-8")
     match = re.search(
         r"unsupported_operations\[\]\s*=\s*\{(?P<body>.*?)\n\};",
         text,
