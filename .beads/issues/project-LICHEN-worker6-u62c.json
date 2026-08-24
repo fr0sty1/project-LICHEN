@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-u62c",
+  "title": "lichen-core: cargo clippy --all-targets -D warnings fails on pre-existing lints",
+  "description": "Discovered while verifying loadng.rs fixes (project-LICHEN-worker6-595h et al). cargo clippy -p lichen-core --all-targets -- -D warnings fails on code untouched by that work: (1) tdma_beacon.rs:185 manual_range_contains (present at committed HEAD, verified byte-identical to HEAD); (2) lib.rs ~10x manual_range/manual_range_inclusive_contains; (3) duty_cycle.rs:937 clone_on_copy (test target). Also cargo fmt -p lichen-core --check shows drift in tdma_beacon.rs, transport.rs, tx_queue.rs, tests/*. None of these are in loadng.rs. Proof: clippy passes with only -A clippy::manual-range-contains -A clippy::clone-on-copy.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T02:13:02.529605Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T02:13:02.529605Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-u62c",
+      "depends_on_id": "project-LICHEN-worker6-595h",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T02:13:02.970758Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

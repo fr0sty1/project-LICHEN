@@ -13,6 +13,9 @@
   "started_at": "2026-07-23T04:28:09.680550174Z",
   "lease_expires_at": "2026-07-25T02:39:46.96398959Z",
   "heartbeat_at": "2026-07-25T02:34:46.96398959Z",
+  "labels": [
+    "blocked:hardware"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-el24",

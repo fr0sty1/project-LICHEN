@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.17.15",
   "title": "Zephyr: B.2.5 No Silent Drops",
   "description": "Return errors to senders, NACK to mesh source, log queue-full events for diagnostics.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:26:35.181584Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:26:35.181584Z",
+  "updated_at": "2026-08-23T22:53:45.483096Z",
+  "closed_at": "2026-08-23T22:53:45.483096Z",
+  "close_reason": "already implemented: senders get -ENOBUFS, mesh sources get nacks_sent counter on fwd-buffer rejection, LOG_WRN logs queue-full events in lora_l2_tx.c TX path",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.17.15",

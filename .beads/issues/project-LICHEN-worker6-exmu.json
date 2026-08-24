@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-exmu",
   "title": "dodag.py: Hysteresis can select inadmissible parent",
   "description": "Line 250-256: The hysteresis logic fetches `current` from `self.parents` directly without checking if it passes `_admissible()`. When the current preferred parent's path cost exceeds `_lowest_rank + max_rank_increase` (making it inadmissible), but improvement over the best admissible candidate is less than `parent_switch_threshold`, the code selects the inadmissible parent. This violates RFC 6550 MaxRankIncrease constraint (Section 8.2.2.4), which bounds rank growth to prevent routing loops. Failure scenario: Node joins via A (cost 1000), better B appears (cost 300), B disappears, A reselected. A's cost increases to 2400 exceeding threshold 2348. New C appears at cost 2300. Improvement 100 \u003c 192 triggers hysteresis selecting inadmissible A.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:52:31.773418Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:52:31.773418Z",
+  "updated_at": "2026-08-23T00:03:04.834954Z",
+  "closed_at": "2026-08-23T00:03:04.834954Z",
+  "close_reason": "select_parent hysteresis retention now requires self._admissible(current); an inadmissible current parent can never be retained or re-selected. Verified with exmu's failure scenario.",
   "labels": [
     "bug",
     "codereview"

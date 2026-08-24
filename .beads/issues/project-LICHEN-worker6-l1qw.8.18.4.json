@@ -3,13 +3,15 @@
   "title": "Python: B.3.2 Forwarding Buffer oracle",
   "description": "Forwarding buffer: MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2, send NACK when per-source limit reached.\n\n## MUST/SHALL Checklist\n(no MUST/SHALL extracted - manual review needed)",
   "notes": "2026-08-17: Deferred - Epic with 3 open children. Work tracked in sub-issues: .4.2 (Implement Python oracle), .4.3 (Generate test vectors), .4.4 (Cross-validation).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:26:51.420449Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T22:37:26.638377Z",
+  "updated_at": "2026-08-23T22:53:10.462084Z",
+  "closed_at": "2026-08-23T22:53:10.462084Z",
+  "close_reason": "already implemented: forwarding_buffer.py MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2, BACKPRESSURE result + on_drop NACK callback; children .4.3 vectors and .4.4 oracle cross-validation verified and closed; full link suite 125 pass",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.18.4",

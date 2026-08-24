@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-hppr",
   "title": "messaging.py: Auto-assigned message ID never increments",
   "description": "In render_post (lines 137-161), `candidate_next_id` is copied from `self._next_id` and potentially incremented, but is never written back to `self._next_id`. As a result, every POST without an explicit 'id' field gets ID=1, overwriting the previous message in `self._sent['1']`. This causes silent data loss. Fix: add `self._next_id = candidate_next_id` after line 144 (before msg_id = str(body['id'])).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:39:15.882702Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:39:15.882702Z",
+  "updated_at": "2026-08-22T23:56:37.519363Z",
+  "closed_at": "2026-08-22T23:56:37.519363Z",
+  "close_reason": "Dup of worker6-s91u/gefg. Root cause: render_post incremented candidate_next_id but never wrote it back to self._next_id, so every auto-assigned POST reused ID 1 and overwrote the prior sent message. Fixed once in python/src/lichen/coap/resources/messaging.py:159 (self._next_id = candidate_next_id, persisted across requests for process lifetime; no await or early return between read and write, so atomic under the asyncio event loop; module spawns no threads). Verified by tests/coap/test_messages_resource.py (_next_id==2 after one auto POST; u64 saturation persists) and full messaging suite: 119 passed.",
   "labels": [
     "bug",
     "codereview"

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-mrfm",
   "title": "select_channel off-by-one: returns [1,n] but valid is [0,n-1]",
   "description": "File: python/src/lichen/channel_plan.py:89\n\nselect_channel returns 1-based indices but frequency() expects 0-based; 1/n of channel selections are out of bounds.\n\n**Failure scenario:** With eui64=0x0011223344556677, epoch=2, density=0, plan=EU868: select_channel returns 8 but valid indices are 0-7. Calling frequency(8) raises ValueError. Affects 12.5% of epochs for EU868.\n\n**Verdict:** CONFIRMED",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T23:31:06.543651Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T23:31:06.543651Z",
+  "updated_at": "2026-08-23T00:32:20.926148Z",
+  "closed_at": "2026-08-23T00:32:20.926148Z",
+  "close_reason": "dup of gvgi root cause: contract mismatch not formula bug; channel_number mapping added per spec ccp12; see gvgi close note",
   "labels": [
     "correctness",
     "channel-plan"

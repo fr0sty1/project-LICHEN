@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-ctyb",
   "title": "tx_queue_empty _Nonnull annotation contradicts documented NULL handling",
   "description": "Parameter marked _Nonnull but doc says 'NULL returns true'. Implementation confirms NULL is handled (returns true). Annotation should be _Nullable; current state misleads static analyzers and callers about the contract.\n\nFile: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 202",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T18:31:39.568027Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T18:31:39.568027Z",
+  "updated_at": "2026-08-24T01:58:25.536292Z",
+  "closed_at": "2026-08-24T01:58:25.536292Z",
+  "close_reason": "Fixed this session (working tree, uncommitted). Chose 'accept NULL + _Nullable' over 'reject NULL' because: (1) impl deliberately handles NULL returning true, doc documents it; (2) codebase pattern favors _Nullable for NULL-tolerant APIs — tx_queue_count in the same diff was already converted to _Nullable; (3) annotation-only change, no API behavior change for callers relying on empty(NULL)==true. Changes: lichen/subsys/lichen/link/include/lichen/tx_queue.h line 209 _Nonnull-\u003e_Nullable plus @param doc updated to '(NULL accepted, returns true)'; new regression test test_empty_null_returns_true in lichen/tests/tx_queue/main.c asserting the documented contract. Verified: host cmake build 22/22 pass incl. new test; clang probe with -Wnonnull confirms tx_queue_empty(NULL) no longer warns while tx_queue_init(NULL) still does (_Nonnull correctly retained there).",
   "labels": [
     "code-review",
     "tx_queue"

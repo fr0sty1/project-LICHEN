@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-bo5z",
   "title": "dodag.py: _lowest_rank reset defeats MaxRankIncrease protection",
   "description": "Line 244: When all parents become non-admissible, _lowest_rank is reset to INFINITE_RANK. This defeats RFC 6550 MaxRankIncrease protection. When parents return, _admissible() bypasses the rank bound check (since _lowest_rank \u003e= INFINITE_RANK), allowing rank to jump arbitrarily within the same DODAG version. The _lowest_rank should NOT be reset when losing parents - only when changing DODAG versions (already handled in _adopt_version). This can cause routing loops and count-to-infinity.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:52:24.749739Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:52:24.749739Z",
+  "updated_at": "2026-08-23T00:03:07.676641Z",
+  "closed_at": "2026-08-23T00:03:07.676641Z",
+  "close_reason": "_lowest_rank no longer reset on parent loss (select_parent) and process_dio no longer adopts/resets for same-version same-DODAG DIOs while temporarily unjoined; reset only via _adopt_version on version/DODAG change. Verified MaxRankIncrease ceiling (266+2048=2314) rejects rank-2600 candidate after full parent loss.",
   "labels": [
     "bug",
     "codereview"

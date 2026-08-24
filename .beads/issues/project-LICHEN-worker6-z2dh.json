@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-z2dh",
+  "title": "lichen-core: clippy manual_range_contains error blocks cargo clippy --workspace gates",
+  "description": "cargo clippy -p lichen-rpl --all-targets -- -D warnings fails in dependency lichen-core at src/tdma_beacon.rs:185: 'let len = if first \u003e= 0x80 \u0026\u0026 first \u003c= 0x97' -\u003e clippy::manual_range_contains suggests (0x80..=0x97).contains(\u0026first). Pre-existing at HEAD, outside lichen-rpl scope so not fixed by worker6-26l6; it forces every dependent-crate clippy gate to run with --no-deps until fixed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T02:23:27.758852Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T02:23:27.758852Z"
+}

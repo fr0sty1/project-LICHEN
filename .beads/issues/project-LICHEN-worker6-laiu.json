@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-laiu",
   "title": "tx_queue_stats_get doc/impl mismatch on locking",
   "description": "Header doc at lines 206-208 states 'Thread-safe atomic copy under lock (no longer non-atomic)' but implementation (tx_queue.c lines 416-430) performs raw struct assignment without acquiring the mutex. Concurrent writer causes data race.\n\nFile: lichen/subsys/lichen/link/include/lichen/tx_queue.h\nLine: 213",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T18:31:39.158262Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T18:31:39.158262Z",
+  "updated_at": "2026-08-24T01:58:11.862363Z",
+  "closed_at": "2026-08-24T01:58:11.862363Z",
+  "close_reason": "Same root cause as project-LICHEN-worker6-a8gr; one fix covers both. Header doc 'Thread-safe atomic copy under lock (no longer non-atomic)' (tx_queue.h line 214) now matches implementation: tx_queue_stats_get() acquires lock_queue()/unlock_queue() around the struct copy (tx_queue.c lines 440-442). Fix is in the current working tree, UNCOMMITTED — must be included in next commit. Verified: host cmake build 22/22 tests pass; TSAN build clean under concurrent reader thread calling stats_get/count/empty 5000x against concurrent push/pop.",
   "labels": [
     "code-review",
     "tx_queue"

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-40nv",
+  "title": "GET /rollcall/{id} returns 404: aiocoap Site routes by exact path",
+  "description": "Discovered while fixing project-LICHEN-worker6-kxwt/q9gz. RollcallResource.render_get supports /rollcall/{id} via request.opt.uri_path[-1], but site.py registers the resource at [\"rollcall\"] and aiocoap's Site matches paths exactly, so /rollcall/r1 404s before render_get runs. Only root GET listing works. Verified empirically via InMemoryNetwork transport (POST 2.01, GET root 2.05 with entry, GET /r1 4.04). Fix likely needs prefix/wildcard handling or registering sub-resources.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-22T23:47:50.071975Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-22T23:47:50.071975Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-40nv",
+      "depends_on_id": "project-LICHEN-worker6-kxwt",
+      "type": "discovered-from",
+      "created_at": "2026-08-22T23:47:50.449515Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

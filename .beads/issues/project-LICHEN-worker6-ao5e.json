@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-ao5e",
   "title": "ZeroDivisionError when num_slots=0",
   "description": "File: python/src/lichen/ccp.py:310\n\nslot_hash raises ZeroDivisionError if num_slots=0 is passed, since there is no validation before the modulo operation.\n\n**Failure scenario:** slot_hash(eui64=b'\\x00'*8, sfn=0, num_slots=0) raises ZeroDivisionError: integer modulo by zero\n\n**Verdict:** CONFIRMED",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T23:30:51.973761Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T23:30:51.973761Z",
+  "updated_at": "2026-08-23T00:01:11.715478Z",
+  "closed_at": "2026-08-23T00:01:11.715478Z",
+  "close_reason": "Fixed: slot_hash in python/src/lichen/ccp.py now raises ValueError when num_slots \u003c 1 instead of ZeroDivisionError. ADD semantics preserved; all ccp vectors + 160 tests pass.",
   "labels": [
     "correctness",
     "ccp"

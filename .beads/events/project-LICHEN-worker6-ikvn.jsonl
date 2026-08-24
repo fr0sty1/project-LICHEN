@@ -2,3 +2,4 @@
 {"id":"01a0120f-f071-7d61-bc71-b491e9a3f36c","issue_id":"project-LICHEN-worker6-ikvn","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: denial-of-service","created_at":"2026-08-17T23:30:29.617877Z"}
 {"id":"01a0120f-f075-7908-a9b1-91055aa9754f","issue_id":"project-LICHEN-worker6-ikvn","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: coap","created_at":"2026-08-17T23:30:29.621592Z"}
 {"id":"01a0120f-f079-7b98-aee6-4fb0298fafc3","issue_id":"project-LICHEN-worker6-ikvn","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: emergency","created_at":"2026-08-17T23:30:29.62576Z"}
+{"id":"01a030db-7209-7639-96c0-1b6767c3f573","issue_id":"project-LICHEN-worker6-ikvn","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"verified already-fixed: MAX_ROLLCALLS=256 cap + timeout_s\u003c=604800 + _prune_expired prevent unbounded growth","created_at":"2026-08-23T23:01:23.081409Z"}

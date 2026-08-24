@@ -2,3 +2,4 @@
 {"id":"01a0120f-ed51-72fd-809a-3f338d712814","issue_id":"project-LICHEN-worker6-as7i","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-17T23:30:28.817196Z"}
 {"id":"01a0120f-ed54-7a60-9bb6-9a1d47fa4b69","issue_id":"project-LICHEN-worker6-as7i","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: coap","created_at":"2026-08-17T23:30:28.820681Z"}
 {"id":"01a0120f-ed57-7f2e-98f2-ad101abd703c","issue_id":"project-LICHEN-worker6-as7i","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: emergency","created_at":"2026-08-17T23:30:28.823995Z"}
+{"id":"01a030db-6638-7923-a763-83f285fe20ec","issue_id":"project-LICHEN-worker6-as7i","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"verified already-fixed same root cause as rg74: falsy-0 handled via membership check not or; repro passes","created_at":"2026-08-23T23:01:20.0566Z"}

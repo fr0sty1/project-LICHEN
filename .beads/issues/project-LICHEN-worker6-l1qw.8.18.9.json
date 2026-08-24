@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.18.9",
   "title": "Zephyr: B.3.3 Queue Latency Measurement implementation",
   "description": "queue_stats struct: packets_queued/dropped_deadline/dropped_full, max_latency_ms, avg_latency_ms. Expose via /status/queues CoAP.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:27:03.478673Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:27:03.478673Z",
+  "updated_at": "2026-08-23T22:53:34.522612Z",
+  "closed_at": "2026-08-23T22:53:34.522612Z",
+  "close_reason": "fixed: tx_queue_entry gained enqueue_ms, tx_queue_stats gained avg_latency_ms (EWMA alpha 1/8); tx_queue_pop measures real latency and updates max/avg instead of the 0 placeholder; gateway /status/queues wires tx_stats.avg_latency_ms; host harness 21/21 incl 2 new latency tests + TSAN 21/21 (forced past out-of-batch vector bead 8.18.10)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.18.9",

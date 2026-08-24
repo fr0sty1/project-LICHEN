@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-gvgi",
   "title": "select_channel can return index == num_channels (off-by-one)",
   "description": "File: python/src/lichen/channel_plan.py:89\n\nselect_channel returns out-of-bounds index: formula `1 + (h % num_channels)` can return `num_channels`, which exceeds valid array bounds [0, num_channels-1].\n\n**Failure scenario:** With EU868 (8 channels), epoch=2, eui64=0x0011223344556677, select_channel returns 8. Calling frequency(8) raises ValueError because valid indices are 0-7. Probability: 1/num_channels (12.5% for EU868).\n\n**Verdict:** CONFIRMED",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T23:31:12.341829Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T23:31:12.341829Z",
+  "updated_at": "2026-08-23T00:32:19.455709Z",
+  "closed_at": "2026-08-23T00:32:19.455709Z",
+  "close_reason": "Premise wrong: spec appendix-ccp12 line 86 mandates 1+(Hash MOD N), channels numbered 1..N (CH0 reserved) - formula kept. Real defect fixed: channel_frequency() now takes CCP-16 channel NUMBER with [1,N] validation and maps to table index (was raw 0-based index, OOB on number N). test_channel_plan range assert corrected to spec range. 90 tests pass",
   "labels": [
     "correctness",
     "channel-plan"

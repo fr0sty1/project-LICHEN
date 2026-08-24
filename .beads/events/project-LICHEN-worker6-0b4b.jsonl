@@ -1,3 +1,4 @@
 {"id":"01a0106c-9a27-7a16-84ca-442f4d6dfca8","issue_id":"project-LICHEN-worker6-0b4b","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T15:52:27.943662Z"}
 {"id":"01a0106c-9a31-7582-bf97-4f29e1bfd83b","issue_id":"project-LICHEN-worker6-0b4b","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T15:52:27.953361Z"}
 {"id":"01a0106c-9a35-753f-b6e8-963dd4a76f30","issue_id":"project-LICHEN-worker6-0b4b","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T15:52:27.957344Z"}
+{"id":"01a02bed-97b0-7036-a41f-7371e77209b9","issue_id":"project-LICHEN-worker6-0b4b","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Same defect as worker6-exmu; fixed by adding _admissible(current) check to the hysteresis path per suggested predicate.","created_at":"2026-08-23T00:03:06.288015Z"}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-6f6e",
   "title": "tx_queue.c: pthread_mutex_init return value ignored (UB risk)",
   "description": "Line 217: pthread_mutex_init() can fail with EAGAIN or ENOMEM but the return value is not checked. The function returns 0 (success) unconditionally. Subsequent pthread_mutex_lock() calls on an uninitialized mutex cause undefined behavior - deadlocks, crashes, or memory corruption.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:39:25.64745Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:39:25.64745Z",
+  "updated_at": "2026-08-24T01:58:01.277261Z",
+  "closed_at": "2026-08-24T01:58:01.277261Z",
+  "close_reason": "Fix verified present in current working tree (UNCOMMITTED — must be included in next commit): tx_queue.c tx_queue_init() POSIX branch now does 'int err = pthread_mutex_init(\u0026queue-\u003elock, NULL); if (err != 0) { return -err; }' (lines 215-218). Defect still exists at HEAD (git show HEAD confirms unchecked init); the fix arrived in an earlier session's uncommitted diff. Verification: host cmake build of lichen/tests/tx_queue (-Wall -Wextra -Werror) passes, full suite 22/22 OK; TSAN build runs clean. Error propagation matches tx_queue_destroy() convention (-err).",
   "labels": [
     "bug",
     "codereview"

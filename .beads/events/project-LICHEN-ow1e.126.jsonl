@@ -1,0 +1,1 @@
+{"id":"01a02c01-82f2-77fe-bde8-234d96711dac","issue_id":"project-LICHEN-ow1e.126","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of ow1e.132: handler.py deleted in 3ef9795c1b; GradientTable.entries() public API exists (gradient.py:193); no _entries external access remains.","created_at":"2026-08-23T00:24:51.698525Z"}

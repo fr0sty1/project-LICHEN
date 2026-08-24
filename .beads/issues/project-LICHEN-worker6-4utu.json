@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-4utu",
   "title": "emergency.py: TypeError crash when ts or timeout_s is CBOR null",
   "description": "Lines 217-218: `data.get(\"ts\", default)` returns None when key exists with null value, not the default. When _prune_expired() runs (line 167), `now - r[\"started\"] \u003e r[\"timeout_s\"]` raises TypeError if either is None. POST {\"id\": \"x\", \"timeout_s\": null} crashes all subsequent requests.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:52:11.342528Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:52:11.342528Z",
+  "updated_at": "2026-08-23T00:23:29.293198Z",
+  "closed_at": "2026-08-23T00:23:29.293198Z",
+  "close_reason": "already fixed by today's validation hardening",
   "labels": [
     "bug",
     "codereview"

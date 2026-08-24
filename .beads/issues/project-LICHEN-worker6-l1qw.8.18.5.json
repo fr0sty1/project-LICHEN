@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.18.5",
   "title": "Rust: B.3.2 Forwarding Buffer implementation",
   "description": "Forwarding buffer: MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2, send NACK when per-source limit reached.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:26:52.402317Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:26:52.402317Z",
+  "updated_at": "2026-08-23T22:53:36.963904Z",
+  "closed_at": "2026-08-23T22:53:36.963904Z",
+  "close_reason": "already implemented: rust/lichen-node/src/forward_buffer.rs enforces MAX_FORWARDING_SOURCES=8 and MAX_PACKETS_PER_SOURCE=2 returning ForwardError::QueueFull (NACK signal) at per-source limit; stack.rs queue_forward maps it to TxError::QueueFull for upstream NACK; 30 tests pass (forced past out-of-batch vector bead 8.18.10)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.18.5",

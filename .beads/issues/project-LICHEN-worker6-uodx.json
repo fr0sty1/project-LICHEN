@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-uodx",
   "title": "select_channel can return invalid channel index",
   "description": "File: python/src/lichen/channel_plan.py:88\n\nselect_channel returns out-of-bounds channel index (1 to num_channels instead of 1 to num_channels-1).\n\n**Failure scenario:** For EU868 (8 channels), calling select_channel(bytes.fromhex('0011223344556677'), epoch=2, density=4) returns 8, but valid indices are 0-7. Calling frequency(8) then raises ValueError: 'channel index 8 out of range [0, 8)'.\n\n**Verdict:** CONFIRMED",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T23:30:58.972828Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T23:30:58.972828Z",
+  "updated_at": "2026-08-23T00:32:22.293258Z",
+  "closed_at": "2026-08-23T00:32:22.293258Z",
+  "close_reason": "dup of gvgi root cause: select_channel output is a 1-based channel NUMBER per spec; frequency composition made total via validated mapping",
   "labels": [
     "correctness",
     "channel-plan"

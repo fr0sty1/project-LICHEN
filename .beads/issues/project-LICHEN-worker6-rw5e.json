@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rw5e",
+  "title": "Python reference version_is_newer diverges from RFC 6550 section 7.2; disagrees with Rust lollipop_cmp",
+  "description": "python/src/lichen/rpl/dodag.py version_is_newer (lines 43-65): linear-linear uses plain new\u003eold with NO SEQUENCE_WINDOW (e.g. 120 vs 5 called newer; Rust: incomparable per RFC rule 3.2.2); circular-circular uses 0\u003cdiff\u003c128 half-window instead of |diff|\u003c=16 (RFC rules 3.2.1/3.2.2, SEQUENCE_WINDOW=16); cross-region returns 'linear always newer' unconditionally, while RFC rule 3.1 says the unwrapped side wins unless wrap distance \u003c=16. rust/lichen-rpl/src/dodag.rs lollipop_cmp matches RFC 6550 section 7.2 exactly (verified against RFC text incl. worked examples: 240 vs 5 -\u003e older-side... i.e. 240 newer than 5; 250 vs 5 -\u003e 5 newer). AGENTS.md requires all implementations produce identical output for test vectors - Python must be aligned or the divergence documented with its own vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T02:23:40.15879Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T02:23:40.15879Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rw5e",
+      "depends_on_id": "project-LICHEN-worker6-26l6.7",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T02:23:40.53477Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
