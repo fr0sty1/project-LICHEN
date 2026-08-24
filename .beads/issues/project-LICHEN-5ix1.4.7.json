@@ -17,7 +17,8 @@
   "lease_expires_at": "2026-07-25T02:51:54.988704669Z",
   "heartbeat_at": "2026-07-25T02:46:54.988704669Z",
   "labels": [
-    "evidence-needed"
+    "evidence-needed",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
