@@ -9,6 +9,7 @@ from ipaddress import IPv6Address
 
 import pytest
 
+import lichen.rpl.dao_origin as dao_origin_module
 from lichen.crypto.identity import Identity, yggdrasil_address
 from lichen.crypto.schnorr48 import sign
 from lichen.rpl.dao_origin import (
@@ -22,6 +23,7 @@ from lichen.rpl.dao_origin import (
     compute_signature_transcript,
     extract_unsigned_dao_bytes,
 )
+from lichen.rpl.dao_persistence import MemoryPersistence
 from lichen.rpl.dao_types import RplTarget, TransitInformation
 from lichen.rpl.messages import DAO, RplOption
 
@@ -74,12 +76,18 @@ class MockReplayStore:
         self._floors[pubkey] = (sequence, dao_digest)
 
 
+def received_dao(dao: DAO) -> DAO:
+    """Round-trip a sender-built DAO through the authoritative wire parser."""
+    return DAO.from_bytes(dao.to_bytes())
+
+
 def make_signed_dao(
     identity: Identity,
     parent: IPv6Address,
     dodag_id: IPv6Address,
     origin_sequence: int,
     *,
+    source_address: IPv6Address | None = None,
     target: IPv6Address | None = None,
     path_sequence: int = 1,
     path_lifetime: int = 255,
@@ -106,7 +114,7 @@ def make_signed_dao(
     )
 
     # Compute signature
-    source_addr = yggdrasil_address(identity.pubkey)
+    source_addr = yggdrasil_address(identity.pubkey) if source_address is None else source_address
     unsigned_bytes = dao_without_sig.to_bytes()
     transcript = compute_signature_transcript(
         source_addr, dodag_id, origin_sequence, unsigned_bytes
@@ -118,12 +126,13 @@ def make_signed_dao(
     sig_opt = RplOption(DAO_ORIGIN_SIGNATURE_TYPE, sig_data)
 
     # Return DAO with signature
-    return DAO(
+    wire = DAO(
         rpl_instance_id=0,
         dao_sequence=1,
         dodag_id=dodag_id,
         options=options + [sig_opt],
-    )
+    ).to_bytes()
+    return DAO.from_bytes(wire)
 
 
 class TestDaoOriginSignature:
@@ -162,6 +171,25 @@ class TestDaoOriginSignature:
 
         assert parsed.origin_sequence == original.origin_sequence
         assert parsed.signature == original.signature
+
+    @pytest.mark.parametrize("origin_sequence", [True, False, 1.5, "1"])
+    def test_rejects_non_integer_origin_sequence(self, origin_sequence: object) -> None:
+        with pytest.raises(TypeError, match="origin_sequence must be an exact integer"):
+            DaoOriginSignature(  # type: ignore[arg-type]
+                origin_sequence=origin_sequence,
+                signature=bytes(48),
+            )
+
+    @pytest.mark.parametrize(
+        "signature",
+        [bytearray(48), memoryview(bytes(48)), "0" * 48],
+    )
+    def test_rejects_non_bytes_signature(self, signature: object) -> None:
+        with pytest.raises(TypeError, match="signature must be exact bytes"):
+            DaoOriginSignature(  # type: ignore[arg-type]
+                origin_sequence=1,
+                signature=signature,
+            )
 
 
 class TestSignatureTranscript:
@@ -215,7 +243,9 @@ class TestExtractUnsignedDaoBytes:
             TransitInformation(ROOT_ADDR).to_option(),
             RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(56)),
         ]
-        dao = DAO(rpl_instance_id=0, dao_sequence=1, dodag_id=DODAG_ID, options=options)
+        dao = DAO.from_bytes(
+            DAO(rpl_instance_id=0, dao_sequence=1, dodag_id=DODAG_ID, options=options).to_bytes()
+        )
 
         unsigned = extract_unsigned_dao_bytes(dao)
         full = dao.to_bytes()
@@ -233,13 +263,81 @@ class TestDaoOriginValidator:
 
     def test_rejects_unpinned_origin(self) -> None:
         pin_table = MockPinTable()  # Empty - no pins
-        validator = DaoOriginValidator(pin_table)
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
         dao = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
 
         result = validator.validate(dao, NODE_ADDR, DODAG_ID)
 
         assert result.valid is False
         assert result.reject_reason == DaoOriginRejectReason.ORIGIN_NOT_PINNED
+
+    def test_rejects_caller_built_dao_without_received_wire_provenance(self) -> None:
+        pin_table = MockPinTable({NODE_ADDR.packed[8:]: NODE_IDENTITY.pubkey})
+        validator = DaoOriginValidator(pin_table)
+        caller_built = DAO(
+            rpl_instance_id=0,
+            dao_sequence=1,
+            dodag_id=DODAG_ID,
+            options=[],
+        )
+
+        result = validator.validate(caller_built, NODE_ADDR, DODAG_ID)
+
+        assert not result.valid
+        assert result.reject_reason is DaoOriginRejectReason.RAW_WIRE_UNAVAILABLE
+
+    def test_rejects_parsed_dao_after_semantic_mutation(self) -> None:
+        pin_table = MockPinTable({NODE_ADDR.packed[8:]: NODE_IDENTITY.pubkey})
+        validator = DaoOriginValidator(pin_table)
+        parsed = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
+        parsed.options.append(RplOption(0, b""))
+
+        result = validator.validate(parsed, NODE_ADDR, DODAG_ID)
+
+        assert not result.valid
+        assert result.reject_reason is DaoOriginRejectReason.RAW_WIRE_UNAVAILABLE
+
+    def test_valid_result_digest_covers_exact_received_wire(self) -> None:
+        pin_table = MockPinTable({NODE_ADDR.packed[8:]: NODE_IDENTITY.pubkey})
+        validator = DaoOriginValidator(pin_table)
+        parsed = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
+        received_wire = parsed.to_bytes()
+
+        result = validator.validate(parsed, NODE_ADDR, DODAG_ID)
+
+        assert result.valid
+        assert result.dao_digest == compute_dao_digest(received_wire)
+
+    def test_validation_uses_detached_wire_when_caller_mutates_after_check(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pin_table = MockPinTable({NODE_ADDR.packed[8:]: NODE_IDENTITY.pubkey})
+        validator = DaoOriginValidator(pin_table)
+        valid = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
+        invalid_wire = bytearray(valid.to_bytes())
+        invalid_wire[-1] ^= 1
+        caller_owned = DAO.from_bytes(bytes(invalid_wire))
+        exact_wire = dao_origin_module._exact_received_dao_wire
+
+        def mutate_after_provenance(
+            candidate: DAO,
+        ) -> tuple[bytes, tuple[tuple[int, int], ...]] | None:
+            provenance = exact_wire(candidate)
+            candidate.options = list(valid.options)
+            return provenance
+
+        monkeypatch.setattr(
+            dao_origin_module,
+            "_exact_received_dao_wire",
+            mutate_after_provenance,
+        )
+
+        result = validator.validate(caller_owned, NODE_ADDR, DODAG_ID)
+
+        assert not result.valid
+        assert result.reject_reason is DaoOriginRejectReason.SIGNATURE_INVALID
 
     def test_rejects_iid_mismatch(self) -> None:
         # Pin wrong key for the IID
@@ -250,6 +348,24 @@ class TestDaoOriginValidator:
         dao = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
 
         result = validator.validate(dao, NODE_ADDR, DODAG_ID)
+
+        assert result.valid is False
+        assert result.reject_reason == DaoOriginRejectReason.IID_MISMATCH
+
+    @pytest.mark.parametrize("prefix", ["fe80000000000000", "fd424c494348454e"])
+    def test_rejects_correctly_signed_same_iid_source_alias(self, prefix: str) -> None:
+        alias = IPv6Address(bytes.fromhex(prefix) + NODE_ADDR.packed[8:])
+        pin_table = MockPinTable({NODE_ADDR.packed[8:]: NODE_IDENTITY.pubkey})
+        validator = DaoOriginValidator(pin_table)
+        dao = make_signed_dao(
+            NODE_IDENTITY,
+            ROOT_ADDR,
+            DODAG_ID,
+            origin_sequence=1,
+            source_address=alias,
+        )
+
+        result = validator.validate(dao, alias, DODAG_ID)
 
         assert result.valid is False
         assert result.reject_reason == DaoOriginRejectReason.IID_MISMATCH
@@ -371,14 +487,16 @@ class TestDaoOriginValidator:
         validator = DaoOriginValidator(pin_table)
 
         # DAO without signature option
-        dao = DAO(
-            rpl_instance_id=0,
-            dao_sequence=1,
-            dodag_id=DODAG_ID,
-            options=[
-                RplTarget(NODE_ADDR).to_option(),
-                TransitInformation(ROOT_ADDR).to_option(),
-            ],
+        dao = received_dao(
+            DAO(
+                rpl_instance_id=0,
+                dao_sequence=1,
+                dodag_id=DODAG_ID,
+                options=[
+                    RplTarget(NODE_ADDR).to_option(),
+                    TransitInformation(ROOT_ADDR).to_option(),
+                ],
+            )
         )
 
         result = validator.validate(dao, NODE_ADDR, DODAG_ID)
@@ -392,16 +510,18 @@ class TestDaoOriginValidator:
         validator = DaoOriginValidator(pin_table)
 
         sig_opt = RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(56))
-        dao = DAO(
-            rpl_instance_id=0,
-            dao_sequence=1,
-            dodag_id=DODAG_ID,
-            options=[
-                RplTarget(NODE_ADDR).to_option(),
-                TransitInformation(ROOT_ADDR).to_option(),
-                sig_opt,
-                sig_opt,  # Duplicate
-            ],
+        dao = received_dao(
+            DAO(
+                rpl_instance_id=0,
+                dao_sequence=1,
+                dodag_id=DODAG_ID,
+                options=[
+                    RplTarget(NODE_ADDR).to_option(),
+                    TransitInformation(ROOT_ADDR).to_option(),
+                    sig_opt,
+                    sig_opt,  # Duplicate
+                ],
+            )
         )
 
         result = validator.validate(dao, NODE_ADDR, DODAG_ID)
@@ -414,15 +534,17 @@ class TestDaoOriginValidator:
         pin_table = MockPinTable({node_iid: NODE_IDENTITY.pubkey})
         validator = DaoOriginValidator(pin_table)
 
-        dao = DAO(
-            rpl_instance_id=0,
-            dao_sequence=1,
-            dodag_id=DODAG_ID,
-            options=[
-                RplTarget(NODE_ADDR).to_option(),
-                RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(56)),  # Not final
-                TransitInformation(ROOT_ADDR).to_option(),
-            ],
+        dao = received_dao(
+            DAO(
+                rpl_instance_id=0,
+                dao_sequence=1,
+                dodag_id=DODAG_ID,
+                options=[
+                    RplTarget(NODE_ADDR).to_option(),
+                    RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(56)),  # Not final
+                    TransitInformation(ROOT_ADDR).to_option(),
+                ],
+            )
         )
 
         result = validator.validate(dao, NODE_ADDR, DODAG_ID)
@@ -435,15 +557,17 @@ class TestDaoOriginValidator:
         pin_table = MockPinTable({node_iid: NODE_IDENTITY.pubkey})
         validator = DaoOriginValidator(pin_table)
 
-        dao = DAO(
-            rpl_instance_id=0,
-            dao_sequence=1,
-            dodag_id=DODAG_ID,
-            options=[
-                RplTarget(NODE_ADDR).to_option(),
-                TransitInformation(ROOT_ADDR).to_option(),
-                RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(55)),  # Wrong length
-            ],
+        dao = received_dao(
+            DAO(
+                rpl_instance_id=0,
+                dao_sequence=1,
+                dodag_id=DODAG_ID,
+                options=[
+                    RplTarget(NODE_ADDR).to_option(),
+                    TransitInformation(ROOT_ADDR).to_option(),
+                    RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(55)),  # Wrong length
+                ],
+            )
         )
 
         result = validator.validate(dao, NODE_ADDR, DODAG_ID)
@@ -457,15 +581,17 @@ class TestDaoOriginValidator:
         validator = DaoOriginValidator(pin_table)
 
         # DAO with invalid (zero) signature
-        dao = DAO(
-            rpl_instance_id=0,
-            dao_sequence=1,
-            dodag_id=DODAG_ID,
-            options=[
-                RplTarget(NODE_ADDR).to_option(),
-                TransitInformation(ROOT_ADDR).to_option(),
-                RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(56)),
-            ],
+        dao = received_dao(
+            DAO(
+                rpl_instance_id=0,
+                dao_sequence=1,
+                dodag_id=DODAG_ID,
+                options=[
+                    RplTarget(NODE_ADDR).to_option(),
+                    TransitInformation(ROOT_ADDR).to_option(),
+                    RplOption(DAO_ORIGIN_SIGNATURE_TYPE, (1).to_bytes(8, "big") + bytes(48)),
+                ],
+            )
         )
 
         result = validator.validate(dao, NODE_ADDR, DODAG_ID)
@@ -733,12 +859,14 @@ class TestConsolidatedDaoValidation:
         from lichen.rpl.dao_manager import DaoManager
 
         pin_table = MockPinTable()  # Empty - no pins
-        validator = DaoOriginValidator(pin_table)
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
         manager = DaoManager(
             node_address=ROOT_ADDR,
             is_root=True,
             dodag_id=DODAG_ID,
             origin_validator=validator,
+            persistence=persistence,
         )
         dao = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
 
@@ -756,24 +884,28 @@ class TestConsolidatedDaoValidation:
 
         node_iid = NODE_ADDR.packed[8:16]
         pin_table = MockPinTable({node_iid: NODE_IDENTITY.pubkey})
-        validator = DaoOriginValidator(pin_table)
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
         manager = DaoManager(
             node_address=ROOT_ADDR,
             is_root=True,
             dodag_id=DODAG_ID,
             origin_validator=validator,
+            persistence=persistence,
         )
 
         # DAO with invalid (zero) signature
-        dao = DAO(
-            rpl_instance_id=0,
-            dao_sequence=1,
-            dodag_id=DODAG_ID,
-            options=[
-                RplTarget(NODE_ADDR).to_option(),
-                TransitInformation(ROOT_ADDR).to_option(),
-                RplOption(DAO_ORIGIN_SIGNATURE_TYPE, bytes(56)),
-            ],
+        dao = received_dao(
+            DAO(
+                rpl_instance_id=0,
+                dao_sequence=1,
+                dodag_id=DODAG_ID,
+                options=[
+                    RplTarget(NODE_ADDR).to_option(),
+                    TransitInformation(ROOT_ADDR).to_option(),
+                    RplOption(DAO_ORIGIN_SIGNATURE_TYPE, (1).to_bytes(8, "big") + bytes(48)),
+                ],
+            )
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -820,12 +952,14 @@ class TestConsolidatedDaoValidation:
 
         node_iid = NODE_ADDR.packed[8:16]
         pin_table = MockPinTable({node_iid: NODE_IDENTITY.pubkey})
-        validator = DaoOriginValidator(pin_table)
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
         manager = DaoManager(
             node_address=ROOT_ADDR,
             is_root=True,
             dodag_id=DODAG_ID,
             origin_validator=validator,
+            persistence=persistence,
         )
 
         # Create a DAO with a different target than source
@@ -838,19 +972,21 @@ class TestConsolidatedDaoValidation:
             manager.validate_and_process_dao(dao, NODE_ADDR)
 
         # Check the reason attribute of DaoError
-        assert exc_info.value.reason == "target_source_mismatch"
+        assert exc_info.value.reason == "target_mismatch"
 
     def test_evaluate_dao_returns_outcome_for_origin_rejection(self) -> None:
         """evaluate_dao_at with source_address returns DaoOutcome for origin rejection."""
         from lichen.rpl.dao_manager import DaoManager, DaoOutcome
 
         pin_table = MockPinTable()  # Empty - no pins
-        validator = DaoOriginValidator(pin_table)
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
         manager = DaoManager(
             node_address=ROOT_ADDR,
             is_root=True,
             dodag_id=DODAG_ID,
             origin_validator=validator,
+            persistence=persistence,
         )
         dao = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
 
@@ -877,12 +1013,14 @@ class TestConsolidatedDaoValidation:
                 return None  # Will cause rejection
 
         pin_table = TrackedPinTable()
-        validator = DaoOriginValidator(pin_table)
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
         manager = DaoManager(
             node_address=ROOT_ADDR,
             is_root=True,
             dodag_id=DODAG_ID,
             origin_validator=validator,
+            persistence=persistence,
         )
 
         # Create a DAO that would fail semantic parsing (malformed options)
@@ -958,7 +1096,7 @@ class TestConsolidatedDaoValidation:
         # This should fail at Target validation (step 6)
         with pytest.raises(DaoError) as exc_info:
             manager.validate_and_process_dao(dao, NODE_ADDR)
-        assert exc_info.value.reason == "target_source_mismatch"
+        assert exc_info.value.reason == "target_mismatch"
 
         # CRITICAL: Floor should NOT be committed since validation failed
         assert NODE_IDENTITY.pubkey not in manager._rx_floors
@@ -966,9 +1104,7 @@ class TestConsolidatedDaoValidation:
         assert floor is None, "Replay floor MUST NOT be committed when validation fails"
 
         # Now send a corrected DAO with same sequence - should be accepted
-        corrected_dao = make_signed_dao(
-            NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1
-        )
+        corrected_dao = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
         manager.validate_and_process_dao(corrected_dao, NODE_ADDR)
 
         # Now the floor should be committed
@@ -1050,9 +1186,7 @@ class TestIdempotentRetransmissionFloorHandling:
                 super().__init__()
                 self.store_rx_floor_calls: list[tuple[bytes, int, bytes]] = []
 
-            def store_rx_floor(
-                self, pubkey: bytes, sequence: int, dao_digest: bytes
-            ) -> None:
+            def store_rx_floor(self, pubkey: bytes, sequence: int, dao_digest: bytes) -> None:
                 self.store_rx_floor_calls.append((pubkey, sequence, dao_digest))
                 super().store_rx_floor(pubkey, sequence, dao_digest)
 
@@ -1084,9 +1218,9 @@ class TestIdempotentRetransmissionFloorHandling:
         manager.validate_and_process_dao(dao, NODE_ADDR)
 
         # CRITICAL: Floor should NOT be rewritten for idempotent retransmission
-        assert (
-            len(persistence.store_rx_floor_calls) == 1
-        ), "Idempotent retransmission MUST NOT rewrite replay floor (spec 8.6)"
+        assert len(persistence.store_rx_floor_calls) == 1, (
+            "Idempotent retransmission MUST NOT rewrite replay floor (spec 8.6)"
+        )
 
     def test_fresh_dao_higher_sequence_commits_floor(self) -> None:
         """Verify that fresh DAOs with higher sequence DO commit the floor."""
@@ -1098,9 +1232,7 @@ class TestIdempotentRetransmissionFloorHandling:
                 super().__init__()
                 self.store_rx_floor_calls: list[tuple[bytes, int, bytes]] = []
 
-            def store_rx_floor(
-                self, pubkey: bytes, sequence: int, dao_digest: bytes
-            ) -> None:
+            def store_rx_floor(self, pubkey: bytes, sequence: int, dao_digest: bytes) -> None:
                 self.store_rx_floor_calls.append((pubkey, sequence, dao_digest))
                 super().store_rx_floor(pubkey, sequence, dao_digest)
 
@@ -1279,7 +1411,7 @@ class TestDaoOriginSignaturePositionInSemanticParsing:
         )
 
         with pytest.raises(DaoError) as exc_info:
-            manager.process_dao(dao)
+            manager.process_dao_semantics_for_test(dao)
 
         assert exc_info.value.reason == "signature_not_final"
 
@@ -1310,3 +1442,82 @@ class TestDaoOriginSignaturePositionInSemanticParsing:
             DaoManager._extract_updates(dao)
 
         assert exc_info.value.reason == "signature_not_final"
+
+
+class TestDaoSnapshotTocTouProtection:
+    """Tests for TOCTOU protection via provenance invalidation.
+
+    Per spec 8.6, the exact received wire bytes are used for validation and
+    semantic parsing, not the mutable DAO object. This prevents a race where
+    another thread mutates the DAO object between receipt and processing.
+
+    The protection works by invalidating the provenance when the DAO's structural
+    state changes. If mutation occurs, processing fails with raw_wire_unavailable.
+    """
+
+    def test_mutation_invalidates_provenance(self) -> None:
+        """Mutating DAO options after provenance capture invalidates the provenance.
+
+        This is the TOCTOU protection: if the DAO object is mutated after
+        provenance capture, the provenance becomes unavailable and processing
+        fails safely rather than using potentially unsigned semantics.
+        """
+        from lichen.rpl.dao_manager import DaoManager
+        from lichen.rpl.dao_persistence import MemoryPersistence
+        from lichen.rpl.dao_types import DaoError
+
+        node_iid = NODE_ADDR.packed[8:16]
+        pin_table = MockPinTable({node_iid: NODE_IDENTITY.pubkey})
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
+        manager = DaoManager(
+            node_address=ROOT_ADDR,
+            is_root=True,
+            dodag_id=DODAG_ID,
+            origin_validator=validator,
+            persistence=persistence,
+        )
+
+        # Create and sign a DAO advertising NODE_ADDR -> ROOT_ADDR
+        dao = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
+
+        # Mutate the DAO object after provenance was captured
+        # This simulates a TOCTOU attack - the provenance must be invalidated
+        dao.options = []
+
+        # Processing must fail because provenance was invalidated by mutation
+        with pytest.raises(DaoError) as exc_info:
+            manager.validate_and_process_dao(dao, NODE_ADDR)
+
+        assert exc_info.value.reason == "raw_wire_unavailable"
+
+    def test_unmutated_dao_uses_provenance(self) -> None:
+        """Unmutated DAO processes successfully using provenance bytes.
+
+        This verifies the happy path: when the DAO is not mutated after receipt,
+        the provenance bytes are used for validation and semantic parsing.
+        """
+        from lichen.rpl.dao_manager import DaoManager
+        from lichen.rpl.dao_persistence import MemoryPersistence
+
+        node_iid = NODE_ADDR.packed[8:16]
+        pin_table = MockPinTable({node_iid: NODE_IDENTITY.pubkey})
+        persistence = MemoryPersistence()
+        validator = DaoOriginValidator(pin_table, persistence)
+        manager = DaoManager(
+            node_address=ROOT_ADDR,
+            is_root=True,
+            dodag_id=DODAG_ID,
+            origin_validator=validator,
+            persistence=persistence,
+        )
+
+        # Create and sign a DAO - don't mutate it
+        dao = make_signed_dao(NODE_IDENTITY, ROOT_ADDR, DODAG_ID, origin_sequence=1)
+
+        # Processing should succeed with the original provenance
+        # (Returns None when ack_requested is False, which is the default)
+        manager.validate_and_process_dao(dao, NODE_ADDR)
+
+        # Verify route was installed - proves the provenance was used successfully
+        assert len(manager.routing_table) > 0
