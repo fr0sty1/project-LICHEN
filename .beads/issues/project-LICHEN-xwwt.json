@@ -17,7 +17,8 @@
   "labels": [
     "codereview",
     "ccp",
-    "spec"
+    "spec",
+    "zephyr"
   ],
   "dependencies": [
     {
